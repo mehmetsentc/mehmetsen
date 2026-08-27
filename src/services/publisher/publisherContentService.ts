@@ -75,6 +75,7 @@ function emptyItem(
     districtName: null,
     heroImageUrl: null,
     videoUrl: null,
+    mediaMeta: null,
     tags: [],
     seoTitle: null,
     seoDescription: null,
@@ -134,7 +135,15 @@ export class PublisherContentService {
   async list(
     publisherId: string,
     userId: string,
-    status?: PublisherContentStatus | 'ALL' | null
+    status?: PublisherContentStatus | 'ALL' | null,
+    opts?: {
+      limit?: number
+      cursorUpdatedAt?: string | null
+      q?: string | null
+      authorId?: string | null
+      categoryId?: string | null
+      sourceMode?: string | null
+    }
   ): Promise<PublisherContentItem[]> {
     this.assertStudio()
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
@@ -143,8 +152,21 @@ export class PublisherContentService {
         ? null
         : status === 'IN_REVIEW'
           ? (['IN_REVIEW', 'CHANGES_REQUESTED'] as PublisherContentStatus[])
-          : ([status] as PublisherContentStatus[])
-    return this.contentRepo.listByPublisher({ publisherId, status: statuses, limit: 80 })
+          : status === 'CHANGES_REQUESTED'
+            ? (['CHANGES_REQUESTED'] as PublisherContentStatus[])
+            : status === 'APPROVED'
+              ? (['APPROVED'] as PublisherContentStatus[])
+              : ([status] as PublisherContentStatus[])
+    return this.contentRepo.listByPublisher({
+      publisherId,
+      status: statuses,
+      limit: opts?.limit ?? 40,
+      cursorUpdatedAt: opts?.cursorUpdatedAt ? new Date(opts.cursorUpdatedAt) : null,
+      q: opts?.q,
+      authorId: opts?.authorId,
+      categoryId: opts?.categoryId,
+      sourceMode: opts?.sourceMode,
+    })
   }
 
   async get(publisherId: string, contentId: string, userId: string): Promise<PublisherContentItem> {
@@ -178,6 +200,7 @@ export class PublisherContentService {
       actorUserId: userId,
     })
     publisherLog('publisher_content_created', { publisherId, contentId: item.id, userId })
+    publisherLog('publisher_draft_created', { publisherId, contentId: item.id, userId })
     return item
   }
 
@@ -217,24 +240,31 @@ export class PublisherContentService {
     )
     if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
 
-    if (opts?.meaningful !== false) {
+    const meaningful = opts?.meaningful !== false
+    if (meaningful) {
       await this.contentRepo.createRevisionFromItem(updated, 'SAVE', null, userId)
+      await this.contentRepo.insertAudit({
+        contentId,
+        publisherId,
+        eventType: 'CONTENT_SAVED',
+        actorUserId: userId,
+        payload: { version: updated.version },
+      })
+    } else {
+      publisherLog('publisher_autosave', {
+        publisherId,
+        contentId,
+        userId,
+        version: updated.version,
+      })
+      await this.contentRepo.insertAudit({
+        contentId,
+        publisherId,
+        eventType: 'CONTENT_UPDATED',
+        actorUserId: userId,
+        payload: { version: updated.version, autosave: true },
+      })
     }
-    await this.contentRepo.insertAudit({
-      contentId,
-      publisherId,
-      eventType: 'CONTENT_UPDATED',
-      actorUserId: userId,
-      payload: { version: updated.version },
-    })
-    // keep CONTENT_SAVED for compatibility
-    await this.contentRepo.insertAudit({
-      contentId,
-      publisherId,
-      eventType: 'CONTENT_SAVED',
-      actorUserId: userId,
-      payload: { version: updated.version },
-    })
     if (patch.isBreaking !== undefined && patch.isBreaking !== current.isBreaking) {
       await this.contentRepo.insertAudit({
         contentId,
@@ -279,6 +309,7 @@ export class PublisherContentService {
       eventType: 'CONTENT_SUBMITTED',
       actorUserId: userId,
     })
+    publisherLog('publisher_review_submitted', { publisherId, contentId, userId })
     return updated
   }
 
@@ -352,6 +383,7 @@ export class PublisherContentService {
       eventType: 'CONTENT_APPROVED',
       actorUserId: userId,
     })
+    publisherLog('publisher_content_approved', { publisherId, contentId, userId })
     return updated
   }
 
@@ -404,6 +436,13 @@ export class PublisherContentService {
     if (!allowed) throw new PublisherContentError('INVALID_STATUS', 'INVALID_STATE')
     if (!current.title.trim()) throw new PublisherContentError('TITLE_REQUIRED', 'INVALID_STATE')
 
+    publisherLog('publisher_publish_attempt', {
+      publisherId,
+      contentId,
+      userId,
+      fast: Boolean(opts?.fast),
+    })
+
     const published = await this.publishFn({
       item: current,
       publisher,
@@ -416,11 +455,24 @@ export class PublisherContentService {
     if (!after) throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
 
     if (published.publicationStatus !== 'PUBLISHED') {
+      publisherLog(
+        published.publicationStatus === 'PARTIAL'
+          ? 'publisher_publish_partial'
+          : 'publisher_publish_failed',
+        { publisherId, contentId, userId, newsId: published.newsId }
+      )
       throw new PublisherContentError(
         published.publicationStatus === 'PARTIAL' ? 'PUBLISH_PARTIAL' : 'PUBLISH_FAILED',
         'INVALID_STATE'
       )
     }
+
+    publisherLog('publisher_publish_success', {
+      publisherId,
+      contentId,
+      newsId: published.newsId,
+      userId,
+    })
 
     if (opts?.fast) {
       await this.contentRepo.insertAudit({
@@ -449,16 +501,27 @@ export class PublisherContentService {
     return after
   }
 
-  /** Heal PARTIAL/FAILED dual-writes (bounded). */
+  /** Heal PARTIAL/FAILED dual-writes (bounded). Skips fresh PUBLISHING leases. */
   async reconcilePartialPublications(limit = 10): Promise<{
     attempted: number
     healed: number
     failed: number
+    skipped: number
   }> {
+    if (!isPublisherManualPublishEnabled()) {
+      return { attempted: 0, healed: 0, failed: 0, skipped: 0 }
+    }
     const items = await this.contentRepo.listPartialPublications(limit)
     let healed = 0
     let failed = 0
+    let skipped = 0
     for (const item of items) {
+      publisherLog('publisher_reconcile_attempt', {
+        publisherId: item.publisherId,
+        contentId: item.id,
+        publicationStatus: item.publicationStatus,
+        attempts: item.publicationAttempts,
+      })
       try {
         const publisher = await this.loadPublisher(item.publisherId)
         const result = await this.publishService.publishContent({
@@ -468,13 +531,144 @@ export class PublisherContentService {
           actorDisplayName: publisher.displayName,
           preferredNewsId: item.publishedNewsId,
         })
-        if (result.publicationStatus === 'PUBLISHED') healed++
-        else failed++
+        if (result.publicationStatus === 'PUBLISHED') {
+          healed++
+          publisherLog('publisher_reconcile_healed', {
+            publisherId: item.publisherId,
+            contentId: item.id,
+            newsId: result.newsId,
+          })
+        } else {
+          failed++
+          publisherLog('publisher_reconcile_failed', {
+            publisherId: item.publisherId,
+            contentId: item.id,
+            publicationStatus: result.publicationStatus,
+          })
+        }
       } catch {
         failed++
+        publisherLog('publisher_reconcile_failed', {
+          publisherId: item.publisherId,
+          contentId: item.id,
+        })
       }
     }
-    return { attempted: items.length, healed, failed }
+    return { attempted: items.length, healed, failed, skipped }
+  }
+
+  async cancelSchedule(
+    publisherId: string,
+    contentId: string,
+    userId: string
+  ): Promise<PublisherContentItem> {
+    this.assertStudio()
+    if (!isPublisherSchedulingEnabled()) {
+      throw new PublisherContentError('SCHEDULING_DISABLED', 'FLAG_OFF')
+    }
+    const member = await requirePublisherMember(publisherId, userId, 'content:schedule', this.publisherRepo)
+    if (!canRolePublishContent(member.role)) {
+      throw new PublisherContentError('CANNOT_SCHEDULE', 'FORBIDDEN')
+    }
+    const current = await this.contentRepo.findById(contentId)
+    if (!current || current.publisherId !== publisherId) {
+      throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
+    }
+    if (current.status !== 'SCHEDULED') {
+      throw new PublisherContentError('INVALID_STATUS', 'INVALID_STATE')
+    }
+    if (current.scheduleClaimedBy && current.scheduleClaimExpiresAt && current.scheduleClaimExpiresAt > new Date()) {
+      throw new PublisherContentError('SCHEDULE_ALREADY_CLAIMED', 'INVALID_STATE')
+    }
+    const updated = await this.contentRepo.updateOptimistic(
+      contentId,
+      publisherId,
+      { version: current.version },
+      {
+        status: 'APPROVED',
+        scheduledAt: null,
+        scheduleTimezone: null,
+        scheduleClaimedAt: null,
+        scheduleClaimedBy: null,
+        scheduleClaimExpiresAt: null,
+        updatedBy: userId,
+      }
+    )
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
+    await this.contentRepo.createRevisionFromItem(updated, 'SCHEDULE_CANCEL', null, userId)
+    await this.contentRepo.insertAudit({
+      contentId,
+      publisherId,
+      eventType: 'CONTENT_SCHEDULE_CANCELLED',
+      actorUserId: userId,
+    })
+    return updated
+  }
+
+  async listRevisions(publisherId: string, contentId: string, userId: string) {
+    this.assertStudio()
+    await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
+    const item = await this.contentRepo.findById(contentId)
+    if (!item || item.publisherId !== publisherId) {
+      throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
+    }
+    return this.contentRepo.listRevisions(contentId)
+  }
+
+  /**
+   * Restore a revision into a new draft save — only when content is not publicly published.
+   */
+  async restoreRevision(
+    publisherId: string,
+    contentId: string,
+    userId: string,
+    revisionId: string
+  ): Promise<PublisherContentItem> {
+    this.assertStudio()
+    const member = await requirePublisherMember(publisherId, userId, 'content:write', this.publisherRepo)
+    const current = await this.contentRepo.findById(contentId)
+    if (!current || current.publisherId !== publisherId) {
+      throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
+    }
+    if (!canUserEditContent(member.role, current, userId)) {
+      throw new PublisherContentError('CANNOT_EDIT', 'FORBIDDEN')
+    }
+    if (
+      current.status === 'PUBLISHED' ||
+      current.publishedNewsId ||
+      current.publicationStatus === 'PUBLISHED' ||
+      current.publicationStatus === 'PARTIAL' ||
+      current.publicationStatus === 'PUBLISHING'
+    ) {
+      throw new PublisherContentError('RESTORE_NOT_SAFE', 'INVALID_STATE')
+    }
+    const rev = await this.contentRepo.findRevision(contentId, revisionId)
+    if (!rev) throw new PublisherContentError('REVISION_NOT_FOUND', 'NOT_FOUND')
+    const snap = rev.snapshot
+    const patch: PublisherContentDraftInput = {
+      title: typeof snap.title === 'string' ? snap.title : current.title,
+      spot: typeof snap.spot === 'string' ? snap.spot : current.spot,
+      summary: typeof snap.summary === 'string' ? snap.summary : current.summary,
+      bodyBlocks: Array.isArray(snap.bodyBlocks) ? (snap.bodyBlocks as PublisherContentItem['bodyBlocks']) : current.bodyBlocks,
+      categoryId: typeof snap.categoryId === 'string' ? snap.categoryId : current.categoryId,
+      citySlug: typeof snap.citySlug === 'string' ? snap.citySlug : current.citySlug,
+      districtSlug: typeof snap.districtSlug === 'string' ? snap.districtSlug : current.districtSlug,
+      heroImageUrl: typeof snap.heroImageUrl === 'string' ? snap.heroImageUrl : current.heroImageUrl,
+      videoUrl: typeof snap.videoUrl === 'string' ? snap.videoUrl : current.videoUrl,
+      tags: Array.isArray(snap.tags) ? (snap.tags as string[]) : current.tags,
+      seoTitle: typeof snap.seoTitle === 'string' ? snap.seoTitle : current.seoTitle,
+      seoDescription: typeof snap.seoDescription === 'string' ? snap.seoDescription : current.seoDescription,
+      expectedVersion: current.version,
+    }
+    const restored = await this.saveDraft(publisherId, contentId, userId, patch, { meaningful: true })
+    await this.contentRepo.insertAudit({
+      contentId,
+      publisherId,
+      eventType: 'CONTENT_REVISION_RESTORED',
+      actorUserId: userId,
+      payload: { revisionId, revisionNumber: rev.revisionNumber },
+    })
+    return restored
   }
 
   async schedule(
@@ -570,6 +764,18 @@ export class PublisherContentService {
     const raw = await this.contentRepo.findRawArticleForPublisher(publisherId, rawArticleId)
     if (!raw) throw new PublisherContentError('SOURCE_NOT_FOUND', 'NOT_FOUND')
 
+    const existing = await this.contentRepo.findByCrawlerRawArticle(publisherId, raw.id)
+    if (existing) {
+      publisherLog('publisher_source_imported', {
+        publisherId,
+        contentId: existing.id,
+        rawArticleId: raw.id,
+        userId,
+        idempotent: true,
+      })
+      return existing
+    }
+
     const body = (raw.contentText ?? raw.summary ?? '').trim()
     const item = emptyItem(publisherId, userId, {
       title: (raw.title ?? '').trim() || 'Kaynak Haber',
@@ -608,7 +814,23 @@ export class PublisherContentService {
       rawArticleId: raw.id,
       userId,
     })
+    publisherLog('publisher_source_imported', {
+      publisherId,
+      contentId: item.id,
+      rawArticleId: raw.id,
+      userId,
+      idempotent: false,
+    })
     return item
+  }
+
+  /** P7A/P7B alias — same as importFromSourceArticle (no AI). */
+  async importRawArticleAsDraft(
+    publisherId: string,
+    userId: string,
+    rawArticleId: string
+  ): Promise<PublisherContentItem> {
+    return this.importFromSourceArticle(publisherId, userId, rawArticleId)
   }
 
   async listSourceArticles(publisherId: string, userId: string) {
@@ -648,6 +870,11 @@ export class PublisherContentService {
       const item = await this.contentRepo.claimNextScheduled(workerId, now, leaseMs)
       if (!item) break
       claimed++
+      publisherLog('publisher_schedule_claimed', {
+        publisherId: item.publisherId,
+        contentId: item.id,
+        workerId,
+      })
       if (item.scheduleClaimedBy && item.scheduleClaimExpiresAt && item.scheduleClaimExpiresAt <= now) {
         recovered++
         await this.contentRepo.insertAudit({
@@ -674,6 +901,11 @@ export class PublisherContentService {
         })
         if (pub.publicationStatus === 'PUBLISHED') {
           published++
+          publisherLog('publisher_schedule_published', {
+            publisherId: item.publisherId,
+            contentId: item.id,
+            newsId: pub.newsId,
+          })
           await this.contentRepo.insertAudit({
             contentId: item.id,
             publisherId: item.publisherId,
@@ -683,9 +915,18 @@ export class PublisherContentService {
           })
         } else {
           errors++
+          publisherLog('publisher_schedule_failed', {
+            publisherId: item.publisherId,
+            contentId: item.id,
+            publicationStatus: pub.publicationStatus,
+          })
         }
       } catch (err) {
         errors++
+        publisherLog('publisher_schedule_failed', {
+          publisherId: item.publisherId,
+          contentId: item.id,
+        })
         console.error(
           '[publisherContent.schedule]',
           item.id,

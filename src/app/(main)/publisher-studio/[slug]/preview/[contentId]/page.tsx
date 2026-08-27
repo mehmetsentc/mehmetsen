@@ -41,8 +41,9 @@ export default async function PublisherContentPreviewPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <meta name="robots" content="noindex,nofollow,noarchive,nosnippet" />
-      <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-        Özel önizleme · {publisher.displayName} · noindex · üyelik gerekli
+      <meta httpEquiv="Cache-Control" content="private, no-store, max-age=0" />
+      <p className="mb-4 rounded-md bg-amber-100 px-3 py-2 text-xs font-black uppercase tracking-wide text-amber-950">
+        ÖNİZLEME — Yayında değil · {publisher.displayName} · noindex · üyelik gerekli
       </p>
       <PublisherContentPreviewClient publisherId={publisher.id} contentId={contentId} />
     </div>

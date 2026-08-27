@@ -5,9 +5,6 @@ import {
   serializeContent,
   withContentAuth,
 } from '@/lib/publisher/contentApi'
-import type { PublisherContentDraftInput } from '@/types/publisherContent'
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
-import { PUBLISHER_AUTOSAVE_RATE_LIMIT } from '@/lib/publisher/contentStudioConfig'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,36 +18,36 @@ export async function GET(request: Request, context: RouteContext) {
   const auth = await withContentAuth(request, publisherId, 'content:read')
   if ('error' in auth && auth.error) return auth.error
   try {
-    const item = await publisherContentService.get(publisherId, contentId, auth.auth!.user.uid)
-    return NextResponse.json({ item: serializeContent(item), role: auth.auth!.member.role })
+    const revisions = await publisherContentService.listRevisions(
+      publisherId,
+      contentId,
+      auth.auth!.user.uid
+    )
+    return NextResponse.json({
+      revisions: revisions.map((r) => ({
+        ...r,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    })
   } catch (err) {
     return contentErrorResponse(err)
   }
 }
 
-export async function PUT(request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const { publisherId, contentId } = await context.params
   const auth = await withContentAuth(request, publisherId, 'content:write')
   if ('error' in auth && auth.error) return auth.error
-  const uid = auth.auth!.user.uid
-  const ip = getClientIp(request)
-  if (
-    !checkRateLimit(
-      `pcs-autosave:${publisherId}:${uid}:${ip}`,
-      PUBLISHER_AUTOSAVE_RATE_LIMIT.limit,
-      PUBLISHER_AUTOSAVE_RATE_LIMIT.windowMs
-    )
-  ) {
-    return rateLimitResponse()
-  }
   try {
-    const body = (await request.json()) as PublisherContentDraftInput & { autosave?: boolean }
-    const item = await publisherContentService.saveDraft(
+    const body = (await request.json()) as { revisionId?: string }
+    if (!body.revisionId) {
+      return NextResponse.json({ error: 'revisionId required' }, { status: 400 })
+    }
+    const item = await publisherContentService.restoreRevision(
       publisherId,
       contentId,
-      uid,
-      body,
-      { meaningful: !body.autosave }
+      auth.auth!.user.uid,
+      body.revisionId
     )
     return NextResponse.json({ item: serializeContent(item) })
   } catch (err) {

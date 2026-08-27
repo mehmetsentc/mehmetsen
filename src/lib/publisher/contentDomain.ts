@@ -143,6 +143,7 @@ export function applyDraftPatch(
   if (patch.districtName !== undefined) next.districtName = patch.districtName?.trim() || null
   if (patch.heroImageUrl !== undefined) next.heroImageUrl = patch.heroImageUrl?.trim() || null
   if (patch.videoUrl !== undefined) next.videoUrl = patch.videoUrl?.trim() || null
+  if (patch.mediaMeta !== undefined) next.mediaMeta = patch.mediaMeta
   if (patch.tags !== undefined) {
     next.tags = [...new Set(patch.tags.map((t) => t.trim()).filter(Boolean))].slice(0, 40)
   }
@@ -170,6 +171,7 @@ export function snapshotContent(item: PublisherContentItem): Record<string, unkn
     districtSlug: item.districtSlug,
     heroImageUrl: item.heroImageUrl,
     videoUrl: item.videoUrl,
+    mediaMeta: item.mediaMeta,
     tags: item.tags,
     seoTitle: item.seoTitle,
     seoDescription: item.seoDescription,

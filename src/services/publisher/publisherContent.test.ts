@@ -39,6 +39,7 @@ vi.mock('@/lib/publisher/contentFlags', () => ({
   isPublisherContentStudioEnabled: () => true,
   isPublisherManualPublishEnabled: () => true,
   isPublisherSchedulingEnabled: () => true,
+  isPublisherMediaUploadEnabled: () => true,
 }))
 
 vi.mock('@/lib/publisher/featureFlag', () => ({
@@ -211,9 +212,35 @@ class MemoryContentRepo {
   }
 
   async listPartialPublications(limit = 10) {
+    const staleBefore = new Date(Date.now() - 5 * 60 * 1000)
     return this.items
-      .filter((i) => ['PARTIAL', 'FAILED', 'PUBLISHING'].includes(i.publicationStatus))
+      .filter((i) => {
+        if (i.publicationAttempts > 8) return false
+        if (i.publicationStatus === 'PARTIAL' || i.publicationStatus === 'FAILED') return true
+        if (i.publicationStatus === 'PUBLISHING') {
+          return !i.publicationClaimedAt || i.publicationClaimedAt <= staleBefore
+        }
+        return false
+      })
       .slice(0, limit)
+  }
+
+  async findByCrawlerRawArticle(publisherId: string, crawlerRawArticleId: string) {
+    return (
+      this.items.find(
+        (i) => i.publisherId === publisherId && i.crawlerRawArticleId === crawlerRawArticleId
+      ) ?? null
+    )
+  }
+
+  async listRevisions(contentId: string) {
+    return this.revisions
+      .filter((r) => r.contentId === contentId)
+      .sort((a, b) => b.revisionNumber - a.revisionNumber)
+  }
+
+  async findRevision(contentId: string, revisionId: string) {
+    return this.revisions.find((r) => r.contentId === contentId && r.id === revisionId) ?? null
   }
 
   async insertRevision(input: {
@@ -501,6 +528,7 @@ describe('P7A dual-write bridge (fake adapters)', () => {
       districtName: null,
       heroImageUrl: null,
       videoUrl: null,
+      mediaMeta: null,
       tags: [],
       seoTitle: null,
       seoDescription: null,
@@ -739,5 +767,182 @@ describe('P7 preview noindex contract', () => {
     expect(pageSrc).toContain('PublisherContentPreviewClient')
     expect(pageSrc).not.toContain('publisherContentRepository.findById')
     expect(pageSrc).toContain('noindex')
+    expect(pageSrc).toContain('ÖNİZLEME')
+    expect(pageSrc).toContain('Cache-Control')
+    expect(pageSrc).toContain('private')
+  })
+})
+
+describe('P7B schedule + reconcile + import idempotency', () => {
+  let pubRepo: MemoryPublisherRepo
+  let contentRepo: MemoryContentRepo
+  let service: PublisherContentService
+  let publishCalls = 0
+
+  beforeEach(() => {
+    pubRepo = new MemoryPublisherRepo()
+    contentRepo = new MemoryContentRepo()
+    publishCalls = 0
+    pubRepo.members = [
+      makeMember('OWNER', 'owner1'),
+      makeMember('EDITOR', 'editor1'),
+      makeMember('AUTHOR', 'author1'),
+      makeMember('AD_MANAGER', 'ad1'),
+    ]
+    service = new PublisherContentService(
+      contentRepo as unknown as PublisherContentRepository,
+      pubRepo as unknown as PublisherRepository,
+      async ({ item }) => {
+        publishCalls++
+        const newsId = item.publishedNewsId || 'news_sched_1'
+        await contentRepo.claimPublishSlot(item.id, item.publisherId, newsId, 'editor1', now(), {
+          publicationStatus: 'PUBLISHED',
+          firestoreStatus: 'OK',
+          postgresStatus: 'OK',
+          seoSlug: 'haber-slug',
+        })
+        return {
+          newsId,
+          slug: 'haber-slug',
+          alreadyPublished: false,
+          publicationStatus: 'PUBLISHED' as const,
+          firestoreOk: true,
+          postgresOk: true,
+        }
+      },
+      {
+        publishContent: async ({ item }: { item: PublisherContentItem }) => {
+          publishCalls++
+          const newsId = item.publishedNewsId || 'news_recon_1'
+          await contentRepo.claimPublishSlot(item.id, item.publisherId, newsId, 'editor1', now(), {
+            publicationStatus: 'PUBLISHED',
+            firestoreStatus: 'OK',
+            postgresStatus: 'OK',
+            seoSlug: 'haber-slug',
+          })
+          return {
+            newsId,
+            slug: 'haber-slug',
+            alreadyPublished: false,
+            publicationStatus: 'PUBLISHED' as const,
+            firestoreOk: true,
+            postgresOk: true,
+          }
+        },
+      } as unknown as PublisherPublishService
+    )
+  })
+
+  it('future scheduled content is not claimed', async () => {
+    const draft = await service.createDraft('pub_test', 'editor1')
+    await service.saveDraft('pub_test', draft.id, 'editor1', {
+      title: 'Planlı',
+      expectedVersion: draft.version,
+    })
+    const afterSave = (await contentRepo.findById(draft.id))!
+    await contentRepo.updateOptimistic(draft.id, 'pub_test', { version: afterSave.version }, {
+      status: 'APPROVED',
+    })
+    const approved = (await contentRepo.findById(draft.id))!
+    const future = new Date(Date.now() + 60_000)
+    await contentRepo.updateOptimistic(draft.id, 'pub_test', { version: approved.version }, {
+      status: 'SCHEDULED',
+      scheduledAt: future,
+    })
+    const tick = await service.runScheduleTick('w1', 5)
+    expect(tick.claimed).toBe(0)
+    expect(publishCalls).toBe(0)
+  })
+
+  it('due scheduled content publishes once under double tick', async () => {
+    const draft = await service.createDraft('pub_test', 'editor1')
+    let cur = await service.saveDraft('pub_test', draft.id, 'editor1', {
+      title: 'Due',
+      expectedVersion: draft.version,
+    })
+    cur = (await contentRepo.updateOptimistic(cur.id, 'pub_test', { version: cur.version }, {
+      status: 'SCHEDULED',
+      scheduledAt: new Date(Date.now() - 1000),
+      approvedBy: 'editor1',
+    }))!
+    const a = await service.runScheduleTick('w1', 5)
+    const b = await service.runScheduleTick('w2', 5)
+    expect(a.claimed + b.claimed).toBe(1)
+    expect(publishCalls).toBe(1)
+    const after = await contentRepo.findById(cur.id)
+    expect(after?.status).toBe('PUBLISHED')
+  })
+
+  it('cancel schedule prevents claim', async () => {
+    const draft = await service.createDraft('pub_test', 'editor1')
+    let cur = await service.saveDraft('pub_test', draft.id, 'editor1', {
+      title: 'Cancel me',
+      expectedVersion: draft.version,
+    })
+    cur = (await contentRepo.updateOptimistic(cur.id, 'pub_test', { version: cur.version }, {
+      status: 'SCHEDULED',
+      scheduledAt: new Date(Date.now() - 1000),
+    }))!
+    await service.cancelSchedule('pub_test', cur.id, 'editor1')
+    const tick = await service.runScheduleTick('w1', 5)
+    expect(tick.claimed).toBe(0)
+  })
+
+  it('source import is idempotent per publisher+raw', async () => {
+    contentRepo.rawArticles.set('raw_idem', {
+      id: 'raw_idem',
+      sourceId: 'src_1',
+      title: 'Idem',
+      url: 'https://example.com/i',
+      summary: 's',
+      contentText: 'body',
+      clusterId: 'cl',
+      mainImageUrl: null,
+    })
+    const a = await service.importRawArticleAsDraft('pub_test', 'author1', 'raw_idem')
+    const b = await service.importRawArticleAsDraft('pub_test', 'author1', 'raw_idem')
+    expect(a.id).toBe(b.id)
+    expect(contentRepo.items.filter((i) => i.crawlerRawArticleId === 'raw_idem')).toHaveLength(1)
+  })
+
+  it('reconcile heals PARTIAL and skips fresh PUBLISHING', async () => {
+    const partial = await service.createDraft('pub_test', 'editor1')
+    await contentRepo.updateOptimistic(partial.id, 'pub_test', { version: partial.version }, {
+      status: 'APPROVED',
+      publicationStatus: 'PARTIAL',
+      publishedNewsId: 'news_partial',
+      firestoreStatus: 'OK',
+      postgresStatus: 'FAILED',
+      publicationAttempts: 1,
+      approvedBy: 'editor1',
+    })
+    const fresh = await service.createDraft('pub_test', 'editor1')
+    await contentRepo.updateOptimistic(fresh.id, 'pub_test', { version: fresh.version }, {
+      status: 'APPROVED',
+      publicationStatus: 'PUBLISHING',
+      publishedNewsId: 'news_fresh',
+      publicationClaimedAt: new Date(),
+      publicationAttempts: 1,
+      approvedBy: 'editor1',
+    })
+    const result = await service.reconcilePartialPublications(10)
+    expect(result.attempted).toBe(1)
+    expect(result.healed).toBe(1)
+    const afterFresh = await contentRepo.findById(fresh.id)
+    expect(afterFresh?.publicationStatus).toBe('PUBLISHING')
+  })
+
+  it('AD_MANAGER cannot mutate content; review notes stay out of preview client contract', async () => {
+    expect(roleHasPermission('AD_MANAGER', 'content:create')).toBe(false)
+    const previewPath = `${process.cwd()}/src/components/publisher/studio/content/PublisherContentPreviewClient.tsx`
+    const src = await import('node:fs/promises').then((fs) => fs.readFile(previewPath, 'utf8'))
+    expect(src).not.toContain('reviewNote')
+    expect(src).toContain('ÖNİZLEME')
+  })
+
+  it('media mime helpers reject SVG', async () => {
+    const { isAllowedPublisherMediaMime } = await import('@/lib/publisher/contentStudioConfig')
+    expect(isAllowedPublisherMediaMime('image/jpeg')).toBe(true)
+    expect(isAllowedPublisherMediaMime('image/svg+xml')).toBe(false)
   })
 })

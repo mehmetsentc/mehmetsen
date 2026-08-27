@@ -117,6 +117,9 @@ export function PublisherContentPreviewClient({
 
   return (
     <article>
+      <div className="mb-4 rounded-md bg-amber-100 px-3 py-2 text-center text-xs font-black uppercase tracking-wide text-amber-950">
+        ÖNİZLEME — Yayında değil
+      </div>
       <h1 className="text-3xl font-black text-[rgb(var(--color-text))]">{payload.title}</h1>
       {payload.spot ? (
         <p className="mt-3 text-lg font-medium text-[rgb(var(--color-text))]/90">{payload.spot}</p>

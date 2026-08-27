@@ -30,6 +30,16 @@ export type PublisherContentRightsBasis =
 
 export type PublisherContentRightsStatus = 'CLEARED' | 'PENDING' | 'UNKNOWN' | 'RESTRICTED'
 
+export interface PublisherContentMediaMeta {
+  url?: string | null
+  storageProvider?: string | null
+  mime?: string | null
+  size?: number | null
+  altText?: string | null
+  credit?: string | null
+  caption?: string | null
+}
+
 export type PublisherContentAuditEvent =
   | 'CONTENT_CREATED'
   | 'CONTENT_SAVED'
@@ -47,6 +57,8 @@ export type PublisherContentAuditEvent =
   | 'CONTENT_SOURCE_IMPORTED'
   | 'SOURCE_IMPORTED'
   | 'CONTENT_PREVIEWED'
+  | 'CONTENT_REVISION_RESTORED'
+  | 'CONTENT_SCHEDULE_CANCELLED'
   | 'PUBLISH_STARTED'
   | 'FIRESTORE_PUBLISHED'
   | 'POSTGRES_MIRRORED'
@@ -75,6 +87,8 @@ export interface PublisherContentItem {
   districtName: string | null
   heroImageUrl: string | null
   videoUrl: string | null
+  /** Hero media metadata (alt/credit/caption/mime/size/provider). */
+  mediaMeta: PublisherContentMediaMeta | null
   tags: string[]
   seoTitle: string | null
   seoDescription: string | null
@@ -145,6 +159,7 @@ export interface PublisherContentDraftInput {
   districtName?: string | null
   heroImageUrl?: string | null
   videoUrl?: string | null
+  mediaMeta?: PublisherContentMediaMeta | null
   tags?: string[]
   seoTitle?: string | null
   seoDescription?: string | null

@@ -20,3 +20,10 @@ export function isPublisherSchedulingEnabled(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return process.env.NODE_ENV !== 'production'
 }
+
+export function isPublisherMediaUploadEnabled(): boolean {
+  const v = process.env.PUBLISHER_MEDIA_UPLOAD_ENABLED?.trim().toLowerCase()
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return process.env.NODE_ENV !== 'production'
+}

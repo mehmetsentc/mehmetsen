@@ -34,6 +34,8 @@ export const publisherContentItems = pgTable(
     districtName: varchar('district_name', { length: 100 }),
     heroImageUrl: text('hero_image_url'),
     videoUrl: text('video_url'),
+    /** Hero / gallery media metadata (alt, credit, caption, mime, size, provider). */
+    mediaMeta: jsonb('media_meta').$type<Record<string, unknown> | null>(),
     tags: text('tags').array(),
     seoTitle: varchar('seo_title', { length: 200 }),
     seoDescription: varchar('seo_description', { length: 300 }),
@@ -78,6 +80,9 @@ export const publisherContentItems = pgTable(
     uniqueIndex('pci_one_published_news_uidx')
       .on(t.publishedNewsId)
       .where(sql`${t.publishedNewsId} IS NOT NULL`),
+    uniqueIndex('pci_publisher_raw_article_uidx')
+      .on(t.publisherId, t.crawlerRawArticleId)
+      .where(sql`${t.crawlerRawArticleId} IS NOT NULL`),
   ]
 )
 

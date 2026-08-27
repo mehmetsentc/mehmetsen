@@ -19,6 +19,10 @@ import type {
   PublisherContentStatus,
   PublisherSourceArticleItem,
 } from '@/types/publisherContent'
+import {
+  getPublisherPublicationMaxAttempts,
+  getPublisherPublicationStaleLeaseMs,
+} from '@/lib/publisher/contentStudioConfig'
 
 function mapItem(row: typeof publisherContentItems.$inferSelect): PublisherContentItem {
   return {
@@ -38,6 +42,7 @@ function mapItem(row: typeof publisherContentItems.$inferSelect): PublisherConte
     districtName: row.districtName,
     heroImageUrl: row.heroImageUrl,
     videoUrl: row.videoUrl,
+    mediaMeta: (row.mediaMeta as PublisherContentItem['mediaMeta']) ?? null,
     tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
@@ -93,6 +98,10 @@ export class PublisherContentRepository {
     status?: PublisherContentStatus | PublisherContentStatus[] | null
     limit?: number
     cursorUpdatedAt?: Date | null
+    q?: string | null
+    authorId?: string | null
+    categoryId?: string | null
+    sourceMode?: string | null
   }): Promise<PublisherContentItem[]> {
     const limit = Math.min(Math.max(input.limit ?? 40, 1), 100)
     const statuses = input.status
@@ -108,6 +117,19 @@ export class PublisherContentRepository {
     if (input.cursorUpdatedAt) {
       conds.push(lt(publisherContentItems.updatedAt, input.cursorUpdatedAt))
     }
+    if (input.authorId) {
+      conds.push(eq(publisherContentItems.createdBy, input.authorId))
+    }
+    if (input.categoryId) {
+      conds.push(eq(publisherContentItems.categoryId, input.categoryId))
+    }
+    if (input.sourceMode) {
+      conds.push(eq(publisherContentItems.sourceMode, input.sourceMode))
+    }
+    const q = input.q?.trim()
+    if (q) {
+      conds.push(sql`${publisherContentItems.title} ILIKE ${'%' + q.replace(/[%_]/g, '\\$&') + '%'}`)
+    }
 
     const rows = await this.db()
       .select()
@@ -116,6 +138,70 @@ export class PublisherContentRepository {
       .orderBy(desc(publisherContentItems.updatedAt))
       .limit(limit)
     return rows.map(mapItem)
+  }
+
+  async findByCrawlerRawArticle(
+    publisherId: string,
+    crawlerRawArticleId: string
+  ): Promise<PublisherContentItem | null> {
+    const rows = await this.db()
+      .select()
+      .from(publisherContentItems)
+      .where(
+        and(
+          eq(publisherContentItems.publisherId, publisherId),
+          eq(publisherContentItems.crawlerRawArticleId, crawlerRawArticleId)
+        )
+      )
+      .orderBy(desc(publisherContentItems.createdAt))
+      .limit(1)
+    return rows[0] ? mapItem(rows[0]) : null
+  }
+
+  async listRevisions(contentId: string, limit = 40): Promise<PublisherContentRevision[]> {
+    const rows = await this.db()
+      .select()
+      .from(publisherContentRevisions)
+      .where(eq(publisherContentRevisions.contentId, contentId))
+      .orderBy(desc(publisherContentRevisions.revisionNumber))
+      .limit(Math.min(Math.max(limit, 1), 100))
+    return rows.map((r) => ({
+      id: r.id,
+      contentId: r.contentId,
+      revisionNumber: r.revisionNumber,
+      status: r.status as PublisherContentStatus,
+      snapshot: r.snapshot,
+      changeKind: r.changeKind,
+      note: r.note,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt,
+    }))
+  }
+
+  async findRevision(contentId: string, revisionId: string): Promise<PublisherContentRevision | null> {
+    const rows = await this.db()
+      .select()
+      .from(publisherContentRevisions)
+      .where(
+        and(
+          eq(publisherContentRevisions.id, revisionId),
+          eq(publisherContentRevisions.contentId, contentId)
+        )
+      )
+      .limit(1)
+    const r = rows[0]
+    if (!r) return null
+    return {
+      id: r.id,
+      contentId: r.contentId,
+      revisionNumber: r.revisionNumber,
+      status: r.status as PublisherContentStatus,
+      snapshot: r.snapshot,
+      changeKind: r.changeKind,
+      note: r.note,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt,
+    }
   }
 
   async insert(item: PublisherContentItem): Promise<PublisherContentItem> {
@@ -136,6 +222,7 @@ export class PublisherContentRepository {
       districtName: item.districtName,
       heroImageUrl: item.heroImageUrl,
       videoUrl: item.videoUrl,
+      mediaMeta: (item.mediaMeta ?? null) as Record<string, unknown> | null,
       tags: item.tags,
       seoTitle: item.seoTitle,
       seoDescription: item.seoDescription,
@@ -206,6 +293,9 @@ export class PublisherContentRepository {
         ...(patch.districtName !== undefined ? { districtName: patch.districtName } : {}),
         ...(patch.heroImageUrl !== undefined ? { heroImageUrl: patch.heroImageUrl } : {}),
         ...(patch.videoUrl !== undefined ? { videoUrl: patch.videoUrl } : {}),
+        ...(patch.mediaMeta !== undefined
+          ? { mediaMeta: (patch.mediaMeta ?? null) as Record<string, unknown> | null }
+          : {}),
         ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
         ...(patch.seoTitle !== undefined ? { seoTitle: patch.seoTitle } : {}),
         ...(patch.seoDescription !== undefined ? { seoDescription: patch.seoDescription } : {}),
@@ -314,10 +404,28 @@ export class PublisherContentRepository {
   }
 
   async listPartialPublications(limit = 10): Promise<PublisherContentItem[]> {
+    const maxAttempts = getPublisherPublicationMaxAttempts()
+    const staleMs = getPublisherPublicationStaleLeaseMs()
+    const staleBefore = new Date(Date.now() - staleMs)
+
     const rows = await this.db()
       .select()
       .from(publisherContentItems)
-      .where(inArray(publisherContentItems.publicationStatus, ['PARTIAL', 'FAILED', 'PUBLISHING']))
+      .where(
+        and(
+          lte(publisherContentItems.publicationAttempts, maxAttempts),
+          or(
+            inArray(publisherContentItems.publicationStatus, ['PARTIAL', 'FAILED']),
+            and(
+              eq(publisherContentItems.publicationStatus, 'PUBLISHING'),
+              or(
+                isNull(publisherContentItems.publicationClaimedAt),
+                lte(publisherContentItems.publicationClaimedAt, staleBefore)
+              )
+            )
+          )
+        )
+      )
       .orderBy(desc(publisherContentItems.updatedAt))
       .limit(Math.min(Math.max(limit, 1), 50))
     return rows.map(mapItem)

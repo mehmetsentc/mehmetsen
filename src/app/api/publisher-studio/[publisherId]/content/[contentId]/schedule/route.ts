@@ -14,13 +14,41 @@ export async function POST(request: Request, context: RouteContext) {
   const auth = await withContentAuth(request, publisherId, 'content:schedule')
   if ('error' in auth && auth.error) return auth.error
   try {
-    const body = (await request.json()) as { scheduledAt?: string; timezone?: string }
+    const body = (await request.json()) as {
+      scheduledAt?: string
+      timezone?: string
+      cancel?: boolean
+    }
+    if (body.cancel) {
+      const item = await publisherContentService.cancelSchedule(
+        publisherId,
+        contentId,
+        auth.auth!.user.uid
+      )
+      return NextResponse.json({ item: serializeContent(item) })
+    }
     const item = await publisherContentService.schedule(
       publisherId,
       contentId,
       auth.auth!.user.uid,
       body.scheduledAt ?? '',
       body.timezone ?? 'Europe/Istanbul'
+    )
+    return NextResponse.json({ item: serializeContent(item) })
+  } catch (err) {
+    return contentErrorResponse(err)
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const { publisherId, contentId } = await context.params
+  const auth = await withContentAuth(request, publisherId, 'content:schedule')
+  if ('error' in auth && auth.error) return auth.error
+  try {
+    const item = await publisherContentService.cancelSchedule(
+      publisherId,
+      contentId,
+      auth.auth!.user.uid
     )
     return NextResponse.json({ item: serializeContent(item) })
   } catch (err) {

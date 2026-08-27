@@ -92,3 +92,18 @@ export function buildNewsMediaKey(
 ): string {
   return `news/${type}/${newsId}/${filename}`
 }
+
+/**
+ * Publisher Content Studio media key (P7B).
+ * Format: publishers/{publisherId}/content/{contentId}/{filename}
+ */
+export function buildPublisherContentMediaKey(
+  publisherId: string,
+  contentId: string,
+  filename: string
+): string {
+  const safePub = publisherId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'pub'
+  const safeContent = contentId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'content'
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'image.bin'
+  return `publishers/${safePub}/content/${safeContent}/${safeName}`
+}

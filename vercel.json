@@ -356,6 +356,10 @@
     {
       "path": "/api/cron/publisher-content-schedule",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/publisher-publication-reconcile",
+      "schedule": "*/2 * * * *"
     }
   ]
 }
