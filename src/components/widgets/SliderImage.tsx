@@ -46,9 +46,12 @@ export function SliderImage({
           alt={alt}
           width={1600}
           height={900}
+          // aspectRatio: 'auto' overrides Next.js-injected aspect-ratio:1600/900
+          // so portrait / square images render at their true intrinsic ratio
+          style={{ aspectRatio: 'auto' }}
           className={cn('h-auto w-full', className)}
-          sizes="(max-width: 768px) 100vw, 1200px"
-          quality={priority ? 65 : 55}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 800px"
+          quality={priority ? 75 : 65}
           priority={priority}
           fetchPriority={priority ? 'high' : 'auto'}
           loading={priority ? 'eager' : 'lazy'}
@@ -81,6 +84,7 @@ export function SliderImage({
         alt={alt}
         width={1600}
         height={900}
+        style={{ aspectRatio: 'auto' }}
         fetchPriority={priority ? 'high' : 'auto'}
         decoding={priority ? 'sync' : 'async'}
         loading={priority ? 'eager' : 'lazy'}

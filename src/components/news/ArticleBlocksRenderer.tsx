@@ -87,8 +87,11 @@ export function ArticleBlocksRenderer({
                   alt={block.alt || block.caption || title}
                   width={1600}
                   height={900}
+                  // aspectRatio: 'auto' lets portrait/square images render at their
+                  // true intrinsic ratio instead of Next.js-forced 16:9
+                  style={{ aspectRatio: 'auto' }}
                   className="h-auto w-full"
-                  sizes="(max-width: 768px) 100vw, 760px"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 800px"
                 />
               </div>
               {(block.caption || block.credit) && (

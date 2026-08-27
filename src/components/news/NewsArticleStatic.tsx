@@ -116,7 +116,7 @@ function VideoHero({
   )
 }
 
-/** Hero görsel — responsive yükseklik sınırı, object-cover (portrait dev banner olmaz). */
+/** Hero görsel — doğal oran, orijinal boyut korunur, platform başına max-height CSS ile kısıtlanır. */
 function ImageHero({ item, title }: { item: MediaItem; title: string }) {
   return (
     <figure className="news-article-hero-block relative">
@@ -125,7 +125,7 @@ function ImageHero({ item, title }: { item: MediaItem; title: string }) {
           src={item.url}
           alt={item.alt ?? item.caption ?? title}
           priority
-          fit="cover"
+          fit="natural"
         />
         <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white/70">
           nahaber.com

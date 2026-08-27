@@ -62,6 +62,7 @@ export function ArticleGallery({ items, title, columns = 2 }: ArticleGalleryProp
               alt={item.alt || item.caption || title}
               width={1600}
               height={900}
+              style={{ aspectRatio: 'auto' }}
               className="h-auto w-full transition-opacity duration-300 group-hover:opacity-95"
               sizes={columns === 3 ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw' : '(max-width: 640px) 100vw, 50vw'}
             />
