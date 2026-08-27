@@ -139,4 +139,24 @@ export class R2StorageProvider implements StorageProvider {
 
     return res.ok
   }
+
+  /** Authenticated object download (S3 GET). Used by ops diagnostics only. */
+  async download(key: string): Promise<Uint8Array> {
+    const config = getR2Config()
+    const endpoint = getEndpoint(config.accountId)
+    const url = `${endpoint}/${config.bucket}/${key}`
+
+    const signedHeaders = await signRequest('GET', url, {}, config)
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: signedHeaders,
+    })
+
+    if (!res.ok) {
+      throw new Error(`R2 download failed (${res.status})`)
+    }
+
+    return new Uint8Array(await res.arrayBuffer())
+  }
 }
