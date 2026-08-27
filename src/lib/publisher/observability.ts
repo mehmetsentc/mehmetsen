@@ -19,6 +19,9 @@ export type PublisherObservabilityEvent =
   | 'publisher_layout_rollback'
   | 'publisher_layout_section_created'
   | 'publisher_layout_section_deleted'
+  | 'publisher_content_created'
+  | 'publisher_content_published'
+  | 'publisher_content_source_imported'
 
 export function publisherLog(
   event: PublisherObservabilityEvent,

@@ -35,6 +35,11 @@ export const ROUTES = {
     LAYOUT: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/layout`,
     LAYOUT_EDIT: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/layout/edit`,
     ARTICLES: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/articles`,
+    ARTICLE_NEW: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/articles/new`,
+    ARTICLE_EDIT: (slug: string, contentId: string) =>
+      `/publisher-studio/${encodeURIComponent(slug)}/articles/${encodeURIComponent(contentId)}`,
+    ARTICLE_PREVIEW: (slug: string, contentId: string) =>
+      `/publisher-studio/${encodeURIComponent(slug)}/preview/${encodeURIComponent(contentId)}`,
     TEAM: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/team`,
     ANALYTICS: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/analytics`,
     ADS: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}/ads`,

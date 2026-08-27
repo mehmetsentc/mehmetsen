@@ -30,6 +30,11 @@ export {
   publisherLayoutItems,
 } from './publisherLayouts'
 export {
+  publisherContentItems,
+  publisherContentRevisions,
+  publisherContentAudit,
+} from './publisherContent'
+export {
   userProfiles,
   userPublisherFollows,
   articleLikes,

@@ -7,6 +7,14 @@ export type PublisherPermission =
   | 'layout:read'
   | 'layout:edit'
   | 'articles:read'
+  | 'content:read'
+  | 'content:write'
+  | 'content:submit'
+  | 'content:review'
+  | 'content:publish'
+  | 'content:schedule'
+  | 'content:archive'
+  | 'content:breaking'
   | 'team:read'
   | 'team:manage'
 
@@ -18,6 +26,14 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:read',
     'layout:edit',
     'articles:read',
+    'content:read',
+    'content:write',
+    'content:submit',
+    'content:review',
+    'content:publish',
+    'content:schedule',
+    'content:archive',
+    'content:breaking',
     'team:read',
     'team:manage',
   ],
@@ -28,14 +44,43 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:read',
     'layout:edit',
     'articles:read',
+    'content:read',
+    'content:write',
+    'content:submit',
+    'content:review',
+    'content:publish',
+    'content:schedule',
+    'content:archive',
+    'content:breaking',
     'team:read',
     'team:manage',
   ],
-  EDITOR: ['studio:access', 'profile:read', 'layout:read', 'layout:edit', 'articles:read'],
-  AUTHOR: ['studio:access', 'profile:read', 'articles:read'],
-  AD_MANAGER: ['studio:access', 'profile:read', 'articles:read'],
-  ANALYST: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'team:read'],
-  VIEWER: ['studio:access', 'profile:read', 'layout:read', 'articles:read'],
+  EDITOR: [
+    'studio:access',
+    'profile:read',
+    'layout:read',
+    'layout:edit',
+    'articles:read',
+    'content:read',
+    'content:write',
+    'content:submit',
+    'content:review',
+    'content:publish',
+    'content:schedule',
+    'content:archive',
+    'content:breaking',
+  ],
+  AUTHOR: [
+    'studio:access',
+    'profile:read',
+    'articles:read',
+    'content:read',
+    'content:write',
+    'content:submit',
+  ],
+  AD_MANAGER: ['studio:access', 'profile:read', 'articles:read', 'content:read'],
+  ANALYST: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read', 'team:read'],
+  VIEWER: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read'],
 }
 
 export function permissionsForRole(role: PublisherMemberRole): PublisherPermission[] {

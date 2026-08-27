@@ -159,6 +159,17 @@ export class PublisherRepository {
     return rows[0] ? mapPublisher(rows[0]) : null
   }
 
+  async findPublisherBySourceId(sourceId: string): Promise<PublisherRecord | null> {
+    const db = this.requireDb()
+    const rows = await db
+      .select({ publisher: publishers })
+      .from(publisherSources)
+      .innerJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+      .where(eq(publisherSources.sourceId, sourceId))
+      .limit(1)
+    return rows[0] ? mapPublisher(rows[0].publisher) : null
+  }
+
   async findByPrimaryDomain(domain: string): Promise<PublisherRecord | null> {
     const db = this.requireDb()
     const rows = await db

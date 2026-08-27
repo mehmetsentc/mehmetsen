@@ -28,11 +28,16 @@ export function PublisherStudioShell({
 
 export function useStudioFetch<T>(url: string | null) {
   const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(Boolean(url))
   const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    if (!url) return
+    if (!url) {
+      setLoading(false)
+      setData(null)
+      return
+    }
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -53,9 +58,9 @@ export function useStudioFetch<T>(url: string | null) {
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, tick])
 
-  return { data, loading, error }
+  return { data, loading, error, refetch: () => setTick((t) => t + 1) }
 }
 
 export function PublisherStudioPicker() {

@@ -21,3 +21,9 @@ export function isPublisherProfileComposerEnabled(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return process.env.NODE_ENV !== 'production'
 }
+
+export {
+  isPublisherContentStudioEnabled,
+  isPublisherManualPublishEnabled,
+  isPublisherSchedulingEnabled,
+} from './contentFlags'

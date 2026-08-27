@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server'
+import { publisherContentService } from '@/services/publisher/publisherContentService'
+import {
+  contentErrorResponse,
+  serializeContent,
+  withContentAuth,
+} from '@/lib/publisher/contentApi'
+import type { PublisherContentStatus } from '@/types/publisherContent'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+interface RouteContext {
+  params: Promise<{ publisherId: string }>
+}
+
+export async function GET(request: Request, context: RouteContext) {
+  const { publisherId } = await context.params
+  const auth = await withContentAuth(request, publisherId, 'content:read')
+  if ('error' in auth && auth.error) return auth.error
+  try {
+    const url = new URL(request.url)
+    const status = (url.searchParams.get('status') || 'ALL') as PublisherContentStatus | 'ALL'
+    const items = await publisherContentService.list(publisherId, auth.auth!.user.uid, status)
+    return NextResponse.json({ items: items.map(serializeContent) })
+  } catch (err) {
+    return contentErrorResponse(err)
+  }
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const { publisherId } = await context.params
+  const auth = await withContentAuth(request, publisherId, 'content:write')
+  if ('error' in auth && auth.error) return auth.error
+  try {
+    const item = await publisherContentService.createDraft(publisherId, auth.auth!.user.uid)
+    return NextResponse.json({ item: serializeContent(item) }, { status: 201 })
+  } catch (err) {
+    return contentErrorResponse(err)
+  }
+}
