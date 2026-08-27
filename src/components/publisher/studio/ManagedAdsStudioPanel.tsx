@@ -11,6 +11,7 @@ import {
   type PublisherManagedAdStatus,
 } from '@/types/publisherManagedAds'
 import type { PublisherAdInventoryRecord } from '@/types/publisherAdInventory'
+import { AD_PLACEMENT_SCOPE_LABELS } from '@/types/publisherAdInventory'
 
 type SerializedAd = {
   id: string
@@ -150,7 +151,10 @@ export function ManagedAdsStudioPanel({
             body: fd,
           }
         )
-        if (!up.ok) throw new Error((await up.json()).error || 'Medya yüklenemedi')
+        if (!up.ok) {
+          const errBody = (await up.json()) as { error?: string }
+          throw new Error(errBody.error || 'Medya yükleme şu anda kullanılamıyor.')
+        }
         const { media } = (await up.json()) as { media: { url: string } }
         const cr = await fetch(
           `/api/publisher-studio/${publisherId}/managed-ads/${item.id}/creative`,
@@ -273,7 +277,7 @@ export function ManagedAdsStudioPanel({
             </div>
           </div>
           <p className="mt-2 text-[10px] text-[rgb(var(--color-muted))]">
-            Gelir / kazanç yok — yayıncı kendi müşterisini yönetir.
+            Yalnızca gösterim, tıklama ve CTR — platform geliri yoktur.
           </p>
         </div>
       ) : null}
@@ -308,7 +312,7 @@ export function ManagedAdsStudioPanel({
                 <option value="">Seçin</option>
                 {inventoryItems.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.name} ({i.placementScope})
+                    {i.name} ({AD_PLACEMENT_SCOPE_LABELS[i.placementScope] ?? i.placementScope})
                   </option>
                 ))}
               </select>

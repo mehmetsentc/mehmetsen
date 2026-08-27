@@ -1,19 +1,14 @@
 import { notFound } from 'next/navigation'
-import { hasDatabaseUrl } from '@/db'
-import { isPublisherStudioEnabled } from '@/lib/publisher/featureFlag'
+import { loadStudioPublisherForPage } from '@/lib/publisher/studioPageAccess'
 import { PublisherStudioLayoutEditClient } from '@/components/publisher/studio/PublisherStudioLayoutEditClient'
 import { publisherLayoutRepository } from '@/services/publisher/publisherLayoutRepository'
-import { publisherRepository } from '@/services/publisher/publisherRepository'
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
 export default async function PublisherStudioLayoutEditPage({ params }: Props) {
-  if (!isPublisherStudioEnabled()) notFound()
-  if (!hasDatabaseUrl()) notFound()
-  const slug = (await params).slug.trim().toLowerCase()
-  const publisher = await publisherRepository.findBySlug(slug)
+  const publisher = await loadStudioPublisherForPage((await params).slug)
   if (!publisher) notFound()
 
   const draft = await publisherLayoutRepository.ensureDraftLayout(publisher.id, null)
@@ -22,13 +17,15 @@ export default async function PublisherStudioLayoutEditPage({ params }: Props) {
 
   return (
     <PublisherStudioLayoutEditClient
-      slug={slug}
+      slug={publisher.slug}
       publisher={publisher}
       initialLayout={{
         layout: draft,
         sections: sections.map((section) => ({
           section,
-          items: items.filter((i) => i.sectionId === section.id).map((item) => ({ ...item, article: null })),
+          items: items
+            .filter((i) => i.sectionId === section.id)
+            .map((item) => ({ ...item, article: null })),
         })),
       }}
     />

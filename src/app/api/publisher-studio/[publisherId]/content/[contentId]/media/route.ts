@@ -4,7 +4,7 @@ import {
   contentErrorResponse,
   withContentAuth,
 } from '@/lib/publisher/contentApi'
-import { isPublisherMediaUploadEnabled } from '@/lib/publisher/contentFlags'
+import { isFeatureEnabledForPublisher } from '@/lib/publisher/effectiveFlags'
 import {
   getPublisherMediaMaxBytes,
   isAllowedPublisherMediaMime,
@@ -30,11 +30,12 @@ interface RouteContext {
  */
 export async function POST(request: Request, context: RouteContext) {
   const { publisherId, contentId } = await context.params
-  if (!isPublisherMediaUploadEnabled()) {
-    return NextResponse.json({ error: 'MEDIA_UPLOAD_DISABLED', code: 'FLAG_OFF' }, { status: 404 })
-  }
   const auth = await withContentAuth(request, publisherId, 'content:write')
   if ('error' in auth && auth.error) return auth.error
+
+  if (!(await isFeatureEnabledForPublisher(publisherId, 'MEDIA_UPLOAD'))) {
+    return NextResponse.json({ error: 'MEDIA_UPLOAD_DISABLED', code: 'FLAG_OFF' }, { status: 404 })
+  }
 
   const uid = auth.auth!.user.uid
   const ip = getClientIp(request)

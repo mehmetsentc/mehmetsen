@@ -390,7 +390,14 @@ export function PublisherContentEditorClient({
         body: fd,
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Yüklenemedi')
+      if (!res.ok) {
+        const raw = typeof json.error === 'string' ? json.error : ''
+        throw new Error(
+          raw.includes('STORAGE') || raw === 'STORAGE_UNAVAILABLE' || !raw
+            ? 'Medya yükleme şu anda kullanılamıyor.'
+            : raw
+        )
+      }
       setHeroImageUrl(json.media.url)
       setAltText(json.media.altText ?? altText)
       setCredit(json.media.credit ?? credit)

@@ -183,7 +183,7 @@ export function PublisherStudioOverviewClient({
           Sayfa düzeni
         </Link>
         <Link href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)} className="studio-card">
-          Content Studio
+          İçerikler
         </Link>
         <Link href={ROUTES.PUBLISHER(publisher.slug)} className="studio-card" target="_blank">
           Public profili görüntüle

@@ -86,6 +86,15 @@ Wrong combinations are rejected via `resolveFeatureForPublisher` (`dependency_bl
 - Feed not replaced; Smart Feed off in prod  
 - Build healthy  
 
+## P11.2 operationalization (R2 + AD_SERVING + Owner UX)
+
+- R2 required env names: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`.
+- Media upload uses allowlist `MEDIA_UPLOAD` (globals stay false). Missing R2 → Turkish “Medya yükleme şu anda kullanılamıyor.”
+- Studio pages gate via `loadStudioPublisherForPage` (global OR allowlist STUDIO).
+- Marketplace tabs / Gelirler nav hidden while P9/P10A dark.
+- Smoke: `npx tsx scripts/_phase_p11_2-pilot-smoke.mts`
+- Pre-roll may be BLOCKED without R2 without failing other isolation gates; overall GO still requires R2 upload.
+
 ## STOP
 
 - Do not enable all users.  

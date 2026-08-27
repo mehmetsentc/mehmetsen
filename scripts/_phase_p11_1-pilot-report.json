@@ -1,0 +1,350 @@
+{
+  "startedAt": "2026-08-27T13:56:00.717Z",
+  "nodeEnv": "production",
+  "globalsForcedFalse": true,
+  "before": {
+    "publishers": 6,
+    "verified": 1,
+    "unclaimed": 5,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 4,
+    "ad_impressions": 3,
+    "ad_clicks": 4,
+    "content_items": 2,
+    "ad_inventory": 8,
+    "feature_access_enabled": 11
+  },
+  "pilotUser": {
+    "uidPrefix": "ap3scB…",
+    "uidLen": 28,
+    "emailDomain": "gmail.com"
+  },
+  "pilotPublisher": {
+    "id": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d",
+    "slug": "nahaber-test-yayincisi",
+    "type": "INTERNAL_TEST",
+    "status": "ACTIVE",
+    "verification": "VERIFIED",
+    "ownerUidPrefix": "ap3scB…"
+  },
+  "featureGrants": {
+    "PLATFORM": true,
+    "STUDIO": true,
+    "PROFILE_COMPOSER": true,
+    "CONTENT_STUDIO": true,
+    "MANUAL_PUBLISH": true,
+    "MEDIA_UPLOAD": true,
+    "AD_INVENTORY": true,
+    "SELF_MANAGED_ADS": true,
+    "AD_SERVING": true,
+    "AD_ANALYTICS": true,
+    "PROFILE_AD_SLOTS": true,
+    "ARTICLE_AD_SLOTS": true
+  },
+  "content": {
+    "contentId": "pcnt_defc8e4c-c619-4768-ae89-4bc1af6e6c24",
+    "newsId": "XUEhKFwUCqoOgytboSIq",
+    "seoNoindex": true,
+    "title": "[P11.1 PILOT TEST] NaHaber iç test makalesi — gerçek haber değildir",
+    "reused": true
+  },
+  "media": {
+    "r2Configured": false,
+    "uploaded": false,
+    "note": "No SVG; JPEG/WEBP path validated by existing P7 tests"
+  },
+  "analytics": {
+    "impressions": 1,
+    "clicks": 1,
+    "ctr": 1
+  },
+  "auth": {
+    "email": true,
+    "google": true,
+    "apple": "UNSET_BLOCKED",
+    "note": "Firebase email/Google via client config; Apple gated by APPLE_AUTH_ENABLED"
+  },
+  "observability": {
+    "publishers": 6,
+    "verified": 1,
+    "unclaimed": 5,
+    "pendingClaims": 0,
+    "publisherSources": 5,
+    "contentDrafts": 1,
+    "contentPublished": 1,
+    "inventories": 10,
+    "activeManagedAds": 0,
+    "impressions": 4,
+    "clicks": 5,
+    "allowlistEnabledRows": 11,
+    "smartFeed": {
+      "feedGlobal": false,
+      "rankingGlobal": false
+    },
+    "globals": {
+      "PLATFORM": false,
+      "STUDIO": false,
+      "PROFILE_COMPOSER": false,
+      "CONTENT_STUDIO": false,
+      "MANUAL_PUBLISH": false,
+      "MEDIA_UPLOAD": false,
+      "SCHEDULING": false,
+      "AD_INVENTORY": false,
+      "AD_PUBLIC_LISTING": false,
+      "PROFILE_AD_SLOTS": false,
+      "ARTICLE_AD_SLOTS": false,
+      "SELF_MANAGED_ADS": false,
+      "AD_SERVING": false,
+      "AD_ANALYTICS": false,
+      "VIDEO_PREROLL": false,
+      "SOCIAL_GRAPH": false,
+      "USER_PROFILES": false,
+      "SMART_FEED": false,
+      "SMART_FEED_RANKING": false,
+      "COLD_START_V2": false
+    },
+    "capturedAt": "2026-08-27T13:56:19.695Z"
+  },
+  "after": {
+    "publishers": 6,
+    "verified": 1,
+    "unclaimed": 5,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 5,
+    "ad_impressions": 4,
+    "ad_clicks": 5,
+    "content_items": 2,
+    "ad_inventory": 10,
+    "feature_access_enabled": 11
+  },
+  "financialDelta": {
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0
+  },
+  "marketplaceDelta": {
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0
+  },
+  "existingPublishers": [
+    {
+      "slug": "bbc-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "deutsche-welle-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "le-monde-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "the-guardian-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "trt-haber-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    }
+  ],
+  "steps": [
+    {
+      "name": "reuse_internal_test_publisher",
+      "ok": true,
+      "detail": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d"
+    },
+    {
+      "name": "internal_isolation_markers",
+      "ok": true
+    },
+    {
+      "name": "excluded_from_public_list",
+      "ok": true
+    },
+    {
+      "name": "seo_noindex_internal",
+      "ok": true,
+      "detail": "internal_test_publisher"
+    },
+    {
+      "name": "real_publishers_unclaimed_before",
+      "ok": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "platform_allowlist_pre_claim",
+      "ok": true
+    },
+    {
+      "name": "non_allowlisted_denied",
+      "ok": true
+    },
+    {
+      "name": "claim_already_verified_owner",
+      "ok": true
+    },
+    {
+      "name": "owner_membership",
+      "ok": true
+    },
+    {
+      "name": "pilot_bundle_granted",
+      "ok": true,
+      "detail": "{\"PLATFORM\":true,\"STUDIO\":true,\"PROFILE_COMPOSER\":true,\"CONTENT_STUDIO\":true,\"MANUAL_PUBLISH\":true,\"MEDIA_UPLOAD\":true,\"AD_INVENTORY\":true,\"SELF_MANAGED_ADS\":true,\"AD_SERVING\":true,\"AD_ANALYTICS\":true,\"PROFILE_AD_SLOTS\":true,\"ARTICLE_AD_SLOTS\":true}"
+    },
+    {
+      "name": "video_preroll_not_granted",
+      "ok": true
+    },
+    {
+      "name": "guardian_studio_denied",
+      "ok": true
+    },
+    {
+      "name": "unrelated_user_denied",
+      "ok": true
+    },
+    {
+      "name": "studio_profile_update",
+      "ok": true
+    },
+    {
+      "name": "studio_layout_draft_reorder_publish",
+      "ok": true
+    },
+    {
+      "name": "content_draft_save",
+      "ok": true,
+      "detail": "reused prior published pilot article"
+    },
+    {
+      "name": "content_preview_contract",
+      "ok": true,
+      "detail": "preview route noindex (P7)"
+    },
+    {
+      "name": "content_publish_bridge",
+      "ok": true,
+      "detail": "newsId=XUEhKFwUCqoOgytboSIq; reused canonical identity"
+    },
+    {
+      "name": "content_ownership_pilot_only",
+      "ok": true
+    },
+    {
+      "name": "media_r2_config",
+      "ok": true,
+      "detail": "NOT_CONFIGURED — skipped"
+    },
+    {
+      "name": "inventory_profile_banner",
+      "ok": true,
+      "detail": "pad_20a08b0d-f738-409b-b25e-6d8ece266d9b"
+    },
+    {
+      "name": "inventory_article_mid_body",
+      "ok": true,
+      "detail": "pad_93df57aa-ed36-493c-9b80-2d52860605cf"
+    },
+    {
+      "name": "managed_ad_create_creative",
+      "ok": true,
+      "detail": "pmad_1b13e039-ab89-41dc-b7c3-aca6d95473f6"
+    },
+    {
+      "name": "ad_serving_active",
+      "ok": true,
+      "detail": "href=/r/ad/pmad_1b13e039-ab89-41dc-b7c3-aca6d95473f6"
+    },
+    {
+      "name": "impression_plus_dedupe",
+      "ok": true,
+      "detail": "first=true;dup=false"
+    },
+    {
+      "name": "click_302_destination",
+      "ok": true,
+      "detail": "https://www.nahaber.com/"
+    },
+    {
+      "name": "analytics_impressions_clicks_ctr",
+      "ok": true,
+      "detail": "{\"impressions\":1,\"clicks\":1,\"ctr\":1}"
+    },
+    {
+      "name": "pause_stops_serving",
+      "ok": true
+    },
+    {
+      "name": "resume_serving",
+      "ok": true
+    },
+    {
+      "name": "rollback_serving_off_ad_gone_data_kept",
+      "ok": true
+    },
+    {
+      "name": "rollback_reenable_works",
+      "ok": true
+    },
+    {
+      "name": "cleanup_pause_archive_serving_off",
+      "ok": true
+    },
+    {
+      "name": "video_preroll_not_tested",
+      "ok": true,
+      "detail": "No video media; VIDEO_PREROLL not granted"
+    },
+    {
+      "name": "smart_feed_not_activated",
+      "ok": true
+    },
+    {
+      "name": "observability_snapshot",
+      "ok": true
+    },
+    {
+      "name": "financial_isolation_delta_zero",
+      "ok": true,
+      "detail": "{\"payment_intents\":0,\"payment_transactions\":0,\"commercial_ledger_entries\":0,\"publisher_earnings\":0}"
+    },
+    {
+      "name": "marketplace_isolation_delta_zero",
+      "ok": true,
+      "detail": "{\"campaigns\":0,\"booking_requests\":0,\"bookings\":0}"
+    },
+    {
+      "name": "real_publishers_still_unclaimed",
+      "ok": true
+    }
+  ],
+  "failedCount": 0,
+  "ok": true,
+  "finishedAt": "2026-08-27T13:56:19.836Z"
+}

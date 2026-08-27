@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { hasDatabaseUrl } from '@/db'
-import { isPublisherStudioEnabled } from '@/lib/publisher/featureFlag'
-import { isPublisherContentStudioEnabled } from '@/lib/publisher/contentFlags'
-import { publisherRepository } from '@/services/publisher/publisherRepository'
+import { loadStudioPublisherForPage } from '@/lib/publisher/studioPageAccess'
+import { isContentStudioEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { PublisherContentPreviewClient } from '@/components/publisher/studio/content/PublisherContentPreviewClient'
 
 interface Props {
@@ -26,16 +24,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PublisherContentPreviewPage({ params }: Props) {
-  // Always no public content path — even when flags are off we must not leak.
-  if (!isPublisherStudioEnabled() || !isPublisherContentStudioEnabled()) notFound()
-  if (!hasDatabaseUrl()) notFound()
-
   const { slug: rawSlug, contentId } = await params
-  const slug = rawSlug.trim().toLowerCase()
   if (!contentId || !/^[a-zA-Z0-9_-]+$/.test(contentId)) notFound()
 
-  const publisher = await publisherRepository.findBySlug(slug)
+  const publisher = await loadStudioPublisherForPage(rawSlug)
   if (!publisher) notFound()
+  if (!(await isContentStudioEffectiveForPublisher(publisher.id))) notFound()
 
   // Do NOT fetch content body here — membership checked via authenticated API.
   return (

@@ -182,6 +182,21 @@ export const AD_INVENTORY_TYPE_LABELS: Record<AdInventoryType, string> = {
   CUSTOM: 'Özel',
 }
 
+export const AD_PLACEMENT_SCOPE_LABELS: Record<AdPlacementScope, string> = {
+  PROFILE_HERO: 'Profil üst alan',
+  PROFILE_SIDEBAR: 'Profil yan alan',
+  PROFILE_INLINE: 'Profil içi',
+  PROFILE_FOOTER: 'Profil alt alan',
+  ARTICLE_BEFORE_BODY: 'Makale başı',
+  ARTICLE_MID_BODY: 'Makale ortası',
+  ARTICLE_AFTER_BODY: 'Makale sonu',
+  VIDEO_PRE_ROLL: 'Video öncesi',
+  SECTION_TOP: 'Bölüm üstü',
+  SECTION_INLINE: 'Bölüm içi',
+  FEED_INLINE: 'Akış içi',
+  CUSTOM: 'Özel konum',
+}
+
 export const AD_FORMAT_LABELS: Record<AdFormat, string> = {
   BANNER: 'Banner',
   NATIVE_CARD: 'Native Kart',

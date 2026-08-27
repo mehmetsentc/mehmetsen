@@ -12,6 +12,7 @@ import {
   AD_FORMATS,
   AD_INVENTORY_TYPE_LABELS,
   AD_INVENTORY_TYPES,
+  AD_PLACEMENT_SCOPE_LABELS,
   AD_PLACEMENT_SCOPES,
   AD_PRICING_MODEL_LABELS,
   AD_PRICING_MODELS,
@@ -62,37 +63,12 @@ export function PublisherAdsStudioClient({
   slug: string
   publisher: PublisherRecord
 }) {
-  const [tab, setTab] = useState<'inventory' | 'managed' | 'requests' | 'bookings'>('inventory')
+  const [tab, setTab] = useState<'inventory' | 'managed'>('inventory')
   const [items, setItems] = useState<SerializedItem[]>([])
   const [dashboard, setDashboard] = useState<AdInventoryDashboardCounts>(EMPTY_DASH)
   const [loading, setLoading] = useState(true)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [previewId, setPreviewId] = useState<string | null>(null)
-  const [incoming, setIncoming] = useState<
-    Array<{
-      id: string
-      status: string
-      inventoryId: string
-      advertiserId: string
-      priceSnapshotMinor: number | null
-      currency: string
-      message: string | null
-      requestedStartAt: string
-      requestedEndAt: string
-    }>
-  >([])
-  const [bookings, setBookings] = useState<
-    Array<{
-      id: string
-      status: string
-      inventoryId: string
-      advertiserId: string
-      startAt: string
-      endAt: string
-      priceMinor: number | null
-      currency: string
-    }>
-  >([])
 
   const [form, setForm] = useState<AdInventoryCreateInput>({
     name: '',
@@ -128,59 +104,12 @@ export function PublisherAdsStudioClient({
     }
   }, [publisher.id, tokenHeaders])
 
-  const refreshRequests = useCallback(async () => {
-    try {
-      const headers = await tokenHeaders()
-      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/requests`, { headers })
-      if (!res.ok) return
-      const data = await res.json()
-      setIncoming(data.requests || [])
-    } catch {
-      /* flag may be off */
-    }
-  }, [publisher.id, tokenHeaders])
-
-  const refreshBookings = useCallback(async () => {
-    try {
-      const headers = await tokenHeaders()
-      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/bookings`, { headers })
-      if (!res.ok) return
-      const data = await res.json()
-      setBookings(data.bookings || [])
-    } catch {
-      /* flag may be off */
-    }
-  }, [publisher.id, tokenHeaders])
-
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(() => {
       void refresh()
-      void refreshRequests()
-      void refreshBookings()
     })
     return () => unsub()
-  }, [refresh, refreshRequests, refreshBookings])
-
-  const reviewRequest = async (
-    requestId: string,
-    action: 'approve' | 'reject' | 'offer',
-    extra?: { note?: string; publisherOfferMinor?: number }
-  ) => {
-    try {
-      const headers = await tokenHeaders()
-      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/requests/${requestId}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ action, ...extra }),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || 'İşlem başarısız')
-      toast.success(action === 'approve' ? 'Onaylandı (ödeme bekleniyor)' : action === 'reject' ? 'Reddedildi' : 'Teklif gönderildi')
-      await refreshRequests()
-      await refreshBookings()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Hata')
-    }
-  }
+  }, [refresh])
 
   const create = async () => {
     try {
@@ -252,10 +181,10 @@ export function PublisherAdsStudioClient({
             Reklamlar
           </h1>
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            Reklam alanları ve kendi yönettiğiniz reklamlar. Ödeme / marketplace kapalı.
+            Reklam alanlarınızı oluşturun ve kendi müşterilerinizin reklamlarını yönetin.
           </p>
           <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">
-            NaHaber ödeme almaz — reklam müşterinizi siz yönetirsiniz.
+            Reklam müşterinizi siz yönetirsiniz — platform üzerinden ödeme yoktur.
           </p>
         </div>
         {tab === 'inventory' ? (
@@ -283,116 +212,10 @@ export function PublisherAdsStudioClient({
             {label}
           </button>
         ))}
-        {/* P9 marketplace tabs — kept but visually de-emphasized; feature-off by default */}
-        {(
-          [
-            ['requests', 'Gelen Talepler'],
-            ['bookings', 'Rezervasyonlar'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={`rounded px-3 py-1.5 opacity-50 ${
-              tab === key ? 'bg-[rgb(var(--color-fg))] text-[rgb(var(--color-bg))] opacity-100' : ''
-            }`}
-            onClick={() => setTab(key)}
-            title="Marketplace özelliği kapalı"
-          >
-            {label}
-          </button>
-        ))}
       </div>
 
       {tab === 'managed' ? (
         <ManagedAdsStudioPanel publisherId={publisher.id} inventoryItems={items} />
-      ) : null}
-
-      {tab === 'requests' ? (
-        <div className="mt-6 space-y-3">
-          {incoming.length === 0 ? (
-            <p className="text-sm text-[rgb(var(--color-muted))]">Gelen talep yok.</p>
-          ) : (
-            incoming.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border border-[rgb(var(--color-border))] p-4 text-sm"
-              >
-                <div className="flex flex-wrap justify-between gap-2">
-                  <span className="font-semibold">{r.status}</span>
-                  <span>
-                    {formatPriceMinor(r.priceSnapshotMinor, r.currency) || 'Teklif / iletişim'}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
-                  {new Date(r.requestedStartAt).toLocaleString('tr-TR')} →{' '}
-                  {new Date(r.requestedEndAt).toLocaleString('tr-TR')}
-                </p>
-                {r.message ? <p className="mt-2">{r.message}</p> : null}
-                {['SUBMITTED', 'UNDER_REVIEW', 'OFFERED'].includes(r.status) ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="studio-btn-primary text-xs"
-                      onClick={() => void reviewRequest(r.id, 'approve')}
-                    >
-                      Onayla
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border px-3 py-1 text-xs"
-                      onClick={() => void reviewRequest(r.id, 'reject', { note: 'Uygun değil' })}
-                    >
-                      Reddet
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border px-3 py-1 text-xs"
-                      onClick={() => {
-                        const offer = prompt('Teklif (kuruş cinsinden, örn. 15000)')
-                        if (offer == null) return
-                        void reviewRequest(r.id, 'offer', {
-                          publisherOfferMinor: Number(offer),
-                        })
-                      }}
-                    >
-                      Teklif Ver
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ))
-          )}
-        </div>
-      ) : null}
-
-      {tab === 'bookings' ? (
-        <div className="mt-6 space-y-3">
-          {bookings.length === 0 ? (
-            <p className="text-sm text-[rgb(var(--color-muted))]">Rezervasyon yok.</p>
-          ) : (
-            bookings.map((b) => (
-              <div
-                key={b.id}
-                className="rounded-xl border border-[rgb(var(--color-border))] p-4 text-sm"
-              >
-                <div className="flex justify-between">
-                  <span className="font-semibold">
-                    {b.status === 'PENDING_PAYMENT' ? 'Ödeme Bekliyor' : b.status}
-                  </span>
-                  <span>{formatPriceMinor(b.priceMinor, b.currency) || '—'}</span>
-                </div>
-                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
-                  {new Date(b.startAt).toLocaleString('tr-TR')} →{' '}
-                  {new Date(b.endAt).toLocaleString('tr-TR')} · envanter {b.inventoryId.slice(0, 12)}…
-                </p>
-                <p className="mt-1 text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                  Bekleyen Kazanç (salt okunur · flag kapalı) — payout yok
-                </p>
-              </div>
-            ))
-          )}
-        </div>
       ) : null}
 
       {tab === 'inventory' ? (
@@ -421,7 +244,7 @@ export function PublisherAdsStudioClient({
         <div className="mt-6 space-y-3 rounded-xl border border-[rgb(var(--color-border))] p-4">
           <h2 className="font-bold">Reklam alanı oluştur (4 adım)</h2>
           <p className="text-xs text-[rgb(var(--color-muted))]">
-            1) Nerede gösterilecek · 2) Boyut/format · 3) Satışa açık mı · 4) Kaydet. Ödeme veya açık artırma yok.
+            1) Nerede gösterilecek · 2) Boyut/format · 3) Satışa açık mı · 4) Kaydet.
           </p>
           <label className="block text-sm">
             <span className="font-semibold">Ad</span>
@@ -466,7 +289,7 @@ export function PublisherAdsStudioClient({
               >
                 {scopesForType(form.inventoryType).map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {AD_PLACEMENT_SCOPE_LABELS[s]}
                   </option>
                 ))}
               </select>
@@ -504,7 +327,7 @@ export function PublisherAdsStudioClient({
           </div>
           {form.pricingModel !== 'CONTACT_FOR_PRICE' ? (
             <label className="block text-sm">
-              <span className="font-semibold">Fiyat (kuruş)</span>
+              <span className="font-semibold">Fiyat (isteğe bağlı)</span>
               <input
                 type="number"
                 min={0}
@@ -537,7 +360,7 @@ export function PublisherAdsStudioClient({
         ) : items.length === 0 ? (
           <p className="text-sm text-[rgb(var(--color-muted))]">
             Henüz reklam alanı yok. Önce yerleşim ekleyin; ardından müşteri banner/videolarını
-            &quot;Yönetilen reklamlar&quot; sekmesinden yayınlayabilirsiniz. Ödeme yok.
+            &quot;Reklamlarım&quot; sekmesinden yayınlayabilirsiniz.
           </p>
         ) : (
           items.map((item) => (
@@ -548,7 +371,8 @@ export function PublisherAdsStudioClient({
               <div className="min-w-0 flex-1">
                 <p className="font-bold">{item.name}</p>
                 <p className="mt-0.5 text-xs text-[rgb(var(--color-muted))]">
-                  {AD_INVENTORY_TYPE_LABELS[item.inventoryType]} · {item.placementScope} ·{' '}
+                  {AD_INVENTORY_TYPE_LABELS[item.inventoryType]} ·{' '}
+                  {AD_PLACEMENT_SCOPE_LABELS[item.placementScope]} ·{' '}
                   {AD_FORMAT_LABELS[item.format]} · {AD_SALE_STATUS_LABELS[item.saleStatus]}
                   {item.priceMinor != null
                     ? ` · ${formatPriceMinor(item.priceMinor, item.currency)}`
@@ -607,7 +431,8 @@ export function PublisherAdsStudioClient({
             </p>
             <p className="mt-2 text-lg font-black">{previewItem.name}</p>
             <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-              {previewItem.placementScope} · {AD_FORMAT_LABELS[previewItem.format]}
+              {AD_PLACEMENT_SCOPE_LABELS[previewItem.placementScope]} ·{' '}
+              {AD_FORMAT_LABELS[previewItem.format]}
             </p>
             <div className="mt-4 flex aspect-[3/1] items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] text-sm font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
               Satışa açık alan — gerçek reklam değil

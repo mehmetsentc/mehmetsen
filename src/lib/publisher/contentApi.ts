@@ -7,28 +7,28 @@ import {
   studioErrorResponse,
   StudioRouteError,
 } from '@/lib/publisher/studioApi'
-import { isPublisherContentStudioEnabled } from '@/lib/publisher/contentFlags'
+import { isContentStudioEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { PublisherContentError } from '@/services/publisher/publisherContentService'
 import type { PublisherPermission } from '@/lib/publisher/authorization'
 import type { PublisherContentItem } from '@/types/publisherContent'
 
-export function contentStudioGuard() {
-  if (!hasDatabaseUrl()) {
-    return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
-  }
-  if (!isPublisherContentStudioEnabled()) {
-    return studioDisabledResponse()
-  }
-  return null
-}
+const STORAGE_UNAVAILABLE_TR = 'Medya yükleme şu anda kullanılamıyor.'
 
 export async function withContentAuth(
   request: Request,
   publisherId: string,
   permission: PublisherPermission
 ) {
-  const guard = contentStudioGuard()
-  if (guard) return { error: guard as NextResponse }
+  if (!hasDatabaseUrl()) {
+    return {
+      error: NextResponse.json(databaseUnavailableResponse({ postgres: false }), {
+        status: 503,
+      }) as NextResponse,
+    }
+  }
+  if (!(await isContentStudioEffectiveForPublisher(publisherId))) {
+    return { error: studioDisabledResponse() as NextResponse }
+  }
   try {
     const auth = await requireStudioAuth(request, publisherId, permission)
     return { auth }
@@ -53,7 +53,9 @@ export function contentErrorResponse(err: unknown) {
             : err.code === 'CONFLICT'
               ? 409
               : 400
-    return NextResponse.json({ error: err.message, code: err.code }, { status })
+    const message =
+      err.message === 'STORAGE_UNAVAILABLE' ? STORAGE_UNAVAILABLE_TR : err.message
+    return NextResponse.json({ error: message, code: err.code }, { status })
   }
   return studioErrorResponse(err)
 }

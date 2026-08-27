@@ -59,7 +59,11 @@ export function selfManagedAdsErrorResponse(err: unknown) {
             : err.code === 'CONFLICT'
               ? 409
               : 400
-    return NextResponse.json({ error: err.message, code: err.code }, { status })
+    const message =
+      err.message === 'STORAGE_UNAVAILABLE'
+        ? 'Medya yükleme şu anda kullanılamıyor.'
+        : err.message
+    return NextResponse.json({ error: message, code: err.code }, { status })
   }
   return studioErrorResponse(err)
 }

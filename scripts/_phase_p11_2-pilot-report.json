@@ -1,0 +1,283 @@
+{
+  "startedAt": "2026-08-27T14:25:29.237Z",
+  "phase": "P11.2",
+  "nodeEnv": "production",
+  "globalsForcedFalse": true,
+  "before": {
+    "publishers": 6,
+    "verified": 1,
+    "unclaimed": 5,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 5,
+    "ad_impressions": 4,
+    "ad_clicks": 5,
+    "content_items": 2,
+    "ad_inventory": 10,
+    "feature_access_enabled": 11
+  },
+  "r2": {
+    "configured": false,
+    "presentEnvNames": [],
+    "missingEnvNames": [
+      "R2_ACCOUNT_ID",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "R2_BUCKET_NAME",
+      "R2_PUBLIC_URL"
+    ],
+    "uploadAttempted": false,
+    "uploadOk": false
+  },
+  "pilotPublisher": {
+    "id": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d",
+    "slug": "nahaber-test-yayincisi",
+    "type": "INTERNAL_TEST",
+    "status": "ACTIVE",
+    "verification": "VERIFIED"
+  },
+  "existingPublishers": [
+    {
+      "slug": "the-guardian-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "trt-haber-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "le-monde-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "deutsche-welle-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    },
+    {
+      "slug": "bbc-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "publisher_type": "NEWS_ORGANIZATION"
+    }
+  ],
+  "featureGrants": {
+    "PLATFORM": true,
+    "STUDIO": true,
+    "PROFILE_COMPOSER": true,
+    "CONTENT_STUDIO": true,
+    "MANUAL_PUBLISH": true,
+    "MEDIA_UPLOAD": true,
+    "AD_INVENTORY": true,
+    "SELF_MANAGED_ADS": true,
+    "AD_SERVING": true,
+    "AD_ANALYTICS": true,
+    "PROFILE_AD_SLOTS": true,
+    "ARTICLE_AD_SLOTS": true
+  },
+  "analytics": {
+    "impressions": 1,
+    "clicks": 1,
+    "ctr": 1
+  },
+  "videoPreroll": {
+    "status": "BLOCKED",
+    "reason": "R2_NOT_CONFIGURED"
+  },
+  "auth": {
+    "email": true,
+    "google": true,
+    "apple": "UNSET_BLOCKED",
+    "appleRequirements": [
+      "APPLE_AUTH_ENABLED=true (and NEXT_PUBLIC_APPLE_AUTH_ENABLED for client)",
+      "Firebase Console → Authentication → Sign-in method → Apple enabled",
+      "Apple Developer Services ID + Return URL matching Firebase",
+      "Apple private key / Team ID / Key ID configured in Firebase (never in app logs)"
+    ]
+  },
+  "after": {
+    "publishers": 6,
+    "verified": 1,
+    "unclaimed": 5,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 6,
+    "ad_impressions": 5,
+    "ad_clicks": 6,
+    "content_items": 2,
+    "ad_inventory": 11,
+    "feature_access_enabled": 12
+  },
+  "financialDelta": {
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0
+  },
+  "marketplaceDelta": {
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0
+  },
+  "adServingFinal": true,
+  "steps": [
+    {
+      "name": "r2_env_status",
+      "ok": true,
+      "detail": "NOT_CONFIGURED missing=R2_ACCOUNT_ID,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME,R2_PUBLIC_URL"
+    },
+    {
+      "name": "isR2Configured_matches_env",
+      "ok": true,
+      "detail": "isR2Configured=false"
+    },
+    {
+      "name": "pilot_internal_test",
+      "ok": true,
+      "detail": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d"
+    },
+    {
+      "name": "real_publishers_unclaimed",
+      "ok": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "pilot_grants",
+      "ok": true,
+      "detail": "{\"PLATFORM\":true,\"STUDIO\":true,\"PROFILE_COMPOSER\":true,\"CONTENT_STUDIO\":true,\"MANUAL_PUBLISH\":true,\"MEDIA_UPLOAD\":true,\"AD_INVENTORY\":true,\"SELF_MANAGED_ADS\":true,\"AD_SERVING\":true,\"AD_ANALYTICS\":true,\"PROFILE_AD_SLOTS\":true,\"ARTICLE_AD_SLOTS\":true}"
+    },
+    {
+      "name": "video_preroll_not_granted",
+      "ok": true
+    },
+    {
+      "name": "guardian_no_grants",
+      "ok": true,
+      "detail": "AD_SERVING=false;STUDIO=false;MEDIA=false"
+    },
+    {
+      "name": "non_member_edit_denied",
+      "ok": true
+    },
+    {
+      "name": "r2_pilot_upload",
+      "ok": true,
+      "detail": "BLOCKED — R2 NOT_CONFIGURED (graceful UX expected)"
+    },
+    {
+      "name": "inventory_create",
+      "ok": true,
+      "detail": "pad_1ddb7264-3b74-4510-8c82-81f47b6baf6b"
+    },
+    {
+      "name": "managed_ad_create",
+      "ok": true,
+      "detail": "pmad_3cf3e2aa-dcab-4a4d-ad05-6d1f51b4864d"
+    },
+    {
+      "name": "ad_serving_active",
+      "ok": true,
+      "detail": "href=/r/ad/pmad_3cf3e2aa-dcab-4a4d-ad05-6d1f51b4864d"
+    },
+    {
+      "name": "cross_publisher_inventory_denied",
+      "ok": true
+    },
+    {
+      "name": "impression_dedupe",
+      "ok": true
+    },
+    {
+      "name": "click_destination",
+      "ok": true
+    },
+    {
+      "name": "analytics_impressions_clicks_ctr",
+      "ok": true,
+      "detail": "{\"impressions\":1,\"clicks\":1,\"ctr\":1}"
+    },
+    {
+      "name": "pause_stops_serving",
+      "ok": true
+    },
+    {
+      "name": "resume_serving",
+      "ok": true
+    },
+    {
+      "name": "rollback_serving_off_data_kept",
+      "ok": true
+    },
+    {
+      "name": "rollback_reenable",
+      "ok": true
+    },
+    {
+      "name": "cleanup_pause_ad",
+      "ok": true
+    },
+    {
+      "name": "video_preroll",
+      "ok": true,
+      "detail": "BLOCKED — R2/media unavailable; VIDEO_PREROLL not granted"
+    },
+    {
+      "name": "auth_apple_documented",
+      "ok": true,
+      "detail": "UNSET_BLOCKED (does not block GO)"
+    },
+    {
+      "name": "smart_feed_global_off",
+      "ok": true
+    },
+    {
+      "name": "financial_delta_zero",
+      "ok": true,
+      "detail": "{\"payment_intents\":0,\"payment_transactions\":0,\"commercial_ledger_entries\":0,\"publisher_earnings\":0}"
+    },
+    {
+      "name": "marketplace_delta_zero",
+      "ok": true,
+      "detail": "{\"campaigns\":0,\"booking_requests\":0,\"bookings\":0}"
+    },
+    {
+      "name": "real_publishers_still_unclaimed",
+      "ok": true
+    },
+    {
+      "name": "ad_serving_final_on",
+      "ok": true
+    }
+  ],
+  "failedCount": 0,
+  "ok": true,
+  "goCriteria": {
+    "r2UploadWorks": false,
+    "ownerUiAllowlistPages": true,
+    "adServingWorks": true,
+    "analyticsWorks": true,
+    "financialDeltaZero": true,
+    "realPubsUntouched": true,
+    "globalsFalse": true,
+    "prerollBlockedOk": true
+  },
+  "pilotGo": "NO-GO",
+  "finishedAt": "2026-08-27T14:25:46.124Z"
+}

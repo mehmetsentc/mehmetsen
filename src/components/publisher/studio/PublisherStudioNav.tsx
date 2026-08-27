@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BarChart3,
-  DollarSign,
   FileText,
   LayoutGrid,
   Megaphone,
@@ -15,14 +14,18 @@ import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.PUBLISHER(slug), label: 'Genel Bakış', icon: LayoutGrid, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.PROFILE(slug), label: 'Profil', icon: UserCircle, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.LAYOUT(slug), label: 'Sayfa Düzeni', icon: LayoutGrid, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ARTICLES(slug), label: 'Content Studio', icon: FileText, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.TEAM(slug), label: 'Ekip', icon: Users, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ANALYTICS(slug), label: 'Analitik', icon: BarChart3, active: false },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ADS(slug), label: 'Reklamlar', icon: Megaphone, active: true },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.REVENUE(slug), label: 'Gelirler', icon: DollarSign, active: false },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.PUBLISHER(slug), label: 'Genel Bakış', icon: LayoutGrid },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.PROFILE(slug), label: 'Profil', icon: UserCircle },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.LAYOUT(slug), label: 'Sayfa Düzeni', icon: LayoutGrid },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ARTICLES(slug), label: 'İçerikler', icon: FileText },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.TEAM(slug), label: 'Ekip', icon: Users },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ADS(slug), label: 'Reklamlar', icon: Megaphone },
+  {
+    href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ANALYTICS(slug),
+    label: 'Analitik',
+    icon: BarChart3,
+    soon: true,
+  },
 ] as const
 
 export function PublisherStudioNav({
@@ -46,16 +49,16 @@ export function PublisherStudioNav({
         {NAV.map((item) => {
           const href = item.href(slug)
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
-          if (!item.active) {
+          if ('soon' in item && item.soon) {
             return (
               <span
                 key={item.label}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[rgb(var(--color-muted))] opacity-60"
-                title="Yakında"
+                title="Reklamlar → Reklamlarım bölümünde gösterim / tıklama / CTR"
               >
                 <item.icon className="h-4 w-4 shrink-0" aria-hidden />
                 {item.label}
-                <span className="ml-auto text-[10px] font-bold uppercase">Yakında</span>
+                <span className="ml-auto text-[10px] font-bold uppercase">Reklamlarda</span>
               </span>
             )
           }

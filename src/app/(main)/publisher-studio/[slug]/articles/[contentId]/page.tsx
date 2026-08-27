@@ -1,20 +1,22 @@
 import { notFound } from 'next/navigation'
-import { hasDatabaseUrl } from '@/db'
-import { isPublisherStudioEnabled } from '@/lib/publisher/featureFlag'
-import { isPublisherContentStudioEnabled } from '@/lib/publisher/contentFlags'
+import { loadStudioPublisherForPage } from '@/lib/publisher/studioPageAccess'
+import { isContentStudioEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { PublisherContentEditorClient } from '@/components/publisher/studio/content/PublisherContentEditorClient'
-import { publisherRepository } from '@/services/publisher/publisherRepository'
 
 interface Props {
   params: Promise<{ slug: string; contentId: string }>
 }
 
 export default async function PublisherStudioEditArticlePage({ params }: Props) {
-  if (!isPublisherStudioEnabled() || !isPublisherContentStudioEnabled()) notFound()
-  if (!hasDatabaseUrl()) notFound()
   const { slug: rawSlug, contentId } = await params
-  const slug = rawSlug.trim().toLowerCase()
-  const publisher = await publisherRepository.findBySlug(slug)
+  const publisher = await loadStudioPublisherForPage(rawSlug)
   if (!publisher) notFound()
-  return <PublisherContentEditorClient slug={slug} publisher={publisher} contentId={contentId} />
+  if (!(await isContentStudioEffectiveForPublisher(publisher.id))) notFound()
+  return (
+    <PublisherContentEditorClient
+      slug={publisher.slug}
+      publisher={publisher}
+      contentId={contentId}
+    />
+  )
 }
