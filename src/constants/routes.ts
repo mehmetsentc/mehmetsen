@@ -28,6 +28,8 @@ export const ROUTES = {
   EVENT: (slug: string) => `/olay/${encodeURIComponent(slug)}`,
   AUTHOR: (username: string) => `/yazar/${encodeURIComponent(username)}`,
   PUBLISHER: (slug: string) => `/publisher/${encodeURIComponent(slug)}`,
+  /** Publisher media kit / sellable inventory interest page */
+  PUBLISHER_REKLAM: (slug: string) => `/publisher/${encodeURIComponent(slug)}/reklam`,
   PUBLISHER_STUDIO: {
     ROOT: '/publisher-studio',
     PUBLISHER: (slug: string) => `/publisher-studio/${encodeURIComponent(slug)}`,

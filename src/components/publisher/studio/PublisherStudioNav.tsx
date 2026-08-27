@@ -21,7 +21,7 @@ const NAV = [
   { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ARTICLES(slug), label: 'Content Studio', icon: FileText, active: true },
   { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.TEAM(slug), label: 'Ekip', icon: Users, active: true },
   { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ANALYTICS(slug), label: 'Analitik', icon: BarChart3, active: false },
-  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ADS(slug), label: 'Reklamlar', icon: Megaphone, active: false },
+  { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.ADS(slug), label: 'Reklamlar', icon: Megaphone, active: true },
   { href: (slug: string) => ROUTES.PUBLISHER_STUDIO.REVENUE(slug), label: 'Gelirler', icon: DollarSign, active: false },
 ] as const
 

@@ -35,6 +35,10 @@ export {
   publisherContentAudit,
 } from './publisherContent'
 export {
+  publisherAdInventory,
+  publisherAdInventoryAudit,
+} from './publisherAdInventory'
+export {
   userProfiles,
   userPublisherFollows,
   articleLikes,

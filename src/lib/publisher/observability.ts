@@ -24,6 +24,10 @@ export type PublisherObservabilityEvent =
   | 'publisher_content_source_imported'
   | 'publisher_publish_firestore_failed'
   | 'publisher_publish_postgres_failed'
+  | 'publisher_ad_inventory_created'
+  | 'publisher_ad_inventory_updated'
+  | 'publisher_ad_inventory_archived'
+  | 'publisher_ad_inventory_sale_toggled'
 
 export function publisherLog(
   event: PublisherObservabilityEvent,

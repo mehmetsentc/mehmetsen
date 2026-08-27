@@ -4,6 +4,8 @@ import { hasDatabaseUrl } from '@/db'
 import {
   isPublisherPlatformEnabled,
   isPublisherProfileComposerEnabled,
+  isProfileAdSlotsEnabled,
+  isPublisherAdPublicListingEnabled,
 } from '@/lib/publisher/featureFlag'
 import {
   evaluatePublisherSeo,
@@ -92,6 +94,24 @@ export default async function PublisherProfilePage({ params }: Props) {
       ? await publisherLayoutService.getPublishedLayoutForPublic(fullRecord.id)
       : null
 
+  let adInventoryById: Map<string, import('@/types/publisherAdInventory').PublisherAdInventoryRecord> | undefined
+  if (
+    publishedLayout &&
+    isProfileAdSlotsEnabled() &&
+    isPublisherAdPublicListingEnabled() &&
+    fullRecord
+  ) {
+    try {
+      const { publisherAdInventoryService } = await import(
+        '@/services/publisher/publisherAdInventoryService'
+      )
+      const listed = await publisherAdInventoryService.listPublicSellable(fullRecord.id)
+      adInventoryById = new Map(listed.map((i) => [i.id, i]))
+    } catch {
+      adInventoryById = undefined
+    }
+  }
+
   if (publishedLayout) {
     return (
       <>
@@ -105,6 +125,7 @@ export default async function PublisherProfilePage({ params }: Props) {
           publisher={publisher}
           layout={publishedLayout}
           fallbackArticles={articlePage.items}
+          adInventoryById={adInventoryById}
         />
       </>
     )

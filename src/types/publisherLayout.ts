@@ -8,8 +8,6 @@ export type LayoutSectionType = 'CUSTOM' | 'HERO' | 'LATEST' | 'FEATURED' | 'AD_
 
 export type LayoutContentMode = 'MANUAL' | 'AUTO'
 
-export type LayoutItemType = 'ARTICLE' | 'AD_SLOT'
-
 export type LayoutItemSize =
   | 'HERO'
   | 'LEAD'
@@ -18,6 +16,10 @@ export type LayoutItemSize =
   | 'COMPACT'
   | 'WIDE'
   | 'FULL'
+  | 'BANNER'
+  | 'NATIVE'
+
+export type LayoutItemType = 'ARTICLE' | 'AD_SLOT'
 
 export interface LayoutAutoConfig extends Record<string, unknown> {
   sort?: 'newest' | 'oldest'
@@ -129,6 +131,8 @@ export const LAYOUT_ITEM_SIZE_SPAN: Record<LayoutItemSize, number> = {
   COMPACT: 3,
   WIDE: 8,
   FULL: 12,
+  BANNER: 12,
+  NATIVE: 6,
 }
 
 export const VALID_LAYOUT_ITEM_SIZES = Object.keys(LAYOUT_ITEM_SIZE_SPAN) as LayoutItemSize[]

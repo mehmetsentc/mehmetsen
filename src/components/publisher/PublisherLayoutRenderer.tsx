@@ -6,6 +6,9 @@ import { cn } from '@/lib/utils'
 import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publisher'
 import type { ResolvedPublisherLayout } from '@/types/publisherLayout'
 import { spanForSize } from '@/types/publisherLayout'
+import { isProfileAdSlotsEnabled, isPublisherAdPublicListingEnabled } from '@/lib/publisher/adInventoryFlags'
+import { PublisherAdSlotPlaceholder } from '@/components/publisher/PublisherAdSlotPlaceholder'
+import type { PublisherAdInventoryRecord } from '@/types/publisherAdInventory'
 
 function ArticleCard({
   article,
@@ -95,11 +98,17 @@ export function PublisherLayoutRenderer({
   publisher,
   layout,
   fallbackArticles,
+  adInventoryById,
 }: {
   publisher: PublicPublisherRecord
   layout: ResolvedPublisherLayout | null
   fallbackArticles: PublisherArticleItem[]
+  /** Optional inventory map for AD_SLOT items (id → record). */
+  adInventoryById?: Map<string, PublisherAdInventoryRecord>
 }) {
+  const showAdSlots = isProfileAdSlotsEnabled()
+  const showPublicListing = isPublisherAdPublicListingEnabled()
+  const mediaKitHref = ROUTES.PUBLISHER_REKLAM(publisher.slug)
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
       <header className="mb-8">
@@ -164,9 +173,46 @@ export function PublisherLayoutRenderer({
                 <h2 className="mb-4 text-lg font-black">{section.title}</h2>
                 <div className="grid grid-cols-12 gap-3">
                   {items.map((item) => {
+                    const span = item.span || spanForSize(item.size)
+
+                    if (item.itemType === 'AD_SLOT') {
+                      if (!showAdSlots) return null
+                      const inventoryId =
+                        item.contentId ||
+                        (typeof item.presentation?.inventoryId === 'string'
+                          ? item.presentation.inventoryId
+                          : null)
+                      const inv = inventoryId ? adInventoryById?.get(inventoryId) : undefined
+                      const forSale =
+                        showPublicListing &&
+                        inv &&
+                        inv.isPubliclyListed &&
+                        inv.saleStatus === 'AVAILABLE' &&
+                        inv.status === 'ACTIVE'
+                      if (!forSale && !inv) {
+                        // Flag ON but no attached/listed inventory → still show neutral placeholder in studio-published layouts only when listed
+                        return null
+                      }
+                      if (!forSale) return null
+                      return (
+                        <div
+                          key={item.id}
+                          style={{ gridColumn: `span ${Math.min(12, span)} / span ${Math.min(12, span)}` }}
+                        >
+                          <PublisherAdSlotPlaceholder
+                            name={inv?.name}
+                            semanticSize={inv?.semanticSize ?? (item.size as string)}
+                            saleStatus={inv?.saleStatus}
+                            priceMinor={inv?.priceMinor}
+                            currency={inv?.currency}
+                            mediaKitHref={mediaKitHref}
+                          />
+                        </div>
+                      )
+                    }
+
                     const article = item.article
                     if (!article) return null
-                    const span = item.span || spanForSize(item.size)
                     return (
                       <div
                         key={item.id}

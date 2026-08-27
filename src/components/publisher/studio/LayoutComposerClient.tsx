@@ -151,6 +151,33 @@ export function LayoutComposerClient({
     updateSections(next)
   }
 
+  const addAdSlot = (sectionIndex: number) => {
+    const next = [...sections]
+    const section = { ...next[sectionIndex]! }
+    const items = [...(section.items ?? [])]
+    items.push({
+      itemType: 'AD_SLOT',
+      contentId: null,
+      position: items.length,
+      size: 'BANNER',
+      span: spanForSize('BANNER'),
+      presentation: { kind: 'AD_SLOT' },
+    })
+    section.items = items
+    next[sectionIndex] = section
+    updateSections(next)
+  }
+
+  const detachAdSlot = (sectionIndex: number, itemIndex: number) => {
+    const next = [...sections]
+    const section = { ...next[sectionIndex]! }
+    const items = [...(section.items ?? [])]
+    items.splice(itemIndex, 1)
+    section.items = items.map((it, i) => ({ ...it, position: i }))
+    next[sectionIndex] = section
+    updateSections(next)
+  }
+
   const addSection = () => {
     updateSections([
       ...sections,
@@ -320,7 +347,11 @@ export function LayoutComposerClient({
                       updateSections(next)
                     }}
                   >
-                    <p className="truncate text-xs font-semibold">{item.contentId ?? 'Haber'}</p>
+                    <p className="truncate text-xs font-semibold">
+                      {item.itemType === 'AD_SLOT'
+                        ? `Reklam alanı${item.contentId ? ` · ${item.contentId.slice(0, 12)}` : ''}`
+                        : (item.contentId ?? 'Haber')}
+                    </p>
                     <select
                       value={item.size ?? 'STANDARD'}
                       onChange={(e) =>
@@ -341,9 +372,26 @@ export function LayoutComposerClient({
                       <button type="button" className="studio-btn px-1 py-0.5" onClick={() => moveItem(sectionIndex, itemIndex, 1)}>
                         ↓
                       </button>
+                      {item.itemType === 'AD_SLOT' ? (
+                        <button
+                          type="button"
+                          className="studio-btn px-1 py-0.5 text-[10px]"
+                          onClick={() => detachAdSlot(sectionIndex, itemIndex)}
+                          title="Ayır (envanter silinmez)"
+                        >
+                          Ayır
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
+                <button
+                  type="button"
+                  className="col-span-12 studio-btn mt-2 text-xs"
+                  onClick={() => addAdSlot(sectionIndex)}
+                >
+                  + Reklam alanı (AD_SLOT)
+                </button>
               </div>
             )}
           </div>

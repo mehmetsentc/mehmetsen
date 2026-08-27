@@ -23,6 +23,19 @@ export type PublisherPermission =
   | 'content:breaking'
   | 'team:read'
   | 'team:manage'
+  | 'ads:read'
+  | 'ads:create'
+  | 'ads:update'
+  | 'ads:publish'
+  | 'ads:archive'
+
+const ADS_ALL: PublisherPermission[] = [
+  'ads:read',
+  'ads:create',
+  'ads:update',
+  'ads:publish',
+  'ads:archive',
+]
 
 const CONTENT_ALL: PublisherPermission[] = [
   'content:read',
@@ -49,6 +62,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:edit',
     'articles:read',
     ...CONTENT_ALL,
+    ...ADS_ALL,
     'team:read',
     'team:manage',
   ],
@@ -60,6 +74,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:edit',
     'articles:read',
     ...CONTENT_ALL,
+    ...ADS_ALL,
     'team:read',
     'team:manage',
   ],
@@ -70,6 +85,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:edit',
     'articles:read',
     ...CONTENT_ALL,
+    'ads:read',
   ],
   AUTHOR: [
     'studio:access',
@@ -82,8 +98,22 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'content:submit',
     'content:source-import',
   ],
-  AD_MANAGER: ['studio:access', 'profile:read', 'articles:read', 'content:read'],
-  ANALYST: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read', 'team:read'],
+  AD_MANAGER: [
+    'studio:access',
+    'profile:read',
+    'articles:read',
+    'content:read',
+    ...ADS_ALL,
+  ],
+  ANALYST: [
+    'studio:access',
+    'profile:read',
+    'layout:read',
+    'articles:read',
+    'content:read',
+    'team:read',
+    'ads:read',
+  ],
   VIEWER: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read'],
 }
 

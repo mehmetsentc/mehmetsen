@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -24,12 +24,15 @@ import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import type { ArticleSeoContext } from '@/lib/seo/articleSeoTypes'
+import { splitBlocksForMidAd } from '@/lib/publisher/articleAdPlacements'
 
 interface NewsArticleStaticProps {
   post: Post
   relatedPosts?: Post[]
   /** Optional SEO internal-link context (publisher / event). Same contract as getArticleSeoContext. */
   seoContext?: ArticleSeoContext | null
+  /** P8 article ad placeholders — never included in JSON-LD. */
+  adSlots?: { before?: ReactNode; mid?: ReactNode; after?: ReactNode } | null
 }
 
 /** YouTube veya embed / MP4 hero player. */
@@ -121,7 +124,12 @@ function InlineImage({ item, title }: { item: MediaItem; title: string }) {
 }
 
 /** Server-rendered article — crawlable before client JS. */
-export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }: NewsArticleStaticProps) {
+export function NewsArticleStatic({
+  post,
+  relatedPosts = [],
+  seoContext = null,
+  adSlots = null,
+}: NewsArticleStaticProps) {
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
@@ -255,6 +263,8 @@ export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }
             </p>
           )}
 
+          {adSlots?.before ?? null}
+
           {post.infographic && post.infographic.stats.length > 0 ? (
             <InfographicBlock
               title={post.infographic.title}
@@ -263,23 +273,51 @@ export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }
             />
           ) : null}
 
-          {hasBodyBlocks && displayBodyBlocks.length > 0 && (
-            <ArticleBlocksRenderer
-              blocks={displayBodyBlocks}
-              title={post.title}
-              longform={post.articleLayout === 'longform'}
-            />
-          )}
+          {hasBodyBlocks && displayBodyBlocks.length > 0 && (() => {
+            if (!adSlots?.mid) {
+              return (
+                <ArticleBlocksRenderer
+                  blocks={displayBodyBlocks}
+                  title={post.title}
+                  longform={post.articleLayout === 'longform'}
+                />
+              )
+            }
+            const { before, after } = splitBlocksForMidAd(displayBodyBlocks)
+            return (
+              <>
+                {before.length > 0 ? (
+                  <ArticleBlocksRenderer
+                    blocks={before}
+                    title={post.title}
+                    longform={post.articleLayout === 'longform'}
+                  />
+                ) : null}
+                {adSlots.mid}
+                {after.length > 0 ? (
+                  <ArticleBlocksRenderer
+                    blocks={after}
+                    title={post.title}
+                    longform={post.articleLayout === 'longform'}
+                  />
+                ) : null}
+              </>
+            )
+          })()}
 
           {!hasBodyBlocks && hasHtmlContent && sanitizedHtml && (
-            <div
-              className="article-prose news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
-              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-            />
+            <>
+              <div
+                className="article-prose news-body prose prose-lg prose-invert max-w-none text-[rgb(var(--color-text))]"
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+              />
+              {adSlots?.mid ?? null}
+            </>
           )}
 
           {!hasBodyBlocks && !hasHtmlContent && paragraphs.length > 0 && (() => {
             const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
+            const midAt = adSlots?.mid ? Math.max(1, Math.floor(paragraphs.length * 0.35)) : null
             return (
               <div className="article-prose news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
                 {paragraphs.map((paragraph, index) => {
@@ -288,6 +326,7 @@ export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }
                     <Fragment key={index}>
                       <p>{paragraph}</p>
                       {inline && <InlineImage item={inline} title={post.title} />}
+                      {midAt != null && index === midAt - 1 ? adSlots?.mid : null}
                     </Fragment>
                   )
                 })}
@@ -299,6 +338,8 @@ export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }
               </div>
             )
           })()}
+
+          {adSlots?.after ?? null}
 
           {/* HTML content modunda inline yerleştirme zor — paragraflar tek string olarak gelir.
               Bu nedenle ekstra görseller HTML body'nin altında bir galeri olarak gösterilir. */}

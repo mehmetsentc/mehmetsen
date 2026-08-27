@@ -732,9 +732,12 @@ describe('P7A SEO context', () => {
 })
 
 describe('P7 preview noindex contract', () => {
-  it('preview route metadata requests noindex', async () => {
-    const mod = await import('@/app/(main)/publisher-studio/[slug]/preview/[contentId]/page')
-    const meta = await mod.generateMetadata()
-    expect(meta.robots).toMatchObject({ index: false, follow: false })
+  it('preview route metadata requests noindex without SSR content fetch', async () => {
+    const pagePath = `${process.cwd()}/src/app/(main)/publisher-studio/[slug]/preview/[contentId]/page.tsx`
+    const pageSrc = await import('node:fs/promises').then((fs) => fs.readFile(pagePath, 'utf8'))
+    expect(pageSrc).toMatch(/robots:\s*\{[^}]*index:\s*false/)
+    expect(pageSrc).toContain('PublisherContentPreviewClient')
+    expect(pageSrc).not.toContain('publisherContentRepository.findById')
+    expect(pageSrc).toContain('noindex')
   })
 })

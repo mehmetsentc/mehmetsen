@@ -18,6 +18,13 @@ import { getLcpPreload } from '@/lib/lcpImage'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
+import { hasDatabaseUrl } from '@/db'
+import {
+  isArticleAdSlotsEnabled,
+  isPublisherAdPublicListingEnabled,
+} from '@/lib/publisher/adInventoryFlags'
+import { publisherService } from '@/services/publisher/publisherService'
+import { publisherAdInventoryService } from '@/services/publisher/publisherAdInventoryService'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
 export const revalidate = 60
@@ -92,6 +99,30 @@ export default async function NewsDetailPage({ params }: PageProps) {
 
   const seoContext = await getArticleSeoContext(post)
 
+  let adSlots: { before: React.ReactNode; mid: React.ReactNode; after: React.ReactNode } | null =
+    null
+  if (
+    isArticleAdSlotsEnabled() &&
+    isPublisherAdPublicListingEnabled() &&
+    hasDatabaseUrl() &&
+    seoContext.publisher?.slug
+  ) {
+    try {
+      const pub = await publisherService.getPublisherBySlug(seoContext.publisher.slug)
+      if (pub) {
+        const inventory = await publisherAdInventoryService.getArticlePlacements(pub.id)
+        const { buildArticleAdSlotViews } = await import('@/lib/publisher/articleAdPlacements')
+        const blockCount = post.bodyBlocks?.length ?? 0
+        adSlots = buildArticleAdSlotViews(inventory, {
+          publisherSlug: seoContext.publisher.slug,
+          blockCount,
+        })
+      }
+    } catch {
+      adSlots = null
+    }
+  }
+
   const heroImage = post.coverImageUrl?.trim() || null
   const lcpPreload = heroImage ? getLcpPreload(heroImage) : null
 
@@ -123,7 +154,12 @@ export default async function NewsDetailPage({ params }: PageProps) {
       )}
       <ArticleCopyGuard />
       <ArticlePageChrome />
-      <NewsArticleStatic post={post} relatedPosts={relatedPosts} seoContext={seoContext} />
+      <NewsArticleStatic
+        post={post}
+        relatedPosts={relatedPosts}
+        seoContext={seoContext}
+        adSlots={adSlots}
+      />
       <NewsArticleInteractive post={post} citySlug={citySlug} />
     </>
   )

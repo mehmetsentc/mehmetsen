@@ -27,3 +27,10 @@ export {
   isPublisherManualPublishEnabled,
   isPublisherSchedulingEnabled,
 } from './contentFlags'
+
+export {
+  isPublisherAdInventoryEnabled,
+  isPublisherAdPublicListingEnabled,
+  isProfileAdSlotsEnabled,
+  isArticleAdSlotsEnabled,
+} from './adInventoryFlags'
