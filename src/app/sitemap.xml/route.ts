@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
 import { getCitySlugFromHost } from '@/lib/cityHost'
-import { buildSitemapIndexXmlAsync } from '@/lib/sitemap/seoSitemaps'
+import { buildSitemapIndexXmlAsync } from '@/lib/sitemap/sitemapIndex'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { ROUTES } from '@/constants/routes'
@@ -97,7 +97,6 @@ export async function GET() {
       })
     }
 
-    // National: P6 sitemap index with entity sitemaps + news chunks
     const base = getSiteUrl()
     const body = await buildSitemapIndexXmlAsync(base)
     return new NextResponse(body, {

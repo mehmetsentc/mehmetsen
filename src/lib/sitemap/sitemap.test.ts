@@ -2,7 +2,8 @@
  * Phase P6 sitemap architecture tests.
  */
 import { describe, expect, it } from 'vitest'
-import { SITEMAP_CHUNK_LIMIT, urlsetXml } from '@/lib/sitemap/seoSitemaps'
+import { SITEMAP_CHUNK_LIMIT } from '@/lib/sitemap/seoSitemaps'
+import { urlsetXml } from '@/lib/sitemap/seoXml'
 import { getSitemapPageCount } from '@/lib/sitemap/mainSitemap'
 
 describe('P6 sitemap chunk limit', () => {

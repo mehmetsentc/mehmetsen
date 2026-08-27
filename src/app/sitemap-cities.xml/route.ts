@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSiteUrl } from '@/lib/seo'
-import { buildCitiesSitemap, urlsetXml } from '@/lib/sitemap/seoSitemaps'
+import { buildCitiesSitemap } from '@/lib/sitemap/entitySitemaps'
+import { urlsetXml } from '@/lib/sitemap/seoXml'
 
 export const runtime = 'nodejs'
 export const revalidate = 86400
