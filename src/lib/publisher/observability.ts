@@ -50,6 +50,10 @@ export type PublisherObservabilityEvent =
   | 'publisher_ad_creative_created'
   | 'publisher_ad_media_uploaded'
   | 'publisher_ad_schedule_tick'
+  | 'PUBLISHER_FEATURE_ENABLED'
+  | 'PUBLISHER_FEATURE_DISABLED'
+  | 'publisher_rollout_health_snapshot'
+  | 'publisher_onboarding_checklist_dismissed'
 
 export function publisherLog(
   event: PublisherObservabilityEvent,

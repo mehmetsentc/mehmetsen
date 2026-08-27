@@ -30,6 +30,7 @@ export default function AdminPublisherDetailPage() {
   const [loading, setLoading] = useState(true)
   const [rejectReason, setRejectReason] = useState('')
   const [acting, setActing] = useState<string | null>(null)
+  const [grantingPilot, setGrantingPilot] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -79,7 +80,7 @@ export default function AdminPublisherDetailPage() {
 
   const reject = async (claimId: string) => {
     if (!rejectReason.trim()) {
-      toast.error('Red gerekçesi yazın')
+      toast.error('Red nedeni gerekli')
       return
     }
     setActing(claimId)
@@ -98,6 +99,25 @@ export default function AdminPublisherDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Red başarısız')
     } finally {
       setActing(null)
+    }
+  }
+
+  const grantPilotBundle = async () => {
+    if (!id) return
+    setGrantingPilot(true)
+    try {
+      const res = await fetch(`/api/admin/publishers/${encodeURIComponent(id)}/feature-access`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ grantPilotBundle: true, note: 'P11 pilot cohort' }),
+      })
+      const body = (await res.json()) as { error?: string; granted?: number }
+      if (!res.ok) throw new Error(body.error || 'Allowlist başarısız')
+      toast.success(`Pilot allowlist: ${body.granted ?? 0} özellik`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Allowlist başarısız')
+    } finally {
+      setGrantingPilot(false)
     }
   }
 
@@ -183,6 +203,25 @@ export default function AdminPublisherDetailPage() {
           </ul>
         </div>
       </div>
+
+      <section className="mb-8 rounded-xl border border-[rgb(var(--color-border))] p-4">
+        <h2 className="mb-2 font-bold">P11 Pilot allowlist</h2>
+        <p className="mb-3 text-sm text-[rgb(var(--color-muted))]">
+          Global flag açmadan Studio/Content/Ads özelliklerini bu yayıncıya verir. Yalnızca VERIFIED
+          yayıncılar için reklam özellikleri. Ödeme yok.
+        </p>
+        <button
+          type="button"
+          disabled={grantingPilot || publisher.verificationStatus !== 'VERIFIED'}
+          onClick={() => void grantPilotBundle()}
+          className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50"
+        >
+          {grantingPilot ? 'Veriliyor…' : 'Pilot paketini ver'}
+        </button>
+        {publisher.verificationStatus !== 'VERIFIED' ? (
+          <p className="mt-2 text-xs text-amber-600">Önce claim onaylayıp VERIFIED yapın.</p>
+        ) : null}
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-bold">Sahiplik talepleri</h2>

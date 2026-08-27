@@ -10,10 +10,10 @@ import {
   validateUpdateAdInput,
 } from '@/lib/publisher/selfManagedAdDomain'
 import {
-  isPublisherAdAnalyticsEnabled,
-  isPublisherAdServingEnabled,
-  isPublisherSelfManagedAdsEnabled,
-} from '@/lib/publisher/selfManagedAdFlags'
+  isAdServingEffectiveForPublisher,
+  isFeatureEnabledForPublisher,
+  isSelfManagedAdsEffectiveForPublisher,
+} from '@/lib/publisher/effectiveFlags'
 import type {
   PublisherAdCreativeCreateInput,
   PublisherAdCreativeRecord,
@@ -97,10 +97,14 @@ export class PublisherManagedAdsService {
     private readonly publisherRepo: PublisherRepository = publisherRepository
   ) {}
 
-  private assertEnabled() {
-    if (!isPublisherSelfManagedAdsEnabled()) {
+  private async assertEnabled(publisherId: string) {
+    if (!(await isSelfManagedAdsEffectiveForPublisher(publisherId))) {
       throw new PublisherManagedAdsError('SELF_MANAGED_ADS_DISABLED', 'FLAG_OFF')
     }
+  }
+
+  private async assertServing(publisherId: string): Promise<boolean> {
+    return isAdServingEffectiveForPublisher(publisherId)
   }
 
   private async assertInventoryOwned(
@@ -135,7 +139,7 @@ export class PublisherManagedAdsService {
     userId: string,
     opts?: { status?: PublisherManagedAdStatus | 'ALL'; includeArchived?: boolean }
   ): Promise<PublisherManagedAdRecord[]> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     return this.repo.listAds(publisherId, opts)
   }
@@ -145,7 +149,7 @@ export class PublisherManagedAdsService {
     adId: string,
     userId: string
   ): Promise<PublisherManagedAdRecord & { creative: PublisherAdCreativeRecord | null }> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     const ad = await this.repo.findAd(adId)
     if (!ad || ad.publisherId !== publisherId) {
@@ -160,7 +164,7 @@ export class PublisherManagedAdsService {
     userId: string,
     raw: PublisherManagedAdCreateInput
   ): Promise<PublisherManagedAdRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:create', this.publisherRepo)
     const publisher = await this.publisherRepo.findById(publisherId)
     if (!publisher) throw new PublisherManagedAdsError('PUBLISHER_NOT_FOUND', 'NOT_FOUND')
@@ -217,7 +221,7 @@ export class PublisherManagedAdsService {
     userId: string,
     raw: PublisherManagedAdUpdateInput
   ): Promise<PublisherManagedAdRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:update', this.publisherRepo)
     const publisher = await this.publisherRepo.findById(publisherId)
     if (!publisher) throw new PublisherManagedAdsError('PUBLISHER_NOT_FOUND', 'NOT_FOUND')
@@ -269,7 +273,7 @@ export class PublisherManagedAdsService {
     adId: string,
     userId: string
   ): Promise<PublisherManagedAdRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:archive', this.publisherRepo)
     const existing = await this.repo.findAd(adId)
     if (!existing || existing.publisherId !== publisherId) {
@@ -291,7 +295,7 @@ export class PublisherManagedAdsService {
     userId: string,
     raw: PublisherAdCreativeCreateInput
   ): Promise<PublisherAdCreativeRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:update', this.publisherRepo)
     const publisher = await this.publisherRepo.findById(publisherId)
     if (!publisher) throw new PublisherManagedAdsError('PUBLISHER_NOT_FOUND', 'NOT_FOUND')
@@ -346,21 +350,19 @@ export class PublisherManagedAdsService {
     inventoryId: string,
     now: Date = new Date()
   ): Promise<ResolvedPublisherAd | null> {
-    if (!isPublisherSelfManagedAdsEnabled() || !isPublisherAdServingEnabled()) {
-      return null
-    }
     const resolved = await this.repo.resolveActiveForInventory(inventoryId, now)
     if (!resolved) return null
+    if (!(await isSelfManagedAdsEffectiveForPublisher(resolved.ad.publisherId))) return null
+    if (!(await this.assertServing(resolved.ad.publisherId))) return null
     if (!isAdEligibleNow(resolved.ad, now)) return null
     return resolved
   }
 
   async resolveByAdId(adId: string, now: Date = new Date()): Promise<ResolvedPublisherAd | null> {
-    if (!isPublisherSelfManagedAdsEnabled() || !isPublisherAdServingEnabled()) {
-      return null
-    }
     const ad = await this.repo.findAd(adId)
     if (!ad || !isAdEligibleNow(ad, now)) return null
+    if (!(await isSelfManagedAdsEffectiveForPublisher(ad.publisherId))) return null
+    if (!(await this.assertServing(ad.publisherId))) return null
     const creative = await this.repo.currentCreative(adId)
     if (!creative?.mediaUrl) return null
     const publisher = await this.publisherRepo.findById(ad.publisherId)
@@ -385,9 +387,6 @@ export class PublisherManagedAdsService {
     referrerType?: string | null
     dedupeKey?: string | null
   }): Promise<{ recorded: boolean }> {
-    if (!isPublisherSelfManagedAdsEnabled() || !isPublisherAdServingEnabled()) {
-      return { recorded: false }
-    }
     if (isSyntheticAdActor(input)) {
       return { recorded: false }
     }
@@ -421,9 +420,6 @@ export class PublisherManagedAdsService {
     sessionId?: string | null
     impressionId?: string | null
   }): Promise<{ destinationUrl: string } | null> {
-    if (!isPublisherSelfManagedAdsEnabled() || !isPublisherAdServingEnabled()) {
-      return null
-    }
     const resolved = await this.resolveByAdId(input.adId)
     if (!resolved) return null
     const dest = resolved.ad.destinationUrl?.trim()
@@ -459,8 +455,8 @@ export class PublisherManagedAdsService {
     to: Date,
     adId?: string
   ): Promise<PublisherAdAnalyticsSummary> {
-    this.assertEnabled()
-    if (!isPublisherAdAnalyticsEnabled()) {
+    await this.assertEnabled(publisherId)
+    if (!(await isFeatureEnabledForPublisher(publisherId, 'AD_ANALYTICS'))) {
       throw new PublisherManagedAdsError('ANALYTICS_DISABLED', 'FLAG_OFF')
     }
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
@@ -474,9 +470,7 @@ export class PublisherManagedAdsService {
   }
 
   async runScheduleTick(limit = 50): Promise<{ activated: number; ended: number; skipped?: boolean }> {
-    if (!isPublisherSelfManagedAdsEnabled()) {
-      return { activated: 0, ended: 0, skipped: true }
-    }
+    // Always tick schedule windows; public resolve still gates on allowlist/serving.
     const result = await this.repo.tickSchedule(new Date(), limit)
     publisherLog('publisher_ad_schedule_tick', result)
     return result

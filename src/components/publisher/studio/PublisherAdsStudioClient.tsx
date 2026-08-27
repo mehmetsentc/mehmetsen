@@ -419,7 +419,10 @@ export function PublisherAdsStudioClient({
 
       {wizardOpen ? (
         <div className="mt-6 space-y-3 rounded-xl border border-[rgb(var(--color-border))] p-4">
-          <h2 className="font-bold">Yerleşim sihirbazı</h2>
+          <h2 className="font-bold">Reklam alanı oluştur (4 adım)</h2>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            1) Nerede gösterilecek · 2) Boyut/format · 3) Satışa açık mı · 4) Kaydet. Ödeme veya açık artırma yok.
+          </p>
           <label className="block text-sm">
             <span className="font-semibold">Ad</span>
             <input
@@ -532,7 +535,10 @@ export function PublisherAdsStudioClient({
         {loading ? (
           <p className="text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-[rgb(var(--color-muted))]">Henüz reklam alanı yok.</p>
+          <p className="text-sm text-[rgb(var(--color-muted))]">
+            Henüz reklam alanı yok. Önce yerleşim ekleyin; ardından müşteri banner/videolarını
+            &quot;Yönetilen reklamlar&quot; sekmesinden yayınlayabilirsiniz. Ödeme yok.
+          </p>
         ) : (
           items.map((item) => (
             <div

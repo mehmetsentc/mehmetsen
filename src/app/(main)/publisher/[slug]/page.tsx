@@ -74,11 +74,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PublisherProfilePage({ params }: Props) {
-  if (!isPublisherPlatformEnabled()) notFound()
   if (!hasDatabaseUrl()) notFound()
 
   const slug = decodeSlug((await params).slug)
   if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
+
+  // Global OFF still allows allowlisted publishers (P11 controlled rollout).
+  if (!isPublisherPlatformEnabled()) {
+    const { publisherRepository } = await import('@/services/publisher/publisherRepository')
+    const { isPlatformEffectiveForPublisher } = await import('@/lib/publisher/effectiveFlags')
+    const row = await publisherRepository.findBySlug(slug)
+    if (!row || !(await isPlatformEffectiveForPublisher(row.id))) notFound()
+  }
 
   const publisher = await publisherService.getPublicPublisherBySlug(slug)
   if (!publisher) notFound()
@@ -88,24 +95,31 @@ export default async function PublisherProfilePage({ params }: Props) {
     ? await publisherService.getPublisherArticles(fullRecord.id, 24)
     : { items: [], nextCursor: null }
 
-  const publishedLayout =
-    fullRecord && isPublisherProfileComposerEnabled()
-      ? await publisherLayoutService.getPublishedLayoutForPublic(fullRecord.id)
-      : null
+  const publishedLayout = fullRecord
+    ? await (async () => {
+        const { isFeatureEnabledForPublisher } = await import('@/lib/publisher/effectiveFlags')
+        const composerOn =
+          isPublisherProfileComposerEnabled() ||
+          (await isFeatureEnabledForPublisher(fullRecord.id, 'PROFILE_COMPOSER'))
+        if (!composerOn) return null
+        return publisherLayoutService.getPublishedLayoutForPublic(fullRecord.id)
+      })()
+    : null
 
   let adInventoryById: Map<string, import('@/types/publisherAdInventory').PublisherAdInventoryRecord> | undefined
   let resolvedAdsByInventoryId:
     | Map<string, import('@/types/publisherManagedAds').ResolvedPublisherAd>
     | undefined
-  if (publishedLayout && isProfileAdSlotsEnabled() && fullRecord) {
+  if (publishedLayout && fullRecord) {
+    const { isFeatureEnabledForPublisher } = await import('@/lib/publisher/effectiveFlags')
+    const slotsOn =
+      isProfileAdSlotsEnabled() ||
+      (await isFeatureEnabledForPublisher(fullRecord.id, 'PROFILE_AD_SLOTS'))
+    if (slotsOn) {
     try {
       const { publisherAdInventoryService } = await import(
         '@/services/publisher/publisherAdInventoryService'
       )
-      const {
-        isPublisherSelfManagedAdsEnabled,
-        isPublisherAdServingEnabled,
-      } = await import('@/lib/publisher/selfManagedAdFlags')
 
       // Load all active inventory attached to layout slots (not only publicly listed)
       const allInv = await publisherAdInventoryService.listPublicSellable(fullRecord.id)
@@ -140,21 +154,21 @@ export default async function PublisherProfilePage({ params }: Props) {
       }
       adInventoryById = map
 
-      if (isPublisherSelfManagedAdsEnabled() && isPublisherAdServingEnabled()) {
-        const { publisherManagedAdsService } = await import(
-          '@/services/publisher/publisherManagedAdsService'
-        )
-        resolvedAdsByInventoryId = new Map()
-        await Promise.all(
-          [...map.keys()].map(async (invId) => {
-            const resolved = await publisherManagedAdsService.resolveActivePublisherAd(invId)
-            if (resolved) resolvedAdsByInventoryId!.set(invId, resolved)
-          })
-        )
-      }
+      // resolveActivePublisherAd already gates on allowlist + serving
+      const { publisherManagedAdsService } = await import(
+        '@/services/publisher/publisherManagedAdsService'
+      )
+      resolvedAdsByInventoryId = new Map()
+      await Promise.all(
+        [...map.keys()].map(async (invId) => {
+          const resolved = await publisherManagedAdsService.resolveActivePublisherAd(invId)
+          if (resolved) resolvedAdsByInventoryId!.set(invId, resolved)
+        })
+      )
     } catch {
       adInventoryById = undefined
       resolvedAdsByInventoryId = undefined
+    }
     }
   }
 

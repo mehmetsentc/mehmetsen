@@ -1,4 +1,4 @@
-import { isPublisherAdInventoryEnabled } from '@/lib/publisher/adInventoryFlags'
+import { isAdInventoryEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import {
   AdInventoryValidationError,
   normalizeCreateInput,
@@ -67,8 +67,8 @@ export class PublisherAdInventoryService {
     private readonly publisherRepo: PublisherRepository = publisherRepository
   ) {}
 
-  private assertEnabled() {
-    if (!isPublisherAdInventoryEnabled()) {
+  private async assertEnabled(publisherId: string) {
+    if (!(await isAdInventoryEffectiveForPublisher(publisherId))) {
       throw new PublisherAdInventoryError('AD_INVENTORY_DISABLED', 'FLAG_OFF')
     }
   }
@@ -78,7 +78,7 @@ export class PublisherAdInventoryService {
     userId: string,
     opts?: { includeArchived?: boolean }
   ): Promise<PublisherAdInventoryRecord[]> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     return this.repo.listForPublisher(publisherId, opts)
   }
@@ -88,7 +88,7 @@ export class PublisherAdInventoryService {
     inventoryId: string,
     userId: string
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     const item = await this.repo.findById(inventoryId)
     if (!item || item.publisherId !== publisherId) {
@@ -98,7 +98,7 @@ export class PublisherAdInventoryService {
   }
 
   async dashboard(publisherId: string, userId: string): Promise<AdInventoryDashboardCounts> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     return this.repo.dashboardCounts(publisherId)
   }
@@ -108,7 +108,7 @@ export class PublisherAdInventoryService {
     userId: string,
     raw: AdInventoryCreateInput
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:create', this.publisherRepo)
     const publisher = await this.publisherRepo.findById(publisherId)
     if (!publisher) throw new PublisherAdInventoryError('PUBLISHER_NOT_FOUND', 'NOT_FOUND')
@@ -156,7 +156,7 @@ export class PublisherAdInventoryService {
     userId: string,
     raw: AdInventoryUpdateInput
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:update', this.publisherRepo)
     const publisher = await this.publisherRepo.findById(publisherId)
     if (!publisher) throw new PublisherAdInventoryError('PUBLISHER_NOT_FOUND', 'NOT_FOUND')
@@ -226,7 +226,7 @@ export class PublisherAdInventoryService {
     saleStatus: AdSaleStatus,
     isPubliclyListed?: boolean
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:publish', this.publisherRepo)
     return this.update(publisherId, inventoryId, userId, {
       saleStatus,
@@ -247,7 +247,7 @@ export class PublisherAdInventoryService {
     inventoryId: string,
     userId: string
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:archive', this.publisherRepo)
     const archived = await this.repo.archive(inventoryId, publisherId, userId)
     if (!archived) throw new PublisherAdInventoryError('NOT_FOUND', 'NOT_FOUND')
@@ -266,7 +266,7 @@ export class PublisherAdInventoryService {
     inventoryId: string,
     userId: string
   ): Promise<PublisherAdInventoryAuditRecord[]> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:read', this.publisherRepo)
     const item = await this.repo.findById(inventoryId)
     if (!item || item.publisherId !== publisherId) {
@@ -297,7 +297,7 @@ export class PublisherAdInventoryService {
     layoutItemId: string,
     userId: string
   ): Promise<PublisherAdInventoryRecord> {
-    this.assertEnabled()
+    await this.assertEnabled(publisherId)
     await requirePublisherMember(publisherId, userId, 'ads:update', this.publisherRepo)
     const existingAttach = await this.repo.findByLayoutItemId(layoutItemId)
     if (existingAttach && existingAttach.id !== inventoryId) {

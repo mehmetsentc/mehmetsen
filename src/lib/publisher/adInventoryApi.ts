@@ -7,16 +7,16 @@ import {
   studioErrorResponse,
   StudioRouteError,
 } from '@/lib/publisher/studioApi'
-import { isPublisherAdInventoryEnabled } from '@/lib/publisher/adInventoryFlags'
+import { isAdInventoryEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { PublisherAdInventoryError } from '@/services/publisher/publisherAdInventoryService'
 import type { PublisherPermission } from '@/lib/publisher/authorization'
 import type { PublisherAdInventoryRecord } from '@/types/publisherAdInventory'
 
-export function adInventoryGuard() {
+export async function adInventoryGuard(publisherId: string) {
   if (!hasDatabaseUrl()) {
     return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
   }
-  if (!isPublisherAdInventoryEnabled()) {
+  if (!(await isAdInventoryEffectiveForPublisher(publisherId))) {
     return studioDisabledResponse()
   }
   return null
@@ -27,7 +27,7 @@ export async function withAdInventoryAuth(
   publisherId: string,
   permission: PublisherPermission
 ) {
-  const guard = adInventoryGuard()
+  const guard = await adInventoryGuard(publisherId)
   if (guard) return { error: guard as NextResponse }
   try {
     const auth = await requireStudioAuth(request, publisherId, permission)

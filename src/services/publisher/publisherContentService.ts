@@ -3,11 +3,7 @@ import 'server-only'
 import { textToArticleBlocks } from '@/lib/articleBlocks'
 import { newPublisherId } from '@/lib/publisher/id'
 import { publisherLog } from '@/lib/publisher/observability'
-import {
-  isPublisherContentStudioEnabled,
-  isPublisherManualPublishEnabled,
-  isPublisherSchedulingEnabled,
-} from '@/lib/publisher/contentFlags'
+import { isContentStudioEffectiveForPublisher, isFeatureEnabledForPublisher } from '@/lib/publisher/effectiveFlags'
 import {
   applyDraftPatch,
   canRoleApproveContent,
@@ -120,8 +116,8 @@ export class PublisherContentService {
     private readonly publishService: PublisherPublishService = publisherPublishService
   ) {}
 
-  private assertStudio() {
-    if (!isPublisherContentStudioEnabled()) {
+  private async assertStudio(publisherId: string) {
+    if (!(await isContentStudioEffectiveForPublisher(publisherId))) {
       throw new PublisherContentError('CONTENT_STUDIO_DISABLED', 'DISABLED')
     }
   }
@@ -145,7 +141,7 @@ export class PublisherContentService {
       sourceMode?: string | null
     }
   ): Promise<PublisherContentItem[]> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
     const statuses =
       !status || status === 'ALL'
@@ -170,7 +166,7 @@ export class PublisherContentService {
   }
 
   async get(publisherId: string, contentId: string, userId: string): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
     const item = await this.contentRepo.findById(contentId)
     if (!item || item.publisherId !== publisherId) {
@@ -180,7 +176,7 @@ export class PublisherContentService {
   }
 
   async createDraft(publisherId: string, userId: string): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:create', this.publisherRepo)
     if (!roleHasPermission(member.role, 'content:create')) {
       throw new PublisherStudioAuthError('INSUFFICIENT_PERMISSION', 'FORBIDDEN')
@@ -211,7 +207,7 @@ export class PublisherContentService {
     patch: PublisherContentDraftInput,
     opts?: { meaningful?: boolean }
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:write', this.publisherRepo)
     const current = await this.contentRepo.findById(contentId)
     if (!current || current.publisherId !== publisherId) {
@@ -281,7 +277,7 @@ export class PublisherContentService {
     contentId: string,
     userId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:submit', this.publisherRepo)
     const current = await this.contentRepo.findById(contentId)
     if (!current || current.publisherId !== publisherId) {
@@ -319,7 +315,7 @@ export class PublisherContentService {
     userId: string,
     reviewNote: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:review', this.publisherRepo)
     if (!canRoleReviewContent(member.role)) {
       throw new PublisherContentError('CANNOT_REVIEW', 'FORBIDDEN')
@@ -357,7 +353,7 @@ export class PublisherContentService {
     contentId: string,
     userId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:approve', this.publisherRepo)
     if (!canRoleApproveContent(member.role)) {
       throw new PublisherContentError('CANNOT_APPROVE', 'FORBIDDEN')
@@ -393,8 +389,8 @@ export class PublisherContentService {
     userId: string,
     opts?: { fast?: boolean; displayName?: string | null }
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
-    if (!isPublisherManualPublishEnabled()) {
+    await this.assertStudio(publisherId)
+    if (!(await isFeatureEnabledForPublisher(publisherId, 'MANUAL_PUBLISH'))) {
       throw new PublisherContentError('MANUAL_PUBLISH_DISABLED', 'FLAG_OFF')
     }
     const member = await requirePublisherMember(publisherId, userId, 'content:publish', this.publisherRepo)
@@ -508,14 +504,15 @@ export class PublisherContentService {
     failed: number
     skipped: number
   }> {
-    if (!isPublisherManualPublishEnabled()) {
-      return { attempted: 0, healed: 0, failed: 0, skipped: 0 }
-    }
     const items = await this.contentRepo.listPartialPublications(limit)
     let healed = 0
     let failed = 0
     let skipped = 0
     for (const item of items) {
+      if (!(await isFeatureEnabledForPublisher(item.publisherId, 'MANUAL_PUBLISH'))) {
+        skipped++
+        continue
+      }
       publisherLog('publisher_reconcile_attempt', {
         publisherId: item.publisherId,
         contentId: item.id,
@@ -562,8 +559,8 @@ export class PublisherContentService {
     contentId: string,
     userId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
-    if (!isPublisherSchedulingEnabled()) {
+    await this.assertStudio(publisherId)
+    if (!(await isFeatureEnabledForPublisher(publisherId, 'SCHEDULING'))) {
       throw new PublisherContentError('SCHEDULING_DISABLED', 'FLAG_OFF')
     }
     const member = await requirePublisherMember(publisherId, userId, 'content:schedule', this.publisherRepo)
@@ -606,7 +603,7 @@ export class PublisherContentService {
   }
 
   async listRevisions(publisherId: string, contentId: string, userId: string) {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
     const item = await this.contentRepo.findById(contentId)
     if (!item || item.publisherId !== publisherId) {
@@ -624,7 +621,7 @@ export class PublisherContentService {
     userId: string,
     revisionId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     const member = await requirePublisherMember(publisherId, userId, 'content:write', this.publisherRepo)
     const current = await this.contentRepo.findById(contentId)
     if (!current || current.publisherId !== publisherId) {
@@ -678,8 +675,8 @@ export class PublisherContentService {
     scheduledAtIso: string,
     timezone = 'Europe/Istanbul'
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
-    if (!isPublisherSchedulingEnabled()) {
+    await this.assertStudio(publisherId)
+    if (!(await isFeatureEnabledForPublisher(publisherId, 'SCHEDULING'))) {
       throw new PublisherContentError('SCHEDULING_DISABLED', 'FLAG_OFF')
     }
     const member = await requirePublisherMember(publisherId, userId, 'content:schedule', this.publisherRepo)
@@ -729,7 +726,7 @@ export class PublisherContentService {
     contentId: string,
     userId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:archive', this.publisherRepo)
     const current = await this.contentRepo.findById(contentId)
     if (!current || current.publisherId !== publisherId) {
@@ -759,7 +756,7 @@ export class PublisherContentService {
     userId: string,
     rawArticleId: string
   ): Promise<PublisherContentItem> {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:source-import', this.publisherRepo)
     const raw = await this.contentRepo.findRawArticleForPublisher(publisherId, rawArticleId)
     if (!raw) throw new PublisherContentError('SOURCE_NOT_FOUND', 'NOT_FOUND')
@@ -834,13 +831,13 @@ export class PublisherContentService {
   }
 
   async listSourceArticles(publisherId: string, userId: string) {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
     return this.contentRepo.listSourceArticles({ publisherId, limit: 60 })
   }
 
   async listAudit(publisherId: string, contentId: string, userId: string) {
-    this.assertStudio()
+    await this.assertStudio(publisherId)
     await requirePublisherMember(publisherId, userId, 'content:read', this.publisherRepo)
     const item = await this.contentRepo.findById(contentId)
     if (!item || item.publisherId !== publisherId) {
@@ -856,9 +853,6 @@ export class PublisherContentService {
     recovered: number
     errors: number
   }> {
-    if (!isPublisherSchedulingEnabled() || !isPublisherManualPublishEnabled()) {
-      return { claimed: 0, published: 0, recovered: 0, errors: 0 }
-    }
     const now = new Date()
     const leaseMs = 2 * 60 * 1000
     let claimed = 0
@@ -869,6 +863,21 @@ export class PublisherContentService {
     for (let i = 0; i < limit; i++) {
       const item = await this.contentRepo.claimNextScheduled(workerId, now, leaseMs)
       if (!item) break
+      const schedulingOn = await isFeatureEnabledForPublisher(item.publisherId, 'SCHEDULING')
+      const manualOn = await isFeatureEnabledForPublisher(item.publisherId, 'MANUAL_PUBLISH')
+      if (!schedulingOn || !manualOn) {
+        await this.contentRepo.updateOptimistic(
+          item.id,
+          item.publisherId,
+          { version: item.version },
+          {
+            scheduleClaimedAt: null,
+            scheduleClaimedBy: null,
+            scheduleClaimExpiresAt: null,
+          }
+        )
+        continue
+      }
       claimed++
       publisherLog('publisher_schedule_claimed', {
         publisherId: item.publisherId,

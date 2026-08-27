@@ -239,6 +239,13 @@
       "when": 1787837700000,
       "tag": "0033_phase_p10_self_managed_ads",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1787841300000,
+      "tag": "0034_phase_p11_publisher_rollout",
+      "breakpoints": true
     }
   ]
 }

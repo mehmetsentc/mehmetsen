@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { verifyUserRequest } from '@/lib/userAuthServer'
-import { isPublisherStudioEnabled } from '@/lib/publisher/featureFlag'
+import {
+  isStudioEffectiveForPublisher,
+} from '@/lib/publisher/effectiveFlags'
 import {
   PublisherStudioAuthError,
   requirePublisherMember,
@@ -17,7 +19,8 @@ export async function requireStudioAuth(
   publisherId: string,
   permission: PublisherPermission
 ) {
-  if (!isPublisherStudioEnabled()) {
+  const studioOn = await isStudioEffectiveForPublisher(publisherId)
+  if (!studioOn) {
     throw new StudioRouteError('DISABLED', 404)
   }
   const user = await verifyUserRequest(request)

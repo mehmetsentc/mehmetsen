@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BadgeCheck, ExternalLink, Globe, MapPin } from 'lucide-react'
@@ -12,6 +12,8 @@ import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publis
 import { FollowButton } from '@/components/social/FollowButton'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import toast from 'react-hot-toast'
+
+type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
 
 export function PublisherProfileClient({
   publisher,
@@ -25,6 +27,39 @@ export function PublisherProfileClient({
   const [message, setMessage] = useState('')
   const [businessEmail, setBusinessEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [claimUi, setClaimUi] = useState<ClaimUiStatus>('loading')
+  const [studioHref, setStudioHref] = useState<string | null>(null)
+
+  const refreshClaimStatus = useCallback(async () => {
+    const user = auth.currentUser
+    if (!user) {
+      setClaimUi('none')
+      setStudioHref(null)
+      return
+    }
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch(`/api/publishers/${encodeURIComponent(publisher.slug)}/claim`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        setClaimUi('none')
+        return
+      }
+      const body = (await res.json()) as {
+        status?: ClaimUiStatus
+        studioHref?: string | null
+      }
+      setClaimUi(body.status ?? 'none')
+      setStudioHref(body.studioHref ?? null)
+    } catch {
+      setClaimUi('none')
+    }
+  }, [publisher.slug])
+
+  useEffect(() => {
+    void refreshClaimStatus()
+  }, [refreshClaimStatus])
 
   const showClaimCta =
     publisher.status === 'UNCLAIMED' &&
@@ -56,6 +91,7 @@ export function PublisherProfileClient({
       if (!res.ok) throw new Error(body.error || 'Talep gönderilemedi')
       toast.success('Sahiplik talebiniz alındı. İnceleme sonrası bilgilendirileceksiniz.')
       setClaimOpen(false)
+      setClaimUi('pending')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Talep gönderilemedi')
     } finally {
@@ -131,24 +167,65 @@ export function PublisherProfileClient({
         </div>
       </header>
 
-      {showClaimCta && (
+      {claimUi === 'pending' && (
+        <section className="mb-8 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">İnceleniyor</p>
+          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+            Sahiplik talebiniz incelemede. Aynı yayın için yeni talep oluşturulamaz.
+          </p>
+        </section>
+      )}
+
+      {claimUi === 'approved' && studioHref && (
+        <section className="mb-8 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Onaylandı</p>
+          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+            Yayıncı hesabınız doğrulandı. Studio’dan profil ve içerik yönetimi yapabilirsiniz.
+          </p>
+          <Link
+            href={studioHref}
+            className="mt-3 inline-flex rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white"
+          >
+            Publisher Studio&apos;ya Git
+          </Link>
+        </section>
+      )}
+
+      {claimUi === 'rejected' && showClaimCta && (
+        <section className="mb-8 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Reddedildi</p>
+          <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+            Önceki talebiniz reddedildi. Gerekirse yeniden başvurabilirsiniz.
+          </p>
+        </section>
+      )}
+
+      {showClaimCta && claimUi !== 'pending' && claimUi !== 'approved' && (
         <section className="mb-8 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
           {!claimOpen ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-medium text-[rgb(var(--color-text))]">
-                Bu yayın kuruluşunun sahibi misiniz?
+                Bu yayın kuruluşunu yönetiyor musunuz?
               </p>
               <button
                 type="button"
-                onClick={() => setClaimOpen(true)}
+                onClick={() => {
+                  if (!auth.currentUser) {
+                    router.push(
+                      `${ROUTES.LOGIN}?next=${encodeURIComponent(ROUTES.PUBLISHER(publisher.slug))}`
+                    )
+                    return
+                  }
+                  setClaimOpen(true)
+                }}
                 className="shrink-0 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white"
               >
-                Sahiplik talep et
+                Yayıncı Profilini Doğrula
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm font-semibold">Sahiplik talebi</p>
+              <p className="text-sm font-semibold">Yayıncı doğrulama talebi</p>
               <input
                 type="email"
                 placeholder="Kurumsal e-posta (isteğe bağlı)"
@@ -200,7 +277,7 @@ export function PublisherProfileClient({
                   )}
                 >
                   {article.thumbnailUrl ? (
-                    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
+                    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface))]">
                       <SafeNewsImage
                         src={article.thumbnailUrl}
                         alt=""
@@ -210,21 +287,14 @@ export function PublisherProfileClient({
                     </div>
                   ) : null}
                   <div className="min-w-0">
-                    <h3 className="font-bold leading-snug text-[rgb(var(--color-text))] line-clamp-2">
+                    <p className="font-semibold text-[rgb(var(--color-text))] line-clamp-2">
                       {article.title}
-                    </h3>
-                    {article.publishedAt && (
-                      <time
-                        dateTime={article.publishedAt.toISOString()}
-                        className="mt-1 block text-xs text-[rgb(var(--color-muted))]"
-                      >
-                        {article.publishedAt.toLocaleDateString('tr-TR', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </time>
-                    )}
+                    </p>
+                    {article.summary ? (
+                      <p className="mt-1 text-sm text-[rgb(var(--color-muted))] line-clamp-2">
+                        {article.summary}
+                      </p>
+                    ) : null}
                   </div>
                 </Link>
               </li>

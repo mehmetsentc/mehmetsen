@@ -539,6 +539,25 @@ export class PublisherRepository {
     return rows.map(mapClaim)
   }
 
+  async findLatestClaimForUser(
+    publisherId: string,
+    userId: string
+  ): Promise<PublisherClaimRequestRecord | null> {
+    const db = this.requireDb()
+    const rows = await db
+      .select()
+      .from(publisherClaimRequests)
+      .where(
+        and(
+          eq(publisherClaimRequests.publisherId, publisherId),
+          eq(publisherClaimRequests.userId, userId)
+        )
+      )
+      .orderBy(desc(publisherClaimRequests.createdAt))
+      .limit(1)
+    return rows[0] ? mapClaim(rows[0]) : null
+  }
+
   async listPendingClaims(limit = 100): Promise<PublisherClaimRequestRecord[]> {
     const db = this.requireDb()
     const rows = await db

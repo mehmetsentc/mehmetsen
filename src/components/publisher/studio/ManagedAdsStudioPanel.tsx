@@ -415,7 +415,10 @@ export function ManagedAdsStudioPanel({
       {loading ? (
         <p className="text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</p>
       ) : ads.length === 0 ? (
-        <p className="text-sm text-[rgb(var(--color-muted))]">Henüz reklam yok.</p>
+        <p className="text-sm text-[rgb(var(--color-muted))]">
+          Henüz yönetilen reklam yok. Reklamveren, medya, bağlantı, yerleşim ve tarihleri girerek
+          yayınlayın. Platform ödemesi veya komisyon yok.
+        </p>
       ) : (
         <ul className="space-y-3">
           {ads.map((ad) => (

@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server'
 import { verifyUserRequest } from '@/lib/userAuthServer'
 import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { hasDatabaseUrl } from '@/db'
+import { isPlatformEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { isPublisherPlatformEnabled } from '@/lib/publisher/featureFlag'
 import { publisherClaimService } from '@/services/publisher/publisherClaimService'
 import { publisherRepository } from '@/services/publisher/publisherRepository'
+import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,10 +15,12 @@ interface RouteContext {
   params: Promise<{ slug: string }>
 }
 
-export async function POST(request: Request, context: RouteContext) {
-  if (!isPublisherPlatformEnabled()) {
-    return NextResponse.json({ error: 'Publisher platform disabled' }, { status: 404 })
-  }
+async function assertPlatformForPublisher(publisherId: string) {
+  if (isPublisherPlatformEnabled()) return true
+  return isPlatformEffectiveForPublisher(publisherId)
+}
+
+export async function GET(request: Request, context: RouteContext) {
   const user = await verifyUserRequest(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) {
@@ -26,6 +30,44 @@ export async function POST(request: Request, context: RouteContext) {
   const { slug } = await context.params
   const publisher = await publisherRepository.findBySlug(slug)
   if (!publisher) return NextResponse.json({ error: 'Publisher not found' }, { status: 404 })
+  if (!(await assertPlatformForPublisher(publisher.id))) {
+    return NextResponse.json({ error: 'Publisher platform disabled' }, { status: 404 })
+  }
+
+  const claim = await publisherRepository.findLatestClaimForUser(publisher.id, user.uid)
+  const member = await publisherRepository.findActiveMember(publisher.id, user.uid)
+
+  let statusLabel: 'none' | 'pending' | 'approved' | 'rejected' = 'none'
+  if (claim?.status === 'PENDING') statusLabel = 'pending'
+  else if (claim?.status === 'APPROVED' || member) statusLabel = 'approved'
+  else if (claim?.status === 'REJECTED') statusLabel = 'rejected'
+
+  return NextResponse.json({
+    status: statusLabel,
+    claimStatus: claim?.status ?? null,
+    claimId: claim?.id ?? null,
+    isMember: Boolean(member),
+    isVerified: publisher.verificationStatus === 'VERIFIED',
+    studioHref:
+      member || claim?.status === 'APPROVED'
+        ? ROUTES.PUBLISHER_STUDIO.PUBLISHER(publisher.slug)
+        : null,
+  })
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const user = await verifyUserRequest(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!hasDatabaseUrl()) {
+    return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
+  }
+
+  const { slug } = await context.params
+  const publisher = await publisherRepository.findBySlug(slug)
+  if (!publisher) return NextResponse.json({ error: 'Publisher not found' }, { status: 404 })
+  if (!(await assertPlatformForPublisher(publisher.id))) {
+    return NextResponse.json({ error: 'Publisher platform disabled' }, { status: 404 })
+  }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 

@@ -24,6 +24,7 @@ export {
   publisherMembers,
   publisherClaimRequests,
 } from './publishers'
+export { publisherFeatureAccess } from './publisherFeatureAccess'
 export {
   publisherLayouts,
   publisherLayoutSections,

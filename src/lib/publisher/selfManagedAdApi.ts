@@ -7,7 +7,7 @@ import {
   studioErrorResponse,
   StudioRouteError,
 } from '@/lib/publisher/studioApi'
-import { isPublisherSelfManagedAdsEnabled } from '@/lib/publisher/selfManagedAdFlags'
+import { isSelfManagedAdsEffectiveForPublisher } from '@/lib/publisher/effectiveFlags'
 import { PublisherManagedAdsError } from '@/services/publisher/publisherManagedAdsService'
 import type { PublisherPermission } from '@/lib/publisher/authorization'
 import type {
@@ -15,11 +15,11 @@ import type {
   PublisherManagedAdRecord,
 } from '@/types/publisherManagedAds'
 
-export function selfManagedAdsGuard() {
+export async function selfManagedAdsGuard(publisherId: string) {
   if (!hasDatabaseUrl()) {
     return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
   }
-  if (!isPublisherSelfManagedAdsEnabled()) {
+  if (!(await isSelfManagedAdsEffectiveForPublisher(publisherId))) {
     return studioDisabledResponse()
   }
   return null
@@ -30,7 +30,7 @@ export async function withSelfManagedAdsAuth(
   publisherId: string,
   permission: PublisherPermission
 ) {
-  const guard = selfManagedAdsGuard()
+  const guard = await selfManagedAdsGuard(publisherId)
   if (guard) return { error: guard as NextResponse }
   try {
     const auth = await requireStudioAuth(request, publisherId, permission)
