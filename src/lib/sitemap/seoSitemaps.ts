@@ -12,7 +12,6 @@ import { hasDatabaseUrl } from '@/db'
 import { publisherService } from '@/services/publisher/publisherService'
 import { isPublisherPlatformEnabled } from '@/lib/publisher/featureFlag'
 import { isEventPagesEnabled } from '@/lib/seo/featureFlag'
-import { eventPageService } from '@/services/seo/eventPageService'
 import {
   evaluateCategorySeo,
   evaluatePublisherSeo,
@@ -53,9 +52,16 @@ ${rows}
 }
 
 export async function buildSitemapIndexXmlAsync(base: string): Promise<string> {
-  const pageCount = await getSitemapPageCount()
+  let pageCount = 1
+  try {
+    pageCount = await getSitemapPageCount()
+  } catch (err) {
+    recordSitemapError('index', err instanceof Error ? err.message : 'page_count_failed')
+    pageCount = 1
+  }
+
   const newsChunks = Array.from({ length: pageCount }, (_, i) => ({
-    loc: `${base}/sitemap-news-${i}.xml`,
+    loc: `${base}/sitemap/${i}.xml`,
   }))
   const dedicated = [
     `${base}/news-sitemap.xml`,
@@ -182,6 +188,7 @@ export async function buildTopicsSitemap(base: string): Promise<string> {
 export async function buildEventsSitemap(base: string): Promise<string> {
   if (!isEventPagesEnabled()) return urlsetXml([])
   try {
+    const { eventPageService } = await import('@/services/seo/eventPageService')
     const events = await eventPageService.listIndexable(SITEMAP_CHUNK_LIMIT)
     const entries: MetadataRoute.Sitemap = events.map((e) => ({
       url: `${base}${ROUTES.EVENT(e.slug)}`,

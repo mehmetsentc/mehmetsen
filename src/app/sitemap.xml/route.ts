@@ -82,27 +82,43 @@ ${rows}
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export async function GET() {
-  const headerStore = await headers()
-  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
-  const citySlug = getCitySlugFromHost(host)
+  try {
+    const headerStore = await headers()
+    const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
+    const citySlug = getCitySlugFromHost(host)
 
-  if (citySlug) {
-    const body = await buildCitySitemapXml(citySlug)
+    if (citySlug) {
+      const body = await buildCitySitemapXml(citySlug)
+      return new NextResponse(body, {
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
+        },
+      })
+    }
+
+    // National: P6 sitemap index with entity sitemaps + news chunks
+    const base = getSiteUrl()
+    const body = await buildSitemapIndexXmlAsync(base)
     return new NextResponse(body, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
+        'Cache-Control': 's-maxage=172800, stale-while-revalidate=7200',
+      },
+    })
+  } catch (err) {
+    console.error('[sitemap.xml] fatal:', err)
+    const base = getSiteUrl()
+    const fallback = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>${base}/news-sitemap.xml</loc></sitemap>
+</sitemapindex>`
+    return new NextResponse(fallback, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 's-maxage=300, stale-while-revalidate=60',
       },
     })
   }
-
-  // National: P6 sitemap index with entity sitemaps + news chunks
-  const base = getSiteUrl()
-  const body = await buildSitemapIndexXmlAsync(base)
-  return new NextResponse(body, {
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 's-maxage=172800, stale-while-revalidate=7200',
-    },
-  })
 }
