@@ -28,6 +28,9 @@ export type PublisherPermission =
   | 'ads:update'
   | 'ads:publish'
   | 'ads:archive'
+  | 'ads:requests:read'
+  | 'ads:requests:review'
+  | 'ads:bookings:read'
 
 const ADS_ALL: PublisherPermission[] = [
   'ads:read',
@@ -35,7 +38,12 @@ const ADS_ALL: PublisherPermission[] = [
   'ads:update',
   'ads:publish',
   'ads:archive',
+  'ads:requests:read',
+  'ads:requests:review',
+  'ads:bookings:read',
 ]
+
+const ADS_REQUEST_READ: PublisherPermission[] = ['ads:requests:read', 'ads:bookings:read']
 
 const CONTENT_ALL: PublisherPermission[] = [
   'content:read',
@@ -113,6 +121,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'content:read',
     'team:read',
     'ads:read',
+    ...ADS_REQUEST_READ,
   ],
   VIEWER: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read'],
 }

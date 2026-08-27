@@ -39,6 +39,15 @@ export {
   publisherAdInventoryAudit,
 } from './publisherAdInventory'
 export {
+  advertisers,
+  advertiserMembers,
+  advertiserCampaigns,
+  advertiserCreatives,
+  adBookingRequests,
+  adBookings,
+  marketplaceAuditEvents,
+} from './advertiserMarketplace'
+export {
   userProfiles,
   userPublisherFollows,
   articleLikes,

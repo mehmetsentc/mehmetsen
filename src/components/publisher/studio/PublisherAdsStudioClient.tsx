@@ -61,11 +61,37 @@ export function PublisherAdsStudioClient({
   slug: string
   publisher: PublisherRecord
 }) {
+  const [tab, setTab] = useState<'inventory' | 'requests' | 'bookings'>('inventory')
   const [items, setItems] = useState<SerializedItem[]>([])
   const [dashboard, setDashboard] = useState<AdInventoryDashboardCounts>(EMPTY_DASH)
   const [loading, setLoading] = useState(true)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [previewId, setPreviewId] = useState<string | null>(null)
+  const [incoming, setIncoming] = useState<
+    Array<{
+      id: string
+      status: string
+      inventoryId: string
+      advertiserId: string
+      priceSnapshotMinor: number | null
+      currency: string
+      message: string | null
+      requestedStartAt: string
+      requestedEndAt: string
+    }>
+  >([])
+  const [bookings, setBookings] = useState<
+    Array<{
+      id: string
+      status: string
+      inventoryId: string
+      advertiserId: string
+      startAt: string
+      endAt: string
+      priceMinor: number | null
+      currency: string
+    }>
+  >([])
 
   const [form, setForm] = useState<AdInventoryCreateInput>({
     name: '',
@@ -101,12 +127,59 @@ export function PublisherAdsStudioClient({
     }
   }, [publisher.id, tokenHeaders])
 
+  const refreshRequests = useCallback(async () => {
+    try {
+      const headers = await tokenHeaders()
+      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/requests`, { headers })
+      if (!res.ok) return
+      const data = await res.json()
+      setIncoming(data.requests || [])
+    } catch {
+      /* flag may be off */
+    }
+  }, [publisher.id, tokenHeaders])
+
+  const refreshBookings = useCallback(async () => {
+    try {
+      const headers = await tokenHeaders()
+      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/bookings`, { headers })
+      if (!res.ok) return
+      const data = await res.json()
+      setBookings(data.bookings || [])
+    } catch {
+      /* flag may be off */
+    }
+  }, [publisher.id, tokenHeaders])
+
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(() => {
       void refresh()
+      void refreshRequests()
+      void refreshBookings()
     })
     return () => unsub()
-  }, [refresh])
+  }, [refresh, refreshRequests, refreshBookings])
+
+  const reviewRequest = async (
+    requestId: string,
+    action: 'approve' | 'reject' | 'offer',
+    extra?: { note?: string; publisherOfferMinor?: number }
+  ) => {
+    try {
+      const headers = await tokenHeaders()
+      const res = await fetch(`/api/publisher-studio/${publisher.id}/ads/requests/${requestId}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action, ...extra }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'İşlem başarısız')
+      toast.success(action === 'approve' ? 'Onaylandı (ödeme bekleniyor)' : action === 'reject' ? 'Reddedildi' : 'Teklif gönderildi')
+      await refreshRequests()
+      await refreshBookings()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Hata')
+    }
+  }
 
   const create = async () => {
     try {
@@ -178,14 +251,124 @@ export function PublisherAdsStudioClient({
             Reklamlar
           </h1>
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-            Satılabilir reklam alanları (envanter). Kampanya / ödeme / gösterim yok.
+            Satılabilir reklam alanları, gelen talepler ve rezervasyonlar. Gelir/ödeme gösterilmez.
           </p>
         </div>
-        <button type="button" className="studio-btn-primary" onClick={() => setWizardOpen(true)}>
-          <Plus className="h-4 w-4" aria-hidden /> Yeni alan
-        </button>
+        {tab === 'inventory' ? (
+          <button type="button" className="studio-btn-primary" onClick={() => setWizardOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden /> Yeni alan
+          </button>
+        ) : null}
       </div>
 
+      <div className="mt-4 flex gap-2 border-b border-[rgb(var(--color-border))] pb-2 text-sm">
+        {(
+          [
+            ['inventory', 'Reklam Alanları'],
+            ['requests', 'Gelen Talepler'],
+            ['bookings', 'Rezervasyonlar'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`rounded px-3 py-1.5 ${
+              tab === key ? 'bg-[rgb(var(--color-fg))] text-[rgb(var(--color-bg))]' : 'opacity-70'
+            }`}
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'requests' ? (
+        <div className="mt-6 space-y-3">
+          {incoming.length === 0 ? (
+            <p className="text-sm text-[rgb(var(--color-muted))]">Gelen talep yok.</p>
+          ) : (
+            incoming.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-[rgb(var(--color-border))] p-4 text-sm"
+              >
+                <div className="flex flex-wrap justify-between gap-2">
+                  <span className="font-semibold">{r.status}</span>
+                  <span>
+                    {formatPriceMinor(r.priceSnapshotMinor, r.currency) || 'Teklif / iletişim'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                  {new Date(r.requestedStartAt).toLocaleString('tr-TR')} →{' '}
+                  {new Date(r.requestedEndAt).toLocaleString('tr-TR')}
+                </p>
+                {r.message ? <p className="mt-2">{r.message}</p> : null}
+                {['SUBMITTED', 'UNDER_REVIEW', 'OFFERED'].includes(r.status) ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="studio-btn-primary text-xs"
+                      onClick={() => void reviewRequest(r.id, 'approve')}
+                    >
+                      Onayla
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-1 text-xs"
+                      onClick={() => void reviewRequest(r.id, 'reject', { note: 'Uygun değil' })}
+                    >
+                      Reddet
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-1 text-xs"
+                      onClick={() => {
+                        const offer = prompt('Teklif (kuruş cinsinden, örn. 15000)')
+                        if (offer == null) return
+                        void reviewRequest(r.id, 'offer', {
+                          publisherOfferMinor: Number(offer),
+                        })
+                      }}
+                    >
+                      Teklif Ver
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+
+      {tab === 'bookings' ? (
+        <div className="mt-6 space-y-3">
+          {bookings.length === 0 ? (
+            <p className="text-sm text-[rgb(var(--color-muted))]">Rezervasyon yok.</p>
+          ) : (
+            bookings.map((b) => (
+              <div
+                key={b.id}
+                className="rounded-xl border border-[rgb(var(--color-border))] p-4 text-sm"
+              >
+                <div className="flex justify-between">
+                  <span className="font-semibold">{b.status}</span>
+                  <span>{formatPriceMinor(b.priceMinor, b.currency) || '—'}</span>
+                </div>
+                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                  {new Date(b.startAt).toLocaleString('tr-TR')} →{' '}
+                  {new Date(b.endAt).toLocaleString('tr-TR')} · envanter {b.inventoryId.slice(0, 12)}…
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                  Ödeme / gelir yok — PENDING_PAYMENT rezervasyon
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+
+      {tab === 'inventory' ? (
+        <>
       <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {(
           [
@@ -400,6 +583,8 @@ export function PublisherAdsStudioClient({
             </button>
           </div>
         </div>
+      ) : null}
+        </>
       ) : null}
     </PublisherStudioShell>
   )

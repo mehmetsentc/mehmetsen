@@ -107,3 +107,16 @@ export function buildPublisherContentMediaKey(
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'image.bin'
   return `publishers/${safePub}/content/${safeContent}/${safeName}`
 }
+
+/**
+ * Advertiser creative media key (P9).
+ * Format: advertisers/{advertiserId}/creatives/{filename}
+ */
+export function buildAdvertiserCreativeMediaKey(
+  advertiserId: string,
+  filename: string
+): string {
+  const safeAdv = advertiserId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'adv'
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'image.bin'
+  return `advertisers/${safeAdv}/creatives/${safeName}`
+}
