@@ -22,10 +22,6 @@ export const ROUTES = {
   /** Türkçe arama alias'ı — /search'e yönlendirilir */
   SEARCH_TR: '/ara',
   TAG: (slug: string) => `/etiket/${encodeURIComponent(tagToSlug(slug))}`,
-  /** Topic alias — canonical etiket slug */
-  TOPIC: (slug: string) => `/konu/${encodeURIComponent(tagToSlug(slug))}`,
-  /** Event/cluster page — Phase P6 */
-  EVENT: (slug: string) => `/olay/${encodeURIComponent(slug)}`,
   AUTHOR: (username: string) => `/yazar/${encodeURIComponent(username)}`,
   PUBLISHER: (slug: string) => `/publisher/${encodeURIComponent(slug)}`,
   PUBLISHER_STUDIO: {

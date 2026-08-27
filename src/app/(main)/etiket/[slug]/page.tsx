@@ -2,11 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ROUTES } from '@/constants/routes'
-import { evaluateTopicSeo, robotsFromEligibility } from '@/lib/seo/seoEligibility'
-import { topicMetaDescription, topicMetaTitle } from '@/lib/seo/metaTemplates'
-import { topicCanonicalUrl } from '@/lib/seo/canonical'
-import { recordSeoIndexable } from '@/lib/seo/observability'
-import { isSeoDistributionV1Enabled } from '@/lib/seo/featureFlag'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { formatTagLabel, isValidTagSlug, parseTagSlug } from '@/lib/tags'
 import { getPostsByTag } from '@/services/newsService.server'
@@ -26,25 +21,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   const label = formatTagLabel(tag)
-  const title = topicMetaTitle(label)
-  const description = topicMetaDescription(label)
-  const canonical = topicCanonicalUrl(tag)
-
-  const postsPreview = await getPostsByTag(tag, 5)
-  const eligibility = isSeoDistributionV1Enabled()
-    ? evaluateTopicSeo(tag, postsPreview.length)
-    : { indexable: false, noindexReason: 'none' as const, follow: true }
-  recordSeoIndexable('topic', eligibility.indexable, eligibility.noindexReason)
-  const robots = isSeoDistributionV1Enabled()
-    ? robotsFromEligibility(eligibility)
-    : { index: false, follow: true }
+  const title = `${label} Haberleri`
+  const description = `${label} etiketiyle yayınlanan son haberler, güncel gelişmeler ve arşiv — ${siteName}.`
+  const canonical = `${siteUrl}${ROUTES.TAG(tag)}`
 
   const ogImage = buildCategoryOgUrl(title, 'Etiket')
   return {
     title,
     description,
     keywords: [label, `${label} haberleri`, `${label} son dakika`, siteName],
-    robots,
+    robots: { index: false, follow: true },
     alternates: { canonical },
     openGraph: {
       title: `${title} | ${siteName}`,

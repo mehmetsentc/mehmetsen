@@ -29,11 +29,3 @@ export function isSmartFeedRankingV1Enabled(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return false
 }
-
-/** COLD_START_V2_ENABLED — prod default false. P6 cold-start feed mix. */
-export function isColdStartV2Enabled(): boolean {
-  const v = process.env.COLD_START_V2_ENABLED?.trim().toLowerCase()
-  if (v === '1' || v === 'true' || v === 'yes') return true
-  if (v === '0' || v === 'false' || v === 'no') return false
-  return false
-}

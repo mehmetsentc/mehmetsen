@@ -43,18 +43,7 @@ export class FeedTelemetryService {
 }
 
 function isObservabilityEvent(type: FeedTelemetryEventType): boolean {
-  return (
-    type === 'feed_request' ||
-    type === 'feed_empty' ||
-    type === 'feed_error'
-  )
-}
-
-export function logColdStartMetric(
-  event: 'cold_start_feed_requested' | 'cold_start_mode' | 'cold_start_empty',
-  meta?: Record<string, unknown>
-): void {
-  console.info(`[cold-start] ${event}`, meta ?? {})
+  return type === 'feed_request' || type === 'feed_empty' || type === 'feed_error'
 }
 
 export const feedTelemetryService = new FeedTelemetryService()

@@ -17,7 +17,6 @@ import { ROUTES } from '@/constants/routes'
 import { getLcpPreload } from '@/lib/lcpImage'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
 
 // ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
 export const revalidate = 60
@@ -90,8 +89,6 @@ export default async function NewsDetailPage({ params }: PageProps) {
     ...(citySlug ? { citySlug, tags: post.tags } : {}),
   })
 
-  const seoContext = await getArticleSeoContext(post)
-
   const heroImage = post.coverImageUrl?.trim() || null
   const lcpPreload = heroImage ? getLcpPreload(heroImage) : null
 
@@ -123,7 +120,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
       )}
       <ArticleCopyGuard />
       <ArticlePageChrome />
-      <NewsArticleStatic post={post} relatedPosts={relatedPosts} seoContext={seoContext} />
+      <NewsArticleStatic post={post} relatedPosts={relatedPosts} />
       <NewsArticleInteractive post={post} citySlug={citySlug} />
     </>
   )

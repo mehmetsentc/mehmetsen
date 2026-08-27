@@ -5,14 +5,6 @@ import {
   isPublisherPlatformEnabled,
   isPublisherProfileComposerEnabled,
 } from '@/lib/publisher/featureFlag'
-import {
-  evaluatePublisherSeo,
-  robotsFromEligibility,
-} from '@/lib/seo/seoEligibility'
-import { publisherMetaDescription, publisherMetaTitle } from '@/lib/seo/metaTemplates'
-import { publisherCanonicalUrl } from '@/lib/seo/canonical'
-import { buildPublisherOrganizationJsonLd } from '@/lib/seo/structuredData'
-import { recordSeoIndexable } from '@/lib/seo/observability'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { publisherService } from '@/services/publisher/publisherService'
@@ -45,21 +37,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const publisher = await publisherService.getPublicPublisherBySlug(slug)
   if (!publisher) return { title: 'Yayın bulunamadı', robots: { index: false, follow: false } }
 
-  const eligibility = evaluatePublisherSeo(publisher, 1)
-  recordSeoIndexable('publisher', eligibility.indexable, eligibility.noindexReason)
-  const robots = robotsFromEligibility(eligibility)
-
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const title = publisherMetaTitle(publisher.displayName)
-  const description = publisherMetaDescription(publisher.displayName, publisher.description)
-  const canonical = publisherCanonicalUrl(publisher.slug)
+  const title = `${publisher.displayName} — Yayın Kuruluşu`
+  const description =
+    publisher.description?.trim() ||
+    `${publisher.displayName} haberleri ve içerikleri ${siteName} üzerinde.`
+  const canonical = `${siteUrl}${ROUTES.PUBLISHER(publisher.slug)}`
 
   return {
     title,
     description,
     alternates: { canonical },
-    robots,
     openGraph: {
       title: `${title} | ${siteName}`,
       description,
@@ -94,34 +83,18 @@ export default async function PublisherProfilePage({ params }: Props) {
 
   if (publishedLayout) {
     return (
-      <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(buildPublisherOrganizationJsonLd(publisher)),
-          }}
-        />
-        <PublisherLayoutRenderer
-          publisher={publisher}
-          layout={publishedLayout}
-          fallbackArticles={articlePage.items}
-        />
-      </>
+      <PublisherLayoutRenderer
+        publisher={publisher}
+        layout={publishedLayout}
+        fallbackArticles={articlePage.items}
+      />
     )
   }
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(buildPublisherOrganizationJsonLd(publisher)),
-        }}
-      />
-      <PublisherProfileClient
-        publisher={publisher}
-        articles={articlePage.items}
-      />
-    </>
+    <PublisherProfileClient
+      publisher={publisher}
+      articles={articlePage.items}
+    />
   )
 }

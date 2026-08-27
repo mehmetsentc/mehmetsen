@@ -45,13 +45,6 @@ export class PublisherService {
     const page = await this.getPublisherArticles(publisherId, limit)
     return page.items
   }
-
-  async listPublicPublishers(limit = 500): Promise<PublicPublisherRecord[]> {
-    const { items } = await this.repo.listPublishers({ filter: 'all', limit, offset: 0 })
-    return items
-      .filter((p) => p.status === 'ACTIVE' && isPublisherPubliclyVisible(p))
-      .map((p) => serializePublicPublisher(p))
-  }
 }
 
 export const publisherService = new PublisherService()
