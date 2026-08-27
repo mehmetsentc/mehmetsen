@@ -19,13 +19,17 @@ import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
 import { ArticleGallery } from '@/components/news/ArticleGallery'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
+import { ArticleRelatedLinks } from '@/components/news/ArticleRelatedLinks'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
+import type { ArticleSeoContext } from '@/lib/seo/articleSeoTypes'
 
 interface NewsArticleStaticProps {
   post: Post
   relatedPosts?: Post[]
+  /** Optional SEO internal-link context (publisher / event). Same contract as getArticleSeoContext. */
+  seoContext?: ArticleSeoContext | null
 }
 
 /** YouTube veya embed / MP4 hero player. */
@@ -117,7 +121,7 @@ function InlineImage({ item, title }: { item: MediaItem; title: string }) {
 }
 
 /** Server-rendered article — crawlable before client JS. */
-export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStaticProps) {
+export function NewsArticleStatic({ post, relatedPosts = [], seoContext = null }: NewsArticleStaticProps) {
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
@@ -316,6 +320,15 @@ export function NewsArticleStatic({ post, relatedPosts = [] }: NewsArticleStatic
           <NewsletterSignup source="article" variant="inline" className="mt-6 sm:mt-8" />
 
           <ArticleRelatedGridStatic posts={relatedPosts} />
+
+          <ArticleRelatedLinks
+            post={post}
+            context={{
+              publisher: seoContext?.publisher ?? null,
+              event: seoContext?.event ?? null,
+              relatedPosts,
+            }}
+          />
 
           {/* Kaynak satırı */}
           {(publicSource || post.sourceUrl) && (

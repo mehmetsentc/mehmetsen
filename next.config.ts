@@ -67,6 +67,8 @@ const nextConfig: NextConfig = {
       { source: '/kune', destination: '/kunye', permanent: true },
       { source: '/kategori/otomotiv', destination: '/kategori/otomobil', permanent: true },
       { source: '/kategori/etkinlikler', destination: '/events', permanent: true },
+      { source: '/konu/:slug', destination: '/etiket/:slug', permanent: true },
+      { source: '/sitemap-news-:n.xml', destination: '/sitemap/:n.xml', permanent: false },
       { source: '/burclar', destination: '/kategori/astroloji', permanent: true },
     ]
   },
