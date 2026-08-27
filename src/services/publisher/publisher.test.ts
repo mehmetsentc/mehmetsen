@@ -48,6 +48,7 @@ class MemoryPublisherRepo implements Pick<
   | 'updatePublisher'
   | 'getSourceIdsForPublisher'
   | 'resolvePublishedArticles'
+  | 'resolveStudioPublishedArticles'
   | 'ensureUserExists'
 > {
   publishers: PublisherRecord[] = []
@@ -328,6 +329,18 @@ class MemoryPublisherRepo implements Pick<
       }
     }
     return { items: out.slice(0, limit), nextCursor: null }
+  }
+
+  async resolveStudioPublishedArticles(_publisherId: string, _limit = 24) {
+    return [] as Array<{
+      id: string
+      slug: string
+      title: string
+      summary: string | null
+      thumbnailUrl: string | null
+      publishedAt: Date | null
+      sourceId: string
+    }>
   }
 }
 

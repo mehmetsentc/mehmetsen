@@ -10,6 +10,7 @@ import {
 } from '@/lib/publisher/contentFlags'
 import {
   applyDraftPatch,
+  canRoleApproveContent,
   canRolePublishContent,
   canRoleReviewContent,
   canRoleSetBreaking,
@@ -29,7 +30,11 @@ import {
   PublisherContentRepository,
   publisherContentRepository,
 } from './publisherContentRepository'
-import { publishContentToCanonicalNews } from './publisherContentPublish'
+import {
+  PublisherPublishService,
+  publishContentToCanonicalNews,
+  publisherPublishService,
+} from './publisherContentPublish'
 
 export class PublisherContentError extends Error {
   constructor(
@@ -88,6 +93,13 @@ function emptyItem(
     scheduleClaimedAt: null,
     scheduleClaimedBy: null,
     scheduleClaimExpiresAt: null,
+    publicationStatus: 'NONE',
+    firestoreStatus: 'NONE',
+    postgresStatus: 'NONE',
+    publicationAttempts: 0,
+    publicationLastError: null,
+    publicationClaimedAt: null,
+    publicationClaimedBy: null,
     reviewNote: null,
     createdBy: userId,
     updatedBy: userId,
@@ -103,7 +115,8 @@ export class PublisherContentService {
   constructor(
     private readonly contentRepo: PublisherContentRepository = publisherContentRepository,
     private readonly publisherRepo: PublisherRepository = publisherRepository,
-    private readonly publishFn: typeof publishContentToCanonicalNews = publishContentToCanonicalNews
+    private readonly publishFn: typeof publishContentToCanonicalNews = publishContentToCanonicalNews,
+    private readonly publishService: PublisherPublishService = publisherPublishService
   ) {}
 
   private assertStudio() {
@@ -146,8 +159,8 @@ export class PublisherContentService {
 
   async createDraft(publisherId: string, userId: string): Promise<PublisherContentItem> {
     this.assertStudio()
-    const member = await requirePublisherMember(publisherId, userId, 'content:write', this.publisherRepo)
-    if (!roleHasPermission(member.role, 'content:write')) {
+    const member = await requirePublisherMember(publisherId, userId, 'content:create', this.publisherRepo)
+    if (!roleHasPermission(member.role, 'content:create')) {
       throw new PublisherStudioAuthError('INSUFFICIENT_PERMISSION', 'FORBIDDEN')
     }
     const item = emptyItem(publisherId, userId, {
@@ -202,11 +215,19 @@ export class PublisherContentService {
       { version: expectedVersion, updatedAt: expectedUpdatedAt },
       { ...fields, updatedBy: userId }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
 
     if (opts?.meaningful !== false) {
       await this.contentRepo.createRevisionFromItem(updated, 'SAVE', null, userId)
     }
+    await this.contentRepo.insertAudit({
+      contentId,
+      publisherId,
+      eventType: 'CONTENT_UPDATED',
+      actorUserId: userId,
+      payload: { version: updated.version },
+    })
+    // keep CONTENT_SAVED for compatibility
     await this.contentRepo.insertAudit({
       contentId,
       publisherId,
@@ -250,7 +271,7 @@ export class PublisherContentService {
       { version: current.version },
       { status: 'IN_REVIEW', reviewNote: null, updatedBy: userId }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
     await this.contentRepo.createRevisionFromItem(updated, 'SUBMIT', null, userId)
     await this.contentRepo.insertAudit({
       contentId,
@@ -288,7 +309,7 @@ export class PublisherContentService {
       { version: current.version },
       { status: 'CHANGES_REQUESTED', reviewNote: note, updatedBy: userId }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
     await this.contentRepo.createRevisionFromItem(updated, 'CHANGES_REQUESTED', note, userId)
     await this.contentRepo.insertAudit({
       contentId,
@@ -306,9 +327,9 @@ export class PublisherContentService {
     userId: string
   ): Promise<PublisherContentItem> {
     this.assertStudio()
-    const member = await requirePublisherMember(publisherId, userId, 'content:review', this.publisherRepo)
-    if (!canRoleReviewContent(member.role)) {
-      throw new PublisherContentError('CANNOT_REVIEW', 'FORBIDDEN')
+    const member = await requirePublisherMember(publisherId, userId, 'content:approve', this.publisherRepo)
+    if (!canRoleApproveContent(member.role)) {
+      throw new PublisherContentError('CANNOT_APPROVE', 'FORBIDDEN')
     }
     const current = await this.contentRepo.findById(contentId)
     if (!current || current.publisherId !== publisherId) {
@@ -323,7 +344,7 @@ export class PublisherContentService {
       { version: current.version },
       { status: 'APPROVED', approvedBy: userId, reviewNote: null, updatedBy: userId }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
     await this.contentRepo.createRevisionFromItem(updated, 'APPROVE', null, userId)
     await this.contentRepo.insertAudit({
       contentId,
@@ -354,12 +375,26 @@ export class PublisherContentService {
       throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
     }
 
-    // Idempotent: already published
-    if (current.status === 'PUBLISHED' && current.publishedNewsId) {
+    // Idempotent: fully published
+    if (
+      current.status === 'PUBLISHED' &&
+      current.publishedNewsId &&
+      current.publicationStatus === 'PUBLISHED' &&
+      current.firestoreStatus === 'OK' &&
+      current.postgresStatus === 'OK'
+    ) {
       return current
     }
 
+    // Allow retry of PARTIAL / FAILED with stable publishedNewsId
+    const isHeal =
+      Boolean(current.publishedNewsId) &&
+      (current.publicationStatus === 'PARTIAL' ||
+        current.publicationStatus === 'FAILED' ||
+        current.publicationStatus === 'PUBLISHING')
+
     const allowed =
+      isHeal ||
       current.status === 'APPROVED' ||
       current.status === 'SCHEDULED' ||
       (opts?.fast &&
@@ -369,44 +404,41 @@ export class PublisherContentService {
     if (!allowed) throw new PublisherContentError('INVALID_STATUS', 'INVALID_STATE')
     if (!current.title.trim()) throw new PublisherContentError('TITLE_REQUIRED', 'INVALID_STATE')
 
-    const publishedAt = new Date()
-    const preferredId = current.publishedNewsId
     const published = await this.publishFn({
       item: current,
       publisher,
       actorUserId: userId,
       actorDisplayName: opts?.displayName ?? publisher.displayName,
-      preferredNewsId: preferredId,
+      preferredNewsId: current.publishedNewsId,
     })
 
-    if (published.alreadyPublished && current.publishedNewsId) {
-      return current
+    const after = await this.contentRepo.findById(contentId)
+    if (!after) throw new PublisherContentError('CONTENT_NOT_FOUND', 'NOT_FOUND')
+
+    if (published.publicationStatus !== 'PUBLISHED') {
+      throw new PublisherContentError(
+        published.publicationStatus === 'PARTIAL' ? 'PUBLISH_PARTIAL' : 'PUBLISH_FAILED',
+        'INVALID_STATE'
+      )
     }
 
-    const claimed = await this.contentRepo.claimPublishSlot(
-      contentId,
-      publisherId,
-      published.newsId,
-      userId,
-      publishedAt,
-      { seoSlug: published.slug }
-    )
-
-    // Race: another request won — return winner state
-    if (!claimed) {
-      const again = await this.contentRepo.findById(contentId)
-      if (again?.publishedNewsId) return again
-      throw new PublisherContentError('PUBLISH_RACE', 'CONFLICT')
+    if (opts?.fast) {
+      await this.contentRepo.insertAudit({
+        contentId,
+        publisherId,
+        eventType: 'CONTENT_FAST_PUBLISHED',
+        actorUserId: userId,
+        payload: { newsId: published.newsId, slug: published.slug },
+      })
+    } else {
+      await this.contentRepo.insertAudit({
+        contentId,
+        publisherId,
+        eventType: 'CONTENT_PUBLISHED',
+        actorUserId: userId,
+        payload: { newsId: published.newsId, slug: published.slug },
+      })
     }
-
-    await this.contentRepo.createRevisionFromItem(claimed, 'PUBLISH', null, userId)
-    await this.contentRepo.insertAudit({
-      contentId,
-      publisherId,
-      eventType: opts?.fast ? 'CONTENT_FAST_PUBLISHED' : 'CONTENT_PUBLISHED',
-      actorUserId: userId,
-      payload: { newsId: published.newsId, slug: published.slug },
-    })
     publisherLog('publisher_content_published', {
       publisherId,
       contentId,
@@ -414,7 +446,35 @@ export class PublisherContentService {
       userId,
       fast: Boolean(opts?.fast),
     })
-    return claimed
+    return after
+  }
+
+  /** Heal PARTIAL/FAILED dual-writes (bounded). */
+  async reconcilePartialPublications(limit = 10): Promise<{
+    attempted: number
+    healed: number
+    failed: number
+  }> {
+    const items = await this.contentRepo.listPartialPublications(limit)
+    let healed = 0
+    let failed = 0
+    for (const item of items) {
+      try {
+        const publisher = await this.loadPublisher(item.publisherId)
+        const result = await this.publishService.publishContent({
+          item,
+          publisher,
+          actorUserId: item.approvedBy || item.createdBy,
+          actorDisplayName: publisher.displayName,
+          preferredNewsId: item.publishedNewsId,
+        })
+        if (result.publicationStatus === 'PUBLISHED') healed++
+        else failed++
+      } catch {
+        failed++
+      }
+    }
+    return { attempted: items.length, healed, failed }
   }
 
   async schedule(
@@ -458,7 +518,7 @@ export class PublisherContentService {
         updatedBy: userId,
       }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
     await this.contentRepo.createRevisionFromItem(updated, 'SCHEDULE', null, userId)
     await this.contentRepo.insertAudit({
       contentId,
@@ -489,7 +549,7 @@ export class PublisherContentService {
       { version: current.version },
       { status: 'ARCHIVED', updatedBy: userId }
     )
-    if (!updated) throw new PublisherContentError('VERSION_CONFLICT', 'CONFLICT')
+    if (!updated) throw new PublisherContentError('CONTENT_VERSION_CONFLICT', 'CONFLICT')
     await this.contentRepo.createRevisionFromItem(updated, 'ARCHIVE', null, userId)
     await this.contentRepo.insertAudit({
       contentId,
@@ -506,7 +566,7 @@ export class PublisherContentService {
     rawArticleId: string
   ): Promise<PublisherContentItem> {
     this.assertStudio()
-    await requirePublisherMember(publisherId, userId, 'content:write', this.publisherRepo)
+    await requirePublisherMember(publisherId, userId, 'content:source-import', this.publisherRepo)
     const raw = await this.contentRepo.findRawArticleForPublisher(publisherId, rawArticleId)
     if (!raw) throw new PublisherContentError('SOURCE_NOT_FOUND', 'NOT_FOUND')
 
@@ -528,6 +588,13 @@ export class PublisherContentService {
     })
     await this.contentRepo.insert(item)
     await this.contentRepo.createRevisionFromItem(item, 'SOURCE_IMPORT', null, userId)
+    await this.contentRepo.insertAudit({
+      contentId: item.id,
+      publisherId,
+      eventType: 'SOURCE_IMPORTED',
+      actorUserId: userId,
+      payload: { rawArticleId: raw.id, sourceId: raw.sourceId, ai: false },
+    })
     await this.contentRepo.insertAudit({
       contentId: item.id,
       publisherId,
@@ -603,16 +670,9 @@ export class PublisherContentService {
           publisher,
           actorUserId: item.approvedBy || item.createdBy,
           actorDisplayName: publisher.displayName,
+          preferredNewsId: item.publishedNewsId,
         })
-        const claimedPub = await this.contentRepo.claimPublishSlot(
-          item.id,
-          item.publisherId,
-          pub.newsId,
-          workerId,
-          new Date(),
-          { seoSlug: pub.slug }
-        )
-        if (claimedPub) {
+        if (pub.publicationStatus === 'PUBLISHED') {
           published++
           await this.contentRepo.insertAudit({
             contentId: item.id,
@@ -621,6 +681,8 @@ export class PublisherContentService {
             actorUserId: workerId,
             payload: { newsId: pub.newsId },
           })
+        } else {
+          errors++
         }
       } catch (err) {
         errors++

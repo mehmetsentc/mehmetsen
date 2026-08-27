@@ -67,5 +67,6 @@ export function serializeContent(item: PublisherContentItem) {
     scheduledAt: item.scheduledAt?.toISOString() ?? null,
     scheduleClaimedAt: item.scheduleClaimedAt?.toISOString() ?? null,
     scheduleClaimExpiresAt: item.scheduleClaimExpiresAt?.toISOString() ?? null,
+    publicationClaimedAt: item.publicationClaimedAt?.toISOString() ?? null,
   }
 }

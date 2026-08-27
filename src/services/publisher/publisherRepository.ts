@@ -758,6 +758,53 @@ export class PublisherRepository {
 
     return { items, nextCursor }
   }
+
+  /**
+   * Publisher-authored Content Studio articles (MANUAL / imported) that have a
+   * canonical published_news_id — complements crawler source-linked resolution.
+   */
+  async resolveStudioPublishedArticles(
+    publisherId: string,
+    limit = 24
+  ): Promise<PublisherArticleItem[]> {
+    if (!hasDatabaseUrl()) return []
+    const db = this.requireDb()
+    const pageSize = Math.min(Math.max(limit, 1), 48)
+    const { publisherContentItems } = await import('@/db/schema/publisherContent')
+
+    const rows = await db
+      .select({
+        id: news.id,
+        slug: news.slug,
+        title: news.title,
+        summary: news.summary,
+        thumbnailUrl: news.thumbnailUrl,
+        coverImageUrl: news.coverImageUrl,
+        publishedAt: news.publishedAt,
+      })
+      .from(publisherContentItems)
+      .innerJoin(news, eq(news.id, publisherContentItems.publishedNewsId))
+      .where(
+        and(
+          eq(publisherContentItems.publisherId, publisherId),
+          eq(publisherContentItems.status, 'PUBLISHED'),
+          isNotNull(publisherContentItems.publishedNewsId),
+          eq(news.status, 'published')
+        )
+      )
+      .orderBy(desc(news.publishedAt))
+      .limit(pageSize)
+
+    return rows.map((n) => ({
+      id: n.id,
+      slug: n.slug,
+      title: n.title,
+      summary: n.summary,
+      thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
+      publishedAt: n.publishedAt,
+      sourceId: 'publisher_studio',
+    }))
+  }
 }
 
 export const publisherRepository = new PublisherRepository()

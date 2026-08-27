@@ -11,7 +11,7 @@ interface RouteContext {
 
 export async function POST(request: Request, context: RouteContext) {
   const { publisherId } = await context.params
-  const auth = await withContentAuth(request, publisherId, 'content:write')
+  const auth = await withContentAuth(request, publisherId, 'content:source-import')
   if ('error' in auth && auth.error) return auth.error
   try {
     const body = (await request.json()) as { rawArticleId?: string }

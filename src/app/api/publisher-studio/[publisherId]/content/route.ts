@@ -30,7 +30,7 @@ export async function GET(request: Request, context: RouteContext) {
 
 export async function POST(request: Request, context: RouteContext) {
   const { publisherId } = await context.params
-  const auth = await withContentAuth(request, publisherId, 'content:write')
+  const auth = await withContentAuth(request, publisherId, 'content:create')
   if ('error' in auth && auth.error) return auth.error
   try {
     const item = await publisherContentService.createDraft(publisherId, auth.auth!.user.uid)

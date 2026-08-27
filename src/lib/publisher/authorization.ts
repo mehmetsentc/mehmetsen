@@ -8,15 +8,37 @@ export type PublisherPermission =
   | 'layout:edit'
   | 'articles:read'
   | 'content:read'
+  | 'content:create'
+  | 'content:update:own'
+  | 'content:update:any'
+  /** @deprecated prefer content:create / content:update:* — kept for route gates */
   | 'content:write'
   | 'content:submit'
   | 'content:review'
+  | 'content:approve'
   | 'content:publish'
   | 'content:schedule'
   | 'content:archive'
+  | 'content:source-import'
   | 'content:breaking'
   | 'team:read'
   | 'team:manage'
+
+const CONTENT_ALL: PublisherPermission[] = [
+  'content:read',
+  'content:create',
+  'content:update:own',
+  'content:update:any',
+  'content:write',
+  'content:submit',
+  'content:review',
+  'content:approve',
+  'content:publish',
+  'content:schedule',
+  'content:archive',
+  'content:source-import',
+  'content:breaking',
+]
 
 const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
   OWNER: [
@@ -26,14 +48,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:read',
     'layout:edit',
     'articles:read',
-    'content:read',
-    'content:write',
-    'content:submit',
-    'content:review',
-    'content:publish',
-    'content:schedule',
-    'content:archive',
-    'content:breaking',
+    ...CONTENT_ALL,
     'team:read',
     'team:manage',
   ],
@@ -44,14 +59,7 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:read',
     'layout:edit',
     'articles:read',
-    'content:read',
-    'content:write',
-    'content:submit',
-    'content:review',
-    'content:publish',
-    'content:schedule',
-    'content:archive',
-    'content:breaking',
+    ...CONTENT_ALL,
     'team:read',
     'team:manage',
   ],
@@ -61,22 +69,18 @@ const ROLE_PERMISSIONS: Record<PublisherMemberRole, PublisherPermission[]> = {
     'layout:read',
     'layout:edit',
     'articles:read',
-    'content:read',
-    'content:write',
-    'content:submit',
-    'content:review',
-    'content:publish',
-    'content:schedule',
-    'content:archive',
-    'content:breaking',
+    ...CONTENT_ALL,
   ],
   AUTHOR: [
     'studio:access',
     'profile:read',
     'articles:read',
     'content:read',
+    'content:create',
+    'content:update:own',
     'content:write',
     'content:submit',
+    'content:source-import',
   ],
   AD_MANAGER: ['studio:access', 'profile:read', 'articles:read', 'content:read'],
   ANALYST: ['studio:access', 'profile:read', 'layout:read', 'articles:read', 'content:read', 'team:read'],

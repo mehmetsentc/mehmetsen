@@ -1,5 +1,6 @@
 import type { ArticleBlock } from '@/lib/articleBlocks'
 
+/** Editorial workflow status (distinct from technical publication_status). */
 export type PublisherContentStatus =
   | 'DRAFT'
   | 'IN_REVIEW'
@@ -8,6 +9,17 @@ export type PublisherContentStatus =
   | 'SCHEDULED'
   | 'PUBLISHED'
   | 'ARCHIVED'
+
+/** Technical dual-write / publish bridge state. */
+export type PublisherPublicationStatus =
+  | 'NONE'
+  | 'PENDING'
+  | 'PUBLISHING'
+  | 'PUBLISHED'
+  | 'PARTIAL'
+  | 'FAILED'
+
+export type PublisherStoreWriteStatus = 'NONE' | 'PENDING' | 'OK' | 'FAILED'
 
 export type PublisherContentSourceMode = 'MANUAL' | 'CRAWLER_SOURCE' | 'IMPORT'
 
@@ -21,8 +33,10 @@ export type PublisherContentRightsStatus = 'CLEARED' | 'PENDING' | 'UNKNOWN' | '
 export type PublisherContentAuditEvent =
   | 'CONTENT_CREATED'
   | 'CONTENT_SAVED'
+  | 'CONTENT_UPDATED'
   | 'CONTENT_SUBMITTED'
   | 'CONTENT_CHANGES_REQUESTED'
+  | 'CHANGES_REQUESTED'
   | 'CONTENT_APPROVED'
   | 'CONTENT_SCHEDULED'
   | 'CONTENT_PUBLISHED'
@@ -31,7 +45,14 @@ export type PublisherContentAuditEvent =
   | 'CONTENT_BREAKING_SET'
   | 'CONTENT_BREAKING_CLEARED'
   | 'CONTENT_SOURCE_IMPORTED'
+  | 'SOURCE_IMPORTED'
   | 'CONTENT_PREVIEWED'
+  | 'PUBLISH_STARTED'
+  | 'FIRESTORE_PUBLISHED'
+  | 'POSTGRES_MIRRORED'
+  | 'PUBLISH_COMPLETED'
+  | 'PUBLISH_FAILED'
+  | 'PUBLISH_PARTIAL'
   | 'SCHEDULE_CLAIMED'
   | 'SCHEDULE_PUBLISHED'
   | 'SCHEDULE_CLAIM_STALE_RECOVERED'
@@ -39,6 +60,7 @@ export type PublisherContentAuditEvent =
 export interface PublisherContentItem {
   id: string
   publisherId: string
+  /** Editorial workflow status (DRAFT / IN_REVIEW / …). */
   status: PublisherContentStatus
   sourceMode: PublisherContentSourceMode
   title: string
@@ -71,6 +93,14 @@ export interface PublisherContentItem {
   scheduleClaimedAt: Date | null
   scheduleClaimedBy: string | null
   scheduleClaimExpiresAt: Date | null
+  /** Technical publish bridge (separate from editorial status). */
+  publicationStatus: PublisherPublicationStatus
+  firestoreStatus: PublisherStoreWriteStatus
+  postgresStatus: PublisherStoreWriteStatus
+  publicationAttempts: number
+  publicationLastError: string | null
+  publicationClaimedAt: Date | null
+  publicationClaimedBy: string | null
   reviewNote: string | null
   createdBy: string
   updatedBy: string | null

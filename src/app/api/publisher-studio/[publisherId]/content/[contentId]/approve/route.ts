@@ -11,7 +11,7 @@ interface RouteContext {
 
 export async function POST(request: Request, context: RouteContext) {
   const { publisherId, contentId } = await context.params
-  const auth = await withContentAuth(request, publisherId, 'content:review')
+  const auth = await withContentAuth(request, publisherId, 'content:approve')
   if ('error' in auth && auth.error) return auth.error
   try {
     const item = await publisherContentService.approve(publisherId, contentId, auth.auth!.user.uid)

@@ -52,6 +52,13 @@ export const publisherContentItems = pgTable(
     scheduleClaimedAt: timestamp('schedule_claimed_at', { withTimezone: true }),
     scheduleClaimedBy: varchar('schedule_claimed_by', { length: 128 }),
     scheduleClaimExpiresAt: timestamp('schedule_claim_expires_at', { withTimezone: true }),
+    publicationStatus: varchar('publication_status', { length: 24 }).default('NONE').notNull(),
+    firestoreStatus: varchar('firestore_status', { length: 24 }).default('NONE').notNull(),
+    postgresStatus: varchar('postgres_status', { length: 24 }).default('NONE').notNull(),
+    publicationAttempts: integer('publication_attempts').default(0).notNull(),
+    publicationLastError: text('publication_last_error'),
+    publicationClaimedAt: timestamp('publication_claimed_at', { withTimezone: true }),
+    publicationClaimedBy: varchar('publication_claimed_by', { length: 128 }),
     reviewNote: text('review_note'),
     createdBy: varchar('created_by', { length: 128 }).notNull(),
     updatedBy: varchar('updated_by', { length: 128 }),
@@ -62,9 +69,12 @@ export const publisherContentItems = pgTable(
   },
   (t) => [
     index('pci_publisher_status_updated_idx').on(t.publisherId, t.status, t.updatedAt),
+    index('pci_publisher_author_updated_idx').on(t.publisherId, t.createdBy, t.updatedAt),
     index('pci_publisher_scheduled_idx').on(t.publisherId, t.scheduledAt),
     index('pci_published_news_idx').on(t.publishedNewsId),
+    index('pci_raw_article_idx').on(t.crawlerRawArticleId),
     index('pci_schedule_due_idx').on(t.status, t.scheduledAt),
+    index('pci_publication_partial_idx').on(t.publicationStatus, t.updatedAt),
     uniqueIndex('pci_one_published_news_uidx')
       .on(t.publishedNewsId)
       .where(sql`${t.publishedNewsId} IS NOT NULL`),
@@ -111,5 +121,6 @@ export const publisherContentAudit = pgTable(
     index('pca_content_idx').on(t.contentId),
     index('pca_publisher_idx').on(t.publisherId),
     index('pca_event_idx').on(t.eventType),
+    index('pca_publisher_content_created_idx').on(t.publisherId, t.contentId, t.createdAt),
   ]
 )

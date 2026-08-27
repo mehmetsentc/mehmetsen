@@ -1,4 +1,4 @@
-/** Domain helpers for Publisher Content Studio (P7). */
+/** Domain helpers for Publisher Content Studio (P7A). */
 
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import { sanitizeArticleBlocks, articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -9,25 +9,83 @@ import type {
   PublisherContentStatus,
 } from '@/types/publisherContent'
 import type { PublisherMemberRole } from '@/types/publisher'
+import { roleHasPermission } from '@/lib/publisher/authorization'
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Deterministic XSS-safe HTML from ArticleBlock[].
+ * No script/style injection — text is escaped; URLs validated by sanitizeArticleBlocks.
+ */
+export function articleBlocksToSafeHtml(blocks: ArticleBlock[]): string {
+  const safe = sanitizeArticleBlocks(blocks)
+  const parts: string[] = []
+  for (const block of safe) {
+    if (block.type === 'heading') {
+      const tag = `h${block.level}` as 'h1' | 'h2' | 'h3' | 'h4'
+      parts.push(`<${tag}>${escapeHtml(block.text)}</${tag}>`)
+    } else if (block.type === 'paragraph') {
+      parts.push(`<p>${escapeHtml(block.text)}</p>`)
+    } else if (block.type === 'list') {
+      const tag = block.style === 'ordered' ? 'ol' : 'ul'
+      const items = block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')
+      parts.push(`<${tag}>${items}</${tag}>`)
+    } else if (block.type === 'image' && block.url) {
+      const alt = escapeHtml(block.alt ?? '')
+      const caption = block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ''
+      parts.push(
+        `<figure><img src="${escapeHtml(block.url)}" alt="${alt}" loading="lazy"/>${caption}</figure>`
+      )
+    } else if (block.type === 'video' && block.url) {
+      const caption = block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ''
+      parts.push(
+        `<figure><a href="${escapeHtml(block.url)}">${escapeHtml(block.url)}</a>${caption}</figure>`
+      )
+    } else if (block.type === 'gallery') {
+      const imgs = block.images
+        .filter((img) => img.url)
+        .map(
+          (img) =>
+            `<img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt ?? '')}" loading="lazy"/>`
+        )
+        .join('')
+      if (imgs) parts.push(`<div class="gallery">${imgs}</div>`)
+    } else if (block.type === 'divider') {
+      parts.push('<hr/>')
+    }
+  }
+  return parts.join('\n')
+}
 
 export function canRoleCreateContent(role: PublisherMemberRole): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR' || role === 'AUTHOR'
+  return roleHasPermission(role, 'content:create')
 }
 
 export function canRoleReviewContent(role: PublisherMemberRole): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR'
+  return roleHasPermission(role, 'content:review')
+}
+
+export function canRoleApproveContent(role: PublisherMemberRole): boolean {
+  return roleHasPermission(role, 'content:approve')
 }
 
 export function canRolePublishContent(role: PublisherMemberRole): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR'
+  return roleHasPermission(role, 'content:publish')
 }
 
 export function canRoleEditOthersDrafts(role: PublisherMemberRole): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR'
+  return roleHasPermission(role, 'content:update:any')
 }
 
 export function canRoleSetBreaking(role: PublisherMemberRole): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'EDITOR'
+  return roleHasPermission(role, 'content:breaking')
 }
 
 export function canUserEditContent(
@@ -37,7 +95,7 @@ export function canUserEditContent(
 ): boolean {
   if (item.status === 'PUBLISHED' || item.status === 'ARCHIVED') return false
   if (canRoleEditOthersDrafts(role)) return true
-  if (role === 'AUTHOR' && item.createdBy === userId) {
+  if (roleHasPermission(role, 'content:update:own') && item.createdBy === userId) {
     return item.status === 'DRAFT' || item.status === 'CHANGES_REQUESTED'
   }
   return false

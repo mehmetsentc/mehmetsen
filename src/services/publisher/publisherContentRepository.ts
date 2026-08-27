@@ -56,6 +56,13 @@ function mapItem(row: typeof publisherContentItems.$inferSelect): PublisherConte
     scheduleClaimedAt: row.scheduleClaimedAt,
     scheduleClaimedBy: row.scheduleClaimedBy,
     scheduleClaimExpiresAt: row.scheduleClaimExpiresAt,
+    publicationStatus: (row.publicationStatus ?? 'NONE') as PublisherContentItem['publicationStatus'],
+    firestoreStatus: (row.firestoreStatus ?? 'NONE') as PublisherContentItem['firestoreStatus'],
+    postgresStatus: (row.postgresStatus ?? 'NONE') as PublisherContentItem['postgresStatus'],
+    publicationAttempts: row.publicationAttempts ?? 0,
+    publicationLastError: row.publicationLastError ?? null,
+    publicationClaimedAt: row.publicationClaimedAt ?? null,
+    publicationClaimedBy: row.publicationClaimedBy ?? null,
     reviewNote: row.reviewNote,
     createdBy: row.createdBy,
     updatedBy: row.updatedBy,
@@ -147,6 +154,13 @@ export class PublisherContentRepository {
       scheduleClaimedAt: item.scheduleClaimedAt,
       scheduleClaimedBy: item.scheduleClaimedBy,
       scheduleClaimExpiresAt: item.scheduleClaimExpiresAt,
+      publicationStatus: item.publicationStatus,
+      firestoreStatus: item.firestoreStatus,
+      postgresStatus: item.postgresStatus,
+      publicationAttempts: item.publicationAttempts,
+      publicationLastError: item.publicationLastError,
+      publicationClaimedAt: item.publicationClaimedAt,
+      publicationClaimedBy: item.publicationClaimedBy,
       reviewNote: item.reviewNote,
       createdBy: item.createdBy,
       updatedBy: item.updatedBy,
@@ -214,6 +228,23 @@ export class PublisherContentRepository {
         ...(patch.scheduleClaimExpiresAt !== undefined
           ? { scheduleClaimExpiresAt: patch.scheduleClaimExpiresAt }
           : {}),
+        ...(patch.publicationStatus !== undefined
+          ? { publicationStatus: patch.publicationStatus }
+          : {}),
+        ...(patch.firestoreStatus !== undefined ? { firestoreStatus: patch.firestoreStatus } : {}),
+        ...(patch.postgresStatus !== undefined ? { postgresStatus: patch.postgresStatus } : {}),
+        ...(patch.publicationAttempts !== undefined
+          ? { publicationAttempts: patch.publicationAttempts }
+          : {}),
+        ...(patch.publicationLastError !== undefined
+          ? { publicationLastError: patch.publicationLastError }
+          : {}),
+        ...(patch.publicationClaimedAt !== undefined
+          ? { publicationClaimedAt: patch.publicationClaimedAt }
+          : {}),
+        ...(patch.publicationClaimedBy !== undefined
+          ? { publicationClaimedBy: patch.publicationClaimedBy }
+          : {}),
         ...(patch.reviewNote !== undefined ? { reviewNote: patch.reviewNote } : {}),
         ...(patch.updatedBy !== undefined ? { updatedBy: patch.updatedBy } : {}),
         ...(patch.approvedBy !== undefined ? { approvedBy: patch.approvedBy } : {}),
@@ -227,7 +258,8 @@ export class PublisherContentRepository {
   }
 
   /**
-   * Atomic publish claim: only one concurrent publish succeeds when published_news_id is null.
+   * Atomic publish claim: only one concurrent publish succeeds when published_news_id is null
+   * OR when healing a PARTIAL with the same newsId.
    */
   async claimPublishSlot(
     id: string,
@@ -247,6 +279,12 @@ export class PublisherContentRepository {
         scheduleClaimedAt: null,
         scheduleClaimedBy: null,
         scheduleClaimExpiresAt: null,
+        publicationStatus: extra?.publicationStatus ?? 'PUBLISHED',
+        firestoreStatus: extra?.firestoreStatus ?? 'OK',
+        postgresStatus: extra?.postgresStatus ?? 'OK',
+        publicationLastError: extra?.publicationLastError ?? null,
+        publicationClaimedAt: extra?.publicationClaimedAt ?? null,
+        publicationClaimedBy: extra?.publicationClaimedBy ?? null,
         updatedBy: actorUserId,
         ...(extra?.seoSlug !== undefined ? { seoSlug: extra.seoSlug } : {}),
         ...(extra?.isBreaking !== undefined ? { isBreaking: extra.isBreaking } : {}),
@@ -257,12 +295,32 @@ export class PublisherContentRepository {
         and(
           eq(publisherContentItems.id, id),
           eq(publisherContentItems.publisherId, publisherId),
-          isNull(publisherContentItems.publishedNewsId),
-          inArray(publisherContentItems.status, ['APPROVED', 'SCHEDULED', 'IN_REVIEW', 'DRAFT'])
+          or(
+            isNull(publisherContentItems.publishedNewsId),
+            eq(publisherContentItems.publishedNewsId, newsId)
+          ),
+          inArray(publisherContentItems.status, [
+            'APPROVED',
+            'SCHEDULED',
+            'IN_REVIEW',
+            'DRAFT',
+            'CHANGES_REQUESTED',
+            'PUBLISHED',
+          ])
         )
       )
       .returning()
     return rows[0] ? mapItem(rows[0]) : null
+  }
+
+  async listPartialPublications(limit = 10): Promise<PublisherContentItem[]> {
+    const rows = await this.db()
+      .select()
+      .from(publisherContentItems)
+      .where(inArray(publisherContentItems.publicationStatus, ['PARTIAL', 'FAILED', 'PUBLISHING']))
+      .orderBy(desc(publisherContentItems.updatedAt))
+      .limit(Math.min(Math.max(limit, 1), 50))
+    return rows.map(mapItem)
   }
 
   async insertRevision(input: {

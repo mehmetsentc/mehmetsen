@@ -37,7 +37,26 @@ export class PublisherService {
     cursor?: string | null
   ): Promise<PublisherArticlePage> {
     const sourceIds = await this.repo.getSourceIdsForPublisher(publisherId)
-    return this.repo.resolvePublishedArticles(sourceIds, limit, cursor)
+    const page = await this.repo.resolvePublishedArticles(sourceIds, limit, cursor)
+    const studio = await this.repo.resolveStudioPublishedArticles(publisherId, limit)
+    if (!studio.length) return page
+
+    const seen = new Set(page.items.map((i) => i.id))
+    const merged = [...page.items]
+    for (const item of studio) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      merged.push(item)
+    }
+    merged.sort((a, b) => {
+      const am = a.publishedAt?.getTime() ?? 0
+      const bm = b.publishedAt?.getTime() ?? 0
+      return bm - am
+    })
+    return {
+      items: merged.slice(0, Math.min(Math.max(limit, 1), 48)),
+      nextCursor: page.nextCursor,
+    }
   }
 
   /** @deprecated use getPublisherArticles which returns a page */
