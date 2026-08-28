@@ -476,11 +476,9 @@ function poolHasSporNews(pool: NewsItem[]): boolean {
 
 /** Map raw category ids to ordered CityCategory nav entries (chips first). */
 async function mapCategoryIdSetToCityCategories(idSet: Set<string>): Promise<CityCategory[]> {
-  const { DEFAULT_CATEGORIES } = await import('@/constants/config')
   const {
     CITY_CATEGORY_CHIPS,
     CITY_DYNAMIC_NAV_CHIP_IDS,
-    CITY_DYNAMIC_NAV_EXCLUDED_IDS,
   } = await import('@/constants/cityCategories')
 
   const chipByCategoryId = new Map(
@@ -490,25 +488,17 @@ async function mapCategoryIdSetToCityCategories(idSet: Set<string>): Promise<Cit
   )
 
   const results: CityCategory[] = []
-  const seen = new Set<string>()
 
+  // City nav only shows chips defined in CITY_CATEGORY_CHIPS — no national
+  // category bleed-through from DEFAULT_CATEGORIES.
   for (const categoryId of CITY_DYNAMIC_NAV_CHIP_IDS) {
-    if (!idSet.has(categoryId) || seen.has(categoryId)) continue
+    if (!idSet.has(categoryId)) continue
     const chip = chipByCategoryId.get(categoryId)
     results.push({
       id: categoryId,
       name: chip?.label ?? categoryId,
       slug: categoryId,
     })
-    seen.add(categoryId)
-  }
-
-  for (const cat of DEFAULT_CATEGORIES) {
-    if (cat.parentId || !idSet.has(cat.id)) continue
-    if (CITY_DYNAMIC_NAV_EXCLUDED_IDS.has(cat.id) || seen.has(cat.id)) continue
-    if (chipByCategoryId.has(cat.id)) continue
-    results.push({ id: cat.id, name: cat.name, slug: cat.slug ?? cat.id })
-    seen.add(cat.id)
   }
 
   return results
