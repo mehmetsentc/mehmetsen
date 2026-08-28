@@ -1,0 +1,381 @@
+{
+  "baseline": {
+    "healthRes": [
+      {
+        "alive": 1,
+        "version": "PostgreSQL 18.6 (3484359) on aarch64-unknown-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit"
+      }
+    ],
+    "flagsInEnv": [
+      {
+        "key": "PUBLISHER_PLATFORM_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_STUDIO_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_PROFILE_COMPOSER_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_CONTENT_STUDIO_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_MANUAL_PUBLISH_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_SCHEDULING_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_MEDIA_UPLOAD_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_AD_INVENTORY_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_AD_PUBLIC_LISTING_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PROFILE_AD_SLOTS_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "ARTICLE_AD_SLOTS_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_SELF_MANAGED_ADS_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_AD_SERVING_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_VIDEO_PREROLL_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_AD_ANALYTICS_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "SMART_FEED_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "SMART_FEED_RANKING_V1_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "SOCIAL_GRAPH_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "USER_PROFILES_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "ADVERTISER_PLATFORM_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "AD_MARKETPLACE_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "COMMERCIAL_LEDGER_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PAYMENT_INTENT_ENABLED",
+        "val": "false"
+      },
+      {
+        "key": "PUBLISHER_EARNINGS_ENABLED",
+        "val": "false"
+      }
+    ],
+    "ufaRows": [
+      {
+        "id": "ufa_pilot_user_profiles",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "USER_PROFILES",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.594Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:38.594Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_social_graph",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SOCIAL_GRAPH",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.681Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:38.681Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_smart_feed",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.762Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:38.762Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_ranking_v1",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_RANKING_V1",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.843Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:38.843Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_cold_start_v2",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "COLD_START_V2",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.923Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:38.923Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_video",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_VIDEO",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:39.002Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:39.002Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_telemetry",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_TELEMETRY",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:39.119Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T13:26:39.119Z",
+        "updated_by": "pilot-operator-init",
+        "reason": "P14 consumer pilot allowlist"
+      }
+    ],
+    "pubRows": [
+      {
+        "id": "pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55",
+        "slug": "the-guardian-world-rss",
+        "name": "The Guardian World RSS",
+        "status": "UNCLAIMED",
+        "verification_status": "UNCLAIMED"
+      },
+      {
+        "id": "pub_9cc584bf-34c6-495a-b056-dd19c2fc732b",
+        "slug": "trt-haber-rss",
+        "name": "TRT Haber RSS",
+        "status": "UNCLAIMED",
+        "verification_status": "UNCLAIMED"
+      },
+      {
+        "id": "pub_442e9bfa-855a-443e-95d0-3b68d5ddc8e7",
+        "slug": "le-monde-rss",
+        "name": "Le Monde RSS",
+        "status": "UNCLAIMED",
+        "verification_status": "UNCLAIMED"
+      },
+      {
+        "id": "pub_1a56da32-d30b-48a9-b1a9-6933729f1afa",
+        "slug": "deutsche-welle-rss",
+        "name": "Deutsche Welle RSS",
+        "status": "UNCLAIMED",
+        "verification_status": "UNCLAIMED"
+      },
+      {
+        "id": "pub_99d53526-325c-498f-9eaa-539f2a2654bb",
+        "slug": "bbc-world-rss",
+        "name": "BBC World RSS",
+        "status": "UNCLAIMED",
+        "verification_status": "UNCLAIMED"
+      }
+    ],
+    "claimCount": 1,
+    "memberCount": 1,
+    "pfaCount": 18,
+    "ledgerCount": 0,
+    "campaignCount": 0,
+    "feedCounts": {
+      "user_content_impressions": 0,
+      "social_events": 0,
+      "user_interest_scores": 0,
+      "user_publisher_affinity": 0,
+      "user_feed_preferences": 0,
+      "user_feature_access": 7
+    }
+  },
+  "audit30": [
+    {
+      "pos": 1,
+      "id": "XUEhKFwUCqoOgytboSIq",
+      "headline": "[P11.1 PILOT TEST] NaHaber iç test makalesi — gerçek haber değildir",
+      "publisher": "UNKNOWN",
+      "publisherSlug": "unknown",
+      "category": "gundem",
+      "clusterId": null,
+      "ageHours": 24.14,
+      "reason": "RECENT",
+      "score": 0.10582825936886303,
+      "breaking": false,
+      "materialUpdate": false,
+      "hasHeadline": true,
+      "hasSummary": true,
+      "hasMedia": false,
+      "hasPublisher": false,
+      "hasSlug": true,
+      "isPlaceholder": true,
+      "isTestPublisher": false,
+      "scoreBreakdown": {
+        "following": 0,
+        "freshness": 0.4979412387822511,
+        "interest": 0,
+        "local": 0,
+        "editorial": 0,
+        "quality": 0.44,
+        "engagement": 0,
+        "discovery": 0.15,
+        "materialUpdate": 0,
+        "penalties": 0,
+        "total": 0.10582825936886303
+      }
+    }
+  ],
+  "qualityGates": {
+    "missingTitles": 0,
+    "placeholderCount": 1,
+    "testPublisherCount": 0,
+    "missingSlugs": 0,
+    "missingMedia": 1,
+    "missingSummary": 0
+  },
+  "clusterStats": {
+    "totalItems": 1,
+    "uniqueArticles": 1,
+    "uniqueClusters": 0,
+    "clusterRepeatCount": 0
+  },
+  "publisherDiversity": {
+    "uniquePublishers": 1,
+    "topPublisherShare": 1,
+    "publisherCounts": {
+      "UNKNOWN": 1
+    },
+    "maxConsecutivePublisher": 1
+  },
+  "categoryDiversity": {
+    "uniqueCategories": 1,
+    "categoryCounts": {
+      "gundem": 1
+    }
+  },
+  "modeStats": {
+    "personal": {
+      "count": 1,
+      "latencyMs": "1104.55",
+      "medianAgeHours": "24.14",
+      "p90AgeHours": "24.14",
+      "buckets": {
+        "0-1h": 0,
+        "1-3h": 0,
+        "3-6h": 0,
+        "6-12h": 0,
+        "12-24h": 0,
+        "24-48h": 1,
+        "48h+": 0
+      }
+    },
+    "breaking": {
+      "count": 0,
+      "latencyMs": "936.58",
+      "medianAgeHours": "0.00",
+      "p90AgeHours": "0.00",
+      "buckets": {
+        "0-1h": 0,
+        "1-3h": 0,
+        "3-6h": 0,
+        "6-12h": 0,
+        "12-24h": 0,
+        "24-48h": 0,
+        "48h+": 0
+      },
+      "emptyReason": "no_items"
+    },
+    "following": {
+      "count": 0,
+      "latencyMs": "888.84",
+      "medianAgeHours": "0.00",
+      "p90AgeHours": "0.00",
+      "buckets": {
+        "0-1h": 0,
+        "1-3h": 0,
+        "3-6h": 0,
+        "6-12h": 0,
+        "12-24h": 0,
+        "24-48h": 0,
+        "48h+": 0
+      },
+      "emptyReason": "no_items"
+    },
+    "local": {
+      "count": 0,
+      "latencyMs": "753.17",
+      "medianAgeHours": "0.00",
+      "p90AgeHours": "0.00",
+      "buckets": {
+        "0-1h": 0,
+        "1-3h": 0,
+        "3-6h": 0,
+        "6-12h": 0,
+        "12-24h": 0,
+        "24-48h": 0,
+        "48h+": 0
+      },
+      "emptyReason": "no_items"
+    }
+  },
+  "suppressionTest": {
+    "testSeenIds": [
+      "XUEhKFwUCqoOgytboSIq"
+    ],
+    "suppressedFoundInDirectCount": 0
+  },
+  "negativeFeedbackTest": {
+    "normalScore": 0.1563812195643474,
+    "penalizedScore": 0,
+    "penaltyApplied": true
+  },
+  "payload": {
+    "cardPayloadSize": 1417,
+    "avgCardPayloadSize": 1417
+  }
+}
