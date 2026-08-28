@@ -110,14 +110,18 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const windowStart = Math.max(0, activeIndex - 5)
   const windowItems = items.slice(windowStart, windowStart + WINDOW_MAX)
 
+  const cursorRef = useRef<string | null>(null)
+  cursorRef.current = cursor
+
   const loadPage = useCallback(
     async (append: boolean, nextCursor?: string | null) => {
       if (append) setLoadingMore(true)
       else setLoading(true)
       try {
+        await ensureAuthReady()
         const page = await fetchFeedPage({
           mode,
-          cursor: append ? (nextCursor ?? cursor) : null,
+          cursor: append ? (nextCursor ?? cursorRef.current) : null,
           city: initialCitySlug,
           district: initialDistrictSlug,
           refresh: !append,
@@ -132,6 +136,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           })
         })
         setCursor(page.nextCursor)
+        cursorRef.current = page.nextCursor
         setHasMore(page.hasMore)
         if (!append) {
           const restore = readFeedRestore()
@@ -142,20 +147,28 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             clearFeedRestore()
           }
         }
-      } catch {
+      } catch (err) {
+        console.error('[SmartFeedClient] Error loading feed page:', err)
         await postTelemetry({ events: [{ eventType: 'feed_error', feedType: mode }] })
       } finally {
         setLoading(false)
         setLoadingMore(false)
       }
     },
-    [mode, cursor, initialCitySlug, initialDistrictSlug, searchParams]
+    [mode, initialCitySlug, initialDistrictSlug, searchParams]
   )
 
   useEffect(() => {
     let mounted = true
-    const unsub = auth.onAuthStateChanged(() => {
+
+    void ensureAuthReady().then(() => {
       if (mounted) void loadPage(false)
+    })
+
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (mounted && user) {
+        void loadPage(false)
+      }
     })
     return () => {
       mounted = false
