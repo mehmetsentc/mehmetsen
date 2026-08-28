@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Inbox, CheckCircle2, RefreshCw } from 'lucide-react'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
@@ -16,7 +16,7 @@ import {
 import { clearFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
-import { auth } from '@/lib/firebase/auth'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 import { ROUTES } from '@/constants/routes'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
@@ -46,6 +46,7 @@ async function fetchFeedPage(opts: {
   const headers: Record<string, string> = {
     'x-feed-session': getOrCreateFeedSessionId(),
   }
+  await ensureAuthReady()
   const user = auth.currentUser
   if (user) {
     headers.Authorization = `Bearer ${await user.getIdToken()}`
@@ -67,9 +68,15 @@ async function postTelemetry(payload: {
     'Content-Type': 'application/json',
     'x-feed-session': getOrCreateFeedSessionId(),
   }
+  await ensureAuthReady()
   const user = auth.currentUser
   if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`
-  await fetch('/api/feed/telemetry', { method: 'POST', headers, body: JSON.stringify(payload) }).catch(() => {})
+  await fetch('/api/feed/telemetry', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {})
 }
 
 interface SmartFeedClientProps {
@@ -146,8 +153,15 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   )
 
   useEffect(() => {
-    void loadPage(false)
-  }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
+    let mounted = true
+    const unsub = auth.onAuthStateChanged(() => {
+      if (mounted) void loadPage(false)
+    })
+    return () => {
+      mounted = false
+      unsub()
+    }
+  }, [mode, loadPage])
 
   useEffect(() => {
     if (!items.length) return
@@ -283,11 +297,30 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     router.push(ROUTES.NEWS_DETAIL(item.slug))
   }
 
-  const emptyMessage = useMemo(() => {
+  const emptyState = useMemo(() => {
     if (loading) return null
-    if (mode === 'following') return 'Takip ettiğiniz yayıncılardan haber bulunamadı.'
-    if (mode === 'local') return 'Bölgeniz için yerel haber bulunamadı.'
-    return 'Gösterilecek haber bulunamadı.'
+    if (mode === 'following') {
+      return {
+        title: 'Takip Ettiğin Yayıncı Yok',
+        description: 'Henüz takip ettiğin yayıncı yok veya yeni bir paylaşımları bulunmuyor.',
+      }
+    }
+    if (mode === 'local') {
+      return {
+        title: 'Yerel Haber Yok',
+        description: 'Bu konumda henüz haber bulunmuyor.',
+      }
+    }
+    if (mode === 'breaking') {
+      return {
+        title: 'Son Dakika Yok',
+        description: 'Şu an son dakika haberi bulunmuyor.',
+      }
+    }
+    return {
+      title: 'Haber Akışı Boş',
+      description: 'Şu an gösterilecek haber bulunamadı.',
+    }
   }, [loading, mode])
 
   if (loading && !items.length) {
@@ -311,8 +344,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       />
 
       {!items.length ? (
-        <div className="flex h-[100dvh] items-center justify-center px-6 text-center text-white/80">
-          {emptyMessage}
+        <div className="flex h-[100dvh] flex-col items-center justify-center px-6 text-center text-white/80">
+          <div className="mb-4 rounded-full bg-white/10 p-4">
+            <Inbox className="h-8 w-8 text-white/70" />
+          </div>
+          <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
+          <p className="max-w-xs text-sm text-white/60">{emptyState?.description}</p>
         </div>
       ) : (
         <div
@@ -348,6 +385,28 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           {loadingMore ? (
             <div className="flex h-24 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-white" />
+            </div>
+          ) : null}
+          {!hasMore && items.length > 0 ? (
+            <div className="flex h-[100dvh] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
+              <div className="mb-4 rounded-full bg-white/10 p-4">
+                <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+              </div>
+              <h3 className="mb-2 text-xl font-bold">Tüm haberleri gördün</h3>
+              <p className="mb-6 max-w-xs text-sm text-white/70">
+                Şimdilik bu kadar. Yeni gelişmeler geldikçe burada göreceksin.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  scrollToIndex(0)
+                  void loadPage(false)
+                }}
+                className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Başa Dön ve Yenile
+              </button>
             </div>
           ) : null}
         </div>

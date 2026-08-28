@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { FEED_IMPRESSION_CONFIG, GUEST_SEEN_MAX, GUEST_SEEN_STORAGE_KEY } from '@/lib/feed/config'
 
 export function getOrCreateFeedSessionId(): string {
@@ -36,42 +36,76 @@ export function useFeedImpressionRef(
   isActive: boolean,
   onQualified: () => void
 ): (node: HTMLElement | null) => void {
+  const nodeRef = useRef<HTMLElement | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firedRef = useRef(false)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const onQualifiedRef = useRef(onQualified)
+  onQualifiedRef.current = onQualified
 
-  return useCallback(
-    (node: HTMLElement | null) => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-      firedRef.current = false
-      if (!node || !isActive) return
+  const cleanup = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+  }, [])
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const ratio = entries[0]?.intersectionRatio ?? 0
-          const visible = ratio >= FEED_IMPRESSION_CONFIG.visibilityRatio
-          if (visible && !firedRef.current) {
+  useEffect(() => {
+    cleanup()
+    firedRef.current = false
+    const node = nodeRef.current
+    if (!node || !isActive) return
+
+    if (typeof IntersectionObserver === 'undefined') {
+      timerRef.current = setTimeout(() => {
+        if (!firedRef.current) {
+          firedRef.current = true
+          timerRef.current = null
+          onQualifiedRef.current()
+        }
+      }, FEED_IMPRESSION_CONFIG.minVisibleMs)
+      return cleanup
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const ratio = entries[0]?.intersectionRatio ?? 0
+        const visible = ratio >= FEED_IMPRESSION_CONFIG.visibilityRatio
+        if (visible && !firedRef.current) {
+          if (!timerRef.current) {
             timerRef.current = setTimeout(() => {
               if (!firedRef.current) {
                 firedRef.current = true
-                onQualified()
+                timerRef.current = null
+                onQualifiedRef.current()
               }
             }, FEED_IMPRESSION_CONFIG.minVisibleMs)
-          } else if (timerRef.current) {
-            clearTimeout(timerRef.current)
-            timerRef.current = null
           }
-        },
-        { threshold: [0, 0.6, 1] }
-      )
-      observer.observe(node)
-      return () => {
-        observer.disconnect()
-        if (timerRef.current) clearTimeout(timerRef.current)
+        } else if (!visible && timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
+        }
+      },
+      { threshold: [0, 0.6, 1] }
+    )
+
+    observer.observe(node)
+    observerRef.current = observer
+
+    return cleanup
+  }, [articleId, isActive, cleanup])
+
+  return useCallback(
+    (node: HTMLElement | null) => {
+      nodeRef.current = node
+      if (!node) {
+        cleanup()
       }
     },
-    [articleId, isActive, onQualified]
+    [cleanup]
   )
 }

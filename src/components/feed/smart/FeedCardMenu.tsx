@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { MoreHorizontal, EyeOff, MinusCircle, Tag } from 'lucide-react'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import type { FeedItemDto } from '@/types/smartFeed'
 
@@ -19,9 +20,15 @@ async function submitFeedback(payload: {
   publisherId?: string
   category?: string
 }) {
+  await ensureAuthReady()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const user = auth.currentUser
+  if (user) {
+    headers.Authorization = `Bearer ${await user.getIdToken()}`
+  }
   const res = await fetch('/api/feed/feedback', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error('feedback_failed')

@@ -11,6 +11,22 @@ import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import type { FeedItemDto } from '@/types/smartFeed'
 
+function formatRelativeTime(dateStr?: string | null): string | null {
+  if (!dateStr) return null
+  try {
+    const diffMs = Date.now() - new Date(dateStr).getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'Az önce'
+    if (diffMins < 60) return `${diffMins}dk önce`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}s önce`
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}g önce`
+  } catch {
+    return null
+  }
+}
+
 interface FullscreenNewsCardProps {
   item: FeedItemDto
   isActive: boolean
@@ -80,36 +96,44 @@ export function FullscreenNewsCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20" aria-hidden />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pb-6 md:mx-auto md:max-w-lg md:w-full">
+      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-16 pb-6 md:mx-auto md:max-w-lg md:w-full">
         {/* Publisher header */}
         {item.publisher ? (
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <Link
               href={ROUTES.PUBLISHER(item.publisher.slug)}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm"
+              className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm"
             >
               {item.publisher.logoUrl ? (
                 <Image
                   src={item.publisher.logoUrl}
                   alt=""
-                  width={28}
-                  height={28}
+                  width={24}
+                  height={24}
                   className="rounded-full object-cover"
                 />
               ) : (
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
                   {item.publisher.name.slice(0, 1)}
                 </span>
               )}
-              <span className="truncate text-sm font-semibold text-white">{item.publisher.name}</span>
+              <span className="truncate text-xs font-semibold text-white">{item.publisher.name}</span>
+              {item.publishedAt ? (
+                <>
+                  <span className="text-white/40 text-xs select-none">·</span>
+                  <span className="shrink-0 text-xs text-white/70">{formatRelativeTime(item.publishedAt)}</span>
+                </>
+              ) : null}
             </Link>
-            <FollowButton
-              publisherId={item.publisher.id}
-              publisherSlug={item.publisher.slug}
-              className="shrink-0"
-              showCount={false}
-            />
-            <FeedCardMenu item={item} onFeedback={onFeedback} />
+            <div className="flex items-center gap-1 shrink-0">
+              <FollowButton
+                publisherId={item.publisher.id}
+                publisherSlug={item.publisher.slug}
+                className="shrink-0"
+                showCount={false}
+              />
+              <FeedCardMenu item={item} onFeedback={onFeedback} />
+            </div>
           </div>
         ) : (
           <div className="flex justify-end">

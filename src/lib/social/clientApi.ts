@@ -1,8 +1,9 @@
 'use client'
 
-import { auth } from '@/lib/firebase/auth'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 
 async function socialFetch(path: string, init?: RequestInit) {
+  await ensureAuthReady()
   const user = auth.currentUser
   if (!user) throw new Error('AUTH_REQUIRED')
   const token = await user.getIdToken()

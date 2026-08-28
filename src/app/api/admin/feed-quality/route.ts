@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
-import { hasDatabaseUrl } from '@/db'
+import { getDb, hasDatabaseUrl } from '@/db'
+import { eq, sql, desc } from 'drizzle-orm'
+import { userContentImpressions } from '@/db/schema/smartFeed'
+import { socialEvents, articleLikes, savedArticles, userPublisherFollows } from '@/db/schema/socialGraph'
+import { userFeedPreferences, userInterestScores, userPublisherAffinity } from '@/db/schema/feedRanking'
 import { feedService } from '@/services/feed/FeedService'
 import { userFeatureAccessService } from '@/services/user/userFeatureAccessService'
 import type { FeedMode } from '@/types/smartFeed'
@@ -144,6 +148,100 @@ export async function GET(request: Request) {
   // User Feature Access
   const userFeatures = await userFeatureAccessService.listRows(targetUserId)
 
+  // Real Pilot Activity & Engagement Telemetry (Phase P17)
+  const db = getDb()
+  const [
+    impressionsCountRow,
+    socialEventsCountRow,
+    likesCountRow,
+    savesCountRow,
+    followsCountRow,
+    feedbackCountRow,
+    interestScoresCountRow,
+    affinityCountRow,
+    recentImpressions,
+    recentSocialEvents,
+  ] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userContentImpressions)
+      .where(eq(userContentImpressions.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(socialEvents)
+      .where(eq(socialEvents.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(articleLikes)
+      .where(eq(articleLikes.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(savedArticles)
+      .where(eq(savedArticles.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userPublisherFollows)
+      .where(eq(userPublisherFollows.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userFeedPreferences)
+      .where(eq(userFeedPreferences.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userInterestScores)
+      .where(eq(userInterestScores.userId, targetUserId)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(userPublisherAffinity)
+      .where(eq(userPublisherAffinity.userId, targetUserId)),
+    db
+      .select({
+        articleId: userContentImpressions.articleId,
+        feedType: userContentImpressions.feedType,
+        impressionCount: userContentImpressions.impressionCount,
+        lastSeenAt: userContentImpressions.lastSeenAt,
+      })
+      .from(userContentImpressions)
+      .where(eq(userContentImpressions.userId, targetUserId))
+      .orderBy(desc(userContentImpressions.lastSeenAt))
+      .limit(10),
+    db
+      .select({
+        eventType: socialEvents.eventType,
+        targetType: socialEvents.targetType,
+        targetId: socialEvents.targetId,
+        createdAt: socialEvents.createdAt,
+      })
+      .from(socialEvents)
+      .where(eq(socialEvents.userId, targetUserId))
+      .orderBy(desc(socialEvents.createdAt))
+      .limit(10),
+  ])
+
+  const pilotActivity = {
+    impressionsCount: impressionsCountRow[0]?.count ?? 0,
+    socialEventsCount: socialEventsCountRow[0]?.count ?? 0,
+    likesCount: likesCountRow[0]?.count ?? 0,
+    savesCount: savesCountRow[0]?.count ?? 0,
+    followsCount: followsCountRow[0]?.count ?? 0,
+    feedbackCount: feedbackCountRow[0]?.count ?? 0,
+    interestScoresCount: interestScoresCountRow[0]?.count ?? 0,
+    affinityCount: affinityCountRow[0]?.count ?? 0,
+    hasHumanData: (impressionsCountRow[0]?.count ?? 0) > 0 || (socialEventsCountRow[0]?.count ?? 0) > 0,
+    recentImpressions: recentImpressions.map((r) => ({
+      articleId: r.articleId,
+      feedType: r.feedType,
+      impressionCount: r.impressionCount,
+      lastSeenAt: r.lastSeenAt.toISOString(),
+    })),
+    recentEvents: recentSocialEvents.map((r) => ({
+      eventType: r.eventType,
+      targetType: r.targetType,
+      targetId: r.targetId,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  }
+
   return NextResponse.json({
     ok: true,
     timestamp: new Date().toISOString(),
@@ -158,6 +256,7 @@ export async function GET(request: Request) {
       rankingVersion: feedResult.rankingVersion ?? 'v1',
       emptyReason: feedResult.emptyReason,
     },
+    pilotActivity,
     qualityGates: {
       passed: missingTitles === 0 && placeholderCount === 0 && testPublisherCount === 0 && missingSlugs === 0,
       missingTitles,

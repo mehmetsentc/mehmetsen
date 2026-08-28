@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-08-28T15:02:29.915Z",
+  "inventory": {
+    "news_sources": 408,
+    "raw_articles": 17865,
+    "news_clusters": 15591,
+    "news_total": 30,
+    "news_published": 29,
+    "news_archived": 1
+  },
+  "pilotUser": {
+    "firebase_uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+    "email": "mehmetsentc@gmail.com",
+    "display_name": "mehmetsentc",
+    "role": "user"
+  },
+  "pilotFeatureAccess": [
+    {
+      "feature_key": "COLD_START_V2",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.923Z"
+    },
+    {
+      "feature_key": "SMART_FEED",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.762Z"
+    },
+    {
+      "feature_key": "SMART_FEED_RANKING_V1",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.843Z"
+    },
+    {
+      "feature_key": "SMART_FEED_TELEMETRY",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.119Z"
+    },
+    {
+      "feature_key": "SMART_FEED_VIDEO",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.002Z"
+    },
+    {
+      "feature_key": "SOCIAL_GRAPH",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.681Z"
+    },
+    {
+      "feature_key": "USER_PROFILES",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.594Z"
+    }
+  ],
+  "userCohortContainment": {
+    "uniqueOverriddenUsers": 1,
+    "totalFeatureAccessRows": 7
+  },
+  "telemetryData": {
+    "impressions_total": 0,
+    "impressions_pilot": 0,
+    "impressions_guest": 0,
+    "social_events_total": 0,
+    "social_events_pilot": 0,
+    "user_feed_preferences": 0,
+    "article_likes_pilot": 0,
+    "saved_articles_pilot": 0,
+    "user_publisher_follows_pilot": 0,
+    "article_comments_pilot": 0,
+    "user_interest_scores_pilot": 0,
+    "user_publisher_affinity_pilot": 0
+  },
+  "recentImpressions": [],
+  "recentEvents": [],
+  "publishedArticlesCount": 29,
+  "eligibleFeedCardsCount": 29,
+  "supplyContinuity": {
+    "unpublishedClustersWithSources": 15499,
+    "unpublishedRawArticles": 14909
+  },
+  "pilotFollows": [],
+  "pilotLikes": [],
+  "pilotSaves": [],
+  "pilotPreferences": []
+}

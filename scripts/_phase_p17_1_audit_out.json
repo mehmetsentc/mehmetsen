@@ -1,0 +1,281 @@
+{
+  "gitCommit": "local-head",
+  "timestamp": "2026-08-28T17:10:45.980Z",
+  "counts": {
+    "news_total": 30,
+    "news_published": 29,
+    "news_archived": 1,
+    "news_draft": 0,
+    "news_clusters": 15720,
+    "raw_articles": 18010,
+    "news_sources": 408,
+    "publishers": 25,
+    "commercial_ledger_entries": 0,
+    "advertisers": 0,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "publisher_earnings": 0,
+    "crawler_ai_jobs": 12,
+    "crawler_ai_cost_ledger": 17,
+    "crawler_ai_dispatch_shadow": 15677,
+    "user_content_impressions_total": 0,
+    "social_events_total": 0,
+    "article_likes_total": 0,
+    "saved_articles_total": 0,
+    "article_comments_total": 0,
+    "user_publisher_follows_total": 0,
+    "user_feature_access_total": 7,
+    "user_interest_scores_total": 0,
+    "user_publisher_affinity_total": 0,
+    "user_feed_preferences_total": 0
+  },
+  "pilotUser": {
+    "firebase_uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+    "email": "mehmetsentc@gmail.com",
+    "username": null,
+    "display_name": "mehmetsentc",
+    "role": "user",
+    "home_city_slug": null,
+    "created_at": "2026-08-27T13:51:21.065Z",
+    "updated_at": "2026-08-27T13:51:21.065Z"
+  },
+  "pilotFeatureAccess": [
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "USER_PROFILES",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.594Z",
+      "created_at": "2026-08-28T13:26:38.594Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SOCIAL_GRAPH",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.681Z",
+      "created_at": "2026-08-28T13:26:38.681Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.762Z",
+      "created_at": "2026-08-28T13:26:38.762Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_RANKING_V1",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.843Z",
+      "created_at": "2026-08-28T13:26:38.843Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "COLD_START_V2",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.923Z",
+      "created_at": "2026-08-28T13:26:38.923Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_VIDEO",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.002Z",
+      "created_at": "2026-08-28T13:26:39.002Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_TELEMETRY",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.119Z",
+      "created_at": "2026-08-28T13:26:39.119Z"
+    }
+  ],
+  "allFeatureAccess": [
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "USER_PROFILES",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.594Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SOCIAL_GRAPH",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.681Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.762Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_RANKING_V1",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.843Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "COLD_START_V2",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:38.923Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_VIDEO",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.002Z"
+    },
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "feature_key": "SMART_FEED_TELEMETRY",
+      "enabled": true,
+      "reason": "P14 consumer pilot allowlist",
+      "updated_at": "2026-08-28T13:26:39.119Z"
+    }
+  ],
+  "pilotImpressionsCount": 0,
+  "pilotImpressions": [],
+  "pilotSocialEventsCount": 0,
+  "pilotSocialEvents": [],
+  "pilotLikes": [],
+  "pilotSaves": [],
+  "pilotFollows": [],
+  "pilotFeedPrefs": [],
+  "pilotInterestScores": [],
+  "pilotPublisherAffinity": [],
+  "majorPublishers": [
+    {
+      "id": "pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55",
+      "name": "The Guardian World RSS",
+      "slug": "the-guardian-world-rss",
+      "display_name": "The Guardian World RSS",
+      "verification_status": "UNCLAIMED",
+      "claimed_at": null,
+      "verified_at": null
+    },
+    {
+      "id": "pub_9cc584bf-34c6-495a-b056-dd19c2fc732b",
+      "name": "TRT Haber RSS",
+      "slug": "trt-haber-rss",
+      "display_name": "TRT Haber RSS",
+      "verification_status": "UNCLAIMED",
+      "claimed_at": null,
+      "verified_at": null
+    },
+    {
+      "id": "pub_442e9bfa-855a-443e-95d0-3b68d5ddc8e7",
+      "name": "Le Monde RSS",
+      "slug": "le-monde-rss",
+      "display_name": "Le Monde RSS",
+      "verification_status": "UNCLAIMED",
+      "claimed_at": null,
+      "verified_at": null
+    },
+    {
+      "id": "pub_99d53526-325c-498f-9eaa-539f2a2654bb",
+      "name": "BBC World RSS",
+      "slug": "bbc-world-rss",
+      "display_name": "BBC World RSS",
+      "verification_status": "UNCLAIMED",
+      "claimed_at": null,
+      "verified_at": null
+    }
+  ],
+  "claimRequestsCount": 1,
+  "newsQuality": {
+    "total_published": 29,
+    "missing_title": 0,
+    "missing_summary": 0,
+    "missing_media": 0,
+    "missing_slug": 0,
+    "placeholder_titles": 0
+  },
+  "publisherDistribution": [
+    {
+      "publisher_name": "NTV",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "Cumhuriyet",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "Sözcü",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "Evrensel",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "Habertürk",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "Hürriyet",
+      "article_count": 4
+    },
+    {
+      "publisher_name": "bogazgazetesi.com.tr",
+      "article_count": 2
+    },
+    {
+      "publisher_name": "Dünya",
+      "article_count": 1
+    },
+    {
+      "publisher_name": "Webtekno",
+      "article_count": 1
+    },
+    {
+      "publisher_name": "CNN Türk",
+      "article_count": 1
+    }
+  ],
+  "categoryDistribution": [
+    {
+      "category": "saglik",
+      "article_count": 5
+    },
+    {
+      "category": "ekonomi",
+      "article_count": 5
+    },
+    {
+      "category": "gundem",
+      "article_count": 5
+    },
+    {
+      "category": "siyaset",
+      "article_count": 5
+    },
+    {
+      "category": "spor",
+      "article_count": 5
+    },
+    {
+      "category": "dunya",
+      "article_count": 3
+    },
+    {
+      "category": "yerel-haber",
+      "article_count": 1
+    }
+  ],
+  "reserveClustersCount": 15691
+}

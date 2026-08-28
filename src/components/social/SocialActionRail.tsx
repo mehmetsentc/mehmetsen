@@ -42,22 +42,22 @@ export function SocialActionRail({
 }: SocialActionRailProps) {
   return (
     <div className={cn('flex items-center justify-around gap-2 py-2', className)}>
-      <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} />
+      <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} variant="overlay" />
       <button
         type="button"
         onClick={onCommentClick}
-        className="flex flex-col items-center gap-1.5 text-gray-500 hover:text-brand-600 dark:text-gray-400"
+        className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
         aria-label="Yorum yap"
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm">
           <MessageCircle className="h-6 w-6" />
         </span>
-        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+        <span className="text-xs font-semibold text-white drop-shadow">
           {formatCount(commentCount)}
         </span>
       </button>
-      <BaseSaveButton saved={saved} count={0} onToggle={onToggleSave} loading={saveLoading} />
-      <BaseShareButton postId={articleId} slug={slug} title={title} text={summary} />
+      <BaseSaveButton saved={saved} count={0} onToggle={onToggleSave} loading={saveLoading} variant="overlay" />
+      <BaseShareButton postId={articleId} slug={slug} title={title} text={summary} variant="overlay" />
     </div>
   )
 }

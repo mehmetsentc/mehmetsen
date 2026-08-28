@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { recordSocialEvent } from '@/lib/social/events'
-import { isSmartFeedTelemetryEnabled } from '@/lib/feed/featureFlag'
+import { isSmartFeedTelemetryEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import type { FeedTelemetryBatchItem, FeedTelemetryEventType } from '@/types/smartFeed'
 import type { SocialEventType } from '@/types/socialGraph'
 
@@ -13,7 +13,7 @@ export class FeedTelemetryService {
   ): Promise<void> {
     if (!items.length) return
 
-    const telemetryOn = isSmartFeedTelemetryEnabled()
+    const telemetryOn = await isSmartFeedTelemetryEffectiveForUser(userId)
     for (const item of items) {
       if (telemetryOn) {
         await recordSocialEvent({

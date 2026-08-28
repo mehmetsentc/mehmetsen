@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { auth } from '@/lib/firebase/auth'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 
@@ -37,7 +37,8 @@ export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottom
       try {
         const q = nextCursor ? `&cursor=${encodeURIComponent(nextCursor)}` : ''
         const headers: Record<string, string> = {}
-        if (user && auth.currentUser) {
+        await ensureAuthReady()
+        if (auth.currentUser) {
           const token = await auth.currentUser.getIdToken()
           headers.Authorization = `Bearer ${token}`
         }
