@@ -32,6 +32,7 @@ export type NewsItem = {
   createdAt?: string
   publishedAt?: string
   views?: number
+  viewsCount?: number
   likesCount?: number
   commentsCount?: number
   featured?: boolean

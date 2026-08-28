@@ -1201,7 +1201,7 @@ const getMostReadPostsCached = unstable_cache(
 
       if (!snap24h.empty) {
         const items24h = mapAdminDocs(snap24h.docs)
-        items24h.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+        items24h.sort((a, b) => (b.viewsCount ?? b.views ?? 0) - (a.viewsCount ?? a.views ?? 0))
         if (items24h.length > 0) return items24h.slice(0, limitCount)
       }
 

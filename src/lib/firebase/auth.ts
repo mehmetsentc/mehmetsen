@@ -11,8 +11,29 @@ export function ensureAuthReady(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
 
   if (!authReadyPromise) {
-    authReadyPromise = auth.authStateReady().then(() => undefined)
+    if (typeof auth.authStateReady === 'function') {
+      authReadyPromise = auth.authStateReady().then(() => undefined).catch(() => undefined)
+    } else {
+      authReadyPromise = new Promise<void>((resolve) => {
+        const unsub = auth.onAuthStateChanged(() => {
+          unsub()
+          resolve()
+        }, () => resolve())
+      })
+    }
   }
 
   return authReadyPromise
+}
+
+/** Returns the current Firebase ID token after session is ready, or null if unauthenticated. */
+export async function getClientAuthToken(): Promise<string | null> {
+  await ensureAuthReady()
+  const user = auth.currentUser
+  if (!user) return null
+  try {
+    return await user.getIdToken()
+  } catch {
+    return null
+  }
 }

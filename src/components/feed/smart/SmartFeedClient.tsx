@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Inbox, CheckCircle2, RefreshCw } from 'lucide-react'
+import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
@@ -16,7 +17,8 @@ import {
 import { clearFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
-import { auth, ensureAuthReady } from '@/lib/firebase/auth'
+import { getClientAuthToken } from '@/lib/firebase/auth'
+import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
@@ -27,6 +29,12 @@ function parseMode(raw: string | null): FeedMode {
   if (m === 'following' || m === 'breaking' || m === 'local' || m === 'personal') return m
   return 'personal'
 }
+
+type FeedErrorState =
+  | { type: 'AUTH_REQUIRED'; message: string }
+  | { type: 'DISABLED'; reason?: string; message: string }
+  | { type: 'NETWORK_ERROR'; message: string }
+  | null
 
 async function fetchFeedPage(opts: {
   mode: FeedMode
@@ -46,16 +54,33 @@ async function fetchFeedPage(opts: {
   const headers: Record<string, string> = {
     'x-feed-session': getOrCreateFeedSessionId(),
   }
-  await ensureAuthReady()
-  const user = auth.currentUser
-  if (user) {
-    headers.Authorization = `Bearer ${await user.getIdToken()}`
+  const token = await getClientAuthToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(`/api/feed/v2?${params}`, { headers })
+  const res = await fetch(`/api/feed/v2?${params}`, {
+    headers,
+    credentials: 'include',
+  })
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(body.error ?? 'feed_fetch_failed')
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string
+      reason?: string
+      authStatus?: string
+      userId?: string | null
+    }
+    const err = new Error(body.error ?? 'feed_fetch_failed') as Error & {
+      status?: number
+      reason?: string
+      authStatus?: string
+      userId?: string | null
+    }
+    err.status = res.status
+    err.reason = body.reason
+    err.authStatus = body.authStatus
+    err.userId = body.userId
+    throw err
   }
   return res.json() as Promise<FeedPageDto>
 }
@@ -68,9 +93,8 @@ async function postTelemetry(payload: {
     'Content-Type': 'application/json',
     'x-feed-session': getOrCreateFeedSessionId(),
   }
-  await ensureAuthReady()
-  const user = auth.currentUser
-  if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`
+  const token = await getClientAuthToken()
+  if (token) headers.Authorization = `Bearer ${token}`
   await fetch('/api/feed/telemetry', {
     method: 'POST',
     headers,
@@ -88,6 +112,7 @@ interface SmartFeedClientProps {
 export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }: SmartFeedClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user: authUser, loading: authLoading } = useAuthContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeIndexRef = useRef(0)
   const dwellStartRef = useRef<number | null>(null)
@@ -98,11 +123,13 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
   const [social, setSocial] = useState<Record<string, { liked: boolean; saved: boolean }>>({})
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
 
+  const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const socialEnabled = isSocialGraphEnabledClient()
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -116,9 +143,11 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const loadPage = useCallback(
     async (append: boolean, nextCursor?: string | null) => {
       if (append) setLoadingMore(true)
-      else setLoading(true)
+      else {
+        setLoading(true)
+        setErrorState(null)
+      }
       try {
-        await ensureAuthReady()
         const page = await fetchFeedPage({
           mode,
           cursor: append ? (nextCursor ?? cursorRef.current) : null,
@@ -126,6 +155,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           district: initialDistrictSlug,
           refresh: !append,
         })
+        setErrorState(null)
         setItems((prev) => {
           const merged = append ? [...prev, ...page.items] : page.items
           const seen = new Set<string>()
@@ -147,8 +177,29 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             clearFeedRestore()
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('[SmartFeedClient] Error loading feed page:', err)
+        const typedErr = err as { status?: number; message?: string; reason?: string }
+        const status = typedErr?.status
+        const msg = typedErr?.message || 'feed_error'
+
+        if (status === 401 || msg === 'auth_required') {
+          setErrorState({
+            type: 'AUTH_REQUIRED',
+            message: 'Bu akışı görüntülemek için giriş yapmalısınız.',
+          })
+        } else if (status === 404 || msg === 'Smart feed disabled') {
+          setErrorState({
+            type: 'DISABLED',
+            reason: typedErr?.reason,
+            message: 'Akıllı akış şu anda pilot kullanıcılara özeldir.',
+          })
+        } else {
+          setErrorState({
+            type: 'NETWORK_ERROR',
+            message: 'Haber akışı yüklenirken bir sorun oluştu.',
+          })
+        }
         await postTelemetry({ events: [{ eventType: 'feed_error', feedType: mode }] })
       } finally {
         setLoading(false)
@@ -159,22 +210,15 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   )
 
   useEffect(() => {
+    if (authLoading) return
     let mounted = true
 
-    void ensureAuthReady().then(() => {
-      if (mounted) void loadPage(false)
-    })
+    void loadPage(false)
 
-    const unsub = auth.onAuthStateChanged((user) => {
-      if (mounted && user) {
-        void loadPage(false)
-      }
-    })
     return () => {
       mounted = false
-      unsub()
     }
-  }, [mode, loadPage])
+  }, [mode, authLoading, authUser?.uid, loadPage])
 
   useEffect(() => {
     if (!items.length) return
@@ -336,7 +380,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     }
   }, [loading, mode])
 
-  if (loading && !items.length) {
+  if ((loading || authLoading) && !items.length) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-black">
         <Loader2 className="h-8 w-8 animate-spin text-white" aria-label="Yükleniyor" />
@@ -353,16 +397,70 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           setItems([])
           setCursor(null)
           setActiveIndex(0)
+          setErrorState(null)
         }}
       />
 
-      {!items.length ? (
+      {errorState ? (
+        <div className="flex h-[100dvh] flex-col items-center justify-center px-6 text-center text-white/80">
+          <div className="mb-4 rounded-full bg-white/10 p-4">
+            {errorState.type === 'AUTH_REQUIRED' || errorState.type === 'DISABLED' ? (
+              <ShieldAlert className="h-8 w-8 text-amber-400" />
+            ) : (
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            )}
+          </div>
+          <h2 className="mb-1 text-lg font-bold text-white">
+            {errorState.type === 'AUTH_REQUIRED'
+              ? 'Giriş Yapılması Gerekiyor'
+              : errorState.type === 'DISABLED'
+                ? 'Pilot Önizleme Modu'
+                : 'Yükleme Hatası'}
+          </h2>
+          <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
+          {errorState.type === 'AUTH_REQUIRED' || (!authUser && errorState.type === 'DISABLED') ? (
+            <Link
+              href={`/login?next=${encodeURIComponent('/feed-v2')}`}
+              className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+            >
+              Giriş Yap
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void loadPage(false)}
+              className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tekrar Dene
+            </button>
+          )}
+          {isDebug ? (
+            <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-amber-300">
+              [DIAGNOSTIC] status: {errorState.type} | user: {authUser?.uid ?? 'guest'} | mode: {mode}
+            </div>
+          ) : null}
+        </div>
+      ) : !items.length ? (
         <div className="flex h-[100dvh] flex-col items-center justify-center px-6 text-center text-white/80">
           <div className="mb-4 rounded-full bg-white/10 p-4">
             <Inbox className="h-8 w-8 text-white/70" />
           </div>
           <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
-          <p className="max-w-xs text-sm text-white/60">{emptyState?.description}</p>
+          <p className="max-w-xs text-sm text-white/60 mb-4">{emptyState?.description}</p>
+          <button
+            type="button"
+            onClick={() => void loadPage(false)}
+            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Yenile
+          </button>
+          {isDebug ? (
+            <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-green-300">
+              [DIAGNOSTIC] status: EMPTY_INVENTORY | user: {authUser?.uid ?? 'guest'} | items: 0 | mode: {mode}
+            </div>
+          ) : null}
         </div>
       ) : (
         <div
@@ -381,7 +479,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 key={item.articleId}
                 item={item}
                 isActive={isActive}
-                debug={debug}
+                debug={isDebug}
                 liked={social[item.articleId]?.liked ?? item.socialState?.liked ?? false}
                 saved={social[item.articleId]?.saved ?? item.socialState?.saved ?? false}
                 likeLoading={actionLoading[item.articleId] === 'like'}

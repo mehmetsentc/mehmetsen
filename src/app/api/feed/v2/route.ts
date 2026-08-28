@@ -24,7 +24,15 @@ export async function GET(request: Request) {
   const auth = await verifyFirebaseIdToken(request)
   const allowed = await isSmartFeedEffectiveForUser(auth?.uid)
   if (!allowed) {
-    return NextResponse.json({ error: 'Smart feed disabled' }, { status: 404 })
+    return NextResponse.json(
+      {
+        error: 'Smart feed disabled',
+        reason: auth?.uid ? 'user_not_allowlisted' : 'unauthenticated',
+        authStatus: auth?.uid ? 'authenticated' : 'unauthenticated',
+        userId: auth?.uid ?? null,
+      },
+      { status: 404 }
+    )
   }
 
   const url = new URL(request.url)
