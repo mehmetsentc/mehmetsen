@@ -61,7 +61,7 @@ export async function GET(
         link: url,
         guid: url,
         description: d.summary?.trim() || '',
-        pubDate: new Date(d.publishedAt ?? Date.now()).toISOString(),
+        pubDate: new Date(typeof d.publishedAt === 'number' && Number.isFinite(d.publishedAt) ? d.publishedAt : Date.now()).toISOString(),
         category: catLabel,
         imageUrl: d.coverImageUrl?.trim() || undefined,
         author: d.source?.trim() || siteName,

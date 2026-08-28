@@ -8,7 +8,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const revalidate = 86400
+export const dynamic = 'force-dynamic'
 
 // ─── City sitemap ─────────────────────────────────────────────────────────────
 

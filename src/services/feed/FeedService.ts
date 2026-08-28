@@ -80,22 +80,26 @@ async function loadSocialState(userId: string | null, articleIds: string[]): Pro
   const map = new Map<string, FeedSocialState>()
   if (!userId || !articleIds.length || !hasDatabaseUrl()) return map
 
-  const db = getDb()
-  const [likes, saves] = await Promise.all([
-    db
-      .select({ articleId: articleLikes.articleId })
-      .from(articleLikes)
-      .where(and(eq(articleLikes.userId, userId), inArray(articleLikes.articleId, articleIds))),
-    db
-      .select({ articleId: savedArticles.articleId })
-      .from(savedArticles)
-      .where(and(eq(savedArticles.userId, userId), inArray(savedArticles.articleId, articleIds))),
-  ])
+  try {
+    const db = getDb()
+    const [likes, saves] = await Promise.all([
+      db
+        .select({ articleId: articleLikes.articleId })
+        .from(articleLikes)
+        .where(and(eq(articleLikes.userId, userId), inArray(articleLikes.articleId, articleIds))),
+      db
+        .select({ articleId: savedArticles.articleId })
+        .from(savedArticles)
+        .where(and(eq(savedArticles.userId, userId), inArray(savedArticles.articleId, articleIds))),
+    ])
 
-  const liked = new Set(likes.map((l) => l.articleId))
-  const saved = new Set(saves.map((s) => s.articleId))
-  for (const id of articleIds) {
-    map.set(id, { liked: liked.has(id), saved: saved.has(id) })
+    const liked = new Set(likes.map((l) => l.articleId))
+    const saved = new Set(saves.map((s) => s.articleId))
+    for (const id of articleIds) {
+      map.set(id, { liked: liked.has(id), saved: saved.has(id) })
+    }
+  } catch {
+    // Graceful fallback if social state query is unavailable
   }
   return map
 }

@@ -1,32 +1,101 @@
-import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-function loadEnvLocal() {
-  const p = resolve(process.cwd(), '.env.local')
-  try {
-    for (const line of readFileSync(p, 'utf8').split('\n')) {
-      if (!line || line.startsWith('#') || !line.includes('=')) continue
-      const i = line.indexOf('=')
-      const k = line.slice(0, i).trim()
-      let v = line.slice(i + 1).trim()
-      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-        v = v.slice(1, -1)
-      }
-      if (!(k in process.env)) process.env[k] = v
-    }
-  } catch (e) {}
-}
-loadEnvLocal()
-
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { feedService } from './FeedService'
 import { feedCandidateService } from './FeedCandidateService'
 import { feedColdStartService } from './FeedColdStartService'
 import { feedUserContextService } from './FeedUserContextService'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { userFeatureAccessRepository } from '@/services/user/userFeatureAccessRepository'
+import { feedSeenService } from '@/services/feed/FeedSeenService'
+import { feedTelemetryService } from '@/services/feed/FeedTelemetryService'
+import type { FeedCandidateRow } from '@/types/smartFeed'
 
 describe('PHASE P17.3 — Smart Feed Empty State Prevention & Funnel Verification', () => {
   const pilotUid = 'ap3scBglLIVwflfZN4qL8PKrM1A3'
+
+  beforeEach(() => {
+    process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://dummy:dummy@localhost:5432/db'
+
+    vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
+      if (userId === pilotUid) {
+        return new Set([
+          'USER_PROFILES',
+          'SOCIAL_GRAPH',
+          'SMART_FEED',
+          'SMART_FEED_RANKING_V1',
+          'COLD_START_V2',
+          'SMART_FEED_VIDEO',
+          'SMART_FEED_TELEMETRY',
+        ])
+      }
+      return new Set()
+    })
+
+    vi.spyOn(feedUserContextService, 'load').mockImplementation(async (userId) => ({
+      userId,
+      isSynthetic: false,
+      explicitInterests: [],
+      behavioralInterests: new Map(),
+      publisherAffinities: new Map(),
+      followedPublisherIds: new Set(),
+      negativePreferences: [],
+      city: null,
+      districtSlug: null,
+    }))
+
+    vi.spyOn(feedSeenService, 'filterSuppressible').mockImplementation(async () => ({
+      seenArticles: new Set(),
+      seenClusters: new Set(),
+    }))
+
+    vi.spyOn(feedTelemetryService, 'recordBatch').mockImplementation(async () => {})
+
+    const generateCandidates = (count = 20, source: any = 'RECENT'): FeedCandidateRow[] => {
+      const candidates: FeedCandidateRow[] = []
+      const now = new Date()
+      for (let i = 1; i <= count; i++) {
+        candidates.push({
+          articleId: `art_${source}_${i}`,
+          clusterId: `clust_${source}_${i}`,
+          publisherId: `pub_${i}`,
+          publisherSlug: `publisher-${i}`,
+          publisherName: `Publisher ${i}`,
+          publisherLogoUrl: null,
+          publisherVerified: true,
+          headline: `Haber Başlığı ${i}`,
+          summary: `Haber özeti ${i}`,
+          category: 'gundem',
+          image: `https://example.com/img_${i}.jpg`,
+          video: null,
+          publishedAt: new Date(now.getTime() - i * 60000),
+          updatedAt: now,
+          breaking: i === 1,
+          materialUpdate: false,
+          clusterSourceCount: 2,
+          clusterImportance: 80,
+          sourceQualityTier: 'TRUSTED',
+          sourceHealthScore: 90,
+          citySlug: null,
+          districtSlug: null,
+          likesCount: 5,
+          commentsCount: 2,
+          savesCount: 1,
+          sharesCount: 0,
+          slug: `haber-basligi-${i}`,
+          source,
+          sortScore: now.getTime() - i * 60000,
+        })
+      }
+      return candidates
+    }
+
+    vi.spyOn(feedCandidateService, 'fetchRecent').mockImplementation(async () => generateCandidates(20, 'RECENT'))
+    vi.spyOn(feedCandidateService, 'fetchBreaking').mockImplementation(async () => generateCandidates(5, 'BREAKING'))
+    vi.spyOn(feedCandidateService, 'fetchPopular').mockImplementation(async () => generateCandidates(10, 'POPULAR'))
+    vi.spyOn(feedCandidateService, 'fetchDiscovery').mockImplementation(async () => generateCandidates(10, 'DISCOVERY'))
+    vi.spyOn(feedCandidateService, 'fetchLocal').mockImplementation(async () => generateCandidates(5, 'LOCAL'))
+    vi.spyOn(feedCandidateService, 'fetchFollowing').mockImplementation(async () => generateCandidates(5, 'FOLLOWING'))
+    vi.spyOn(feedCandidateService, 'fetchForMode').mockImplementation(async () => generateCandidates(20, 'RECENT'))
+  })
 
   it('1. Feature Flag Isolation: pilot user has effective access, unauthed is blocked when global flag is off', async () => {
     const prevEnv = process.env.SMART_FEED_ENABLED
