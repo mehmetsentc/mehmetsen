@@ -338,8 +338,9 @@ const FONT_BODY = 'Inter'
 
 const ONYEDITIVI_LOGO = 'brand/onyeditivi/logo.png'
 const NAHABER_ICON_CANDIDATES = [
-  'brand/cities/canakkale/icon-192.png',
+  'brand/icon-32.png',
   'brand/icon-192.png',
+  'brand/cities/canakkale/icon-192.png',
 ]
 
 function mimeFromBuffer(buf: Buffer, filePath: string): string {
@@ -374,45 +375,7 @@ async function loadBrandAssets(): Promise<{ onyeditiviLogo: string | null; nahab
   return { onyeditiviLogo, nahaberIcon }
 }
 
-async function loadGoogleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
-  try {
-    const cssUrl =
-      `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}&display=swap`
-    const css = await fetch(cssUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1',
-      },
-      cache: 'force-cache',
-    }).then((r) => r.text())
-    const match = css.match(/src:\s*url\(([^)]+)\)\s*format\(['"]?(?:opentype|truetype)['"]?\)/i)
-      || css.match(/src:\s*url\(([^)]+)\)/i)
-    if (!match?.[1]) return null
-    const res = await fetch(match[1], { cache: 'force-cache' })
-    if (!res.ok) return null
-    return await res.arrayBuffer()
-  } catch {
-    return null
-  }
-}
-
-type OgFontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900
-type OgFont = { name: string; data: ArrayBuffer; weight: OgFontWeight; style: 'normal' }
-
-async function loadPostFonts(): Promise<OgFont[]> {
-  const specs: Array<{ name: string; weight: OgFontWeight }> = [
-    { name: FONT_BODY, weight: 600 },
-    { name: FONT_BODY, weight: 700 },
-    { name: FONT_BODY, weight: 800 },
-  ]
-  const loaded = await Promise.all(
-    specs.map(async (s) => {
-      const data = await loadGoogleFont(s.name, s.weight)
-      return data ? { name: s.name, data, weight: s.weight, style: 'normal' as const } : null
-    })
-  )
-  return loaded.filter((f): f is OgFont => f !== null)
-}
+import { loadPostFonts } from '@/lib/social/ogFonts'
 
 function fallbackImageResponse() {
   return new ImageResponse(
@@ -575,8 +538,8 @@ export async function GET(
             }} />
             {brand.nahaberIcon ? (
               <div style={{
-                position: 'relative', zIndex: 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: NAVY, padding: '0 10px',
               }}>
                 <img

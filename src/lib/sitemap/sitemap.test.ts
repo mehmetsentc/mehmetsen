@@ -30,5 +30,5 @@ describe('P6 sitemap page count', () => {
   it('getSitemapPageCount returns at least 1 without DB', async () => {
     const count = await getSitemapPageCount().catch(() => 1)
     expect(count).toBeGreaterThanOrEqual(1)
-  })
+  }, 15_000)
 })

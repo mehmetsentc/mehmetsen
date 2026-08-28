@@ -150,7 +150,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!socialEnabled || !items.length) return
+    if (!items.length) return
     const ids = items.map((i) => i.articleId)
     socialApi
       .getArticleState(ids)
@@ -161,7 +161,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         setSocial(map)
       })
       .catch(() => {})
-  }, [items, socialEnabled])
+  }, [items])
 
   useEffect(() => {
     activeIndexRef.current = activeIndex
@@ -238,7 +238,6 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   )
 
   const toggleLike = async (item: FeedItemDto) => {
-    if (!socialEnabled) return
     setActionLoading((s) => ({ ...s, [item.articleId]: 'like' }))
     const prev = social[item.articleId]?.liked ?? false
     setSocial((s) => ({ ...s, [item.articleId]: { liked: !prev, saved: s[item.articleId]?.saved ?? false } }))
@@ -257,7 +256,6 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   }
 
   const toggleSave = async (item: FeedItemDto) => {
-    if (!socialEnabled) return
     setActionLoading((s) => ({ ...s, [item.articleId]: 'save' }))
     const prev = social[item.articleId]?.saved ?? false
     setSocial((s) => ({ ...s, [item.articleId]: { liked: s[item.articleId]?.liked ?? false, saved: !prev } }))

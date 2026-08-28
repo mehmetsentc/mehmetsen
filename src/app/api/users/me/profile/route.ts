@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
-import { isUserProfilesEnabled } from '@/lib/social/featureFlag'
+import { isUserProfilesEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { requireSocialUser } from '@/lib/social/apiAuth'
 import { socialGraphRepository } from '@/services/social/socialGraphRepository'
 
@@ -8,15 +8,17 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function PATCH(request: Request) {
-  if (!isUserProfilesEnabled()) {
-    return NextResponse.json({ error: 'User profiles disabled' }, { status: 404 })
-  }
   if (!hasDatabaseUrl()) {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
   }
 
   const auth = await requireSocialUser(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const allowed = await isUserProfilesEffectiveForUser(auth.uid)
+  if (!allowed) {
+    return NextResponse.json({ error: 'User profiles disabled' }, { status: 404 })
+  }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 

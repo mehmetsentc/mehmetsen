@@ -13,7 +13,7 @@ export function AuthIntentRunner() {
   const router = useRouter()
 
   useEffect(() => {
-    if (loading || !user || !isSocialGraphEnabledClient()) return
+    if (loading || !user) return
     const intent = consumeAuthIntent()
     if (!intent) return
 

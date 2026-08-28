@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { auth } from '@/lib/firebase/auth'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 
@@ -31,11 +32,16 @@ export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottom
 
   const load = useCallback(
     async (nextCursor?: string | null) => {
-      if (!socialEnabled || !articleId) return
+      if (!articleId) return
       setLoading(true)
       try {
         const q = nextCursor ? `&cursor=${encodeURIComponent(nextCursor)}` : ''
-        const res = await fetch(`/api/social/comments?articleId=${encodeURIComponent(articleId)}${q}`)
+        const headers: Record<string, string> = {}
+        if (user && auth.currentUser) {
+          const token = await auth.currentUser.getIdToken()
+          headers.Authorization = `Bearer ${token}`
+        }
+        const res = await fetch(`/api/social/comments?articleId=${encodeURIComponent(articleId)}${q}`, { headers })
         const body = (await res.json()) as {
           items?: CommentRow[]
           nextCursor?: string | null
@@ -48,7 +54,7 @@ export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottom
         setLoading(false)
       }
     },
-    [articleId, socialEnabled]
+    [articleId, user]
   )
 
   useEffect(() => {

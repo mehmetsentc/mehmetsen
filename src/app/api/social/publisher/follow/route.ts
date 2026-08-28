@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
-import { isSocialGraphEnabled } from '@/lib/social/featureFlag'
+import { isSocialGraphEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { requireSocialUser } from '@/lib/social/apiAuth'
 import { socialGraphRepository } from '@/services/social/socialGraphRepository'
 
@@ -16,11 +16,13 @@ function noDb() {
 }
 
 export async function POST(request: Request) {
-  if (!isSocialGraphEnabled()) return disabled()
   if (!hasDatabaseUrl()) return noDb()
 
   const auth = await requireSocialUser(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const allowed = await isSocialGraphEffectiveForUser(auth.uid)
+  if (!allowed) return disabled()
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const publisherId = typeof body.publisherId === 'string' ? body.publisherId.trim() : ''

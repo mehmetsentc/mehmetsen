@@ -37,25 +37,27 @@ export function FollowButton({
   const socialEnabled = isSocialGraphEnabledClient()
 
   useEffect(() => {
-    if (!socialEnabled || !user || !publisherId) return
+    if ((!socialEnabled && !user) || !publisherId) return
     let cancelled = false
-    socialApi
-      .getPublisherState([publisherId])
-      .then((res) => {
-        const state = (res as { states?: Array<{ following: boolean; followerCount: number }> }).states?.[0]
-        if (!cancelled && state) {
-          setFollowing(state.following)
-          setFollowerCount(state.followerCount)
-        }
-      })
-      .catch(() => {})
+    if (user) {
+      socialApi
+        .getPublisherState([publisherId])
+        .then((res) => {
+          const state = (res as { states?: Array<{ following: boolean; followerCount: number }> }).states?.[0]
+          if (!cancelled && state) {
+            setFollowing(state.following)
+            setFollowerCount(state.followerCount)
+          }
+        })
+        .catch(() => {})
+    }
     return () => {
       cancelled = true
     }
   }, [socialEnabled, user, publisherId])
 
   const toggle = useCallback(async () => {
-    if (!socialEnabled) return
+    if (!user && !socialEnabled) return
     if (!user) {
       const returnUrl = publisherSlug ? ROUTES.PUBLISHER(publisherSlug) : ROUTES.HOME
       const intent = buildAuthIntent('FOLLOW', 'publisher', publisherId, returnUrl)
@@ -86,7 +88,7 @@ export function FollowButton({
     }
   }, [socialEnabled, user, loading, following, followerCount, publisherId, publisherSlug, router])
 
-  if (!socialEnabled) return null
+  if (!socialEnabled && !user) return null
 
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>

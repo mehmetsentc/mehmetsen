@@ -10,7 +10,7 @@ import { feedScoringService } from './FeedScoringService'
 import { feedSessionService, type FeedSessionPayload } from './FeedSessionService'
 import { feedUserContextService } from './FeedUserContextService'
 import { feedColdStartService } from './FeedColdStartService'
-import { isColdStartV2Enabled } from '@/lib/feed/featureFlag'
+import { isColdStartEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 
 export interface RankingPipelineInput {
   userId: string | null
@@ -110,7 +110,8 @@ export class FeedRankingPipeline {
     }
 
     // 2b. Cold Start V2 — fallback mix when no/low signals (P6)
-    if (isColdStartV2Enabled() && input.mode === 'personal' && !input.sessionToken) {
+    const coldStartAllowed = await isColdStartEffectiveForUser(input.userId)
+    if (coldStartAllowed && input.mode === 'personal' && !input.sessionToken) {
       const coldProfile = feedColdStartService.resolveProfile(ctx)
       if (coldProfile) {
         return feedColdStartService.buildFeed(input, ctx, coldProfile)

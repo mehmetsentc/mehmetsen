@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
-import { isSmartFeedEnabled } from '@/lib/feed/featureFlag'
+import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedService } from '@/services/feed/FeedService'
 import type { FeedMode } from '@/types/smartFeed'
 
@@ -17,11 +17,14 @@ function parseMode(raw: string | null): FeedMode {
 }
 
 export async function GET(request: Request) {
-  if (!isSmartFeedEnabled()) {
-    return NextResponse.json({ error: 'Smart feed disabled' }, { status: 404 })
-  }
   if (!hasDatabaseUrl()) {
     return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
+  }
+
+  const auth = await verifyFirebaseIdToken(request)
+  const allowed = await isSmartFeedEffectiveForUser(auth?.uid)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Smart feed disabled' }, { status: 404 })
   }
 
   const url = new URL(request.url)
@@ -35,8 +38,6 @@ export async function GET(request: Request) {
   const sessionId = request.headers.get('x-feed-session')?.trim() || null
   const refresh = url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true'
   const debug = process.env.NODE_ENV !== 'production' && url.searchParams.get('debug') === '1'
-
-  const auth = await verifyFirebaseIdToken(request)
 
   if (mode === 'following' && !auth) {
     return NextResponse.json({ error: 'auth_required', items: [], hasMore: false, nextCursor: null, mode }, { status: 401 })

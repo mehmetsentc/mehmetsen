@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
-import { isSmartFeedEnabled } from '@/lib/feed/featureFlag'
+import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedSeenService } from '@/services/feed/FeedSeenService'
 import { feedTelemetryService } from '@/services/feed/FeedTelemetryService'
 import type { FeedTelemetryBatchItem } from '@/types/smartFeed'
@@ -10,11 +10,11 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-  if (!isSmartFeedEnabled()) {
+  const auth = await verifyFirebaseIdToken(request)
+  const allowed = await isSmartFeedEffectiveForUser(auth?.uid)
+  if (!allowed) {
     return NextResponse.json({ error: 'Smart feed disabled' }, { status: 404 })
   }
-
-  const auth = await verifyFirebaseIdToken(request)
   const sessionId = request.headers.get('x-feed-session')?.trim() || null
 
   const body = (await request.json().catch(() => ({}))) as {

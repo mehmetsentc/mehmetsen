@@ -4,7 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
 import { FEED_PAGINATION } from '@/lib/feed/config'
-import { isSmartFeedRankingV1Enabled } from '@/lib/feed/featureFlag'
+import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import type {
   FeedCandidateRow,
@@ -104,7 +104,7 @@ export class FeedService {
   async getFeed(ctx: FeedRequestContext, opts?: { debug?: boolean }): Promise<FeedPageDto> {
     const limit = clampLimit(ctx.limit)
     const feedType = ctx.mode
-    const rankingEnabled = isSmartFeedRankingV1Enabled()
+    const rankingEnabled = await isSmartFeedRankingEffectiveForUser(ctx.userId)
     const cursorPayload = decodeFeedCursor(ctx.cursor)
     const sessionToken = cursorPayload?.session ?? null
 
