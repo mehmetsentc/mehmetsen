@@ -29,6 +29,7 @@ import {
 } from '@/lib/social/articleUrl'
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
+import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -82,65 +83,153 @@ export function isOwnContent(data: Record<string, unknown>): boolean {
   return false
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 /**
- * Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini yakala.
- * Bunlar sosyal medyaya gönderilmemeli:
- *   - isLiveBlog === true (canlı takip/blog)
- *   - Başlıkta "canlı" + yayın bağlamı olan haberler
- *   - Sadece sosyal medya takip linkleri içeren spot/içerik
- *   - Çok kısa içerikli (gerçek haber olmayan) paylaşımlar
- *   - Video (YouTube kanalı videoları)
+ * Canlı yayın akışı, canlı blog veya canlı maç/yayın izleme linki mi?
+ * Not: Normal TV yayını açıklaması ("Bakan canlı yayında açıkladı", "Canlı yayın yanıtı")
+ * haber metnidir ve engellenmez. Yalnızca gerçek canlı blog / canlı yayın akışları filtrelenir.
  */
-export function isSkippableForSocial(data: Record<string, unknown>): boolean {
-  const title   = String(data.title ?? '').toLowerCase()
-  const spot    = String(data.spot ?? data.summary ?? data.description ?? '').toLowerCase()
-  const content = String(data.content ?? data.body ?? '').toLowerCase()
-  const combined = `${spot} ${content}`
+export function isLiveBlogOrStream(data: Record<string, unknown>): boolean {
+  if (data.isLiveBlog === true || data.isLive === true || data.isLiveStream === true) {
+    return true
+  }
 
-  // isLiveBlog / canlı takip alanı
-  if (data.isLiveBlog === true) return true
+  const title = String(data.title ?? '').trim()
+  if (!title) return false
 
-  // Canlı yayın haberleri — başlıkta "canlı" + yayın/takip bağlamı
-  const CANLI_TITLE_PATTERNS = [
-    '#canlı', '# canlı',
-    '#canli', '# canli',
-    'canlı yayın',     // "canlı yayın izle"
-    'canli yayin',
-    'canlı takip',     // "canlı takip"
-    'canlıyayın',
-    'canlı anlatım',   // "dakika dakika canlı anlatım"
-    'canlı blog',
-  ]
-  if (CANLI_TITLE_PATTERNS.some(p => title.includes(p))) return true
+  const t = title.toLocaleLowerCase('tr')
 
-  // "canlı" kelimesi başlıkta + video veya yayın bağlamı
-  if (title.includes('canlı') && (
-    title.startsWith('canlı') ||          // "canlı: ..."
-    title.includes(' canlıda ') ||         // "canlıda açıkladı"
-    title.includes('canlıda ') ||
-    data.hasVideo === true ||              // YouTube video
-    title.includes('yayın') ||            // "canlı yayından"
-    title.includes('dakika dakika')       // "canlı anlatım"
-  )) return true
+  // Başlıkta #canlı, #shorts, #ankacanlı etiketleri
+  if (/(?:^|[\s\[])#\s*(?:canlı|canli|shorts|ankacanlı|ankacanli)/i.test(t)) {
+    return true
+  }
 
-  // Sosyal medya tanıtım metni (whatsapp kanal linki, bluesky, vb.)
+  // Başlık açık bir canlı yayın/blog prefixi ile başlıyorsa:
+  // "CANLI: ...", "[CANLI] ...", "CANLI YAYIN: ...", "CANLI ANLATIM: ...", "CANLI BLOG: ..."
+  if (/^(?:\[\s*(?:canlı|canli)\s*\]|(?:canlı|canli)\s*:|(?:canlı|canli)\s+yay[ıi]n\s*:|(?:canlı|canli)\s+takip\s*:|(?:canlı|canli)\s+anlat[ıi]m\s*:|(?:canlı|canli)\s+blog\s*:)/i.test(t)) {
+    return true
+  }
+
+  // Canlı izleme / streaming yönlendirme başlıkları (ör. "Canlı yayın izle", "Canlı maç izle", "Kesintisiz canlı izle")
+  if (/(?<![\p{L}\p{N}])(?:canlı|canli)\s*(?:yay[ıi]n\s*)?izle(?:yin)?(?![\p{L}\p{N}])/iu.test(t)) {
+    return true
+  }
+  if (/(?<![\p{L}\p{N}])(?:(?:canlı|canli)\s*maç\s*izle|kesintisiz\s+(?:canlı|canli)\s+izle|(?:canlı|canli)\s+tv\s+izle)(?![\p{L}\p{N}])/iu.test(t)) {
+    return true
+  }
+
+  // Canlı blog / canlı takip akışı başlıkları (ör. "Dakika dakika canlı anlatım", "Canlı blog", "Canlı takip")
+  if (/(?<![\p{L}\p{N}])dakika\s+dakika\s+(?:canlı|canli)\s+anlat[ıi]m(?![\p{L}\p{N}])/iu.test(t)) {
+    return true
+  }
+  if (/(?<![\p{L}\p{N}])(?:canlı|canli)\s+anlat[ıi]m\s*-\s*(?:canlı|canli)\s+takip(?![\p{L}\p{N}])/iu.test(t)) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Yalnızca sosyal medya/kanal tanıtımı veya reklam olan içerikler.
+ * İçeriğinde Telegram/WhatsApp linki geçen ancak gerçek haber gövdesi olan haberler engellenmez.
+ */
+export function isPromoOnlyContent(data: Record<string, unknown>): boolean {
+  if (data.isPromo === true || data.isAdvertisement === true || data.isSponsored === true) {
+    return true
+  }
+
+  const title = String(data.title ?? '').toLowerCase()
+  if (
+    title.includes('kanalımıza abone') ||
+    title.includes('kanalımıza katılın') ||
+    title.includes('whatsapp kanalımıza') ||
+    title.includes('telegram kanalımıza')
+  ) {
+    return true
+  }
+
+  const spot = String(data.spot ?? data.summary ?? data.description ?? data.feedTeaser ?? '')
+  let blockText = ''
+  if (Array.isArray(data.bodyBlocks) && data.bodyBlocks.length > 0) {
+    blockText = articleBlocksToPlainText(data.bodyBlocks as ArticleBlock[])
+  }
+  const content =
+    typeof data.content === 'string' && data.content.trim()
+      ? data.content
+      : typeof data.body === 'string' && data.body.trim()
+        ? data.body
+        : blockText || (typeof data.htmlContent === 'string' ? data.htmlContent : '')
+  const combined = stripHtml(`${spot} ${content}`).trim().toLowerCase()
+
   const PROMO_PATTERNS = [
     'whatsapp.com/channel',
     'bsky.app/profile',
     'sosyal medya hesaplarımızı takip',
     'takip etmeyi unutmayın',
     'kanalımıza abone',
-    't.me/',               // Telegram
-    'youtube.com/@',       // YouTube kanal tanıtımı
+    't.me/',
+    'youtube.com/@',
   ]
-  if (PROMO_PATTERNS.some(p => combined.includes(p))) return true
 
-  // Spot 10 karakterden kısa VE içerik de yoksa — boş haber
-  const spotLen    = spot.trim().length
-  const contentLen = content.replace(/<[^>]+>/g, '').trim().length
-  if (spotLen < 10 && contentLen < 30) return true
+  const hasPromoPattern = PROMO_PATTERNS.some((p) => combined.includes(p))
+  if (hasPromoPattern) {
+    let stripped = combined
+    for (const p of PROMO_PATTERNS) {
+      stripped = stripped.replaceAll(p, '')
+    }
+    stripped = stripped.replace(/https?:\/\/\S+/gi, '').replace(/\s+/g, ' ').trim()
+    if (stripped.length < 60) {
+      return true
+    }
+  }
 
   return false
+}
+
+/**
+ * Haber içeriği veya özeti tamamen boş mu?
+ * spot, summary, description, content, body, bodyBlocks, htmlContent alanlarını denetler.
+ */
+export function isContentEmpty(data: Record<string, unknown>): boolean {
+  const spot = String(data.spot ?? data.summary ?? data.description ?? data.feedTeaser ?? '')
+  let blockText = ''
+  if (Array.isArray(data.bodyBlocks) && data.bodyBlocks.length > 0) {
+    blockText = articleBlocksToPlainText(data.bodyBlocks as ArticleBlock[])
+  }
+  const content =
+    typeof data.content === 'string' && data.content.trim()
+      ? data.content
+      : typeof data.body === 'string' && data.body.trim()
+        ? data.body
+        : blockText || (typeof data.htmlContent === 'string' ? data.htmlContent : '')
+  const plainSpot = stripHtml(spot).trim()
+  const plainContent = stripHtml(content).trim()
+
+  // Spot 10 karakterden kısa VE içerik de 30 karakterden azsa boş kabul et
+  if (plainSpot.length < 10 && plainContent.length < 30) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Canlı yayın / boş içerik / sosyal medya tanıtım haberlerini yakala.
+ * Bunlar otomatik sosyal medya yayınlarına gönderilmemeli.
+ */
+export function isSkippableForSocial(data: Record<string, unknown>): boolean {
+  return isLiveBlogOrStream(data) || isPromoOnlyContent(data) || isContentEmpty(data)
 }
 
 /** FB veya IG feed post ID'si var mı? */
@@ -168,18 +257,6 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
     if (typeof c === 'string' && c.trim().length > 10) return c.trim()
   }
   return undefined
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
 }
 
 // ── Options / Result ──────────────────────────────────────────────────────────
@@ -295,9 +372,17 @@ export async function publishOneSocial(
       return skipped(newsId, 'Harici RSS/kaynak haberi — otomatik paylaşım yalnızca NaHaber içerikleri için')
     }
     // Canlı yayın / boş içerik / sosyal medya tanıtım haberi
-    if (isSkippableForSocial(data)) {
-      console.log(`[publishOneSocial] Canlı yayın/boş içerik — atlandı: ${newsId}`)
-      return skipped(newsId, 'Canlı yayın, boş içerik veya tanıtım haberi — paylaşıma uygun değil')
+    if (isLiveBlogOrStream(data)) {
+      console.log(`[publishOneSocial] Canlı yayın/canlı blog — atlandı: ${newsId}`)
+      return skipped(newsId, 'Canlı yayın veya canlı blog — paylaşıma uygun değil')
+    }
+    if (isPromoOnlyContent(data)) {
+      console.log(`[publishOneSocial] Tanıtım/kanal içeriği — atlandı: ${newsId}`)
+      return skipped(newsId, 'Tanıtım veya kanal yönlendirme içeriği — paylaşıma uygun değil')
+    }
+    if (isContentEmpty(data)) {
+      console.log(`[publishOneSocial] Boş içerik — atlandı: ${newsId}`)
+      return skipped(newsId, 'Haber içeriği veya özeti boş — paylaşıma uygun değil')
     }
 
     // Global otomatik paylaşım ayarları (manuel paylaşımı etkilemez)
@@ -432,9 +517,16 @@ export async function publishOneSocial(
       typeof data.summary     === 'string' ? data.summary     :
       typeof data.description === 'string' ? data.description : ''
 
+    let blockText = ''
+    if (Array.isArray(data.bodyBlocks) && data.bodyBlocks.length > 0) {
+      blockText = articleBlocksToPlainText(data.bodyBlocks as ArticleBlock[])
+    }
+
     const rawContent: string =
-      typeof data.content === 'string' ? data.content :
-      typeof data.body    === 'string' ? data.body    : ''
+      typeof data.content === 'string' && data.content.trim() ? data.content :
+      typeof data.body    === 'string' && data.body.trim()    ? data.body    :
+      blockText ||
+      (typeof data.htmlContent === 'string' ? data.htmlContent : '')
 
     const fullText = rawContent ? stripHtml(rawContent) : spot
     const bodyText = fullText.slice(0, 2000)
