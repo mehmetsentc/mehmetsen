@@ -310,8 +310,8 @@ async function main() {
   // UNCLAIMED real pub should still leave resolve false if we don't grant — already checked.
 
   // Media upload path: only if local R2 configured — tiny 1x1 jpeg.
-  // Sensitive Vercel R2_* often empty via env pull; Production runtime diagnostic
-  // (POST /api/internal/pilot/r2-health) is authoritative when P11_2R_RUNTIME_OK=true.
+  // Sensitive Vercel R2_* often empty via env pull; Production runtime R2 verification
+  // is authoritative when P11_2R_RUNTIME_OK=true (set after P11.2R-RUNTIME GO).
   const runtimeR2Ok = process.env.P11_2R_RUNTIME_OK === 'true'
   ;(report.r2 as Record<string, unknown>).runtimeAuthoritative = true
   ;(report.r2 as Record<string, unknown>).runtimeOk = runtimeR2Ok
@@ -367,7 +367,7 @@ async function main() {
       name: 'r2_pilot_upload',
       ok: true,
       detail:
-        'LOCAL_EMPTY — not definitive NO-GO; set P11_2R_RUNTIME_OK=true after Production /api/internal/pilot/r2-health PASS',
+        'LOCAL_EMPTY — not definitive NO-GO; set P11_2R_RUNTIME_OK=true after Production R2 runtime PASS',
     })
   }
 
