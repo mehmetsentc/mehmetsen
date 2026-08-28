@@ -1179,27 +1179,48 @@ export const getCategoryFeedPage = unstable_cache(
   { revalidate: 300, tags: ['category-feed'] }
 )
 
-/** All-time most-read published articles for the public /cok-okunanlar page. Cached 10 min. */
+/**
+ * Son 24 saatte yayınlanan makaleleri viewsCount'a göre sıralar.
+ * publishedAt >= 24h önce filtresi + bellekte viewsCount desc sort (composite index gerekmez).
+ * Fallback: all-time viewsCount desc (24h'de yeterli makale yoksa).
+ */
 const getMostReadPostsCached = unstable_cache(
   async (limitCount: number): Promise<NewsItem[]> => {
     try {
       const db = getAdminFirestore()
-      const snap = await db
+      const since24h = Date.now() - 24 * 60 * 60 * 1000
+
+      // Son 24h makaleleri publishedAt'e göre çek; viewsCount'u bellekte sırala
+      const snap24h = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('publishedAt', '>=', since24h)
+        .orderBy('publishedAt', 'desc')
+        .limit(200)
+        .get()
+
+      if (!snap24h.empty) {
+        const items24h = mapAdminDocs(snap24h.docs)
+        items24h.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+        if (items24h.length > 0) return items24h.slice(0, limitCount)
+      }
+
+      // Fallback: tüm zamanların en çok okunanları (24h'de yeterli haber yoksa)
+      const snapAll = await db
         .collection(NEWS_COLLECTION)
         .where('status', '==', 'published')
         .orderBy('viewsCount', 'desc')
         .limit(limitCount)
         .get()
-
-      const items = mapAdminDocs(snap.docs)
-      if (items.length > 0) return items
+      const itemsAll = mapAdminDocs(snapAll.docs)
+      if (itemsAll.length > 0) return itemsAll
     } catch (error) {
-      console.warn('[newsService.server] getMostReadPosts viewsCount query failed:', error)
+      console.warn('[newsService.server] getMostReadPosts query failed:', error)
     }
     return []
   },
-  ['most-read-posts-v1'],
-  { revalidate: 600, tags: ['news-post'] }
+  ['most-read-24h-v2'],
+  { revalidate: 300, tags: ['news-post'] }
 )
 
 export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {
