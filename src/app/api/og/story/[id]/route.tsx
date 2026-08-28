@@ -59,11 +59,6 @@ const STORY_COMPLETE_TAIL_RE = /[.!?…]["'»”’)\]]*$/
 const STORY_DANGLING_TAIL_RE =
   /\s+(ve|veya|ile|için|olan|olacak|olanlar|ama|fakat|ancak|ki|bir|bu|şu|o|de|da|kadar|gibi|üzerine|hakkında|sonrası|öncesi|nedeniyle|yüzünden|dolayı|yaşındaki|yaşında|aylık|günlük|yıllık|adlı|isimli|konulu|yönelik|ilişkin|ait|edilen|edilmiş|yapılan|vurulan|yaralanan|öldürülen|gözaltına|tutuklanan|açıklayan|söyleyen|belirten|ağır|hafif|kritik|ciddi|ölümcül)\s*$/iu
 
-/**
- * Inter glif genişliği (Satori word-wrap simülasyonu).
- * Regular için bilerek muhafazakâr (eski 0.48 → 3 satır sanılıp CSS overflow
- * kelime ortasında kesiyordu; örn. Fethiye "...göre can").
- */
 function avgGlyphWidth(fontSize: number, weight: 'bold' | 'regular' = 'bold'): number {
   return fontSize * (weight === 'regular' ? 0.56 : 0.55)
 }
@@ -105,7 +100,6 @@ function stripDanglingTail(text: string): string {
   return out
 }
 
-/** Satır taşarsa kelime sınırında kes; mümkünse son tam cümlede dur; sarkan bağlaçları at. */
 function truncateToMaxLines(
   text: string,
   fontSize: number,
@@ -142,7 +136,6 @@ function truncateToMaxLines(
   let trimmed = stripDanglingTail(result)
   if (!trimmed) trimmed = result.trim()
 
-  // Mümkünse son tam cümlede bitir (yarım ikinci cümle / kelime bırakma)
   if (!STORY_COMPLETE_TAIL_RE.test(trimmed)) {
     const minEnd = Math.min(36, Math.floor(trimmed.length * 0.35))
     let best = -1
@@ -155,12 +148,10 @@ function truncateToMaxLines(
     if (best >= minEnd) {
       return trimmed.slice(0, best).trim()
     }
-    // Cümle sonu yoksa ellipsis — CSS overflow ile sessiz kesim yok
     const withEllipsis = `${trimmed.replace(/[…]+$/, '')}…`
     if (estimateWrapLines(withEllipsis, fontSize, maxWidth, weight) <= maxLines) {
       return withEllipsis
     }
-    // Ellipsis de sığmıyorsa bir kelime daha düş
     const words2 = trimmed.split(' ')
     while (words2.length > 1) {
       words2.pop()
@@ -237,12 +228,10 @@ function resolveStorySummaryLayout(summaryPlain: string, contentWidth: number): 
   }
 
   let displaySummary = summaryPlain
-  // Taşma VEYA yarım cümle: satır bütçesine sığdır; daima tam cümle tercih et
   if (wrapLines > SUMMARY_MAX_LINES || !STORY_COMPLETE_TAIL_RE.test(summaryPlain)) {
     displaySummary = truncateToMaxLines(
       summaryPlain, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
     )
-    // Hâlâ yarım cümle ise (tek uzun cümle) — font küçültüp tekrar dene
     if (!STORY_COMPLETE_TAIL_RE.test(displaySummary) && !displaySummary.endsWith('…')) {
       while (summarySize > SUMMARY_MIN_SIZE) {
         summarySize -= 2
@@ -262,7 +251,6 @@ function resolveStorySummaryLayout(summaryPlain: string, contentWidth: number): 
     )
   }
 
-  // Güvenlik: display asla tahmin edilen satır sayısını aşmasın (CSS clip yok)
   if (estimateWrapLines(displaySummary, summarySize, contentWidth, 'regular') > SUMMARY_MAX_LINES) {
     displaySummary = truncateToMaxLines(
       displaySummary, summarySize, contentWidth, SUMMARY_MAX_LINES, 'regular',
@@ -295,12 +283,45 @@ interface ArticleOGData {
 }
 
 async function fetchArticle(id: string): Promise<ArticleOGData | null> {
+  // 1. Direct Admin Firestore in Node.js runtime (most reliable)
+  try {
+    const { getAdminFirestore } = await import('@/lib/firebase/admin')
+    const { Collections } = await import('@/lib/firebase/collections')
+    const db = getAdminFirestore()
+    const doc = await db.collection(Collections.NEWS).doc(id).get()
+    if (doc.exists) {
+      const data = doc.data() as Record<string, unknown>
+      const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+      const categoryId = str(data.categoryId) || str(data.category) || 'gundem'
+      const isBreaking = data.isBreaking === true || categoryId === 'son-dakika'
+      return {
+        title: str(data.title),
+        socialHeadline: str(data.socialHeadline),
+        socialStorySummary: str(data.socialStorySummary),
+        summary: str(data.summary),
+        spot: str(data.spot),
+        seoDescription: str(data.seoDescription),
+        content: str(data.content) || str(data.body) || str(data.htmlContent),
+        categoryId,
+        isBreaking,
+        imageUrl: str(data.imageUrl),
+        thumbnail: str(data.thumbnail),
+        coverImageUrl: str(data.coverImageUrl),
+        featuredImage: str(data.featuredImage),
+        image: str(data.image),
+      }
+    }
+  } catch (err) {
+    console.warn(`[og/story] admin firestore fetch failed id=${id}:`, err)
+  }
+
+  // 2. REST API fallback
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   if (!apiKey) return null
   try {
     const res = await fetch(`${FIREBASE_URL}/${id}?key=${apiKey}`, { cache: 'no-store' })
     if (!res.ok) return null
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       fields?: Record<string, { stringValue?: string; booleanValue?: boolean }>
     }
     const f = data.fields
@@ -323,7 +344,9 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
       featuredImage: str(f.featuredImage),
       image: str(f.image),
     }
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 function bestImageCandidates(a: ArticleOGData): string[] {
@@ -379,7 +402,6 @@ function resolveStorySummary(
     .filter(Boolean)
     .join('\n')
   const faithful = repairSocialCopyAgainstSource(plain, article?.title || '', source)
-  // softMax: 2. tam cümle biraz taşarsa koru; yarım cümle asla
   return clampCompleteSentences(faithful, SUMMARY_MAX, SUMMARY_MAX + 32)
 }
 
@@ -460,11 +482,8 @@ type OgFont = { name: string; data: ArrayBuffer; weight: OgFontWeight; style: 'n
 async function loadStoryFonts(): Promise<OgFont[]> {
   const specs: Array<{ name: string; weight: OgFontWeight }> = [
     { name: FONT_BODY, weight: 400 },
-    { name: FONT_BODY, weight: 500 },
-    { name: FONT_BODY, weight: 600 },
     { name: FONT_BODY, weight: 700 },
     { name: FONT_BODY, weight: 800 },
-    { name: FONT_BODY, weight: 900 },
   ]
   const loaded = await Promise.all(
     specs.map(async (s) => {
@@ -499,7 +518,11 @@ export async function GET(
 
   let article: ArticleOGData | null = null
   if (id !== 'sample' && id !== 'preview') {
-    try { article = await fetchArticle(id) } catch { return fallbackImageResponse() }
+    try {
+      article = await fetchArticle(id)
+    } catch {
+      // ignore fetch errors; fall back to query params
+    }
   }
 
   const sourceTitle = article?.title || overrideTitle || ''
@@ -518,7 +541,6 @@ export async function GET(
   const imageCandidates = [overrideImage, ...(article ? bestImageCandidates(article) : [])]
   const photo = await embedCoverTopImage(imageCandidates, W, H, 84, true)
 
-  // Kapaksız lacivert kartı Meta'ya verme — solid blue story/post önlenir.
   if (!photo) {
     console.error(`[og/story] cover embed failed id=${id} candidates=${imageCandidates.filter(Boolean).length}`)
     return new Response('OG cover image unavailable', {
@@ -659,7 +681,6 @@ export async function GET(
                 fontSize: summarySize, lineHeight: summaryLineHeight,
                 letterSpacing: 0.05, display: 'flex',
                 minHeight: summaryBlockHeight,
-                // overflow:hidden kelime ortasında kesmesin — metin önceden satıra sığdırılır
                 flexShrink: 0,
               }}>{displaySummary}</span>
             </div>

@@ -13,6 +13,7 @@ import {
   normalizeAbsoluteImageUrl,
 } from './ogImageEmbed'
 import { uploadSocialImage } from './storageUploader'
+import { createStoryCardSharp, createPostCardSharp } from './imageOverlay'
 
 /** Instagram carousel üst limiti */
 export const IG_CAROUSEL_MAX = 10
@@ -34,8 +35,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * OG self-fetch adayları: Vercel internal host önce (apex WAF/403 riskini keser),
- * sonra public www/apex.
+ * OG self-fetch adayları: Vercel internal host, configured app URL, apex/www.
  */
 function ogFetchCandidates(brandedOgUrl: string): string[] {
   const out: string[] = []
@@ -49,11 +49,25 @@ function ogFetchCandidates(brandedOgUrl: string): string[] {
     if (vercelHost) {
       push(`https://${vercelHost}${u.pathname}${u.search}`)
     }
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').replace(/^https?:\/\//, '').trim()
+    if (appUrl) {
+      push(`https://${appUrl}${u.pathname}${u.search}`)
+    }
+    const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/^https?:\/\//, '').trim()
+    if (vercelProd) {
+      push(`https://${vercelProd}${u.pathname}${u.search}`)
+    }
     push(brandedOgUrl)
     if (u.hostname === 'nahaber.com') {
       push(`https://www.nahaber.com${u.pathname}${u.search}`)
     } else if (u.hostname === 'www.nahaber.com') {
       push(`https://nahaber.com${u.pathname}${u.search}`)
+    }
+    // Local dev / test fallback
+    if (process.env.PORT || process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      const port = process.env.PORT || '3000'
+      push(`http://127.0.0.1:${port}${u.pathname}${u.search}`)
+      push(`http://localhost:${port}${u.pathname}${u.search}`)
     }
   } catch {
     push(brandedOgUrl)
@@ -90,9 +104,6 @@ export function collectNewsImageUrls(data: Record<string, unknown>): string[] {
       const type = String(m.type ?? '').toLowerCase()
       if (type && type !== 'image') continue
       addUrl(urls, seen, m.url)
-      if (typeof m.thumbnailUrl === 'string' && type === 'image') {
-        // thumbnailUrl genelde aynı görsel — dedupe zaten filtreler
-      }
     }
   }
 
@@ -174,64 +185,37 @@ export interface CarouselPayloadImages {
   mode: 'single' | 'carousel'
 }
 
-/**
- * Ham haber fotoğrafını JPEG olarak Storage'a sabitle (Meta image_url için).
- * Passthrough yok — kendi CDN URL'si bile indirilip yeniden yüklenir.
- */
-async function forceRehostArticleImage(
-  imageUrl: string,
-  newsId: string,
-  kind: 'post' | 'story',
-): Promise<string | null> {
-  const url = normalizeAbsoluteImageUrl(imageUrl)
-  if (!url || !isUsableImageUrl(url) || isDynamicOgApiUrl(url)) return null
-
-  const jpeg = await fetchImageAsJpegBuffer(url, {
-    maxWidth: kind === 'story' ? 1080 : 1440,
-    maxHeight: kind === 'story' ? 1920 : 1440,
-    quality: 88,
-  })
-  if (!jpeg) {
-    console.warn(
-      `[carouselImages] force rehost download failed — ${newsId} (${kind}): ${url.slice(0, 100)}`,
-    )
-    return null
-  }
-
-  const uploaded = await uploadSocialImage(
-    jpeg,
-    newsId,
-    `${newsId}-raw-${kind}.jpg`,
-  )
-  if (!uploaded) {
-    console.warn(`[carouselImages] force rehost upload failed — ${newsId} (${kind})`)
-    return null
-  }
-  return uploaded
+export interface MaterializeBrandedOgContext {
+  title?: string
+  summary?: string
+  categoryId?: string
+  isBreaking?: boolean
 }
 
 /**
  * Markalı OG'yi üret → lacivert/boş kontrol → Storage'a sabitle.
  * Meta'ya dinamik /api/og URL vermek yerine statik JPEG verir (cold-start / CDN navy cache riskini keser).
- * Self-fetch: VERCEL_URL önce (public apex WAF 403 → raw fallback bug'ını önler).
- * OG 503/navy/timeout → ham foto zorla rehost (asla /api/og URL'si dönülmez — IG/FB kırılır, Threads TEXT'e düşer).
+ * Self-fetch: VERCEL_URL / NEXT_PUBLIC_APP_URL önce.
+ * OG HTTP self-fetch başarısız olursa doğrudan yerel Sharp+SVG kart oluşturucuyu devreye sokar (ASLA ham kapak dönmez).
  */
 export async function materializeBrandedOgForPublish(
   brandedOgUrl: string,
   newsId: string,
   fallbackImageUrl: string,
   kind: 'post' | 'story' = 'post',
+  context?: MaterializeBrandedOgContext,
 ): Promise<string> {
   let sawDefinitiveOgFailure = false
   const candidates = ogFetchCandidates(brandedOgUrl)
 
+  // 1. Try HTTP OG generation endpoint candidates
   for (const fetchUrl of candidates) {
     if (sawDefinitiveOgFailure) break
     for (let attempt = 0; attempt < 2; attempt++) {
       if (sawDefinitiveOgFailure) break
       try {
         const res = await fetch(fetchUrl, {
-          signal: AbortSignal.timeout(25_000),
+          signal: AbortSignal.timeout(20_000),
           redirect: 'follow',
           headers: {
             Accept: 'image/png,image/jpeg,image/*,*/*;q=0.8',
@@ -250,7 +234,6 @@ export async function materializeBrandedOgForPublish(
               }
             })()}`,
           )
-          // 503 = kapak yok (kasıtlı); 403/401 = WAF — diğer host adayına geç
           if (res.status === 503 || res.status === 404 || res.status === 410) {
             sawDefinitiveOgFailure = true
             break
@@ -258,7 +241,7 @@ export async function materializeBrandedOgForPublish(
           if (res.status === 403 || res.status === 401) {
             break // next candidate host
           }
-          await sleep(600 * (attempt + 1))
+          await sleep(500 * (attempt + 1))
           continue
         }
         const buf = Buffer.from(await res.arrayBuffer())
@@ -297,39 +280,91 @@ export async function materializeBrandedOgForPublish(
         }
       } catch (err) {
         console.warn(
-          `[carouselImages] OG materialize failed attempt ${attempt + 1} — ${newsId}:`,
+          `[carouselImages] OG materialize HTTP failed attempt ${attempt + 1} — ${newsId}:`,
           err instanceof Error ? err.message : err,
         )
-        await sleep(600 * (attempt + 1))
+        await sleep(500 * (attempt + 1))
       }
     }
   }
 
-  const fallback = normalizeAbsoluteImageUrl(fallbackImageUrl)
-  if (fallback && isUsableImageUrl(fallback) && !isDynamicOgApiUrl(fallback)) {
-    const rehosted = await forceRehostArticleImage(fallback, newsId, kind)
-    if (rehosted) {
-      console.error(
-        `[carouselImages] OG FAILED → RAW cover (no manşet overlay) — ${newsId} (${kind}); check OG self-fetch / cover embed`,
-      )
-      return rehosted
+  // 2. HTTP self-fetch failed or returned navy: DIRECT IN-PROCESS SHARP COMPOSITOR
+  // Extracts metadata from URL search params, context, or Firestore
+  let title = context?.title || ''
+  let summary = context?.summary || ''
+  let categoryId = context?.categoryId || 'gundem'
+  let isBreaking = context?.isBreaking || false
+
+  try {
+    const parsedUrl = new URL(brandedOgUrl)
+    if (!title) title = parsedUrl.searchParams.get('title') || ''
+    if (!summary) summary = parsedUrl.searchParams.get('summary') || ''
+    if (parsedUrl.searchParams.get('category')) categoryId = parsedUrl.searchParams.get('category')!
+    if (parsedUrl.searchParams.get('breaking') === '1') isBreaking = true
+  } catch {
+    // ignore URL parse errors
+  }
+
+  // If still missing title, attempt Firestore lookup via Admin SDK
+  if (!title && newsId) {
+    try {
+      const { getAdminFirestore } = await import('@/lib/firebase/admin')
+      const { Collections } = await import('@/lib/firebase/collections')
+      const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
+      if (snap.exists) {
+        const d = snap.data() as Record<string, unknown>
+        title = String(d.socialHeadline || d.title || '')
+        summary = String(d.socialStorySummary || d.summary || d.spot || '')
+        categoryId = String(d.categoryId || d.category || categoryId)
+        isBreaking = d.isBreaking === true || categoryId === 'son-dakika'
+      }
+    } catch (err) {
+      console.warn(`[carouselImages] direct firestore context fetch failed for ${newsId}:`, err)
     }
-    // Son çare: force rehost olmasa bile own-host passthrough (Meta çekebilir)
-    const passthrough = await ensurePublicCarouselImageUrl(
-      fallback,
-      newsId,
-      kind === 'story' ? 0 : 1,
-    )
-    if (passthrough && !isDynamicOgApiUrl(passthrough)) {
-      console.error(
-        `[carouselImages] OG FAILED → passthrough RAW cover — ${newsId} (${kind})`,
-      )
-      return passthrough
+  }
+
+  const fallback = normalizeAbsoluteImageUrl(fallbackImageUrl)
+
+  if (fallback && isUsableImageUrl(fallback) && !isDynamicOgApiUrl(fallback)) {
+    try {
+      console.log(`[carouselImages] creating in-process Sharp card overlay — ${newsId} (${kind})`)
+      let cardBuffer: Buffer
+
+      if (kind === 'story') {
+        cardBuffer = await createStoryCardSharp({
+          imageSource: fallback,
+          title: title || 'NaHaber',
+          summary,
+          categoryId,
+          isBreaking,
+        })
+      } else {
+        cardBuffer = await createPostCardSharp({
+          imageSource: fallback,
+          title: title || 'NaHaber',
+          categoryId,
+          isBreaking,
+        })
+      }
+
+      if (cardBuffer && cardBuffer.length > 2048) {
+        const uploaded = await uploadSocialImage(
+          cardBuffer,
+          newsId,
+          `${newsId}-og-${kind}.jpg`,
+        )
+        if (uploaded) {
+          console.log(`[carouselImages] in-process Sharp card uploaded to Storage ✓ — ${newsId} (${kind})`)
+          return uploaded
+        }
+      }
+    } catch (sharpErr) {
+      console.error(`[carouselImages] in-process Sharp card composite failed — ${newsId} (${kind}):`, sharpErr)
     }
   }
 
   console.error(
-    `[carouselImages] no publishable image after OG+fallback — ${newsId} (${kind}); refusing dynamic OG URL`,
+    `[carouselImages] no publishable image after OG+Sharp composite — ${newsId} (${kind}); refusing raw dynamic OG URL`,
   )
   return ''
 }
@@ -342,7 +377,7 @@ export async function buildSocialImagePayload(
   newsId: string,
   brandedOgUrl: string,
   data: Record<string, unknown>,
-  opts?: { fallbackImageUrl?: string },
+  opts?: { fallbackImageUrl?: string; context?: MaterializeBrandedOgContext },
 ): Promise<CarouselPayloadImages> {
   const originals = collectNewsImageUrls(data)
   const fallbackImageUrl =
@@ -355,6 +390,7 @@ export async function buildSocialImagePayload(
     newsId,
     fallbackImageUrl,
     'post',
+    opts?.context,
   )
 
   if (!slide1) {

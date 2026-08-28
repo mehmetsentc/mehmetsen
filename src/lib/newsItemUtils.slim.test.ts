@@ -37,10 +37,12 @@ describe('slimNewsItemForFeed', () => {
       id: '1',
       slug: 'haber-1',
       title: 'Başlık',
-      description: 'x'.repeat(120),
+      description: 'x'.repeat(200),
       readingMinutes: 3,
       imageUrl: 'https://storage.googleapis.com/bucket/a.jpg',
       videoUrl: 'https://example.com/v.mp4',
+      source: 'Kaynak',
+      author: 'Yazar',
       category: 'gundem',
       district: 'Biga',
       districtSlug: 'biga',
@@ -48,7 +50,8 @@ describe('slimNewsItemForFeed', () => {
       views: 12,
       breaking: true,
     })
-    expect(slim).not.toHaveProperty('source')
+    expect(slim).toHaveProperty('source')
+    expect(slim).toHaveProperty('author')
     expect(slim).not.toHaveProperty('url')
     expect(slim).not.toHaveProperty('likesCount')
     expect(slim).not.toHaveProperty('featured')

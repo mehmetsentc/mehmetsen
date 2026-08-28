@@ -353,11 +353,16 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         console.warn(`[cron/social] story AI fields update failed ${id}:`, err)
       }
 
+      const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
+      const isBreakingNews = data.isBreaking === true || catId === 'son-dakika'
+
       const storyOgUrl: string = buildOgStoryUrl(id, {
         title,
         socialHeadline: headline,
         socialStorySummary: storySummary,
         imageUrl: extractImageUrl(data),
+        categoryId: catId,
+        isBreaking: isBreakingNews,
         updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
           ? data.updatedAt
           : undefined,
@@ -368,6 +373,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         id,
         coverForStory,
         'story',
+        {
+          title: headline || title,
+          summary: storySummary,
+          categoryId: catId,
+          isBreaking: isBreakingNews,
+        },
       )
       const storyPayload: SocialPublishPayload = {
         newsId:      id,
@@ -561,12 +572,17 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       console.warn(`[cron/social] social fields pre-save failed ${id}:`, err)
     }
 
+    const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
+    const isBreakingNews = data.isBreaking === true || catId === 'son-dakika'
+
     // Stable content hash — CDN cache hit unless headline/image changes
     const socialImageUrl: string = buildOgSocialUrl(id, {
       title,
       socialHeadline: socialContent.headline,
       socialStorySummary: socialContent.storySummary,
       imageUrl: originalImageUrl,
+      categoryId: catId,
+      isBreaking: isBreakingNews,
       updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
         ? data.updatedAt
         : undefined,
@@ -575,6 +591,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
     const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data, {
       fallbackImageUrl: originalImageUrl,
+      context: {
+        title: socialContent.headline || title,
+        summary: socialContent.storySummary,
+        categoryId: catId,
+        isBreaking: isBreakingNews,
+      },
     })
     if (!imagePayload.imageUrl) {
       console.error(`[cron/social] no publishable image — skip post ${id}`)

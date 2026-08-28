@@ -637,11 +637,16 @@ export async function publishOneSocial(
       console.warn(`[publishOneSocial] social fields pre-save failed ${newsId}:`, err)
     }
 
+    const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
+    const isBreakingNews = data.isBreaking === true || catId === 'son-dakika'
+
     const ogVersionFields = {
       title,
       socialHeadline: socialContent.headline,
       socialStorySummary: socialContent.storySummary,
       imageUrl: extractImageUrl(data),
+      categoryId: catId,
+      isBreaking: isBreakingNews,
       updatedAt: typeof data.updatedAt === 'number' || typeof data.updatedAt === 'string'
         ? data.updatedAt
         : undefined,
@@ -654,11 +659,22 @@ export async function publishOneSocial(
     const imagePayload = shouldPost
       ? await buildSocialImagePayload(newsId, socialImageUrl, data, {
           fallbackImageUrl: coverImage,
+          context: {
+            title: socialContent.headline || title,
+            summary: socialContent.storySummary,
+            categoryId: catId,
+            isBreaking: isBreakingNews,
+          },
         })
       : { imageUrl: socialImageUrl, mode: 'single' as const }
 
     const storyImageUrl = shouldStory
-      ? await materializeBrandedOgForPublish(storyOgUrl, newsId, coverImage, 'story')
+      ? await materializeBrandedOgForPublish(storyOgUrl, newsId, coverImage, 'story', {
+          title: socialContent.headline || title,
+          summary: socialContent.storySummary,
+          categoryId: catId,
+          isBreaking: isBreakingNews,
+        })
       : storyOgUrl
 
     const result: PublishOneSocialResult = {

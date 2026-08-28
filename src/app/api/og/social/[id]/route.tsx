@@ -114,7 +114,6 @@ function truncateToMaxLines(
   let trimmed = stripDanglingHeadlineTail(result)
   if (!trimmed) trimmed = result.trim()
 
-  // Mümkünse son tam cümlede bitir
   if (!POST_COMPLETE_TAIL_RE.test(trimmed) || isIncompleteHeadline(trimmed)) {
     const minEnd = Math.min(36, Math.floor(trimmed.length * 0.35))
     let best = -1
@@ -128,7 +127,6 @@ function truncateToMaxLines(
       const sentence = stripDanglingHeadlineTail(trimmed.slice(0, best).trim())
       if (!isIncompleteHeadline(sentence)) return sentence
     }
-    // Cümle yoksa virgül/iki nokta öbeğinde dur (…kaybetti, …)
     POST_CLAUSE_END_RE.lastIndex = 0
     best = -1
     while ((m = POST_CLAUSE_END_RE.exec(trimmed)) !== null) {
@@ -139,7 +137,6 @@ function truncateToMaxLines(
       const clause = stripDanglingHeadlineTail(trimmed.slice(0, best).replace(/[,;:—–-]+$/, '').trim())
       if (clause.length >= minEnd && !isIncompleteHeadline(clause)) return clause
     }
-    // Tam öbekte kısalt — ellipsis yalnızca tamamlanmış kelime sonrası
     const clauseCut = shortenToLastCompleteClause(trimmed, trimmed.length)
     if (clauseCut && !isIncompleteHeadline(clauseCut)) {
       if (estimateWrapLines(clauseCut, fontSize, maxWidth) <= maxLines) return clauseCut
@@ -153,7 +150,6 @@ function truncateToMaxLines(
     }
     const safe = shortenToLastCompleteClause(plain, Math.max(40, Math.floor(plain.length * 0.7)))
     if (safe && !isIncompleteHeadline(safe)) return safe
-    // Son çare: kelime kelime geriye — asla ulaç/yarım öbek bırakma
     const words3 = plain.split(' ').filter(Boolean)
     while (words3.length > 2) {
       words3.pop()
@@ -185,7 +181,6 @@ function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
     70
 
   let wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
-  // Önce font küçült — tam manşet sığsın (yarım cümle bırakma)
   while (wrapLines > HEADLINE_MAX_LINES && titleSize > HEADLINE_MIN_SIZE) {
     titleSize -= 2
     wrapLines = estimateWrapLines(titlePlain, titleSize, contentWidth)
@@ -215,7 +210,6 @@ function resolvePostHeadlineLayout(titlePlain: string, contentWidth: number): {
     )
   }
 
-  // Güvenlik: display asla tahmin edilen satır sayısını aşmasın; yarım bitiş yok
   if (
     estimateWrapLines(displayTitle, titleSize, contentWidth) > HEADLINE_MAX_LINES ||
     isIncompleteHeadline(displayTitle)
@@ -253,12 +247,42 @@ interface ArticleOGData {
 }
 
 async function fetchArticle(id: string): Promise<ArticleOGData | null> {
+  // 1. Direct Admin Firestore in Node.js runtime (most reliable)
+  try {
+    const { getAdminFirestore } = await import('@/lib/firebase/admin')
+    const { Collections } = await import('@/lib/firebase/collections')
+    const db = getAdminFirestore()
+    const doc = await db.collection(Collections.NEWS).doc(id).get()
+    if (doc.exists) {
+      const data = doc.data() as Record<string, unknown>
+      const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+      const categoryId = str(data.categoryId) || str(data.category) || 'gundem'
+      const isBreaking = data.isBreaking === true || categoryId === 'son-dakika'
+      return {
+        title: str(data.title),
+        socialHeadline: str(data.socialHeadline),
+        summary: str(data.summary),
+        spot: str(data.spot),
+        categoryId,
+        isBreaking,
+        imageUrl: str(data.imageUrl),
+        thumbnail: str(data.thumbnail),
+        coverImageUrl: str(data.coverImageUrl),
+        featuredImage: str(data.featuredImage),
+        image: str(data.image),
+      }
+    }
+  } catch (err) {
+    console.warn(`[og/social] admin firestore fetch failed id=${id}:`, err)
+  }
+
+  // 2. REST API fallback
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   if (!apiKey) return null
   try {
     const res = await fetch(`${FIREBASE_URL}/${id}?key=${apiKey}`, { cache: 'no-store' })
     if (!res.ok) return null
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       fields?: Record<string, { stringValue?: string; booleanValue?: boolean }>
     }
     const f = data.fields
@@ -278,7 +302,9 @@ async function fetchArticle(id: string): Promise<ArticleOGData | null> {
       featuredImage: str(f.featuredImage),
       image: str(f.image),
     }
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 function bestImageCandidates(a: ArticleOGData): string[] {
@@ -296,7 +322,6 @@ function clampHeadline(s: string, max: number, sourceTitle = ''): string {
     .slice(0, 5)
   if (lines.length === 0) return ''
   const joined = lines.join(' ')
-  // AI socialHeadline yarım/junk ise kaynak title — Meta caption asla manşet olmaz
   return pickCompleteOgHeadline(joined, sourceTitle || joined, max, TITLE_SOFT_MAX)
 }
 
@@ -304,7 +329,6 @@ const W = 1080
 const H = 1350
 const TEXT_PAD_SIDE = 48
 const TEXT_PAD_BOTTOM = 48
-/** 5 satır manşet + kategori + footer için panel */
 const PANEL_H = 620
 const LOGO_SIZE = 88
 
@@ -380,7 +404,6 @@ async function loadPostFonts(): Promise<OgFont[]> {
     { name: FONT_BODY, weight: 600 },
     { name: FONT_BODY, weight: 700 },
     { name: FONT_BODY, weight: 800 },
-    { name: FONT_BODY, weight: 900 },
   ]
   const loaded = await Promise.all(
     specs.map(async (s) => {
@@ -413,11 +436,14 @@ export async function GET(
 
   let article: ArticleOGData | null = null
   if (id !== 'sample' && id !== 'preview') {
-    try { article = await fetchArticle(id) } catch { return fallbackImageResponse() }
+    try {
+      article = await fetchArticle(id)
+    } catch {
+      // ignore fetch errors; fall back to query params
+    }
   }
 
   const sourceTitle = article?.title || overrideTitle || ''
-  // Overlay = haber başlığı. AI socialHeadline görsele yazılmaz.
   const rawTitle = overlayHeadlineFromTitle(overrideTitle || article?.title || '', TITLE_MAX, TITLE_SOFT_MAX)
   if (!rawTitle) {
     if (id === 'sample' || id === 'preview') {
@@ -433,7 +459,6 @@ export async function GET(
   const imageCandidates = [overrideImage, ...(article ? bestImageCandidates(article) : [])]
   const photo = await embedCoverTopImage(imageCandidates, W, H, 84, true)
 
-  // Kapaksız lacivert kartı Meta'ya "başarılı görsel" olarak vermeyiz — CDN'e yazılmaz, IG solid blue postlamaz.
   if (!photo) {
     console.error(`[og/social] cover embed failed id=${id} candidates=${imageCandidates.filter(Boolean).length}`)
     return new Response('OG cover image unavailable', {
@@ -445,7 +470,6 @@ export async function GET(
     })
   }
 
-  // Yarım AI manşeti varsa kaynak title; softMax ile tam manşet
   const title = clampHeadline(rawTitle, TITLE_MAX, sourceTitle)
   const titlePlain = stripDanglingHeadlineTail(title.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
   const contentWidth = W - TEXT_PAD_SIDE * 2
@@ -497,7 +521,7 @@ export async function GET(
           />
         ) : null}
 
-        {/* Bottom text panel — footer sabit, metin yukarıda kalır */}
+        {/* Bottom text panel */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           height: PANEL_H,
@@ -523,7 +547,7 @@ export async function GET(
               }}>{categoryLabel}</span>
             </div>
 
-            {/* Headline — max 4 satır; metin önceden sığdırılır, CSS clip yok */}
+            {/* Headline */}
             <div style={{
               display: 'flex', flexDirection: 'column',
               marginBottom: HEADLINE_GAP_ABOVE_FOOTER,
@@ -539,7 +563,7 @@ export async function GET(
             </div>
           </div>
 
-          {/* Thin blue line + centered NaHaber favicon — rezerve alt bölge */}
+          {/* Thin blue line + centered NaHaber favicon */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative', height: faviconSize, width: '100%',
