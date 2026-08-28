@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
@@ -17,6 +18,7 @@ import {
 import { clearFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
+import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 import { getClientAuthToken } from '@/lib/firebase/auth'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
@@ -35,6 +37,13 @@ type FeedErrorState =
   | { type: 'DISABLED'; reason?: string; message: string }
   | { type: 'NETWORK_ERROR'; message: string }
   | null
+
+interface SocialItemState {
+  liked: boolean
+  saved: boolean
+  likeCount: number
+  commentCount: number
+}
 
 async function fetchFeedPage(opts: {
   mode: FeedMode
@@ -126,7 +135,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
-  const [social, setSocial] = useState<Record<string, { liked: boolean; saved: boolean }>>({})
+  const [social, setSocial] = useState<Record<string, SocialItemState>>({})
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
@@ -164,6 +173,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             seen.add(i.articleId)
             return true
           })
+        })
+        setSocial((prev) => {
+          const next = { ...prev }
+          for (const it of page.items) {
+            if (!next[it.articleId]) {
+              next[it.articleId] = {
+                liked: it.socialState?.liked ?? false,
+                saved: it.socialState?.saved ?? false,
+                likeCount: it.socialCounts.likes ?? 0,
+                commentCount: it.socialCounts.comments ?? 0,
+              }
+            }
+          }
+          return next
         })
         setCursor(page.nextCursor)
         cursorRef.current = page.nextCursor
@@ -223,16 +246,32 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   useEffect(() => {
     if (!items.length) return
     const ids = items.map((i) => i.articleId)
+    let cancelled = false
     socialApi
       .getArticleState(ids)
       .then((res) => {
+        if (cancelled) return
         const states = (res as { states?: Array<{ articleId: string; liked: boolean; saved: boolean }> }).states ?? []
-        const map: Record<string, { liked: boolean; saved: boolean }> = {}
-        for (const s of states) map[s.articleId] = { liked: s.liked, saved: s.saved }
-        setSocial(map)
+        if (!states.length) return
+        setSocial((prev) => {
+          const next = { ...prev }
+          for (const s of states) {
+            const existing = next[s.articleId]
+            next[s.articleId] = {
+              liked: s.liked,
+              saved: s.saved,
+              likeCount: existing?.likeCount ?? 0,
+              commentCount: existing?.commentCount ?? 0,
+            }
+          }
+          return next
+        })
       })
       .catch(() => {})
-  }, [items])
+    return () => {
+      cancelled = true
+    }
+  }, [items, authUser?.uid])
 
   useEffect(() => {
     activeIndexRef.current = activeIndex
@@ -308,44 +347,171 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     [mode]
   )
 
-  const toggleLike = async (item: FeedItemDto) => {
-    setActionLoading((s) => ({ ...s, [item.articleId]: 'like' }))
-    const prev = social[item.articleId]?.liked ?? false
-    setSocial((s) => ({ ...s, [item.articleId]: { liked: !prev, saved: s[item.articleId]?.saved ?? false } }))
-    try {
-      if (prev) await socialApi.unlikeArticle(item.articleId)
-      else await socialApi.likeArticle(item.articleId)
-    } catch {
-      setSocial((s) => ({ ...s, [item.articleId]: { liked: prev, saved: s[item.articleId]?.saved ?? false } }))
-    } finally {
-      setActionLoading((s) => {
-        const next = { ...s }
-        delete next[item.articleId]
-        return next
-      })
-    }
-  }
+  const toggleLike = useCallback(
+    async (item: FeedItemDto) => {
+      if (actionLoading[item.articleId]) return
+      if (!authUser) {
+        const returnUrl = `/feed-v2${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+        const intent = buildAuthIntent('LIKE', 'article', item.articleId, returnUrl)
+        if (intent) router.push(loginHrefWithIntent(intent))
+        else router.push(`/login?next=${encodeURIComponent(returnUrl)}`)
+        return
+      }
 
-  const toggleSave = async (item: FeedItemDto) => {
-    setActionLoading((s) => ({ ...s, [item.articleId]: 'save' }))
-    const prev = social[item.articleId]?.saved ?? false
-    setSocial((s) => ({ ...s, [item.articleId]: { liked: s[item.articleId]?.liked ?? false, saved: !prev } }))
-    try {
-      if (prev) await socialApi.unsaveArticle(item.articleId)
-      else await socialApi.saveArticle(item.articleId)
-    } catch {
-      setSocial((s) => ({ ...s, [item.articleId]: { liked: s[item.articleId]?.liked ?? false, saved: prev } }))
-    } finally {
-      setActionLoading((s) => {
-        const next = { ...s }
-        delete next[item.articleId]
-        return next
-      })
-    }
-  }
+      const current = social[item.articleId] ?? {
+        liked: item.socialState?.liked ?? false,
+        saved: item.socialState?.saved ?? false,
+        likeCount: item.socialCounts.likes ?? 0,
+        commentCount: item.socialCounts.comments ?? 0,
+      }
+
+      const prevLiked = current.liked
+      const prevCount = current.likeCount
+      const nextLiked = !prevLiked
+      const nextCount = nextLiked ? prevCount + 1 : Math.max(0, prevCount - 1)
+
+      // Guard against rapid duplicate clicks
+      setActionLoading((s) => ({ ...s, [item.articleId]: 'like' }))
+
+      // Optimistic UI state
+      setSocial((s) => ({
+        ...s,
+        [item.articleId]: {
+          ...(s[item.articleId] ?? current),
+          liked: nextLiked,
+          likeCount: nextCount,
+        },
+      }))
+
+      try {
+        const res = prevLiked
+          ? await socialApi.unlikeArticle(item.articleId)
+          : await socialApi.likeArticle(item.articleId)
+
+        const body = res as { liked?: boolean; likeCount?: number; likes?: number }
+        const canonicalLikes =
+          typeof body.likeCount === 'number'
+            ? body.likeCount
+            : typeof body.likes === 'number'
+              ? body.likes
+              : undefined
+        const canonicalLiked = typeof body.liked === 'boolean' ? body.liked : nextLiked
+
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            liked: canonicalLiked,
+            likeCount: canonicalLikes !== undefined ? canonicalLikes : nextCount,
+          },
+        }))
+      } catch {
+        // Rollback state on failure
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            liked: prevLiked,
+            likeCount: prevCount,
+          },
+        }))
+        toast.error('Beğeni kaydedilemedi')
+      } finally {
+        setActionLoading((s) => {
+          const next = { ...s }
+          delete next[item.articleId]
+          return next
+        })
+      }
+    },
+    [actionLoading, authUser, router, searchParams, social]
+  )
+
+  const toggleSave = useCallback(
+    async (item: FeedItemDto) => {
+      if (actionLoading[item.articleId]) return
+      if (!authUser) {
+        const returnUrl = `/feed-v2${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+        const intent = buildAuthIntent('SAVE', 'article', item.articleId, returnUrl)
+        if (intent) router.push(loginHrefWithIntent(intent))
+        else router.push(`/login?next=${encodeURIComponent(returnUrl)}`)
+        return
+      }
+
+      const current = social[item.articleId] ?? {
+        liked: item.socialState?.liked ?? false,
+        saved: item.socialState?.saved ?? false,
+        likeCount: item.socialCounts.likes ?? 0,
+        commentCount: item.socialCounts.comments ?? 0,
+      }
+
+      const prevSaved = current.saved
+      const nextSaved = !prevSaved
+
+      // Guard against rapid duplicate clicks
+      setActionLoading((s) => ({ ...s, [item.articleId]: 'save' }))
+
+      // Optimistic UI state
+      setSocial((s) => ({
+        ...s,
+        [item.articleId]: {
+          ...(s[item.articleId] ?? current),
+          saved: nextSaved,
+        },
+      }))
+
+      try {
+        const res = prevSaved
+          ? await socialApi.unsaveArticle(item.articleId)
+          : await socialApi.saveArticle(item.articleId)
+
+        const body = res as { saved?: boolean }
+        const canonicalSaved = typeof body.saved === 'boolean' ? body.saved : nextSaved
+
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            saved: canonicalSaved,
+          },
+        }))
+      } catch {
+        // Rollback state on failure
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            saved: prevSaved,
+          },
+        }))
+        toast.error('Kaydetme işlemi başarısız')
+      } finally {
+        setActionLoading((s) => {
+          const next = { ...s }
+          delete next[item.articleId]
+          return next
+        })
+      }
+    },
+    [actionLoading, authUser, router, searchParams, social]
+  )
 
   const handleFeedback = useCallback((articleId: string) => {
     setItems((prev) => prev.filter((i) => i.articleId !== articleId))
+  }, [])
+
+  const handleCommentAdded = useCallback((articleId: string) => {
+    setSocial((s) => {
+      const existing = s[articleId]
+      if (!existing) return s
+      return {
+        ...s,
+        [articleId]: {
+          ...existing,
+          commentCount: existing.commentCount + 1,
+        },
+      }
+    })
   }, [])
 
   const onRead = (item: FeedItemDto, index: number) => {
@@ -474,14 +640,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           {windowItems.map((item, wi) => {
             const index = windowStart + wi
             const isActive = index === activeIndex
+            const socialState = social[item.articleId]
+            const liked = socialState?.liked ?? item.socialState?.liked ?? false
+            const saved = socialState?.saved ?? item.socialState?.saved ?? false
+            const likeCount = socialState?.likeCount ?? item.socialCounts.likes ?? 0
+
             return (
               <FeedCardWithImpression
                 key={item.articleId}
                 item={item}
                 isActive={isActive}
                 debug={isDebug}
-                liked={social[item.articleId]?.liked ?? item.socialState?.liked ?? false}
-                saved={social[item.articleId]?.saved ?? item.socialState?.saved ?? false}
+                liked={liked}
+                saved={saved}
+                likeCount={likeCount}
                 likeLoading={actionLoading[item.articleId] === 'like'}
                 saveLoading={actionLoading[item.articleId] === 'save'}
                 onToggleLike={() => void toggleLike(item)}
@@ -527,6 +699,16 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         articleId={commentArticleId ?? ''}
         open={Boolean(commentArticleId)}
         onClose={() => setCommentArticleId(null)}
+        initialCount={
+          commentArticleId
+            ? (social[commentArticleId]?.commentCount ??
+              items.find((i) => i.articleId === commentArticleId)?.socialCounts.comments ??
+              0)
+            : 0
+        }
+        onCommentAdded={() => {
+          if (commentArticleId) handleCommentAdded(commentArticleId)
+        }}
       />
     </div>
   )
@@ -538,6 +720,7 @@ function FeedCardWithImpression(props: {
   debug?: boolean
   liked: boolean
   saved: boolean
+  likeCount?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void

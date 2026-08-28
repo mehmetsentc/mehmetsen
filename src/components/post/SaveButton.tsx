@@ -55,16 +55,16 @@ export function SaveButton({
       )}
     >
       {isReels ? (
-        <Bookmark className={cn('h-7 w-7', saved && 'fill-white')} />
+        <Bookmark className={cn('h-7 w-7 transition-all duration-150', saved ? 'fill-amber-400 text-amber-400 scale-110' : 'text-white')} />
       ) : (
         <span
           className={cn(
             'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
             isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800',
-            saved && 'text-yellow-500 dark:text-yellow-400'
+            saved ? '!text-amber-400 dark:!text-amber-300' : isOverlay ? 'text-white' : 'text-gray-500'
           )}
         >
-          <Bookmark className={cn('h-6 w-6', saved && 'fill-current')} />
+          <Bookmark className={cn('h-6 w-6 transition-transform duration-150', saved ? '!fill-amber-400 !text-amber-400 scale-110' : 'text-white')} />
         </span>
       )}
       {!isReels && (

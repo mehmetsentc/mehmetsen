@@ -33,6 +33,7 @@ interface FullscreenNewsCardProps {
   debug?: boolean
   liked: boolean
   saved: boolean
+  likeCount?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void
@@ -49,6 +50,7 @@ export function FullscreenNewsCard({
   debug,
   liked,
   saved,
+  likeCount,
   likeLoading,
   saveLoading,
   onToggleLike,
@@ -182,14 +184,14 @@ export function FullscreenNewsCard({
             summary={item.summary ?? undefined}
             liked={liked}
             saved={saved}
-            likeCount={item.socialCounts.likes}
+            likeCount={typeof likeCount === 'number' ? likeCount : item.socialCounts.likes}
             commentCount={item.socialCounts.comments}
             onToggleLike={onToggleLike}
             onToggleSave={onToggleSave}
             onCommentClick={onCommentClick}
             likeLoading={likeLoading}
             saveLoading={saveLoading}
-            className="text-white [&_button]:text-white [&_span]:text-white/80"
+            className="text-white"
           />
 
           {debug ? (

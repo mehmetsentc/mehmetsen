@@ -56,16 +56,16 @@ export function LikeButton({
       )}
     >
       {isReels ? (
-        <Heart className={cn('h-7 w-7', liked && 'fill-red-500 text-red-500')} />
+        <Heart className={cn('h-7 w-7 transition-all duration-150', liked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white')} />
       ) : (
         <span
           className={cn(
             'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
             isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800',
-            liked && 'text-red-500 dark:text-red-400'
+            liked ? '!text-rose-500 dark:!text-rose-400' : isOverlay ? 'text-white' : 'text-gray-500'
           )}
         >
-          <Heart className={cn('h-6 w-6', liked && 'fill-current')} />
+          <Heart className={cn('h-6 w-6 transition-transform duration-150', liked ? '!fill-rose-500 !text-rose-500 scale-110' : 'text-white')} />
         </span>
       )}
       <span

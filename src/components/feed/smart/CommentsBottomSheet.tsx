@@ -1,17 +1,41 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { useCallback, useEffect, useId, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Loader2, X, MessageSquareOff, MessageCircle, Send } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { auth, ensureAuthReady } from '@/lib/firebase/auth'
-import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
+import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 
-interface CommentRow {
+function formatRelativeTime(dateStr?: string | null): string {
+  if (!dateStr) return ''
+  try {
+    const diffMs = Date.now() - new Date(dateStr).getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'Az önce'
+    if (diffMins < 60) return `${diffMins}dk önce`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}s önce`
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}g önce`
+  } catch {
+    return ''
+  }
+}
+
+export interface CommentRow {
   id: string
   content: string
   userDisplayName?: string
+  author?: {
+    username?: string
+    displayName?: string
+    avatarUrl?: string | null
+  }
   createdAt: string
 }
 
@@ -19,16 +43,36 @@ interface CommentsBottomSheetProps {
   articleId: string
   open: boolean
   onClose: () => void
+  initialCount?: number
+  onCommentAdded?: () => void
 }
 
-export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottomSheetProps) {
+export function CommentsBottomSheet({
+  articleId,
+  open,
+  onClose,
+  initialCount = 0,
+  onCommentAdded,
+}: CommentsBottomSheetProps) {
+  const router = useRouter()
   const { user } = useAuth()
-  const socialEnabled = isSocialGraphEnabledClient()
+  const titleId = useId()
   const [items, setItems] = useState<CommentRow[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [disabled, setDisabled] = useState(false)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Backdrop scroll lock
+  useEffect(() => {
+    if (!open) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [open])
 
   const load = useCallback(
     async (nextCursor?: string | null) => {
@@ -42,35 +86,75 @@ export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottom
           const token = await auth.currentUser.getIdToken()
           headers.Authorization = `Bearer ${token}`
         }
-        const res = await fetch(`/api/social/comments?articleId=${encodeURIComponent(articleId)}${q}`, { headers })
+        const res = await fetch(`/api/social/comments?articleId=${encodeURIComponent(articleId)}${q}`, {
+          headers,
+          credentials: 'include',
+        })
+        if (res.status === 404) {
+          const errBody = (await res.json().catch(() => ({}))) as { error?: string }
+          if (errBody?.error === 'Social graph disabled') {
+            setDisabled(true)
+            return
+          }
+        }
+        if (!res.ok) {
+          throw new Error('comments_fetch_failed')
+        }
         const body = (await res.json()) as {
           items?: CommentRow[]
           nextCursor?: string | null
         }
+        setDisabled(false)
         setItems((prev) => (nextCursor ? [...prev, ...(body.items ?? [])] : body.items ?? []))
         setCursor(body.nextCursor ?? null)
       } catch {
-        /* ignore */
+        /* Non-fatal network error */
       } finally {
         setLoading(false)
       }
     },
-    [articleId, user]
+    [articleId]
   )
 
   useEffect(() => {
-    if (open) void load()
+    if (open) {
+      setItems([])
+      setCursor(null)
+      setDraft('')
+      setDisabled(false)
+      void load()
+    }
   }, [open, load])
 
-  const submit = async () => {
-    if (!draft.trim() || !user) return
+  const handleLoginRedirect = () => {
+    if (typeof window === 'undefined') return
+    const currentUrl = window.location.pathname + window.location.search
+    const intent = buildAuthIntent('COMMENT', 'article', articleId, currentUrl)
+    if (intent) {
+      router.push(loginHrefWithIntent(intent))
+    } else {
+      router.push(`/login?next=${encodeURIComponent(currentUrl)}`)
+    }
+  }
+
+  const submit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const content = draft.trim()
+    if (!content) return
+    if (!user) {
+      handleLoginRedirect()
+      return
+    }
+
     setSubmitting(true)
     try {
-      await socialApi.createComment(articleId, draft.trim())
+      await socialApi.createComment(articleId, content)
       setDraft('')
+      toast.success('Yorumunuz paylaşıldı')
+      onCommentAdded?.()
       await load()
     } catch {
-      /* auth intent handled by socialApi */
+      toast.error('Yorum gönderilemedi')
     } finally {
       setSubmitting(false)
     }
@@ -78,66 +162,167 @@ export function CommentsBottomSheet({ articleId, open, onClose }: CommentsBottom
 
   if (!open) return null
 
+  const displayCount = Math.max(initialCount, items.length)
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-label="Yorumlar">
-      <button type="button" className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Kapat" />
-      <div className="relative z-10 flex max-h-[70dvh] w-full max-w-lg flex-col rounded-t-2xl bg-[rgb(var(--color-bg))] shadow-xl">
-        <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-4 py-3">
-          <h3 className="font-semibold">Yorumlar</h3>
-          <button type="button" onClick={onClose} aria-label="Kapat">
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      {/* Dimmed backdrop */}
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-label="Kapat"
+      />
+
+      {/* 3-Region Bottom Sheet */}
+      <div className="relative z-10 flex h-[75dvh] max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl bg-[rgb(var(--color-bg))] shadow-2xl border-t border-[rgb(var(--color-border))] overflow-hidden">
+        {/* Drag handle */}
+        <div className="pt-2 pb-1 flex justify-center bg-[rgb(var(--color-bg))] shrink-0">
+          <div className="h-1.5 w-12 rounded-full bg-[rgb(var(--color-border))] opacity-70" aria-hidden />
+        </div>
+
+        {/* REGION 1: HEADER (Sticky top) */}
+        <div className="flex shrink-0 items-center justify-between border-b border-[rgb(var(--color-border))] px-5 py-3 bg-[rgb(var(--color-bg))]">
+          <div className="flex items-center gap-2">
+            <h3 id={titleId} className="text-base font-bold text-[rgb(var(--color-text))]">
+              Yorumlar
+            </h3>
+            {displayCount > 0 ? (
+              <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">
+                ({displayCount})
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Kapat"
+            className="rounded-full p-1.5 text-[rgb(var(--color-muted))] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[rgb(var(--color-text))] transition-colors"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {!socialEnabled ? (
-            <p className="text-sm text-[rgb(var(--color-muted))]">Yorumlar şu an kapalı.</p>
+
+        {/* REGION 2: COMMENTS LIST (Scrollable) */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {disabled ? (
+            <div className="flex h-full min-h-[160px] flex-col items-center justify-center py-10 text-center text-[rgb(var(--color-muted))]">
+              <MessageSquareOff className="mb-2 h-9 w-9 stroke-[1.5] opacity-50" />
+              <p className="text-sm font-medium">Yorumlar şu an kapalı.</p>
+              <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                Bu içerik için yorum yapma özelliği aktif değil.
+              </p>
+            </div>
           ) : items.length === 0 && !loading ? (
-            <p className="text-sm text-[rgb(var(--color-muted))]">Henüz yorum yok.</p>
+            <div className="flex h-full min-h-[160px] flex-col items-center justify-center py-10 text-center text-[rgb(var(--color-muted))]">
+              <MessageCircle className="mb-2 h-9 w-9 stroke-[1.5] opacity-50" />
+              <p className="text-sm font-medium">Henüz yorum yok.</p>
+              <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">İlk yorumu sen yaz!</p>
+            </div>
           ) : (
-            <ul className="space-y-3">
-              {items.map((c) => (
-                <li key={c.id} className="text-sm">
-                  <span className="font-semibold">{c.userDisplayName ?? 'Kullanıcı'}</span>
-                  <p className="mt-0.5 text-[rgb(var(--color-text))]">{c.content}</p>
-                </li>
-              ))}
+            <ul className="space-y-4">
+              {items.map((c) => {
+                const authorName = c.author?.displayName || c.userDisplayName || 'Kullanıcı'
+                const authorAvatar = c.author?.avatarUrl
+                return (
+                  <li key={c.id} className="flex items-start gap-3 text-sm">
+                    {authorAvatar ? (
+                      <Image
+                        src={authorAvatar}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600/15 text-brand-600 font-bold text-xs">
+                        {authorName.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-xs text-[rgb(var(--color-text))]">
+                          {authorName}
+                        </span>
+                        {c.createdAt ? (
+                          <span className="text-[11px] text-[rgb(var(--color-muted))]">
+                            {formatRelativeTime(c.createdAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm text-[rgb(var(--color-text))] leading-relaxed whitespace-pre-wrap break-words">
+                        {c.content}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           )}
-          {loading ? <Loader2 className="mx-auto mt-4 h-5 w-5 animate-spin" /> : null}
-          {cursor ? (
+
+          {loading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
+            </div>
+          ) : null}
+
+          {cursor && !loading ? (
             <button
               type="button"
-              className="mt-3 w-full text-center text-sm text-brand-600"
+              className="mt-3 w-full py-2 text-center text-xs font-semibold text-brand-600 hover:text-brand-700 transition"
               onClick={() => void load(cursor)}
             >
-              Daha fazla yükle
+              Daha fazla yorum yükle
             </button>
           ) : null}
         </div>
-        {socialEnabled ? (
-          <div className="border-t border-[rgb(var(--color-border))] p-3">
+
+        {/* REGION 3: COMPOSER (Sticky bottom) */}
+        {!disabled ? (
+          <div className="shrink-0 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] px-4 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
             {user ? (
-              <div className="flex gap-2">
+              <form onSubmit={submit} className="flex items-center gap-2">
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Yorum yaz..."
-                  className="flex-1 rounded-full border border-[rgb(var(--color-border))] bg-transparent px-4 py-2 text-sm"
+                  placeholder="Yorum ekle..."
+                  className="flex-1 rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none transition"
                   maxLength={500}
+                  disabled={submitting}
                 />
                 <button
-                  type="button"
+                  type="submit"
                   disabled={submitting || !draft.trim()}
-                  onClick={() => void submit()}
                   className={cn(
-                    'rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed'
                   )}
+                  aria-label="Gönder"
                 >
-                  Gönder
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-center justify-between gap-3 px-1 py-0.5">
+                <p className="text-xs text-[rgb(var(--color-muted))]">
+                  Yorum yapmak için giriş yapmalısınız.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLoginRedirect}
+                  className="rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition shrink-0"
+                >
+                  Giriş Yap
                 </button>
               </div>
-            ) : (
-              <p className="text-center text-sm text-[rgb(var(--color-muted))]">Yorum yapmak için giriş yapın.</p>
             )}
           </div>
         ) : null}

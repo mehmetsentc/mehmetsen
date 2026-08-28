@@ -2,10 +2,13 @@
 
 import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 
-async function socialFetch(path: string, init?: RequestInit) {
+async function socialFetch(path: string, init?: RequestInit, optionalAuth = false) {
   await ensureAuthReady()
   const user = auth.currentUser
-  if (!user) throw new Error('AUTH_REQUIRED')
+  if (!user) {
+    if (optionalAuth) return {}
+    throw new Error('AUTH_REQUIRED')
+  }
   const token = await user.getIdToken()
   const res = await fetch(path, {
     ...init,
@@ -14,6 +17,7 @@ async function socialFetch(path: string, init?: RequestInit) {
       Authorization: `Bearer ${token}`,
       ...(init?.headers ?? {}),
     },
+    credentials: 'include',
   })
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
   if (!res.ok) {
@@ -67,11 +71,11 @@ export const socialApi = {
   },
   getArticleState(articleIds: string[]) {
     const q = encodeURIComponent(articleIds.join(','))
-    return socialFetch(`/api/social/article/state?ids=${q}`, { method: 'GET' })
+    return socialFetch(`/api/social/article/state?ids=${q}`, { method: 'GET' }, true)
   },
   getPublisherState(publisherIds: string[]) {
     const q = encodeURIComponent(publisherIds.join(','))
-    return socialFetch(`/api/social/publisher/state?ids=${q}`, { method: 'GET' })
+    return socialFetch(`/api/social/publisher/state?ids=${q}`, { method: 'GET' }, true)
   },
   createComment(articleId: string, content: string, parentId?: string | null) {
     return socialFetch('/api/social/comments', {
