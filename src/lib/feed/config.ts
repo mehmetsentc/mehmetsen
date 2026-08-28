@@ -9,7 +9,7 @@ export const FEED_IMPRESSION_CONFIG = {
 export const FEED_PAGINATION = {
   defaultLimit: 15,
   minLimit: 10,
-  maxLimit: 20,
+  maxLimit: 30,
   prefetchThreshold: 3,
 } as const
 

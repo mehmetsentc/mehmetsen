@@ -45,10 +45,10 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     type: 'article',
     articleId: row.articleId,
     clusterId: row.clusterId,
-    publisher: row.publisherId
+    publisher: (row.publisherId || row.publisherName)
       ? {
-          id: row.publisherId,
-          slug: row.publisherSlug ?? row.publisherId,
+          id: row.publisherId ?? row.publisherSlug ?? 'source',
+          slug: row.publisherSlug ?? row.publisherId ?? 'source',
           name: row.publisherName ?? 'Kaynak',
           logoUrl: row.publisherLogoUrl,
         }

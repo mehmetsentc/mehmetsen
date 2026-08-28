@@ -141,6 +141,19 @@ export class FeedColdStartService {
       }
     }
 
+    // Backfill from remaining available candidates if flat has fewer than requested limit
+    if (flat.length < input.limit) {
+      for (const source of order) {
+        const pool = pools[source] ?? []
+        for (const row of pool) {
+          if (seen.has(row.articleId)) continue
+          seen.add(row.articleId)
+          flat.push({ ...row, source })
+          if (flat.length >= input.limit * 2) break
+        }
+      }
+    }
+
     const reps = feedRepresentativeSelector.select(flat)
     let scored = feedScoringService.scoreAll(reps, ctx, input.mode, input.seenArticles, input.seenClusters)
     scored = this.applyOnboardingBoost(scored, ctx)

@@ -165,6 +165,14 @@ export default function ClusterDetailPage() {
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-700"
+              disabled={busy}
+              onClick={() => void act('publish_editorial')}
+            >
+              Editoryal Taslak Oluştur & Yayınla
+            </button>
             <button type="button" className="rounded-lg border px-3 py-1" disabled={busy} onClick={() => void act('review')}>
               İncelemeye Al
             </button>
@@ -186,6 +194,11 @@ export default function ClusterDetailPage() {
               </button>
             ) : null}
           </div>
+          {cluster.publishedNewsId ? (
+            <div className="rounded-md bg-emerald-50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              ✓ Bu küme kanonik olarak yayında: <strong>{String(cluster.publishedNewsId)}</strong>
+            </div>
+          ) : null}
           <h3 className="font-semibold">Kaynaklar ({groups.length})</h3>
           <ul className="list-disc pl-5">
             {groups.map((g) => (
