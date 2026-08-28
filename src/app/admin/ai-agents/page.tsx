@@ -112,8 +112,10 @@ export default function AiAgentsPage() {
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-xs font-semibold',
-              tab === id ? 'bg-white/15 text-white' : 'text-slate-400 hover:bg-white/5'
+              'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
+              tab === id
+                ? 'bg-[rgb(var(--color-brand))] text-white'
+                : 'text-[rgb(var(--color-muted))] hover:bg-slate-100 hover:text-[rgb(var(--color-text))]'
             )}
           >
             {label}
@@ -135,38 +137,38 @@ export default function AiAgentsPage() {
           hrefLabel="AI Organizasyonu"
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10">
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
               <tr>
-                <th className="px-4 py-3">Ajan</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">Autonomy</th>
-                <th className="px-4 py-3">Bölge</th>
-                <th className="px-4 py-3">Durum</th>
+                <th className="px-4 py-3 font-semibold">Ajan</th>
+                <th className="px-4 py-3 font-semibold">Rol</th>
+                <th className="px-4 py-3 font-semibold">Autonomy</th>
+                <th className="px-4 py-3 font-semibold">Bölge</th>
+                <th className="px-4 py-3 font-semibold">Durum</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[rgb(var(--color-border))]">
               {filtered.map((a) => (
-                <tr key={a.id} className="hover:bg-white/[0.03]">
+                <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/ai-org`} className="font-semibold text-white hover:text-[rgb(var(--color-brand))]">
-                      {a.displayName}
+                    <Link href={`/admin/ai-org`} className="font-semibold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]">
+                      {a.displayName || a.id}
                     </Link>
                     {a.legacyAiEditorId ? (
-                      <p className="text-[10px] text-slate-500">legacy: {a.legacyAiEditorId}</p>
+                      <p className="mt-0.5 text-[10px] text-[rgb(var(--color-muted))]">legacy: {a.legacyAiEditorId}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-slate-300">{a.roleTemplateId}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-300">L{a.autonomyLevel}</td>
-                  <td className="px-4 py-3 text-slate-400">
+                  <td className="px-4 py-3 text-[rgb(var(--color-text))]">{a.roleTemplateId}</td>
+                  <td className="px-4 py-3 tabular-nums font-medium text-[rgb(var(--color-text))]">L{a.autonomyLevel}</td>
+                  <td className="px-4 py-3 text-[rgb(var(--color-muted))]">
                     {a.territories?.length ? a.territories.join(', ') : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
-                        a.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-500/20 text-slate-300'
+                        a.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                       )}
                     >
                       {a.status}

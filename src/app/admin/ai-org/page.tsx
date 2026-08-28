@@ -172,7 +172,7 @@ export default function AiOrgPage() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void runAction('seed-core', 'Çekirdek org')}
-              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-slate-50 disabled:opacity-50"
             >
               {busy === 'seed-core' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Çekirdek Org'}
             </button>
@@ -180,7 +180,7 @@ export default function AiOrgPage() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void runAction('sync-local-editors', 'Yerel editör sync')}
-              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-slate-50 disabled:opacity-50"
             >
               Yerel Editörleri Bağla
             </button>
@@ -191,7 +191,7 @@ export default function AiOrgPage() {
                 if (!confirm('81 İl SMM ajanı oluşturulacak. Devam?')) return
                 void runAction('seed-smm-81', '81 SMM')
               }}
-              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-slate-50 disabled:opacity-50"
             >
               81 İl SMM
             </button>
@@ -199,7 +199,7 @@ export default function AiOrgPage() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void runAction('seed-instructions', 'Talimatlar')}
-              className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold text-[rgb(var(--color-text))] hover:bg-slate-50 disabled:opacity-50"
             >
               Talimat Seed
             </button>
@@ -230,10 +230,10 @@ export default function AiOrgPage() {
         />
       ) : (
         <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-          <div className="rounded-2xl border border-white/10 bg-[rgb(var(--admin-card))] p-4">
+          <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">Organizasyon ağacı</h2>
-              <p className="text-[11px] text-slate-500">
+              <h2 className="text-sm font-semibold text-[rgb(var(--color-text))]">Organizasyon ağacı</h2>
+              <p className="text-[11px] text-[rgb(var(--color-muted))]">
                 SMM {smmCount}/81 · Yerel {localCount} (özet görünüm)
               </p>
             </div>
@@ -245,26 +245,28 @@ export default function AiOrgPage() {
                   onClick={() => void openNode(node.id)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-                    selectedId === node.id ? 'bg-white/12' : 'hover:bg-white/[0.06]'
+                    selectedId === node.id
+                      ? 'bg-[rgb(var(--color-brand))]/10 ring-1 ring-[rgb(var(--color-brand))]/20'
+                      : 'hover:bg-slate-50'
                   )}
                   style={{ paddingLeft: 12 + node.depth * 18 }}
                 >
                   <span
                     className={cn(
                       'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold',
-                      node.status === 'active' ? 'bg-violet-500/20 text-violet-200' : 'bg-slate-700 text-slate-300'
+                      node.status === 'active' ? 'bg-violet-100 text-violet-700' : 'bg-slate-200 text-slate-500'
                     )}
                   >
                     AI
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-white">{node.displayName}</span>
-                    <span className="block truncate text-[11px] text-slate-400">
+                    <span className="block truncate text-sm font-semibold text-[rgb(var(--color-text))]">{node.displayName}</span>
+                    <span className="block truncate text-[11px] text-[rgb(var(--color-muted))]">
                       {node.roleLabel} · {node.departmentLabel} · L{node.autonomyLevel}
                     </span>
                   </span>
                   {node.children.length > 0 ? (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
                       {node.children.length}
                     </span>
                   ) : null}
@@ -272,21 +274,21 @@ export default function AiOrgPage() {
               ))}
             </div>
             {(smmCount > 0 || localCount > 0) && (
-              <p className="mt-3 text-[11px] text-slate-500">
+              <p className="mt-3 text-[11px] text-[rgb(var(--color-muted))]">
                 Derin yerel/SMM düğümleri özetlendi — detay için parent düğümü aç veya AI Ajanlar listesine bak.
               </p>
             )}
           </div>
 
-          <aside className="rounded-2xl border border-white/10 bg-[rgb(var(--admin-card))] p-4">
+          <aside className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
             {!selectedId ? (
-              <p className="py-10 text-center text-sm text-slate-500">Bir ajan seçin</p>
+              <p className="py-10 text-center text-sm text-[rgb(var(--color-muted))]">Bir ajan seçin</p>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-bold text-white">{selected?.displayName}</h3>
-                    <p className="text-[11px] text-slate-400">
+                    <h3 className="text-sm font-bold text-[rgb(var(--color-text))]">{selected?.displayName}</h3>
+                    <p className="text-[11px] text-[rgb(var(--color-muted))]">
                       {selected?.roleLabel} · {selected?.departmentLabel}
                     </p>
                   </div>
@@ -296,7 +298,7 @@ export default function AiOrgPage() {
                       setSelectedId(null)
                       setRuntime(null)
                     }}
-                    className="rounded-lg p-1 text-slate-400 hover:bg-white/5 hover:text-white"
+                    className="rounded-lg p-1 text-[rgb(var(--color-muted))] hover:bg-slate-100 hover:text-[rgb(var(--color-text))]"
                     aria-label="Kapat"
                   >
                     <X className="h-4 w-4" />
@@ -305,10 +307,10 @@ export default function AiOrgPage() {
 
                 {drawerLoading ? (
                   <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--color-muted))]" />
                   </div>
                 ) : runtime ? (
-                  <div className="space-y-3 text-xs text-slate-300">
+                  <div className="space-y-3 text-xs text-[rgb(var(--color-text))]">
                     <Row label="Yönetici" value={runtime.manager?.displayName ?? '— (kök)'} />
                     <Row
                       label="Rapor"
@@ -327,18 +329,18 @@ export default function AiOrgPage() {
                       value={`${runtime.canCommunicateWith.length} ajan`}
                     />
                     <div>
-                      <p className="mb-1 font-semibold text-slate-400">Yapabilir</p>
+                      <p className="mb-1 font-semibold text-[rgb(var(--color-muted))]">Yapabilir</p>
                       <div className="flex flex-wrap gap-1">
                         {runtime.allowedTaskTypes.map((t) => (
-                          <span key={t} className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">
+                          <span key={t} className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700">
                             {t}
                           </span>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="mb-1 font-semibold text-slate-400">Escalation</p>
-                      <ul className="list-disc space-y-1 pl-4 text-slate-400">
+                      <p className="mb-1 font-semibold text-[rgb(var(--color-muted))]">Escalation</p>
+                      <ul className="list-disc space-y-1 pl-4 text-[rgb(var(--color-muted))]">
                         {runtime.escalationRules.map((r) => (
                           <li key={r}>{r}</li>
                         ))}
@@ -346,7 +348,7 @@ export default function AiOrgPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">Runtime context yok</p>
+                  <p className="text-sm text-[rgb(var(--color-muted))]">Runtime context yok</p>
                 )}
               </div>
             )}
@@ -360,8 +362,8 @@ export default function AiOrgPage() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-semibold text-slate-500">{label}</p>
-      <p className="mt-0.5 text-slate-200">{value}</p>
+      <p className="font-semibold text-[rgb(var(--color-muted))]">{label}</p>
+      <p className="mt-0.5 text-[rgb(var(--color-text))]">{value}</p>
     </div>
   )
 }

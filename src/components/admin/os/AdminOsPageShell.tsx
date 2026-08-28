@@ -68,14 +68,14 @@ export function AdminOsErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/5 px-6 py-12 text-center">
-      <AlertTriangle className="mb-3 h-7 w-7 text-red-400" />
-      <h2 className="text-base font-semibold text-white">{title}</h2>
-      <p className="mt-2 max-w-md text-sm text-slate-400">{description}</p>
+      <AlertTriangle className="mb-3 h-7 w-7 text-red-500" />
+      <h2 className="text-base font-semibold text-[rgb(var(--color-text))]">{title}</h2>
+      <p className="mt-2 max-w-md text-sm text-[rgb(var(--color-muted))]">{description}</p>
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 rounded-lg border border-white/15 px-4 py-2 text-sm text-white hover:bg-white/5"
+          className="mt-4 rounded-lg border border-[rgb(var(--color-border))] px-4 py-2 text-sm text-[rgb(var(--color-text))] hover:bg-slate-50"
         >
           Yeniden dene
         </button>
