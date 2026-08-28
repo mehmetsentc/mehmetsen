@@ -13,7 +13,7 @@ describe('P17.4 Smart Feed Social Actions & Comments UX Verification', () => {
     vi.restoreAllMocks()
 
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
-      if (userId === pilotUid || userId === operatorUid) {
+      if (userId === operatorUid) {
         return new Set([
           'USER_PROFILES',
           'SOCIAL_GRAPH',
@@ -29,12 +29,12 @@ describe('P17.4 Smart Feed Social Actions & Comments UX Verification', () => {
   })
 
   describe('1. Effective User Rollout & Pilot User Access', () => {
-    it('allows SOCIAL_GRAPH for pilot and operator users', async () => {
+    it('allows SOCIAL_GRAPH strictly for canonical pilot user, rejects historical pilot', async () => {
       process.env.SOCIAL_GRAPH_ENABLED = '0'
-      const pilotAllowed = await isSocialGraphEffectiveForUser(pilotUid)
       const operatorAllowed = await isSocialGraphEffectiveForUser(operatorUid)
-      expect(pilotAllowed).toBe(true)
+      const pilotAllowed = await isSocialGraphEffectiveForUser(pilotUid)
       expect(operatorAllowed).toBe(true)
+      expect(pilotAllowed).toBe(false)
     })
 
     it('rejects SOCIAL_GRAPH for unallowlisted user when global flag is off', async () => {

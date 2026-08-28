@@ -1,0 +1,247 @@
+{
+  "ap3scBglLIVwflfZN4qL8PKrM1A3": {
+    "users": [
+      {
+        "firebase_uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "email": "mehmetsentc@gmail.com",
+        "username": null,
+        "display_name": "mehmetsentc",
+        "photo_url": null,
+        "role": "user",
+        "home_city_slug": null,
+        "created_at": "2026-08-27T13:51:21.065Z",
+        "updated_at": "2026-08-28T22:43:37.630Z"
+      }
+    ],
+    "publisher_members": [
+      {
+        "id": "pmem_9904d92b-bae8-4124-a59d-7a24889554f4",
+        "publisher_id": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "role": "OWNER",
+        "status": "ACTIVE",
+        "invited_at": null,
+        "accepted_at": "2026-08-27T13:51:21.496Z",
+        "created_at": "2026-08-27T13:51:21.564Z",
+        "updated_at": "2026-08-27T13:51:21.564Z",
+        "publisher_name": "NaHaber Test Yayıncısı",
+        "publisher_slug": "nahaber-test-yayincisi",
+        "publisher_status": "ACTIVE",
+        "verification_status": "VERIFIED"
+      }
+    ],
+    "publisher_claim_requests": [
+      {
+        "id": "pclaim_355a1330-c7f9-4ead-b3ed-b1ac506ee31b",
+        "publisher_id": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "claim_type": "OWNERSHIP",
+        "status": "APPROVED",
+        "requested_domain": "internal-test.nahaber.local",
+        "business_email": "mehmetsentc@gmail.com",
+        "verification_method": "MANUAL",
+        "verification_payload": {
+          "message": "P11.1 INTERNAL_TEST pilot claim"
+        },
+        "reviewed_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "reviewed_at": "2026-08-27T13:51:21.496Z",
+        "rejection_reason": null,
+        "created_at": "2026-08-27T13:51:21.265Z",
+        "updated_at": "2026-08-27T13:51:21.496Z"
+      }
+    ],
+    "user_feature_access": [
+      {
+        "id": "ufa_pilot_cold_start_v2",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "COLD_START_V2",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.923Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.320Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_smart_feed",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.762Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.182Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_ranking_v1",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_RANKING_V1",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.843Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.253Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_telemetry",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_TELEMETRY",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:39.119Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.456Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_smart_feed_video",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SMART_FEED_VIDEO",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:39.002Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.389Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_social_graph",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "SOCIAL_GRAPH",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.681Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:25.112Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_pilot_user_profiles",
+        "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "feature_key": "USER_PROFILES",
+        "enabled": true,
+        "created_at": "2026-08-28T13:26:38.594Z",
+        "created_by": "pilot-operator-init",
+        "updated_at": "2026-08-28T22:45:24.984Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      }
+    ],
+    "user_profiles": [],
+    "social_events": 14,
+    "article_likes": 0,
+    "article_comments": 0,
+    "saved_articles": 0,
+    "user_publisher_follows": 0,
+    "user_content_impressions": 0,
+    "user_feed_preferences": [],
+    "advertiser_members": []
+  },
+  "wG8WTNlW38TILLvpDLsFmt8IMlg1": {
+    "users": [
+      {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "email": "operator@nahaber.com",
+        "username": null,
+        "display_name": "Operator Pilot User",
+        "photo_url": null,
+        "role": "super_admin",
+        "home_city_slug": null,
+        "created_at": "2026-08-28T22:25:34.224Z",
+        "updated_at": "2026-08-28T22:43:37.011Z"
+      }
+    ],
+    "publisher_members": [],
+    "publisher_claim_requests": [],
+    "user_feature_access": [
+      {
+        "id": "ufa_op_cold_start_v2",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "COLD_START_V2",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.650Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.652Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_smart_feed",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "SMART_FEED",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.499Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.434Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_smart_feed_ranking_v1",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "SMART_FEED_RANKING_V1",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.575Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.584Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_smart_feed_telemetry",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "SMART_FEED_TELEMETRY",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.805Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.793Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_smart_feed_video",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "SMART_FEED_VIDEO",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.728Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.723Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_social_graph",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "SOCIAL_GRAPH",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.427Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.367Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      },
+      {
+        "id": "ufa_op_user_profiles",
+        "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "feature_key": "USER_PROFILES",
+        "enabled": true,
+        "created_at": "2026-08-28T22:25:34.304Z",
+        "created_by": "system",
+        "updated_at": "2026-08-28T22:45:24.295Z",
+        "updated_by": "system",
+        "reason": "P17 Exact Pilot UID Grant"
+      }
+    ],
+    "user_profiles": [],
+    "social_events": 12,
+    "article_likes": 0,
+    "article_comments": 0,
+    "saved_articles": 0,
+    "user_publisher_follows": 0,
+    "user_content_impressions": 6,
+    "user_feed_preferences": [],
+    "advertiser_members": []
+  }
+}

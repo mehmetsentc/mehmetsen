@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-08-28T23:48:14.007Z",
+  "invariants": {
+    "activeUserCount": 1,
+    "activeRowCount": 7,
+    "totalRowCount": 7,
+    "canonicalUid": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+    "canonicalActiveGrants": 7,
+    "historicalPilotActiveGrants": 0
+  },
+  "effectiveAccess": {
+    "canonicalPilot": {
+      "SMART_FEED": true,
+      "SMART_FEED_RANKING_V1": true,
+      "SOCIAL_GRAPH": true,
+      "USER_PROFILES": true,
+      "COLD_START_V2": true,
+      "SMART_FEED_VIDEO": true,
+      "SMART_FEED_TELEMETRY": true
+    },
+    "historicalPilot": {
+      "SMART_FEED": false,
+      "SOCIAL_GRAPH": false,
+      "USER_PROFILES": false
+    },
+    "randomRegistered": {
+      "SMART_FEED": false,
+      "SOCIAL_GRAPH": false
+    },
+    "anonymous": {
+      "SMART_FEED": false,
+      "SOCIAL_GRAPH": false
+    }
+  },
+  "feedOutput": {
+    "itemCount": 15,
+    "hasMore": true,
+    "rankingVersion": "v1-cold"
+  },
+  "publisherIsolation": [
+    {
+      "name": "The Guardian World RSS",
+      "slug": "the-guardian-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED"
+    },
+    {
+      "name": "TRT Haber RSS",
+      "slug": "trt-haber-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED"
+    },
+    {
+      "name": "Le Monde RSS",
+      "slug": "le-monde-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED"
+    },
+    {
+      "name": "Deutsche Welle RSS",
+      "slug": "deutsche-welle-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED"
+    },
+    {
+      "name": "BBC World RSS",
+      "slug": "bbc-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED"
+    }
+  ],
+  "economics": {
+    "ledgerCount": 0,
+    "advertiserCount": 0,
+    "campaignsCount": 0
+  }
+}

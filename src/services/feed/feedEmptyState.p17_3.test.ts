@@ -10,7 +10,7 @@ import { feedTelemetryService } from '@/services/feed/FeedTelemetryService'
 import type { FeedCandidateRow } from '@/types/smartFeed'
 
 describe('PHASE P17.3 — Smart Feed Empty State Prevention & Funnel Verification', () => {
-  const pilotUid = 'ap3scBglLIVwflfZN4qL8PKrM1A3'
+  const pilotUid = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
 
   beforeEach(() => {
     process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://dummy:dummy@localhost:5432/db'

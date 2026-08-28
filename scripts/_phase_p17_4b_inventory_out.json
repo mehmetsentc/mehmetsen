@@ -1,0 +1,3917 @@
+{
+  "summary": {
+    "totalRows": 763,
+    "activeRows": 763,
+    "uniqueActiveUsers": 109,
+    "distinctUserCount": 109,
+    "usersInPgUsers": [
+      "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "wG8WTNIW38TILLvpDLsFmt61M1g1",
+      "wG8WTNIW38TILLvpDLsFmt61M1gI",
+      "wG8WTNIW38TILLvpDLsFmt61M1gl",
+      "wG8WTNIW38TILLvpDLsFmt61MIg1",
+      "wG8WTNIW38TILLvpDLsFmt61MIgI",
+      "wG8WTNIW38TILLvpDLsFmt61MIgl",
+      "wG8WTNIW38TILLvpDLsFmt61Mlg1",
+      "wG8WTNIW38TILLvpDLsFmt61MlgI",
+      "wG8WTNIW38TILLvpDLsFmt61Mlgl",
+      "wG8WTNIW38TILLvpDLsFmt6IM1g1",
+      "wG8WTNIW38TILLvpDLsFmt6IM1gI",
+      "wG8WTNIW38TILLvpDLsFmt6IM1gl",
+      "wG8WTNIW38TILLvpDLsFmt6IMIg1",
+      "wG8WTNIW38TILLvpDLsFmt6IMIgI",
+      "wG8WTNIW38TILLvpDLsFmt6IMIgl",
+      "wG8WTNIW38TILLvpDLsFmt6IMlg1",
+      "wG8WTNIW38TILLvpDLsFmt6IMlgI",
+      "wG8WTNIW38TILLvpDLsFmt6IMlgl",
+      "wG8WTNIW38TILLvpDLsFmt6lM1g1",
+      "wG8WTNIW38TILLvpDLsFmt6lM1gI",
+      "wG8WTNIW38TILLvpDLsFmt6lM1gl",
+      "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "wG8WTNIW38TILLvpDLsFmt6lMIgI",
+      "wG8WTNIW38TILLvpDLsFmt6lMIgl",
+      "wG8WTNIW38TILLvpDLsFmt6lMlg1",
+      "wG8WTNIW38TILLvpDLsFmt6lMlgI",
+      "wG8WTNIW38TILLvpDLsFmt6lMlgl",
+      "wG8WTNIW38TILLvpDLsFmt81M1g1",
+      "wG8WTNIW38TILLvpDLsFmt81M1gI",
+      "wG8WTNIW38TILLvpDLsFmt81M1gl",
+      "wG8WTNIW38TILLvpDLsFmt81MIg1",
+      "wG8WTNIW38TILLvpDLsFmt81MIgI",
+      "wG8WTNIW38TILLvpDLsFmt81MIgl",
+      "wG8WTNIW38TILLvpDLsFmt81Mlg1",
+      "wG8WTNIW38TILLvpDLsFmt81MlgI",
+      "wG8WTNIW38TILLvpDLsFmt81Mlgl",
+      "wG8WTNIW38TILLvpDLsFmt8IM1g1",
+      "wG8WTNIW38TILLvpDLsFmt8IM1gI",
+      "wG8WTNIW38TILLvpDLsFmt8IM1gl",
+      "wG8WTNIW38TILLvpDLsFmt8IMIg1",
+      "wG8WTNIW38TILLvpDLsFmt8IMIgI",
+      "wG8WTNIW38TILLvpDLsFmt8IMIgl",
+      "wG8WTNIW38TILLvpDLsFmt8IMlg1",
+      "wG8WTNIW38TILLvpDLsFmt8IMlgI",
+      "wG8WTNIW38TILLvpDLsFmt8IMlgl",
+      "wG8WTNIW38TILLvpDLsFmt8lM1g1",
+      "wG8WTNIW38TILLvpDLsFmt8lM1gI",
+      "wG8WTNIW38TILLvpDLsFmt8lM1gl",
+      "wG8WTNIW38TILLvpDLsFmt8lMIg1",
+      "wG8WTNIW38TILLvpDLsFmt8lMIgI",
+      "wG8WTNIW38TILLvpDLsFmt8lMIgl",
+      "wG8WTNIW38TILLvpDLsFmt8lMlg1",
+      "wG8WTNIW38TILLvpDLsFmt8lMlgI",
+      "wG8WTNIW38TILLvpDLsFmt8lMlgl",
+      "wG8WTNlW38TILLvpDLsFmt61M1g1",
+      "wG8WTNlW38TILLvpDLsFmt61M1gI",
+      "wG8WTNlW38TILLvpDLsFmt61M1gl",
+      "wG8WTNlW38TILLvpDLsFmt61MIg1",
+      "wG8WTNlW38TILLvpDLsFmt61MIgI",
+      "wG8WTNlW38TILLvpDLsFmt61MIgl",
+      "wG8WTNlW38TILLvpDLsFmt61Mlg1",
+      "wG8WTNlW38TILLvpDLsFmt61MlgI",
+      "wG8WTNlW38TILLvpDLsFmt61Mlgl",
+      "wG8WTNlW38TILLvpDLsFmt6IM1g1",
+      "wG8WTNlW38TILLvpDLsFmt6IM1gI",
+      "wG8WTNlW38TILLvpDLsFmt6IM1gl",
+      "wG8WTNlW38TILLvpDLsFmt6IMIg1",
+      "wG8WTNlW38TILLvpDLsFmt6IMIgI",
+      "wG8WTNlW38TILLvpDLsFmt6IMIgl",
+      "wG8WTNlW38TILLvpDLsFmt6IMlg1",
+      "wG8WTNlW38TILLvpDLsFmt6IMlgI",
+      "wG8WTNlW38TILLvpDLsFmt6IMlgl",
+      "wG8WTNlW38TILLvpDLsFmt6lM1g1",
+      "wG8WTNlW38TILLvpDLsFmt6lM1gI",
+      "wG8WTNlW38TILLvpDLsFmt6lM1gl",
+      "wG8WTNlW38TILLvpDLsFmt6lMIg1",
+      "wG8WTNlW38TILLvpDLsFmt6lMIgI",
+      "wG8WTNlW38TILLvpDLsFmt6lMIgl",
+      "wG8WTNlW38TILLvpDLsFmt6lMlg1",
+      "wG8WTNlW38TILLvpDLsFmt6lMlgI",
+      "wG8WTNlW38TILLvpDLsFmt6lMlgl",
+      "wG8WTNlW38TILLvpDLsFmt81M1g1",
+      "wG8WTNlW38TILLvpDLsFmt81M1gI",
+      "wG8WTNlW38TILLvpDLsFmt81M1gl",
+      "wG8WTNlW38TILLvpDLsFmt81MIg1",
+      "wG8WTNlW38TILLvpDLsFmt81MIgI",
+      "wG8WTNlW38TILLvpDLsFmt81MIgl",
+      "wG8WTNlW38TILLvpDLsFmt81Mlg1",
+      "wG8WTNlW38TILLvpDLsFmt81MlgI",
+      "wG8WTNlW38TILLvpDLsFmt81Mlgl",
+      "wG8WTNlW38TILLvpDLsFmt8IM1g1",
+      "wG8WTNlW38TILLvpDLsFmt8IM1gI",
+      "wG8WTNlW38TILLvpDLsFmt8IM1gl",
+      "wG8WTNlW38TILLvpDLsFmt8IMIg1",
+      "wG8WTNlW38TILLvpDLsFmt8IMIgI",
+      "wG8WTNlW38TILLvpDLsFmt8IMIgl",
+      "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+      "wG8WTNlW38TILLvpDLsFmt8IMlgI",
+      "wG8WTNlW38TILLvpDLsFmt8IMlgl",
+      "wG8WTNlW38TILLvpDLsFmt8lM1g1",
+      "wG8WTNlW38TILLvpDLsFmt8lM1gI",
+      "wG8WTNlW38TILLvpDLsFmt8lM1gl",
+      "wG8WTNlW38TILLvpDLsFmt8lMIg1",
+      "wG8WTNlW38TILLvpDLsFmt8lMIgI",
+      "wG8WTNlW38TILLvpDLsFmt8lMIgl",
+      "wG8WTNlW38TILLvpDLsFmt8lMlg1",
+      "wG8WTNlW38TILLvpDLsFmt8lMlgI",
+      "wG8WTNlW38TILLvpDLsFmt8lMlgl"
+    ],
+    "usersInFirebaseAuth": [
+      "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "wG8WTNlW38TILLvpDLsFmt8IMlg1"
+    ],
+    "sampleMalformedUids": [],
+    "canonicalPilot": {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:25:34.304Z",
+      "latest_updated_at": "2026-08-28T22:45:24.793Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "email": "operator@nahaber.com",
+        "display_name": "Operator Pilot User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": true,
+      "fb_user": {
+        "uid": "wG8WTNlW38TILLvpDLsFmt8IMlg1"
+      }
+    },
+    "historicalPilot": {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T13:26:38.594Z",
+      "latest_updated_at": "2026-08-28T22:45:25.456Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "pilot-operator-init"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "email": "mehmetsentc@gmail.com",
+        "display_name": "mehmetsentc",
+        "role": "user"
+      },
+      "exists_in_firebase_auth": true,
+      "fb_user": {
+        "uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "email": "resortvox@gmail.com",
+        "displayName": "VOX RESORT"
+      }
+    }
+  },
+  "detailedReport": [
+    {
+      "user_id": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T13:26:38.594Z",
+      "latest_updated_at": "2026-08-28T22:45:25.456Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "pilot-operator-init"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "email": "mehmetsentc@gmail.com",
+        "display_name": "mehmetsentc",
+        "role": "user"
+      },
+      "exists_in_firebase_auth": true,
+      "fb_user": {
+        "uid": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "email": "resortvox@gmail.com",
+        "displayName": "VOX RESORT"
+      }
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61M1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:52.211Z",
+      "latest_updated_at": "2026-08-28T22:45:40.667Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61M1g1",
+        "email": "operator_61M1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61M1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:53.627Z",
+      "latest_updated_at": "2026-08-28T22:45:41.887Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61M1gI",
+        "email": "operator_61M1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61M1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:53.042Z",
+      "latest_updated_at": "2026-08-28T22:45:41.242Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61M1gl",
+        "email": "operator_61M1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61MIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:48.540Z",
+      "latest_updated_at": "2026-08-28T22:45:36.864Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61MIg1",
+        "email": "operator_61MIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61MIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:49.828Z",
+      "latest_updated_at": "2026-08-28T22:45:38.115Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61MIgI",
+        "email": "operator_61MIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61MIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:49.168Z",
+      "latest_updated_at": "2026-08-28T22:45:37.446Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61MIgl",
+        "email": "operator_61MIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61Mlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:50.411Z",
+      "latest_updated_at": "2026-08-28T22:45:38.748Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61Mlg1",
+        "email": "operator_61Mlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61MlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:51.622Z",
+      "latest_updated_at": "2026-08-28T22:45:40.066Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61MlgI",
+        "email": "operator_61MlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt61Mlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:51.019Z",
+      "latest_updated_at": "2026-08-28T22:45:39.456Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt61Mlgl",
+        "email": "operator_61Mlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:46.751Z",
+      "latest_updated_at": "2026-08-28T22:45:34.964Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IM1g1",
+        "email": "operator_6IM1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:47.948Z",
+      "latest_updated_at": "2026-08-28T22:45:36.255Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IM1gI",
+        "email": "operator_6IM1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:47.333Z",
+      "latest_updated_at": "2026-08-28T22:45:35.599Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IM1gl",
+        "email": "operator_6IM1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:43.159Z",
+      "latest_updated_at": "2026-08-28T22:45:31.285Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMIg1",
+        "email": "operator_6IMIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:44.342Z",
+      "latest_updated_at": "2026-08-28T22:45:32.514Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMIgI",
+        "email": "operator_6IMIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:43.737Z",
+      "latest_updated_at": "2026-08-28T22:45:31.925Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMIgl",
+        "email": "operator_6IMIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:44.969Z",
+      "latest_updated_at": "2026-08-28T22:45:33.140Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMlg1",
+        "email": "operator_6IMlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:46.161Z",
+      "latest_updated_at": "2026-08-28T22:45:34.365Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMlgI",
+        "email": "operator_6IMlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6IMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:45.573Z",
+      "latest_updated_at": "2026-08-28T22:45:33.774Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6IMlgl",
+        "email": "operator_6IMlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:41.374Z",
+      "latest_updated_at": "2026-08-28T22:45:29.514Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lM1g1",
+        "email": "operator_6lM1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:42.565Z",
+      "latest_updated_at": "2026-08-28T22:45:30.707Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lM1gI",
+        "email": "operator_6lM1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:41.962Z",
+      "latest_updated_at": "2026-08-28T22:45:30.103Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lM1gl",
+        "email": "operator_6lM1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:36.473Z",
+      "latest_updated_at": "2026-08-28T22:45:24.145Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+        "email": "operator_6lMIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": true,
+      "fb_user": {
+        "uid": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+        "email": "mehmetsentc@gmail.com",
+        "displayName": "Mehmet Şen"
+      }
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:38.890Z",
+      "latest_updated_at": "2026-08-28T22:45:26.888Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMIgI",
+        "email": "operator_6lMIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:38.298Z",
+      "latest_updated_at": "2026-08-28T22:45:26.299Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMIgl",
+        "email": "operator_6lMIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:39.478Z",
+      "latest_updated_at": "2026-08-28T22:45:27.476Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMlg1",
+        "email": "operator_6lMlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:40.769Z",
+      "latest_updated_at": "2026-08-28T22:45:28.917Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMlgI",
+        "email": "operator_6lMlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt6lMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:40.081Z",
+      "latest_updated_at": "2026-08-28T22:45:28.078Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt6lMlgl",
+        "email": "operator_6lMlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81M1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:08.829Z",
+      "latest_updated_at": "2026-08-28T22:45:57.519Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81M1g1",
+        "email": "operator_81M1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81M1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:10.034Z",
+      "latest_updated_at": "2026-08-28T22:45:58.740Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81M1gI",
+        "email": "operator_81M1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81M1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:09.438Z",
+      "latest_updated_at": "2026-08-28T22:45:58.144Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81M1gl",
+        "email": "operator_81M1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81MIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:05.247Z",
+      "latest_updated_at": "2026-08-28T22:45:53.695Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81MIg1",
+        "email": "operator_81MIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81MIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:06.470Z",
+      "latest_updated_at": "2026-08-28T22:45:54.987Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81MIgI",
+        "email": "operator_81MIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81MIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:05.837Z",
+      "latest_updated_at": "2026-08-28T22:45:54.292Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81MIgl",
+        "email": "operator_81MIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81Mlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:07.067Z",
+      "latest_updated_at": "2026-08-28T22:45:55.600Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81Mlg1",
+        "email": "operator_81Mlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81MlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:08.238Z",
+      "latest_updated_at": "2026-08-28T22:45:56.923Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81MlgI",
+        "email": "operator_81MlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt81Mlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:07.645Z",
+      "latest_updated_at": "2026-08-28T22:45:56.248Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt81Mlgl",
+        "email": "operator_81Mlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:03.454Z",
+      "latest_updated_at": "2026-08-28T22:45:51.918Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IM1g1",
+        "email": "operator_8IM1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:04.642Z",
+      "latest_updated_at": "2026-08-28T22:45:53.107Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IM1gI",
+        "email": "operator_8IM1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:04.052Z",
+      "latest_updated_at": "2026-08-28T22:45:52.511Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IM1gl",
+        "email": "operator_8IM1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:59.662Z",
+      "latest_updated_at": "2026-08-28T22:45:48.311Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMIg1",
+        "email": "operator_8IMIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:00.830Z",
+      "latest_updated_at": "2026-08-28T22:45:49.495Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMIgI",
+        "email": "operator_8IMIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:00.243Z",
+      "latest_updated_at": "2026-08-28T22:45:48.912Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMIgl",
+        "email": "operator_8IMIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:01.422Z",
+      "latest_updated_at": "2026-08-28T22:45:50.095Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMlg1",
+        "email": "operator_8IMlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:02.860Z",
+      "latest_updated_at": "2026-08-28T22:45:51.322Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMlgI",
+        "email": "operator_8IMlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8IMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:44:02.019Z",
+      "latest_updated_at": "2026-08-28T22:45:50.697Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8IMlgl",
+        "email": "operator_8IMlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:57.823Z",
+      "latest_updated_at": "2026-08-28T22:45:46.291Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lM1g1",
+        "email": "operator_8lM1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:59.007Z",
+      "latest_updated_at": "2026-08-28T22:45:47.724Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lM1gI",
+        "email": "operator_8lM1gI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:58.411Z",
+      "latest_updated_at": "2026-08-28T22:45:46.889Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lM1gl",
+        "email": "operator_8lM1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:54.218Z",
+      "latest_updated_at": "2026-08-28T22:45:42.481Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMIg1",
+        "email": "operator_8lMIg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:55.454Z",
+      "latest_updated_at": "2026-08-28T22:45:43.665Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMIgI",
+        "email": "operator_8lMIgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:54.840Z",
+      "latest_updated_at": "2026-08-28T22:45:43.078Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMIgl",
+        "email": "operator_8lMIgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:56.046Z",
+      "latest_updated_at": "2026-08-28T22:45:44.264Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMlg1",
+        "email": "operator_8lMlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:57.231Z",
+      "latest_updated_at": "2026-08-28T22:45:45.690Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMlgI",
+        "email": "operator_8lMlgI@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNIW38TILLvpDLsFmt8lMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:43:56.637Z",
+      "latest_updated_at": "2026-08-28T22:45:45.099Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNIW38TILLvpDLsFmt8lMlgl",
+        "email": "operator_8lMlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61M1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:14.915Z",
+      "latest_updated_at": "2026-08-28T22:46:15.330Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61M1g1",
+        "email": "op_80_wg8wtnlw38tillvpdlsfmt61m1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61M1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:16.098Z",
+      "latest_updated_at": "2026-08-28T22:46:16.560Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61M1gI",
+        "email": "op_82_wg8wtnlw38tillvpdlsfmt61m1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61M1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:15.508Z",
+      "latest_updated_at": "2026-08-28T22:46:15.964Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61M1gl",
+        "email": "op_81_wg8wtnlw38tillvpdlsfmt61m1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61MIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:10.858Z",
+      "latest_updated_at": "2026-08-28T22:46:11.317Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61MIg1",
+        "email": "op_74_wg8wtnlw38tillvpdlsfmt61mig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61MIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:12.125Z",
+      "latest_updated_at": "2026-08-28T22:46:12.655Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61MIgI",
+        "email": "op_76_wg8wtnlw38tillvpdlsfmt61migi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61MIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:11.460Z",
+      "latest_updated_at": "2026-08-28T22:46:11.976Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61MIgl",
+        "email": "op_75_wg8wtnlw38tillvpdlsfmt61migl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61Mlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:12.817Z",
+      "latest_updated_at": "2026-08-28T22:46:13.251Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61Mlg1",
+        "email": "op_77_wg8wtnlw38tillvpdlsfmt61mlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61MlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:14.009Z",
+      "latest_updated_at": "2026-08-28T22:46:14.696Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61MlgI",
+        "email": "op_79_wg8wtnlw38tillvpdlsfmt61mlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt61Mlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:13.413Z",
+      "latest_updated_at": "2026-08-28T22:46:13.871Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt61Mlgl",
+        "email": "op_78_wg8wtnlw38tillvpdlsfmt61mlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:08.532Z",
+      "latest_updated_at": "2026-08-28T22:46:09.006Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IM1g1",
+        "email": "op_71_wg8wtnlw38tillvpdlsfmt6im1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:09.899Z",
+      "latest_updated_at": "2026-08-28T22:46:10.714Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IM1gI",
+        "email": "op_73_wg8wtnlw38tillvpdlsfmt6im1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:09.225Z",
+      "latest_updated_at": "2026-08-28T22:46:09.754Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IM1gl",
+        "email": "op_72_wg8wtnlw38tillvpdlsfmt6im1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:04.959Z",
+      "latest_updated_at": "2026-08-28T22:46:05.378Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMIg1",
+        "email": "op_65_wg8wtnlw38tillvpdlsfmt6imig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:06.144Z",
+      "latest_updated_at": "2026-08-28T22:46:06.610Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMIgI",
+        "email": "op_67_wg8wtnlw38tillvpdlsfmt6imigi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:05.549Z",
+      "latest_updated_at": "2026-08-28T22:46:05.999Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMIgl",
+        "email": "op_66_wg8wtnlw38tillvpdlsfmt6imigl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:06.758Z",
+      "latest_updated_at": "2026-08-28T22:46:07.194Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMlg1",
+        "email": "op_68_wg8wtnlw38tillvpdlsfmt6imlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:07.931Z",
+      "latest_updated_at": "2026-08-28T22:46:08.394Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMlgI",
+        "email": "op_70_wg8wtnlw38tillvpdlsfmt6imlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6IMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:07.330Z",
+      "latest_updated_at": "2026-08-28T22:46:07.792Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6IMlgl",
+        "email": "op_69_wg8wtnlw38tillvpdlsfmt6imlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:03.114Z",
+      "latest_updated_at": "2026-08-28T22:46:03.590Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lM1g1",
+        "email": "op_62_wg8wtnlw38tillvpdlsfmt6lm1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:04.318Z",
+      "latest_updated_at": "2026-08-28T22:46:04.773Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lM1gI",
+        "email": "op_64_wg8wtnlw38tillvpdlsfmt6lm1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:03.731Z",
+      "latest_updated_at": "2026-08-28T22:46:04.179Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lM1gl",
+        "email": "op_63_wg8wtnlw38tillvpdlsfmt6lm1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:45:58.887Z",
+      "latest_updated_at": "2026-08-28T22:45:59.409Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMIg1",
+        "email": "op_56_wg8wtnlw38tillvpdlsfmt6lmig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:00.315Z",
+      "latest_updated_at": "2026-08-28T22:46:00.820Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMIgI",
+        "email": "op_58_wg8wtnlw38tillvpdlsfmt6lmigi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:45:59.569Z",
+      "latest_updated_at": "2026-08-28T22:46:00.079Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMIgl",
+        "email": "op_57_wg8wtnlw38tillvpdlsfmt6lmigl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:00.951Z",
+      "latest_updated_at": "2026-08-28T22:46:01.423Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMlg1",
+        "email": "op_59_wg8wtnlw38tillvpdlsfmt6lmlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:02.163Z",
+      "latest_updated_at": "2026-08-28T22:46:02.978Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMlgI",
+        "email": "op_61_wg8wtnlw38tillvpdlsfmt6lmlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt6lMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:01.562Z",
+      "latest_updated_at": "2026-08-28T22:46:02.024Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt6lMlgl",
+        "email": "op_60_wg8wtnlw38tillvpdlsfmt6lmlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81M1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:31.061Z",
+      "latest_updated_at": "2026-08-28T22:46:31.528Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81M1g1",
+        "email": "op_106_wg8wtnlw38tillvpdlsfmt81m1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81M1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:32.291Z",
+      "latest_updated_at": "2026-08-28T22:46:32.753Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81M1gI",
+        "email": "op_108_wg8wtnlw38tillvpdlsfmt81m1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81M1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:31.693Z",
+      "latest_updated_at": "2026-08-28T22:46:32.118Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81M1gl",
+        "email": "op_107_wg8wtnlw38tillvpdlsfmt81m1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81MIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:27.406Z",
+      "latest_updated_at": "2026-08-28T22:46:27.847Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81MIg1",
+        "email": "op_100_wg8wtnlw38tillvpdlsfmt81mig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81MIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:28.689Z",
+      "latest_updated_at": "2026-08-28T22:46:29.149Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81MIgI",
+        "email": "op_102_wg8wtnlw38tillvpdlsfmt81migi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81MIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:28.027Z",
+      "latest_updated_at": "2026-08-28T22:46:28.547Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81MIgl",
+        "email": "op_101_wg8wtnlw38tillvpdlsfmt81migl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81Mlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:29.284Z",
+      "latest_updated_at": "2026-08-28T22:46:29.749Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81Mlg1",
+        "email": "op_103_wg8wtnlw38tillvpdlsfmt81mlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81MlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:30.471Z",
+      "latest_updated_at": "2026-08-28T22:46:30.916Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81MlgI",
+        "email": "op_105_wg8wtnlw38tillvpdlsfmt81mlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt81Mlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:29.886Z",
+      "latest_updated_at": "2026-08-28T22:46:30.333Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt81Mlgl",
+        "email": "op_104_wg8wtnlw38tillvpdlsfmt81mlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:25.612Z",
+      "latest_updated_at": "2026-08-28T22:46:26.064Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IM1g1",
+        "email": "op_97_wg8wtnlw38tillvpdlsfmt8im1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:26.809Z",
+      "latest_updated_at": "2026-08-28T22:46:27.265Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IM1gI",
+        "email": "op_99_wg8wtnlw38tillvpdlsfmt8im1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:26.204Z",
+      "latest_updated_at": "2026-08-28T22:46:26.668Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IM1gl",
+        "email": "op_98_wg8wtnlw38tillvpdlsfmt8im1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:22.539Z",
+      "latest_updated_at": "2026-08-28T22:46:22.999Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMIg1",
+        "email": "op_92_wg8wtnlw38tillvpdlsfmt8imig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:23.723Z",
+      "latest_updated_at": "2026-08-28T22:46:24.184Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMIgI",
+        "email": "op_94_wg8wtnlw38tillvpdlsfmt8imigi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:23.133Z",
+      "latest_updated_at": "2026-08-28T22:46:23.584Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMIgl",
+        "email": "op_93_wg8wtnlw38tillvpdlsfmt8imigl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:25:34.304Z",
+      "latest_updated_at": "2026-08-28T22:45:24.793Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMlg1",
+        "email": "operator@nahaber.com",
+        "display_name": "Operator Pilot User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": true,
+      "fb_user": {
+        "uid": "wG8WTNlW38TILLvpDLsFmt8IMlg1"
+      }
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:24.968Z",
+      "latest_updated_at": "2026-08-28T22:46:25.471Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMlgI",
+        "email": "op_96_wg8wtnlw38tillvpdlsfmt8imlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8IMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:24.352Z",
+      "latest_updated_at": "2026-08-28T22:46:24.782Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8IMlgl",
+        "email": "op_95_wg8wtnlw38tillvpdlsfmt8imlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lM1g1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:20.757Z",
+      "latest_updated_at": "2026-08-28T22:46:21.205Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lM1g1",
+        "email": "op_89_wg8wtnlw38tillvpdlsfmt8lm1g1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lM1gI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:21.939Z",
+      "latest_updated_at": "2026-08-28T22:46:22.400Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lM1gI",
+        "email": "op_91_wg8wtnlw38tillvpdlsfmt8lm1gi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lM1gl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:21.341Z",
+      "latest_updated_at": "2026-08-28T22:46:21.803Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lM1gl",
+        "email": "op_90_wg8wtnlw38tillvpdlsfmt8lm1gl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMIg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:16.704Z",
+      "latest_updated_at": "2026-08-28T22:46:17.151Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMIg1",
+        "email": "op_83_wg8wtnlw38tillvpdlsfmt8lmig1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMIgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:17.896Z",
+      "latest_updated_at": "2026-08-28T22:46:18.337Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMIgI",
+        "email": "op_85_wg8wtnlw38tillvpdlsfmt8lmigi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMIgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:17.288Z",
+      "latest_updated_at": "2026-08-28T22:46:17.747Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMIgl",
+        "email": "op_84_wg8wtnlw38tillvpdlsfmt8lmigl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMlg1",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:18.471Z",
+      "latest_updated_at": "2026-08-28T22:46:18.936Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMlg1",
+        "email": "op_86_wg8wtnlw38tillvpdlsfmt8lmlg1@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMlgI",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:19.931Z",
+      "latest_updated_at": "2026-08-28T22:46:20.592Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMlgI",
+        "email": "op_88_wg8wtnlw38tillvpdlsfmt8lmlgi@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    },
+    {
+      "user_id": "wG8WTNlW38TILLvpDLsFmt8lMlgl",
+      "total_grants": 7,
+      "active_grants": 7,
+      "active_features": [
+        "COLD_START_V2",
+        "SMART_FEED",
+        "SMART_FEED_RANKING_V1",
+        "SMART_FEED_TELEMETRY",
+        "SMART_FEED_VIDEO",
+        "SOCIAL_GRAPH",
+        "USER_PROFILES"
+      ],
+      "earliest_created_at": "2026-08-28T22:46:19.322Z",
+      "latest_updated_at": "2026-08-28T22:46:19.787Z",
+      "reasons": [
+        "P17 Exact Pilot UID Grant"
+      ],
+      "creators": [
+        "system"
+      ],
+      "updaters": [
+        "system"
+      ],
+      "exists_in_pg_users": true,
+      "pg_user": {
+        "firebase_uid": "wG8WTNlW38TILLvpDLsFmt8lMlgl",
+        "email": "op_87_wg8wtnlw38tillvpdlsfmt8lmlgl@nahaber.com",
+        "display_name": "Operator User",
+        "role": "super_admin"
+      },
+      "exists_in_firebase_auth": false,
+      "fb_user": null
+    }
+  ]
+}

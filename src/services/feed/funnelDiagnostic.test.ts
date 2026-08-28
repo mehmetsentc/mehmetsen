@@ -18,7 +18,7 @@ describe('P17.3A Live Browser Feed Diagnostic & Session Verification', () => {
     process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://dummy:dummy@localhost:5432/db'
 
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
-      if (userId === pilotUid || userId === operatorUid) {
+      if (userId === operatorUid) {
         return new Set([
           'USER_PROFILES',
           'SOCIAL_GRAPH',
@@ -117,15 +117,15 @@ describe('P17.3A Live Browser Feed Diagnostic & Session Verification', () => {
     expect(auth?.uid).toBe(operatorUid)
   })
 
-  it('2. isSmartFeedEffectiveForUser: allows both pilot user and operator user, rejects non-allowlisted guest when global flag is off', async () => {
+  it('2. isSmartFeedEffectiveForUser: allows canonical pilot user, rejects revoked historical pilot and guest when global flag is off', async () => {
     const prevEnv = process.env.SMART_FEED_ENABLED
     process.env.SMART_FEED_ENABLED = 'false'
     try {
-      const pilotAllowed = await isSmartFeedEffectiveForUser(pilotUid)
-      expect(pilotAllowed).toBe(true)
-
       const operatorAllowed = await isSmartFeedEffectiveForUser(operatorUid)
       expect(operatorAllowed).toBe(true)
+
+      const pilotAllowed = await isSmartFeedEffectiveForUser(pilotUid)
+      expect(pilotAllowed).toBe(false)
 
       const guestAllowed = await isSmartFeedEffectiveForUser(null)
       expect(guestAllowed).toBe(false)

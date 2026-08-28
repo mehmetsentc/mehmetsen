@@ -34,8 +34,7 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-const OPERATOR_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
-const PILOT_UID = 'ap3scBglLIVwflfZN4qL8PKrM1A3'
+const CANONICAL_PILOT_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
 
 const FEATURES = [
   'USER_PROFILES',
@@ -56,76 +55,60 @@ async function main() {
   }
   const sql = neon(url)
 
-  console.log(`=== P17 OPERATOR PILOT ACCESS GRANT ===`)
-  console.log(`Operator UID to grant: ${OPERATOR_UID}`)
+  console.log(`=== P17 CANONICAL PILOT ACCESS GRANT ===`)
+  console.log(`Canonical Pilot UID: ${CANONICAL_PILOT_UID}`)
 
   // 1. Ensure user row exists in users table (for foreign key)
   const existingUsers = await sql`
-    SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid IN (${OPERATOR_UID}, ${PILOT_UID})
+    SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid = ${CANONICAL_PILOT_UID}
   `
-  console.log('Existing target users in DB:', existingUsers)
+  console.log('Existing target pilot user in DB:', existingUsers)
 
-  const hasOperator = existingUsers.some(u => u.firebase_uid === OPERATOR_UID)
+  const hasOperator = existingUsers.some(u => u.firebase_uid === CANONICAL_PILOT_UID)
   if (!hasOperator) {
-    console.log(`Inserting operator user placeholder record into users table...`)
+    console.log(`Inserting pilot user record into users table...`)
     await sql`
       INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-      VALUES (${OPERATOR_UID}, 'operator@nahaber.com', 'Operator Pilot User', 'super_admin', now(), now())
+      VALUES (${CANONICAL_PILOT_UID}, 'operator@nahaber.com', 'Operator Pilot User', 'super_admin', now(), now())
       ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now()
     `
-    console.log(`Operator user ensured.`)
+    console.log(`Pilot user ensured.`)
   }
 
-  // 2. Grant 7 features for operator
-  console.log(`Granting features to operator ${OPERATOR_UID}...`)
+  // 2. Grant 7 features for canonical pilot
+  console.log(`Granting features to canonical pilot ${CANONICAL_PILOT_UID}...`)
   for (const feat of FEATURES) {
     const id = `ufa_op_${feat.toLowerCase()}`
     await sql`
       INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
-      VALUES (${id}, ${OPERATOR_UID}, ${feat}, true, 'system', 'system', 'P17 Operator Pilot Allowlist', now(), now())
+      VALUES (${id}, ${CANONICAL_PILOT_UID}, ${feat}, true, 'system', 'system', 'P17 Canonical Pilot Allowlist', now(), now())
       ON CONFLICT (user_id, feature_key)
-      DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Operator Pilot Allowlist'
+      DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Canonical Pilot Allowlist'
     `
   }
 
-  // 3. Ensure existing pilot UID has all 7 features as well
-  for (const feat of FEATURES) {
-    const id = `ufa_pilot_${feat.toLowerCase()}`
-    await sql`
-      INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
-      VALUES (${id}, ${PILOT_UID}, ${feat}, true, 'system', 'system', 'P17 Operator Pilot Allowlist', now(), now())
-      ON CONFLICT (user_id, feature_key)
-      DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Operator Pilot Allowlist'
-    `
-  }
-
-  // 4. Verify DB records
+  // 3. Verify DB records
   const operatorGrants = await sql`
-    SELECT user_id, feature_key, enabled, reason, updated_at FROM user_feature_access WHERE user_id = ${OPERATOR_UID} ORDER BY feature_key
+    SELECT user_id, feature_key, enabled, reason, updated_at FROM user_feature_access WHERE user_id = ${CANONICAL_PILOT_UID} ORDER BY feature_key
   `
-  console.log('\nOperator Grants in DB:', operatorGrants)
+  console.log('\nCanonical Pilot Grants in DB:', operatorGrants)
 
-  const pilotGrants = await sql`
-    SELECT user_id, feature_key, enabled, reason, updated_at FROM user_feature_access WHERE user_id = ${PILOT_UID} ORDER BY feature_key
-  `
-  console.log('\nExisting Pilot Grants in DB:', pilotGrants)
-
-  // 5. Verify effective flags via service
+  // 4. Verify effective flags via service
   const { isSmartFeedEffectiveForUser, isFeatureEnabledForUser } = await import('../src/lib/user/effectiveUserFlags')
   const { feedService } = await import('../src/services/feed/FeedService')
 
-  const isOpSmartFeed = await isSmartFeedEffectiveForUser(OPERATOR_UID)
-  console.log(`\nisSmartFeedEffectiveForUser('${OPERATOR_UID}') ->`, isOpSmartFeed)
+  const isOpSmartFeed = await isSmartFeedEffectiveForUser(CANONICAL_PILOT_UID)
+  console.log(`\nisSmartFeedEffectiveForUser('${CANONICAL_PILOT_UID}') ->`, isOpSmartFeed)
 
   for (const feat of FEATURES) {
-    const ok = await isFeatureEnabledForUser(OPERATOR_UID, feat)
-    console.log(`isFeatureEnabledForUser('${OPERATOR_UID}', '${feat}') ->`, ok)
+    const ok = await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)
+    console.log(`isFeatureEnabledForUser('${CANONICAL_PILOT_UID}', '${feat}') ->`, ok)
   }
 
-  // 6. Test FeedService.getFeed for operator
-  console.log('\nTesting FeedService.getFeed for Operator...')
+  // 5. Test FeedService.getFeed for pilot
+  console.log('\nTesting FeedService.getFeed for Canonical Pilot...')
   const feedResult = await feedService.getFeed({
-    userId: OPERATOR_UID,
+    userId: CANONICAL_PILOT_UID,
     mode: 'personal',
     limit: 15,
     refresh: true,
@@ -146,7 +129,7 @@ async function main() {
     })
   }
 
-  console.log('\nSUCCESS: Operator UID granted and verified!')
+  console.log('\nSUCCESS: Canonical Pilot UID granted and verified!')
 }
 
 main().catch((err) => {
