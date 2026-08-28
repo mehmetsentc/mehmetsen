@@ -65,7 +65,7 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
             href={newsItemDetailHref(item)}
             className="group w-[280px] shrink-0 snap-start"
           >
-            <div className="relative mb-3 aspect-video overflow-hidden bg-[rgb(var(--color-border))]">
+            <div className="relative mb-3 aspect-video overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
               <SafeNewsImage
                 src={item.imageUrl || FEED_FALLBACK_LOGO}
                 alt={item.title}

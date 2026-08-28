@@ -93,7 +93,7 @@ export default async function EventPage({ params }: Props) {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8">
         <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[rgb(var(--color-muted))]">
           <Link href={ROUTES.FEED} className="hover:underline">
             Ana Sayfa
@@ -147,7 +147,7 @@ export default async function EventPage({ params }: Props) {
             </ol>
           </section>
         </article>
-      </main>
+      </div>
     </>
   )
 }

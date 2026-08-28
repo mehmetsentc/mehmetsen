@@ -44,7 +44,7 @@ export default function HakkimizdaPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="mb-6 text-3xl font-bold">Hakkımızda</h1>
 
         <section className="prose prose-invert max-w-none space-y-6 text-[rgb(var(--color-muted))]">
@@ -126,7 +126,7 @@ export default function HakkimizdaPage() {
             sayfasındadır.
           </p>
         </section>
-      </main>
+      </div>
     </>
   )
 }

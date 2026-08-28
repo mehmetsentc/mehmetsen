@@ -107,7 +107,7 @@ export default function DeleteAccountPage() {
     <>
       <SettingsHeader title="Hesabı Sil" backHref={ROUTES.SETTINGS} />
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mx-auto max-w-2xl px-4 py-6">
         {/* Uyarı kutusu */}
         <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-5">
           <div className="mb-2 flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function DeleteAccountPage() {
             bilgi@nahaber.com
           </a>
         </p>
-      </main>
+      </div>
     </>
   )
 }

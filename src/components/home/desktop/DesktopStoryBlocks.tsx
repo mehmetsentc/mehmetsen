@@ -144,7 +144,7 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
   return (
     <article>
       <Link href={newsItemDetailHref(item)} className="group block">
-        <div className="relative mb-4 aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
+        <div className="relative mb-4 aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
@@ -185,7 +185,7 @@ export function HeroImageOnly({
   return (
     <article className="min-w-0">
       <Link href={newsItemDetailHref(item)} className="group block">
-        <div className={cn('relative w-full overflow-hidden bg-[rgb(var(--color-border))]', aspectCls)}>
+        <div className={cn('relative w-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
@@ -211,7 +211,7 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
         </span>
       ) : null}
       <Link href={newsItemDetailHref(item)} className="group flex min-w-0 gap-3.5">
-        <div className="relative aspect-[4/3] w-[7.25rem] shrink-0 overflow-hidden bg-[rgb(var(--color-border))] sm:w-[8.5rem]">
+        <div className="relative aspect-[4/3] w-[7.25rem] shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))] sm:w-[8.5rem]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}
@@ -281,7 +281,7 @@ export function ImageStory({
   return (
     <article className="min-w-0">
       <Link href={newsItemDetailHref(item)} className="group block min-w-0">
-        <div className={cn('relative mb-3 w-full overflow-hidden bg-[rgb(var(--color-border))]', aspectCls)}>
+        <div className={cn('relative mb-3 w-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
             alt={item.title}

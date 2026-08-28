@@ -26,7 +26,7 @@ export function AdvertiserStudioShell({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-100 via-stone-50 to-amber-50/40">
-      <div className="mx-auto flex max-w-6xl gap-8 px-4 py-8">
+      <div className="mx-auto flex max-w-7xl gap-8 px-4 py-8">
         <aside className="hidden w-52 shrink-0 md:block">
           <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-stone-500">
             Reklamveren Stüdyo

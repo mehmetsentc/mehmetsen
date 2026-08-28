@@ -283,11 +283,6 @@
     color: rgb(var(--nl-ink));
   }
 
-  .desktop-newspaper .desktop-home-feed .rounded-xl,
-  .desktop-newspaper .desktop-category-page .rounded-xl {
-    border-radius: 0;
-  }
-
   .desktop-newspaper .desktop-home-feed .shadow-sm,
   .desktop-newspaper .desktop-home-feed .shadow-md,
   .desktop-newspaper .desktop-category-page .shadow-sm {

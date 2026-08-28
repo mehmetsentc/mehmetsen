@@ -494,14 +494,14 @@
   }
 
   .content-main.content-main-newspaper {
-    max-width: var(--layout-content-newspaper, min(1200px, 100%));
+    max-width: var(--layout-content-newspaper, min(1280px, 100%));
     width: 100%;
   }
 
   /** City tenant chrome — same centered column as content-stage-newspaper */
   .newspaper-layout-inner {
     width: 100%;
-    max-width: var(--layout-content-newspaper, min(1200px, 100%));
+    max-width: var(--layout-content-newspaper, min(1280px, 100%));
     margin-inline: auto;
     padding-inline: max(var(--layout-gutter), env(safe-area-inset-left, 0px))
       max(var(--layout-gutter), env(safe-area-inset-right, 0px));
@@ -1244,7 +1244,7 @@
     .featured-news-carousel__slide picture,
     .featured-news-carousel__slide .safe-news-image,
     .featured-news-carousel__media {
-      object-fit: contain !important;
+      object-fit: cover !important;
       object-position: center center !important;
     }
   }

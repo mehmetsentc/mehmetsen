@@ -25,7 +25,7 @@ export default function EditoryelIlkelerPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="mb-2 text-3xl font-bold">Editoryal İlkeler</h1>
         <p className="mb-8 text-sm text-[rgb(var(--color-muted))]">Son güncelleme: Haziran 2025</p>
 
@@ -77,7 +77,7 @@ export default function EditoryelIlkelerPage() {
             sayfa yığını olarak tasarlanmaz; anlamlı gövde metni ve bağlam hedeflenir.
           </p>
         </div>
-      </main>
+      </div>
     </>
   )
 }

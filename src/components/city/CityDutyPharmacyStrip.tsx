@@ -23,7 +23,7 @@ export function CityDutyPharmacyStrip({
   if (count === 0) return null
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 pb-3 lg:max-w-6xl lg:px-0">
+    <section className="mx-auto w-full max-w-3xl px-4 pb-3 lg:max-w-full lg:px-0">
       <button
         type="button"
         onClick={() => setOpen(true)}

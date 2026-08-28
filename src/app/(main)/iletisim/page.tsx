@@ -167,7 +167,7 @@ export default function IletisimPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-10 text-gray-900 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 text-gray-900 sm:px-6">
         <header className="mb-8">
           <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100">
             Destek ve İletişim
@@ -312,7 +312,7 @@ export default function IletisimPage() {
             ))}
           </ul>
         </section>
-      </main>
+      </div>
     </>
   )
 }

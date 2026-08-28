@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function GizlilikPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-2 text-3xl font-bold">Gizlilik Politikası</h1>
       <p className="mb-8 text-sm text-[rgb(var(--color-muted))]">Son güncelleme: Temmuz 2026</p>
 
@@ -137,6 +137,6 @@ export default function GizlilikPage() {
           ziyaret edebilirsiniz.
         </p>
       </div>
-    </main>
+    </div>
   )
 }

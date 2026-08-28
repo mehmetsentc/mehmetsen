@@ -121,7 +121,7 @@ export function PublisherLayoutRenderer({
     isPublisherSelfManagedAdsEnabled() && isPublisherAdServingEnabled()
   const mediaKitHref = ROUTES.PUBLISHER_REKLAM(publisher.slug)
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
       <header className="mb-8">
         {publisher.coverImageUrl ? (
           <div className="relative mb-4 h-40 w-full overflow-hidden rounded-2xl sm:h-52">

@@ -82,7 +82,7 @@ export default async function MostReadPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 py-8">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8">
         <header className="mb-8 border-b border-[rgb(var(--color-border))] pb-6">
           <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[rgb(var(--color-brand))]">
             <Flame className="h-4 w-4" aria-hidden />
@@ -136,7 +136,7 @@ export default async function MostReadPage() {
             })}
           </ol>
         )}
-      </main>
+      </div>
     </>
   )
 }

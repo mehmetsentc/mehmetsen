@@ -162,9 +162,9 @@ export function FullscreenNewsCard({
             ) : null}
           </div>
 
-          <h2 className="text-2xl font-bold leading-tight text-white md:text-3xl">{item.headline}</h2>
+          <h2 className="line-clamp-3 text-2xl font-bold leading-tight text-white md:text-3xl">{item.headline}</h2>
           {item.summary ? (
-            <p className="line-clamp-3 text-sm leading-relaxed text-white/85 md:text-base">{item.summary}</p>
+            <p className="line-clamp-2 text-sm leading-relaxed text-white/85 md:text-base">{item.summary}</p>
           ) : null}
 
           <button

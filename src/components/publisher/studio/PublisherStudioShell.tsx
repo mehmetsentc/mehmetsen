@@ -19,7 +19,7 @@ export function PublisherStudioShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
       <PublisherStudioNav slug={slug} displayName={publisher.displayName} />
       <main className="min-w-0 flex-1">{children}</main>
     </div>

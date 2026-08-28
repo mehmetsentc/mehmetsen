@@ -40,9 +40,9 @@ export default function HukukLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* Page content */}
-        <main className="min-w-0 flex-1 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-8 sm:px-8">
+        <div className="min-w-0 flex-1 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-6 py-8 sm:px-8">
           {children}
-        </main>
+        </div>
       </div>
     </div>
   )

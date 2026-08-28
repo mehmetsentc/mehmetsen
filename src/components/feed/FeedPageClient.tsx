@@ -24,7 +24,7 @@ const DesktopNewspaperShell = dynamic(
 function DesktopFeedPlaceholder() {
   return (
     <div
-      className="mx-auto hidden min-h-[70vh] w-full max-w-6xl animate-pulse space-y-4 px-4 py-6 lg:block"
+      className="hidden min-h-[70vh] w-full max-w-full animate-pulse space-y-4 py-6 lg:block"
       aria-hidden
     >
       <div className="h-8 w-40 rounded bg-[rgb(var(--color-border))]" />
