@@ -666,6 +666,56 @@ export class PublisherRepository {
     return { publisher, claim: updatedClaim }
   }
 
+  async revokeClaim(input: {
+    claimId: string
+    reviewedBy: string
+    revocationReason?: string
+  }): Promise<{ publisher: PublisherRecord; claim: PublisherClaimRequestRecord; alreadyRevoked: boolean }> {
+    const claim = await this.findClaimById(input.claimId)
+    if (!claim) throw new Error('CLAIM_NOT_FOUND')
+
+    if (claim.status === 'REVOKED') {
+      const publisher = await this.findById(claim.publisherId)
+      if (!publisher) throw new Error('PUBLISHER_NOT_FOUND')
+      return { publisher, claim, alreadyRevoked: true }
+    }
+
+    if (claim.status !== 'APPROVED') {
+      throw new Error('CLAIM_NOT_APPROVED')
+    }
+
+    const now = new Date()
+    const updatedClaim = await this.updateClaimRequest(input.claimId, {
+      status: 'REVOKED',
+      reviewedBy: input.reviewedBy,
+      reviewedAt: now,
+      rejectionReason: input.revocationReason ?? 'Claim revoked by administrator',
+    })
+    if (!updatedClaim) throw new Error('CLAIM_UPDATE_FAILED')
+
+    const db = this.requireDb()
+    await db
+      .update(publisherMembers)
+      .set({ status: 'REMOVED', updatedAt: now })
+      .where(
+        and(
+          eq(publisherMembers.publisherId, claim.publisherId),
+          eq(publisherMembers.userId, claim.userId)
+        )
+      )
+
+    const remainingOwner = await this.findActiveOwner(claim.publisherId)
+    const publisher = await this.updatePublisher(claim.publisherId, {
+      status: remainingOwner ? 'ACTIVE' : 'UNCLAIMED',
+      verificationStatus: remainingOwner ? 'VERIFIED' : 'UNCLAIMED',
+      claimedAt: remainingOwner ? undefined : null,
+      verifiedAt: remainingOwner ? undefined : null,
+    })
+    if (!publisher) throw new Error('PUBLISHER_UPDATE_FAILED')
+
+    return { publisher, claim: updatedClaim, alreadyRevoked: false }
+  }
+
   async resolvePublishedArticles(
     sourceIds: string[],
     limit = 24,

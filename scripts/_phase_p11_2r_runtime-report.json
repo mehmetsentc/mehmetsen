@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "phase": "P11.2R-RUNTIME",
+  "runtimeConfig": {
+    "R2_ACCOUNT_ID": "CONFIGURED",
+    "R2_ACCESS_KEY_ID": "CONFIGURED",
+    "R2_SECRET_ACCESS_KEY": "CONFIGURED",
+    "R2_BUCKET_NAME": "CONFIGURED",
+    "R2_PUBLIC_URL": "CONFIGURED"
+  },
+  "publicBaseHost": "pub-a4c9a3e5bd28436199e6e2ac65357c45.r2.dev",
+  "publicHostMatch": true,
+  "bucketMatch": true,
+  "expectedBucket": "nahaber-media",
+  "ops": {
+    "put": "PASS",
+    "read": "PASS",
+    "contentMatch": "PASS",
+    "publicUrl": "PASS",
+    "publicFetch": "PASS",
+    "delete": "PASS"
+  },
+  "publisherMedia": "PASS",
+  "blocker": null
+}

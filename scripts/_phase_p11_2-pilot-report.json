@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-08-27T14:25:29.237Z",
+  "startedAt": "2026-08-28T00:54:39.816Z",
   "phase": "P11.2",
   "nodeEnv": "production",
   "globalsForcedFalse": true,
   "before": {
-    "publishers": 6,
+    "publishers": 25,
     "verified": 1,
-    "unclaimed": 5,
+    "unclaimed": 24,
     "payment_intents": 0,
     "payment_transactions": 0,
     "commercial_ledger_entries": 0,
@@ -14,12 +14,12 @@
     "campaigns": 0,
     "booking_requests": 0,
     "bookings": 0,
-    "managed_ads": 5,
-    "ad_impressions": 4,
-    "ad_clicks": 5,
+    "managed_ads": 10,
+    "ad_impressions": 9,
+    "ad_clicks": 10,
     "content_items": 2,
-    "ad_inventory": 10,
-    "feature_access_enabled": 11
+    "ad_inventory": 15,
+    "feature_access_enabled": 12
   },
   "r2": {
     "configured": false,
@@ -32,7 +32,9 @@
       "R2_PUBLIC_URL"
     ],
     "uploadAttempted": false,
-    "uploadOk": false
+    "uploadOk": false,
+    "runtimeAuthoritative": true,
+    "runtimeOk": true
   },
   "pilotPublisher": {
     "id": "pub_96b63cdb-7198-4bea-afdf-3c675e6be36d",
@@ -93,8 +95,8 @@
     "ctr": 1
   },
   "videoPreroll": {
-    "status": "BLOCKED",
-    "reason": "R2_NOT_CONFIGURED"
+    "status": "PARTIAL",
+    "reason": "not_granted"
   },
   "auth": {
     "email": true,
@@ -108,9 +110,9 @@
     ]
   },
   "after": {
-    "publishers": 6,
+    "publishers": 25,
     "verified": 1,
-    "unclaimed": 5,
+    "unclaimed": 24,
     "payment_intents": 0,
     "payment_transactions": 0,
     "commercial_ledger_entries": 0,
@@ -118,11 +120,11 @@
     "campaigns": 0,
     "booking_requests": 0,
     "bookings": 0,
-    "managed_ads": 6,
-    "ad_impressions": 5,
-    "ad_clicks": 6,
+    "managed_ads": 11,
+    "ad_impressions": 10,
+    "ad_clicks": 11,
     "content_items": 2,
-    "ad_inventory": 11,
+    "ad_inventory": 16,
     "feature_access_enabled": 12
   },
   "financialDelta": {
@@ -141,7 +143,7 @@
     {
       "name": "r2_env_status",
       "ok": true,
-      "detail": "NOT_CONFIGURED missing=R2_ACCOUNT_ID,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME,R2_PUBLIC_URL"
+      "detail": "LOCAL_EMPTY missing=R2_ACCOUNT_ID,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME,R2_PUBLIC_URL (not definitive; runtime gate separate)"
     },
     {
       "name": "isR2Configured_matches_env",
@@ -179,22 +181,22 @@
     {
       "name": "r2_pilot_upload",
       "ok": true,
-      "detail": "BLOCKED — R2 NOT_CONFIGURED (graceful UX expected)"
+      "detail": "RUNTIME_OK — local R2 secrets absent (Sensitive); Production diagnostic PASS"
     },
     {
       "name": "inventory_create",
       "ok": true,
-      "detail": "pad_1ddb7264-3b74-4510-8c82-81f47b6baf6b"
+      "detail": "pad_1b59f446-e159-4b36-8073-a4bdac87bc95"
     },
     {
       "name": "managed_ad_create",
       "ok": true,
-      "detail": "pmad_3cf3e2aa-dcab-4a4d-ad05-6d1f51b4864d"
+      "detail": "pmad_ce1983af-e122-4b9d-9d67-edecdb970815"
     },
     {
       "name": "ad_serving_active",
       "ok": true,
-      "detail": "href=/r/ad/pmad_3cf3e2aa-dcab-4a4d-ad05-6d1f51b4864d"
+      "detail": "href=/r/ad/pmad_ce1983af-e122-4b9d-9d67-edecdb970815"
     },
     {
       "name": "cross_publisher_inventory_denied",
@@ -236,7 +238,7 @@
     {
       "name": "video_preroll",
       "ok": true,
-      "detail": "BLOCKED — R2/media unavailable; VIDEO_PREROLL not granted"
+      "detail": "PARTIAL — VIDEO_PREROLL not in pilot bundle (optional); global false"
     },
     {
       "name": "auth_apple_documented",
@@ -269,15 +271,16 @@
   "failedCount": 0,
   "ok": true,
   "goCriteria": {
-    "r2UploadWorks": false,
+    "r2UploadWorks": true,
     "ownerUiAllowlistPages": true,
     "adServingWorks": true,
     "analyticsWorks": true,
     "financialDeltaZero": true,
     "realPubsUntouched": true,
     "globalsFalse": true,
-    "prerollBlockedOk": true
+    "prerollPartialOk": true,
+    "runtimeR2Ok": true
   },
-  "pilotGo": "NO-GO",
-  "finishedAt": "2026-08-27T14:25:46.124Z"
+  "pilotGo": "GO WITH VIDEO PARTIAL",
+  "finishedAt": "2026-08-28T00:54:53.419Z"
 }

@@ -36,12 +36,17 @@ function decodeSlug(raw: string): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  if (!isPublisherPlatformEnabled()) {
-    return { title: 'Sayfa bulunamadı', robots: { index: false, follow: false } }
-  }
   const slug = decodeSlug((await params).slug)
   if (!hasDatabaseUrl()) {
     return { title: slug, robots: { index: false, follow: false } }
+  }
+  if (!isPublisherPlatformEnabled()) {
+    const { publisherRepository } = await import('@/services/publisher/publisherRepository')
+    const { isPlatformEffectiveForPublisher } = await import('@/lib/publisher/effectiveFlags')
+    const row = await publisherRepository.findBySlug(slug)
+    if (!row || !(await isPlatformEffectiveForPublisher(row.id))) {
+      return { title: 'Sayfa bulunamadı', robots: { index: false, follow: false } }
+    }
   }
   const publisher = await publisherService.getPublicPublisherBySlug(slug)
   if (!publisher) return { title: 'Yayın bulunamadı', robots: { index: false, follow: false } }

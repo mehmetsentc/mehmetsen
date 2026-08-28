@@ -36,7 +36,7 @@ export type PublisherMemberStatus = 'ACTIVE' | 'INVITED' | 'REMOVED'
 
 export type PublisherClaimType = 'OWNERSHIP' | 'REPRESENTATIVE'
 
-export type PublisherClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type PublisherClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'REVOKED'
 
 export type PublisherClaimVerificationMethod = 'DOMAIN_EMAIL' | 'MANUAL' | 'DOCUMENT'
 
@@ -175,3 +175,10 @@ export interface RejectClaimResult {
   claim: PublisherClaimRequestRecord
   alreadyRejected: boolean
 }
+
+export interface RevokeClaimResult {
+  publisher: PublisherRecord
+  claim: PublisherClaimRequestRecord
+  alreadyRevoked: boolean
+}
+

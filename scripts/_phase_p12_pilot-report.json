@@ -1,0 +1,212 @@
+{
+  "startedAt": "2026-08-28T09:05:02.932Z",
+  "phase": "P12",
+  "nodeEnv": "production",
+  "globalsForcedFalse": true,
+  "before": {
+    "publishers": 25,
+    "verified": 1,
+    "unclaimed": 24,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 11,
+    "ad_impressions": 10,
+    "ad_clicks": 11,
+    "content_items": 2,
+    "ad_inventory": 16,
+    "feature_access_enabled": 18
+  },
+  "candidateSource": {
+    "source_id": "src_3b383dd1-195d-477c-ad5f-87bab3f8dc54",
+    "source_name": "The Guardian World RSS",
+    "source_domain": "theguardian.com",
+    "source_base_url": "https://www.theguardian.com",
+    "raw_count": 296
+  },
+  "otherRealPublishers": [
+    {
+      "id": "pub_9cc584bf-34c6-495a-b056-dd19c2fc732b",
+      "slug": "trt-haber-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_442e9bfa-855a-443e-95d0-3b68d5ddc8e7",
+      "slug": "le-monde-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_1a56da32-d30b-48a9-b1a9-6933729f1afa",
+      "slug": "deutsche-welle-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_99d53526-325c-498f-9eaa-539f2a2654bb",
+      "slug": "bbc-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    }
+  ],
+  "candidateFeatureGrants": {
+    "PLATFORM": true,
+    "STUDIO": true,
+    "PROFILE_COMPOSER": true,
+    "CONTENT_STUDIO": true,
+    "MANUAL_PUBLISH": true,
+    "MEDIA_UPLOAD": true
+  },
+  "after": {
+    "publishers": 25,
+    "verified": 1,
+    "unclaimed": 24,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 11,
+    "ad_impressions": 10,
+    "ad_clicks": 11,
+    "content_items": 2,
+    "ad_inventory": 16,
+    "feature_access_enabled": 18
+  },
+  "financialDelta": {
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0
+  },
+  "marketplaceDelta": {
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0
+  },
+  "steps": [
+    {
+      "name": "candidate_selected",
+      "ok": true,
+      "detail": "id=pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55, slug=the-guardian-world-rss, type=NEWS_ORGANIZATION"
+    },
+    {
+      "name": "candidate_unclaimed_zero_owner",
+      "ok": true,
+      "detail": "status=UNCLAIMED, verification=UNCLAIMED, owner=null"
+    },
+    {
+      "name": "source_association_audit",
+      "ok": true,
+      "detail": "sourceCount=1, domain=theguardian.com, rawArticles=296"
+    },
+    {
+      "name": "other_real_publishers_untouched",
+      "ok": true,
+      "detail": "count=4, untouched=true"
+    },
+    {
+      "name": "pilot_capabilities_granted",
+      "ok": true,
+      "detail": "{\"PLATFORM\":true,\"STUDIO\":true,\"PROFILE_COMPOSER\":true,\"CONTENT_STUDIO\":true,\"MANUAL_PUBLISH\":true,\"MEDIA_UPLOAD\":true}"
+    },
+    {
+      "name": "ads_capabilities_blocked_unverified",
+      "ok": true,
+      "detail": "AD_INVENTORY blocked with PUBLISHER_NOT_VERIFIED as required"
+    },
+    {
+      "name": "video_preroll_blocked",
+      "ok": true,
+      "detail": "VIDEO_PREROLL=false"
+    },
+    {
+      "name": "other_publishers_feature_isolation",
+      "ok": true,
+      "detail": "isolated=true"
+    },
+    {
+      "name": "public_publisher_profile_resolved",
+      "ok": true,
+      "detail": "visible=true, type=NEWS_ORGANIZATION"
+    },
+    {
+      "name": "public_publisher_seo_indexable",
+      "ok": true,
+      "detail": "indexable=true, noindexReason=none"
+    },
+    {
+      "name": "canonical_url_correct",
+      "ok": true,
+      "detail": "https://www.nahaber.com/publisher/the-guardian-world-rss"
+    },
+    {
+      "name": "existing_articles_resolved_presentationally",
+      "ok": true,
+      "detail": "resolvedCount=0"
+    },
+    {
+      "name": "unclaimed_studio_unauthorized_access_denied",
+      "ok": true,
+      "detail": "Non-member access rejected with 403 NOT_MEMBER"
+    },
+    {
+      "name": "studio_page_gate_resolves_allowlist",
+      "ok": true,
+      "detail": "loadedStudioPub=the-guardian-world-rss"
+    },
+    {
+      "name": "r2_media_path_scoped_and_isolated",
+      "ok": true,
+      "detail": "adKey=publishers/pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55/ads/pmad_pilot_123/banner.png, contentKey=publishers/pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55/content/pcnt_pilot_456/hero.jpg"
+    },
+    {
+      "name": "rollback_grants_revoked_successfully",
+      "ok": true,
+      "detail": "platformAfterRollback=false, studioAfterRollback=false"
+    },
+    {
+      "name": "pilot_state_re_enabled_after_rollback_test",
+      "ok": true,
+      "detail": "platform=true, studio=true"
+    },
+    {
+      "name": "financial_delta_zero",
+      "ok": true,
+      "detail": "{\"payment_intents\":0,\"payment_transactions\":0,\"commercial_ledger_entries\":0,\"publisher_earnings\":0}"
+    },
+    {
+      "name": "marketplace_delta_zero",
+      "ok": true,
+      "detail": "{\"campaigns\":0,\"booking_requests\":0,\"bookings\":0}"
+    },
+    {
+      "name": "real_publisher_remains_unclaimed_legitimate_state",
+      "ok": true,
+      "detail": "status=UNCLAIMED, verification=UNCLAIMED, owner=null"
+    }
+  ],
+  "failedCount": 0,
+  "ok": true,
+  "finalResult": "GO — READY FOR REAL CLAIM",
+  "finishedAt": "2026-08-28T09:05:10.623Z"
+}

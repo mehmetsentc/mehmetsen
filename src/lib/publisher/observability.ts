@@ -12,6 +12,7 @@ export type PublisherObservabilityEvent =
   | 'PUBLISHER_CLAIM_REQUESTED'
   | 'PUBLISHER_CLAIM_APPROVED'
   | 'PUBLISHER_CLAIM_REJECTED'
+  | 'PUBLISHER_CLAIM_REVOKED'
   | 'PUBLISHER_OWNER_CREATED'
   | 'publisher_profile_updated'
   | 'publisher_layout_draft_saved'

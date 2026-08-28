@@ -1,0 +1,136 @@
+{
+  "startedAt": "2026-08-28T09:43:23.944Z",
+  "phase": "P13",
+  "nodeEnv": "production",
+  "globalsForcedFalse": true,
+  "before": {
+    "publishers": 25,
+    "verified": 1,
+    "unclaimed": 24,
+    "claims": 1,
+    "members": 1,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 11,
+    "ad_impressions": 10,
+    "ad_clicks": 11,
+    "content_items": 2,
+    "ad_inventory": 16,
+    "feature_access_enabled": 18
+  },
+  "otherRealPublishers": [
+    {
+      "id": "pub_9cc584bf-34c6-495a-b056-dd19c2fc732b",
+      "slug": "trt-haber-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_442e9bfa-855a-443e-95d0-3b68d5ddc8e7",
+      "slug": "le-monde-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_1a56da32-d30b-48a9-b1a9-6933729f1afa",
+      "slug": "deutsche-welle-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    },
+    {
+      "id": "pub_99d53526-325c-498f-9eaa-539f2a2654bb",
+      "slug": "bbc-world-rss",
+      "status": "UNCLAIMED",
+      "verification_status": "UNCLAIMED",
+      "members": 0,
+      "claims": 0,
+      "grants": 0
+    }
+  ],
+  "after": {
+    "publishers": 25,
+    "verified": 1,
+    "unclaimed": 24,
+    "claims": 1,
+    "members": 1,
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0,
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0,
+    "managed_ads": 11,
+    "ad_impressions": 10,
+    "ad_clicks": 11,
+    "content_items": 2,
+    "ad_inventory": 16,
+    "feature_access_enabled": 18
+  },
+  "financialDelta": {
+    "payment_intents": 0,
+    "payment_transactions": 0,
+    "commercial_ledger_entries": 0,
+    "publisher_earnings": 0
+  },
+  "marketplaceDelta": {
+    "campaigns": 0,
+    "booking_requests": 0,
+    "bookings": 0
+  },
+  "steps": [
+    {
+      "name": "candidate_unclaimed_zero_members_zero_claims",
+      "ok": true,
+      "detail": "id=pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55, slug=the-guardian-world-rss, status=UNCLAIMED, verification=UNCLAIMED, members=0, claims=0"
+    },
+    {
+      "name": "other_real_publishers_untouched",
+      "ok": true,
+      "detail": "count=4, untouched=true"
+    },
+    {
+      "name": "domain_verification_and_spoof_detection_hardened",
+      "ok": true,
+      "detail": "legitEmail=EXACT, legitSub=SUBDOMAIN, spoofsBlocked=4/4"
+    },
+    {
+      "name": "financial_delta_zero",
+      "ok": true,
+      "detail": "{\"payment_intents\":0,\"payment_transactions\":0,\"commercial_ledger_entries\":0,\"publisher_earnings\":0}"
+    },
+    {
+      "name": "marketplace_delta_zero",
+      "ok": true,
+      "detail": "{\"campaigns\":0,\"booking_requests\":0,\"bookings\":0}"
+    },
+    {
+      "name": "global_flags_remain_false",
+      "ok": true,
+      "detail": "checked=24 flags, all=false"
+    },
+    {
+      "name": "guardian_final_production_state_clean",
+      "ok": true,
+      "detail": "status=UNCLAIMED, verification=UNCLAIMED, members=0, claims=0"
+    }
+  ],
+  "failedCount": 0,
+  "ok": true,
+  "finalResult": "GO — CLAIM OPERATIONS READY",
+  "finishedAt": "2026-08-28T09:43:25.569Z"
+}

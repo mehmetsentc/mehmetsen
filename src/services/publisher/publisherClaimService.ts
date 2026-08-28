@@ -1,12 +1,13 @@
 import { publisherLog } from '@/lib/publisher/observability'
 import { isPublisherVerified } from '@/lib/publisher/public'
-import { normalizeDomain } from '@/lib/publisher/domain'
+import { matchClaimDomain, normalizeDomain } from '@/lib/publisher/domain'
 import { PublisherRepository, publisherRepository } from './publisherRepository'
 import type {
   ApproveClaimResult,
   PublisherClaimRequestRecord,
   PublisherRecord,
   RejectClaimResult,
+  RevokeClaimResult,
 } from '@/types/publisher'
 
 export class PublisherClaimService {
@@ -14,6 +15,7 @@ export class PublisherClaimService {
 
   /**
    * User submits a claim request — never grants OWNER directly.
+   * Computes domain matching evidence without automatic approval.
    */
   async requestPublisherClaim(input: {
     publisherId: string
@@ -41,6 +43,16 @@ export class PublisherClaimService {
     )
     if (pending) throw new Error('CLAIM_ALREADY_PENDING')
 
+    // Evaluate domain match evidence (EVIDENCE ONLY, never automatic approval)
+    const candidateToMatch =
+      input.businessEmail || input.requestedDomain || input.userEmail || ''
+    const domainEvidence = matchClaimDomain(candidateToMatch, publisher.primaryDomain)
+
+    const mergedPayload: Record<string, unknown> = {
+      ...(input.verificationPayload ?? {}),
+      domainEvidence,
+    }
+
     const claim = await this.repo.insertClaimRequest({
       publisherId: input.publisherId,
       userId: input.userId,
@@ -49,7 +61,7 @@ export class PublisherClaimService {
         : publisher.primaryDomain,
       businessEmail: input.businessEmail ?? null,
       verificationMethod: input.verificationMethod ?? 'MANUAL',
-      verificationPayload: input.verificationPayload ?? null,
+      verificationPayload: mergedPayload,
     })
 
     await this.repo.updatePublisher(input.publisherId, {
@@ -60,6 +72,9 @@ export class PublisherClaimService {
       claimId: claim.id,
       publisherId: input.publisherId,
       userId: input.userId,
+      domainMatch: domainEvidence.matches,
+      matchType: domainEvidence.matchType,
+      isSpoof: domainEvidence.isSpoofAttempt,
     })
 
     return claim
@@ -105,6 +120,10 @@ export class PublisherClaimService {
     return { ...result, alreadyApproved: false }
   }
 
+  /**
+   * Admin-only reject: Claim marked REJECTED with reason.
+   * Publisher returns to UNCLAIMED; zero memberships created.
+   */
   async rejectPublisherClaim(input: {
     claimId: string
     reviewedBy: string
@@ -127,7 +146,7 @@ export class PublisherClaimService {
       rejectionReason: input.rejectionReason.trim().slice(0, 500),
     })
     if (!updated) {
-      const latest = await this.repo.findClaimById(claim.id)
+      const latest = await this.findClaimById(claim.id)
       if (latest?.status === 'REJECTED') return { claim: latest, alreadyRejected: true }
       throw new Error('CLAIM_NOT_PENDING')
     }
@@ -139,7 +158,8 @@ export class PublisherClaimService {
       const publisher = await this.repo.findById(claim.publisherId)
       if (publisher && !isPublisherVerified(publisher)) {
         await this.repo.updatePublisher(claim.publisherId, {
-          verificationStatus: 'REJECTED',
+          status: 'UNCLAIMED',
+          verificationStatus: 'UNCLAIMED',
         })
       }
     }
@@ -151,6 +171,48 @@ export class PublisherClaimService {
     })
 
     return { claim: updated, alreadyRejected: false }
+  }
+
+  /**
+   * Admin-only revoke: Reverts approved claim, revokes OWNER membership safely,
+   * and reverts publisher verification to UNCLAIMED.
+   */
+  async revokePublisherClaim(input: {
+    claimId: string
+    reviewedBy: string
+    revocationReason?: string
+  }): Promise<RevokeClaimResult> {
+    const claim = await this.repo.findClaimById(input.claimId)
+    if (!claim) throw new Error('CLAIM_NOT_FOUND')
+
+    if (claim.status === 'REVOKED') {
+      const publisher = await this.repo.findById(claim.publisherId)
+      if (!publisher) throw new Error('PUBLISHER_NOT_FOUND')
+      return { publisher, claim, alreadyRevoked: true }
+    }
+
+    if (claim.status !== 'APPROVED') {
+      throw new Error('CLAIM_NOT_APPROVED')
+    }
+
+    const result = await this.repo.revokeClaim({
+      claimId: input.claimId,
+      reviewedBy: input.reviewedBy,
+      revocationReason: input.revocationReason,
+    })
+
+    publisherLog('PUBLISHER_CLAIM_REVOKED', {
+      claimId: claim.id,
+      publisherId: claim.publisherId,
+      reviewedBy: input.reviewedBy,
+      userId: claim.userId,
+    })
+
+    return result
+  }
+
+  private async findClaimById(id: string) {
+    return this.repo.findClaimById(id)
   }
 }
 
