@@ -181,7 +181,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
-  const isReels = pathname === ROUTES.REELS
+  const isReels = pathname === ROUTES.REELS || pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
   const variant = getContentVariant(pathname)
   const slim = isSlimAppShell(pathname)
 

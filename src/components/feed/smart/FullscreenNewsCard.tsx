@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Zap, Layers } from 'lucide-react'
+import { Zap, Layers, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
@@ -60,8 +61,12 @@ export function FullscreenNewsCard({
   onFeedback,
   cardRef,
 }: FullscreenNewsCardProps) {
+  const [imageError, setImageError] = useState(false)
+  const [logoError, setLogoError] = useState(false)
+
   const videoEnabled = isSmartFeedVideoEnabledClient()
-  const showVideo = videoEnabled && item.video && isActive
+  const showVideo = Boolean(videoEnabled && item.video && isActive)
+  const hasValidImage = Boolean(item.image && !imageError)
 
   return (
     <article
@@ -71,7 +76,8 @@ export function FullscreenNewsCard({
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}
     >
-      <div className="absolute inset-0">
+      {/* Background Media & Fallback */}
+      <div className="absolute inset-0 bg-neutral-950">
         {showVideo ? (
           <video
             key={item.video!}
@@ -83,19 +89,33 @@ export function FullscreenNewsCard({
             loop
             aria-hidden
           />
-        ) : item.image ? (
+        ) : hasValidImage ? (
           <Image
-            src={item.image}
-            alt=""
+            src={item.image!}
+            alt={item.headline || ''}
             fill
             className="object-cover"
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, 512px"
             priority={isActive}
+            onError={() => setImageError(true)}
+            unoptimized={typeof item.image === 'string' && (item.image.startsWith('http://') || item.image.startsWith('https://'))}
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-gray-900 to-gray-800" />
+          <div className="relative h-full w-full bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 flex flex-col items-center justify-center select-none">
+            {/* Subtle dot matrix pattern */}
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
+            <div className="flex flex-col items-center gap-2 opacity-25">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+                <Newspaper className="h-8 w-8 text-white" />
+              </div>
+              <span className="text-xs font-semibold tracking-wider text-white uppercase">
+                {item.publisher?.name || 'NaHaber'}
+              </span>
+            </div>
+          </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20" aria-hidden />
+        {/* Gradient Scrim for Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/30" aria-hidden />
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-16 pb-6 md:mx-auto md:max-w-lg md:w-full">
@@ -104,19 +124,21 @@ export function FullscreenNewsCard({
           <div className="flex items-center justify-between gap-2">
             <Link
               href={ROUTES.PUBLISHER(item.publisher.slug)}
-              className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm"
+              className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm transition hover:bg-black/60"
             >
-              {item.publisher.logoUrl ? (
+              {item.publisher.logoUrl && !logoError ? (
                 <Image
                   src={item.publisher.logoUrl}
-                  alt=""
+                  alt={item.publisher.name}
                   width={24}
                   height={24}
-                  className="rounded-full object-cover"
+                  className="rounded-full object-cover shrink-0"
+                  onError={() => setLogoError(true)}
+                  unoptimized={item.publisher.logoUrl.startsWith('http://') || item.publisher.logoUrl.startsWith('https://')}
                 />
               ) : (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-                  {item.publisher.name.slice(0, 1)}
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white uppercase">
+                  {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
                 </span>
               )}
               <span className="truncate text-xs font-semibold text-white">{item.publisher.name}</span>
@@ -172,7 +194,7 @@ export function FullscreenNewsCard({
           <button
             type="button"
             onClick={onReadClick}
-            className="mt-2 w-full rounded-full bg-white py-3 text-center text-sm font-bold text-black transition hover:bg-white/90"
+            className="mt-2 w-full rounded-full bg-white py-3 text-center text-sm font-bold text-black transition hover:bg-white/90 active:scale-[0.99]"
           >
             Haberi Oku
           </button>

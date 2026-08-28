@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
+import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
@@ -51,6 +52,7 @@ async function fetchFeedPage(opts: {
   city?: string | null
   district?: string | null
   refresh?: boolean
+  signal?: AbortSignal
 }): Promise<FeedPageDto> {
   const params = new URLSearchParams()
   if (opts.mode !== 'personal') params.set('mode', opts.mode)
@@ -71,6 +73,7 @@ async function fetchFeedPage(opts: {
   const res = await fetch(`/api/feed/v2?${params}`, {
     headers,
     credentials: 'include',
+    signal: opts.signal,
   })
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as {
@@ -125,6 +128,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeIndexRef = useRef(0)
   const dwellStartRef = useRef<number | null>(null)
+  const generationIdRef = useRef(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const [mode, setMode] = useState<FeedMode>(() => parseMode(searchParams.get('mode')))
   const [items, setItems] = useState<FeedItemDto[]>([])
@@ -150,20 +155,39 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   cursorRef.current = cursor
 
   const loadPage = useCallback(
-    async (append: boolean, nextCursor?: string | null) => {
+    async (append: boolean, nextCursor?: string | null, targetMode?: FeedMode) => {
+      const activeMode = targetMode ?? mode
+      const genId = ++generationIdRef.current
+
+      // If initiating a full refresh or mode change, abort previous controller
+      if (!append) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort()
+        }
+        abortControllerRef.current = new AbortController()
+      }
+
+      const signal = !append ? abortControllerRef.current?.signal : undefined
+
       if (append) setLoadingMore(true)
       else {
         setLoading(true)
         setErrorState(null)
       }
+
       try {
         const page = await fetchFeedPage({
-          mode,
+          mode: activeMode,
           cursor: append ? (nextCursor ?? cursorRef.current) : null,
           city: initialCitySlug,
           district: initialDistrictSlug,
           refresh: !append,
+          signal,
         })
+
+        // Drop out-of-order responses from stale generation requests
+        if (genId !== generationIdRef.current) return
+
         setErrorState(null)
         setItems((prev) => {
           const merged = append ? [...prev, ...page.items] : page.items
@@ -201,6 +225,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           }
         }
       } catch (err: unknown) {
+        // Drop cancelled / aborted fetches silently
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return
+        }
+        if (genId !== generationIdRef.current) return
+
         console.error('[SmartFeedClient] Error loading feed page:', err)
         const typedErr = err as { status?: number; message?: string; reason?: string }
         const status = typedErr?.status
@@ -223,25 +253,43 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             message: 'Haber akışı yüklenirken bir sorun oluştu.',
           })
         }
-        await postTelemetry({ events: [{ eventType: 'feed_error', feedType: mode }] })
+        await postTelemetry({ events: [{ eventType: 'feed_error', feedType: activeMode }] })
       } finally {
-        setLoading(false)
-        setLoadingMore(false)
+        if (genId === generationIdRef.current) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
       }
     },
     [mode, initialCitySlug, initialDistrictSlug, searchParams]
   )
 
+  const handleModeChange = useCallback(
+    (newMode: FeedMode) => {
+      if (newMode === mode && items.length > 0) return
+      setMode(newMode)
+      setItems([])
+      setCursor(null)
+      setActiveIndex(0)
+      setErrorState(null)
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0
+      }
+      void loadPage(false, null, newMode)
+    },
+    [mode, items.length, loadPage]
+  )
+
   useEffect(() => {
     if (authLoading) return
-    let mounted = true
-
     void loadPage(false)
 
     return () => {
-      mounted = false
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
     }
-  }, [mode, authLoading, authUser?.uid, loadPage])
+  }, [authLoading, authUser?.uid, loadPage])
 
   useEffect(() => {
     if (!items.length) return
@@ -370,10 +418,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       const nextLiked = !prevLiked
       const nextCount = nextLiked ? prevCount + 1 : Math.max(0, prevCount - 1)
 
-      // Guard against rapid duplicate clicks
       setActionLoading((s) => ({ ...s, [item.articleId]: 'like' }))
 
-      // Optimistic UI state
       setSocial((s) => ({
         ...s,
         [item.articleId]: {
@@ -406,7 +452,6 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           },
         }))
       } catch {
-        // Rollback state on failure
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
@@ -448,10 +493,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       const prevSaved = current.saved
       const nextSaved = !prevSaved
 
-      // Guard against rapid duplicate clicks
       setActionLoading((s) => ({ ...s, [item.articleId]: 'save' }))
 
-      // Optimistic UI state
       setSocial((s) => ({
         ...s,
         [item.articleId]: {
@@ -476,7 +519,6 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           },
         }))
       } catch {
-        // Rollback state on failure
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
@@ -546,170 +588,185 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     }
   }, [loading, mode])
 
-  if ((loading || authLoading) && !items.length) {
-    return (
-      <div className="flex h-[100dvh] items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-white" aria-label="Yükleniyor" />
-      </div>
-    )
-  }
+  const isLoadingFirstTime = (loading || authLoading) && items.length === 0
 
   return (
-    <div className="relative min-h-[100dvh] bg-black md:flex md:justify-center">
-      <FeedModeNav
-        mode={mode}
-        onChange={(m) => {
-          setMode(m)
-          setItems([])
-          setCursor(null)
-          setActiveIndex(0)
-          setErrorState(null)
-        }}
-      />
+    <div
+      className="relative h-[100dvh] w-full bg-black overflow-hidden flex justify-center select-none"
+      data-testid="smart-feed-root"
+    >
+      {/* Canonical Viewport Shell — Never collapses, preserves exact geometry */}
+      <div
+        className="relative h-[100dvh] w-full md:max-w-lg md:mx-auto overflow-hidden bg-black flex flex-col"
+        data-testid="smart-feed-canonical-shell"
+      >
+        {/* Top Mode Navigation — Always mounted at canonical container top */}
+        <FeedModeNav
+          mode={mode}
+          onChange={handleModeChange}
+        />
 
-      {errorState ? (
-        <div className="flex h-[100dvh] flex-col items-center justify-center px-6 text-center text-white/80">
-          <div className="mb-4 rounded-full bg-white/10 p-4">
-            {errorState.type === 'AUTH_REQUIRED' || errorState.type === 'DISABLED' ? (
-              <ShieldAlert className="h-8 w-8 text-amber-400" />
-            ) : (
-              <AlertCircle className="h-8 w-8 text-red-400" />
-            )}
+        {/* Viewport Content States */}
+        {isLoadingFirstTime ? (
+          /* Seamless Skeleton Loader matching FullscreenNewsCard geometry */
+          <div className="h-[100dvh] w-full overflow-hidden" data-testid="smart-feed-skeleton-view">
+            <FullscreenNewsCardSkeleton />
           </div>
-          <h2 className="mb-1 text-lg font-bold text-white">
-            {errorState.type === 'AUTH_REQUIRED'
-              ? 'Giriş Yapılması Gerekiyor'
-              : errorState.type === 'DISABLED'
-                ? 'Pilot Önizleme Modu'
-                : 'Yükleme Hatası'}
-          </h2>
-          <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
-          {errorState.type === 'AUTH_REQUIRED' || (!authUser && errorState.type === 'DISABLED') ? (
-            <Link
-              href={`/login?next=${encodeURIComponent('/feed-v2')}`}
-              className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
-            >
-              Giriş Yap
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void loadPage(false)}
-              className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Tekrar Dene
-            </button>
-          )}
-          {isDebug ? (
-            <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-amber-300">
-              [DIAGNOSTIC] status: {errorState.type} | user: {authUser?.uid ?? 'guest'} | mode: {mode}
-            </div>
-          ) : null}
-        </div>
-      ) : !items.length ? (
-        <div className="flex h-[100dvh] flex-col items-center justify-center px-6 text-center text-white/80">
-          <div className="mb-4 rounded-full bg-white/10 p-4">
-            <Inbox className="h-8 w-8 text-white/70" />
-          </div>
-          <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
-          <p className="max-w-xs text-sm text-white/60 mb-4">{emptyState?.description}</p>
-          <button
-            type="button"
-            onClick={() => void loadPage(false)}
-            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+        ) : errorState ? (
+          /* Error / Auth Required / Pilot Preview State */
+          <div
+            className="flex h-[100dvh] w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            data-testid="smart-feed-error-view"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Yenile
-          </button>
-          {isDebug ? (
-            <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-green-300">
-              [DIAGNOSTIC] status: EMPTY_INVENTORY | user: {authUser?.uid ?? 'guest'} | items: 0 | mode: {mode}
+            <div className="mb-4 rounded-full bg-white/10 p-4">
+              {errorState.type === 'AUTH_REQUIRED' || errorState.type === 'DISABLED' ? (
+                <ShieldAlert className="h-8 w-8 text-amber-400" />
+              ) : (
+                <AlertCircle className="h-8 w-8 text-red-400" />
+              )}
             </div>
-          ) : null}
-        </div>
-      ) : (
-        <div
-          ref={scrollRef}
-          onScroll={onScroll}
-          className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll md:max-w-lg"
-          style={{ scrollSnapType: reducedMotion ? 'none' : 'y mandatory' }}
-          role="feed"
-          aria-label="Akıllı haber akışı"
-        >
-          {windowItems.map((item, wi) => {
-            const index = windowStart + wi
-            const isActive = index === activeIndex
-            const socialState = social[item.articleId]
-            const liked = socialState?.liked ?? item.socialState?.liked ?? false
-            const saved = socialState?.saved ?? item.socialState?.saved ?? false
-            const likeCount = socialState?.likeCount ?? item.socialCounts.likes ?? 0
-
-            return (
-              <FeedCardWithImpression
-                key={item.articleId}
-                item={item}
-                isActive={isActive}
-                debug={isDebug}
-                liked={liked}
-                saved={saved}
-                likeCount={likeCount}
-                likeLoading={actionLoading[item.articleId] === 'like'}
-                saveLoading={actionLoading[item.articleId] === 'save'}
-                onToggleLike={() => void toggleLike(item)}
-                onToggleSave={() => void toggleSave(item)}
-                onCommentClick={() => setCommentArticleId(item.articleId)}
-                onReadClick={() => onRead(item, index)}
-                onFeedback={() => handleFeedback(item.articleId)}
-                onImpression={() => recordImpression(item)}
-              />
-            )
-          })}
-          {loadingMore ? (
-            <div className="flex h-24 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-white" />
-            </div>
-          ) : null}
-          {!hasMore && items.length > 0 ? (
-            <div className="flex h-[100dvh] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
-              <div className="mb-4 rounded-full bg-white/10 p-4">
-                <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-              </div>
-              <h3 className="mb-2 text-xl font-bold">Tüm haberleri gördün</h3>
-              <p className="mb-6 max-w-xs text-sm text-white/70">
-                Şimdilik bu kadar. Yeni gelişmeler geldikçe burada göreceksin.
-              </p>
+            <h2 className="mb-1 text-lg font-bold text-white">
+              {errorState.type === 'AUTH_REQUIRED'
+                ? 'Giriş Yapılması Gerekiyor'
+                : errorState.type === 'DISABLED'
+                  ? 'Pilot Önizleme Modu'
+                  : 'Yükleme Hatası'}
+            </h2>
+            <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
+            {errorState.type === 'AUTH_REQUIRED' || (!authUser && errorState.type === 'DISABLED') ? (
+              <Link
+                href={`/login?next=${encodeURIComponent('/feed-v2')}`}
+                className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+              >
+                Giriş Yap
+              </Link>
+            ) : (
               <button
                 type="button"
-                onClick={() => {
-                  scrollToIndex(0)
-                  void loadPage(false)
-                }}
+                onClick={() => void loadPage(false)}
                 className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
               >
                 <RefreshCw className="h-4 w-4" />
-                Başa Dön ve Yenile
+                Tekrar Dene
               </button>
+            )}
+            {isDebug ? (
+              <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-amber-300">
+                [DIAGNOSTIC] status: {errorState.type} | user: {authUser?.uid ?? 'guest'} | mode: {mode}
+              </div>
+            ) : null}
+          </div>
+        ) : !items.length ? (
+          /* Empty Feed State */
+          <div
+            className="flex h-[100dvh] w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            data-testid="smart-feed-empty-view"
+          >
+            <div className="mb-4 rounded-full bg-white/10 p-4">
+              <Inbox className="h-8 w-8 text-white/70" />
             </div>
-          ) : null}
-        </div>
-      )}
+            <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
+            <p className="max-w-xs text-sm text-white/60 mb-4">{emptyState?.description}</p>
+            <button
+              type="button"
+              onClick={() => void loadPage(false)}
+              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Yenile
+            </button>
+            {isDebug ? (
+              <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-green-300">
+                [DIAGNOSTIC] status: EMPTY_INVENTORY | user: {authUser?.uid ?? 'guest'} | items: 0 | mode: {mode}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          /* Populated Snap Scroll Feed */
+          <div
+            ref={scrollRef}
+            onScroll={onScroll}
+            className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll"
+            style={{ scrollSnapType: reducedMotion ? 'none' : 'y mandatory' }}
+            role="feed"
+            aria-label="Akıllı haber akışı"
+            data-testid="smart-feed-scroll-container"
+          >
+            {windowItems.map((item, wi) => {
+              const index = windowStart + wi
+              const isActive = index === activeIndex
+              const socialState = social[item.articleId]
+              const liked = socialState?.liked ?? item.socialState?.liked ?? false
+              const saved = socialState?.saved ?? item.socialState?.saved ?? false
+              const likeCount = socialState?.likeCount ?? item.socialCounts.likes ?? 0
 
-      <CommentsBottomSheet
-        articleId={commentArticleId ?? ''}
-        open={Boolean(commentArticleId)}
-        onClose={() => setCommentArticleId(null)}
-        initialCount={
-          commentArticleId
-            ? (social[commentArticleId]?.commentCount ??
-              items.find((i) => i.articleId === commentArticleId)?.socialCounts.comments ??
-              0)
-            : 0
-        }
-        onCommentAdded={() => {
-          if (commentArticleId) handleCommentAdded(commentArticleId)
-        }}
-      />
+              return (
+                <FeedCardWithImpression
+                  key={item.articleId}
+                  item={item}
+                  isActive={isActive}
+                  debug={isDebug}
+                  liked={liked}
+                  saved={saved}
+                  likeCount={likeCount}
+                  likeLoading={actionLoading[item.articleId] === 'like'}
+                  saveLoading={actionLoading[item.articleId] === 'save'}
+                  onToggleLike={() => void toggleLike(item)}
+                  onToggleSave={() => void toggleSave(item)}
+                  onCommentClick={() => setCommentArticleId(item.articleId)}
+                  onReadClick={() => onRead(item, index)}
+                  onFeedback={() => handleFeedback(item.articleId)}
+                  onImpression={() => recordImpression(item)}
+                />
+              )
+            })}
+            {loadingMore ? (
+              <div className="flex h-24 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
+              </div>
+            ) : null}
+            {!hasMore && items.length > 0 ? (
+              <div className="flex h-[100dvh] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
+                <div className="mb-4 rounded-full bg-white/10 p-4">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                </div>
+                <h3 className="mb-2 text-xl font-bold">Tüm haberleri gördün</h3>
+                <p className="mb-6 max-w-xs text-sm text-white/70">
+                  Şimdilik bu kadar. Yeni gelişmeler geldikçe burada göreceksin.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollToIndex(0)
+                    void loadPage(false)
+                  }}
+                  className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Başa Dön ve Yenile
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* 3-Region Bottom Sheet for Comments */}
+        <CommentsBottomSheet
+          articleId={commentArticleId ?? ''}
+          open={Boolean(commentArticleId)}
+          onClose={() => setCommentArticleId(null)}
+          initialCount={
+            commentArticleId
+              ? (social[commentArticleId]?.commentCount ??
+                items.find((i) => i.articleId === commentArticleId)?.socialCounts.comments ??
+                0)
+              : 0
+          }
+          onCommentAdded={() => {
+            if (commentArticleId) handleCommentAdded(commentArticleId)
+          }}
+        />
+      </div>
     </div>
   )
 }
