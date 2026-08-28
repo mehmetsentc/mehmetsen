@@ -71,7 +71,11 @@ OLGU SADAKATİ — KESİN:
 - Rakam uydurma / değiştirme yasak. Türkçe dilbilgisi doğru olsun.
 
 KURALLAR:
-1) caption: Haberi özgün cümlelerle özetle. İlk cümle merak + doğru olgu; devamında etki/sonuç. Başlıktaki kelime dizilimini aynen kopyalama ama kritik kelimeleri / unvan+isimi atma.
+1) caption: Haberi özgün cümlelerle özetle. İlk cümle merak + doğru olgu; devamında etki/sonuç.
+   TEKRAR YASAK: Sistem caption'ın başına otomatik "📰 {başlık}" ekler, görselde de başlık görünür.
+   Caption gövdesinde başlığı veya başlıkla aynı anlama gelen cümleyi ASLA yazma.
+   Bunun yerine: arkaplan, detay, etki veya başlıkta olmayan bilgi ile başla.
+   Kritik kelimeleri / unvan+isimi atma; ama başlığı kopyalama.
 2) Ton: Ciddi yerel haber odası. Clickbait yasak ("şok", "inanılmaz", "son dakika bomba", sahte vaat).
 3) ${igExtra}
 4) YALNIZCA tamamlanmış cümleler. Yarım cümle, "…avukat Dr.", "…" ile biten teaser YASAK. Her cümle . ! veya ? ile bitsin.

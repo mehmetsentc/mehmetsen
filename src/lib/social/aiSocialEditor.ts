@@ -77,10 +77,13 @@ KURALLAR:
   * YASAK meta CTA kalıpları (özetten ASLA kullanma): "haberimizde", "detayları haberimizde", "detaylar için", "devamı için", "devamını oku", "tıklayın", "tıkla", "linkten", "haberi oku", "ayrıntılar", "işte detaylar" vb.
   * Sade, akıcı, dilbilgisi doğru Türkçe; jargon ve abartı yok. Olgu kelimelerini düşürme.
 - caption: Facebook/Instagram POST açıklama gövdesi (URL ve hashtag YOK — sistem ekler).
-  * AMAÇ: Feed'de kaydıran kullanıcıyı yakalamak — ilk cümle merak + doğru bilgi birleşimi olsun.
-  * İçerik: (1) Haberin TAM manşetini yansıtan açılış cümlesi/paragrafı — manşet anlamı eksik/yarım kalmasın; sayı/isim/tamlama doğru.
-    (2) TAM kısa özet: ne oldu + önemli detay/etki — okunabilir 2–3 paragraf.
-  * Toplam ~400–800 karakter. 1. paragraf emoji ile başlasın. Paragraflar arasında boş satır (\\n\\n).
+  * ÖNEMLİ — TEKRAR YASAK: Sistem otomatik olarak "📰 {başlık}" ekliyor ve görselde de başlık var.
+    Caption'da başlığı ASLA tekrarlama, başlıkla aynı anlama gelen cümle kurma.
+  * AMAÇ: Feed'de kaydıran kullanıcıyı yakalamak — başlıktan SONRA gelen bilgi/bağlam/derinlik olsun.
+  * İçerik: Olayın ARKAPLAN + DETAY + ETKİSİ — başlıkta olmayan ek bilgiyi öne çıkar.
+    Ne zaman, nerede, nasıl, neden, kim etkilendi; sayı/isim/tamlama doğru.
+  * Toplam ~400–700 karakter. 1. paragraf emoji ile başlasın (🔴 değil — başlıkta kullanılmış olabilir).
+    Paragraflar arasında boş satır (\\n\\n).
   * YALNIZCA tamamlanmış cümleler; yarım cümle, kesik kelime, "…" ile biten teaser YASAK.
   * URL / "linkten okuyun" / "haberimizde" ekleme.
   * NOT: Post görseli 4:5 (1080×1350) — caption kısa-orta olsun, görselle uyumlu uzunluk.

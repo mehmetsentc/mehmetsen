@@ -565,7 +565,8 @@ export async function publishOneSocial(
             232,
           )
         })(),
-        caption:  spot ? `📰 ${spot.trim()}` : `📰 ${title.trim()}`,
+        // caption: buildFeedCaption zaten "📰 {başlık}" ekler — gövde sadece özet olsun
+        caption: spot.trim() || '',
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText:  title,
       }
@@ -614,7 +615,8 @@ export async function publishOneSocial(
       bodyText || spot,
     )
     if (!overrides?.caption?.trim() && isGarbledSocialCopy(socialContent.caption)) {
-      socialContent.caption = spot ? `📰 ${title}\n\n${spot.trim()}` : `📰 ${title}`
+      // buildFeedCaption zaten "📰 {başlık}" ekler — fallback sadece spot özeti
+      socialContent.caption = spot.trim() || ''
     }
 
     // Hikâye özeti: daima tam cümle (override dahil) — OG mid-word clip önlemi
