@@ -15,7 +15,6 @@ import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { MobileSafeAreaShield } from '@/components/layout/MobileSafeAreaShield'
 import { CityNavbar } from './CityNavbar'
-import { CitySectionNav } from './CitySectionNav'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
 import { CityFooter } from './CityFooter'
@@ -96,7 +95,6 @@ const CityShell = memo(function CityShell({
         provinceSlug={provinceSlug}
         onMenuClick={handleMenuClick}
       />
-      <CitySectionNav />
 
       <PullToRefresh>
         <div className="content-stage content-stage-newspaper">
