@@ -1,10 +1,22 @@
 /**
  * Phase P6 sitemap architecture tests.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { SITEMAP_CHUNK_LIMIT } from '@/lib/sitemap/seoSitemaps'
 import { urlsetXml } from '@/lib/sitemap/seoXml'
 import { getSitemapPageCount } from '@/lib/sitemap/mainSitemap'
+
+vi.mock('@/lib/firebase/admin', () => ({
+  getAdminFirestore: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
+    })),
+  })),
+}))
 
 describe('P6 sitemap chunk limit', () => {
   it('respects 50k url limit constant', () => {
