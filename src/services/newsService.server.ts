@@ -599,10 +599,11 @@ async function getHomeFeedRailItems(category: string, limitCount: number): Promi
  */
 
 export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
-  // Pool + dedicated featured query (CMS “Öne Çıkan” — kategori bağımsız)
-  const [pool, featuredPinned] = await Promise.all([
+  // Pool + dedicated featured query + all-time most-read (separate viewsCount query)
+  const [pool, featuredPinned, mostReadDb] = await Promise.all([
     getHomeNewsPool(40),
     getFeaturedNewsCached(HOME_FEATURED_LIMIT),
+    getMostReadPostsCached(8),
   ])
 
   if (pool.length === 0 && featuredPinned.length === 0) {
@@ -627,13 +628,18 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
   }
 
+  // Prefer DB-level viewsCount sort (all published articles); fall back to pool-based sort
+  const mostReadItems = mostReadDb.length > 0
+    ? mostReadDb.slice(0, 6)
+    : bucketMostRead(homePool, 6)
+
   return {
     breaking: slimNewsItemsForFeed(bucketBreaking(homePool, 8)),
     featured: slimNewsItemsForFeed(bucketFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)),
     latest: slimNewsItemsForFeed(bucketLatest(homePool, 16, now)),
     trending: slimNewsItemsForFeed(bucketTrending(homePool, 6, now)),
     trendFeed: slimNewsItemsForFeed(bucketTrendFeed(homePool, 12, now)),
-    mostRead: slimNewsItemsForFeed(bucketMostRead(homePool, 6)),
+    mostRead: slimNewsItemsForFeed(mostReadItems),
     categoryRails: slimRails,
   }
 }
@@ -1199,7 +1205,7 @@ const getMostReadPostsCached = unstable_cache(
 export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {
   const items = await getMostReadPostsCached(limitCount)
   if (items.length > 0) return items
-  // Fallback: reuse the home pool's most-read bucket.
-  const home = await getHomeFeedInitialData()
-  return home.mostRead.slice(0, limitCount)
+  // Fallback: pool-based sort (avoids circular dependency with getHomeFeedInitialData)
+  const pool = await getHomeNewsPool(40)
+  return bucketMostRead(pool.filter(isHomepageEligibleItem), limitCount)
 }
