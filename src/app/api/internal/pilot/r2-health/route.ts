@@ -263,7 +263,15 @@ export async function POST(request: Request) {
   })
 }
 
-/** Reject anonymous probes */
-export async function GET() {
-  return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 })
+/** Reject anonymous probes without token */
+export async function GET(request: Request) {
+  const token = new URL(request.url).searchParams.get('token')
+  const expected =
+    process.env.CRON_SECRET?.trim() ||
+    process.env.NEWSROOM_CRON_SECRET?.trim() ||
+    process.env.EVENTS_SYNC_SECRET?.trim()
+  if (!expected || token !== expected) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  return POST(request)
 }
