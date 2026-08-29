@@ -9,6 +9,11 @@ import { newsMirrorRepository, type NewsMirrorPayload } from '@/services/publish
 import { selectPrimarySource } from './primarySourceSelector'
 import { validateEditorialCandidate, cleanTextContent } from './editorialQualityGate'
 import { selectBestEditorialImage, validateImageCandidate } from './imageGate'
+import {
+  checkTextSimilarity,
+  validatePublicationRights,
+  type OverlapCategory,
+} from './editorialSimilarityGate'
 import type {
   EditorialCandidateArticle,
   EditorialPublicationResult,
@@ -24,6 +29,22 @@ export interface PublishClusterOptions {
   customTitle?: string | null
   customBody?: string | null
   customImageUrl?: string | null
+  rightsStatus?: string | null
+  rightsBasis?: string | null
+  forceAllowHighOverlap?: boolean
+}
+
+export interface CreateEditorialDraftResult {
+  clusterId: string
+  suggestedTitle: string
+  suggestedSummary: string
+  suggestedBody: string
+  resolvedCategory: string
+  primarySourceName: string
+  heroImageUrl: string | null
+  overlapCategory: OverlapCategory
+  similarityScore: number
+  flaggedForReview: boolean
 }
 
 export class EditorialSupplyService {
@@ -135,6 +156,21 @@ export class EditorialSupplyService {
       district: cluster.district || primaryArticle.district,
       canonicalUrl: primaryArticle.canonicalUrl,
     })
+
+    // Pre-Publication Similarity & Rights Gate
+    const rightsCheck = validatePublicationRights({
+      canonicalText: qualityResult.sanitizedBody,
+      rawSourceText: primaryArticle.body,
+      rightsStatus: opts.rightsStatus,
+      rightsBasis: opts.rightsBasis,
+      forceAllow: opts.forceAllowHighOverlap,
+    })
+
+    if (!rightsCheck.allowed) {
+      throw new Error(
+        `EDITORIAL_GATE_REJECTED: ${rightsCheck.reason} (overlap: ${rightsCheck.overlapCategory})`
+      )
+    }
 
     // 3. Image Gate
     const imageCandidates = [
@@ -263,14 +299,14 @@ export class EditorialSupplyService {
       })
       .where(eq(newsClusters.id, cluster.id))
 
-    // Link all member raw articles to this published news
+    // Link all member raw articles to this published news with proper semantic status
     const articleIds = candidates.map((c) => c.id)
     if (articleIds.length > 0) {
       await db
         .update(rawArticles)
         .set({
           editorialNewsId: newsId,
-          editorialStatus: 'PUBLISHED',
+          editorialStatus: 'USED_AS_SOURCE',
           updatedAt: now,
         })
         .where(inArray(rawArticles.id, articleIds))
@@ -287,6 +323,92 @@ export class EditorialSupplyService {
       alreadyPublished,
       materialUpdate: Boolean(opts.materialUpdate),
       publishedAt,
+    }
+  }
+
+  /**
+   * Generates an editorial draft from a cluster without public publication.
+   * This prepares sanitized headline, summary, and body for human editorial review.
+   */
+  async createClusterEditorialDraft(clusterId: string): Promise<CreateEditorialDraftResult> {
+    if (!hasDatabaseUrl()) throw new Error('DATABASE_UNAVAILABLE')
+    const db = getDb()
+    const { cluster, candidates } = await this.loadClusterCandidates(clusterId)
+
+    if (!cluster) {
+      throw new Error(`Cluster not found: ${clusterId}`)
+    }
+    if (candidates.length === 0) {
+      throw new Error(`No member articles found for cluster: ${clusterId}`)
+    }
+
+    const primary = selectPrimarySource(candidates)
+    if (!primary) {
+      throw new Error(`Could not select primary source for cluster: ${clusterId}`)
+    }
+
+    const primaryArticle = candidates.find((c) => c.id === primary.primaryArticleId)!
+
+    const rawTitle = cluster.canonicalTitle || primaryArticle.title
+    const rawBody = primaryArticle.body
+    const categoryHint = cluster.categoryHint || cluster.category
+
+    const qualityResult = validateEditorialCandidate({
+      title: rawTitle,
+      body: rawBody,
+      spot: primaryArticle.description,
+      categoryHint,
+      city: cluster.city || primaryArticle.city,
+      district: cluster.district || primaryArticle.district,
+      canonicalUrl: primaryArticle.canonicalUrl,
+    })
+
+    const imageCandidates = [
+      { url: primary.bestImageUrl, isPrimary: true },
+      { url: cluster.primaryImageUrl, isPrimary: true },
+      { url: primaryArticle.mainImageUrl, isPrimary: false },
+      ...primaryArticle.imageUrls.map((url) => ({ url, isPrimary: false })),
+    ].filter((img) => Boolean(img.url))
+
+    const heroImageUrl = selectBestEditorialImage(imageCandidates)
+    const sim = checkTextSimilarity(qualityResult.sanitizedBody, primaryArticle.body)
+
+    // Mark cluster as IN_REVIEW without publishing
+    const now = new Date()
+    await db
+      .update(newsClusters)
+      .set({
+        editorialDecision: 'IN_REVIEW',
+        primarySourceId: primary.sourceId,
+        primarySourceName: primary.sourceName,
+        primaryImageUrl: heroImageUrl,
+        updatedAt: now,
+      })
+      .where(eq(newsClusters.id, cluster.id))
+
+    // Mark candidate raw articles as USED_AS_SOURCE in draft phase
+    const articleIds = candidates.map((c) => c.id)
+    if (articleIds.length > 0) {
+      await db
+        .update(rawArticles)
+        .set({
+          editorialStatus: 'USED_AS_SOURCE',
+          updatedAt: now,
+        })
+        .where(inArray(rawArticles.id, articleIds))
+    }
+
+    return {
+      clusterId: cluster.id,
+      suggestedTitle: qualityResult.sanitizedTitle,
+      suggestedSummary: qualityResult.sanitizedSummary,
+      suggestedBody: qualityResult.sanitizedBody,
+      resolvedCategory: qualityResult.resolvedCategory,
+      primarySourceName: primaryArticle.sourceName,
+      heroImageUrl,
+      overlapCategory: sim.overlapCategory,
+      similarityScore: sim.similarity,
+      flaggedForReview: sim.flaggedForReview,
     }
   }
 

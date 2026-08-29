@@ -47,10 +47,10 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     process.env.SMART_FEED_VIDEO_ENABLED = 'false'
     process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
 
-    // Mock repo: BOTH canonical UID AND Google pilot UID have active grants in DB
+    // Mock repo: ONLY canonical pilot UID has active grants in DB (single pilot invariant)
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
       // Strict exact opaque string equality check
-      if (userId === CANONICAL_PILOT_UID || userId === HISTORICAL_PILOT_UID) {
+      if (userId === CANONICAL_PILOT_UID) {
         return new Set([
           'USER_PROFILES',
           'SOCIAL_GRAPH',
@@ -78,7 +78,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     })
   })
 
-  describe('2. Exact UID Matching for Both Operator and Google Pilot Users', () => {
+  describe('2. Exact UID Matching & Single Pilot Containment', () => {
     it('resolves all 7 features to true strictly for the exact canonical pilot UID', async () => {
       expect(await isSmartFeedEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSmartFeedRankingEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
@@ -93,17 +93,18 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       }
     })
 
-    it('resolves all 7 features to true strictly for the Google pilot user UID', async () => {
-      expect(await isSmartFeedEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isSmartFeedRankingEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isSocialGraphEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isUserProfilesEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isColdStartEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isSmartFeedVideoEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
-      expect(await isSmartFeedTelemetryEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+    it('ensures historical pilot user UID has 0 override grants and falls back to global flag state', async () => {
+      // With global flags off:
+      expect(await isSmartFeedEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isSmartFeedRankingEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isSocialGraphEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isUserProfilesEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isColdStartEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isSmartFeedVideoEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isSmartFeedTelemetryEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
 
       for (const feat of USER_ALLOWLISTABLE_FEATURES) {
-        expect(await isFeatureEnabledForUser(HISTORICAL_PILOT_UID, feat)).toBe(true)
+        expect(await isFeatureEnabledForUser(HISTORICAL_PILOT_UID, feat)).toBe(false)
       }
     })
   })

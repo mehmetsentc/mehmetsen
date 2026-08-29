@@ -33,8 +33,11 @@ function publishedStatusWhere() {
       eq(news.status, 'published'),
       sql`lower(${news.status}::text) in ('published', 'active')`
     ),
+    sql`${news.status} NOT IN ('archived', 'draft', 'pending', 'banned')`,
     isNotNull(news.publishedAt),
-    lte(news.publishedAt, sql`NOW()`)
+    lte(news.publishedAt, sql`NOW()`),
+    sql`${news.id} NOT LIKE 'test_%'`,
+    sql`coalesce(${news.title}, '') NOT LIKE '[%TEST%]'`
   )
 }
 
@@ -147,7 +150,7 @@ function baseSelect() {
     publisherSlug: sql<string | null>`coalesce(${publishers.slug}, ${newsSources.id}, ${news.source})`,
     publisherName: sql<string | null>`coalesce(${publishers.displayName}, ${newsSources.name}, ${news.authorDisplayName}, ${news.source}, 'Kaynak')`,
     publisherLogoUrl: publishers.logoUrl,
-    publisherVerified: sql<boolean>`coalesce(${publishers.verificationStatus} = 'VERIFIED' OR ${newsSources.qualityTier} = 'TIER_A' OR ${news.isFeatured}, false)`,
+    publisherVerified: sql<boolean>`coalesce(${publishers.verificationStatus} = 'VERIFIED', false)`,
     headline: news.title,
     summary: news.summary,
     category: news.categoryId,

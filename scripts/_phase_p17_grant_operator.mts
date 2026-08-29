@@ -36,7 +36,6 @@ loadEnvLocal()
 
 const PILOT_UIDS = [
   { uid: 'wG8WTNlW38TILLvpDLsFmt8IMlg1', email: 'operator@nahaber.com', name: 'Operator Pilot User', tag: 'op' },
-  { uid: 'ap3scBglLIVwflfZN4qL8PKrM1A3', email: 'mehmetsentc@gmail.com', name: 'Mehmet Senturk (Google Pilot)', tag: 'google' },
 ]
 
 const FEATURES = [
