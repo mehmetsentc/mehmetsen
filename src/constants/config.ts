@@ -1,5 +1,8 @@
 import { ROUTES } from '@/constants/routes'
 
+// P17.7 Editorial Safety Gate Version Constant
+export const EDITORIAL_SAFETY_VERSION = 'v17.7' as const
+
 // TODO: Implement in Phase 1
 export const APP_CONFIG = {
   NAME: 'NaHaber',
