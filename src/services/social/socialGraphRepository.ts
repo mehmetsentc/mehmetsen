@@ -11,7 +11,7 @@ import {
   userPublisherFollows,
 } from '@/db/schema/socialGraph'
 import { news, users } from '@/db/schema'
-import { publishers } from '@/db/schema/publishers'
+import { publishers, publisherSources } from '@/db/schema/publishers'
 import { recordSocialEvent } from '@/lib/social/events'
 import { canChangeUsername, validateUsername } from '@/lib/social/username'
 import type {
@@ -40,15 +40,31 @@ function sanitizeCommentContent(raw: string): string {
 }
 
 export class SocialGraphRepository {
+  async resolvePublisherId(idOrSourceId: string): Promise<string> {
+    if (!idOrSourceId.startsWith('src_')) return idOrSourceId
+    try {
+      const db = requireDb()
+      const link = await db
+        .select({ publisherId: publisherSources.publisherId })
+        .from(publisherSources)
+        .where(eq(publisherSources.sourceId, idOrSourceId))
+        .limit(1)
+      return link[0]?.publisherId ?? idOrSourceId
+    } catch {
+      return idOrSourceId
+    }
+  }
+
   async followPublisher(userId: string, publisherId: string, email?: string | null): Promise<boolean> {
     await ensureUser(userId, email)
     const db = requireDb()
-    const pub = await db.select({ id: publishers.id }).from(publishers).where(eq(publishers.id, publisherId)).limit(1)
+    const resolvedPublisherId = await this.resolvePublisherId(publisherId)
+    const pub = await db.select({ id: publishers.id }).from(publishers).where(eq(publishers.id, resolvedPublisherId)).limit(1)
     if (!pub.length) throw new Error('PUBLISHER_NOT_FOUND')
 
     const inserted = await db
       .insert(userPublisherFollows)
-      .values({ userId, publisherId })
+      .values({ userId, publisherId: resolvedPublisherId })
       .onConflictDoNothing()
       .returning({ userId: userPublisherFollows.userId })
 
@@ -57,7 +73,7 @@ export class SocialGraphRepository {
         eventType: 'publisher_followed',
         userId,
         targetType: 'publisher',
-        targetId: publisherId,
+        targetId: resolvedPublisherId,
       })
       return true
     }
@@ -66,9 +82,10 @@ export class SocialGraphRepository {
 
   async unfollowPublisher(userId: string, publisherId: string): Promise<boolean> {
     const db = requireDb()
+    const resolvedPublisherId = await this.resolvePublisherId(publisherId)
     const deleted = await db
       .delete(userPublisherFollows)
-      .where(and(eq(userPublisherFollows.userId, userId), eq(userPublisherFollows.publisherId, publisherId)))
+      .where(and(eq(userPublisherFollows.userId, userId), eq(userPublisherFollows.publisherId, resolvedPublisherId)))
       .returning({ userId: userPublisherFollows.userId })
 
     if (deleted.length > 0) {
@@ -76,7 +93,7 @@ export class SocialGraphRepository {
         eventType: 'publisher_unfollowed',
         userId,
         targetType: 'publisher',
-        targetId: publisherId,
+        targetId: resolvedPublisherId,
       })
       return true
     }
@@ -85,20 +102,22 @@ export class SocialGraphRepository {
 
   async isFollowingPublisher(userId: string, publisherId: string): Promise<boolean> {
     const db = requireDb()
+    const resolvedPublisherId = await this.resolvePublisherId(publisherId)
     const rows = await db
       .select({ userId: userPublisherFollows.userId })
       .from(userPublisherFollows)
-      .where(and(eq(userPublisherFollows.userId, userId), eq(userPublisherFollows.publisherId, publisherId)))
+      .where(and(eq(userPublisherFollows.userId, userId), eq(userPublisherFollows.publisherId, resolvedPublisherId)))
       .limit(1)
     return rows.length > 0
   }
 
   async getPublisherFollowerCount(publisherId: string): Promise<number> {
     const db = requireDb()
+    const resolvedPublisherId = await this.resolvePublisherId(publisherId)
     const rows = await db
       .select({ c: count() })
       .from(userPublisherFollows)
-      .where(eq(userPublisherFollows.publisherId, publisherId))
+      .where(eq(userPublisherFollows.publisherId, resolvedPublisherId))
     return Number(rows[0]?.c ?? 0)
   }
 
@@ -505,6 +524,13 @@ export class SocialGraphRepository {
   async batchPublisherFollowState(userId: string | null, publisherIds: string[]) {
     if (!publisherIds.length) return []
     const db = requireDb()
+    const resolvedIdsMap = new Map<string, string>()
+    await Promise.all(
+      publisherIds.map(async (id) => {
+        const resolved = await this.resolvePublisherId(id)
+        resolvedIdsMap.set(id, resolved)
+      })
+    )
     const counts = await Promise.all(
       publisherIds.map(async (publisherId) => ({
         publisherId,
@@ -513,17 +539,21 @@ export class SocialGraphRepository {
     )
     let followingSet = new Set<string>()
     if (userId) {
+      const allTargetIds = [...new Set([...publisherIds, ...resolvedIdsMap.values()])]
       const rows = await db
         .select({ publisherId: userPublisherFollows.publisherId })
         .from(userPublisherFollows)
-        .where(and(eq(userPublisherFollows.userId, userId), inArray(userPublisherFollows.publisherId, publisherIds)))
+        .where(and(eq(userPublisherFollows.userId, userId), inArray(userPublisherFollows.publisherId, allTargetIds)))
       followingSet = new Set(rows.map((r) => r.publisherId))
     }
-    return counts.map((c) => ({
-      publisherId: c.publisherId,
-      following: followingSet.has(c.publisherId),
-      followerCount: c.followerCount,
-    }))
+    return counts.map((c) => {
+      const resolved = resolvedIdsMap.get(c.publisherId) ?? c.publisherId
+      return {
+        publisherId: c.publisherId,
+        following: followingSet.has(c.publisherId) || followingSet.has(resolved),
+        followerCount: c.followerCount,
+      }
+    })
   }
 }
 

@@ -122,33 +122,60 @@ export function FullscreenNewsCard({
         {/* Publisher header */}
         {item.publisher ? (
           <div className="flex items-center justify-between gap-2">
-            <Link
-              href={ROUTES.PUBLISHER(item.publisher.slug)}
-              className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm transition hover:bg-black/60"
-            >
-              {item.publisher.logoUrl && !logoError ? (
-                <Image
-                  src={item.publisher.logoUrl}
-                  alt={item.publisher.name}
-                  width={24}
-                  height={24}
-                  className="rounded-full object-cover shrink-0"
-                  onError={() => setLogoError(true)}
-                  unoptimized={item.publisher.logoUrl.startsWith('http://') || item.publisher.logoUrl.startsWith('https://')}
-                />
-              ) : (
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white uppercase">
-                  {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                </span>
-              )}
-              <span className="truncate text-xs font-semibold text-white">{item.publisher.name}</span>
-              {item.publishedAt ? (
-                <>
-                  <span className="text-white/40 text-xs select-none">·</span>
-                  <span className="shrink-0 text-xs text-white/70">{formatRelativeTime(item.publishedAt)}</span>
-                </>
-              ) : null}
-            </Link>
+            {item.publisher.slug && !item.publisher.slug.startsWith('src_') ? (
+              <Link
+                href={ROUTES.PUBLISHER(item.publisher.slug)}
+                className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm transition hover:bg-black/60"
+              >
+                {item.publisher.logoUrl && !logoError ? (
+                  <Image
+                    src={item.publisher.logoUrl}
+                    alt={item.publisher.name}
+                    width={24}
+                    height={24}
+                    className="rounded-full object-cover shrink-0"
+                    onError={() => setLogoError(true)}
+                    unoptimized={item.publisher.logoUrl.startsWith('http://') || item.publisher.logoUrl.startsWith('https://')}
+                  />
+                ) : (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white uppercase">
+                    {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+                  </span>
+                )}
+                <span className="truncate text-xs font-semibold text-white">{item.publisher.name}</span>
+                {item.publishedAt ? (
+                  <>
+                    <span className="text-white/40 text-xs select-none">·</span>
+                    <span className="shrink-0 text-xs text-white/70">{formatRelativeTime(item.publishedAt)}</span>
+                  </>
+                ) : null}
+              </Link>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm">
+                {item.publisher.logoUrl && !logoError ? (
+                  <Image
+                    src={item.publisher.logoUrl}
+                    alt={item.publisher.name}
+                    width={24}
+                    height={24}
+                    className="rounded-full object-cover shrink-0"
+                    onError={() => setLogoError(true)}
+                    unoptimized={item.publisher.logoUrl.startsWith('http://') || item.publisher.logoUrl.startsWith('https://')}
+                  />
+                ) : (
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white uppercase">
+                    {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+                  </span>
+                )}
+                <span className="truncate text-xs font-semibold text-white">{item.publisher.name}</span>
+                {item.publishedAt ? (
+                  <>
+                    <span className="text-white/40 text-xs select-none">·</span>
+                    <span className="shrink-0 text-xs text-white/70">{formatRelativeTime(item.publishedAt)}</span>
+                  </>
+                ) : null}
+              </div>
+            )}
             <div className="flex items-center gap-1 shrink-0">
               <FollowButton
                 publisherId={item.publisher.id}
