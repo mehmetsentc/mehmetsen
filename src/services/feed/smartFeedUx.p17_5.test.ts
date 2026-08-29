@@ -56,7 +56,6 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
         slug: 'publisher-1',
         name: 'Test Publisher',
         logoUrl: 'https://example.com/logo.png',
-        verified: true,
       },
       headline: 'Test Headline for Smart Feed',
       summary: 'Test summary description text.',
@@ -71,7 +70,7 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
       socialState: { liked: true, saved: false },
       slug: 'test-headline',
       mode: 'personal',
-      reason: { primary: 'FOLLOWED_TOPIC' },
+      reason: 'INTEREST_MATCH',
     }
 
     expect(mockItem.socialState?.liked).toBe(true)
@@ -111,7 +110,6 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
         slug: 'pub-slug',
         name: 'Örnek Gazete',
         logoUrl: null,
-        verified: false,
       },
     }
 
