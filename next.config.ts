@@ -3,6 +3,7 @@ import path from 'node:path'
 import { NEWS_IMAGE_REMOTE_PATTERNS } from './src/constants/imageHosts'
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.resolve(__dirname),
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,

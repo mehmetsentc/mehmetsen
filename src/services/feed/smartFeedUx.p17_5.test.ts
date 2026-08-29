@@ -49,6 +49,7 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
   it('3. Feed Item Social State: respects like and save state defaults', () => {
     const mockItem: FeedItemDto = {
       id: 'test_1',
+      type: 'article',
       articleId: 'art_1',
       clusterId: 'clust_1',
       publisher: {
@@ -63,13 +64,13 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
       image: 'https://example.com/image.jpg',
       video: null,
       publishedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       breaking: true,
       materialUpdate: false,
       clusterSourceCount: 3,
       socialCounts: { likes: 12, comments: 4, saves: 5, shares: 1 },
       socialState: { liked: true, saved: false },
       slug: 'test-headline',
-      mode: 'personal',
       reason: 'INTEREST_MATCH',
     }
 
