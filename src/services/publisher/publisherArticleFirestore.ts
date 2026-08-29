@@ -87,8 +87,6 @@ export async function fetchFirestorePublisherArticles(input: {
       const snap = await db
         .collection(Collections.NEWS)
         .where('ingestionSourceId', '==', sourceId)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
         .limit(perSourceLimit)
         .get()
 

@@ -11,6 +11,7 @@ import {
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   news,
+  newsClusters,
   newsSources,
   publisherClaimRequests,
   publisherMembers,
@@ -725,78 +726,119 @@ export class PublisherRepository {
     const db = this.requireDb()
     const pageSize = Math.min(Math.max(limit, 1), 48)
 
-    const rawRows = await db
-      .select({
-        editorialNewsId: rawArticles.editorialNewsId,
-        sourceId: rawArticles.sourceId,
-        title: rawArticles.title,
-        publishedAt: rawArticles.publishedAt,
-        mainImageUrl: rawArticles.mainImageUrl,
-      })
-      .from(rawArticles)
-      .where(
-        and(
-          inArray(rawArticles.sourceId, sourceIds),
-          eq(rawArticles.editorialStatus, 'PUBLISHED'),
-          isNotNull(rawArticles.editorialNewsId)
-        )
-      )
-      .orderBy(desc(rawArticles.publishedAt))
-      .limit(pageSize * 3)
-
-    const newsIds = [
-      ...new Set(rawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
-    ]
-
-    const newsRows = newsIds.length
-      ? await db
-          .select({
-            id: news.id,
-            legacyFirestoreId: news.legacyFirestoreId,
-            slug: news.slug,
-            title: news.title,
-            summary: news.summary,
-            thumbnailUrl: news.thumbnailUrl,
-            coverImageUrl: news.coverImageUrl,
-            publishedAt: news.publishedAt,
-          })
-          .from(news)
-          .where(
-            and(
-              eq(news.status, 'published'),
-              or(inArray(news.id, newsIds), inArray(news.legacyFirestoreId, newsIds))
-            )
-          )
-      : []
-
-    const newsByKey = new Map<string, (typeof newsRows)[number]>()
-    for (const row of newsRows) {
-      newsByKey.set(row.id, row)
-      if (row.legacyFirestoreId) newsByKey.set(row.legacyFirestoreId, row)
-    }
-
     const seen = new Set<string>()
     const out: PublisherArticleItem[] = []
-    for (const raw of rawRows) {
-      const nid = raw.editorialNewsId
-      if (!nid) continue
-      const n = newsByKey.get(nid)
-      if (!n) continue
-      const stableId = n.id
-      if (seen.has(stableId)) continue
-      seen.add(stableId)
+
+    // 1. Direct news from PostgreSQL joined with clusters matching sourceIds
+    const clusterNewsRows = await db
+      .select({
+        id: news.id,
+        slug: news.slug,
+        title: news.title,
+        summary: news.summary,
+        thumbnailUrl: news.thumbnailUrl,
+        coverImageUrl: news.coverImageUrl,
+        publishedAt: news.publishedAt,
+        sourceId: newsClusters.primarySourceId,
+      })
+      .from(news)
+      .innerJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+      .where(
+        and(
+          eq(news.status, 'published'),
+          inArray(newsClusters.primarySourceId, sourceIds)
+        )
+      )
+      .orderBy(desc(news.publishedAt))
+      .limit(pageSize)
+
+    for (const n of clusterNewsRows) {
+      if (seen.has(n.id)) continue
+      seen.add(n.id)
       out.push({
-        id: stableId,
+        id: n.id,
         slug: n.slug,
         title: n.title,
         summary: n.summary,
-        thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl ?? raw.mainImageUrl,
-        publishedAt: n.publishedAt ?? raw.publishedAt,
-        sourceId: raw.sourceId,
+        thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
+        publishedAt: n.publishedAt,
+        sourceId: n.sourceId ?? sourceIds[0],
       })
-      if (out.length >= pageSize) break
     }
 
+    // 2. Also check raw_articles linked news
+    if (out.length < pageSize) {
+      const rawRows = await db
+        .select({
+          editorialNewsId: rawArticles.editorialNewsId,
+          sourceId: rawArticles.sourceId,
+          title: rawArticles.title,
+          publishedAt: rawArticles.publishedAt,
+          mainImageUrl: rawArticles.mainImageUrl,
+        })
+        .from(rawArticles)
+        .where(
+          and(
+            inArray(rawArticles.sourceId, sourceIds),
+            isNotNull(rawArticles.editorialNewsId)
+          )
+        )
+        .orderBy(desc(rawArticles.publishedAt))
+        .limit(pageSize * 3)
+
+      const newsIds = [
+        ...new Set(rawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
+      ].filter((id) => !seen.has(id))
+
+      const newsRows = newsIds.length
+        ? await db
+            .select({
+              id: news.id,
+              legacyFirestoreId: news.legacyFirestoreId,
+              slug: news.slug,
+              title: news.title,
+              summary: news.summary,
+              thumbnailUrl: news.thumbnailUrl,
+              coverImageUrl: news.coverImageUrl,
+              publishedAt: news.publishedAt,
+            })
+            .from(news)
+            .where(
+              and(
+                eq(news.status, 'published'),
+                or(inArray(news.id, newsIds), inArray(news.legacyFirestoreId, newsIds))
+              )
+            )
+        : []
+
+      const newsByKey = new Map<string, (typeof newsRows)[number]>()
+      for (const row of newsRows) {
+        newsByKey.set(row.id, row)
+        if (row.legacyFirestoreId) newsByKey.set(row.legacyFirestoreId, row)
+      }
+
+      for (const raw of rawRows) {
+        const nid = raw.editorialNewsId
+        if (!nid) continue
+        const n = newsByKey.get(nid)
+        if (!n) continue
+        const stableId = n.id
+        if (seen.has(stableId)) continue
+        seen.add(stableId)
+        out.push({
+          id: stableId,
+          slug: n.slug,
+          title: n.title,
+          summary: n.summary,
+          thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl ?? raw.mainImageUrl,
+          publishedAt: n.publishedAt ?? raw.publishedAt,
+          sourceId: raw.sourceId,
+        })
+        if (out.length >= pageSize) break
+      }
+    }
+
+    // 3. Fallback to Firestore if total collected items < pageSize
     if (out.length < pageSize) {
       const firestorePage = await fetchFirestorePublisherArticles({
         sourceIds,
