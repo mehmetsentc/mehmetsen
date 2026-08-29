@@ -819,17 +819,18 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
  */
 export const TOP_NAV_CATEGORY_IDS = [
   'gundem',
-  'asayis',
+  'ekonomi',
   'spor',
   'dunya',
-  'kibris-haberleri',
   'siyaset',
-  'ekonomi',
-  'egitim',
+  'teknoloji',
   'saglik',
+  'kultur',
+  'asayis',
+  'kibris-haberleri',
+  'egitim',
   'turizm',
   'gezi',
-  'teknoloji',
   'bilim',
   'cevre-iklim',
   'oyun-espor',
@@ -837,7 +838,6 @@ export const TOP_NAV_CATEGORY_IDS = [
   'yasam',
   'gastronomi',
   'otomobil',
-  'kultur',
   'sinema',
   'tiyatro',
   'magazin',
@@ -849,6 +849,7 @@ export const TOP_NAV_CATEGORY_IDS = [
  */
 const HEADER_LABELS: Record<string, string> = {
   feed: 'Ana Sayfa',
+  'feed-v2': 'Akış',
   yerel: 'Yerel',
   'kibris-haberleri': 'Kıbrıs',
   siyaset: 'Politika',
@@ -868,7 +869,7 @@ export const HEADER_PRIMARY_NAV_IDS = [
   'gundem',
   'yerel',
   'asayis',
-  'spor',
+  'feed-v2',
   'dunya',
   'kibris-haberleri',
 ] as const
@@ -901,11 +902,12 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('gundem'),
     { id: 'yerel', label: 'Yerel Haber', href: ROUTES.LOCAL },
     categoryLink('asayis', '3. Sayfa'),
-    categoryLink('spor'),
+    { id: 'feed-v2', label: 'Akış', href: ROUTES.FEED_V2 },
     categoryLink('dunya'),
     categoryLink('kibris-haberleri'),
     categoryLink('siyaset'),
     categoryLink('ekonomi'),
+    categoryLink('spor'),
     categoryLink('egitim'),
     categoryLink('saglik'),
     categoryLink('cevre-iklim'),
@@ -952,6 +954,9 @@ function resolveHeaderNavItem(
 ): SiteNavItem | null {
   if (id === 'feed') {
     return { id: 'feed', label: labelOverride ?? 'Ana Sayfa', href: ROUTES.FEED }
+  }
+  if (id === 'feed-v2') {
+    return { id: 'feed-v2', label: labelOverride ?? 'Akış', href: ROUTES.FEED_V2 }
   }
   if (id === 'yerel') {
     return { id: 'yerel', label: labelOverride ?? 'Yerel', href: ROUTES.LOCAL }

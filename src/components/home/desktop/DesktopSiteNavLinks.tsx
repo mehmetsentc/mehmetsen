@@ -27,6 +27,7 @@ interface DesktopSiteNavLinksProps {
 
 function isActive(pathname: string, href: string, id: string): boolean {
   if (id === 'feed') return pathname === ROUTES.FEED
+  if (id === 'feed-v2') return pathname === ROUTES.FEED_V2 || pathname.startsWith(`${ROUTES.FEED_V2}/`)
   if (id === 'yerel') return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
   if (id === 'video' || href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
   return pathname === href || pathname.startsWith(`${href}/`)

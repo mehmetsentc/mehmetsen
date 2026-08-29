@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Plus, Trophy, MapPin } from 'lucide-react'
+import { Home, Search, Plus, Zap, MapPin } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { ROUTES } from '@/constants/routes'
@@ -18,6 +18,9 @@ interface MobileNavItem {
 
 function isNavActive(pathname: string, href: string): boolean {
   if (href === ROUTES.FEED) return pathname === ROUTES.FEED || pathname === '/'
+  if (href === ROUTES.FEED_V2) {
+    return pathname === ROUTES.FEED_V2 || pathname.startsWith(`${ROUTES.FEED_V2}/`)
+  }
   if (href === ROUTES.SEARCH) {
     return pathname.startsWith(ROUTES.SEARCH) || pathname.startsWith(ROUTES.SEARCH_TR)
   }
@@ -101,7 +104,7 @@ function MobileNavInner() {
 
   const rightItems = useMemo<MobileNavItem[]>(
     () => [
-      { icon: Trophy, label: 'Spor', href: ROUTES.SPOR },
+      { icon: Zap, label: 'Akış', href: ROUTES.FEED_V2 },
       { icon: MapPin, label: 'Yerel', href: ROUTES.LOCAL },
     ],
     []

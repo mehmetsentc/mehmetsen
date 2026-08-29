@@ -21,16 +21,20 @@ function ctx(partial: Partial<FeedUserContext> = {}): FeedUserContext {
   }
 }
 
-describe('P6 cold start flag prod default false', () => {
+describe('P6 cold start feature flag', () => {
   const env = process.env
   beforeEach(() => {
-    process.env = { ...env, NODE_ENV: 'production' }
-    delete process.env.COLD_START_V2_ENABLED
+    process.env = { ...env }
   })
   afterEach(() => {
     process.env = env
   })
-  it('cold start off in prod when unset', () => {
+  it('cold start on by default in prod', () => {
+    delete process.env.COLD_START_V2_ENABLED
+    expect(isColdStartV2Enabled()).toBe(true)
+  })
+  it('cold start responds to disable flag', () => {
+    process.env.COLD_START_V2_ENABLED = 'false'
     expect(isColdStartV2Enabled()).toBe(false)
   })
 })

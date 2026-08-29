@@ -27,7 +27,9 @@ function qualityScore(row: FeedCandidateRow): number {
 
 function editorialScore(row: FeedCandidateRow, mode: FeedMode): number {
   const importance = Math.min(100, Math.max(0, row.clusterImportance ?? 0)) / 100
-  const breaking = row.breaking ? 0.35 : 0
+  const cat = (row.category ?? '').toLowerCase()
+  const isUrgentCat = cat === 'son-dakika' || cat === 'gundem'
+  const breaking = row.breaking ? 0.35 : isUrgentCat && importance > 0.6 ? 0.2 : 0
   const multiSource = Math.min(0.25, (row.clusterSourceCount - 1) * 0.08)
   const modeBoost = mode === 'breaking' ? 0.15 : 0
   return Math.min(1, importance * 0.5 + breaking + multiSource + modeBoost)

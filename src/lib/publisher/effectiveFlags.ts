@@ -49,31 +49,31 @@ const GLOBAL_CHECKERS: Record<PublisherRolloutFeatureKey, () => boolean> = {
     const v = process.env.SOCIAL_GRAPH_ENABLED?.trim().toLowerCase()
     if (v === '1' || v === 'true' || v === 'yes') return true
     if (v === '0' || v === 'false' || v === 'no') return false
-    return process.env.NODE_ENV !== 'production'
+    return true
   },
   USER_PROFILES: () => {
     const v = process.env.USER_PROFILES_ENABLED?.trim().toLowerCase()
     if (v === '1' || v === 'true' || v === 'yes') return true
     if (v === '0' || v === 'false' || v === 'no') return false
-    return process.env.NODE_ENV !== 'production'
+    return true
   },
   SMART_FEED: () => {
     const v = process.env.SMART_FEED_ENABLED?.trim().toLowerCase()
     if (v === '1' || v === 'true' || v === 'yes') return true
     if (v === '0' || v === 'false' || v === 'no') return false
-    return process.env.NODE_ENV !== 'production'
+    return true
   },
   SMART_FEED_RANKING: () => {
     const v = process.env.SMART_FEED_RANKING_V1_ENABLED?.trim().toLowerCase()
     if (v === '1' || v === 'true' || v === 'yes') return true
     if (v === '0' || v === 'false' || v === 'no') return false
-    return false
+    return true
   },
   COLD_START_V2: () => {
     const v = process.env.COLD_START_V2_ENABLED?.trim().toLowerCase()
     if (v === '1' || v === 'true' || v === 'yes') return true
     if (v === '0' || v === 'false' || v === 'no') return false
-    return false
+    return true
   },
 }
 

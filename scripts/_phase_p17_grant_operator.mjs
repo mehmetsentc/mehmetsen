@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { neon } from '@neondatabase/serverless'
 
@@ -20,7 +20,10 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-const CANONICAL_PILOT_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
+const PILOT_UIDS = [
+  { uid: 'wG8WTNlW38TILLvpDLsFmt8IMlg1', email: 'operator@nahaber.com', name: 'Operator Pilot User', tag: 'op' },
+  { uid: 'ap3scBglLIVwflfZN4qL8PKrM1A3', email: 'mehmetsentc@gmail.com', name: 'Mehmet Senturk (Google Pilot)', tag: 'google' },
+]
 
 const FEATURES = [
   'USER_PROFILES',
@@ -40,46 +43,48 @@ async function run() {
   }
   const sql = neon(url)
 
-  console.log('=== P17 CANONICAL PILOT ACCESS GRANT ===')
-  console.log('Target Pilot UID:', CANONICAL_PILOT_UID)
+  console.log('=== P17 PILOT ACCESS GRANTS (CANONICAL + GOOGLE AUTH) ===')
 
-  // 1. Check if canonical pilot exists in users table
-  const existingUsers = await sql`
-    SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid = ${CANONICAL_PILOT_UID}
-  `
-  console.log('Existing pilot user in DB:', existingUsers)
+  for (const pilot of PILOT_UIDS) {
+    console.log(`\nProcessing Pilot UID: ${pilot.uid} (${pilot.name})...`)
 
-  const hasOperator = existingUsers.some(u => u.firebase_uid === CANONICAL_PILOT_UID)
-  if (!hasOperator) {
-    console.log('Inserting canonical pilot user record into users table...')
-    await sql`
-      INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-      VALUES (${CANONICAL_PILOT_UID}, 'operator@nahaber.com', 'Operator Pilot User', 'super_admin', now(), now())
-      ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now()
+    // 1. Check/ensure user in users table
+    const existingUsers = await sql`
+      SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid = ${pilot.uid}
     `
-    console.log('Pilot user record created in users table.')
-  }
+    console.log(`Existing user record in DB:`, existingUsers)
 
-  // 2. Grant 7 features for canonical pilot
-  console.log(`Granting ${FEATURES.length} pilot features to ${CANONICAL_PILOT_UID}...`)
-  for (const feat of FEATURES) {
-    const id = `ufa_op_${feat.toLowerCase()}`
-    await sql`
-      INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
-      VALUES (${id}, ${CANONICAL_PILOT_UID}, ${feat}, true, 'system', 'system', 'P17 Canonical Pilot Allowlist', now(), now())
-      ON CONFLICT (user_id, feature_key)
-      DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Canonical Pilot Allowlist'
+    if (existingUsers.length === 0) {
+      console.log(`Inserting user record into users table...`)
+      await sql`
+        INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+        VALUES (${pilot.uid}, ${pilot.email}, ${pilot.name}, 'super_admin', now(), now())
+        ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now()
+      `
+      console.log(`User record created for ${pilot.uid}.`)
+    }
+
+    // 2. Grant all 7 features
+    console.log(`Granting ${FEATURES.length} features to ${pilot.uid}...`)
+    for (const feat of FEATURES) {
+      const id = `ufa_${pilot.tag}_${feat.toLowerCase()}`
+      await sql`
+        INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
+        VALUES (${id}, ${pilot.uid}, ${feat}, true, 'system', 'system', 'P17 Pilot Dual-Allowlist', now(), now())
+        ON CONFLICT (user_id, feature_key)
+        DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Pilot Dual-Allowlist'
+      `
+    }
+
+    // 3. Query back and verify
+    const grants = await sql`
+      SELECT user_id, feature_key, enabled, reason, updated_at
+      FROM user_feature_access
+      WHERE user_id = ${pilot.uid}
+      ORDER BY feature_key
     `
+    console.log(`Active Grants for ${pilot.uid}:`, grants.map(g => `${g.feature_key}: ${g.enabled}`))
   }
-
-  // 3. Query back and verify grants in DB
-  const operatorGrants = await sql`
-    SELECT user_id, feature_key, enabled, reason, updated_at
-    FROM user_feature_access
-    WHERE user_id = ${CANONICAL_PILOT_UID}
-    ORDER BY feature_key
-  `
-  console.log('\nCanonical Pilot Grants in DB:', operatorGrants)
 
   const allUfa = await sql`
     SELECT user_id, count(*)::int as count
@@ -87,9 +92,7 @@ async function run() {
     WHERE enabled = true
     GROUP BY user_id
   `
-  console.log('\nAll Active User Feature Grants Summary:', allUfa)
-
-  console.log('\nDB Migration/Grant complete!')
+  console.log('\nAll Active User Feature Grants in Database:', allUfa)
 }
 
 run().catch(e => {

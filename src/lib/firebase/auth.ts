@@ -27,12 +27,12 @@ export function ensureAuthReady(): Promise<void> {
 }
 
 /** Returns the current Firebase ID token after session is ready, or null if unauthenticated. */
-export async function getClientAuthToken(): Promise<string | null> {
+export async function getClientAuthToken(forceRefresh = false): Promise<string | null> {
   await ensureAuthReady()
   const user = auth.currentUser
   if (!user) return null
   try {
-    return await user.getIdToken()
+    return await user.getIdToken(forceRefresh)
   } catch {
     return null
   }

@@ -4,14 +4,14 @@ export function isSocialGraphEnabledClient(): boolean {
   const v = process.env.NEXT_PUBLIC_SOCIAL_GRAPH_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return process.env.NODE_ENV !== 'production'
+  return true
 }
 
 export function isUserProfilesEnabledClient(): boolean {
   const v = process.env.NEXT_PUBLIC_USER_PROFILES_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return process.env.NODE_ENV !== 'production'
+  return true
 }
 
 export function isAppleAuthEnabledClient(): boolean {

@@ -53,6 +53,7 @@ async function fetchFeedPage(opts: {
   district?: string | null
   refresh?: boolean
   signal?: AbortSignal
+  forceAuthRefresh?: boolean
 }): Promise<FeedPageDto> {
   const params = new URLSearchParams()
   if (opts.mode !== 'personal') params.set('mode', opts.mode)
@@ -65,7 +66,7 @@ async function fetchFeedPage(opts: {
   const headers: Record<string, string> = {
     'x-feed-session': getOrCreateFeedSessionId(),
   }
-  const token = await getClientAuthToken()
+  const token = await getClientAuthToken(opts.forceAuthRefresh)
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
@@ -155,7 +156,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   cursorRef.current = cursor
 
   const loadPage = useCallback(
-    async (append: boolean, nextCursor?: string | null, targetMode?: FeedMode) => {
+    async (
+      append: boolean,
+      nextCursor?: string | null,
+      targetMode?: FeedMode,
+      forceAuthRefresh = false
+    ) => {
       const activeMode = targetMode ?? mode
       const genId = ++generationIdRef.current
 
@@ -183,6 +189,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           district: initialDistrictSlug,
           refresh: !append,
           signal,
+          forceAuthRefresh,
         })
 
         // Drop out-of-order responses from stale generation requests
@@ -245,7 +252,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           setErrorState({
             type: 'DISABLED',
             reason: typedErr?.reason,
-            message: 'Akıllı akış şu anda pilot kullanıcılara özeldir.',
+            message: 'Akıllı akış şu anda bakımda veya geçici olarak kullanılamıyor.',
           })
         } else {
           setErrorState({
@@ -629,21 +636,38 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
               {errorState.type === 'AUTH_REQUIRED'
                 ? 'Giriş Yapılması Gerekiyor'
                 : errorState.type === 'DISABLED'
-                  ? 'Pilot Önizleme Modu'
+                  ? 'Akıllı Akış'
                   : 'Yükleme Hatası'}
             </h2>
             <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
-            {errorState.type === 'AUTH_REQUIRED' || (!authUser && errorState.type === 'DISABLED') ? (
+            {errorState.type === 'AUTH_REQUIRED' ? (
               <Link
                 href={`/login?next=${encodeURIComponent('/feed-v2')}`}
                 className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
               >
                 Giriş Yap
               </Link>
+            ) : errorState.type === 'DISABLED' && !authUser ? (
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Link
+                  href={`/login?next=${encodeURIComponent('/feed-v2')}`}
+                  className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+                >
+                  Giriş Yap
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void loadPage(false, null, undefined, true)}
+                  className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Tekrar Dene
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
-                onClick={() => void loadPage(false)}
+                onClick={() => void loadPage(false, null, undefined, true)}
                 className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -652,7 +676,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             )}
             {isDebug ? (
               <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-amber-300">
-                [DIAGNOSTIC] status: {errorState.type} | user: {authUser?.uid ?? 'guest'} | mode: {mode}
+                [DIAGNOSTIC] status: {errorState.type} | user: {authUser?.uid ?? 'guest'} | authLoading: {String(authLoading)} | reason: {errorState.type === 'DISABLED' ? errorState.reason ?? 'none' : 'none'} | mode: {mode}
               </div>
             ) : null}
           </div>

@@ -42,22 +42,33 @@ function row(partial: Partial<FeedCandidateRow> & Pick<FeedCandidateRow, 'articl
   }
 }
 
-describe('P4 feature flags default false in production', () => {
+describe('P4 feature flags config', () => {
   const env = process.env
 
   beforeEach(() => {
-    process.env = { ...env, NODE_ENV: 'production' }
-    delete process.env.SMART_FEED_ENABLED
-    delete process.env.SMART_FEED_TELEMETRY_ENABLED
-    delete process.env.SMART_FEED_VIDEO_ENABLED
-    delete process.env.SMART_FEED_RANKING_V1_ENABLED
+    process.env = { ...env }
   })
 
   afterEach(() => {
     process.env = env
   })
 
-  it('smart feed flags off in prod when unset', () => {
+  it('smart feed flags on by default', () => {
+    delete process.env.SMART_FEED_ENABLED
+    delete process.env.SMART_FEED_TELEMETRY_ENABLED
+    delete process.env.SMART_FEED_VIDEO_ENABLED
+    delete process.env.SMART_FEED_RANKING_V1_ENABLED
+    expect(isSmartFeedEnabled()).toBe(true)
+    expect(isSmartFeedTelemetryEnabled()).toBe(true)
+    expect(isSmartFeedVideoEnabled()).toBe(true)
+    expect(isSmartFeedRankingV1Enabled()).toBe(true)
+  })
+
+  it('smart feed flags respect disable values', () => {
+    process.env.SMART_FEED_ENABLED = 'false'
+    process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
+    process.env.SMART_FEED_VIDEO_ENABLED = 'false'
+    process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
     expect(isSmartFeedEnabled()).toBe(false)
     expect(isSmartFeedTelemetryEnabled()).toBe(false)
     expect(isSmartFeedVideoEnabled()).toBe(false)

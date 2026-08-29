@@ -34,6 +34,26 @@ export class FeedDiversityEngine {
         adj -= pubRepeats * 0.08 * FEED_RANKING_CONFIG_V1.baseWeights.diversityPenalty
         adj -= catRepeats * 0.05 * FEED_RANKING_CONFIG_V1.baseWeights.diversityPenalty
 
+        // Diversity enforcement: prevent 3+ consecutive cards from the same category or publisher
+        if (picked.length >= 2) {
+          const prev1Cat = (picked[picked.length - 1].category ?? '_general').toLowerCase()
+          const prev2Cat = (picked[picked.length - 2].category ?? '_general').toLowerCase()
+          if (cat === prev1Cat && cat === prev2Cat) {
+            adj -= 0.35 // heavily penalize 3rd consecutive from same category
+          }
+
+          const prev1Pub = picked[picked.length - 1].publisherId ?? '_unknown'
+          const prev2Pub = picked[picked.length - 2].publisherId ?? '_unknown'
+          if (pub !== '_unknown' && pub === prev1Pub && pub === prev2Pub) {
+            adj -= 0.45 // heavily penalize 3rd consecutive from same publisher
+          }
+        } else if (picked.length >= 1) {
+          const prevPub = picked[picked.length - 1].publisherId ?? '_unknown'
+          if (pub !== '_unknown' && pub === prevPub) {
+            adj -= 0.1 // gentle damping for direct repeat publisher
+          }
+        }
+
         if (mode === 'personal' && row.source === 'DISCOVERY') {
           adj += FEED_RANKING_CONFIG_V1.explorationRatioPersonal * 0.05
         }

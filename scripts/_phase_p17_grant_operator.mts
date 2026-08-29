@@ -34,7 +34,10 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-const CANONICAL_PILOT_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
+const PILOT_UIDS = [
+  { uid: 'wG8WTNlW38TILLvpDLsFmt8IMlg1', email: 'operator@nahaber.com', name: 'Operator Pilot User', tag: 'op' },
+  { uid: 'ap3scBglLIVwflfZN4qL8PKrM1A3', email: 'mehmetsentc@gmail.com', name: 'Mehmet Senturk (Google Pilot)', tag: 'google' },
+]
 
 const FEATURES = [
   'USER_PROFILES',
@@ -55,84 +58,79 @@ async function main() {
   }
   const sql = neon(url)
 
-  console.log(`=== P17 CANONICAL PILOT ACCESS GRANT ===`)
-  console.log(`Canonical Pilot UID: ${CANONICAL_PILOT_UID}`)
+  console.log(`=== P17 PILOT ACCESS GRANTS (CANONICAL + GOOGLE AUTH) ===`)
 
-  // 1. Ensure user row exists in users table (for foreign key)
-  const existingUsers = await sql`
-    SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid = ${CANONICAL_PILOT_UID}
-  `
-  console.log('Existing target pilot user in DB:', existingUsers)
+  for (const pilot of PILOT_UIDS) {
+    console.log(`\nProcessing Pilot UID: ${pilot.uid} (${pilot.name})...`)
 
-  const hasOperator = existingUsers.some(u => u.firebase_uid === CANONICAL_PILOT_UID)
-  if (!hasOperator) {
-    console.log(`Inserting pilot user record into users table...`)
-    await sql`
-      INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
-      VALUES (${CANONICAL_PILOT_UID}, 'operator@nahaber.com', 'Operator Pilot User', 'super_admin', now(), now())
-      ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now()
+    // 1. Ensure user row exists in users table (for foreign key)
+    const existingUsers = await sql`
+      SELECT firebase_uid, email, display_name, role FROM users WHERE firebase_uid = ${pilot.uid}
     `
-    console.log(`Pilot user ensured.`)
-  }
+    console.log('Existing target user in DB:', existingUsers)
 
-  // 2. Grant 7 features for canonical pilot
-  console.log(`Granting features to canonical pilot ${CANONICAL_PILOT_UID}...`)
-  for (const feat of FEATURES) {
-    const id = `ufa_op_${feat.toLowerCase()}`
-    await sql`
-      INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
-      VALUES (${id}, ${CANONICAL_PILOT_UID}, ${feat}, true, 'system', 'system', 'P17 Canonical Pilot Allowlist', now(), now())
-      ON CONFLICT (user_id, feature_key)
-      DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Canonical Pilot Allowlist'
+    if (existingUsers.length === 0) {
+      console.log(`Inserting user record into users table...`)
+      await sql`
+        INSERT INTO users (firebase_uid, email, display_name, role, created_at, updated_at)
+        VALUES (${pilot.uid}, ${pilot.email}, ${pilot.name}, 'super_admin', now(), now())
+        ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now()
+      `
+      console.log(`User record ensured for ${pilot.uid}.`)
+    }
+
+    // 2. Grant 7 features
+    console.log(`Granting features to ${pilot.uid}...`)
+    for (const feat of FEATURES) {
+      const id = `ufa_${pilot.tag}_${feat.toLowerCase()}`
+      await sql`
+        INSERT INTO user_feature_access (id, user_id, feature_key, enabled, created_by, updated_by, reason, created_at, updated_at)
+        VALUES (${id}, ${pilot.uid}, ${feat}, true, 'system', 'system', 'P17 Pilot Dual-Allowlist', now(), now())
+        ON CONFLICT (user_id, feature_key)
+        DO UPDATE SET enabled = true, updated_at = now(), updated_by = 'system', reason = 'P17 Pilot Dual-Allowlist'
+      `
+    }
+
+    // 3. Verify DB records
+    const grants = await sql`
+      SELECT user_id, feature_key, enabled, reason, updated_at FROM user_feature_access WHERE user_id = ${pilot.uid} ORDER BY feature_key
     `
+    console.log(`Grants in DB for ${pilot.uid}:`, grants)
   }
-
-  // 3. Verify DB records
-  const operatorGrants = await sql`
-    SELECT user_id, feature_key, enabled, reason, updated_at FROM user_feature_access WHERE user_id = ${CANONICAL_PILOT_UID} ORDER BY feature_key
-  `
-  console.log('\nCanonical Pilot Grants in DB:', operatorGrants)
 
   // 4. Verify effective flags via service
   const { isSmartFeedEffectiveForUser, isFeatureEnabledForUser } = await import('../src/lib/user/effectiveUserFlags')
   const { feedService } = await import('../src/services/feed/FeedService')
 
-  const isOpSmartFeed = await isSmartFeedEffectiveForUser(CANONICAL_PILOT_UID)
-  console.log(`\nisSmartFeedEffectiveForUser('${CANONICAL_PILOT_UID}') ->`, isOpSmartFeed)
+  for (const pilot of PILOT_UIDS) {
+    const isOpSmartFeed = await isSmartFeedEffectiveForUser(pilot.uid)
+    console.log(`\nisSmartFeedEffectiveForUser('${pilot.uid}') ->`, isOpSmartFeed)
 
-  for (const feat of FEATURES) {
-    const ok = await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)
-    console.log(`isFeatureEnabledForUser('${CANONICAL_PILOT_UID}', '${feat}') ->`, ok)
-  }
+    for (const feat of FEATURES) {
+      const ok = await isFeatureEnabledForUser(pilot.uid, feat)
+      console.log(`isFeatureEnabledForUser('${pilot.uid}', '${feat}') ->`, ok)
+    }
 
-  // 5. Test FeedService.getFeed for pilot
-  console.log('\nTesting FeedService.getFeed for Canonical Pilot...')
-  const feedResult = await feedService.getFeed({
-    userId: CANONICAL_PILOT_UID,
-    mode: 'personal',
-    limit: 15,
-    refresh: true,
-  }, { debug: true })
+    // Test FeedService.getFeed for both
+    console.log(`\nTesting FeedService.getFeed for ${pilot.uid}...`)
+    const feedResult = await feedService.getFeed({
+      userId: pilot.uid,
+      mode: 'personal',
+      limit: 15,
+      refresh: true,
+    }, { debug: true })
 
-  console.log('FeedService response summary:', {
-    itemCount: feedResult.items.length,
-    hasMore: feedResult.hasMore,
-    nextCursor: feedResult.nextCursor,
-    emptyReason: feedResult.emptyReason,
-    rankingVersion: feedResult.rankingVersion,
-  })
-
-  if (feedResult.items.length > 0) {
-    console.log('First 3 items:')
-    feedResult.items.slice(0, 3).forEach((it, idx) => {
-      console.log(`  [${idx + 1}] ${it.headline} (${it.publisher?.name || 'no publisher'}) - score: ${it.scoreBreakdown?.total}`)
+    console.log(`FeedService response summary for ${pilot.uid}:`, {
+      itemCount: feedResult.items.length,
+      hasMore: feedResult.hasMore,
+      nextCursor: feedResult.nextCursor,
     })
   }
 
-  console.log('\nSUCCESS: Canonical Pilot UID granted and verified!')
+  console.log('\n=== P17 DUAL PILOT GRANT COMPLETE ===')
 }
 
-main().catch((err) => {
-  console.error('Migration/Grant failed:', err)
+main().catch(err => {
+  console.error('Grant script failed:', err)
   process.exit(1)
 })

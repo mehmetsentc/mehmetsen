@@ -154,6 +154,23 @@ export class FeedColdStartService {
       }
     }
 
+    // Secondary backfill without seen exclusions if user has seen all current items
+    if (flat.length < input.limit && (input.seenArticles.size > 0 || input.seenClusters.size > 0)) {
+      const unsuppressedPools = await this.fetchColdPools(
+        { ...input, seenArticles: new Set(), seenClusters: new Set() },
+        ctx
+      )
+      for (const source of order) {
+        const pool = unsuppressedPools[source] ?? []
+        for (const row of pool) {
+          if (seen.has(row.articleId)) continue
+          seen.add(row.articleId)
+          flat.push({ ...row, source })
+          if (flat.length >= input.limit * 2) break
+        }
+      }
+    }
+
     const reps = feedRepresentativeSelector.select(flat)
     let scored = feedScoringService.scoreAll(reps, ctx, input.mode, input.seenArticles, input.seenClusters)
     scored = this.applyOnboardingBoost(scored, ctx)

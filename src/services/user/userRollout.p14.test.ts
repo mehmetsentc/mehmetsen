@@ -108,14 +108,14 @@ describe('PHASE P14 — Consumer Rollout & Feature Access Model', () => {
   })
 
   describe('1. Global flag defaults (Production safe)', () => {
-    it('ensures all consumer flags default to FALSE in production', () => {
-      expect(isGlobalUserFeatureEnabled('USER_PROFILES')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('SOCIAL_GRAPH')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('SMART_FEED')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('SMART_FEED_RANKING_V1')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('COLD_START_V2')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('SMART_FEED_VIDEO')).toBe(false)
-      expect(isGlobalUserFeatureEnabled('SMART_FEED_TELEMETRY')).toBe(false)
+    it('ensures all consumer flags default to TRUE globally in production', () => {
+      expect(isGlobalUserFeatureEnabled('USER_PROFILES')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('SOCIAL_GRAPH')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('SMART_FEED')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('SMART_FEED_RANKING_V1')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('COLD_START_V2')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('SMART_FEED_VIDEO')).toBe(true)
+      expect(isGlobalUserFeatureEnabled('SMART_FEED_TELEMETRY')).toBe(true)
     })
   })
 
@@ -140,6 +140,16 @@ describe('PHASE P14 — Consumer Rollout & Feature Access Model', () => {
   })
 
   describe('3. Resolution logic: Global ON vs User Allowlist vs Dependency Blocked', () => {
+    beforeEach(() => {
+      process.env.USER_PROFILES_ENABLED = 'false'
+      process.env.SOCIAL_GRAPH_ENABLED = 'false'
+      process.env.SMART_FEED_ENABLED = 'false'
+      process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
+      process.env.COLD_START_V2_ENABLED = 'false'
+      process.env.SMART_FEED_VIDEO_ENABLED = 'false'
+      process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
+    })
+
     it('returns off when neither global nor allowlist is enabled', () => {
       const res = resolveFeatureForUser({
         featureKey: 'SMART_FEED',
@@ -192,6 +202,16 @@ describe('PHASE P14 — Consumer Rollout & Feature Access Model', () => {
   })
 
   describe('4. Allowlist grant validation', () => {
+    beforeEach(() => {
+      process.env.USER_PROFILES_ENABLED = 'false'
+      process.env.SOCIAL_GRAPH_ENABLED = 'false'
+      process.env.SMART_FEED_ENABLED = 'false'
+      process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
+      process.env.COLD_START_V2_ENABLED = 'false'
+      process.env.SMART_FEED_VIDEO_ENABLED = 'false'
+      process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
+    })
+
     it('rejects unknown feature keys', () => {
       const val = validateUserAllowlistGrant({
         featureKey: 'INVALID_FEATURE',
@@ -225,6 +245,13 @@ describe('PHASE P14 — Consumer Rollout & Feature Access Model', () => {
     let repo: InMemoryUserFeatureAccessRepo
 
     beforeEach(() => {
+      process.env.USER_PROFILES_ENABLED = 'false'
+      process.env.SOCIAL_GRAPH_ENABLED = 'false'
+      process.env.SMART_FEED_ENABLED = 'false'
+      process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
+      process.env.COLD_START_V2_ENABLED = 'false'
+      process.env.SMART_FEED_VIDEO_ENABLED = 'false'
+      process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
       repo = new InMemoryUserFeatureAccessRepo()
       service = new UserFeatureAccessService(repo as any)
     })

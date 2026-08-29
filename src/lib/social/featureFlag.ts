@@ -1,17 +1,17 @@
-/** SOCIAL_GRAPH_ENABLED — prod default false. Postgres social actions via API. */
+/** SOCIAL_GRAPH_ENABLED — prod default true. Postgres social actions via API. */
 export function isSocialGraphEnabled(): boolean {
   const v = process.env.SOCIAL_GRAPH_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return process.env.NODE_ENV !== 'production'
+  return true
 }
 
-/** USER_PROFILES_ENABLED — prod default false. Postgres user profiles + /u routes. */
+/** USER_PROFILES_ENABLED — prod default true. Postgres user profiles + /u routes. */
 export function isUserProfilesEnabled(): boolean {
   const v = process.env.USER_PROFILES_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return process.env.NODE_ENV !== 'production'
+  return true
 }
 
 /** APPLE_AUTH_ENABLED — prod default false. Requires Firebase Console Apple provider. */

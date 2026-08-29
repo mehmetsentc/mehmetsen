@@ -63,16 +63,20 @@ function ctx(partial: Partial<FeedUserContext> = {}): FeedUserContext {
   }
 }
 
-describe('P5 feature flag default false in production', () => {
+describe('P5 feature flag config', () => {
   const env = process.env
   beforeEach(() => {
-    process.env = { ...env, NODE_ENV: 'production' }
-    delete process.env.SMART_FEED_RANKING_V1_ENABLED
+    process.env = { ...env }
   })
   afterEach(() => {
     process.env = env
   })
-  it('ranking flag off in prod when unset', () => {
+  it('ranking flag on by default', () => {
+    delete process.env.SMART_FEED_RANKING_V1_ENABLED
+    expect(isSmartFeedRankingV1Enabled()).toBe(true)
+  })
+  it('ranking flag responds to disable flag', () => {
+    process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
     expect(isSmartFeedRankingV1Enabled()).toBe(false)
   })
 })

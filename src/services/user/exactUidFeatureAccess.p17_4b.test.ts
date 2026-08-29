@@ -39,18 +39,18 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
   beforeEach(() => {
     process.env = { ...origEnv }
     ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
-    delete process.env.USER_PROFILES_ENABLED
-    delete process.env.SOCIAL_GRAPH_ENABLED
-    delete process.env.SMART_FEED_ENABLED
-    delete process.env.SMART_FEED_RANKING_V1_ENABLED
-    delete process.env.COLD_START_V2_ENABLED
-    delete process.env.SMART_FEED_VIDEO_ENABLED
-    delete process.env.SMART_FEED_TELEMETRY_ENABLED
+    process.env.USER_PROFILES_ENABLED = 'false'
+    process.env.SOCIAL_GRAPH_ENABLED = 'false'
+    process.env.SMART_FEED_ENABLED = 'false'
+    process.env.SMART_FEED_RANKING_V1_ENABLED = 'false'
+    process.env.COLD_START_V2_ENABLED = 'false'
+    process.env.SMART_FEED_VIDEO_ENABLED = 'false'
+    process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
 
-    // Mock repo: ONLY canonical UID has active grants in DB
+    // Mock repo: BOTH canonical UID AND Google pilot UID have active grants in DB
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
       // Strict exact opaque string equality check
-      if (userId === CANONICAL_PILOT_UID) {
+      if (userId === CANONICAL_PILOT_UID || userId === HISTORICAL_PILOT_UID) {
         return new Set([
           'USER_PROFILES',
           'SOCIAL_GRAPH',
@@ -78,7 +78,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     })
   })
 
-  describe('2. Exact UID Matching for Canonical Pilot', () => {
+  describe('2. Exact UID Matching for Both Operator and Google Pilot Users', () => {
     it('resolves all 7 features to true strictly for the exact canonical pilot UID', async () => {
       expect(await isSmartFeedEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSmartFeedRankingEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
@@ -90,6 +90,20 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
 
       for (const feat of USER_ALLOWLISTABLE_FEATURES) {
         expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)).toBe(true)
+      }
+    })
+
+    it('resolves all 7 features to true strictly for the Google pilot user UID', async () => {
+      expect(await isSmartFeedEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isSmartFeedRankingEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isSocialGraphEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isUserProfilesEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isColdStartEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isSmartFeedVideoEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+      expect(await isSmartFeedTelemetryEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(true)
+
+      for (const feat of USER_ALLOWLISTABLE_FEATURES) {
+        expect(await isFeatureEnabledForUser(HISTORICAL_PILOT_UID, feat)).toBe(true)
       }
     })
   })
@@ -113,17 +127,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     })
   })
 
-  describe('4. Strict Isolation: Historical Pilot, Random Registered Users & Anonymous', () => {
-    it('denies feature access to historical pilot UID when overrides are removed', async () => {
-      expect(await isSmartFeedEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isSmartFeedRankingEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isSocialGraphEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isUserProfilesEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isColdStartEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isSmartFeedVideoEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-      expect(await isSmartFeedTelemetryEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
-    })
-
+  describe('4. Strict Isolation: Non-Allowlisted Users & Anonymous', () => {
     it('denies feature access to random registered user UIDs', async () => {
       const randomUids = [
         '2xBSzTUIcJW1VJcppsmRfT3aBC63',

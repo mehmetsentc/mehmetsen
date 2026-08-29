@@ -113,12 +113,12 @@ export const FEED_RANKING_CONFIG_V1: FeedRankingConfigV1 = {
     over_60s: 1.0,
   },
   candidatePoolLimits: {
-    FOLLOWING: 60,
-    BREAKING: 50,
-    LOCAL: 50,
-    RECENT: 80,
-    POPULAR: 60,
-    DISCOVERY: 40,
+    FOLLOWING: 80,
+    BREAKING: 80,
+    LOCAL: 80,
+    RECENT: 150,
+    POPULAR: 100,
+    DISCOVERY: 80,
   },
   diversityWindowSize: 8,
   explorationRatioPersonal: 0.12,
@@ -135,32 +135,52 @@ const SPORT_CATEGORIES = new Set([
   'tenis',
   'oyun-espor',
   'voleybol',
+  'motor-sporlari',
 ])
 
 const ANALYSIS_CATEGORIES = new Set([
   'ekonomi',
   'finans-piyasa',
   'siyaset',
+  'politika',
   'bilim',
   'enerji',
   'finans',
   'borsa',
   'kripto',
+  'teknoloji',
+  'yazilim',
+  'yapay-zeka',
 ])
 
 const CULTURE_CATEGORIES = new Set([
   'kultur',
+  'kultur-sanat',
+  'sanat',
+  'sinema',
+  'kitap',
+  'muzik',
   'magazin',
   'eglence',
   'gastronomi',
   'moda',
   'tarih',
   'yasam',
+  'saglik',
+  'otomotiv',
+  'egitim',
+])
+
+const BREAKING_CATEGORIES = new Set([
+  'son-dakika',
+  'gundem',
+  'asayis',
+  'dunya',
 ])
 
 export function resolveCategoryClass(category: string | null, breaking: boolean): FeedCategoryClass {
   const cat = (category ?? '').trim().toLowerCase()
-  if (breaking || cat === 'son-dakika') return 'BREAKING'
+  if (breaking || BREAKING_CATEGORIES.has(cat)) return 'BREAKING'
   if (SPORT_CATEGORIES.has(cat)) return 'SPORT'
   if (ANALYSIS_CATEGORIES.has(cat)) return 'ANALYSIS'
   if (CULTURE_CATEGORIES.has(cat)) return 'CULTURE'

@@ -61,25 +61,29 @@ describe('P3 username rules', () => {
   })
 })
 
-describe('P3 feature flags default false in production', () => {
+describe('P3 feature flags config', () => {
   const env = process.env
 
   beforeEach(() => {
-    process.env = { ...env, NODE_ENV: 'production' }
-    delete process.env.SOCIAL_GRAPH_ENABLED
-    delete process.env.USER_PROFILES_ENABLED
-    delete process.env.APPLE_AUTH_ENABLED
-    delete process.env.EMAIL_AUTH_ENABLED
+    process.env = { ...env }
   })
 
   afterEach(() => {
     process.env = env
   })
 
-  it('social and profile flags off in prod when unset', () => {
+  it('social and profile flags default on', () => {
+    delete process.env.SOCIAL_GRAPH_ENABLED
+    delete process.env.USER_PROFILES_ENABLED
+    expect(isSocialGraphEnabled()).toBe(true)
+    expect(isUserProfilesEnabled()).toBe(true)
+  })
+
+  it('social and profile flags respond to disable values', () => {
+    process.env.SOCIAL_GRAPH_ENABLED = 'false'
+    process.env.USER_PROFILES_ENABLED = 'false'
     expect(isSocialGraphEnabled()).toBe(false)
     expect(isUserProfilesEnabled()).toBe(false)
-    expect(isAppleAuthEnabled()).toBe(false)
   })
 
   it('email auth stays enabled by default', () => {

@@ -160,6 +160,7 @@ export const ROUTES = {
 
 export const PUBLIC_ROUTES: Set<string> = new Set([
   ROUTES.FEED,
+  ROUTES.FEED_V2,
   ROUTES.EVENTS,
   ROUTES.REELS,
   ROUTES.LOCAL,
@@ -175,6 +176,7 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
 // Beğen/yorum/paylaş gibi aksiyonlarda useAuth devreye girer.
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
+  if (pathname.startsWith('/feed-v2')) return true
   if (pathname.startsWith('/profile/')) return true
   if (pathname.startsWith('/u/')) return true
   if (pathname.startsWith('/kategori/')) return true
