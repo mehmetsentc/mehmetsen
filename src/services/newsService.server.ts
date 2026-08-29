@@ -279,7 +279,17 @@ const getNewsBySlugCached = unstable_cache(
 export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
-  return getNewsBySlugCached(normalized)
+
+  let decoded = normalized
+  try {
+    decoded = decodeURIComponent(normalized).trim()
+  } catch {}
+
+  const post = await getNewsBySlugCached(decoded)
+  if (!post && decoded !== normalized) {
+    return getNewsBySlugCached(normalized)
+  }
+  return post
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {

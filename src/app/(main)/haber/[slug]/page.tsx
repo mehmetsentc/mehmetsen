@@ -36,7 +36,11 @@ type PageProps = {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  let slug = rawSlug
+  try {
+    slug = decodeURIComponent(rawSlug)
+  } catch {}
 
   try {
     const post = await getCachedNews(slug)
@@ -57,7 +61,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function NewsDetailPage({ params }: PageProps) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  let slug = rawSlug
+  try {
+    slug = decodeURIComponent(rawSlug)
+  } catch {}
+
   let post = null
 
   try {
@@ -78,7 +87,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  if (post.slug && post.slug !== slug && post.slug !== post.id) {
+  if (post.slug && post.slug !== slug && post.slug !== rawSlug && post.slug !== post.id) {
     permanentRedirect(ROUTES.NEWS_DETAIL(post.slug))
   }
 
