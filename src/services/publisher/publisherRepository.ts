@@ -739,6 +739,7 @@ export class PublisherRepository {
         thumbnailUrl: news.thumbnailUrl,
         coverImageUrl: news.coverImageUrl,
         publishedAt: news.publishedAt,
+        categoryId: news.categoryId,
         sourceId: newsClusters.primarySourceId,
       })
       .from(news)
@@ -763,6 +764,7 @@ export class PublisherRepository {
         thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
         publishedAt: n.publishedAt,
         sourceId: n.sourceId ?? sourceIds[0],
+        categoryId: n.categoryId,
       })
     }
 
@@ -801,6 +803,7 @@ export class PublisherRepository {
               thumbnailUrl: news.thumbnailUrl,
               coverImageUrl: news.coverImageUrl,
               publishedAt: news.publishedAt,
+              categoryId: news.categoryId,
             })
             .from(news)
             .where(
@@ -833,6 +836,7 @@ export class PublisherRepository {
           thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl ?? raw.mainImageUrl,
           publishedAt: n.publishedAt ?? raw.publishedAt,
           sourceId: raw.sourceId,
+          categoryId: n.categoryId,
         })
         if (out.length >= pageSize) break
       }

@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BadgeCheck, ExternalLink, Globe, MapPin } from 'lucide-react'
+import { BadgeCheck, ExternalLink, Globe, MapPin, Sparkles } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ROUTES } from '@/constants/routes'
+import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publisher'
@@ -23,12 +24,48 @@ export function PublisherProfileClient({
   articles: PublisherArticleItem[]
 }) {
   const router = useRouter()
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [claimOpen, setClaimOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [businessEmail, setBusinessEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [claimUi, setClaimUi] = useState<ClaimUiStatus>('loading')
   const [studioHref, setStudioHref] = useState<string | null>(null)
+
+  // Map category IDs to localized category names using DEFAULT_CATEGORIES
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of DEFAULT_CATEGORIES) {
+      map.set(c.id.toLowerCase(), c.name)
+      map.set(c.slug.toLowerCase(), c.name)
+    }
+    return map
+  }, [])
+
+  // Extract distinct categories available in this publisher's articles
+  const availableCategories = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const art of articles) {
+      const rawCat = (art.categoryId || 'gundem').toLowerCase().trim()
+      counts.set(rawCat, (counts.get(rawCat) || 0) + 1)
+    }
+    const list: Array<{ id: string; label: string; count: number }> = []
+    for (const [id, count] of counts.entries()) {
+      const label = categoryMap.get(id) || id.charAt(0).toUpperCase() + id.slice(1)
+      list.push({ id, label, count })
+    }
+    list.sort((a, b) => b.count - a.count)
+    return list
+  }, [articles, categoryMap])
+
+  // Filter articles based on active category chip
+  const filteredArticles = useMemo(() => {
+    if (selectedCategory === 'all') return articles
+    return articles.filter((art) => {
+      const cat = (art.categoryId || 'gundem').toLowerCase().trim()
+      return cat === selectedCategory
+    })
+  }, [articles, selectedCategory])
 
   const refreshClaimStatus = useCallback(async () => {
     const user = auth.currentUser
@@ -100,63 +137,69 @@ export function PublisherProfileClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
-      <header className="mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
-            {publisher.logoUrl ? (
-              <SafeNewsImage
-                src={publisher.logoUrl}
-                alt={publisher.displayName}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl font-black text-[rgb(var(--color-muted))]">
-                {publisher.displayName.charAt(0).toUpperCase()}
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Publisher Header Banner Card */}
+      <header className="mb-8 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5 shadow-sm sm:p-7">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] shadow-inner">
+              {publisher.logoUrl ? (
+                <SafeNewsImage
+                  src={publisher.logoUrl}
+                  alt={publisher.displayName}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-3xl font-black text-[rgb(var(--color-brand))]">
+                  {publisher.displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
+                  {publisher.displayName}
+                </h1>
+                {publisher.isVerified ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+                    Doğrulandı
+                  </span>
+                ) : null}
               </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
-                {publisher.displayName}
-              </h1>
-              {publisher.isVerified ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                  Doğrulandı
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[rgb(var(--color-muted))]">
+                {(publisher.city || publisher.countryCode) && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" aria-hidden />
+                    {[publisher.city, publisher.countryCode].filter(Boolean).join(', ')}
+                  </span>
+                )}
+                {publisher.websiteUrl && (
+                  <a
+                    href={publisher.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 transition-colors hover:text-[rgb(var(--color-brand))]"
+                  >
+                    <Globe className="h-4 w-4 shrink-0" aria-hidden />
+                    Web sitesi
+                    <ExternalLink className="h-3 w-3" aria-hidden />
+                  </a>
+                )}
+                <span className="inline-flex items-center gap-1 font-medium text-[rgb(var(--color-text))]">
+                  <span className="font-bold text-[rgb(var(--color-brand))]">{articles.length}</span> haber
                 </span>
+              </div>
+              {publisher.description ? (
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[rgb(var(--color-text))]">
+                  {publisher.description}
+                </p>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-sm text-[rgb(var(--color-muted))]">
-              {(publisher.city || publisher.countryCode) && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                  {[publisher.city, publisher.countryCode].filter(Boolean).join(', ')}
-                </span>
-              )}
-              {publisher.websiteUrl && (
-                <a
-                  href={publisher.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 hover:text-[rgb(var(--color-brand))]"
-                >
-                  <Globe className="h-4 w-4 shrink-0" aria-hidden />
-                  Web sitesi
-                  <ExternalLink className="h-3 w-3" aria-hidden />
-                </a>
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <FollowButton publisherId={publisher.id} publisherSlug={publisher.slug} />
-            </div>
-            {publisher.description ? (
-              <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--color-text))]">
-                {publisher.description}
-              </p>
-            ) : null}
+          </div>
+          <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0">
+            <FollowButton publisherId={publisher.id} publisherSlug={publisher.slug} />
           </div>
         </div>
       </header>
@@ -195,7 +238,7 @@ export function PublisherProfileClient({
       )}
 
       {showClaimCta && claimUi !== 'pending' && claimUi !== 'approved' && (
-        <section className="mb-8 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <section className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
           {!claimOpen ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-medium text-[rgb(var(--color-text))]">
@@ -212,7 +255,7 @@ export function PublisherProfileClient({
                   }
                   setClaimOpen(true)
                 }}
-                className="shrink-0 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white"
+                className="shrink-0 rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
               >
                 Yayıncı Profilini Doğrula
               </button>
@@ -256,44 +299,117 @@ export function PublisherProfileClient({
         </section>
       )}
 
+      {/* Category Filter Chips */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between pb-3">
+          <h2 className="text-xl font-black text-[rgb(var(--color-text))] sm:text-2xl">Haberler</h2>
+          <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">
+            {filteredArticles.length} / {articles.length} içerik
+          </span>
+        </div>
+
+        {availableCategories.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('all')}
+              className={cn(
+                'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all',
+                selectedCategory === 'all'
+                  ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
+                  : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-bg))] hover:text-[rgb(var(--color-text))]'
+              )}
+            >
+              <Sparkles className="h-3 w-3" />
+              Tümü ({articles.length})
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all',
+                  selectedCategory === cat.id
+                    ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
+                    : 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-bg))] hover:text-[rgb(var(--color-text))]'
+                )}
+              >
+                {cat.label} ({cat.count})
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Responsive News Grid: Mobile 1-col, Tablet 2-col, Desktop 3-col */}
       <section>
-        <h2 className="mb-4 text-lg font-black text-[rgb(var(--color-text))]">Haberler</h2>
-        {articles.length === 0 ? (
-          <p className="text-sm text-[rgb(var(--color-muted))]">Henüz yayınlanmış haber bulunamadı.</p>
+        {filteredArticles.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
+            <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
+              Bu kategoride yayınlanmış haber bulunamadı.
+            </p>
+          </div>
         ) : (
-          <ul className="divide-y divide-[rgb(var(--color-border))]">
-            {articles.map((article) => (
-              <li key={article.id}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
+            {filteredArticles.map((article) => {
+              const catLabel =
+                categoryMap.get((article.categoryId || '').toLowerCase()) ||
+                (article.categoryId ? article.categoryId.toUpperCase() : 'GÜNDEM')
+
+              return (
                 <Link
+                  key={article.id}
                   href={ROUTES.NEWS_DETAIL(article.slug)}
-                  className={cn(
-                    'flex gap-3 py-4 transition-colors hover:bg-[rgb(var(--color-surface))]/50 -mx-2 px-2 rounded-lg'
-                  )}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
                 >
                   {article.thumbnailUrl ? (
-                    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface))]">
+                    <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))]">
                       <SafeNewsImage
                         src={article.thumbnailUrl}
-                        alt=""
+                        alt={article.title}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                       />
+                      <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+                        {catLabel}
+                      </span>
                     </div>
-                  ) : null}
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[rgb(var(--color-text))] line-clamp-2">
+                  ) : (
+                    <div className="relative aspect-video w-full bg-[rgb(var(--color-bg))] p-4 flex items-center justify-center">
+                      <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+                        {catLabel}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col p-4">
+                    <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] line-clamp-2 transition-colors group-hover:text-[rgb(var(--color-brand))]">
                       {article.title}
-                    </p>
+                    </h3>
                     {article.summary ? (
-                      <p className="mt-1 text-sm text-[rgb(var(--color-muted))] line-clamp-2">
+                      <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))] line-clamp-2">
                         {article.summary}
                       </p>
                     ) : null}
+                    <div className="mt-auto pt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
+                      <span>
+                        {article.publishedAt
+                          ? new Date(article.publishedAt).toLocaleDateString('tr-TR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : null}
+                      </span>
+                      <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
+                        Oku →
+                      </span>
+                    </div>
                   </div>
                 </Link>
-              </li>
-            ))}
-          </ul>
+              )
+            })}
+          </div>
         )}
       </section>
     </div>

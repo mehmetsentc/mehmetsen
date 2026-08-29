@@ -40,6 +40,7 @@ function getContentVariant(pathname: string): ContentVariant {
   if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/profile/')) return 'newspaper'
+  if (pathname.startsWith('/publisher/')) return 'newspaper'
   if (pathname === ROUTES.FEED) return 'newspaper'
   if (pathname.startsWith('/kategori/')) return 'newspaper'
   if (pathname.startsWith('/etiket/')) return 'newspaper'

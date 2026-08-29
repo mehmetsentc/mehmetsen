@@ -128,6 +128,7 @@ export interface PublisherArticleItem {
   thumbnailUrl: string | null
   publishedAt: Date | null
   sourceId: string
+  categoryId?: string | null
 }
 
 export interface PublisherArticlePage {

@@ -53,6 +53,13 @@ function mapFirestoreDoc(
   const thumbnailUrl =
     String(data.coverImageUrl ?? data.thumbnail ?? data.imageUrl ?? '').trim() || null
 
+  const categoryId =
+    typeof data.categoryId === 'string'
+      ? data.categoryId.trim().toLowerCase()
+      : typeof data.category === 'string'
+        ? data.category.trim().toLowerCase()
+        : null
+
   return {
     id: docId,
     slug,
@@ -61,6 +68,7 @@ function mapFirestoreDoc(
     thumbnailUrl,
     publishedAt,
     sourceId,
+    categoryId: categoryId || undefined,
   }
 }
 
