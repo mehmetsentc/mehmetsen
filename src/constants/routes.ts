@@ -178,6 +178,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   if (pathname.startsWith('/feed-v2')) return true
   if (pathname.startsWith('/profile/')) return true
+  if (pathname.startsWith('/publisher/')) return true
   if (pathname.startsWith('/u/')) return true
   if (pathname.startsWith('/kategori/')) return true
   if (pathname.startsWith('/haber/')) return true

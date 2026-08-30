@@ -101,23 +101,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const op = typeof body.op === 'string' ? body.op : 'approve_for_ai'
 
-  if (op === 'publish_editorial') {
+  if (op === 'create_editorial_draft') {
     const { editorialSupplyService } = await import('@/services/editorial/editorialSupplyService')
     try {
-      const pubResult = await editorialSupplyService.publishClusterEditorial({
-        clusterId: id,
-        actorUserId: auth.uid,
-        actorDisplayName: auth.email || 'Admin Editor',
-        forceCategory: typeof body.category === 'string' ? body.category : null,
-        isBreaking: body.isBreaking === true,
-        materialUpdate: body.materialUpdate === true,
-        customTitle: typeof body.customTitle === 'string' ? body.customTitle : null,
-        customBody: typeof body.customBody === 'string' ? body.customBody : null,
-      })
-      return NextResponse.json({ success: true, result: pubResult })
+      const draftResult = await editorialSupplyService.createClusterEditorialDraft(id)
+      return NextResponse.json({ success: true, result: draftResult })
     } catch (err) {
       return NextResponse.json(
-        { error: err instanceof Error ? err.message : 'Editorial publish failed' },
+        { error: err instanceof Error ? err.message : 'Editorial draft creation failed' },
         { status: 400 }
       )
     }

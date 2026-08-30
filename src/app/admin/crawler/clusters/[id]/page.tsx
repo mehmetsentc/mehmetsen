@@ -169,9 +169,9 @@ export default function ClusterDetailPage() {
               type="button"
               className="rounded-lg bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-700"
               disabled={busy}
-              onClick={() => void act('publish_editorial')}
+              onClick={() => void act('create_editorial_draft')}
             >
-              Editoryal Taslak Oluştur & Yayınla
+              Editoryal Taslak Oluştur
             </button>
             <button type="button" className="rounded-lg border px-3 py-1" disabled={busy} onClick={() => void act('review')}>
               İncelemeye Al

@@ -281,8 +281,21 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
 
-  // P17.7H.3 Publication Safety: Route resolution through PostgreSQL canonical authority
-  return getCanonicalNewsBySlug(normalized)
+  // 1. PostgreSQL canonical authority (highest priority)
+  const canonical = await getCanonicalNewsBySlug(normalized)
+  if (canonical) return canonical
+
+  // 2. Fallback to Firestore published news (city subdomains, local/historical articles)
+  let decoded = normalized
+  try {
+    decoded = decodeURIComponent(normalized).trim()
+  } catch {}
+
+  const post = await getNewsBySlugCached(decoded)
+  if (!post && decoded !== normalized) {
+    return getNewsBySlugCached(normalized)
+  }
+  return post
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
