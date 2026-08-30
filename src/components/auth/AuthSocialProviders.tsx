@@ -2,19 +2,6 @@
 
 import { isAppleAuthEnabledClient } from '@/lib/social/featureFlagClient'
 
-/**
- * Are we running inside the Capacitor-wrapped native app (iOS/Android)?
- * NOT a viewport/device-size check and NOT iOS Safari detection — this only
- * returns true inside the actual native WebView, where `window.Capacitor`
- * is injected by the Capacitor runtime.
- */
-function isCapacitor(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof (window as unknown as Record<string, unknown>).Capacitor !== 'undefined'
-  )
-}
-
 interface AuthSocialProvidersProps {
   onGoogleClick: () => void
   onAppleClick: () => void
@@ -25,17 +12,11 @@ interface AuthSocialProvidersProps {
 /**
  * Shared Google + Apple sign-in buttons used by both LoginForm and RegisterForm.
  *
- * Provider availability contract (must stay identical for Login and Register):
- * - Google: hidden only inside the Capacitor native app, where no native Google
- *   Sign-In plugin exists yet (see NativeAppleSignIn.ts for the equivalent Apple
- *   plugin). Firebase's signInWithPopup/signInWithRedirect are not usable from an
- *   embedded native WebView (Google blocks the "disallowed_useragent" case), so
- *   hiding it there is intentional, not a bug. On desktop web and mobile web
- *   (including iOS Safari) `isCapacitor()` is false and Google always renders.
- * - Apple: gated by `isAppleAuthEnabledClient()` only — a rollout kill switch,
- *   not a device check. Apple has both a native Capacitor flow (native SIWA
- *   sheet, App Store Guideline 4 compliant) and a web Firebase OAuthProvider
- *   flow, so once the flag is on it renders identically everywhere.
+ * Provider availability contract (identical for Login and Register across Web & Native):
+ * - Google: Available on Desktop Web, Mobile Web / Safari (via Firebase popup/redirect),
+ *   and Native Capacitor iOS (via official GoogleSignIn-iOS SDK bridge).
+ * - Apple: Gated by `isAppleAuthEnabledClient()` rollout flag. Available on Desktop Web,
+ *   Mobile Web / Safari (via Firebase OAuthProvider), and Native Capacitor iOS (via NativeAppleSignIn SIWA sheet).
  */
 export function AuthSocialProviders({
   onGoogleClick,
@@ -43,27 +24,24 @@ export function AuthSocialProviders({
   isGoogleLoading,
   isAppleLoading,
 }: AuthSocialProvidersProps) {
-  const onIos = isCapacitor()
   const showApple = isAppleAuthEnabledClient()
 
   return (
     <>
-      {!onIos && (
-        <button
-          onClick={onGoogleClick}
-          disabled={isGoogleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
-        </button>
-      )}
+      <button
+        onClick={onGoogleClick}
+        disabled={isGoogleLoading}
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-2.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <GoogleIcon />
+        {isGoogleLoading ? 'Yükleniyor...' : 'Google ile devam et'}
+      </button>
 
       {showApple ? (
         <button
           onClick={onAppleClick}
           disabled={isAppleLoading}
-          className={`${!onIos ? 'mt-3 ' : ''}flex w-full items-center justify-center gap-3 rounded-lg bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200`}
+          className="mt-3 flex w-full items-center justify-center gap-3 rounded-lg bg-black py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
         >
           <AppleIcon />
           {isAppleLoading ? 'Yükleniyor...' : 'Apple ile devam et'}

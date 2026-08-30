@@ -10,7 +10,7 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
-export const revalidate = 21600
+export const dynamic = 'force-dynamic'
 
 const BATCH_SIZE = 500
 const MAX_IMAGES = 2000

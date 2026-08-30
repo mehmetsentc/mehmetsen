@@ -48,6 +48,8 @@ android/app/google-services.json
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+.derivedData/
+.spmPackages/
 
 # Geçici çalışma dosyaları
 tmp-*.json

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
+		55A110022900000100000002 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 55A110012900000100000001 /* GoogleSignIn */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
@@ -16,8 +17,10 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		BB1234560000000200000002 /* NativeAppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */; };
+		BB1234560000000500000005 /* NativeGoogleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234560000000600000006 /* NativeGoogleSignInPlugin.swift */; };
 		BB1234560000000400000004 /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234560000000300000003 /* AppViewController.swift */; };
 		EE000001000000020000002 /* NativeGeolocationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001000000010000001 /* NativeGeolocationPlugin.swift */; };
+		86691FD891B8D5A679F9EFE1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 55CBB9400943EFB140437274 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,9 +32,11 @@
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		55CBB9400943EFB140437274 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAppleSignInPlugin.swift; sourceTree = "<group>"; };
+		BB1234560000000600000006 /* NativeGoogleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGoogleSignInPlugin.swift; sourceTree = "<group>"; };
 		BB1234560000000300000003 /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
 		CC000001000000010000001 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		EE000001000000010000001 /* NativeGeolocationPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGeolocationPlugin.swift; sourceTree = "<group>"; };
@@ -43,6 +48,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+				55A110022900000100000002 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -73,11 +79,13 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				BB1234560000000300000003 /* AppViewController.swift */,
 				BB1234560000000100000001 /* NativeAppleSignInPlugin.swift */,
+				BB1234560000000600000006 /* NativeGoogleSignInPlugin.swift */,
 				EE000001000000010000001 /* NativeGeolocationPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				55CBB9400943EFB140437274 /* GoogleService-Info.plist */,
 				CC000001000000010000001 /* App.entitlements */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
@@ -103,6 +111,7 @@
 			name = App;
 			packageProductDependencies = (
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
+				55A110012900000100000001 /* GoogleSignIn */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -134,6 +143,7 @@
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
+				55A110002900000100000000 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -152,6 +162,7 @@
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
+				86691FD891B8D5A679F9EFE1 /* GoogleService-Info.plist in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
@@ -168,6 +179,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				BB1234560000000400000004 /* AppViewController.swift in Sources */,
 				BB1234560000000200000002 /* NativeAppleSignInPlugin.swift in Sources */,
+				BB1234560000000500000005 /* NativeGoogleSignInPlugin.swift in Sources */,
 				EE000001000000020000002 /* NativeGeolocationPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -388,11 +400,27 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		55A110002900000100000000 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		4D22ABE82AF431CB00220026 /* CapApp-SPM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;
 			productName = "CapApp-SPM";
+		};
+		55A110012900000100000001 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 55A110002900000100000000 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = "GoogleSignIn";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -3,22 +3,17 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Auth Provider Consistency Repair — structural regression guard.
+ * Auth Provider Consistency & Native Parity — structural regression guard.
  *
- * The root cause of the Login/Register provider mismatch was two
- * independently-maintained copies of the Google/Apple button JSX
- * (LoginForm.tsx and RegisterForm.tsx) silently drifting apart: Login gated
- * Apple behind a feature flag that Register never checked, while both forms
- * duplicated their own Capacitor/device check. AuthSocialProviders.tsx now
- * owns that logic once.
+ * AuthSocialProviders.tsx owns the shared social button rendering for both
+ * LoginForm and RegisterForm.
  *
- * This test doesn't render the DOM (the project has no jsdom /
- * @testing-library/react setup — see vitest.config.ts, `environment: 'node'`,
- * `.ts` tests only), so it can't assert "a Google button is on screen".
- * Instead it asserts, at the source level, that both forms delegate to the
- * single shared component and neither one has reintroduced its own
- * provider-gating condition — which is exactly the pattern that caused this
- * bug and is the pattern most likely to silently reappear.
+ * Contract:
+ * 1. Both LoginForm and RegisterForm delegate directly to AuthSocialProviders.
+ * 2. Neither form re-implements isolated provider gating or icons.
+ * 3. Google is available across Web (Desktop, Mobile Web/Safari) and Native iOS (official GoogleSignIn-iOS bridge).
+ * 4. Apple is available across Web (Firebase OAuthProvider) and Native iOS (NativeAppleSignIn SIWA sheet),
+ *    gated solely by `isAppleAuthEnabledClient()` rollout flag.
  */
 const authDir = join(__dirname)
 
@@ -61,11 +56,12 @@ describe('LoginForm / RegisterForm — shared provider contract', () => {
     }
   })
 
-  it('the shared component gates Google on Capacitor and Apple on the feature flag — nothing else', () => {
+  it('the shared component renders Google and gates Apple on the feature flag', () => {
     const shared = readForm('AuthSocialProviders.tsx')
 
-    expect(shared).toContain('isCapacitor')
     expect(shared).toContain('isAppleAuthEnabledClient')
+    expect(shared).toContain('Google ile devam et')
+    expect(shared).toContain('Apple ile devam et')
     // Order: Google button block appears before the Apple button block.
     expect(shared.indexOf('Google ile devam et')).toBeLessThan(
       shared.indexOf('Apple ile devam et')
@@ -75,14 +71,13 @@ describe('LoginForm / RegisterForm — shared provider contract', () => {
   it('verifies provider availability contract for Desktop Web, Mobile Web, and Native Capacitor', () => {
     // Contract assertions:
     // 1. Web (Desktop & Mobile Web / iOS Safari):
-    //    isCapacitor() === false -> Google renders, Apple renders (when flag true)
+    //    Google renders (Firebase popup/redirect), Apple renders (when flag true)
     // 2. Native Capacitor iOS app:
-    //    isCapacitor() === true -> Google is hidden until native Google Sign-In plugin is deployed, Apple renders (native SIWA)
+    //    Google renders (Official GoogleSignIn-iOS SDK bridge), Apple renders (NativeAppleSignIn SIWA)
     // 3. Apple kill-switch flag:
     //    NEXT_PUBLIC_APPLE_AUTH_ENABLED='false' -> Apple hidden everywhere
     const shared = readForm('AuthSocialProviders.tsx')
-    expect(shared).toContain('!onIos &&')
+    expect(shared).toContain('Google ile devam et')
     expect(shared).toContain('showApple ?')
   })
 })
-

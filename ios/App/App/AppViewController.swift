@@ -24,6 +24,7 @@ class AppViewController: CAPBridgeViewController {
 
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(NativeAppleSignInPlugin())
+        bridge?.registerPluginInstance(NativeGoogleSignInPlugin())
         bridge?.registerPluginInstance(NativeGeolocationPlugin())
         hardenWebViewSafeArea()
         installStatusBarCover()
