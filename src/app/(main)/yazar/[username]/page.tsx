@@ -98,7 +98,7 @@ export default async function AuthorPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="mx-auto w-full max-w-3xl px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <header className="mb-8 flex items-start gap-4 border-b border-[rgb(var(--color-border))] pb-6">
           <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
             {author.photoURL ? (
