@@ -297,16 +297,21 @@ export async function publishRawArticleWithAi(opts: {
   }
 }
 
+export const AI_PUBLISH_CONCURRENCY = 4
+
 export async function publishRawArticlesWithAi(opts: {
   store: CrawlerStore
   ids: string[]
   processArticle?: typeof import('@/services/newsroom/pipeline').processNewsroomArticle
   /** Override wall-clock budget (ms). Tests / local tuning. */
   budgetMs?: number
+  /** Bounded concurrency. Default AI_PUBLISH_CONCURRENCY (4). */
+  concurrency?: number
 }): Promise<AiPublishBatchResult> {
   const unique = [...new Set(opts.ids.map((id) => id.trim()).filter(Boolean))]
   const batch = unique.slice(0, AI_PUBLISH_BATCH_CAP)
   const budgetMs = opts.budgetMs ?? AI_PUBLISH_WALL_CLOCK_BUDGET_MS
+  const concurrency = Math.max(1, Math.min(opts.concurrency ?? AI_PUBLISH_CONCURRENCY, batch.length || 1))
   const startedAt = Date.now()
   const result: AiPublishBatchResult = {
     requested: unique.length,
@@ -314,34 +319,47 @@ export async function publishRawArticlesWithAi(opts: {
     drafted: 0,
     skipped: 0,
     failed: 0,
-    results: [],
+    results: new Array<AiPublishItemResult>(batch.length),
     crawlerDispatchEnabled: isCrawlerAiDispatchEnabled(),
   }
 
-  for (let i = 0; i < batch.length; i++) {
-    if (i > 0 && Date.now() - startedAt > budgetMs) {
-      const remaining = batch.slice(i)
-      console.warn(
-        `[aiPublish] wall-clock budget (${budgetMs / 1000}s) aşıldı — ${remaining.length} haber atlandı`
-      )
-      for (const rawArticleId of remaining) {
-        result.results.push({
-          rawArticleId,
-          outcome: 'skipped',
-          error: AI_PUBLISH_TIMEOUT_SKIP_TR,
-        })
-        result.skipped += 1
-      }
-      break
-    }
+  const queue = batch.map((rawArticleId, index) => ({ rawArticleId, index }))
 
-    const rawArticleId = batch[i]!
-    const item = await publishRawArticleWithAi({
-      store: opts.store,
-      rawArticleId,
-      processArticle: opts.processArticle,
-    })
-    result.results.push(item)
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (queue.length > 0) {
+      if (Date.now() - startedAt > budgetMs) {
+        const remaining = queue.splice(0, queue.length)
+        if (remaining.length > 0) {
+          console.warn(
+            `[aiPublish] wall-clock budget (${budgetMs / 1000}s) aşıldı — ${remaining.length} haber atlandı`
+          )
+          for (const item of remaining) {
+            result.results[item.index] = {
+              rawArticleId: item.rawArticleId,
+              outcome: 'skipped',
+              error: AI_PUBLISH_TIMEOUT_SKIP_TR,
+            }
+          }
+        }
+        break
+      }
+
+      const next = queue.shift()
+      if (!next) break
+
+      const item = await publishRawArticleWithAi({
+        store: opts.store,
+        rawArticleId: next.rawArticleId,
+        processArticle: opts.processArticle,
+      })
+      result.results[next.index] = item
+    }
+  })
+
+  await Promise.all(workers)
+
+  for (const item of result.results) {
+    if (!item) continue
     if (item.outcome === 'published' || item.outcome === 'updated') result.published += 1
     else if (item.outcome === 'draft') result.drafted += 1
     else if (item.outcome === 'skipped' || item.outcome === 'already_published') result.skipped += 1

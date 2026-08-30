@@ -9,11 +9,12 @@
 import { DrizzleCrawlerStore } from '../store/drizzle'
 import { publishRawArticleWithAi } from './aiPublish'
 
-/** Process at most this many articles per cron tick. */
-const WORKER_BATCH_SIZE = 5
+/** Process up to 12 articles per cron tick with concurrency 4. */
+export const WORKER_BATCH_SIZE = 12
+export const WORKER_CONCURRENCY = 4
 
-/** Editor AI cron maxDuration is 300s; recover leases older than 2× that. */
-export const EDITOR_AI_STALE_PROCESSING_MS = 10 * 60 * 1000
+/** Editor AI cron maxDuration is 300s; recover leases older than 3 minutes. */
+export const EDITOR_AI_STALE_PROCESSING_MS = 3 * 60 * 1000
 
 export interface EditorQueueWorkerResult {
   claimed: number
@@ -28,7 +29,8 @@ export interface EditorQueueWorkerResult {
 
 export async function processEditorAiQueue(
   store: DrizzleCrawlerStore,
-  batchSize = WORKER_BATCH_SIZE
+  batchSize = WORKER_BATCH_SIZE,
+  concurrency = WORKER_CONCURRENCY
 ): Promise<EditorQueueWorkerResult> {
   const startedAt = Date.now()
   const now = new Date()
@@ -58,35 +60,52 @@ export async function processEditorAiQueue(
     durationMs: 0,
   }
 
-  // 3. Process each article sequentially through the newsroom pipeline
-  for (const article of queued) {
-    try {
-      const item = await publishRawArticleWithAi({ store, rawArticleId: article.id })
+  // 3. Process articles concurrently with bounded worker pool
+  const queue = [...queued]
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const article = queue.shift()
+      if (!article) break
 
-      if (item.outcome === 'published' || item.outcome === 'updated' || item.outcome === 'already_published') {
-        result.published += 1
-      } else if (item.outcome === 'draft') {
-        result.drafted += 1
-      } else if (item.outcome === 'skipped') {
-        result.skipped += 1
-        // publishRawArticleWithAi didn't write a final status — reset to NEW
-        await store.updateRawArticle(article.id, { editorialStatus: 'NEW' }).catch(() => {})
-      } else {
-        // 'error' or 'locked'
+      try {
+        const item = await publishRawArticleWithAi({ store, rawArticleId: article.id })
+
+        if (item.outcome === 'published' || item.outcome === 'updated' || item.outcome === 'already_published') {
+          result.published += 1
+        } else if (item.outcome === 'draft') {
+          result.drafted += 1
+        } else if (item.outcome === 'skipped') {
+          result.skipped += 1
+          const skipReason = item.error || 'Atlandı: kriterler karşılanmadı'
+          await store.updateRawArticle(article.id, {
+            editorialStatus: 'NEW',
+            aiSkipReason: skipReason.slice(0, 80),
+            rejectionNote: skipReason,
+          }).catch(() => {})
+        } else {
+          // 'error' or 'locked'
+          result.failed += 1
+          const failReason = item.error || 'AI üretim hatası'
+          await store.updateRawArticle(article.id, {
+            editorialStatus: 'NEW',
+            aiSkipReason: failReason.slice(0, 80),
+            rejectionNote: failReason,
+          }).catch(() => {})
+        }
+      } catch (err) {
         result.failed += 1
-        // Reset so editors can see the article again or retry
-        await store.updateRawArticle(article.id, { editorialStatus: 'NEW' }).catch(() => {})
+        const errMsg = err instanceof Error ? err.message : String(err)
+        console.error(`[editorQueueWorker] article ${article.id} failed:`, errMsg)
+        await store.updateRawArticle(article.id, {
+          editorialStatus: 'NEW',
+          aiSkipReason: errMsg.slice(0, 80),
+          rejectionNote: errMsg,
+        }).catch(() => {})
       }
-    } catch (err) {
-      result.failed += 1
-      console.error(
-        `[editorQueueWorker] article ${article.id} failed:`,
-        err instanceof Error ? err.message : err
-      )
-      // Reset to NEW on unexpected error
-      await store.updateRawArticle(article.id, { editorialStatus: 'NEW' }).catch(() => {})
     }
-  }
+  })
+
+  await Promise.all(workers)
 
   result.durationMs = Date.now() - startedAt
   console.log(

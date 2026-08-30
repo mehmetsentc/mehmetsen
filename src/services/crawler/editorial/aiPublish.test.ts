@@ -247,6 +247,7 @@ describe('publishRawArticlesWithAi batch', () => {
         ids,
         processArticle: processArticle as never,
         budgetMs: 50,
+        concurrency: 1,
       })
 
       expect(result.results).toHaveLength(4)
@@ -256,6 +257,38 @@ describe('publishRawArticlesWithAi batch', () => {
     } finally {
       spy.mockRestore()
     }
+  })
+
+  it('processes batch with bounded concurrency', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await seedSource(store)
+    const articles = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => seedArticle(store, source, `concurrency-haber-${i + 1}`))
+    )
+    const ids = articles.map((a) => a.id)
+
+    let activeWorkers = 0
+    let maxActiveWorkers = 0
+
+    const processArticle = async () => {
+      activeWorkers += 1
+      maxActiveWorkers = Math.max(maxActiveWorkers, activeWorkers)
+      await new Promise((r) => setTimeout(r, 10))
+      activeWorkers -= 1
+      return { outcome: 'published' as const, newsId: 'news_concurrent' }
+    }
+
+    const result = await publishRawArticlesWithAi({
+      store,
+      ids,
+      processArticle: processArticle as never,
+      concurrency: 3,
+    })
+
+    expect(result.results).toHaveLength(8)
+    expect(result.published).toBe(8)
+    expect(maxActiveWorkers).toBeLessThanOrEqual(3)
+    expect(maxActiveWorkers).toBeGreaterThan(1)
   })
 })
 
