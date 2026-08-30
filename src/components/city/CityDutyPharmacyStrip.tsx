@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { ChevronRight, Pill } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { DutyPharmacyGroupList } from '@/components/city/DutyPharmacyGroupList'
 import { Modal } from '@/components/ui/Modal'
@@ -29,12 +30,23 @@ export function CityDutyPharmacyStrip({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="home-rail-title mb-0 w-full px-0 text-left"
+        className="flex w-full items-center gap-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3.5 py-2.5 text-left transition-colors hover:bg-[rgb(var(--color-surface-raised))] active:scale-[0.99]"
       >
-        <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
-        <span className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.65rem]">
-          Nöbetçi Eczane
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))]/10"
+          aria-hidden
+        >
+          <Pill className="h-4 w-4 text-[rgb(var(--color-brand))]" />
         </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-bold leading-tight text-[rgb(var(--color-text))]">
+            Nöbetçi Eczane
+          </span>
+          <span className="block text-[11px] text-[rgb(var(--color-muted))]">
+            {districtName} · bugün {count} eczane
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" aria-hidden />
       </button>
 
       <Modal

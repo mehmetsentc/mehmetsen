@@ -6,7 +6,6 @@ import { Menu, PanelLeftClose, Search } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
-import { BreakingNewsBand } from '@/components/home/desktop/BreakingNewsBand'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
 import { DesktopThemeToggle } from '@/components/home/desktop/DesktopThemeToggle'
@@ -288,10 +287,7 @@ export function DesktopWebHeader({
       </HeaderBar>
 
       {showBreaking && breakingItems.length > 0 ? (
-        <>
-          <BreakingNewsBand items={breakingItems} />
-          <DesktopBreakingTicker items={breakingItems} />
-        </>
+        <DesktopBreakingTicker items={breakingItems} />
       ) : null}
 
       {showSubTabs ? (

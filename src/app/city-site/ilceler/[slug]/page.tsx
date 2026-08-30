@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
   return {
-    title: `${districtName} Haberleri — ${cityName} | ${siteName}`,
+    title: `${districtName} Haberleri — ${cityName}`,
     description: `${districtName} ilçesinden yerel haberler. ${cityName} ${districtName} haberleri ${siteName}'de.`,
   }
 }
