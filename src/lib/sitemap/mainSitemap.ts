@@ -1,28 +1,16 @@
 import type { MetadataRoute } from 'next'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { tagToSlug } from '@/lib/tags'
 import { DEFAULT_CATEGORIES, TEKRARLAYAN_CATEGORY_ID } from '@/constants/config'
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { getCanonicalPublishedNewsForSitemap, type CanonicalNewsRow } from '@/lib/canonical/canonicalEligibility'
 
 // ─── Pagination config ────────────────────────────────────────────────────────
-// Time-range pagination: each sitemap page covers one WEEK of articles.
-// This eliminates Firestore OFFSET scans (old approach scanned 20k+ docs per page).
-// Each query now reads ONLY the documents it returns.
 const DAYS_PER_PAGE = 7
 const MS_PER_PAGE   = DAYS_PER_PAGE * 24 * 60 * 60 * 1000
-
-// Maximum pages = 2 years of weekly buckets. Google only cares about recent content.
 const MAX_PAGES = 104 // 2 years
 
-// Hard limit per page (Firestore max = 1000)
 export const ARTICLES_PER_PAGE = 500
-
-// ─── Helper: fields only ──────────────────────────────────────────────────────
-// Select only the 3 fields we actually need → fewer bytes transferred
-const SELECT_FIELDS = ['slug', 'publishedAt', 'updatedAt'] as const
 
 // ─── Static + category routes (page 0 only) ──────────────────────────────────
 async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Sitemap> {
@@ -54,47 +42,18 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
     priority: 0.7,
   }))
 
-  try {
-    const latestForSeo = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .select(...SELECT_FIELDS, 'tags')
-      .limit(300)
-      .get()
-
-    const tagSlugs = new Set<string>()
-    for (const doc of latestForSeo.docs) {
-      const data = doc.data() as { tags?: string[] }
-      for (const tag of data.tags ?? []) {
-        const normalized = tagToSlug(tag ?? '')
-        if (normalized) tagSlugs.add(normalized)
-        if (tagSlugs.size >= 100) break
-      }
-    }
-
-    const tagRoutes: MetadataRoute.Sitemap = Array.from(tagSlugs).map((tag) => ({
-      url: `${base}${ROUTES.TAG(tag)}`,
-      changeFrequency: 'daily',
-      priority: 0.5,
-    }))
-
-    return [...staticRoutes, ...categoryRoutes, ...localCityRoutes, ...tagRoutes]
-  } catch {
-    return [...staticRoutes, ...categoryRoutes, ...localCityRoutes]
-  }
+  return [...staticRoutes, ...categoryRoutes, ...localCityRoutes]
 }
 
-// ─── Article doc → sitemap entry ─────────────────────────────────────────────
-function mapArticleDocs(
-  docs: FirebaseFirestore.QueryDocumentSnapshot[],
+// ─── Canonical rows → sitemap entries ─────────────────────────────────────────
+function mapCanonicalRows(
+  rows: CanonicalNewsRow[],
   base: string
 ): MetadataRoute.Sitemap {
-  return docs.map((doc) => {
-    const data = doc.data() as { slug?: string; publishedAt?: number; updatedAt?: number }
-    const slug = data.slug?.trim() || doc.id
-    const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
-    const lastMod = new Date(data.updatedAt ?? data.publishedAt ?? Date.now())
+  return rows.map((row) => {
+    const slug = row.slug?.trim() || row.id
+    const path = ROUTES.NEWS_DETAIL(slug)
+    const lastMod = row.updatedAt ?? row.publishedAt ?? new Date()
     return {
       url: `${base}${path}`,
       lastModified: lastMod,
@@ -105,9 +64,6 @@ function mapArticleDocs(
 }
 
 // ─── Time windows for each page ───────────────────────────────────────────────
-// page 0 → now .. now-7d  (most recent week)
-// page 1 → now-7d .. now-14d
-// page N → now - N*7d .. now - (N+1)*7d
 function pageTimeRange(id: number): { from: number; to: number } {
   const now = Date.now()
   return {
@@ -118,24 +74,7 @@ function pageTimeRange(id: number): { from: number; to: number } {
 
 // ─── Page count ───────────────────────────────────────────────────────────────
 export async function getSitemapPageCount(): Promise<number> {
-  try {
-    // Find the oldest published article to know how many weeks back we go
-    const oldest = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'asc')
-      .select('publishedAt')
-      .limit(1)
-      .get()
-
-    if (oldest.empty) return 1
-
-    const firstPublishedAt = (oldest.docs[0].data() as { publishedAt?: number }).publishedAt ?? 0
-    const weeksBack = Math.ceil((Date.now() - firstPublishedAt) / MS_PER_PAGE)
-    return Math.min(MAX_PAGES, Math.max(1, weeksBack))
-  } catch {
-    return 1
-  }
+  return 1
 }
 
 // ─── Sitemap page ─────────────────────────────────────────────────────────────
@@ -145,17 +84,13 @@ export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap>
   try {
     const { from, to } = pageTimeRange(id)
 
-    const snap = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .where('publishedAt', '>=', from)
-      .where('publishedAt', '<', to)
-      .orderBy('publishedAt', 'desc')
-      .select(...SELECT_FIELDS)
-      .limit(ARTICLES_PER_PAGE)
-      .get()
+    const rows = await getCanonicalPublishedNewsForSitemap({
+      from: new Date(from),
+      to: new Date(to),
+      limit: ARTICLES_PER_PAGE,
+    })
 
-    const articles = mapArticleDocs(snap.docs, base)
+    const articles = mapCanonicalRows(rows, base)
 
     if (id === 0) {
       const staticRoutes = await staticAndCategoryRoutes(base)

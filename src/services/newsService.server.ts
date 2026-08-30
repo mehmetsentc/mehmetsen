@@ -22,6 +22,7 @@ import {
 import type { Post } from '@/types/post'
 import { tagLookupVariants } from '@/lib/tags'
 import type { FeedSliderItem } from '@/types/feedSlider'
+import { getCanonicalNewsBySlug } from '@/lib/canonical/canonicalEligibility'
 import {
   HOME_CATEGORY_RAILS,
   HOME_CATEGORY_RAIL_FETCH,
@@ -280,16 +281,8 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
 
-  let decoded = normalized
-  try {
-    decoded = decodeURIComponent(normalized).trim()
-  } catch {}
-
-  const post = await getNewsBySlugCached(decoded)
-  if (!post && decoded !== normalized) {
-    return getNewsBySlugCached(normalized)
-  }
-  return post
+  // P17.7H.3 Publication Safety: Route resolution through PostgreSQL canonical authority
+  return getCanonicalNewsBySlug(normalized)
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {

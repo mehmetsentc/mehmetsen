@@ -34,7 +34,6 @@ import type {
   PublisherStatus,
   PublisherVerificationStatus,
 } from '@/types/publisher'
-import { fetchFirestorePublisherArticles } from './publisherArticleFirestore'
 
 function mapPublisher(row: typeof publishers.$inferSelect): PublisherRecord {
   return {
@@ -842,21 +841,9 @@ export class PublisherRepository {
       }
     }
 
-    // 3. Fallback to Firestore if total collected items < pageSize
-    if (out.length < pageSize) {
-      const firestorePage = await fetchFirestorePublisherArticles({
-        sourceIds,
-        limit: pageSize - out.length,
-        cursor,
-        excludeIds: seen,
-      })
-      for (const item of firestorePage.items) {
-        if (seen.has(item.id)) continue
-        seen.add(item.id)
-        out.push(item)
-        if (out.length >= pageSize) break
-      }
-    }
+    // 3. Fallback to Firestore disabled for publication safety (P17.7H.3)
+    // Only PostgreSQL canonical published articles linked to publisher sources or studio are served.
+
 
     out.sort((a, b) => {
       const am = a.publishedAt?.getTime() ?? 0

@@ -47,20 +47,14 @@ export async function buildPublishersSitemap(base: string): Promise<string> {
 
 export async function buildTopicsSitemap(base: string): Promise<string> {
   try {
-    const snap = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .select('tags', 'publishedAt')
-      .limit(500)
-      .get()
+    const { getCanonicalPublishedNewsForSitemap } = await import('@/lib/canonical/canonicalEligibility')
+    const rows = await getCanonicalPublishedNewsForSitemap({ limit: 500 })
 
     const tagCounts = new Map<string, number>()
     const tagLastMod = new Map<string, Date>()
 
-    for (const doc of snap.docs) {
-      const d = doc.data() as { tags?: string[]; publishedAt?: number }
-      const ts = new Date(d.publishedAt ?? Date.now())
+    for (const d of rows) {
+      const ts = d.publishedAt ?? new Date()
       for (const tag of d.tags ?? []) {
         const slug = tagToSlug(tag)
         if (!slug) continue

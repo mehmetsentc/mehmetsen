@@ -3,8 +3,7 @@ import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
 import { getCitySlugFromHost } from '@/lib/cityHost'
 import { buildSitemapIndexXmlAsync } from '@/lib/sitemap/sitemapIndex'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-import { Collections } from '@/lib/firebase/collections'
+import { getCanonicalPublishedNewsForSitemap } from '@/lib/canonical/canonicalEligibility'
 import { ROUTES } from '@/constants/routes'
 
 export const runtime = 'nodejs'
@@ -48,24 +47,20 @@ async function buildCitySitemapXml(citySlug: string): Promise<string> {
     xmlUrl(`${base}/kategori/${slug}`, 'hourly', 0.8)
   )
 
-  // Recent city articles (last 30 days)
+  // Recent city articles (last 30 days) - PostgreSQL Canonical Only
   let articleRows: string[] = []
   try {
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const snap = await getAdminFirestore()
-      .collection(Collections.NEWS)
-      .where('status', '==', 'published')
-      .where('citySlug', '==', citySlug)
-      .where('publishedAt', '>=', cutoff)
-      .orderBy('publishedAt', 'desc')
-      .limit(500)
-      .get()
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const rows = await getCanonicalPublishedNewsForSitemap({
+      citySlug,
+      from: cutoff,
+      limit: 500,
+    })
 
-    articleRows = snap.docs.map((doc) => {
-      const d = doc.data() as { slug?: string; publishedAt?: number; updatedAt?: number }
-      const slug = d.slug?.trim() || doc.id
-      const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
-      const lastmod = new Date(d.updatedAt ?? d.publishedAt ?? Date.now()).toISOString()
+    articleRows = rows.map((d) => {
+      const slug = d.slug?.trim() || d.id
+      const path = ROUTES.NEWS_DETAIL(slug)
+      const lastmod = (d.updatedAt ?? d.publishedAt ?? new Date()).toISOString()
       return xmlUrl(`${base}${path}`, 'weekly', 0.7, lastmod)
     })
   } catch (err) {
