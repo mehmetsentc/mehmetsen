@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
-import { isPubliclyVisibleStatus } from '@/lib/postUtils'
+import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
@@ -1171,6 +1171,49 @@ export async function getPostsByAuthorId(authorId: string, limitCount = 40): Pro
   const id = authorId.trim()
   if (!id) return []
   return getPostsByAuthorIdCached(id, limitCount)
+}
+
+/**
+ * Published news whose public `source` label matches (for /kaynak/[source]).
+ * No composite index exists for `source` on the `news` collection (only on
+ * `newsDrafts`, an internal CMS collection) — creating one is a Firestore
+ * schema change and out of scope here, so this scans recent published docs
+ * and filters in memory, same fallback strategy as getCityNewsByDistrict.
+ * Cached 30 min per source, same as the author profile equivalent.
+ */
+const getPostsBySourceCached = unstable_cache(
+  async (normalizedSource: string, limitCount: number): Promise<Post[]> => {
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(Math.max(limitCount * 8, 400))
+        .get()
+
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter((post): post is Post => post !== null)
+        .filter(
+          (post) =>
+            formatPublicSourceLabel(post.source).trim().toLocaleLowerCase('tr-TR') ===
+            normalizedSource
+        )
+        .slice(0, limitCount)
+    } catch (error) {
+      console.warn('[newsService.server] getPostsBySource failed:', error)
+      return []
+    }
+  },
+  ['posts-by-source-v1'],
+  { revalidate: 1800, tags: ['source'] }
+)
+
+export async function getPostsBySource(source: string, limitCount = 40): Promise<Post[]> {
+  const normalized = formatPublicSourceLabel(source).trim().toLocaleLowerCase('tr-TR')
+  if (!normalized) return []
+  return getPostsBySourceCached(normalized, limitCount)
 }
 
 // ─── Category feed by Turkey calendar day ─────────────────────────────────────

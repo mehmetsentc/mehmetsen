@@ -432,6 +432,17 @@ export function NewsArticleStatic({
               ) : (
                 <span>{publicSource}</span>
               )}
+              {publicSource && (
+                <>
+                  {' · '}
+                  <Link
+                    href={ROUTES.SOURCE_PROFILE(publicSource)}
+                    className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
+                  >
+                    {publicSource} — tüm haberleri
+                  </Link>
+                </>
+              )}
             </div>
           )}
 

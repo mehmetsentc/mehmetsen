@@ -18,6 +18,7 @@ import { Bookmark, BookmarkCheck, Heart, MessageCircle, Play, Share2 } from 'luc
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { saveArticleNav } from '@/lib/articleNavContext'
 import { cn } from '@/lib/utils'
 import type { NewsItem } from '@/types/newsItem'
@@ -57,6 +58,31 @@ function videoThumbnail(url: string): string | null {
 
 // NaHaber markası için kullanılacak logo
 const NAHABER_LOGO = '/brand/nahaber-logo.png'
+
+/**
+ * Kartları kaynağa göre görsel olarak ayırt etmek için deterministik rozet
+ * rengi — aynı kaynak her zaman aynı rengi alır, farklı kaynaklar akışta
+ * birbirinden ayrışır. "NaHaber" (marka/kaynaksız) için nötr marka rengi.
+ */
+const SOURCE_BADGE_PALETTE = [
+  '37 99 235', // blue-600
+  '5 150 105', // emerald-600
+  '217 119 6', // amber-600
+  '124 58 237', // violet-600
+  '219 39 119', // pink-600
+  '8 145 178', // cyan-600
+  '220 38 38', // red-600
+  '75 85 99', // gray-600
+]
+
+function sourceBadgeColor(label: string): string {
+  if (label === 'NaHaber') return 'var(--color-brand)'
+  let hash = 0
+  for (let i = 0; i < label.length; i++) {
+    hash = (hash * 31 + label.charCodeAt(i)) >>> 0
+  }
+  return SOURCE_BADGE_PALETTE[hash % SOURCE_BADGE_PALETTE.length]!
+}
 
 interface AvatarProps {
   authorPhotoURL?: string
@@ -148,6 +174,14 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
   // summary > description tercih sırası; hiçbiri yoksa boş
   const summary = (item.summary?.trim() || item.description?.trim()) ?? ''
 
+  // Kaynak: crawler/CMS'in ham `source` alanı > yoksa marka. Görüntüleyenin
+  // kendi hesap adı (item.author) HİÇBİR ZAMAN kamuya açık kaynak olarak
+  // gösterilmez — bu alan, kartı manuel oluşturan CMS operatörünün Firebase
+  // hesabıdır, editoryal bir yazar/kaynak değildir.
+  const sourceLabel = formatPublicSourceLabel(item.source) || 'NaHaber'
+  const hasDistinctSource = sourceLabel !== 'NaHaber'
+  const badgeColor = sourceBadgeColor(sourceLabel)
+
   const mediaSlides = buildMediaSlides(item)
   const hasMedia = mediaSlides.length > 0
   const isGallery = mediaSlides.length > 1
@@ -184,17 +218,20 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
   }, [])
 
   return (
-    <article className="border-b border-[rgb(var(--color-border))] px-4 py-4">
+    <article
+      className="border-b border-l-[3px] border-[rgb(var(--color-border))] px-4 py-4"
+      style={{ borderLeftColor: `rgb(${badgeColor})` }}
+    >
 
       {/* ── 1. Üst: Avatar (logo veya kullanıcı fotoğrafı) + zaman ── */}
       <div className="mb-3 flex items-center gap-2.5">
         <CardAvatar
-          authorPhotoURL={item.authorPhotoURL}
-          authorName={item.author}
+          authorPhotoURL={hasDistinctSource ? item.authorPhotoURL : undefined}
+          authorName={sourceLabel}
         />
         <div className="min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-[rgb(var(--color-text))]">
-            {item.authorPhotoURL ? (item.author ?? 'NaHaber') : 'NaHaber'}
+            {sourceLabel}
           </span>
           {ago && (
             <span className="text-[11px] text-[rgb(var(--color-muted))]">{ago}</span>
@@ -204,10 +241,16 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
 
       {/* ── 2. Manşet / Başlık ── */}
       <Link href={href} onClick={handleNavigate} className="block">
-        <h3 className="mb-2 line-clamp-3 text-[15px] font-bold leading-snug text-[rgb(var(--color-text))]">
+        <h3 className="mb-1 line-clamp-3 text-[15px] font-bold leading-snug text-[rgb(var(--color-text))]">
           {item.title}
         </h3>
       </Link>
+      <span className="mb-2 block text-[11px] font-medium text-[rgb(var(--color-muted))]">
+        Kaynak:{' '}
+        <span className="font-semibold" style={{ color: `rgb(${badgeColor})` }}>
+          {sourceLabel}
+        </span>
+      </span>
 
       {/* ── 3. Özet — tam göster, kesilmesin ── */}
       {summary && (

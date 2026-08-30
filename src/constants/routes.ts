@@ -27,6 +27,8 @@ export const ROUTES = {
   /** Event/cluster page — Phase P6 */
   EVENT: (slug: string) => `/olay/${encodeURIComponent(slug)}`,
   AUTHOR: (username: string) => `/yazar/${encodeURIComponent(username)}`,
+  /** Kaynak profili — crawler/CMS kaynak adına göre haber listesi (yazar/uid gerektirmez). */
+  SOURCE_PROFILE: (source: string) => `/kaynak/${encodeURIComponent(source)}`,
   PUBLISHER: (slug: string) => `/publisher/${encodeURIComponent(slug)}`,
   /** Publisher media kit / sellable inventory interest page */
   PUBLISHER_REKLAM: (slug: string) => `/publisher/${encodeURIComponent(slug)}/reklam`,
