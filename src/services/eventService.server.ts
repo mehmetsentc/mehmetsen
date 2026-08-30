@@ -195,3 +195,27 @@ export async function getUpcomingEventsServer(limitCount = 12): Promise<NaEvent[
     return []
   }
 }
+
+/**
+ * Single event lookup with optional city validation (prevents cross-city event leakage).
+ */
+export async function getCityEventById(id: string, citySlug?: string): Promise<NaEvent | null> {
+  try {
+    const db = getAdminFirestore()
+    const doc = await db.collection(Collections.EVENTS).doc(id).get()
+    if (!doc.exists) return null
+    const event = { id: doc.id, ...(doc.data() as Omit<NaEvent, 'id'>) }
+    if (citySlug) {
+      const normalizedCity = citySlug.trim().toLowerCase()
+      const eventCity = event.citySlug?.trim().toLowerCase()
+      if (eventCity && eventCity !== normalizedCity) {
+        return null
+      }
+    }
+    return event
+  } catch (error) {
+    console.warn('[eventService.server] getCityEventById failed:', error)
+    return null
+  }
+}
+
