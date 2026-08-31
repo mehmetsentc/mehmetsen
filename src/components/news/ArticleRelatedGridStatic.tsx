@@ -9,12 +9,17 @@ interface ArticleRelatedGridStaticProps {
   posts: Post[]
 }
 
-/** Server-rendered related articles — visible to crawlers without JavaScript. */
+/** Server-rendered related articles — visible to crawlers without JavaScript.
+ * Renders at page shell width (news-article-rail), not inside article measure.
+ */
 export function ArticleRelatedGridStatic({ posts }: ArticleRelatedGridStaticProps) {
   if (posts.length === 0) return null
 
   return (
-    <section className="mt-8 border-t border-[rgb(var(--color-border))] pt-6 sm:mt-10 sm:pt-8" aria-label="İlgili haberler">
+    <section
+      className="news-article-rail mt-8 w-full border-t border-[rgb(var(--color-border))] pt-6 sm:mt-10 sm:pt-8"
+      aria-label="İlgili haberler"
+    >
       <h2 className="mb-4 text-lg font-bold text-[rgb(var(--color-text))] sm:mb-5 sm:border-t-4 sm:border-[rgb(var(--color-text))] sm:pt-4 sm:text-xl">
         İlgili Haberler
       </h2>
@@ -29,7 +34,7 @@ export function ArticleRelatedGridStatic({ posts }: ArticleRelatedGridStaticProp
                     src={image}
                     alt={item.title}
                     fill
-                    sizes="(max-width: 640px) 50vw, 200px"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 300px"
                     className="object-cover transition-transform group-hover:scale-[1.02]"
                   />
                 </div>

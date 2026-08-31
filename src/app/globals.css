@@ -2051,7 +2051,6 @@
   }
 
   .news-article-body > section[aria-label='Galeri'],
-  .news-article-body > section[aria-label='İlgili haberler'],
   .news-article-body > .article-full-width {
     max-width: var(--article-shell-max);
   }

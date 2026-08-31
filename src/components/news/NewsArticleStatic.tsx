@@ -405,8 +405,6 @@ export function NewsArticleStatic({
 
           <NewsletterSignup source="article" variant="inline" className="mt-6 sm:mt-8" />
 
-          <ArticleRelatedGridStatic posts={relatedPosts} />
-
           <ArticleRelatedLinks
             post={post}
             context={{
@@ -476,6 +474,9 @@ export function NewsArticleStatic({
           )}
         </NewsArticleBody>
       </NewsArticleCard>
+
+      {/* Page-level grid — same outer shell as "Daha fazla haber" / footer (not article measure) */}
+      <ArticleRelatedGridStatic posts={relatedPosts} />
     </NewsArticlePage>
   )
 }
