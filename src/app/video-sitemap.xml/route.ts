@@ -82,13 +82,13 @@ export async function GET() {
 
       items += `
   <url>
-    <loc>${url}</loc>
+    <loc>${escapeXml(url)}</loc>
     <video:video>
       <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>
       <video:title>${title}</video:title>
       <video:description>${description}</video:description>
       <video:content_loc>${escapeXml(d.videoUrl)}</video:content_loc>
-      <video:player_loc>${url}</video:player_loc>
+      <video:player_loc>${escapeXml(url)}</video:player_loc>
       <video:duration>${duration}</video:duration>
       <video:publication_date>${pubDate}</video:publication_date>
       <video:uploader info="${base}/hakkimizda">${escapeXml(siteName)}</video:uploader>

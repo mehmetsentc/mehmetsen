@@ -61,7 +61,7 @@ export async function GET() {
 
         items += `
   <url>
-    <loc>${url}</loc>
+    <loc>${escapeXml(url)}</loc>
     <image:image>
       <image:loc>${escapeXml(d.coverImageUrl.trim())}</image:loc>
       <image:title>${title}</image:title>

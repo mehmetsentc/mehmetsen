@@ -55,7 +55,7 @@ export async function GET() {
 
       items += `
   <url>
-    <loc>${url}</loc>
+    <loc>${escapeXml(url)}</loc>
     <lastmod>${pubDate}</lastmod>
     ${image}
     <news:news>

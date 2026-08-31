@@ -5,6 +5,7 @@ import { getCitySlugFromHost } from '@/lib/cityHost'
 import { buildSitemapIndexXmlAsync } from '@/lib/sitemap/sitemapIndex'
 import { getCanonicalPublishedNewsForSitemap } from '@/lib/canonical/canonicalEligibility'
 import { ROUTES } from '@/constants/routes'
+import { xmlEscape } from '@/lib/sitemap/seoXml'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ const CITY_CATEGORIES = [
 
 function xmlUrl(loc: string, freq: string, priority: number, lastmod?: string): string {
   const lastmodTag = lastmod ? `<lastmod>${lastmod}</lastmod>` : ''
-  return `  <url><loc>${loc}</loc>${lastmodTag}<changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
+  return `  <url><loc>${xmlEscape(loc)}</loc>${lastmodTag}<changefreq>${freq}</changefreq><priority>${priority}</priority></url>`
 }
 
 async function buildCitySitemapXml(citySlug: string): Promise<string> {
