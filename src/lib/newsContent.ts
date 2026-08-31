@@ -1,4 +1,4 @@
-import { cleanupNewsBody } from '@/lib/newsContentCleanup'
+import { cleanupNewsBody, splitSentences } from '@/lib/newsContentCleanup'
 
 const SOURCE_LINE_RE = /^kaynak:\s*.+$/i
 
@@ -12,11 +12,7 @@ export function stripSourceAttribution(text: string): string {
 }
 
 function splitOnSentences(text: string): string[] {
-  const sentences = text
-    .match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)
-    ?.map((s) => s.trim())
-    .filter(Boolean)
-
+  const sentences = splitSentences(text)
   return sentences && sentences.length > 1 ? sentences : [text]
 }
 

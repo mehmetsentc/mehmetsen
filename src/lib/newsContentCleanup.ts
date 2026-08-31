@@ -60,10 +60,110 @@ function normalizeSentenceKey(sentence: string): string {
     .replace(/[.!?…]+$/g, '')
 }
 
-function splitSentences(text: string): string[] {
-  const parts = text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)
-  if (!parts) return text.trim() ? [text.trim()] : []
-  return parts.map((s) => s.trim()).filter(Boolean)
+const KNOWN_ABBREVIATIONS = new Set([
+  'dr',
+  'prof',
+  'doç',
+  'doc',
+  'av',
+  'ytb',
+  'tc',
+  't.c',
+  'a.ş',
+  'ltd',
+  'sti',
+  'şb',
+  'cad',
+  'sok',
+  'apt',
+  'no',
+  'vs',
+  'vb',
+  'bkz',
+  'ör',
+])
+
+/**
+ * Robust Turkish & English sentence splitter.
+ * Protects:
+ * - Time: 16.00, 09.30
+ * - Decimals / numbers: 3.14, 1.000, 34.7
+ * - Common titles / abbreviations: Prof. Dr. Doç. Av. vb.
+ * - Multi-dot abbreviations: T.C. A.Ş.
+ * - URLs / domains: example.com, www.example.com
+ * - Initials: A.B.
+ */
+export function splitSentences(text: string): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+
+  // Tokenize sentences looking for true sentence terminators (. ! ? …) followed by whitespace & uppercase/quote/bracket
+  const sentences: string[] = []
+  let current = ''
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i]
+    current += char
+
+    if (char === '.' || char === '!' || char === '?' || char === '…') {
+      // Consume any consecutive punctuation (e.g. "...", "!?")
+      while (i + 1 < trimmed.length && /[.!?…]/.test(trimmed[i + 1])) {
+        i++
+        current += trimmed[i]
+      }
+
+      if (i + 1 >= trimmed.length) {
+        break
+      }
+
+      const nextChar = trimmed[i + 1]
+
+      // Only whitespace after punctuation can indicate a sentence boundary
+      if (/\s/.test(nextChar)) {
+        // Check if the period is inside a time, decimal number or digit group (e.g. "16.00", "3.14", "1.000")
+        const prevDigit = /\d\.$/.test(current)
+        const restAfterWhitespace = trimmed.slice(i + 1).trimStart()
+        const nextDigit = /^\d/.test(restAfterWhitespace)
+
+        if (prevDigit && nextDigit) {
+          // It's a numeric/time punctuation (e.g. "16. 00" or boundary lookahead) -> do not split
+          continue
+        }
+
+        // Check if the current word preceding period is a known abbreviation (e.g. "Dr.", "Prof.", "vb.")
+        const lastWordMatch = current.match(/([a-zA-ZçğıöşüÇĞİÖŞÜ.]+)\.?$/)
+        if (lastWordMatch) {
+          const rawWord = lastWordMatch[1].toLowerCase().replace(/\.+$/, '')
+          if (KNOWN_ABBREVIATIONS.has(rawWord) || /^[a-zçğıöşü]\.[a-zçğıöşü]$/i.test(lastWordMatch[1])) {
+            continue
+          }
+        }
+
+        // Check if next non-whitespace character starts a new sentence (Capital letter, quote, or dash)
+        if (restAfterWhitespace.length > 0) {
+          const firstNextChar = restAfterWhitespace[0]
+          const isUpperCase = firstNextChar === firstNextChar.toLocaleUpperCase('tr-TR') &&
+            firstNextChar !== firstNextChar.toLocaleLowerCase('tr-TR')
+          const isQuoteOrBracket = /["'«“(‘[0-9]/.test(firstNextChar)
+
+          if (isUpperCase || isQuoteOrBracket) {
+            sentences.push(current.trim())
+            current = ''
+            // Skip the whitespace
+            while (i + 1 < trimmed.length && /\s/.test(trimmed[i + 1])) {
+              i++
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (current.trim()) {
+    sentences.push(current.trim())
+  }
+
+  return sentences.length > 0 ? sentences : [trimmed]
 }
 
 function isFillerSentence(sentence: string): boolean {
