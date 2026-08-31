@@ -238,7 +238,7 @@ export const newsClusters = pgTable(
     editorialDecidedAt: timestamp('editorial_decided_at', { withTimezone: true }),
     editorialDecidedBy: varchar('editorial_decided_by', { length: 128 }),
     editorialPriority: varchar('editorial_priority', { length: 16 }).default('NORMAL').notNull(),
-    approvalSource: varchar('approval_source', { length: 16 }),
+    approvalSource: varchar('approval_source', { length: 64 }),
     importanceBreakdown: jsonb('importance_breakdown').$type<Record<string, number>>(),
     signatureTokens: jsonb('signature_tokens').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     hasMaterialUpdate: smallint('has_material_update').default(0).notNull(),

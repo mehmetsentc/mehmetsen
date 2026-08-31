@@ -303,7 +303,7 @@ export class EditorialSupplyService {
         editorialDecision: 'APPROVED',
         editorialDecidedBy: approval.reviewerId,
         editorialDecidedAt: approval.reviewedAt,
-        approvalSource: opts.approvalSource || 'cms_editorial_ops',
+        approvalSource: (opts.approvalSource || 'cms_editorial_ops').slice(0, 16),
         primarySourceId: primary.sourceId,
         primarySourceName: primary.sourceName,
         primaryImageUrl: heroImageUrl,
