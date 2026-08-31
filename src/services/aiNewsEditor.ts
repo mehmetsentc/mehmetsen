@@ -662,6 +662,23 @@ function parseProviderResponse(
 }
 
 async function callOpenAi(input: AiRewriteInput): Promise<AiRewriteResult | AiArchiveRewriteResult> {
+  const { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } = await import(
+    '@/services/crawler/automatedAiPolicy'
+  )
+  const { isLegacyDirectAiEnabled } = await import('@/services/crawler/legacyFlags')
+  const { getAiUsageContext } = await import('@/lib/ai/usage/context')
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (isManual) {
+    if (!isManualEditorAiEnabled()) {
+      throw new Error('MANUAL_EDITOR_AI_ENABLED=false (Manual editor AI is disabled)')
+    }
+  } else {
+    if (!mayAutomatedCrawlerUseAi() && !isLegacyDirectAiEnabled()) {
+      throw new Error('CRAWLER_AI_DISPATCH_ENABLED=false (Automated crawler AI is disabled)')
+    }
+  }
+
   const mode = input.mode ?? 'feed'
   const providers = getProviderList()
 

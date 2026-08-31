@@ -313,6 +313,18 @@ export async function generateSocialContent(
   description: string,
   cityName = 'Çanakkale'
 ): Promise<AISocialContent | null> {
+  const { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } = await import(
+    '@/services/crawler/automatedAiPolicy'
+  )
+  const { getAiUsageContext } = await import('@/lib/ai/usage/context')
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (isManual) {
+    if (!isManualEditorAiEnabled()) return null
+  } else {
+    if (!mayAutomatedCrawlerUseAi()) return null
+  }
+
   if (shouldUseMultiProviderChain('social', title)) {
     try {
       const routed = await runAI({

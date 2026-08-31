@@ -2,6 +2,8 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { combinedSourceText, countPlainWords } from '@/lib/contentQuality'
 import { isCrawlerAiDispatchEnabled } from '../dispatch'
+import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '../automatedAiPolicy'
+import { runWithAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
 import { draftPrefillFromRaw, rawArticleDisplay } from './prefill'
 import { syncCrawlerEditorial } from './newsLink'
 import type { CrawlerStore } from '../store/types'
@@ -177,6 +179,26 @@ export async function publishRawArticleWithAi(opts: {
   processArticle?: typeof import('@/services/newsroom/pipeline').processNewsroomArticle
 }): Promise<AiPublishItemResult> {
   try {
+    const ctx = getAiUsageContext()
+    const isManual = ctx?.ingestionLane === 'manual_editor'
+    if (isManual) {
+      if (!isManualEditorAiEnabled()) {
+        return {
+          rawArticleId: opts.rawArticleId,
+          outcome: 'skipped',
+          error: 'MANUAL_EDITOR_AI_ENABLED=false (Manuel editör AI kapalı)',
+        }
+      }
+    } else {
+      if (!mayAutomatedCrawlerUseAi()) {
+        return {
+          rawArticleId: opts.rawArticleId,
+          outcome: 'skipped',
+          error: 'CRAWLER_AI_DISPATCH_ENABLED=false (Otomatik AI yayını kapalı)',
+        }
+      }
+    }
+
     const article = await opts.store.getRawArticle(opts.rawArticleId)
     if (!article) return { rawArticleId: opts.rawArticleId, outcome: 'error', error: 'Ham haber bulunamadı' }
 
@@ -347,11 +369,13 @@ export async function publishRawArticlesWithAi(opts: {
       const next = queue.shift()
       if (!next) break
 
-      const item = await publishRawArticleWithAi({
-        store: opts.store,
-        rawArticleId: next.rawArticleId,
-        processArticle: opts.processArticle,
-      })
+      const item = await runWithAiUsageContext({ ingestionLane: 'manual_editor' }, () =>
+        publishRawArticleWithAi({
+          store: opts.store,
+          rawArticleId: next.rawArticleId,
+          processArticle: opts.processArticle,
+        })
+      )
       result.results[next.index] = item
     }
   })

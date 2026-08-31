@@ -21,6 +21,7 @@ import { extractCityFromText } from '@/services/newsroom/geoEngine'
 import { normalizeCitySlug } from '@/constants/cities'
 import { classifyArticleCategory } from '@/services/newsroom/aiCategoryClassifier'
 import { publishScraperViaPipeline } from '@/services/newsroom/scraperPublishHelper'
+import { mayAutomatedCrawlerUseAi } from '@/services/crawler/automatedAiPolicy'
 
 /**
  * BEYAZ LİSTE: SADECE bu kategoriler son-dakika olabilir.
@@ -291,6 +292,23 @@ async function resolveBreakingCategory(
   let categoryId = 'son-dakika'
   let isBreaking = true
   let priorityScore = 90
+
+  if (!mayAutomatedCrawlerUseAi()) {
+    const titleLower = article.title.toLocaleLowerCase('tr-TR')
+    const hasUrgentKeyword = GUNDEM_BREAKING_KEYWORDS.some((kw) => titleLower.includes(kw))
+    if (!hasUrgentKeyword || detectedCity) {
+      categoryId = detectedCity ? 'yerel-haber' : 'gundem'
+      isBreaking = false
+      priorityScore = 40
+    }
+    return {
+      categoryId,
+      isBreaking,
+      priorityScore,
+      detectedCity: detectedCity ?? undefined,
+      detectedCitySlug: detectedCitySlug || undefined,
+    }
+  }
 
   try {
     const aiResult = await classifyArticleCategory(

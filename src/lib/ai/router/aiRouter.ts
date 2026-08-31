@@ -19,6 +19,8 @@ import {
 import { CLASSIFIER_JSON_SCHEMA } from '@/lib/ai/router/classifierSchema'
 import { classifyJsonFailure, extractJsonObject } from '@/lib/ai/router/validation'
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
+import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { getAiUsageContext } from '@/lib/ai/usage/context'
 import type {
   ProviderAttemptResult,
   RouterProviderId,
@@ -169,6 +171,18 @@ function noteCheapSchemaFail(opts: {
 }
 
 export async function runAI<T>(input: RunAiInput<T>): Promise<RunAiResult<T>> {
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (isManual) {
+    if (!isManualEditorAiEnabled()) {
+      return { value: null, provider: null, fallback: false }
+    }
+  } else {
+    if (!mayAutomatedCrawlerUseAi()) {
+      return { value: null, provider: null, fallback: false }
+    }
+  }
+
   const chain = resolveProviderChain(input.taskType, input.cohortKey)
   const canaryBucket = groqCohortBucket(classifierCohortKey(input.cohortKey))
   const inputHash = hashMessages(input.messages)

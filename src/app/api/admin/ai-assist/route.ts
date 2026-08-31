@@ -20,6 +20,7 @@ import {
   demoteNeverLocalVertical,
   shouldStripSuggestedCityForCategory,
 } from '@/lib/news/neverLocalVerticals'
+import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -314,6 +315,13 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
 export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!isManualEditorAiEnabled()) {
+    return NextResponse.json(
+      { error: 'MANUAL_EDITOR_AI_ENABLED=false (Manual editor AI is disabled in production)' },
+      { status: 403 }
+    )
+  }
 
   let body: {
     mode: AssistMode

@@ -16,6 +16,14 @@ export async function POST(request: Request) {
   const auth = await verifyCmsToken(request, 'ai:use')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { isManualEditorAiEnabled } = await import('@/services/crawler/automatedAiPolicy')
+  if (!isManualEditorAiEnabled()) {
+    return NextResponse.json(
+      { error: 'MANUAL_EDITOR_AI_ENABLED=false (Manual editor AI is disabled in production)' },
+      { status: 403 }
+    )
+  }
+
   let body: RequestBody
   try {
     body = (await request.json()) as RequestBody

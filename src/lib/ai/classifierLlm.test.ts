@@ -95,6 +95,8 @@ describe('completeClassifierJson', () => {
   beforeEach(() => {
     recordAiRequestUsage.mockReset()
     recordAiRequestUsage.mockImplementation(() => undefined)
+    vi.stubEnv('CRAWLER_AI_DISPATCH_ENABLED', 'true')
+    vi.stubEnv('CRAWLER_AI_MODE', 'CONTROLLED_AUTO_DRAFT')
     vi.stubEnv('DEEPSEEK_API_KEY', 'ds-test')
     vi.stubEnv('DEEPSEEK_NEWS_MODEL', 'deepseek-v4-flash')
     vi.stubEnv('GROQ_FAST_MODEL', 'openai/gpt-oss-20b')

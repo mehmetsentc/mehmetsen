@@ -414,18 +414,6 @@ export function AdminNewsEditor({
     }
   }
 
-  useEffect(() => {
-    autoKwAttemptedRef.current = false
-  }, [post?.id])
-
-  useEffect(() => {
-    if (autoKwAttemptedRef.current) return
-    if (seoKeywords.length > 0) return
-    if (!title.trim()) return
-    autoKwAttemptedRef.current = true
-    void generateAiKeywords({ silent: true })
-  }, [post?.id, seoKeywords.length, title])
-
   const buildPayload = () => {
     const country = countrySlug ? findCountryBySlug(countrySlug) : undefined
     const payloadTags =

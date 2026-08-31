@@ -28,6 +28,8 @@ async function callDeepSeekImprove(
   content: string,
   title: string
 ): Promise<{ title: string; content: string; summary: string } | null> {
+  const { isManualEditorAiEnabled } = await import('@/services/crawler/automatedAiPolicy')
+  if (!isManualEditorAiEnabled()) return null
   if (!getDeepSeekApiKey()) return null
 
   try {

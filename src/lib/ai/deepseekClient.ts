@@ -17,6 +17,9 @@ import {
   parseDeepSeekUsage,
 } from '@/lib/ai/usage/parseUsage'
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
+import { getAiUsageContext } from '@/lib/ai/usage/context'
+import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import type { AiUsageTelemetryMeta, NormalizedAiUsage } from '@/lib/ai/usage/types'
 
 export const DEEPSEEK_API_BASE = 'https://api.deepseek.com/v1'
@@ -159,6 +162,18 @@ function noteAttempt(opts: {
  * Return type is unchanged: string only.
  */
 export async function deepseekChatCompletion(opts: DeepSeekChatOptions): Promise<string> {
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (isManual) {
+    if (!isManualEditorAiEnabled()) {
+      throw new Error('MANUAL_EDITOR_AI_ENABLED=false (Manual editor AI is disabled)')
+    }
+  } else {
+    if (!mayAutomatedCrawlerUseAi() && !isLegacyDirectAiEnabled()) {
+      throw new Error('CRAWLER_AI_DISPATCH_ENABLED=false (Automated crawler AI is disabled)')
+    }
+  }
+
   const apiKey = getDeepSeekApiKey()
   if (!apiKey) throw new Error('DEEPSEEK_API_KEY eksik')
 

@@ -15,6 +15,8 @@
 
 import { applyAstrologyCategoryOverride, applyMasterChefCategoryOverride } from '@/lib/categoryOverrides'
 import { completeClassifierJson } from '@/lib/ai/classifierLlm'
+import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { getAiUsageContext } from '@/lib/ai/usage/context'
 import {
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
@@ -129,6 +131,36 @@ export async function classifyArticleCategory(
   content: string,
   currentCategory: string,
 ): Promise<ClassifierResult | null> {
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (!isManual) {
+    if (!mayAutomatedCrawlerUseAi()) {
+      const overridden = applyMasterChefCategoryOverride(currentCategory, title, content)
+      const resolvedId = applyAstrologyCategoryOverride(overridden, title, content) as NewsCategory
+      if (resolvedId && CATEGORIES.includes(resolvedId)) {
+        return {
+          categoryId: resolvedId,
+          confidence: 80,
+          reason: 'deterministic_fallback_ai_disabled',
+        }
+      }
+      return null
+    }
+  } else {
+    if (!isManualEditorAiEnabled()) {
+      const overridden = applyMasterChefCategoryOverride(currentCategory, title, content)
+      const resolvedId = applyAstrologyCategoryOverride(overridden, title, content) as NewsCategory
+      if (resolvedId && CATEGORIES.includes(resolvedId)) {
+        return {
+          categoryId: resolvedId,
+          confidence: 80,
+          reason: 'deterministic_fallback_manual_ai_disabled',
+        }
+      }
+      return null
+    }
+  }
+
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
@@ -221,6 +253,14 @@ export async function classifyYerelSubcategory(
   title: string,
   content: string,
 ): Promise<YerelClassifierResult | null> {
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (!isManual) {
+    if (!mayAutomatedCrawlerUseAi()) return null
+  } else {
+    if (!isManualEditorAiEnabled()) return null
+  }
+
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 
@@ -296,6 +336,14 @@ export async function classifyKibrisSubcategory(
   title: string,
   content: string,
 ): Promise<KibrisClassifierResult | null> {
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (!isManual) {
+    if (!mayAutomatedCrawlerUseAi()) return null
+  } else {
+    if (!isManualEditorAiEnabled()) return null
+  }
+
   const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!deepseekKey) return null
 

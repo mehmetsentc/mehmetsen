@@ -14,6 +14,8 @@ vi.mock('@/lib/ai/usage/telemetry', async () => {
 
 describe('deepseekChatCompletion usage contract', () => {
   beforeEach(() => {
+    vi.stubEnv('CRAWLER_AI_DISPATCH_ENABLED', 'true')
+    vi.stubEnv('CRAWLER_AI_MODE', 'CONTROLLED_AUTO_DRAFT')
     vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
     recordAiRequestUsage.mockReset()
     recordAiRequestUsage.mockImplementation(() => {

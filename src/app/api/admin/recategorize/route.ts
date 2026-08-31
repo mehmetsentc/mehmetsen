@@ -24,6 +24,8 @@ function isAuthorized(request: Request): boolean {
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 
 async function classifyWithGpt(title: string, content: string): Promise<string | null> {
+  const { isManualEditorAiEnabled } = await import('@/services/crawler/automatedAiPolicy')
+  if (!isManualEditorAiEnabled()) return null
   if (!DEEPSEEK_API_KEY) return null
   const startedAt = Date.now()
   try {

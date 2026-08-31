@@ -21,6 +21,8 @@ export function isCrawlerAiDispatchDryRun(): boolean {
   return crawlerAiDispatchDryRunStatus() === 'ON'
 }
 
+export { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from './automatedAiPolicy'
+
 export type CrawlerDispatchResult = {
   dispatched: false
   aiRequests: 0

@@ -59,6 +59,14 @@ export async function POST(request: Request) {
     const authz = authorizeEditorAiPublish(auth.role)
     if (!authz.ok) return NextResponse.json({ error: authz.error }, { status: 403 })
 
+    const { isManualEditorAiEnabled } = await import('@/services/crawler/automatedAiPolicy')
+    if (!isManualEditorAiEnabled()) {
+      return NextResponse.json(
+        { error: 'MANUAL_EDITOR_AI_ENABLED=false (Manual editor AI is disabled in production)' },
+        { status: 403 }
+      )
+    }
+
     if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>

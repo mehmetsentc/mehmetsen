@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryCrawlerStore } from '../store/memory'
 import {
   AI_PUBLISH_BATCH_CAP,
@@ -83,6 +83,14 @@ async function seedArticle(store: MemoryCrawlerStore, source: { id: string; doma
     ...opts,
   } as InsertRawArticleInput)
 }
+
+beforeEach(() => {
+  vi.stubEnv('MANUAL_EDITOR_AI_ENABLED', 'true')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 describe('authorizeEditorAiPublish', () => {
   it('requires news:publish', () => {

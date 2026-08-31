@@ -46,6 +46,8 @@ import {
   applyAstrologyCategoryOverride,
   applyMasterChefCategoryOverride,
 } from '@/lib/categoryOverrides'
+import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import {
   isYerelCategoryTree,
   resolveYerelSubcategoryForLocalNews,
@@ -562,6 +564,18 @@ export async function processNewsroomArticle(
   }
 
   attachStage1RetryOptimizationContext()
+
+  const ctx = getAiUsageContext()
+  const isManual = ctx?.ingestionLane === 'manual_editor'
+  if (isManual) {
+    if (!isManualEditorAiEnabled()) {
+      return { outcome: 'skipped', skipReason: 'MANUAL_EDITOR_AI_ENABLED=false' }
+    }
+  } else {
+    if (!mayAutomatedCrawlerUseAi() && !isLegacyDirectAiEnabled()) {
+      return { outcome: 'skipped', skipReason: 'CRAWLER_AI_DISPATCH_ENABLED=false' }
+    }
+  }
 
   if (options.changeType !== 'updated') {
     const existing = await findExistingByFingerprint(db, fingerprint)
