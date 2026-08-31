@@ -234,7 +234,7 @@
 
 @layer components {
   .app-container {
-    @apply mx-auto w-full max-w-7xl px-4;
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
   .app-shell {
@@ -2050,7 +2050,9 @@
     max-width: var(--article-measure);
   }
 
-  .news-article-body > section[aria-label='Galeri'] {
+  .news-article-body > section[aria-label='Galeri'],
+  .news-article-body > section[aria-label='İlgili haberler'],
+  .news-article-body > .article-full-width {
     max-width: var(--article-shell-max);
   }
 

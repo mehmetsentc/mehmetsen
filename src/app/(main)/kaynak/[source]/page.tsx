@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Newspaper } from 'lucide-react'
+import { SiteContainer } from '@/components/layout/SiteContainer'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
 import { getPostsBySource } from '@/services/newsService.server'
@@ -52,7 +53,7 @@ export default async function SourceProfilePage({ params }: Props) {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
+    <SiteContainer className="py-8">
       <header className="mb-8 flex items-start gap-4 border-b border-[rgb(var(--color-border))] pb-6">
         <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
           <Newspaper className="h-7 w-7" aria-hidden />
@@ -112,6 +113,6 @@ export default async function SourceProfilePage({ params }: Props) {
           })}
         </ul>
       )}
-    </div>
+    </SiteContainer>
   )
 }

@@ -59,12 +59,10 @@ export async function POST(request: Request) {
     const authz = authorizeEditorAiPublish(auth.role)
     if (!authz.ok) return NextResponse.json({ error: authz.error }, { status: 403 })
 
-    // Task 3: Direct automated canonical publishing via AI must not be unlocked by manual editor AI.
-    // It requires automated crawler AI to be enabled.
-    const { mayAutomatedCrawlerUseAi } = await import('@/services/crawler/automatedAiPolicy')
-    if (!mayAutomatedCrawlerUseAi()) {
+    const { isManualEditorAiEnabled } = await import('@/services/crawler/automatedAiPolicy')
+    if (!isManualEditorAiEnabled()) {
       return NextResponse.json(
-        { error: 'CRAWLER_AI_DISPATCH_ENABLED=false (Automated AI bulk publication is disabled in production)' },
+        { error: 'MANUAL_EDITOR_AI_ENABLED=false (Manuel editör AI kapalı)' },
         { status: 403 }
       )
     }

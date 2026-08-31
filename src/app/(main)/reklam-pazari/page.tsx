@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { hasDatabaseUrl } from '@/db'
 import { isAdMarketplaceEnabled } from '@/lib/advertiser/marketplaceFlags'
 import { MarketplaceBrowseClient } from '@/components/advertiser/MarketplaceBrowseClient'
+import { SiteContainer } from '@/components/layout/SiteContainer'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,7 @@ export default function ReklamPazariPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-amber-50/50 to-stone-200/40">
-      <div className="mx-auto max-w-5xl px-4 py-12">
+      <SiteContainer className="py-12">
         <p className="mb-2 text-sm font-medium uppercase tracking-wide text-amber-900/70">
           NaHaber
         </p>
@@ -31,7 +32,7 @@ export default function ReklamPazariPage() {
           </Link>
         </div>
         <MarketplaceBrowseClient />
-      </div>
+      </SiteContainer>
     </div>
   )
 }

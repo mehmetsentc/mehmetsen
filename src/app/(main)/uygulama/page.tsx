@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { SiteContainer } from '@/components/layout/SiteContainer'
 import { getSiteUrl } from '@/lib/seo'
 import { InstallNowButton } from '@/components/pwa/InstallNowButton'
 import { AppDownloadQR } from '@/components/pwa/AppDownloadQR'
@@ -81,7 +82,7 @@ const breadcrumbJsonLd = {
 
 export default function AppDownloadPage() {
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
+    <SiteContainer className="py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(mobileApplicationJsonLd) }}
@@ -226,7 +227,7 @@ export default function AppDownloadPage() {
         App Store ve Google Play sürümlerimiz yakında — şimdilik web uygulaması olarak
         yüklediğiniz NaHaber, native uygulama ile aynı hızda çalışır ve otomatik güncellenir.
       </section>
-    </div>
+    </SiteContainer>
   )
 }
 

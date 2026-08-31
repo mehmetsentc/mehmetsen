@@ -8,6 +8,7 @@
  */
 import { DrizzleCrawlerStore } from '../store/drizzle'
 import { publishRawArticleWithAi } from './aiPublish'
+import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 
 /** Process up to 12 articles per cron tick with concurrency 4. */
 export const WORKER_BATCH_SIZE = 12
@@ -68,7 +69,9 @@ export async function processEditorAiQueue(
       if (!article) break
 
       try {
-        const item = await publishRawArticleWithAi({ store, rawArticleId: article.id })
+        const item = await runWithAiUsageContext({ ingestionLane: 'manual_editor' }, () =>
+          publishRawArticleWithAi({ store, rawArticleId: article.id })
+        )
 
         if (item.outcome === 'published' || item.outcome === 'updated' || item.outcome === 'already_published') {
           result.published += 1
