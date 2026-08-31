@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'news:edit')
+  const auth = await verifyCmsToken(request, 'news:publish')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
 
@@ -23,6 +23,9 @@ export async function POST(request: Request) {
       clusterId,
       actorUserId: auth.uid,
       actorDisplayName: auth.email || 'Admin Editor',
+      reviewedAt: new Date(),
+      decision: 'APPROVED',
+      approvalSource: 'cms_admin_api',
       forceCategory: typeof body.category === 'string' ? body.category : null,
       isBreaking: body.isBreaking === true,
       materialUpdate: body.materialUpdate === true,

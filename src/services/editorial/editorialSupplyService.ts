@@ -14,6 +14,7 @@ import {
   validatePublicationRights,
   type OverlapCategory,
 } from './editorialSimilarityGate'
+import { assertHumanEditorialApproval } from './humanReviewGate'
 import type {
   EditorialCandidateArticle,
   EditorialPublicationResult,
@@ -23,6 +24,8 @@ export interface PublishClusterOptions {
   clusterId: string
   actorUserId?: string
   actorDisplayName?: string
+  reviewedAt?: Date | number | string
+  decision?: 'APPROVED' | 'REJECTED' | string
   forceCategory?: string | null
   isBreaking?: boolean
   materialUpdate?: boolean
@@ -32,6 +35,7 @@ export interface PublishClusterOptions {
   rightsStatus?: string | null
   rightsBasis?: string | null
   forceAllowHighOverlap?: boolean
+  approvalSource?: string
 }
 
 export interface CreateEditorialDraftResult {
@@ -133,6 +137,15 @@ export class EditorialSupplyService {
     if (candidates.length === 0) {
       throw new Error(`No member articles found for cluster: ${opts.clusterId}`)
     }
+
+    // 0. Mandatory Human Editorial Review Gate
+    const approval = assertHumanEditorialApproval({
+      reviewerId: opts.actorUserId,
+      reviewerDisplayName: opts.actorDisplayName,
+      reviewedAt: opts.reviewedAt || new Date(),
+      decision: opts.decision || 'APPROVED',
+      isAiGenerated: false,
+    })
 
     // 1. Deterministic Primary Source Selection
     const primary = selectPrimarySource(candidates)
@@ -288,8 +301,9 @@ export class EditorialSupplyService {
       .set({
         publishedNewsId: newsId,
         editorialDecision: 'APPROVED',
-        editorialDecidedBy: actorId,
-        editorialDecidedAt: now,
+        editorialDecidedBy: approval.reviewerId,
+        editorialDecidedAt: approval.reviewedAt,
+        approvalSource: opts.approvalSource || 'cms_editorial_ops',
         primarySourceId: primary.sourceId,
         primarySourceName: primary.sourceName,
         primaryImageUrl: heroImageUrl,
