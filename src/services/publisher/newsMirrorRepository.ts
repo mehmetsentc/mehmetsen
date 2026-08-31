@@ -29,6 +29,7 @@ export interface NewsMirrorPayload {
   seoTitle: string | null
   seoDescription: string | null
   publishedAt: Date
+  createdAt?: Date
 }
 
 /**
@@ -75,7 +76,7 @@ export class NewsMirrorRepository {
         seoTitle: payload.seoTitle,
         seoDescription: payload.seoDescription,
         publishedAt: payload.publishedAt,
-        createdAt: payload.publishedAt,
+        createdAt: payload.createdAt || now,
         updatedAt: now,
       })
       .onConflictDoUpdate({

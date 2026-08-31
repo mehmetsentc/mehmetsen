@@ -210,8 +210,10 @@ export class EditorialSupplyService {
     const slug = `${slugBase}-${newsId.slice(0, 8)}`
 
     const now = new Date()
-    const publishedAt = primaryArticle.publishedAt || cluster.latestArticleAt || now
-    const publishedAtMs = publishedAt.getTime()
+    const canonicalPublishedAt = now
+    const canonicalPublishedAtMs = canonicalPublishedAt.getTime()
+    const draftCreatedAt = cluster.createdAt || now
+    const draftCreatedAtMs = draftCreatedAt.getTime()
 
     const actorId = opts.actorUserId || 'editorial_ops'
     const actorName = opts.actorDisplayName || primaryArticle.sourceName || 'NaHaber Editör Masası'
@@ -253,8 +255,8 @@ export class EditorialSupplyService {
       isBreaking: Boolean(opts.isBreaking),
       isAiGenerated: false,
       authorIsAI: false,
-      publishedAt: publishedAtMs,
-      createdAt: publishedAtMs,
+      publishedAt: canonicalPublishedAtMs,
+      ...(!alreadyPublished ? { createdAt: draftCreatedAtMs } : {}),
       updatedAt: now.getTime(),
       viewsCount: 0,
       likesCount: 0,
@@ -290,7 +292,8 @@ export class EditorialSupplyService {
       isBreaking: Boolean(opts.isBreaking),
       seoTitle: qualityResult.sanitizedTitle.slice(0, 200),
       seoDescription: qualityResult.sanitizedSummary.slice(0, 300),
-      publishedAt,
+      publishedAt: canonicalPublishedAt,
+      createdAt: draftCreatedAt,
     }
 
     await newsMirrorRepository.ensurePublishedNewsMirror(mirrorPayload)
@@ -336,7 +339,7 @@ export class EditorialSupplyService {
       heroImageUrl,
       alreadyPublished,
       materialUpdate: Boolean(opts.materialUpdate),
-      publishedAt,
+      publishedAt: canonicalPublishedAt,
     }
   }
 

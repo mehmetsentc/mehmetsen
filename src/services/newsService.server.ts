@@ -251,7 +251,7 @@ async function findByNormalizedSlug(slug: string): Promise<Post | null> {
   return null
 }
 
-export const getNewsBySlugCached = unstable_cache(
+export const getLegacyNewsBySlugCached = unstable_cache(
   async (slug: string): Promise<Post | null> => {
     try {
       const snap = await getAdminFirestore()
@@ -265,7 +265,7 @@ export const getNewsBySlugCached = unstable_cache(
         return newsDocToPost(doc.id, doc.data() as NewsDocument)
       }
     } catch (error) {
-      console.warn('[newsService.server] getNewsBySlug query failed:', error)
+      console.warn('[newsService.server] getLegacyNewsBySlug query failed:', error)
     }
 
     const byId = await getNewsById(slug)
@@ -273,37 +273,40 @@ export const getNewsBySlugCached = unstable_cache(
 
     return findByNormalizedSlug(slug)
   },
-  ['news-by-slug-v3'],
+  ['legacy-news-by-slug-v1'],
   { revalidate: 300, tags: ['news-post'] }
 )
 
-export const getLegacyNewsBySlugCached = getNewsBySlugCached
-export const getLegacyNewsBySlug = getNewsBySlug
-
 /**
- * News lookup by slug.
- * 1. Resolves PostgreSQL canonical published news first (highest priority).
- * 2. Falls back to Firestore published news so all site feeds, categories, and city network articles resolve correctly.
+ * Legacy Firestore-only news lookup for approved historical / non-canonical surfaces.
+ * Strictly decoupled from canonical /haber/[slug] public routes.
  */
-export async function getNewsBySlug(slug: string): Promise<Post | null> {
+export async function getLegacyNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
 
-  // 1. PostgreSQL canonical authority (highest priority)
-  const canonical = await getCanonicalNewsBySlug(normalized)
-  if (canonical) return canonical
-
-  // 2. Fallback to Firestore published news (city network, local, category feeds)
   let decoded = normalized
   try {
     decoded = decodeURIComponent(normalized).trim()
   } catch {}
 
-  const post = await getNewsBySlugCached(decoded)
+  const post = await getLegacyNewsBySlugCached(decoded)
   if (!post && decoded !== normalized) {
-    return getNewsBySlugCached(normalized)
+    return getLegacyNewsBySlugCached(normalized)
   }
   return post
+}
+
+/**
+ * Canonical news lookup by slug. Strictly authoritative on PostgreSQL.
+ * Firestore fallback is excluded to ensure publication safety on /haber/[slug].
+ */
+export async function getNewsBySlug(slug: string): Promise<Post | null> {
+  const normalized = slug.trim()
+  if (!normalized) return null
+
+  // PostgreSQL canonical authority ONLY (Phase P17.8B publication safety invariant)
+  return getCanonicalNewsBySlug(normalized)
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {

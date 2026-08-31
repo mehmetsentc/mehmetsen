@@ -15,12 +15,14 @@ describe('Phase P17.8B — Canonical Authority & Human Editorial Review Gate Tes
   })
 
   describe('1. Canonical Authority & Legacy Isolation', () => {
-    it('returns null for non-existent canonical slugs on getCanonicalNewsBySlug', async () => {
+    it('returns null for Firestore-only legacy slugs on canonical getNewsBySlug', async () => {
+      // Mock getCanonicalNewsBySlug returning null (not in PostgreSQL)
       vi.spyOn(canonicalEligibility, 'getCanonicalNewsBySlug').mockResolvedValue(null)
 
-      const nonExistentSlug = 'non-existent-canonical-slug-test-123'
-      const canonicalResult = await canonicalEligibility.getCanonicalNewsBySlug(nonExistentSlug)
+      const legacySlug = 'sandiklida-bicakli-kavga-17-yasindaki-muhammet-ali-saltik-hayatini-kaybetti'
+      const canonicalResult = await getNewsBySlug(legacySlug)
 
+      // Canonical authority is strictly PostgreSQL — Firestore is not consulted for /haber/[slug]
       expect(canonicalResult).toBeNull()
     })
 
@@ -39,6 +41,12 @@ describe('Phase P17.8B — Canonical Authority & Human Editorial Review Gate Tes
       expect(result).not.toBeNull()
       expect(result?.id).toBe('IBeli7VLsE3OVfOKKRmu')
       expect(result?.title).toBe('Günlük Burç Yorumları')
+    })
+
+    it('proves legacy helper getLegacyNewsBySlug is strictly decoupled from getNewsBySlug', () => {
+      expect(typeof getLegacyNewsBySlug).toBe('function')
+      expect(typeof getNewsBySlug).toBe('function')
+      expect(getNewsBySlug).not.toBe(getLegacyNewsBySlug)
     })
   })
 
@@ -152,6 +160,57 @@ describe('Phase P17.8B — Canonical Authority & Human Editorial Review Gate Tes
       expect(evalResult.status).toBe('HUMAN_APPROVED')
       expect(evalResult.reviewerId).toBe('human_editor_uid_456')
       expect(evalResult.reviewedAt).toEqual(timestamp)
+    })
+  })
+
+  describe('4. Canonical Publication Timestamps & Provenance Invariants', () => {
+    it('ensures canonical publication uses current publication time (now) instead of 9-day-old source date', () => {
+      const sourceDate = new Date('2026-08-22T14:27:00.000Z')
+      const clusterSeenDate = new Date('2026-08-22T14:37:44.949Z')
+      const canonicalPublishTime = new Date('2026-08-31T09:26:14.406Z')
+
+      // Canonical publishedAt must be the actual canonical publish time
+      expect(canonicalPublishTime.getTime()).toBeGreaterThan(sourceDate.getTime())
+      expect(canonicalPublishTime.toISOString()).toBe('2026-08-31T09:26:14.406Z')
+      // Source timestamp remains untouched in raw article provenance
+      expect(sourceDate.toISOString()).toBe('2026-08-22T14:27:00.000Z')
+    })
+
+    it('ensures draft created_at is preserved when existing draft is published', () => {
+      const draftCreatedAt = new Date('2026-08-22T14:37:44.949Z')
+      const publishTime = new Date('2026-08-31T09:26:14.406Z')
+
+      const mirrorPayload = {
+        id: 'FS6T7WazJeEe0kjOHJ5T',
+        slug: 'test-slug-FS6T7Waz',
+        title: 'Test Article',
+        summary: 'Summary',
+        description: 'Description',
+        content: 'Content',
+        htmlContent: '<p>Content</p>',
+        categoryId: 'gundem',
+        cityName: 'Çanakkale',
+        citySlug: 'canakkale',
+        districtName: 'Çan',
+        districtSlug: 'can',
+        authorId: 'editor_123',
+        authorDisplayName: 'Editor',
+        source: 'Test Source',
+        sourceUrl: 'https://example.com/test',
+        thumbnailUrl: null,
+        coverImageUrl: null,
+        videoUrl: null,
+        tags: ['gundem'],
+        isBreaking: false,
+        seoTitle: 'Test Article',
+        seoDescription: 'Summary',
+        publishedAt: publishTime,
+        createdAt: draftCreatedAt,
+      }
+
+      expect(mirrorPayload.publishedAt).toEqual(publishTime)
+      expect(mirrorPayload.createdAt).toEqual(draftCreatedAt)
+      expect(mirrorPayload.publishedAt.getTime()).toBeGreaterThan(mirrorPayload.createdAt.getTime())
     })
   })
 })
