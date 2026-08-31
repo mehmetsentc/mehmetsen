@@ -76,8 +76,9 @@ HABER BİÇİMİ (zorunlu):
 - Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman)
 - spot: 2-4 cümle lider; content spot'u tekrarlama
 - content: 250-450 kelime hedef (asgari ~220); gereksiz nutuk/doldurma YASAK
-- En fazla 1-2 ## başlık; yalnızca olay-özgü (ör. "Ceza tutarı", "Resmi açıklama")
-- YASAK başlıklar: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri ders kitabı / ansiklopedi başlıkları
+- Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
+- Alt başlıklar olay-özgü ve somut olsun (ör. "Ceza Tutarı", "Resmi Açıklama", "Vatandaşlar Ne Diyor"); jenerik ders kitabı / ansiklopedi başlığı YASAK: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri
+- Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
 - Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
 
@@ -85,7 +86,7 @@ ALANLAR:
 - title: manşet, max 70 karakter
 - spot: lider paragraf
 - summary: feed teaser max 120 karakter, title'dan farklı
-- content: gövde (markdown ## isteğe bağlı, # H1 kullanma)
+- content: gövde (markdown ## ZORUNLU — en az 2 alt başlık; # H1 kullanma)
 - seoTitle: 55-65 karakter
 - seoDescription: 145-160 karakter`
 
@@ -104,6 +105,7 @@ export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking 
 
 const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
+content içinde EN AZ 2 olay-özgü ## markdown alt başlık ZORUNLU (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK); başlıksız düz paragraf yığını KABUL EDİLMEZ.
 JSON:
 {
   "title": "string",

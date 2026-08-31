@@ -79,8 +79,10 @@ AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.`
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
 - 5N1K; en önemli bilgi ilk cümlede
 - 250-450 kelime gövde (asgari ~220); doldurma yok; kaynak inceyse bile olgusal bağlam ekle
-- "Sonuç / Giriş / Gelişme / …Önemi" gibi ders kitabı ## başlıkları YASAK
-- En fazla 1-2 olay-özgü ## başlık
+- Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca ~220 kelimelik en kısa haberlerde en az 1 yeterli)
+- Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Giriş", "Gelişme", "Önemi", "Genel Değerlendirme" vb.) YASAK
+- Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
+- Alt başlıkları markdown ## ile yaz, HTML etiketi kullanma
 - Spot güçlü; content spot'u kopyalama
 - HTML YASAK: <p>, </p>, <div>, <br>, <span> vb. ASLA yazma — yalnızca düz metin ve ## / ### markdown
 - Paragrafları boş satırla ayır; etiket/kod gibi görünmesin`

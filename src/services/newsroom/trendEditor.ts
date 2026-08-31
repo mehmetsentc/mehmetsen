@@ -78,6 +78,7 @@ YAZIM KURALLARI:
 - Gerçek olmayan bilgi uydurma. Emin olmadığın yerde "iddialar yoğunlaşıyor" gibi ihtiyatlı dil kullan.
 - Türkçe, tarafsız, profesyonel gazetecilik dili
 - content: 5-7 paragraf, 250-450 kelime
+- ZORUNLU YAPI'daki 2-5 numaralı bölümleri (Neden Şimdi?, Sosyal Medya Yansıması, Arka Plan, Ne Olacak?) content içinde MUTLAKA markdown ## alt başlığı olarak yaz (örn. "## Neden Şimdi?") — bu bölümleri düz paragrafa gömme, başlıksız bırakma
 - summary: max 130 karakter, merak uyandıran
 
 KATEGORİ SEÇİMİ (category alanı zorunlu):

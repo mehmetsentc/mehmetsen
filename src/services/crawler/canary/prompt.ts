@@ -18,14 +18,14 @@ export function buildCanarySystemPrompt(pack?: CanaryEvidencePack): string {
           `- Haber İçeriği (body) bölümü TEK BAŞINA en az ${CANARY_BODY_TARGET_MIN_WORDS} kelime olmalıdır.`,
           `- Hedef: ${CANARY_BODY_PROMPT_TARGET_MIN_WORDS}–${CANARY_BODY_PROMPT_TARGET_MAX_WORDS} kelime; sert üst sınır ${CANARY_BODY_TARGET_MAX_WORDS}.`,
           '- title / slug / spot / summary / tags / SEO / social / push alanları kelime sayısına DAHİL DEĞİLDİR — yalnızca body.',
-          '- Yapı: Giriş → ara başlık(lar) → detay/arka plan → sonuç. Kısa paragraflar ≠ kısa haber; mobil paragraflar kullan ama makaleyi tam yaz.',
+          '- Yapı: Giriş → EN AZ 2 olay-özgü ## alt başlık (mümkünse 3-4) → detay/arka plan → sonuç. Jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK. Kısa paragraflar ≠ kısa haber; mobil paragraflar kullan ama makaleyi tam yaz.',
           '- Kanıttaki olguları genişleterek yeniden yaz; uydurma / filler / tekrar YASAK.',
         ].join('\n')
       : metrics?.richness === 'medium'
         ? [
             `- Kaynaklar ORTA. Haber İçeriği (body) hedefi ~${metrics.bodyTargetMinWords}–${metrics.bodyPromptTargetMaxWords ?? CANARY_BODY_TARGET_MAX_WORDS} kelime.`,
             `- Body tek başına en az ${metrics.bodyRequiredMinWords ?? CANARY_BODY_TARGET_MIN_WORDS} kelime (meta alanlar sayılmaz).`,
-            '- Kanıt yettiği kadar yaz; doldurma yasak. Yapı: Giriş / detay / sonuç.',
+            '- Kanıt yettiği kadar yaz; doldurma yasak. Yapı: Giriş / EN AZ 1-2 olay-özgü ## alt başlık / detay / sonuç.',
           ].join('\n')
         : metrics?.richness === 'thin'
           ? [
@@ -36,6 +36,7 @@ export function buildCanarySystemPrompt(pack?: CanaryEvidencePack): string {
           : [
               `- Gövde: materyal yetiyorsa ${CANARY_BODY_TARGET_MIN_WORDS}–${CANARY_BODY_TARGET_MAX_WORDS} kelime.`,
               '- Materyal yetmezse kısa+doğru; uydurarak doldurma yasak.',
+              '- Materyal yeterliyse en az 1-2 olay-özgü ## alt başlık kullan; jenerik ders kitabı başlığı YASAK.',
               `- Zengin kanıtta body tek başına ≥${CANARY_BODY_TARGET_MIN_WORDS}; hedef ${CANARY_BODY_PROMPT_TARGET_MIN_WORDS}–${CANARY_BODY_PROMPT_TARGET_MAX_WORDS}.`,
             ].join('\n')
 
@@ -48,7 +49,7 @@ export function buildCanarySystemPrompt(pack?: CanaryEvidencePack): string {
     '- Yalnızca kanıttaki olgular. Kanıtta olmayan isim/sayı/tarih/alıntı/bağlam EKLEME.',
     '- Çelişkilerde taraf tutma; iddia olarak belirt veya atla. Yanlış uzlaşma yasak.',
     '- Orijinal yeniden yazım; kopyala-yapıştır yok. Tarafsız ton.',
-    '- Paragrafları okunabilir tut (mobil); gerektiğinde ## alt başlık. SEO / Discover dostu.',
+    '- Paragrafları okunabilir tut (mobil); materyal yeterliyse EN AZ 2 olay-özgü ## alt başlık kullan (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK). SEO / Discover dostu.',
     '- Kısa paragraf stili, kısa MAKALE demek değildir — zengin kaynakta tam haber yaz.',
     '- Tekrar, dolgu cümle, “kelime sayısını tutturmak için” uydurma padding YASAK.',
     bodyGuidance,
