@@ -49,9 +49,21 @@ export function linkDensity(html: string, text: string): number {
 
 export function boilerplateRatio(body: string, title: string): number {
   const lower = body.toLowerCase()
-  const markers = ['cookie', 'subscribe', 'newsletter', 'related news', 'read more', 'advertisement', 'reklam']
+  const markers = [
+    'cookie',
+    'subscribe',
+    'newsletter',
+    'related news',
+    'read more',
+    'advertisement',
+    'reklam',
+    'abone ol',
+    'app store',
+    'google play',
+    'dijital evrensel uygulamamız',
+  ]
   let hits = 0
   for (const marker of markers) if (lower.includes(marker)) hits += 1
   const titleRepeat = title && body.toLowerCase().includes(title.toLowerCase()) ? 0 : 0
-  return Math.min(1, hits / 8 + titleRepeat)
+  return Math.min(1, hits / markers.length + titleRepeat)
 }

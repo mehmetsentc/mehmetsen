@@ -4,7 +4,12 @@ import { hostnameOf } from '../url/normalize'
 import { extractJsonLdArticle } from './jsonld'
 import { extractOpenGraph } from './opengraph'
 import { extractEditorialImages } from './images'
-import { extractSemanticArticle, extractWithDomainRule, htmlToPlainText } from './semantic'
+import {
+  extractSemanticArticle,
+  extractWithDomainRule,
+  finalizeExtractedBody,
+  htmlToPlainText,
+} from './semantic'
 import { articleTextStats, boilerplateRatio, computeExtractionConfidence } from './confidence'
 import { extractWithArticleExtractor } from './generic'
 
@@ -57,7 +62,7 @@ export function extractArticle(html: string, pageUrl: string, sourceLanguage?: s
   const og = extractOpenGraph(html, pageUrl)
   const host = hostnameOf(pageUrl)
   const domain = host ? extractWithDomainRule(html, host) : null
-  const semantic = extractSemanticArticle(html)
+  const semantic = extractSemanticArticle(html, host)
 
   let bodyText = ''
   let bodyHtml = ''
@@ -87,6 +92,12 @@ export function extractArticle(html: string, pageUrl: string, sourceLanguage?: s
   }
 
   const title = firstNonEmpty(jsonld?.title, og.title, domain?.title)
+
+  // End-boundary / publisher CTA trim for ALL methods (incl. polluted JSON-LD)
+  const finalized = finalizeExtractedBody(bodyHtml, bodyText, host, title)
+  bodyHtml = finalized.html
+  bodyText = finalized.text
+
   const description = firstNonEmpty(jsonld?.description, og.description)
   const language = detectLanguage(
     [title, description, bodyText].filter(Boolean).join('\n'),
@@ -127,11 +138,13 @@ export async function extractArticleWithFallback(
   if (primary.articleBodyText.trim().length >= MIN_BODY_CHARS) return primary
   const generic = await extractWithArticleExtractor(html, pageUrl)
   if (!generic) return primary
+  const host = hostnameOf(pageUrl)
+  const finalized = finalizeExtractedBody(generic.html, generic.text, host, primary.title || generic.title)
   return withStats({
     ...primary,
     title: primary.title || generic.title,
-    articleBodyText: generic.text,
-    articleBodyHtml: generic.html,
+    articleBodyText: finalized.text,
+    articleBodyHtml: finalized.html,
     extractionMethod: 'generic-readability',
     extractionConfidence: 0.62,
   })
