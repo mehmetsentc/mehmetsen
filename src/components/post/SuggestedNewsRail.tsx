@@ -74,7 +74,7 @@ export function SuggestedNewsRail({
                 {imageUrl ? (
                   <SafeNewsImage
                     src={imageUrl}
-                    alt=""
+                    alt={post.title}
                     fill
                     loading="lazy"
                     quality={imageQualityForTier(tier)}
