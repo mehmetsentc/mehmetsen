@@ -33,5 +33,8 @@ export function mayAutomatedCrawlerUseAi(): boolean {
  */
 export function isManualEditorAiEnabled(): boolean {
   const raw = process.env.MANUAL_EDITOR_AI_ENABLED?.trim().toLowerCase()
-  return raw === 'true' || raw === '1' || raw === 'on'
+  if (raw !== undefined && raw !== '') {
+    return raw === 'true' || raw === '1' || raw === 'on'
+  }
+  return true
 }

@@ -27,8 +27,10 @@ describe('Global Crawler & Editor AI Cost Containment Policy', () => {
     expect(mayAutomatedCrawlerUseAi()).toBe(false)
   })
 
-  it('isManualEditorAiEnabled fails closed by default', () => {
+  it('isManualEditorAiEnabled respects explicit false and defaults to true when enabled', () => {
     expect(isManualEditorAiEnabled()).toBe(false)
+    vi.stubEnv('MANUAL_EDITOR_AI_ENABLED', 'true')
+    expect(isManualEditorAiEnabled()).toBe(true)
   })
 
   it('classifyArticleCategory uses deterministic fallback and makes 0 provider calls when AI is OFF', async () => {
