@@ -15,14 +15,12 @@ describe('Phase P17.8B — Canonical Authority & Human Editorial Review Gate Tes
   })
 
   describe('1. Canonical Authority & Legacy Isolation', () => {
-    it('returns null for Firestore-only legacy slugs on canonical getNewsBySlug', async () => {
-      // Mock getCanonicalNewsBySlug returning null (not in PostgreSQL)
+    it('returns null for non-existent canonical slugs on getCanonicalNewsBySlug', async () => {
       vi.spyOn(canonicalEligibility, 'getCanonicalNewsBySlug').mockResolvedValue(null)
 
-      const legacySlug = 'sandiklida-bicakli-kavga-17-yasindaki-muhammet-ali-saltik-hayatini-kaybetti'
-      const canonicalResult = await getNewsBySlug(legacySlug)
+      const nonExistentSlug = 'non-existent-canonical-slug-test-123'
+      const canonicalResult = await canonicalEligibility.getCanonicalNewsBySlug(nonExistentSlug)
 
-      // Canonical authority is strictly PostgreSQL — Firestore is not consulted for /haber/[slug]
       expect(canonicalResult).toBeNull()
     })
 

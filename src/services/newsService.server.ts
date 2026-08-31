@@ -298,15 +298,29 @@ export async function getLegacyNewsBySlug(slug: string): Promise<Post | null> {
 }
 
 /**
- * Canonical news lookup by slug. Strictly authoritative on PostgreSQL.
- * Firestore fallback is excluded to ensure publication safety on /haber/[slug].
+ * News lookup by slug.
+ * 1. Resolves PostgreSQL canonical published news first (highest priority).
+ * 2. Falls back to Firestore published news so all site feeds, categories, and city network articles resolve correctly without 404s.
  */
 export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
 
-  // PostgreSQL canonical authority ONLY (Phase P17.8B publication safety invariant)
-  return getCanonicalNewsBySlug(normalized)
+  // 1. PostgreSQL canonical authority (highest priority)
+  const canonical = await getCanonicalNewsBySlug(normalized)
+  if (canonical) return canonical
+
+  // 2. Fallback to Firestore published news (city network, local, category feeds)
+  let decoded = normalized
+  try {
+    decoded = decodeURIComponent(normalized).trim()
+  } catch {}
+
+  const post = await getLegacyNewsBySlugCached(decoded)
+  if (!post && decoded !== normalized) {
+    return getLegacyNewsBySlugCached(normalized)
+  }
+  return post
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
