@@ -143,6 +143,36 @@ export function evaluateDraftSeo(): SeoEligibilityResult {
   return base(false, 'draft', false)
 }
 
+export interface HeadingStructureResult {
+  hasHeadings: boolean
+  headingCount: number
+}
+
+const MIN_BODY_HEADINGS = 1
+
+/**
+ * Non-blocking QA signal: does the article body have real ## heading structure?
+ *
+ * Deliberately does NOT feed into evaluateArticleSeo()/indexability — flipping
+ * indexable=false here would retroactively noindex thousands of already-published
+ * historical articles that predate the heading-instruction fix. This is a
+ * monitoring/reporting signal only (see seoMaintenanceWorker.ts), not a
+ * publish/index gate.
+ */
+export function evaluateHeadingStructure(
+  post: Pick<Post, 'content' | 'bodyBlocks'> | null
+): HeadingStructureResult {
+  if (!post) return { hasHeadings: false, headingCount: 0 }
+
+  if (post.bodyBlocks?.length) {
+    const headingCount = post.bodyBlocks.filter((b) => b.type === 'heading').length
+    return { hasHeadings: headingCount >= MIN_BODY_HEADINGS, headingCount }
+  }
+
+  const matches = post.content?.match(/^#{2,4}\s+\S/gm) ?? []
+  return { hasHeadings: matches.length >= MIN_BODY_HEADINGS, headingCount: matches.length }
+}
+
 export function robotsFromEligibility(result: SeoEligibilityResult): { index: boolean; follow: boolean } {
   return { index: result.indexable, follow: result.follow }
 }

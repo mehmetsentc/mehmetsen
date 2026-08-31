@@ -12,6 +12,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { pingSitemaps } from '@/lib/seo'
+import { evaluateHeadingStructure } from '@/lib/seo/seoEligibility'
 import { buildNewsIndexNowUrl, submitIndexNowUrls } from '@/lib/indexNow'
 import {
   hasUsableCoverImage,
@@ -25,6 +26,10 @@ export interface SeoMaintenanceResult {
   thinDraftsRemoved: number
   noImageDraftsRejected: number
   staleDraftsArchived: number
+  /** Diagnostic only — recently published articles scanned for ## heading structure. */
+  headingsScanCount: number
+  /** Diagnostic only — of those scanned, how many have zero H2-H4 headings (read-only, does not mutate/noindex). */
+  headingsMissingCount: number
   errors: string[]
   durationMs: number
 }
@@ -51,6 +56,8 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
     thinDraftsRemoved: 0,
     noImageDraftsRejected: 0,
     staleDraftsArchived: 0,
+    headingsScanCount: 0,
+    headingsMissingCount: 0,
     errors: [],
     durationMs: 0,
   }
@@ -98,6 +105,15 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
       for (const doc of recentSnap.docs) {
         const data = doc.data()
         const updates: Record<string, string | number> = {}
+
+        // Diagnostic only — read-only heading-structure signal, never mutates
+        // the doc or affects indexability (see evaluateHeadingStructure()).
+        const heading = evaluateHeadingStructure({
+          content: typeof data.content === 'string' ? data.content : '',
+          bodyBlocks: Array.isArray(data.bodyBlocks) ? data.bodyBlocks : undefined,
+        })
+        result.headingsScanCount++
+        if (!heading.hasHeadings) result.headingsMissingCount++
 
         if (!data.slug?.trim() && data.title) {
           const slug = buildNewsSlug(String(data.title), doc.id)
@@ -240,7 +256,9 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
     console.log(
       `[seo-maintenance] slugs=${result.slugsGenerated} seo=${result.seoFieldsBackfilled}` +
         ` thin=${result.thinDraftsRemoved} noImage=${result.noImageDraftsRejected}` +
-        ` stale=${result.staleDraftsArchived}`
+        ` stale=${result.staleDraftsArchived}` +
+        ` headings=${result.headingsScanCount - result.headingsMissingCount}/${result.headingsScanCount}` +
+        ` (missing=${result.headingsMissingCount})`
     )
 
     // Ping sitemaps + submit recent article URLs to IndexNow (Bing/Yandex fast indexing)

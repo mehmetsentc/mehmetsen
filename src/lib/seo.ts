@@ -421,7 +421,7 @@ export function buildPostMetadata(post: Post): Metadata {
     robots: forceNoindex
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
       : { index: true, follow: true },
-    authors: [{ name: siteName }],
+    authors: [{ name: post.authorDisplayName?.trim() || siteName }],
     alternates: {
       canonical: url,
     },
@@ -434,6 +434,7 @@ export function buildPostMetadata(post: Post): Metadata {
       siteName,
       publishedTime: datePublished,
       modifiedTime: dateModified,
+      authors: [post.authorDisplayName?.trim() || siteName],
       section,
       ...(post.tags?.length ? { tags: post.tags } : {}),
       ...(image
