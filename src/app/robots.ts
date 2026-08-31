@@ -25,7 +25,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const commonDisallow = [
     '/admin/',
     '/api/',
-    '/_next/',
     '/settings/',
     '/settings',
     '/messages/',
