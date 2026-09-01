@@ -349,6 +349,13 @@ function CrawlerArticlesInner() {
       })
       const body = await parseApiResponse<{ enqueued: number; skipped: number; requested: number; error?: string }>(res)
       if (!res.ok) throw new Error(body.error || 'Kuyruğa eklenemedi')
+      if (body.requested > 0 && body.enqueued === 0) {
+        throw new Error(
+          body.skipped > 0
+            ? `Hiçbir haber kuyruğa eklenemedi (${body.skipped} zaten kuyrukta veya uygun değil)`
+            : 'Hiçbir haber kuyruğa eklenemedi'
+        )
+      }
       toast.success(`${body.enqueued} haber AI kuyruğuna eklendi${body.skipped > 0 ? ` (${body.skipped} atlandı)` : ''}`)
       if (!singleId) setSelection(clearSelection(filterKey))
       await load()

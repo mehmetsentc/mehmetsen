@@ -14,6 +14,7 @@ import { clampPageSize, parseEditorialStatus, parseHasImage, parseQueueTab, pars
 import { BULK_ID_CAP, FILTER_MATCH_CAP } from '@/services/crawler/editorial/bulk'
 import { AI_ENQUEUE_BATCH_CAP, enqueueRawArticlesForAi } from '@/services/crawler/editorial/aiEnqueue'
 import { authorizeEditorAiPublish } from '@/services/crawler/editorial/aiPublish'
+import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 import type { CrawlerQualityStatus } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 
@@ -57,6 +58,13 @@ export async function POST(request: Request) {
 
     const authz = authorizeEditorAiPublish(auth.role)
     if (!authz.ok) return NextResponse.json({ error: authz.error }, { status: 403 })
+
+    if (!isManualEditorAiEnabled()) {
+      return NextResponse.json(
+        { error: 'MANUAL_EDITOR_AI_ENABLED=false (Manuel editör AI kapalı)' },
+        { status: 403 }
+      )
+    }
 
     if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
 

@@ -80,7 +80,7 @@ import { geoEngine, extractCityFromText, hasExplicitPlaceEvidence } from '@/serv
 import { resolveCountryFromText } from '@/constants/countries'
 import { shouldStripSuggestedCityForCategory } from '@/lib/news/neverLocalVerticals'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
-import { runWithAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
+import { withAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -552,7 +552,7 @@ export async function processNewsroomArticle(
     input.rssFingerprint ?? `${input.editorId}:${input.sourceUrl}`.slice(0, 128)
 
   if (!getAiUsageContext()?.traceId) {
-    return runWithAiUsageContext(
+    return withAiUsageContext(
       {
         traceId: crypto.randomUUID(),
         queueId: options.queueJobId,
