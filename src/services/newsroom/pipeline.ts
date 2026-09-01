@@ -1856,6 +1856,7 @@ export async function processNewsroomArticle(
     const editorSoftQualityHold = editorApproved && (bodyTooShort || incompleteText)
     const needsDraft =
       !NEWSROOM_AUTO_PUBLISH_ENABLED ||
+      editorApproved ||
       chiefEditorHold ||
       gateDraft ||
       isFallbackContent ||

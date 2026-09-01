@@ -34,17 +34,18 @@ export function AiPublishConfirmModal({
     >
       <div className="space-y-3 text-sm">
         <p>
-          <strong>{count}</strong> ham haber seçildi. Haberler AI ile yazılıp işlenecek; çoğu doğrudan yayına alınır
-          ve <strong>İnceleme</strong> sekmesinde görünür (kategori kontrolü). Düşük güvenli olanlar{' '}
-          <strong>Onay Bekliyor</strong> taslağı olarak kalır.
+          <strong>{count}</strong> ham haber seçildi. AI haberleri hazırlar; yayın için editör onayı gerekir.
+          Hazırlananlar <strong>Onay Bekliyor</strong> taslağı olarak kalır. Düşük güvenli veya riskli olanlar da
+          aynı inceleme akışında tutulur.
         </p>
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
           ✓ Arka planda işlenir — onaylayınca pencere kapanır, siz çalışmaya devam edebilirsiniz.
-          Haberler <strong>⏳ AI Kuyruğu</strong> sekmesinden izlenebilir.
+          Haberler <strong>⏳ AI Kuyruğu</strong> sekmesinden izlenebilir; hazır olanlar{' '}
+          <strong>Yayın Odası → Onay Bekliyor</strong> altında görünür.
         </p>
         <label className="flex items-start gap-2">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-          <span>AI maliyetini ve doğrudan yayını onaylıyorum.</span>
+          <span>AI işleme maliyetini onaylıyorum (bu, yayın onayı değildir).</span>
         </label>
       </div>
     </CrawlerConfirmModal>
