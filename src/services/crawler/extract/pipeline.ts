@@ -129,6 +129,33 @@ export function extractArticle(html: string, pageUrl: string, sourceLanguage?: s
   })
 }
 
+/**
+ * P17.14A — persist-time invariant: every stored article body must pass the same
+ * finalizeExtractedBody boundary as extractArticle, even if an upstream bundle
+ * skipped it (stale serverless, fallback, or future regression).
+ */
+export function applyPersistExtractionBody(
+  extracted: ExtractedArticleContent,
+  pageUrl: string
+): ExtractedArticleContent {
+  const host = hostnameOf(pageUrl)
+  const finalized = finalizeExtractedBody(
+    extracted.articleBodyHtml || '',
+    extracted.articleBodyText || '',
+    host,
+    extracted.title
+  )
+  const stats = articleTextStats(finalized.text)
+  return {
+    ...extracted,
+    articleBodyText: finalized.text,
+    articleBodyHtml: finalized.html,
+    wordCount: stats.wordCount,
+    charCount: stats.charCount,
+    paragraphCount: stats.paragraphCount,
+  }
+}
+
 export async function extractArticleWithFallback(
   html: string,
   pageUrl: string,

@@ -43,6 +43,35 @@ export const EVRENSEL_GORDES_FIXTURE = `<!doctype html>
 <div class="preview-content" id="5998554" property="articleBody"><p>İlgili önizleme gövdesi buraya sızmamalı.</p></div>
 </body></html>`
 
+/** P17.14A — Google preferences promo sibling inside articleBody (outside evr-sub-cta). */
+export const EVRENSEL_EXTRACTED_GOOGLE_PROMO_FIXTURE = `<!doctype html>
+<html lang="tr"><head><title>Ürdün ABD üssü</title></head>
+<body>
+<article class="news-article">
+  <h1 class="articleTitle">Devrim Muhafızları Ordusu: Ürdün'de ABD üssü vuruldu</h1>
+  <div class="haber">
+    <div property="articleBody">
+      <div class="news-content">
+        <p>İran Devrim Muhafızları Ordusu, ABD'nin Sirik'teki düğün evine saldırısına misilleme olarak Ürdün'deki ABD deniz piyadelerine ait Camp Titin adlı üssün balistik füzelerle hedef alındığını duyurdu. Ayrıca Bahreyn'deki Şeyh İsa Hava Üssü'nde bulunan ABD'ye ait radar tesisleri ile ABD askerlerinin toplandığı merkezlerin kamikaze İHA saldırılarıyla hedef alındığı bildirildi.</p>
+        <p>Devrim Muhafızlarının açıklamasında, balistik füze saldırısının, ABD'nin İran'ın Hürmüzgan eyaletine bağlı Sirik kentinde düğün töreninin düzenlendiği bir konuta gerçekleştirdiği saldırıya misilleme olarak yapıldığı belirtildi.</p>
+        <p>Açıklamada, Ürdün'deki ABD deniz piyadelerine ait Camp Titin adlı üsse gerçekleştirilen saldırıda çok sayıda ABD askerinin öldürüldüğü ileri sürüldü. Ürdün ordusundan yapılan açıklamada ise hava sahasına giren füzelerin çoğunun engellendiği ifade edildi.</p>
+        <p>İran ordusu, saldırıların devam edeceğini bildirdi ve bölgedeki ABD varlığına yönelik operasyonların süreceğini duyurdu.</p>
+        <strong> (Dış Haberler)</strong>
+        <div class="evr-sub-cta">
+          <h3 class="evr-sub-cta-title">Evrensel'e Abone Ol</h3>
+          <p>31 yıldır emeğin sesi olan Evrensel, gücünü sadece okurlarından alıyor.</p>
+        </div>
+      </div>
+      <div style="text-align: center; margin: 30px 0 10px;">
+        <a href="https://google.com/preferences/source?q=evrensel.net" target="_blank" rel="noopener noreferrer">
+          <span>Evrensel'i, Google'da tercih edilen kaynak olarak ekleyin</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</article>
+</body></html>`
+
 /** Long-form journalism: multiple H2 sections MUST all survive. */
 export const LONG_ARTICLE_FIXTURE = `<!doctype html>
 <html><body>

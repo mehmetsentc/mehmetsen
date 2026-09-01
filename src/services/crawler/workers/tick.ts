@@ -1,6 +1,6 @@
 import { crawlerTickLimits, isGlobalCrawlerEnabled } from '../enabled'
 import { discoverSource } from '../discovery/run'
-import { extractArticleWithFallback } from '../extract/pipeline'
+import { extractArticleWithFallback, applyPersistExtractionBody } from '../extract/pipeline'
 import { fetchRenderedHtml } from '../extract/browser'
 import { fetchDocument, type FetchImpl } from '../http/fetchDocument'
 import { canFetchUrl } from '../http/robots'
@@ -311,6 +311,8 @@ export async function runCrawlerTick(opts?: {
         extracted = await extractArticleWithFallback(html, fetched.finalUrl, source.language)
       }
     }
+
+    extracted = applyPersistExtractionBody(extracted, fetched.finalUrl)
 
     const hashes = hashesForArticle(extracted.title, extracted.articleBodyText)
     const simhash = extracted.articleBodyText ? simhashOf(extracted.articleBodyText) : null
