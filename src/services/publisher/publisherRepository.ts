@@ -13,6 +13,7 @@ import {
   news,
   newsClusters,
   newsSources,
+  clusterMemberships,
   publisherClaimRequests,
   publisherMembers,
   publisherSources,
@@ -778,7 +779,17 @@ export class PublisherRepository {
       })
     }
 
-    // 2. Also check raw_articles linked news
+    // 2. Also check raw_articles linked news — LP7 provenance fix (§Task 2):
+    // editorialNewsId is set on EVERY member of a published cluster (PRIMARY,
+    // SUPPORTING, DUPLICATE, LOW_QUALITY, MATERIAL_UPDATE alike — see
+    // editorialSupplyService's "Link all member raw articles" step), so it is
+    // NOT sufficient on its own to mean "this publisher originated the story."
+    // Require cluster_memberships.membershipRole = 'PRIMARY' so this fallback
+    // only ever surfaces articles this publisher's source actually originated,
+    // matching the same rule already enforced by branch 1 above via
+    // newsClusters.primarySourceId. Rows with no membership role (legacy data)
+    // are deliberately excluded — absence of role data is not evidence of
+    // origination (do not invent provenance).
     if (out.length < pageSize) {
       const rawRows = await db
         .select({
@@ -789,6 +800,13 @@ export class PublisherRepository {
           mainImageUrl: rawArticles.mainImageUrl,
         })
         .from(rawArticles)
+        .innerJoin(
+          clusterMemberships,
+          and(
+            eq(clusterMemberships.articleId, rawArticles.id),
+            eq(clusterMemberships.membershipRole, 'PRIMARY')
+          )
+        )
         .where(
           and(
             inArray(rawArticles.sourceId, sourceIds),

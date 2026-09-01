@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BadgeCheck, ExternalLink, Globe, MapPin, Sparkles } from 'lucide-react'
@@ -9,12 +9,143 @@ import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { isAllowedPublisherAccent } from '@/lib/publisher/accentPalette'
+import { buildEditorialTiers, categoryLabelFor, formatPublishedAt } from '@/lib/publisher/editorialTiers'
 import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publisher'
 import { FollowButton } from '@/components/social/FollowButton'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import toast from 'react-hot-toast'
 
 type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
+
+function ArticleTile({ article, categoryMap }: { article: PublisherArticleItem; categoryMap: Map<string, string> }) {
+  const catLabel = categoryLabelFor(article, categoryMap)
+  return (
+    <Link
+      href={ROUTES.NEWS_DETAIL(article.slug)}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
+    >
+      {article.thumbnailUrl ? (
+        <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))]">
+          <SafeNewsImage
+            src={article.thumbnailUrl}
+            alt={article.title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+            {catLabel}
+          </span>
+        </div>
+      ) : (
+        <div className="relative aspect-video w-full bg-[rgb(var(--color-bg))] p-4 flex items-center justify-center">
+          <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+            {catLabel}
+          </span>
+        </div>
+      )}
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] line-clamp-2 transition-colors group-hover:text-[rgb(var(--color-brand))]">
+          {article.title}
+        </h3>
+        {article.summary ? (
+          <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))] line-clamp-2">
+            {article.summary}
+          </p>
+        ) : null}
+        <div className="mt-auto pt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
+          <span>{formatPublishedAt(article.publishedAt)}</span>
+          <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
+            Oku →
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+/** Lead story — large hero tile, full headline, no truncation. LP7 Task 3 §3.1 item 3. */
+function LeadTile({ article, categoryMap }: { article: PublisherArticleItem; categoryMap: Map<string, string> }) {
+  const catLabel = categoryLabelFor(article, categoryMap)
+  return (
+    <Link
+      href={ROUTES.NEWS_DETAIL(article.slug)}
+      className="group grid gap-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-shadow hover:shadow-md sm:grid-cols-5"
+    >
+      <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))] sm:col-span-3 sm:aspect-auto">
+        {article.thumbnailUrl ? (
+          <SafeNewsImage
+            src={article.thumbnailUrl}
+            alt={article.title}
+            fill
+            priority
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full min-h-[220px] w-full items-center justify-center">
+            <span className="rounded-md bg-[rgb(var(--color-border))] px-3 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+              {catLabel}
+            </span>
+          </div>
+        )}
+        <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+          {catLabel}
+        </span>
+      </div>
+      <div className="flex flex-col justify-center p-5 sm:col-span-2 sm:p-6">
+        <h2 className="text-xl font-black leading-tight text-[rgb(var(--color-text))] transition-colors group-hover:text-[color:var(--pub-accent,rgb(var(--color-brand)))] sm:text-2xl">
+          {article.title}
+        </h2>
+        {article.summary ? (
+          <p className="mt-3 text-sm leading-relaxed text-[rgb(var(--color-muted))] line-clamp-3">
+            {article.summary}
+          </p>
+        ) : null}
+        <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[rgb(var(--color-muted))]">
+          <span>{formatPublishedAt(article.publishedAt)}</span>
+          <span className="text-[color:var(--pub-accent,rgb(var(--color-brand)))]">•</span>
+          <span className="text-[color:var(--pub-accent,rgb(var(--color-brand)))]">Manşet</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function SectionBlock({
+  section,
+  categoryMap,
+  onSeeAll,
+}: {
+  section: { id: string; label: string; items: PublisherArticleItem[] }
+  categoryMap: Map<string, string>
+  onSeeAll: () => void
+}) {
+  return (
+    <section className="mb-8">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-black text-[rgb(var(--color-text))] sm:text-xl">
+          <span
+            className="h-4 w-1.5 rounded-full bg-[color:var(--pub-accent,rgb(var(--color-brand)))]"
+            aria-hidden
+          />
+          {section.label}
+        </h2>
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="text-xs font-bold text-[color:var(--pub-accent,rgb(var(--color-brand)))] hover:underline"
+        >
+          Tümünü gör →
+        </button>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {section.items.map((article) => (
+          <ArticleTile key={article.id} article={article} categoryMap={categoryMap} />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 export function PublisherProfileClient({
   publisher,
@@ -31,6 +162,18 @@ export function PublisherProfileClient({
   const [submitting, setSubmitting] = useState(false)
   const [claimUi, setClaimUi] = useState<ClaimUiStatus>('loading')
   const [studioHref, setStudioHref] = useState<string | null>(null)
+
+  // LP7 Task 5 — accent color, wired only into approved chrome (masthead
+  // initial, section dividers, "see all" links). Never applied to platform
+  // trust chrome (verified badge, follow/claim buttons) — see LP7 report §Task 5.
+  // Re-validated client-side against the curated palette even though the
+  // server already enforces this at write time (defense in depth); an
+  // out-of-palette or null value silently falls back to the site default.
+  const safeAccent = useMemo(
+    () => (isAllowedPublisherAccent(publisher.accentColorHex) ? publisher.accentColorHex : null),
+    [publisher.accentColorHex]
+  )
+  const accentStyle = safeAccent ? ({ '--pub-accent': safeAccent } as CSSProperties) : undefined
 
   // Map category IDs to localized category names using DEFAULT_CATEGORIES
   const categoryMap = useMemo(() => {
@@ -57,6 +200,10 @@ export function PublisherProfileClient({
     list.sort((a, b) => b.count - a.count)
     return list
   }, [articles, categoryMap])
+
+  // LP7 Task 3/4/6/7 — Lead/Secondary/Sections/Latest tiers for the "Tümü"
+  // (newspaper front page) view. Only computed when needed; cheap either way.
+  const homeTiers = useMemo(() => buildEditorialTiers(articles, categoryMap), [articles, categoryMap])
 
   // Filter articles based on active category chip
   const filteredArticles = useMemo(() => {
@@ -151,7 +298,10 @@ export function PublisherProfileClient({
                   className="object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-3xl font-black text-[rgb(var(--color-brand))]">
+                <div
+                  className="flex h-full w-full items-center justify-center text-3xl font-black text-[color:var(--pub-accent,rgb(var(--color-brand)))]"
+                  style={accentStyle}
+                >
                   {publisher.displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -342,9 +492,55 @@ export function PublisherProfileClient({
         )}
       </section>
 
-      {/* Responsive News Grid: Mobile 1-col, Tablet 2-col, Desktop 3-col */}
-      <section>
-        {filteredArticles.length === 0 ? (
+      {/* Front page (Tümü) vs. single-category drill-down. LP7 Task 3/4/6/7/10. */}
+      <section style={accentStyle}>
+        {articles.length === 0 ? (
+          // Truthful zero-content state — LP7 Task 10. Never a placeholder card.
+          <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
+            <p className="text-sm font-medium text-[rgb(var(--color-text))]">
+              Bu yayıncının henüz yayınlanmış haberi yok.
+            </p>
+            <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+              Yeni içerik yayınlandığında burada görünecek.
+            </p>
+          </div>
+        ) : selectedCategory === 'all' ? (
+          <div>
+            {homeTiers.lead && <LeadTile article={homeTiers.lead} categoryMap={categoryMap} />}
+
+            {homeTiers.secondary.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:gap-6">
+                {homeTiers.secondary.map((article) => (
+                  <ArticleTile key={article.id} article={article} categoryMap={categoryMap} />
+                ))}
+              </div>
+            )}
+
+            {homeTiers.sections.length > 0 && (
+              <div className="mt-8">
+                {homeTiers.sections.map((section) => (
+                  <SectionBlock
+                    key={section.id}
+                    section={section}
+                    categoryMap={categoryMap}
+                    onSeeAll={() => setSelectedCategory(section.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {homeTiers.latest.length > 0 && (
+              <section className="mt-8">
+                <h2 className="mb-3 text-lg font-black text-[rgb(var(--color-text))] sm:text-xl">Son Haberler</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
+                  {homeTiers.latest.map((article) => (
+                    <ArticleTile key={article.id} article={article} categoryMap={categoryMap} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        ) : filteredArticles.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
             <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
               Bu kategoride yayınlanmış haber bulunamadı.
@@ -352,63 +548,9 @@ export function PublisherProfileClient({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
-            {filteredArticles.map((article) => {
-              const catLabel =
-                categoryMap.get((article.categoryId || '').toLowerCase()) ||
-                (article.categoryId ? article.categoryId.toUpperCase() : 'GÜNDEM')
-
-              return (
-                <Link
-                  key={article.id}
-                  href={ROUTES.NEWS_DETAIL(article.slug)}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
-                >
-                  {article.thumbnailUrl ? (
-                    <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))]">
-                      <SafeNewsImage
-                        src={article.thumbnailUrl}
-                        alt={article.title}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
-                        {catLabel}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="relative aspect-video w-full bg-[rgb(var(--color-bg))] p-4 flex items-center justify-center">
-                      <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
-                        {catLabel}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] line-clamp-2 transition-colors group-hover:text-[rgb(var(--color-brand))]">
-                      {article.title}
-                    </h3>
-                    {article.summary ? (
-                      <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))] line-clamp-2">
-                        {article.summary}
-                      </p>
-                    ) : null}
-                    <div className="mt-auto pt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
-                      <span>
-                        {article.publishedAt
-                          ? new Date(article.publishedAt).toLocaleDateString('tr-TR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : null}
-                      </span>
-                      <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
-                        Oku →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
+            {filteredArticles.map((article) => (
+              <ArticleTile key={article.id} article={article} categoryMap={categoryMap} />
+            ))}
           </div>
         )}
       </section>
