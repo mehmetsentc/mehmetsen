@@ -44,6 +44,7 @@ function fakePublisher(over: Partial<PublisherRecord> = {}): PublisherRecord {
     city: 'Çanakkale',
     district: null,
     verificationStatus: 'VERIFIED',
+    accentColorHex: null,
     claimedAt: null,
     verifiedAt: new Date(),
     createdAt: new Date(),

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { PublisherStudioShell, saveProfile } from '@/components/publisher/studio/PublisherStudioShell'
+import { PUBLISHER_ACCENT_PALETTE } from '@/lib/publisher/accentPalette'
 import type { PublisherRecord } from '@/types/publisher'
 
 export function PublisherStudioProfileClient({
@@ -21,6 +22,7 @@ export function PublisherStudioProfileClient({
     countryCode: publisher.countryCode ?? '',
     websiteUrl: publisher.websiteUrl ?? '',
   })
+  const [accentColorHex, setAccentColorHex] = useState<string | null>(publisher.accentColorHex)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function PublisherStudioProfileClient({
       countryCode: publisher.countryCode ?? '',
       websiteUrl: publisher.websiteUrl ?? '',
     })
+    setAccentColorHex(publisher.accentColorHex)
   }, [publisher])
 
   const submit = async () => {
@@ -48,6 +51,7 @@ export function PublisherStudioProfileClient({
         district: form.district || null,
         countryCode: form.countryCode || null,
         websiteUrl: form.websiteUrl || null,
+        accentColorHex,
       })
     } finally {
       setSaving(false)
@@ -88,6 +92,43 @@ export function PublisherStudioProfileClient({
             )}
           </label>
         ))}
+        <div className="block text-sm">
+          <span className="mb-1 block font-semibold">Vurgu rengi (Living Paper)</span>
+          <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+            Kaynak satırındaki çizgide ve künye rozetinde kullanılır. Sadece aşağıdaki onaylı
+            paletten seçilebilir.
+          </p>
+          <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Vurgu rengi">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={accentColorHex === null}
+              title="Varsayılan (NaHaber nötr)"
+              onClick={() => setAccentColorHex(null)}
+              className={`h-8 w-8 rounded-full border-2 ${
+                accentColorHex === null
+                  ? 'border-[rgb(var(--color-primary))]'
+                  : 'border-[rgb(var(--color-border))]'
+              } bg-[rgb(var(--color-surface-muted,var(--color-border)))]`}
+            />
+            {PUBLISHER_ACCENT_PALETTE.map((swatch) => (
+              <button
+                key={swatch.hex}
+                type="button"
+                role="radio"
+                aria-checked={accentColorHex === swatch.hex}
+                title={swatch.label}
+                onClick={() => setAccentColorHex(swatch.hex)}
+                style={{ backgroundColor: swatch.hex }}
+                className={`h-8 w-8 rounded-full border-2 ${
+                  accentColorHex === swatch.hex
+                    ? 'border-[rgb(var(--color-primary))]'
+                    : 'border-transparent'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
         <p className="text-xs text-[rgb(var(--color-muted))]">
           Düzenlenemez: primary_domain, verification_status, sahiplik, kaynak ilişkileri.
         </p>

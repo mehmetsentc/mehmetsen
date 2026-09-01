@@ -277,6 +277,7 @@ class MockPublisherRepo {
       city: input.city ?? null,
       district: input.district ?? null,
       verificationStatus: input.verificationStatus ?? 'UNCLAIMED',
+      accentColorHex: input.accentColorHex ?? null,
       claimedAt: null,
       verifiedAt: null,
       createdAt: new Date(),

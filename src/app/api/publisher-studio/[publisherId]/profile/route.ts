@@ -4,6 +4,7 @@ import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { requireStudioAuth, studioDisabledResponse, studioErrorResponse } from '@/lib/publisher/studioApi'
 import { publisherProfileService } from '@/services/publisher/publisherLayoutService'
 import { publisherRepository } from '@/services/publisher/publisherRepository'
+import { isAllowedPublisherAccent } from '@/lib/publisher/accentPalette'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,6 +38,16 @@ export async function PATCH(request: Request, context: RouteContext) {
   if ('primaryDomain' in body || 'verificationStatus' in body || 'status' in body || 'slug' in body) {
     return NextResponse.json({ error: 'Field not editable' }, { status: 400 })
   }
+  if (
+    'accentColorHex' in body &&
+    body.accentColorHex !== null &&
+    typeof body.accentColorHex !== 'string'
+  ) {
+    return NextResponse.json({ error: 'Invalid accentColorHex' }, { status: 400 })
+  }
+  if ('accentColorHex' in body && !isAllowedPublisherAccent(body.accentColorHex as string | null)) {
+    return NextResponse.json({ error: 'Accent color must be chosen from the curated palette' }, { status: 400 })
+  }
   try {
     const { user } = await requireStudioAuth(request, publisherId, 'profile:edit')
     const publisher = await publisherProfileService.updateProfile(publisherId, user.uid, {
@@ -53,6 +64,10 @@ export async function PATCH(request: Request, context: RouteContext) {
         body.countryCode === null || typeof body.countryCode === 'string' ? body.countryCode : undefined,
       websiteUrl:
         body.websiteUrl === null || typeof body.websiteUrl === 'string' ? body.websiteUrl : undefined,
+      accentColorHex:
+        body.accentColorHex === null || typeof body.accentColorHex === 'string'
+          ? body.accentColorHex
+          : undefined,
     })
     return NextResponse.json({ publisher })
   } catch (err) {

@@ -34,6 +34,7 @@ export function serializePublicPublisher(publisher: PublisherRecord): PublicPubl
     city: publisher.city,
     district: publisher.district,
     verificationStatus: publisher.verificationStatus,
+    accentColorHex: publisher.accentColorHex,
     isVerified: isPublisherVerified(publisher),
     isPubliclyVisible: isPublisherPubliclyVisible(publisher),
   }

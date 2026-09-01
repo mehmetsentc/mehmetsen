@@ -22,6 +22,7 @@ const basePublisher: PublisherRecord = {
   city: 'İstanbul',
   district: null,
   verificationStatus: 'VERIFIED',
+  accentColorHex: null,
   claimedAt: new Date(),
   verifiedAt: new Date(),
   createdAt: new Date(),

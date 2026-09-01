@@ -56,6 +56,8 @@ export interface PublisherRecord {
   city: string | null
   district: string | null
   verificationStatus: PublisherVerificationStatus
+  /** LP6 Publisher Themes — one of PUBLISHER_ACCENT_PALETTE (src/lib/publisher/accentPalette.ts), or null for NaHaber's default. */
+  accentColorHex: string | null
   claimedAt: Date | null
   verifiedAt: Date | null
   createdAt: Date
@@ -77,6 +79,7 @@ export interface PublicPublisherRecord {
   city: string | null
   district: string | null
   verificationStatus: PublisherVerificationStatus
+  accentColorHex: string | null
   isVerified: boolean
   isPubliclyVisible: boolean
 }

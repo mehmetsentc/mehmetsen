@@ -30,6 +30,8 @@ export const publishers = pgTable(
     city: varchar('city', { length: 100 }),
     district: varchar('district', { length: 100 }),
     verificationStatus: varchar('verification_status', { length: 24 }).default('UNCLAIMED').notNull(),
+    /** LP6 Publisher Themes — curated palette only, see src/lib/publisher/accentPalette.ts. Null = NaHaber default (no accent). */
+    accentColorHex: varchar('accent_color_hex', { length: 7 }),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

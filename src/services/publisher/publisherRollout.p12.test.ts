@@ -140,6 +140,7 @@ describe('Phase P12 — SEO & Public Visibility for Real Publisher', () => {
     countryCode: 'GB',
     city: null,
     district: null,
+    accentColorHex: null,
     claimedAt: null,
     verifiedAt: null,
     createdAt: new Date('2026-08-27'),

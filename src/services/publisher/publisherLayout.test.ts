@@ -298,6 +298,7 @@ function seedPublisher(): PublisherRecord {
     city: 'İstanbul',
     district: null,
     verificationStatus: 'VERIFIED',
+    accentColorHex: null,
     claimedAt: now,
     verifiedAt: now,
     createdAt: now,

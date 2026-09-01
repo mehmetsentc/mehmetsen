@@ -21,6 +21,7 @@ import {
   users,
 } from '@/db/schema'
 import { newPublisherId } from '@/lib/publisher/id'
+import { isAllowedPublisherAccent } from '@/lib/publisher/accentPalette'
 import type {
   PublisherAdminFilter,
   PublisherArticleItem,
@@ -52,6 +53,7 @@ function mapPublisher(row: typeof publishers.$inferSelect): PublisherRecord {
     city: row.city,
     district: row.district,
     verificationStatus: row.verificationStatus as PublisherVerificationStatus,
+    accentColorHex: row.accentColorHex,
     claimedAt: row.claimedAt,
     verifiedAt: row.verifiedAt,
     createdAt: row.createdAt,
@@ -236,6 +238,7 @@ export class PublisherRepository {
     city?: string | null
     district?: string | null
     verificationStatus?: PublisherVerificationStatus
+    accentColorHex?: string | null
   }): Promise<PublisherRecord> {
     const db = this.requireDb()
     const now = new Date()
@@ -258,6 +261,7 @@ export class PublisherRepository {
         city: input.city ?? null,
         district: input.district ?? null,
         verificationStatus: input.verificationStatus ?? 'UNCLAIMED',
+        accentColorHex: input.accentColorHex ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -294,6 +298,7 @@ export class PublisherRepository {
       city: string | null
       district: string | null
       countryCode: string | null
+      accentColorHex: string | null
     }>
   ): Promise<PublisherRecord | null> {
     const db = this.requireDb()
@@ -306,6 +311,12 @@ export class PublisherRepository {
     if (patch.city !== undefined) allowed.city = patch.city
     if (patch.district !== undefined) allowed.district = patch.district
     if (patch.countryCode !== undefined) allowed.countryCode = patch.countryCode
+    if (patch.accentColorHex !== undefined) {
+      if (!isAllowedPublisherAccent(patch.accentColorHex)) {
+        throw new Error('ACCENT_COLOR_NOT_ALLOWED')
+      }
+      allowed.accentColorHex = patch.accentColorHex
+    }
     if (!Object.keys(allowed).length) return this.findById(id)
 
     const [row] = await db

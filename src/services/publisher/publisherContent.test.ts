@@ -70,6 +70,7 @@ function makePublisher(): PublisherRecord {
     city: null,
     district: null,
     verificationStatus: 'VERIFIED',
+    accentColorHex: null,
     claimedAt: t,
     verifiedAt: t,
     createdAt: t,

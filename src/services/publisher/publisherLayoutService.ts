@@ -195,6 +195,7 @@ export class PublisherProfileService {
       district?: string | null
       countryCode?: string | null
       websiteUrl?: string | null
+      accentColorHex?: string | null
     }
   ): Promise<PublisherRecord> {
     await requirePublisherMember(publisherId, userId, 'profile:edit', this.repo)
