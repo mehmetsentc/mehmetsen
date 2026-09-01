@@ -1,0 +1,678 @@
+{
+  "totalAudited": 29,
+  "classificationCounts": {
+    "SAFE_LICENSED": 1,
+    "NEEDS_HUMAN_REVIEW": 28,
+    "INSUFFICIENT_RIGHTS_EVIDENCE": 0
+  },
+  "proposedHoldCount": 28,
+  "inventory": [
+    {
+      "index": 1,
+      "canonical_news_id": "wn7TDVNBOsaHWCELr5XS",
+      "headline": "Cem Küçük soruşturmasında yeni gelişme: İsmail Çanak teslim oldu",
+      "source": "Hürriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_67d79968-4c8c-4aba-9e11-fb6a26db5de1",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 2,
+      "canonical_news_id": "7Ek0kU6f1f75FKdgkGkq",
+      "headline": "Suriye diplomatik pasaport sahiplerine vize muafiyeti",
+      "source": "Habertürk",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_fc17ee6f-aa40-4ac9-872a-2a2dada6edf2",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 3,
+      "canonical_news_id": "9K3iCNDXq88sspsWh9Kq",
+      "headline": "Son Dakika! Galatasaray ve Fenerbahçe’nin Şampiyonlar Ligi’ndeki rakipleri belli oldu",
+      "source": "bogazgazetesi.com.tr",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_d198d6d9-2f8a-4c00-b411-20c0af86d1b8",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 4,
+      "canonical_news_id": "fxWQ30zMD9OLlFIRmy8L",
+      "headline": "UEFA Avrupa Ligi play-off turu: Kauno Zalgiris - Beşiktaş maçının ilk 11'leri belli oldu",
+      "source": "Evrensel",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_5a28a4a4-2f23-40bc-b877-456f7556ae5c",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 5,
+      "canonical_news_id": "6E5499uuBEZgVrY5W14p",
+      "headline": "Manifest'in kurucusu Tolga Akış kimdir, neden gözaltına alındı?",
+      "source": "Habertürk",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_a18e9a67-9a02-4a3c-bc7a-b6d9c6b62784",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 6,
+      "canonical_news_id": "Uyqn0o6oE98Whb44xKLx",
+      "headline": "Cumhurbaşkanı Erdoğan'dan esnaf ziyareti",
+      "source": "NTV",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_5c756adb-9fa6-4cfc-a10e-cac2c91dfd38",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 7,
+      "canonical_news_id": "KdnQtmqxFcIuwMANyD7B",
+      "headline": "Fenerbahçe ayrılığı duyurdu: Livakovic, Barcelona'ya transfer oldu",
+      "source": "Evrensel",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_364f81b2-54fc-4c4a-9d38-217409bada88",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 8,
+      "canonical_news_id": "Y5AmDjFJ8KK8k5lioHNw",
+      "headline": "30 Ağustos'ta bazı toplu taşıma seferleri ücretsiz olacak",
+      "source": "Hürriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_ebabc6b1-2773-4b30-8115-d46861c445b9",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 9,
+      "canonical_news_id": "Yx1QZdnVi6jLgZu941wz",
+      "headline": "Avcılar'da kundaklama şüphesi: Oto galerideki araçlar alevlere teslim oldu",
+      "source": "NTV",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_38c59a88-17ba-4b9b-bf37-285312aea553",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 10,
+      "canonical_news_id": "SBDr3GiQGeCSb9bIJUyV",
+      "headline": "Son dakika haberler: Cumhurbaşkanı Recep Tayyip Erdoğan'dan 'Büyük Taarruz'un yıl dönümü mesajı - Son Dakika Haberleri Habertürk",
+      "source": "Habertürk",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_afa307c5-25f8-430a-b485-e3bce8632e0a",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 11,
+      "canonical_news_id": "slFAPHzhrEEZVQ6u05Hc",
+      "headline": "Süper Lig'den üç kulüp başkanı ve 10 takım, PFDK'ye sevk edildi",
+      "source": "Evrensel",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_b66eada3-094e-44e8-b701-dea7f2092373",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 12,
+      "canonical_news_id": "ieVZR7VlZ5LFio9osW84",
+      "headline": "Country müziğinin efsanesi Dolly Parton hayatını kaybetti",
+      "source": "Sözcü",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_21d66a5d-92ea-4d11-954a-4a88af1c000f",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 13,
+      "canonical_news_id": "WhyfdiqXx34V0APmwhlw",
+      "headline": "Son dakika haberler: Şahan Gökbakar'ın ifadesi ortaya çıktı: AHBAP ile hiçbir dönem ilişkim olmadı - Haberler Habertürk",
+      "source": "Cumhuriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_f67c88b9-a7a4-48c4-90e7-0a2d4afbe45e",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 14,
+      "canonical_news_id": "uWAGgqQIRNbZd80HRuJU",
+      "headline": "6. Lider Eşleri Zirvesi'ne Emine Erdoğan'dan video mesaj",
+      "source": "NTV",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_0c999d30-af70-4f1a-a7dc-878c11fabefc",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 15,
+      "canonical_news_id": "7ntbGyQCwAYT255TS3Gn",
+      "headline": "Kayseri'de feci kaza... Yolcu otobüsü ile akaryakıt tankeri çarpıştı: İkisi ağır 35 yaralı",
+      "source": "Habertürk",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_ecd3de9a-ca49-4ec4-8590-baa9e9b48fd6",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 16,
+      "canonical_news_id": "0mfGNNNuoYKjjkSInvpL",
+      "headline": "Kocaeli'nden sonra Ordu... 2 kız kardeşin dere kenarında cansız bedeni bulundu",
+      "source": "Sözcü",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_c5d973aa-a617-4958-8b2b-44993a5323cd",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 17,
+      "canonical_news_id": "RxQYTsjDt7FT2jkCv6XE",
+      "headline": "Trump'tan Kanada'ya yönelik gümrük vergisi açıklaması: Otomobil ve kamyon tarifeleri yüzde 50'ye yükseltilecek",
+      "source": "Evrensel",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_3124f52c-b88d-43ca-9ca4-2cb94e8efddb",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 18,
+      "canonical_news_id": "2wVpPtCQBj8h9BotuIfP",
+      "headline": "Cumhurbaşkanı Recep Tayyip Erdoğan, Brezilya Devlet Başkanı Silva ile görüştü",
+      "source": "Cumhuriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_8e615dc4-191a-45d9-8a73-e3d9c40c9250",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 19,
+      "canonical_news_id": "YjAVmmdEzYbplPLkkcor",
+      "headline": "SON DAKİKA | Balıkesir ve çevre illerde hissedilen bir deprem meydana geldi",
+      "source": "Sözcü",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_75a7413c-3815-4d88-a8da-f187ed89f524",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 20,
+      "canonical_news_id": "o0bAK5STcEH3DWL0QSKB",
+      "headline": "Zonguldak Valiliğinden tarım işçilerinin saldırıya uğradığı iddialarına ilişkin açıklama",
+      "source": "CNN Türk",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_f3b83aa3-5f5c-4160-a7c2-6034be5a9be2",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 21,
+      "canonical_news_id": "IBeli7VLsE3OVfOKKRmu",
+      "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "source": "Cumhuriyet",
+      "overlap_percentage": "11.5%",
+      "overlap_category": "LOW_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_bb0ca62b-001d-4685-8c0b-dc440e9f1604",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "SAFE_LICENSED",
+      "proposed_action": "RETAIN_PUBLIC"
+    },
+    {
+      "index": 22,
+      "canonical_news_id": "fH2adNEHm9jqprqi3ai6",
+      "headline": "73 orman yangınına soruşturma. 12 tutuklama",
+      "source": "NTV",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_ccc4ff79-ce30-4d12-a7e1-be57734d69a6",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 23,
+      "canonical_news_id": "8rfBttkS8hWuza4i6r7y",
+      "headline": "Alparslan Kuytul ve eşi tutuklandı",
+      "source": "Hürriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_8302c999-c0c7-44f4-8018-57d4b10c5d90",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 24,
+      "canonical_news_id": "Wzwt4hSc2qdGYgiRJeq7",
+      "headline": "İstanbul'da bu yollar trafiğe kapatıldı",
+      "source": "Hürriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_69771062-0c65-48e6-bd07-9778f9032172",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 25,
+      "canonical_news_id": "pk9KtxrGkh5y9HhRM1zI",
+      "headline": "İsrail’den Türkiye açıklaması: Gerilimi artırma niyetinde değiliz",
+      "source": "Dünya",
+      "overlap_percentage": "91.2%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_8a122e96-c24d-43a9-841a-db60996393e4",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 26,
+      "canonical_news_id": "FS6T7WazJeEe0kjOHJ5T",
+      "headline": "Çanakkale'de ahırda çıkan yangın söndürüldü",
+      "source": "bogazgazetesi.com.tr",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_be0a58ab-74f5-411c-9816-872847a76dc7",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 27,
+      "canonical_news_id": "2DbrAwetkrwO76kQYgsF",
+      "headline": "Mabel Matiz’in savcılık ifadesi ortaya çıktı: 'Haksızlık olduğunu düşünüyorum'",
+      "source": "Sözcü",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_930f3032-e0cf-42e0-8d59-c47c0a69930b",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 28,
+      "canonical_news_id": "th5Lx6c2IP1oRLNwya8C",
+      "headline": "FC 27 Galatasaray Oyuncu Reytingleri Belli Oldu",
+      "source": "Webtekno",
+      "overlap_percentage": "70.2%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_0bd27933-03cb-463a-9b37-a51ddc1c46cb",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    },
+    {
+      "index": 29,
+      "canonical_news_id": "NHA9ts3sNZ2gFBZ1Xpu6",
+      "headline": "Son dakika... CHP'den istifa etti: Eskişehir Büyükşehir Belediye Başkanı Ayşe Ünlüce YENİ Parti'ye katıldı",
+      "source": "Cumhuriyet",
+      "overlap_percentage": "100.0%",
+      "overlap_category": "HIGH_OVERLAP",
+      "rights_metadata": {
+        "rightsStatus": "UNKNOWN",
+        "rightsBasis": "UNKNOWN",
+        "hasExplicitRights": false
+      },
+      "editorial_review_evidence": {
+        "cluster_id": "cl_68393c2b-158a-4cad-9c63-c8461f2141c4",
+        "editorial_decision": "APPROVED",
+        "editorial_decided_by": "ap3scBglLIVwflfZN4qL8PKrM1A3",
+        "content_item_id": "NONE",
+        "approved_by": "NONE"
+      },
+      "current_public_status": "published",
+      "remediation_classification": "NEEDS_HUMAN_REVIEW",
+      "proposed_action": "HOLD_FOR_EDITORIAL_REWRITE"
+    }
+  ]
+}
