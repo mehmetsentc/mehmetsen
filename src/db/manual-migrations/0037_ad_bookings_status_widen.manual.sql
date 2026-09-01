@@ -1,0 +1,29 @@
+-- Fix pre-existing schema.ts <-> production drift on ad_bookings.status.
+--
+-- Discovered 2026-09-01 while verifying the LP6 migration-snapshot-chain baseline
+-- repair (see 0036_baseline_snapshot.sql): schema.ts declared
+-- `status: varchar('status', { length: 32 })` in src/db/schema/advertiserMarketplace.ts,
+-- but the live production column was varchar(24) — the length that migration
+-- 0031_phase_p9_advertiser_marketplace.sql actually created.
+--
+-- Root cause: commit 11662c95 ("[force-deploy] feat(P10A): commercial ledger,
+-- commission, payment state machine", 2026-08-27) widened this column in schema.ts
+-- as part of "richer status vocabulary" for the P10A phase, but the accompanying
+-- migration (0032_phase_p10a_commercial_ledger.sql) only added the new
+-- invoice_status column — the ALTER COLUMN for the existing status column was
+-- never written. Confirmed via `git blame` and the 0031/0032 migration file
+-- contents.
+--
+-- Verified safe before running: ad_bookings had 0 rows in production at the time
+-- (read-only precheck), so there was no truncation/data-loss risk either way. No
+-- status value used anywhere in the codebase (checked BookingStatus union in
+-- src/types/advertiserMarketplace.ts) exceeds 21 characters, so this was purely
+-- catching the DB up to the schema.ts declaration that already existed — not a
+-- new design decision made in this pass.
+--
+-- Applied directly via Neon SQL Editor (see accompanying report); this file only
+-- documents it. Postcheck: status_col_len=32, ad_bookings column count unchanged
+-- at 27, ad_bookings row count unchanged at 0, publishers row count unchanged at
+-- 401 (unrelated-table sanity check).
+
+ALTER TABLE "ad_bookings" ALTER COLUMN "status" TYPE varchar(32);
