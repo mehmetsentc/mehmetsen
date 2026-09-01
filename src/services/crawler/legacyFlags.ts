@@ -4,7 +4,8 @@
  * crawler AI dispatch OFF (see dispatch.ts).
  */
 
-function envTrue(name: string): boolean {
+/** Explicit allow only: missing/empty/unexpected → false. */
+export function envExplicitTrue(name: string): boolean {
   const raw = process.env[name]?.trim().toLowerCase()
   return raw === 'true' || raw === '1' || raw === 'on'
 }
@@ -20,7 +21,7 @@ export function isLegacyRssDiscoveryEnabled(): boolean {
   if (process.env.LEGACY_RSS_DISCOVERY_ENABLED == null || process.env.LEGACY_RSS_DISCOVERY_ENABLED.trim() === '') {
     return true
   }
-  return envTrue('LEGACY_RSS_DISCOVERY_ENABLED')
+  return envExplicitTrue('LEGACY_RSS_DISCOVERY_ENABLED')
 }
 
 /**
@@ -28,7 +29,7 @@ export function isLegacyRssDiscoveryEnabled(): boolean {
  * Default OFF — explicit true required (rollback).
  */
 export function isLegacyDirectAiEnabled(): boolean {
-  return envTrue('LEGACY_DIRECT_AI_ENABLED')
+  return envExplicitTrue('LEGACY_DIRECT_AI_ENABLED')
 }
 
 /**
@@ -41,7 +42,7 @@ export function isLegacyRssSkipCrawlerOwned(): boolean {
   if (process.env.LEGACY_RSS_SKIP_CRAWLER_OWNED == null || process.env.LEGACY_RSS_SKIP_CRAWLER_OWNED.trim() === '') {
     return true
   }
-  return envTrue('LEGACY_RSS_SKIP_CRAWLER_OWNED')
+  return envExplicitTrue('LEGACY_RSS_SKIP_CRAWLER_OWNED')
 }
 
 export type LegacyIngestionMode = 'crawler_ingestion' | 'legacy_disabled' | 'legacy_ai'

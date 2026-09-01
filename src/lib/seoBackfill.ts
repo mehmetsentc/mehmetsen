@@ -1,6 +1,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
+import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 
 interface SeoBackfillResult {
   scanned: number
@@ -26,6 +27,8 @@ async function generateSeo(input: {
   summary: string
   content: string
 }): Promise<GeneratedSeo | null> {
+  if (!isManualEditorAiEnabled()) return null
+
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim()
   if (!apiKey) return null
 

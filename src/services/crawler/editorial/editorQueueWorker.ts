@@ -8,6 +8,7 @@
  */
 import { DrizzleCrawlerStore } from '../store/drizzle'
 import { publishRawArticleWithAi } from './aiPublish'
+import { isManualEditorAiEnabled } from '../automatedAiPolicy'
 import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 
 /** Process up to 12 articles per cron tick with concurrency 4. */
@@ -35,6 +36,18 @@ export async function processEditorAiQueue(
 ): Promise<EditorQueueWorkerResult> {
   const startedAt = Date.now()
   const now = new Date()
+
+  if (!isManualEditorAiEnabled()) {
+    return {
+      claimed: 0,
+      published: 0,
+      drafted: 0,
+      skipped: 0,
+      failed: 0,
+      recovered: 0,
+      durationMs: Date.now() - startedAt,
+    }
+  }
 
   const recovered = await store.recoverStaleEditorAiProcessing(now, EDITOR_AI_STALE_PROCESSING_MS)
   if (recovered > 0) {

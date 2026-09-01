@@ -7,6 +7,7 @@
  */
 import { isCrawlerAiDispatchEnabled } from './dispatch'
 import { isControlledAutoDraftEnabled } from './aiMode'
+import { envExplicitTrue } from './legacyFlags'
 
 /**
  * Central gate for AUTOMATED crawler/scraper/background AI operations.
@@ -32,9 +33,5 @@ export function mayAutomatedCrawlerUseAi(): boolean {
  * Defaults to false in production.
  */
 export function isManualEditorAiEnabled(): boolean {
-  const raw = process.env.MANUAL_EDITOR_AI_ENABLED?.trim().toLowerCase()
-  if (raw !== undefined && raw !== '') {
-    return raw === 'true' || raw === '1' || raw === 'on'
-  }
-  return true
+  return envExplicitTrue('MANUAL_EDITOR_AI_ENABLED')
 }

@@ -27,7 +27,9 @@ describe('Global Crawler & Editor AI Cost Containment Policy', () => {
     expect(mayAutomatedCrawlerUseAi()).toBe(false)
   })
 
-  it('isManualEditorAiEnabled respects explicit false and defaults to true when enabled', () => {
+  it('isManualEditorAiEnabled fails closed when unset and allows explicit true only', () => {
+    vi.unstubAllEnvs()
+    delete process.env.MANUAL_EDITOR_AI_ENABLED
     expect(isManualEditorAiEnabled()).toBe(false)
     vi.stubEnv('MANUAL_EDITOR_AI_ENABLED', 'true')
     expect(isManualEditorAiEnabled()).toBe(true)
