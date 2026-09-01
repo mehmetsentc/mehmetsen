@@ -170,7 +170,7 @@ export function NewsletterSignup({
         )}
         aria-label="Haber bülteni"
       >
-        <h2 className="mb-1 text-base font-bold text-[rgb(var(--color-text))]">{title}</h2>
+        <div className="mb-1 text-base font-bold text-[rgb(var(--color-text))]">{title}</div>
         <p className="mb-4 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
           {description}
         </p>
@@ -187,9 +187,9 @@ export function NewsletterSignup({
       )}
       aria-label="Haber bülteni"
     >
-      <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-[rgb(var(--color-text))]">
+      <div className="mb-1 text-sm font-bold uppercase tracking-wide text-[rgb(var(--color-text))]">
         {title}
-      </h2>
+      </div>
       <p className="mb-4 text-sm leading-relaxed text-[rgb(var(--color-muted))]">{description}</p>
       {form}
     </section>

@@ -190,9 +190,9 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           {/* Tags */}
           {(hasTags || hasCity) && (
             <section aria-label="Etiketler" className="mt-6">
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
                 Etiketler
-              </h2>
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 {hasCity && post.citySlug && (
                   <Link

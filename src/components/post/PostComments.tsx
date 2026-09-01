@@ -83,10 +83,10 @@ export function PostComments({ postId, initialCount }: PostCommentsProps) {
   }
 
   return (
-    <section className="mt-6 border-t border-gray-100 pt-6 dark:border-gray-800">
-      <h2 className="mb-4 text-base font-bold text-gray-900 dark:text-gray-100">
+    <section className="mt-6 border-t border-gray-100 pt-6 dark:border-gray-800" aria-label="Yorumlar">
+      <div className="mb-4 text-base font-bold text-gray-900 dark:text-gray-100">
         Yorumlar ({formatCount(count)})
-      </h2>
+      </div>
 
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="flex items-center gap-2">
