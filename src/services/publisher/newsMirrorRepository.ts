@@ -17,8 +17,14 @@ export interface NewsMirrorPayload {
   citySlug: string | null
   districtName: string | null
   districtSlug: string | null
-  authorId: string
-  authorDisplayName: string
+  /**
+   * Authoritative canonical author.
+   * - string: mirror this UID
+   * - null: intentionally clear / write null
+   * - undefined: on conflict update, do NOT touch existing author_id
+   */
+  authorId?: string | null
+  authorDisplayName?: string
   source: string | null
   sourceUrl: string | null
   thumbnailUrl: string | null
@@ -30,6 +36,89 @@ export interface NewsMirrorPayload {
   seoDescription: string | null
   publishedAt: Date
   createdAt?: Date
+}
+
+/** Insert values for Postgres `news` mirror (authorId defaults to null when omitted). */
+export function buildNewsMirrorInsertValues(
+  payload: NewsMirrorPayload,
+  now: Date = new Date()
+): Record<string, unknown> {
+  return {
+    id: payload.id,
+    legacyFirestoreId: payload.id,
+    slug: payload.slug,
+    title: payload.title,
+    summary: payload.summary?.slice(0, 500) || null,
+    description: payload.description?.slice(0, 5000) || null,
+    content: payload.content || null,
+    htmlContent: payload.htmlContent,
+    status: 'published',
+    categoryId: payload.categoryId,
+    cityName: payload.cityName,
+    citySlug: payload.citySlug,
+    districtName: payload.districtName,
+    districtSlug: payload.districtSlug,
+    authorId: payload.authorId === undefined ? null : payload.authorId,
+    authorDisplayName: payload.authorDisplayName ?? null,
+    source: payload.source,
+    sourceUrl: payload.sourceUrl,
+    thumbnailUrl: payload.thumbnailUrl,
+    coverImageUrl: payload.coverImageUrl,
+    videoUrl: payload.videoUrl,
+    tags: payload.tags,
+    isAiGenerated: false,
+    isBreaking: payload.isBreaking,
+    seoTitle: payload.seoTitle,
+    seoDescription: payload.seoDescription,
+    publishedAt: payload.publishedAt,
+    createdAt: payload.createdAt || now,
+    updatedAt: now,
+  }
+}
+
+/**
+ * Conflict-update fields for mirror upsert.
+ * Omitting authorId (undefined) preserves the existing DB author_id.
+ */
+export function buildNewsMirrorConflictSet(
+  payload: NewsMirrorPayload,
+  now: Date = new Date()
+): Record<string, unknown> {
+  const set: Record<string, unknown> = {
+    slug: payload.slug,
+    title: payload.title,
+    summary: payload.summary?.slice(0, 500) || null,
+    description: payload.description?.slice(0, 5000) || null,
+    content: payload.content || null,
+    htmlContent: payload.htmlContent,
+    status: 'published',
+    categoryId: payload.categoryId,
+    cityName: payload.cityName,
+    citySlug: payload.citySlug,
+    districtName: payload.districtName,
+    districtSlug: payload.districtSlug,
+    source: payload.source,
+    sourceUrl: payload.sourceUrl,
+    thumbnailUrl: payload.thumbnailUrl,
+    coverImageUrl: payload.coverImageUrl,
+    videoUrl: payload.videoUrl,
+    tags: payload.tags,
+    isBreaking: payload.isBreaking,
+    seoTitle: payload.seoTitle,
+    seoDescription: payload.seoDescription,
+    publishedAt: payload.publishedAt,
+    legacyFirestoreId: payload.id,
+    updatedAt: now,
+  }
+
+  if (payload.authorId !== undefined) {
+    set.authorId = payload.authorId
+  }
+  if (payload.authorDisplayName !== undefined) {
+    set.authorDisplayName = payload.authorDisplayName
+  }
+
+  return set
 }
 
 /**
@@ -48,66 +137,10 @@ export class NewsMirrorRepository {
 
     await pg
       .insert(news)
-      .values({
-        id: payload.id,
-        legacyFirestoreId: payload.id,
-        slug: payload.slug,
-        title: payload.title,
-        summary: payload.summary?.slice(0, 500) || null,
-        description: payload.description?.slice(0, 5000) || null,
-        content: payload.content || null,
-        htmlContent: payload.htmlContent,
-        status: 'published',
-        categoryId: payload.categoryId,
-        cityName: payload.cityName,
-        citySlug: payload.citySlug,
-        districtName: payload.districtName,
-        districtSlug: payload.districtSlug,
-        authorId: payload.authorId,
-        authorDisplayName: payload.authorDisplayName,
-        source: payload.source,
-        sourceUrl: payload.sourceUrl,
-        thumbnailUrl: payload.thumbnailUrl,
-        coverImageUrl: payload.coverImageUrl,
-        videoUrl: payload.videoUrl,
-        tags: payload.tags,
-        isAiGenerated: false,
-        isBreaking: payload.isBreaking,
-        seoTitle: payload.seoTitle,
-        seoDescription: payload.seoDescription,
-        publishedAt: payload.publishedAt,
-        createdAt: payload.createdAt || now,
-        updatedAt: now,
-      })
+      .values(buildNewsMirrorInsertValues(payload, now) as typeof news.$inferInsert)
       .onConflictDoUpdate({
         target: news.id,
-        set: {
-          slug: payload.slug,
-          title: payload.title,
-          summary: payload.summary?.slice(0, 500) || null,
-          description: payload.description?.slice(0, 5000) || null,
-          content: payload.content || null,
-          htmlContent: payload.htmlContent,
-          status: 'published',
-          categoryId: payload.categoryId,
-          cityName: payload.cityName,
-          citySlug: payload.citySlug,
-          districtName: payload.districtName,
-          districtSlug: payload.districtSlug,
-          authorDisplayName: payload.authorDisplayName,
-          source: payload.source,
-          sourceUrl: payload.sourceUrl,
-          thumbnailUrl: payload.thumbnailUrl,
-          coverImageUrl: payload.coverImageUrl,
-          videoUrl: payload.videoUrl,
-          tags: payload.tags,
-          isBreaking: payload.isBreaking,
-          seoTitle: payload.seoTitle,
-          seoDescription: payload.seoDescription,
-          publishedAt: payload.publishedAt,
-          legacyFirestoreId: payload.id,
-          updatedAt: now,
-        },
+        set: buildNewsMirrorConflictSet(payload, now) as Partial<typeof news.$inferInsert>,
       })
 
     return { id: payload.id, created }
