@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
-import { getPrimaryVideo, getPostCoverAlt } from '@/lib/postUtils'
+import { getPrimaryVideo, getPostCoverAlt, getArticleBylineName } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { DEFAULT_CATEGORIES, getParentCategory } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -421,7 +421,7 @@ export function buildPostMetadata(post: Post): Metadata {
     robots: forceNoindex
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
       : { index: true, follow: true },
-    authors: [{ name: post.authorDisplayName?.trim() || siteName }],
+    authors: [{ name: getArticleBylineName(post) }],
     alternates: {
       canonical: url,
     },
@@ -434,7 +434,7 @@ export function buildPostMetadata(post: Post): Metadata {
       siteName,
       publishedTime: datePublished,
       modifiedTime: dateModified,
-      authors: [post.authorDisplayName?.trim() || siteName],
+      authors: [getArticleBylineName(post)],
       section,
       ...(post.tags?.length ? { tags: post.tags } : {}),
       ...(image
