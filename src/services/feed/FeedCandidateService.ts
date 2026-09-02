@@ -286,7 +286,11 @@ export class FeedCandidateService {
       Math.max(opts.needed ?? opts.limit, 1),
       FS_SUPPLEMENT_HARD_CAP
     )
-    const maxAttempts = opts.olderWindow ? FS_OLDER_MAX_ATTEMPTS : FS_SUPPLEMENT_MAX_ATTEMPTS
+    const maxAttempts = opts.olderWindow
+      ? FS_OLDER_MAX_ATTEMPTS
+      : opts.excludeArticleIds && opts.excludeArticleIds.size > 20
+        ? FS_OLDER_MAX_ATTEMPTS
+        : FS_SUPPLEMENT_MAX_ATTEMPTS
     const publishedBefore = opts.publishedBefore
       ? opts.publishedBefore instanceof Date
         ? opts.publishedBefore
@@ -312,12 +316,15 @@ export class FeedCandidateService {
           .where('status', '==', 'published')
           .orderBy('publishedAt', 'desc')
 
-        if (beforeOk) {
-          q = q.where('publishedAt', '<', publishedBefore)
+        // Older windows: continue past boundary via startAfter on the same orderBy
+        // (avoids a second inequality that needs a new composite index).
+        if (lastDoc) {
+          q = q.startAfter(lastDoc)
+        } else if (beforeOk) {
+          q = q.startAfter(publishedBefore)
         }
 
         q = q.limit(batchSize)
-        if (lastDoc) q = q.startAfter(lastDoc)
 
         const snap = await q.get()
         if (snap.empty) break

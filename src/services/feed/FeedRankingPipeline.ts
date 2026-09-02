@@ -129,6 +129,8 @@ export class FeedRankingPipeline {
     excludeArticleIds: Set<string>,
     publishedBefore: string | null | undefined
   ): Promise<{ ranked: ScoredFeedCandidate[]; candidateCounts: Record<string, number>; olderThan: string | null }> {
+    // Recent/popular/personal pools: exclude served IDs only (do not time-gate yet),
+    // so remaining unseen recent inventory is consumed before older fallback.
     let pools = await fetchPools(input.mode, {
       limit: input.limit * 4,
       userId: input.userId,
@@ -137,7 +139,7 @@ export class FeedRankingPipeline {
       region: input.region,
       excludeArticleIds,
       excludeClusterIds: input.seenClusters,
-      publishedBefore: publishedBefore ?? null,
+      publishedBefore: null,
     })
     let flat = flattenPools(pools)
     let candidateCounts = countPools(pools)
