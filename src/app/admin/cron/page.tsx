@@ -172,8 +172,9 @@ export default function CronMonitorPage() {
 
   useEffect(() => {
     if (pauseAutoRefresh) return
+        if (typeof document !== 'undefined' && document.hidden) return
     void load(tab === 'queue')
-    const t = setInterval(() => void load(tab === 'queue'), 20_000)
+    const t = setInterval(() => { if (!document.hidden) void load(tab === 'queue') }, 300_000)
     return () => clearInterval(t)
   }, [load, tab, pauseAutoRefresh])
 
