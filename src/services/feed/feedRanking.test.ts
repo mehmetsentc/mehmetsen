@@ -294,9 +294,9 @@ describe('P5 session stability', () => {
 
     const page1 = feedSessionService.slicePage(decoded!, 2)
     expect(page1.ids).toEqual(['a1', 'a2'])
-    expect(page1.hasMore).toBe(true)
+    expect(page1.hasMoreInSnapshot).toBe(true)
 
-    const page2 = feedSessionService.slicePage(page1.nextPayload!, 2)
+    const page2 = feedSessionService.slicePage(page1.nextPayload, 2)
     expect(page2.ids).toEqual(['a3', 'a4'])
   })
 

@@ -8,7 +8,16 @@ export interface FeedSessionPayload {
   rankedIds: string[]
   createdAt: number
   offset: number
+  /** Refill window counter — increments on each candidate-window append. */
+  generation?: number
+  /** ISO publishedAt boundary for older corpus fallback (exclusive upper bound). */
+  olderThan?: string | null
+  /** True only when all refill tiers returned no new eligible unseen IDs. */
+  corpusExhausted?: boolean
 }
+
+/** Soft cap so session tokens stay bounded; older windows keep appending within this. */
+export const FEED_SESSION_RANKED_SOFT_CAP = 400
 
 function sessionSecret(): string {
   return process.env.FEED_SESSION_SECRET?.trim() || 'nahaber-dev-feed-session-v1'
@@ -19,7 +28,12 @@ function sign(payload: string): string {
 }
 
 export class FeedSessionService {
-  create(mode: FeedMode, rankedIds: string[], seed?: number): FeedSessionPayload {
+  create(
+    mode: FeedMode,
+    rankedIds: string[],
+    seed?: number,
+    extras?: Partial<Pick<FeedSessionPayload, 'olderThan' | 'generation' | 'corpusExhausted'>>
+  ): FeedSessionPayload {
     return {
       sessionId: randomUUID(),
       seed: seed ?? Math.floor(Math.random() * 1_000_000),
@@ -27,6 +41,9 @@ export class FeedSessionService {
       rankedIds,
       createdAt: Date.now(),
       offset: 0,
+      generation: extras?.generation ?? 0,
+      olderThan: extras?.olderThan ?? null,
+      corpusExhausted: extras?.corpusExhausted ?? false,
     }
   }
 
@@ -58,19 +75,45 @@ export class FeedSessionService {
     }
   }
 
-  slicePage(payload: FeedSessionPayload, limit: number): {
+  slicePage(
+    payload: FeedSessionPayload,
+    limit: number
+  ): {
     ids: string[]
-    nextPayload: FeedSessionPayload | null
-    hasMore: boolean
+    nextPayload: FeedSessionPayload
+    hasMoreInSnapshot: boolean
   } {
     const start = payload.offset ?? 0
     const ids = payload.rankedIds.slice(start, start + limit)
     const nextOffset = start + ids.length
-    const hasMore = nextOffset < payload.rankedIds.length
+    const hasMoreInSnapshot = nextOffset < payload.rankedIds.length
     return {
       ids,
-      nextPayload: hasMore ? { ...payload, offset: nextOffset } : null,
-      hasMore,
+      nextPayload: { ...payload, offset: nextOffset },
+      hasMoreInSnapshot,
+    }
+  }
+
+  /** Append a new ranked window; never replay IDs already in the session. */
+  appendWindow(
+    payload: FeedSessionPayload,
+    newIds: string[],
+    olderThan?: string | null
+  ): FeedSessionPayload {
+    const existing = new Set(payload.rankedIds)
+    const appended: string[] = []
+    for (const id of newIds) {
+      if (existing.has(id)) continue
+      existing.add(id)
+      appended.push(id)
+    }
+    const rankedIds = [...payload.rankedIds, ...appended].slice(0, FEED_SESSION_RANKED_SOFT_CAP)
+    return {
+      ...payload,
+      rankedIds,
+      generation: (payload.generation ?? 0) + 1,
+      olderThan: olderThan ?? payload.olderThan ?? null,
+      corpusExhausted: appended.length === 0,
     }
   }
 

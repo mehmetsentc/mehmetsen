@@ -22,6 +22,8 @@ interface SocialActionRailProps {
   likeLoading?: boolean
   saveLoading?: boolean
   className?: string
+  /** horizontal (default) or vertical Reels-style rail */
+  orientation?: 'horizontal' | 'vertical'
 }
 
 export function SocialActionRail({
@@ -39,9 +41,20 @@ export function SocialActionRail({
   likeLoading,
   saveLoading,
   className,
+  orientation = 'horizontal',
 }: SocialActionRailProps) {
+  const vertical = orientation === 'vertical'
+
   return (
-    <div className={cn('flex items-center justify-around gap-2 py-2', className)}>
+    <div
+      className={cn(
+        vertical
+          ? 'flex flex-col items-center gap-4'
+          : 'flex items-center justify-around gap-2 py-2',
+        className
+      )}
+      data-orientation={orientation}
+    >
       <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} variant="overlay" />
       <button
         type="button"

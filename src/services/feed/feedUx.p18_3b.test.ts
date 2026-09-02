@@ -14,15 +14,13 @@ describe('P18.3B Smart Feed UX', () => {
     expect(src).not.toMatch(/line-clamp/)
   })
 
-  it('summary is not CSS line-clamped; long text can scroll', () => {
+  it('summary is not CSS line-clamped; full paragraph renders', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(src).toContain('data-testid="smart-feed-summary"')
-    expect(src).toContain('max-h-[36vh]')
-    expect(src).toContain('overflow-y-auto')
-    expect(src).not.toMatch(/summary[\s\S]{0,80}line-clamp/)
+    expect(src).not.toMatch(/line-clamp/)
     expect(src).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
   })
 

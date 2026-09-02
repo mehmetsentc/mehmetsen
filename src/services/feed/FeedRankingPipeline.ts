@@ -44,17 +44,19 @@ async function fetchPools(
     region?: string | null
     excludeArticleIds: Set<string>
     excludeClusterIds: Set<string>
+    publishedBefore?: Date | string | null
   }
 ): Promise<Partial<Record<FeedCandidateSource, FeedCandidateRow[]>>> {
   const base = {
     limit: opts.limit,
-    cursor: null,
+    cursor: null as null,
     userId: opts.userId,
     citySlug: opts.citySlug,
     districtSlug: opts.districtSlug,
     region: opts.region,
     excludeArticleIds: opts.excludeArticleIds,
     excludeClusterIds: opts.excludeClusterIds,
+    publishedBefore: opts.publishedBefore ?? null,
   }
 
   const limits = FEED_RANKING_CONFIG_V1.candidatePoolLimits
@@ -96,7 +98,137 @@ function countPools(pools: Partial<Record<FeedCandidateSource, FeedCandidateRow[
   return counts
 }
 
+function oldestPublishedIso(rows: Array<{ publishedAt: Date }>): string | null {
+  if (!rows.length) return null
+  let min = rows[0]!.publishedAt.getTime()
+  for (const r of rows) {
+    const t = r.publishedAt.getTime()
+    if (t < min) min = t
+  }
+  return new Date(min).toISOString()
+}
+
+function rankWindow(
+  flat: FeedCandidateRow[],
+  ctx: FeedUserContext,
+  mode: FeedMode,
+  seenArticles: Set<string>,
+  seenClusters: Set<string>,
+  limit: number
+): ScoredFeedCandidate[] {
+  const reps = feedRepresentativeSelector.select(flat)
+  const scored = feedScoringService.scoreAll(reps, ctx, mode, seenArticles, seenClusters)
+  return feedDiversityEngine.rerank(scored, mode, Math.max(limit * 3, limit))
+}
+
 export class FeedRankingPipeline {
+  /** Build / append a bounded ranked window excluding already-served + seen IDs. */
+  private async buildNextWindow(
+    input: RankingPipelineInput,
+    ctx: FeedUserContext,
+    excludeArticleIds: Set<string>,
+    publishedBefore: string | null | undefined
+  ): Promise<{ ranked: ScoredFeedCandidate[]; candidateCounts: Record<string, number>; olderThan: string | null }> {
+    let pools = await fetchPools(input.mode, {
+      limit: input.limit * 4,
+      userId: input.userId,
+      citySlug: input.citySlug,
+      districtSlug: input.districtSlug,
+      region: input.region,
+      excludeArticleIds,
+      excludeClusterIds: input.seenClusters,
+      publishedBefore: publishedBefore ?? null,
+    })
+    let flat = flattenPools(pools)
+    let candidateCounts = countPools(pools)
+
+    // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions
+    if (flat.length < input.limit) {
+      const before =
+        publishedBefore ??
+        (flat.length ? oldestPublishedIso(flat) : new Date().toISOString())
+      const older = await feedCandidateService.fetchOlderLegacyAllowed({
+        limit: Math.max(input.limit * 3, 45),
+        cursor: null,
+        excludeArticleIds,
+        excludeClusterIds: input.seenClusters,
+        publishedBefore: before!,
+        userId: input.userId,
+      })
+      candidateCounts.OLDER_LEGACY = older.length
+      const seen = new Set(flat.map((r) => r.articleId))
+      for (const row of older) {
+        if (seen.has(row.articleId) || excludeArticleIds.has(row.articleId)) continue
+        seen.add(row.articleId)
+        flat.push(row)
+      }
+    }
+
+    const ranked = rankWindow(flat, ctx, input.mode, input.seenArticles, input.seenClusters, input.limit)
+    const olderThan = oldestPublishedIso(ranked) ?? publishedBefore ?? null
+    return { ranked, candidateCounts, olderThan }
+  }
+
+  private async pageFromSession(
+    session: FeedSessionPayload,
+    input: RankingPipelineInput,
+    ctx: FeedUserContext,
+    rankingVersion: string,
+    extraCounts?: Record<string, number>
+  ): Promise<RankingPipelineResult> {
+    let working = session
+    let candidateCounts: Record<string, number> = { ...(extraCounts ?? {}) }
+
+    // Ensure enough unused IDs remain; otherwise refill a bounded older/unseen window.
+    const remaining = working.rankedIds.length - (working.offset ?? 0)
+    if (remaining < input.limit && !working.corpusExhausted) {
+      const exclude = new Set<string>([
+        ...input.seenArticles,
+        ...working.rankedIds,
+      ])
+      const { ranked, candidateCounts: counts, olderThan } = await this.buildNextWindow(
+        input,
+        ctx,
+        exclude,
+        working.olderThan
+      )
+      candidateCounts = { ...candidateCounts, ...counts, session_refill: ranked.length }
+      const newIds = ranked.map((r) => r.articleId)
+      working = feedSessionService.appendWindow(working, newIds, olderThan)
+      if (newIds.length === 0) {
+        working = { ...working, corpusExhausted: true }
+      }
+    }
+
+    const { ids, nextPayload, hasMoreInSnapshot } = feedSessionService.slicePage(working, input.limit)
+    if (!ids.length) {
+      return {
+        ranked: [],
+        session: { ...nextPayload, corpusExhausted: true },
+        sessionToken: feedSessionService.encode({ ...nextPayload, corpusExhausted: true }),
+        rankingVersion,
+        candidateCounts: { ...candidateCounts, session_resume: 0, hasMore: 0 },
+      }
+    }
+
+    const rows = await feedCandidateService.fetchByIds(ids)
+    const ordered = feedSessionService.reorderBySession(rows, nextPayload)
+    const scored = feedScoringService.scoreAll(ordered, ctx, input.mode, input.seenArticles, input.seenClusters)
+
+    // Optimistic has-more: more in snapshot OR corpus not proven exhausted
+    const mayHaveMore = hasMoreInSnapshot || !nextPayload.corpusExhausted
+    candidateCounts.session_resume = ids.length
+    candidateCounts.hasMore = mayHaveMore ? 1 : 0
+
+    return {
+      ranked: scored,
+      session: nextPayload,
+      sessionToken: feedSessionService.encode(nextPayload),
+      rankingVersion,
+      candidateCounts,
+    }
+  }
+
   /** 9-step ranking pipeline ensuring all published news flow through algorithm. */
   async run(input: RankingPipelineInput): Promise<RankingPipelineResult> {
     // 1. Load user context (exclude SYNTHETIC_TEST)
@@ -109,6 +241,16 @@ export class FeedRankingPipeline {
       ctx = await feedUserContextService.load(input.userId)
     }
 
+    // Session stability — continue / refill existing ranked snapshot
+    if (input.sessionToken && !input.refresh) {
+      const existing = feedSessionService.decode(input.sessionToken)
+      if (existing && existing.mode === input.mode) {
+        return this.pageFromSession(existing, input, ctx, FEED_RANKING_VERSION, {
+          session_continue: 1,
+        })
+      }
+    }
+
     // 2b. Cold Start V2 — fallback mix when no/low signals (P6)
     const coldStartAllowed = await isColdStartEffectiveForUser(input.userId)
     if (coldStartAllowed && input.mode === 'personal' && !input.sessionToken) {
@@ -118,86 +260,23 @@ export class FeedRankingPipeline {
       }
     }
 
-    // Session stability — continue existing ranked snapshot if not exhausted
-    if (input.sessionToken && !input.refresh) {
-      const existing = feedSessionService.decode(input.sessionToken)
-      if (existing && existing.mode === input.mode && existing.rankedIds.length) {
-        const { ids, nextPayload, hasMore } = feedSessionService.slicePage(existing, input.limit)
-        if (ids.length > 0) {
-          const rows = await feedCandidateService.fetchByIds(ids)
-          const ordered = feedSessionService.reorderBySession(rows, existing)
-          const scored = feedScoringService.scoreAll(ordered, ctx, input.mode, input.seenArticles, input.seenClusters)
-          return {
-            ranked: scored,
-            session: nextPayload ?? existing,
-            sessionToken: nextPayload ? feedSessionService.encode(nextPayload) : input.sessionToken,
-            rankingVersion: FEED_RANKING_VERSION,
-            candidateCounts: { session_resume: ids.length, hasMore: hasMore ? 1 : 0 },
-          }
-        }
-      }
-    }
+    // 3–6. First window
+    const exclude = new Set<string>(input.seenArticles)
+    const { ranked: diversified, candidateCounts, olderThan } = await this.buildNextWindow(
+      input,
+      ctx,
+      exclude,
+      null
+    )
 
-    // 3. Fetch candidate pools
-    let pools = await fetchPools(input.mode, {
-      limit: input.limit * 4,
-      userId: input.userId,
-      citySlug: input.citySlug,
-      districtSlug: input.districtSlug,
-      region: input.region,
-      excludeArticleIds: input.seenArticles,
-      excludeClusterIds: input.seenClusters,
-    })
-    let flat = flattenPools(pools)
-
-    // Backfill if strict seen suppression resulted in fewer candidates than requested limit
-    if (flat.length < input.limit && (input.seenArticles.size > 0 || input.seenClusters.size > 0)) {
-      const unsuppressedPools = await fetchPools(input.mode, {
-        limit: input.limit * 4,
-        userId: input.userId,
-        citySlug: input.citySlug,
-        districtSlug: input.districtSlug,
-        region: input.region,
-        excludeArticleIds: new Set(),
-        excludeClusterIds: new Set(),
-      })
-      const unsuppressedFlat = flattenPools(unsuppressedPools)
-      const seenIds = new Set(flat.map((r) => r.articleId))
-      for (const row of unsuppressedFlat) {
-        if (!seenIds.has(row.articleId)) {
-          seenIds.add(row.articleId)
-          flat.push(row)
-        }
-      }
-    }
-
-    const candidateCounts = countPools(pools)
-
-    // 4. Flatten + select cluster representatives
-    const reps = feedRepresentativeSelector.select(flat)
-
-    // 5. Score candidates with multi-factor scoring and seen penalties
-    const scored = feedScoringService.scoreAll(reps, ctx, input.mode, input.seenArticles, input.seenClusters)
-
-    // 6. Diversity rerank (category / publisher rotation & consecutive limits)
-    const diversified = feedDiversityEngine.rerank(scored, input.mode, Math.max(input.limit * 3, input.limit))
-
-    // 7. Create session snapshot for stability
     const rankedIds = diversified.map((r) => r.articleId)
-    const session = feedSessionService.create(input.mode, rankedIds)
+    const session = feedSessionService.create(input.mode, rankedIds, undefined, {
+      olderThan,
+      generation: 0,
+      corpusExhausted: rankedIds.length === 0,
+    })
 
-    // 8. Paginate first page
-    const { ids } = feedSessionService.slicePage(session, input.limit)
-    const pageRows = diversified.filter((r) => ids.includes(r.articleId))
-    const orderedPage = feedSessionService.reorderBySession(pageRows, session)
-
-    return {
-      ranked: orderedPage,
-      session: { ...session, offset: ids.length },
-      sessionToken: feedSessionService.encode({ ...session, offset: ids.length }),
-      rankingVersion: FEED_RANKING_VERSION,
-      candidateCounts,
-    }
+    return this.pageFromSession(session, input, ctx, FEED_RANKING_VERSION, candidateCounts)
   }
 }
 

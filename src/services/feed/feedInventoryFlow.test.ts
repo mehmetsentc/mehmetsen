@@ -181,11 +181,11 @@ describe('Feed Inventory Flow & Ranking Algorithm Verification', () => {
 
     const p1 = feedSessionService.slicePage(session, 3)
     expect(p1.ids).toEqual(['art_1', 'art_2', 'art_3'])
-    expect(p1.hasMore).toBe(true)
+    expect(p1.hasMoreInSnapshot).toBe(true)
 
-    const p2 = feedSessionService.slicePage(p1.nextPayload!, 3)
+    const p2 = feedSessionService.slicePage(p1.nextPayload, 3)
     expect(p2.ids).toEqual(['art_4', 'art_5', 'art_6'])
-    expect(p2.hasMore).toBe(false)
+    expect(p2.hasMoreInSnapshot).toBe(false)
   })
 
   it('7. Cold Start Profile Resolution: handles guest vs new user vs light user', () => {

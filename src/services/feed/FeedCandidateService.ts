@@ -15,11 +15,14 @@ import {
   classifyPublicRead,
   publicReadMetaFromFirestoreDoc,
 } from '@/services/editorial/publicReadPolicy'
+import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
 
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
 const FS_SUPPLEMENT_BATCH = 50
 const FS_SUPPLEMENT_MAX_ATTEMPTS = 3
+/** Extra attempts when walking older LEGACY_ALLOWED windows. */
+const FS_OLDER_MAX_ATTEMPTS = 5
 const FS_SUPPLEMENT_HARD_CAP = 100
 
 function requireDb() {
@@ -27,13 +30,26 @@ function requireDb() {
   return getDb()
 }
 
-function cursorWhere(cursor: FeedCursorPayload | null) {
-  if (!cursor) return undefined
-  const ts = new Date(cursor.publishedAt)
-  return or(
-    lt(news.publishedAt, ts),
-    and(eq(news.publishedAt, ts), lt(news.id, cursor.id))
-  )
+function cursorWhere(cursor: FeedCursorPayload | null, publishedBefore?: Date | string | null) {
+  const parts: ReturnType<typeof and>[] = []
+  if (cursor) {
+    const ts = new Date(cursor.publishedAt)
+    parts.push(
+      or(
+        lt(news.publishedAt, ts),
+        and(eq(news.publishedAt, ts), lt(news.id, cursor.id))
+      )!
+    )
+  }
+  if (publishedBefore) {
+    const before = publishedBefore instanceof Date ? publishedBefore : new Date(publishedBefore)
+    if (!Number.isNaN(before.getTime())) {
+      parts.push(lt(news.publishedAt, before))
+    }
+  }
+  if (!parts.length) return undefined
+  if (parts.length === 1) return parts[0]
+  return and(...parts)
 }
 
 function publishedStatusWhere() {
@@ -60,6 +76,8 @@ export type BaseQueryOpts = {
   region?: string | null
   userId?: string | null
   category?: string | null
+  /** Exclusive upper bound for older corpus windows (ISO or Date). */
+  publishedBefore?: Date | string | null
 }
 
 function mapRows(
@@ -124,7 +142,7 @@ function mapRows(
       publisherLogoUrl: row.publisherLogoUrl,
       publisherVerified: Boolean(row.publisherVerified),
       headline: row.headline,
-      summary: row.summary,
+      summary: selectSmartFeedSummary({ summary: row.summary }),
       category: row.category,
       image: row.image,
       video: row.video,
@@ -223,7 +241,14 @@ export class FeedCandidateService {
       publisherLogoUrl: data.sourceLogoUrl || null,
       publisherVerified: Boolean(data.publisherVerified || data.verified),
       headline: data.title || '',
-      summary: data.summary || data.spot || null,
+      summary: selectSmartFeedSummary({
+        smartFeedSummary:
+          typeof data.smartFeedSummary === 'string' ? data.smartFeedSummary : null,
+        summary: typeof data.summary === 'string' ? data.summary : null,
+        spot: typeof data.spot === 'string' ? data.spot : null,
+        description: typeof data.description === 'string' ? data.description : null,
+        teaser: typeof data.teaser === 'string' ? data.teaser : null,
+      }),
       category: data.categoryId || data.category || 'gundem',
       image: data.coverImageUrl || data.thumbnail || data.imageUrl || null,
       video: data.videoUrl || null,
@@ -250,16 +275,25 @@ export class FeedCandidateService {
 
   /**
    * Bounded Firestore candidate fetch with P18.3 policy filter + refill.
-   * Does not scan the full 40k corpus — max FS_SUPPLEMENT_MAX_ATTEMPTS batches.
+   * Does not scan the full 40k corpus — max FS_*_MAX_ATTEMPTS batches per call.
+   * publishedBefore walks older LEGACY_ALLOWED windows without replaying recent docs.
    */
   private async fetchFirestoreFallback(
     source: FeedCandidateSource,
-    opts: BaseQueryOpts & { needed?: number }
+    opts: BaseQueryOpts & { needed?: number; olderWindow?: boolean }
   ): Promise<FeedCandidateRow[]> {
     const needed = Math.min(
       Math.max(opts.needed ?? opts.limit, 1),
       FS_SUPPLEMENT_HARD_CAP
     )
+    const maxAttempts = opts.olderWindow ? FS_OLDER_MAX_ATTEMPTS : FS_SUPPLEMENT_MAX_ATTEMPTS
+    const publishedBefore = opts.publishedBefore
+      ? opts.publishedBefore instanceof Date
+        ? opts.publishedBefore
+        : new Date(opts.publishedBefore)
+      : null
+    const beforeOk = publishedBefore && !Number.isNaN(publishedBefore.getTime())
+
     try {
       const db = getAdminFirestore()
       const rows: FeedCandidateRow[] = []
@@ -267,7 +301,7 @@ export class FeedCandidateService {
       let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
       let attempts = 0
 
-      while (rows.length < needed && attempts < FS_SUPPLEMENT_MAX_ATTEMPTS) {
+      while (rows.length < needed && attempts < maxAttempts) {
         attempts += 1
         const batchSize = Math.min(
           FS_SUPPLEMENT_BATCH,
@@ -277,8 +311,12 @@ export class FeedCandidateService {
           .collection(Collections.NEWS)
           .where('status', '==', 'published')
           .orderBy('publishedAt', 'desc')
-          .limit(batchSize)
 
+        if (beforeOk) {
+          q = q.where('publishedAt', '<', publishedBefore)
+        }
+
+        q = q.limit(batchSize)
         if (lastDoc) q = q.startAfter(lastDoc)
 
         const snap = await q.get()
@@ -312,6 +350,7 @@ export class FeedCandidateService {
 
           const row = this.mapFirestoreDocToRow(doc.id, data, source)
           if (!row) continue
+          if (beforeOk && row.publishedAt.getTime() >= publishedBefore!.getTime()) continue
           if (row.clusterId && opts.excludeClusterIds?.has(row.clusterId)) continue
 
           seen.add(doc.id)
@@ -327,6 +366,18 @@ export class FeedCandidateService {
       console.warn('[feed] firestore fallback candidate fetch failed:', err)
       return []
     }
+  }
+
+  /**
+   * P18.3C — bounded older LEGACY_ALLOWED window: publishedAt < boundary.
+   */
+  async fetchOlderLegacyAllowed(opts: BaseQueryOpts & { publishedBefore: Date | string }): Promise<FeedCandidateRow[]> {
+    return this.fetchFirestoreFallback('RECENT', {
+      ...opts,
+      needed: opts.limit,
+      olderWindow: true,
+      publishedBefore: opts.publishedBefore,
+    })
   }
 
   /**
@@ -349,6 +400,7 @@ export class FeedCandidateService {
       excludeArticleIds: exclude,
       needed: remaining,
       limit: remaining,
+      olderWindow: Boolean(opts.publishedBefore),
     })
 
     if (fallback.length === 0) return primary.slice(0, opts.limit)
@@ -382,7 +434,7 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select(baseSelect())
@@ -414,7 +466,7 @@ export class FeedCandidateService {
         publishedStatusWhere(),
         or(eq(news.isBreaking, true), eq(news.editorType, 'breaking')),
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select(baseSelect())
@@ -445,7 +497,7 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select({
@@ -488,7 +540,7 @@ export class FeedCandidateService {
         publishedStatusWhere(),
         geo,
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select(baseSelect())
@@ -534,7 +586,7 @@ export class FeedCandidateService {
           sourceIds.length ? inArray(newsClusters.primarySourceId, sourceIds) : sql`false`
         ),
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select(baseSelect())
@@ -609,7 +661,7 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor)
+        cursorWhere(opts.cursor, opts.publishedBefore)
       )
       const rows = await db
         .select({

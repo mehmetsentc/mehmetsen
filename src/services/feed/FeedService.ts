@@ -198,10 +198,15 @@ export class FeedService {
             })
           : encodeFeedCursor({ publishedAt: last.publishedAt.toISOString(), id: last.articleId })
 
+        const atEnd =
+          pipelineResult.session.offset >= pipelineResult.session.rankedIds.length
+        const hasMore =
+          !atEnd || pipelineResult.session.corpusExhausted !== true
+
         return {
           items,
-          nextCursor,
-          hasMore: pipelineResult.session.offset < pipelineResult.session.rankedIds.length,
+          nextCursor: hasMore ? nextCursor : null,
+          hasMore,
           mode: ctx.mode,
           rankingVersion: pipelineResult.rankingVersion,
           feedSessionId: pipelineResult.session.sessionId,

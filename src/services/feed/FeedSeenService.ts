@@ -1,10 +1,11 @@
 import 'server-only'
 
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { userContentImpressions } from '@/db/schema/smartFeed'
 import { newsClusters } from '@/db/schema/crawler'
+import { news } from '@/db/schema/news'
 
 function requireDb() {
   if (!hasDatabaseUrl()) throw new Error('DATABASE_URL not configured')
@@ -12,6 +13,33 @@ function requireDb() {
 }
 
 export class FeedSeenService {
+  /**
+   * Expand article IDs across PG id ↔ legacyFirestoreId so the same logical story
+   * is suppressed regardless of which identity layer served it.
+   */
+  async expandArticleIdentities(ids: Set<string>): Promise<Set<string>> {
+    if (!ids.size || !hasDatabaseUrl()) return new Set(ids)
+    const list = [...ids].slice(0, 500)
+    try {
+      const db = requireDb()
+      const rows = await db
+        .select({ id: news.id, legacyFirestoreId: news.legacyFirestoreId, slug: news.slug })
+        .from(news)
+        .where(or(inArray(news.id, list), inArray(news.legacyFirestoreId, list), inArray(news.slug, list)))
+        .limit(500)
+
+      const out = new Set(ids)
+      for (const row of rows) {
+        if (row.id) out.add(row.id)
+        if (row.legacyFirestoreId) out.add(row.legacyFirestoreId)
+        if (row.slug) out.add(row.slug)
+      }
+      return out
+    } catch {
+      return new Set(ids)
+    }
+  }
+
   async getSeenArticleIds(userId: string | null, sessionId: string | null, feedType: string): Promise<Set<string>> {
     if (!hasDatabaseUrl()) return new Set()
     if (!userId && !sessionId) return new Set()
@@ -27,7 +55,8 @@ export class FeedSeenService {
       .where(where)
       .limit(500)
 
-    return new Set(rows.map((r) => r.articleId))
+    const raw = new Set(rows.map((r) => r.articleId))
+    return this.expandArticleIdentities(raw)
   }
 
   async getSeenClusterIds(userId: string | null, sessionId: string | null): Promise<Set<string>> {

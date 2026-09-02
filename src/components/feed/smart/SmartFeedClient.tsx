@@ -198,7 +198,9 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         setErrorState(null)
         setItems((prev) => {
           const guestSeen = !authUser ? readGuestSeen() : new Set<string>()
-          const incoming = page.items.filter((i) => !guestSeen.has(i.articleId))
+          const incoming = page.items.filter(
+            (i) => !guestSeen.has(i.articleId) && !(i.slug && guestSeen.has(i.slug))
+          )
           const merged = append ? [...prev, ...incoming] : incoming
           const seen = new Set<string>()
           return merged.filter((i) => {
@@ -388,6 +390,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     (item: FeedItemDto) => {
       const guestSeen = readGuestSeen()
       guestSeen.add(item.articleId)
+      if (item.slug) guestSeen.add(item.slug)
       writeGuestSeen(guestSeen)
       void postTelemetry({
         events: [{ eventType: 'feed_impression', articleId: item.articleId, feedType: mode }],

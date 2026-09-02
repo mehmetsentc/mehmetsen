@@ -181,18 +181,28 @@ export class FeedColdStartService {
     }
 
     const rankedIds = diversified.map((r) => r.articleId)
-    const session = feedSessionService.create(input.mode, rankedIds)
-    const { ids } = feedSessionService.slicePage(session, input.limit)
+    const olderThan =
+      diversified.length > 0
+        ? new Date(
+            Math.min(...diversified.map((r) => r.publishedAt.getTime()))
+          ).toISOString()
+        : null
+    const session = feedSessionService.create(input.mode, rankedIds, undefined, {
+      olderThan,
+      generation: 0,
+      corpusExhausted: rankedIds.length === 0,
+    })
+    const { ids, nextPayload } = feedSessionService.slicePage(session, input.limit)
     const pageRows = diversified.filter((r) => ids.includes(r.articleId))
-    const orderedPage = feedSessionService.reorderBySession(pageRows, session)
+    const orderedPage = feedSessionService.reorderBySession(pageRows, nextPayload)
 
     const candidateCounts: Record<string, number> = { cold_start_profile: 1 }
     for (const [k, v] of Object.entries(pools)) candidateCounts[k] = v?.length ?? 0
 
     return {
       ranked: orderedPage,
-      session: { ...session, offset: ids.length },
-      sessionToken: feedSessionService.encode({ ...session, offset: ids.length }),
+      session: nextPayload,
+      sessionToken: feedSessionService.encode(nextPayload),
       rankingVersion: `${FEED_RANKING_VERSION}-cold`,
       candidateCounts,
     }
