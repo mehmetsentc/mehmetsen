@@ -209,9 +209,7 @@ export async function fetchFirestorePublisherArticles(input: {
       try {
         const snap = await fs
           .collection(Collections.NEWS)
-          .where('status', '==', 'published')
           .where('ingestionSourceId', '==', sourceId)
-          .orderBy('publishedAt', 'desc')
           .limit(Math.min(40, limit * 2))
           .get()
         for (const doc of snap.docs) {
