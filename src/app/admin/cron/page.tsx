@@ -171,10 +171,18 @@ export default function CronMonitorPage() {
   }, [tab, pendingPage, selectedQueueSource, dupFilterOnly])
 
   useEffect(() => {
-    if (pauseAutoRefresh) return
-    void load(tab === 'queue')
-    const t = setInterval(() => void load(tab === 'queue'), 20_000)
-    return () => clearInterval(t)
+        if (pauseAutoRefresh) return
+        let t: ReturnType<typeof setInterval> | null = null
+        const start = () => {
+                if (t) return
+                void load(tab === 'queue')
+                t = setInterval(() => { if (!document.hidden) void load(tab === 'queue') }, 300_000)
+        }
+        const stop = () => { if (t) { clearInterval(t); t = null } }
+        const onVisibility = () => { if (document.hidden) stop(); else start() }
+        document.addEventListener('visibilitychange', onVisibility)
+        if (!document.hidden) start()
+        return () => { document.removeEventListener('visibilitychange', onVisibility); stop() }
   }, [load, tab, pauseAutoRefresh])
 
   useEffect(() => {
