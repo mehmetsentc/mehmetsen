@@ -10,6 +10,11 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { FeedCandidateRow, FeedCandidateSource, FeedCursorPayload, FeedMode } from '@/types/smartFeed'
 import { dayKey, decodeFeedCursor, deterministicScore } from './feedUtils'
+import {
+  canAppearInSmartFeed,
+  classifyPublicRead,
+  publicReadMetaFromFirestoreDoc,
+} from '@/services/editorial/publicReadPolicy'
 
 const DEFAULT_POOL_SIZE = 150
 
@@ -215,6 +220,12 @@ export class FeedCandidateService {
         if (!pubDate || pubDate.getTime() > now) continue
         if (opts.excludeArticleIds?.has(doc.id)) continue
         if (opts.category && data.categoryId !== opts.category && data.category !== opts.category) continue
+
+        // P18.3 — LEGACY_QUARANTINED must not enter Smart Feed candidates
+        const readClass = classifyPublicRead(
+          publicReadMetaFromFirestoreDoc(doc.id, data as Record<string, unknown>)
+        )
+        if (!canAppearInSmartFeed(readClass)) continue
 
         rows.push({
           articleId: doc.id,

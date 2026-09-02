@@ -7,6 +7,11 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import {
+  canAppearInVideoSitemap,
+  classifyPublicRead,
+  publicReadMetaFromFirestoreDoc,
+} from '@/services/editorial/publicReadPolicy'
 
 export const runtime = 'nodejs'
 // force-dynamic kaldırıldı — her bot isteğinde 500 doc okutuyordu; ISR 30 dk yeterli
@@ -71,6 +76,12 @@ export async function GET() {
         readingTimeMinutes?: number
       }
       if (!d.videoUrl) continue
+
+      const readClass = classifyPublicRead(
+        publicReadMetaFromFirestoreDoc(doc.id, doc.data() as Record<string, unknown>)
+      )
+      if (!canAppearInVideoSitemap(readClass)) continue
+
       const slug = d.slug?.trim() || doc.id
       const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)
       const url = `${base}${path}`

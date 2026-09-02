@@ -6,6 +6,14 @@ import { isValidUserData, normalizeUser } from '@/services/userService'
 import type { Post } from '@/types/post'
 import type { User } from '@/types/user'
 import type { SearchCategory, SearchOptions, SearchResults } from '@/services/searchService'
+import {
+  canAppearInSearch,
+  classifyPublicRead,
+  comparePublicReadPriority,
+  logPublicReadClassCounts,
+  publicReadMetaFromPost,
+  tallyPublicReadClasses,
+} from '@/services/editorial/publicReadPolicy'
 
 const SEARCH_POOL = 80
 const TAG_FETCH_LIMIT = 40
@@ -92,8 +100,12 @@ async function fetchRecentPosts(): Promise<Post[]> {
 
 async function searchPosts(term: string, maxResults: number, tagOnly: boolean): Promise<Post[]> {
   const tagPosts = await fetchByTag(term)
-  if (tagOnly) return tagPosts.slice(0, maxResults)
-  if (tagPosts.length >= maxResults) return tagPosts.slice(0, maxResults)
+  if (tagOnly) {
+    return prioritizeSearchPosts(tagPosts).slice(0, maxResults)
+  }
+  if (tagPosts.length >= maxResults) {
+    return prioritizeSearchPosts(tagPosts).slice(0, maxResults)
+  }
 
   const poolPosts = await fetchRecentPosts()
   const poolMatches = poolPosts.filter((p) => matchesPost(p, term))
@@ -106,9 +118,23 @@ async function searchPosts(term: string, maxResults: number, tagOnly: boolean): 
     merged.push(post)
   }
 
-  return merged
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, maxResults)
+  return prioritizeSearchPosts(merged).slice(0, maxResults)
+}
+
+function prioritizeSearchPosts(posts: Post[]): Post[] {
+  const eligible = posts.filter((p) => {
+    if (!isPubliclyVisibleStatus(p.status)) return false
+    const cls = classifyPublicRead(publicReadMetaFromPost(p))
+    return canAppearInSearch(cls)
+  })
+  return [...eligible].sort((a, b) => {
+    const classCmp = comparePublicReadPriority(
+      publicReadMetaFromPost(a),
+      publicReadMetaFromPost(b)
+    )
+    if (classCmp !== 0) return classCmp
+    return Date.parse(b.createdAt) - Date.parse(a.createdAt)
+  })
 }
 
 async function searchUsers(term: string, maxResults: number): Promise<User[]> {
@@ -172,6 +198,12 @@ export async function runServerSearch(
     searchPosts(term, maxPerType * 2, tagOnly),
     tagOnly ? Promise.resolve([] as User[]) : searchUsers(term, maxPerType),
   ])
+
+  logPublicReadClassCounts(
+    'search_results',
+    tallyPublicReadClasses(matchedPosts.map((p) => publicReadMetaFromPost(p))),
+    { termLength: term.length }
+  )
 
   return {
     posts: matchedPosts.filter((p) => !hasVideoContent(p)).slice(0, maxPerType),

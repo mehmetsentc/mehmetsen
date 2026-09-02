@@ -372,7 +372,18 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
   }
 }
 
-export function buildPostMetadata(post: Post): Metadata {
+export function buildPostMetadata(
+  post: Post,
+  opts?: {
+    /** P18.3 — when set, overrides default index/follow robots. */
+    robotsOverride?: { index: boolean; follow: boolean }
+    /**
+     * P18.3 — LEGACY_QUARANTINED keeps self-canonical with noindex.
+     * Only omit when explicitly required (NOT_PUBLIC should not reach here).
+     */
+    omitCanonical?: boolean
+  }
+): Metadata {
   const url = buildPostShareUrl(post)
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -409,22 +420,33 @@ export function buildPostMetadata(post: Post): Metadata {
     seoNoindex?: boolean
     publisherType?: string
   }
-  const forceNoindex =
+  const legacyForceNoindex =
     postExt.seoNoindex === true ||
     postExt.publisherType === 'INTERNAL_TEST' ||
     post.visibility === 'private'
+  const index = opts?.robotsOverride
+    ? opts.robotsOverride.index && !legacyForceNoindex
+    : !legacyForceNoindex
+  const follow = opts?.robotsOverride
+    ? legacyForceNoindex
+      ? false
+      : opts.robotsOverride.follow
+    : !legacyForceNoindex
+  const emitCanonical = opts?.omitCanonical !== true
 
   return {
     title,
     description,
     ...(keywords.length ? { keywords: keywords.join(', ') } : {}),
-    robots: forceNoindex
-      ? { index: false, follow: false, googleBot: { index: false, follow: false } }
-      : { index: true, follow: true },
+    robots: index
+      ? { index: true, follow: true }
+      : { index: false, follow, googleBot: { index: false, follow } },
     authors: [{ name: getArticleBylineName(post) }],
-    alternates: {
-      canonical: url,
-    },
+    alternates: emitCanonical
+      ? {
+          canonical: url,
+        }
+      : {},
     openGraph: {
       type: 'article',
       locale: 'tr_TR',

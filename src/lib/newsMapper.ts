@@ -127,6 +127,11 @@ export interface NewsDocument {
   aiAutoPublished?: boolean
   needsReview?: boolean
   needsAdminReview?: boolean
+  /** P18.1+ write-side provenance — used by P18.3 public read classifier. */
+  publicationAuthority?: string
+  publishedBy?: string
+  approvedBy?: string
+  systemAlertKind?: string
 }
 
 export const DEFAULT_CATEGORY_LABEL = 'Genel'
@@ -512,6 +517,11 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     duplicateReason: data.duplicateReason?.trim() || undefined,
     aiAutoPublished: data.aiAutoPublished === true,
     needsReview: data.needsReview === true,
+    publicationAuthority:
+      typeof data.publicationAuthority === 'string' ? data.publicationAuthority : null,
+    publishedBy: typeof data.publishedBy === 'string' ? data.publishedBy : null,
+    approvedBy: typeof data.approvedBy === 'string' ? data.approvedBy : null,
+    fromCanonicalPg: false,
     // Pass-through for INTERNAL_TEST SEO noindex (P11.1)
     ...(data.seoNoindex === true || data.publisherType === 'INTERNAL_TEST'
       ? {

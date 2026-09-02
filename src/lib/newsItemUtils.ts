@@ -163,6 +163,19 @@ export function docToNewsItem(
     breaking: isBreaking,
     articleFormat,
     seoTitle: seoTitleRaw && seoTitleRaw !== title ? seoTitleRaw : undefined,
+    // P18.3 read-policy inputs (not emitted by slimNewsItemForFeed)
+    status: String(raw.status ?? '').trim() || undefined,
+    authorId: String(raw.authorId ?? '').trim() || undefined,
+    publicationAuthority:
+      typeof raw.publicationAuthority === 'string' ? raw.publicationAuthority : undefined,
+    publishedBy: typeof raw.publishedBy === 'string' ? raw.publishedBy : undefined,
+    approvedBy: typeof raw.approvedBy === 'string' ? raw.approvedBy : undefined,
+    aiAutoPublished: raw.aiAutoPublished === true ? true : undefined,
+    needsReview: raw.needsReview === true ? true : undefined,
+    needsAdminReview: raw.needsAdminReview === true ? true : undefined,
+    visibility: typeof raw.visibility === 'string' ? raw.visibility : undefined,
+    seoNoindex: raw.seoNoindex === true ? true : undefined,
+    publisherType: typeof raw.publisherType === 'string' ? raw.publisherType : undefined,
   }
 }
 

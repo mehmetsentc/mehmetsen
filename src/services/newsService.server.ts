@@ -7,6 +7,14 @@ import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtil
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
+import {
+  canAppearInHomepage,
+  classifyPublicRead,
+  comparePublicReadPriority,
+  logPublicReadClassCounts,
+  tallyPublicReadClasses,
+  type PublicReadArticleMeta,
+} from '@/services/editorial/publicReadPolicy'
 import { isNationalBreakingEligible, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import {
   isExcludedFromCityLocalPrimaryFeed,
@@ -299,8 +307,12 @@ export async function getLegacyNewsBySlug(slug: string): Promise<Post | null> {
 
 /**
  * News lookup by slug.
- * 1. Resolves PostgreSQL canonical published news first (highest priority).
+ * 1. Resolves PostgreSQL canonical *published* news first (highest priority).
  * 2. Falls back to Firestore published news so all site feeds, categories, and city network articles resolve correctly without 404s.
+ *
+ * P18.3 split-brain: PG draft does NOT match step 1 (`canonicalPublishedWhere`),
+ * so Firestore published continuity remains for the same identity. PG drafts are
+ * never exposed publicly. When PG is published, PG wins.
  */
 export async function getNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
@@ -371,12 +383,44 @@ async function getHomeNewsPool(poolSize = 40): Promise<NewsItem[]> {
   return getHomeNewsPoolCached(poolSize)
 }
 
+function newsItemReadMeta(item: NewsItem): PublicReadArticleMeta {
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status ?? 'published',
+    slug: item.slug,
+    visibility: item.visibility,
+    publicationAuthority: item.publicationAuthority,
+    publishedBy: item.publishedBy,
+    approvedBy: item.approvedBy,
+    authorId: item.authorId,
+    aiAutoPublished: item.aiAutoPublished,
+    needsReview: item.needsReview,
+    needsAdminReview: item.needsAdminReview,
+    seoNoindex: item.seoNoindex,
+    publisherType: item.publisherType,
+    fromCanonicalPg: false,
+  }
+}
+
 function isHomepageEligibleItem(item: NewsItem): boolean {
   const cat = item.category?.trim() ?? ''
   if (cat && isYerelHomepageExcluded(cat)) return false
   // Gastronomi never fills güncel / latest / breaking / trending main slots
   if (isExcludedFromHomepageMainSlots(cat)) return false
+  // P18.3 — exclude LEGACY_QUARANTINED / NOT_PUBLIC from homepage discovery
+  const cls = classifyPublicRead(newsItemReadMeta(item))
+  if (!canAppearInHomepage(cls)) return false
   return true
+}
+
+/** Prefer CANONICAL → SYSTEM_ALERT → LEGACY_ALLOWED, then newer publish time. */
+function compareHomepagePriority(a: NewsItem, b: NewsItem): number {
+  const classCmp = comparePublicReadPriority(newsItemReadMeta(a), newsItemReadMeta(b))
+  if (classCmp !== 0) return classCmp
+  const aPub = Date.parse(a.publishedAt ?? a.createdAt ?? '') || 0
+  const bPub = Date.parse(b.publishedAt ?? b.createdAt ?? '') || 0
+  return bPub - aPub
 }
 
 function isBreakingPoolItem(item: NewsItem): boolean {
@@ -503,7 +547,9 @@ const getFeaturedNewsCached = unstable_cache(
 
 function bucketLatest(pool: NewsItem[], limit: number, now: number): NewsItem[] {
   const fresh = pool.filter((item) => !isBreakingPoolItem(item))
-  return rankFeedHotAware(fresh, now).slice(0, limit)
+  // Hot rank within class, then prefer CANONICAL → SYSTEM_ALERT → LEGACY_ALLOWED
+  const ranked = rankFeedHotAware(fresh, now)
+  return [...ranked].sort(compareHomepagePriority).slice(0, limit)
 }
 
 function bucketTrending(pool: NewsItem[], limit: number, now: number): NewsItem[] {
@@ -661,6 +707,11 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
 
   const now = Date.now()
   const homePool = pool.filter(isHomepageEligibleItem)
+  logPublicReadClassCounts(
+    'homepage_pool',
+    tallyPublicReadClasses(pool.map(newsItemReadMeta)),
+    { eligible: homePool.length, poolSize: pool.length }
+  )
   // Kategori rayları featured’ı dışlamaz — haber hem Öne Çıkan’da hem kendi kategorisinde.
   const categoryRails = await fillCategoryRails(homePool, HOME_FEED_SSR_RAILS, HOME_CATEGORY_RAIL_FETCH)
 
@@ -670,13 +721,19 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
   }
 
   // Prefer DB-level viewsCount sort (all published articles); fall back to pool-based sort
-  const mostReadItems = mostReadDb.length > 0
-    ? mostReadDb.slice(0, 6)
-    : bucketMostRead(homePool, 6)
+  const mostReadItems = (
+    mostReadDb.length > 0 ? mostReadDb.slice(0, 6) : bucketMostRead(homePool, 6)
+  ).filter(isHomepageEligibleItem)
 
   return {
     breaking: slimNewsItemsForFeed(bucketBreaking(homePool, 8)),
-    featured: slimNewsItemsForFeed(bucketFeatured(pool, HOME_FEATURED_LIMIT, featuredPinned)),
+    featured: slimNewsItemsForFeed(
+      bucketFeatured(
+        pool.filter(isHomepageEligibleItem),
+        HOME_FEATURED_LIMIT,
+        featuredPinned.filter(isHomepageEligibleItem)
+      )
+    ),
     latest: slimNewsItemsForFeed(bucketLatest(homePool, 16, now)),
     trending: slimNewsItemsForFeed(bucketTrending(homePool, 6, now)),
     trendFeed: slimNewsItemsForFeed(bucketTrendFeed(homePool, 12, now)),

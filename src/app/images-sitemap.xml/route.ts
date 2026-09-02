@@ -8,6 +8,11 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import {
+  canAppearInImageSitemap,
+  classifyPublicRead,
+  publicReadMetaFromFirestoreDoc,
+} from '@/services/editorial/publicReadPolicy'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -52,6 +57,11 @@ export async function GET() {
         }
         if (!d.coverImageUrl?.trim()) continue
         if (totalImages >= MAX_IMAGES) break
+
+        const readClass = classifyPublicRead(
+          publicReadMetaFromFirestoreDoc(doc.id, doc.data() as Record<string, unknown>)
+        )
+        if (!canAppearInImageSitemap(readClass)) continue
 
         const slug = d.slug?.trim() || doc.id
         const path = slug !== doc.id ? ROUTES.NEWS_DETAIL(slug) : ROUTES.POST_DETAIL(doc.id)

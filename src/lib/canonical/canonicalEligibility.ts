@@ -140,6 +140,7 @@ export function canonicalRowToPost(row: CanonicalNewsRow): Post {
     publishedAt,
     createdAt,
     updatedAt,
+    fromCanonicalPg: true,
   } as Post
 }
 

@@ -1,6 +1,8 @@
 /**
  * Google News Sitemap — only canonical articles published in the last 48 hours.
  * Phase P17.7H.3: Sourced directly from PostgreSQL canonical authority.
+ * P18.3: intentionally excludes generic Firestore legacy corpus (CANONICAL /
+ * SYSTEM_ALERT via PG only — no LEGACY_ALLOWED / LEGACY_QUARANTINED).
  * Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap
  */
 import { NextResponse } from 'next/server'

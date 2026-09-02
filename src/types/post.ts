@@ -173,6 +173,15 @@ export interface Post {
   /** AI auto-published; CMS İnceleme kuyruğu */
   aiAutoPublished?: boolean
   needsReview?: boolean
+  /** P18.1+ publication provenance (read-side classification). */
+  publicationAuthority?: string | null
+  publishedBy?: string | null
+  approvedBy?: string | null
+  /**
+   * Set when resolved from PostgreSQL canonical published path (P18.3 read policy).
+   * Not persisted — ephemeral read marker only.
+   */
+  fromCanonicalPg?: boolean
   publishedAt: string | null
   createdAt: string
   updatedAt: string

@@ -13,6 +13,13 @@ import {
 } from '@/lib/seo'
 import { getNewsBySlug, getSuggestedPostsServer } from '@/services/newsService.server'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
+import {
+  canResolveArticleDetail,
+  classifyPublicRead,
+  publicReadMetaFromPost,
+  robotsForPublicReadClass,
+  shouldEmitSelfCanonical,
+} from '@/services/editorial/publicReadPolicy'
 import { ROUTES } from '@/constants/routes'
 import { getLcpPreload } from '@/lib/lcpImage'
 import { getActiveTenant } from '@/lib/tenantContext'
@@ -51,7 +58,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         robots: { index: false, follow: false },
       }
     }
-    return buildPostMetadata(post)
+    if (!isPubliclyVisibleStatus(post.status)) {
+      return {
+        title: 'Haber bulunamadı',
+        description: 'Aradığınız içerik bulunamadı veya kaldırılmış olabilir.',
+        robots: { index: false, follow: false },
+      }
+    }
+    const readClass = classifyPublicRead(publicReadMetaFromPost(post))
+    if (!canResolveArticleDetail(readClass)) {
+      return {
+        title: 'Haber bulunamadı',
+        description: 'Aradığınız içerik bulunamadı veya kaldırılmış olabilir.',
+        robots: { index: false, follow: false },
+      }
+    }
+    // P18.3: LEGACY_QUARANTINED stays readable with noindex,follow + self-canonical.
+    return buildPostMetadata(post, {
+      robotsOverride: robotsForPublicReadClass(readClass),
+      omitCanonical: !shouldEmitSelfCanonical(readClass),
+    })
   } catch {
     return {
       title: 'Haber Detayı',
@@ -84,6 +110,12 @@ export default async function NewsDetailPage({ params }: PageProps) {
   // otherwise be viewed directly (and would still be absent from category lists —
   // a confusing mismatch). Treat non-public statuses as not found.
   if (!isPubliclyVisibleStatus(post.status)) {
+    notFound()
+  }
+
+  // P18.3 read boundary — NOT_PUBLIC blocked; LEGACY_QUARANTINED remains readable.
+  const readClass = classifyPublicRead(publicReadMetaFromPost(post))
+  if (!canResolveArticleDetail(readClass)) {
     notFound()
   }
 

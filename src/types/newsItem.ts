@@ -49,6 +49,18 @@ export type NewsItem = {
   articleFormat?: 'standard' | 'column' | 'analysis'
   /** SEO-optimized short title (55-65 chars) — used as carousel manşet when available */
   seoTitle?: string
+  /** P18.3 read-policy inputs (stripped from slim feed payloads). */
+  status?: string
+  authorId?: string
+  publicationAuthority?: string
+  publishedBy?: string
+  approvedBy?: string
+  aiAutoPublished?: boolean
+  needsReview?: boolean
+  needsAdminReview?: boolean
+  visibility?: string
+  seoNoindex?: boolean
+  publisherType?: string
 }
 
 export type HomeCategorySlug =
