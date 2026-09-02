@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { hasDatabaseUrl } from '@/db'
 import { isSocialGraphEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { requireSocialUser } from '@/lib/social/apiAuth'
@@ -61,6 +62,12 @@ export async function POST(request: Request) {
     return NextResponse.json(created, { status: 201 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Comment failed'
+    console.info('[social.comments]', {
+      stage: 'create',
+      code: msg,
+      articleKeyLen: articleId.length,
+      correlationId: randomUUID().slice(0, 8),
+    })
     const status =
       msg === 'ARTICLE_NOT_FOUND' || msg === 'PARENT_COMMENT_INVALID' ? 404 : msg === 'COMMENT_EMPTY' ? 400 : 500
     return NextResponse.json({ error: msg }, { status })

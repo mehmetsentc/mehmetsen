@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { users } from './users'
 import { publishers } from './publishers'
-import { news } from './news'
+/** P18.3K: article social rows no longer FK to news — LEGACY_ALLOWED FS-only ids are valid. */
 
 export const userProfiles = pgTable(
   'user_profiles',
@@ -60,9 +60,8 @@ export const articleLikes = pgTable(
     userId: varchar('user_id', { length: 128 })
       .notNull()
       .references(() => users.firebaseUid, { onDelete: 'cascade' }),
-    articleId: varchar('article_id', { length: 64 })
-      .notNull()
-      .references(() => news.id, { onDelete: 'cascade' }),
+    /** Durable social article id: news.id or LEGACY_ALLOWED Firestore doc id. */
+    articleId: varchar('article_id', { length: 64 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -78,9 +77,8 @@ export const savedArticles = pgTable(
     userId: varchar('user_id', { length: 128 })
       .notNull()
       .references(() => users.firebaseUid, { onDelete: 'cascade' }),
-    articleId: varchar('article_id', { length: 64 })
-      .notNull()
-      .references(() => news.id, { onDelete: 'cascade' }),
+    /** Durable social article id: news.id or LEGACY_ALLOWED Firestore doc id. */
+    articleId: varchar('article_id', { length: 64 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -93,9 +91,8 @@ export const articleComments = pgTable(
   'article_comments',
   {
     id: varchar('id', { length: 64 }).primaryKey(),
-    articleId: varchar('article_id', { length: 64 })
-      .notNull()
-      .references(() => news.id, { onDelete: 'cascade' }),
+    /** Durable social article id: news.id or LEGACY_ALLOWED Firestore doc id. */
+    articleId: varchar('article_id', { length: 64 }).notNull(),
     userId: varchar('user_id', { length: 128 })
       .notNull()
       .references(() => users.firebaseUid, { onDelete: 'cascade' }),

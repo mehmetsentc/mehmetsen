@@ -14,6 +14,7 @@ import { news, users } from '@/db/schema'
 import { publishers, publisherSources } from '@/db/schema/publishers'
 import { recordSocialEvent } from '@/lib/social/events'
 import { canChangeUsername, validateUsername } from '@/lib/social/username'
+import { resolveSocialArticleIdentity } from '@/services/social/socialArticleIdentity'
 import type {
   CommentStatus,
   PaginatedResult,
@@ -40,29 +41,88 @@ function sanitizeCommentContent(raw: string): string {
 }
 
 export class SocialGraphRepository {
-  /**
-   * Resolve feed/client article identity → canonical `news.id`.
-   * Accepts PG id, legacy Firestore id, or slug (Smart Feed LEGACY_ALLOWED cards).
-   */
-  async resolveCanonicalArticleId(idOrSlugOrLegacy: string): Promise<string> {
-    const key = idOrSlugOrLegacy.trim()
-    if (!key) throw new Error('ARTICLE_NOT_FOUND')
+  private async lookupPgNews(key: string): Promise<{ id: string; legacyFirestoreId: string | null } | null> {
     const db = requireDb()
     const rows = await db
-      .select({ id: news.id })
+      .select({ id: news.id, legacyFirestoreId: news.legacyFirestoreId })
       .from(news)
       .where(or(eq(news.id, key), eq(news.legacyFirestoreId, key), eq(news.slug, key)))
       .limit(1)
-    if (!rows[0]?.id) throw new Error('ARTICLE_NOT_FOUND')
-    return rows[0].id
+    return rows[0] ?? null
   }
 
-  /** Best-effort resolve; returns null when no PG mirror exists. */
+  /**
+   * Resolve feed/client article identity → durable social article id.
+   * PG: news.id via id | legacyFirestoreId | slug.
+   * LEGACY_ALLOWED / Smart-Feed-eligible FS-only: exact Firestore doc id.
+   * Does not create news rows.
+   */
+  async resolveCanonicalArticleId(idOrSlugOrLegacy: string): Promise<string> {
+    const resolved = await resolveSocialArticleIdentity(idOrSlugOrLegacy, {
+      lookupPg: (key) => this.lookupPgNews(key),
+    })
+    return resolved.socialArticleId
+  }
+
+  /** Full resolve including Firestore legacy fallback; null when unsupported. */
   async tryResolveCanonicalArticleId(idOrSlugOrLegacy: string): Promise<string | null> {
     try {
       return await this.resolveCanonicalArticleId(idOrSlugOrLegacy)
     } catch {
       return null
+    }
+  }
+
+  /** PG-only resolve for cheap batch paths; FS-only ids fall through as themselves when already used. */
+  async tryResolvePgArticleId(idOrSlugOrLegacy: string): Promise<string | null> {
+    const key = idOrSlugOrLegacy.trim()
+    if (!key) return null
+    const row = await this.lookupPgNews(key)
+    return row?.id ?? null
+  }
+
+  private async bumpNewsCounter(
+    socialArticleId: string,
+    column: 'likesCount' | 'commentsCount' | 'savesCount' | 'sharesCount',
+    delta: number
+  ): Promise<void> {
+    const db = requireDb()
+    const pgId = (await this.lookupPgNews(socialArticleId))?.id
+    if (!pgId) return
+    const col =
+      column === 'likesCount'
+        ? news.likesCount
+        : column === 'commentsCount'
+          ? news.commentsCount
+          : column === 'savesCount'
+            ? news.savesCount
+            : news.sharesCount
+    if (delta >= 0) {
+      await db.update(news).set({ [column]: sql`${col} + ${delta}` }).where(eq(news.id, pgId))
+      return
+    }
+    await db
+      .update(news)
+      .set({ [column]: sql`GREATEST(${col} - ${Math.abs(delta)}, 0)` })
+      .where(eq(news.id, pgId))
+  }
+
+  private async countSocialEngagement(socialArticleId: string): Promise<{
+    likeCount: number
+    commentCount: number
+  }> {
+    const db = requireDb()
+    const likes = await db
+      .select({ c: count() })
+      .from(articleLikes)
+      .where(eq(articleLikes.articleId, socialArticleId))
+    const comments = await db
+      .select({ c: count() })
+      .from(articleComments)
+      .where(and(eq(articleComments.articleId, socialArticleId), eq(articleComments.status, 'VISIBLE')))
+    return {
+      likeCount: Number(likes[0]?.c ?? 0),
+      commentCount: Number(comments[0]?.c ?? 0),
     }
   }
 
@@ -176,7 +236,7 @@ export class SocialGraphRepository {
       .returning({ userId: articleLikes.userId })
 
     if (inserted.length > 0) {
-      await db.update(news).set({ likesCount: sql`${news.likesCount} + 1` }).where(eq(news.id, canonicalId))
+      await this.bumpNewsCounter(canonicalId, 'likesCount', 1)
       await recordSocialEvent({ eventType: 'article_liked', userId, targetType: 'article', targetId: canonicalId })
       return true
     }
@@ -192,10 +252,7 @@ export class SocialGraphRepository {
       .returning({ userId: articleLikes.userId })
 
     if (deleted.length > 0) {
-      await db
-        .update(news)
-        .set({ likesCount: sql`GREATEST(${news.likesCount} - 1, 0)` })
-        .where(eq(news.id, canonicalId))
+      await this.bumpNewsCounter(canonicalId, 'likesCount', -1)
       await recordSocialEvent({ eventType: 'article_unliked', userId, targetType: 'article', targetId: canonicalId })
       return true
     }
@@ -214,7 +271,7 @@ export class SocialGraphRepository {
       .returning({ userId: savedArticles.userId })
 
     if (inserted.length > 0) {
-      await db.update(news).set({ savesCount: sql`${news.savesCount} + 1` }).where(eq(news.id, canonicalId))
+      await this.bumpNewsCounter(canonicalId, 'savesCount', 1)
       await recordSocialEvent({ eventType: 'article_saved', userId, targetType: 'article', targetId: canonicalId })
       return true
     }
@@ -230,10 +287,7 @@ export class SocialGraphRepository {
       .returning({ userId: savedArticles.userId })
 
     if (deleted.length > 0) {
-      await db
-        .update(news)
-        .set({ savesCount: sql`GREATEST(${news.savesCount} - 1, 0)` })
-        .where(eq(news.id, canonicalId))
+      await this.bumpNewsCounter(canonicalId, 'savesCount', -1)
       await recordSocialEvent({ eventType: 'article_unsaved', userId, targetType: 'article', targetId: canonicalId })
       return true
     }
@@ -265,29 +319,34 @@ export class SocialGraphRepository {
   }
 
   async getArticleCounts(articleId: string): Promise<{ likeCount: number; commentCount: number }> {
-    const db = requireDb()
     const canonicalId = await this.tryResolveCanonicalArticleId(articleId)
     if (!canonicalId) return { likeCount: 0, commentCount: 0 }
+    const db = requireDb()
     const rows = await db
       .select({ likesCount: news.likesCount, commentsCount: news.commentsCount })
       .from(news)
       .where(eq(news.id, canonicalId))
       .limit(1)
-    return {
-      likeCount: Number(rows[0]?.likesCount ?? 0),
-      commentCount: Number(rows[0]?.commentsCount ?? 0),
+    if (rows[0]) {
+      return {
+        likeCount: Number(rows[0].likesCount ?? 0),
+        commentCount: Number(rows[0].commentsCount ?? 0),
+      }
     }
+    return this.countSocialEngagement(canonicalId)
   }
 
   async recordShare(userId: string | null, articleId: string): Promise<void> {
-    const db = requireDb()
-    const canonicalId = await this.resolveCanonicalArticleId(articleId)
-    await db.update(news).set({ sharesCount: sql`${news.sharesCount} + 1` }).where(eq(news.id, canonicalId))
+    const canonicalId = await this.tryResolveCanonicalArticleId(articleId)
+    const targetId = canonicalId ?? articleId.trim()
+    if (canonicalId) {
+      await this.bumpNewsCounter(canonicalId, 'sharesCount', 1)
+    }
     await recordSocialEvent({
       eventType: 'article_shared',
       userId,
       targetType: 'article',
-      targetId: canonicalId,
+      targetId,
     })
   }
 
@@ -325,10 +384,7 @@ export class SocialGraphRepository {
       content,
       status: 'VISIBLE',
     })
-    await db
-      .update(news)
-      .set({ commentsCount: sql`${news.commentsCount} + 1` })
-      .where(eq(news.id, canonicalId))
+    await this.bumpNewsCounter(canonicalId, 'commentsCount', 1)
     await recordSocialEvent({
       eventType: 'comment_created',
       userId: input.userId,
@@ -354,10 +410,7 @@ export class SocialGraphRepository {
       .update(articleComments)
       .set({ status: 'DELETED' as CommentStatus, updatedAt: new Date() })
       .where(eq(articleComments.id, commentId))
-    await db
-      .update(news)
-      .set({ commentsCount: sql`GREATEST(${news.commentsCount} - 1, 0)` })
-      .where(eq(news.id, comment.articleId))
+    await this.bumpNewsCounter(comment.articleId, 'commentsCount', -1)
     return true
   }
 
@@ -541,24 +594,17 @@ export class SocialGraphRepository {
     if (!articleIds.length) return []
     const db = requireDb()
 
+    // Read+write identity must match: PG alias → news.id; otherwise feed id itself
+    // (LEGACY_ALLOWED FS doc id used by Smart Feed / stored social rows).
     const originalToCanonical = new Map<string, string>()
     await Promise.all(
       articleIds.map(async (id) => {
-        const canonical = await this.tryResolveCanonicalArticleId(id)
-        if (canonical) originalToCanonical.set(id, canonical)
+        const pgId = await this.tryResolvePgArticleId(id)
+        originalToCanonical.set(id, pgId ?? id)
       })
     )
 
     const canonicalIds = [...new Set(originalToCanonical.values())]
-    if (!canonicalIds.length) {
-      return articleIds.map((articleId) => ({
-        articleId,
-        liked: false,
-        saved: false,
-        likeCount: 0,
-        commentCount: 0,
-      }))
-    }
 
     const counts = await db
       .select({ id: news.id, likesCount: news.likesCount, commentsCount: news.commentsCount })
@@ -581,24 +627,25 @@ export class SocialGraphRepository {
       savedSet = new Set(saved.map((r) => r.articleId))
     }
 
+    const engagementFallback = new Map<string, { likeCount: number; commentCount: number }>()
+    await Promise.all(
+      canonicalIds
+        .filter((id) => !countsById.has(id))
+        .map(async (id) => {
+          engagementFallback.set(id, await this.countSocialEngagement(id))
+        })
+    )
+
     return articleIds.map((originalId) => {
-      const canonical = originalToCanonical.get(originalId)
-      if (!canonical) {
-        return {
-          articleId: originalId,
-          liked: false,
-          saved: false,
-          likeCount: 0,
-          commentCount: 0,
-        }
-      }
+      const canonical = originalToCanonical.get(originalId) ?? originalId
       const c = countsById.get(canonical)
+      const fallback = engagementFallback.get(canonical)
       return {
         articleId: originalId,
         liked: likedSet.has(canonical),
         saved: savedSet.has(canonical),
-        likeCount: Number(c?.likesCount ?? 0),
-        commentCount: Number(c?.commentsCount ?? 0),
+        likeCount: Number(c?.likesCount ?? fallback?.likeCount ?? 0),
+        commentCount: Number(c?.commentsCount ?? fallback?.commentCount ?? 0),
       }
     })
   }

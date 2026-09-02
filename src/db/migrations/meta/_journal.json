@@ -260,6 +260,13 @@
       "when": 1788274651651,
       "tag": "0036_baseline_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1788380000000,
+      "tag": "0037_phase_p18_3k_social_legacy_identity",
+      "breakpoints": true
     }
   ]
 }

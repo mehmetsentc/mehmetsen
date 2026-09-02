@@ -26,7 +26,12 @@ export async function POST(request: Request) {
     await socialGraphRepository.recordShare(auth?.uid ?? null, articleId)
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Share failed'
-    return NextResponse.json({ error: msg }, { status: msg === 'ARTICLE_NOT_FOUND' ? 404 : 500 })
+    // Share UX must succeed even when telemetry/persistence fails.
+    console.info('[social.share]', {
+      stage: 'record',
+      code: err instanceof Error ? err.message : 'Share failed',
+      articleKeyLen: articleId.length,
+    })
+    return NextResponse.json({ ok: true, telemetry: 'skipped' })
   }
 }
