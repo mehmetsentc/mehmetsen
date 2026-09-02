@@ -17,6 +17,10 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 
 const DEFAULT_POOL_SIZE = 150
+/** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
+const FS_SUPPLEMENT_BATCH = 50
+const FS_SUPPLEMENT_MAX_ATTEMPTS = 3
+const FS_SUPPLEMENT_HARD_CAP = 100
 
 function requireDb() {
   if (!hasDatabaseUrl()) throw new Error('DATABASE_URL not configured')
@@ -197,75 +201,166 @@ function parseDate(value: unknown): Date | null {
 }
 
 export class FeedCandidateService {
-  /** Fetch recent published articles from Firestore fallback if needed */
+  private mapFirestoreDocToRow(
+    docId: string,
+    data: FirebaseFirestore.DocumentData,
+    source: FeedCandidateSource
+  ): FeedCandidateRow | null {
+    const pubDate = parseDate(data.publishedAt) || parseDate(data.createdAt)
+    if (!pubDate || pubDate.getTime() > Date.now()) return null
+
+    const readClass = classifyPublicRead(
+      publicReadMetaFromFirestoreDoc(docId, data as Record<string, unknown>)
+    )
+    if (!canAppearInSmartFeed(readClass)) return null
+
+    return {
+      articleId: docId,
+      clusterId: data.clusterId || null,
+      publisherId: data.sourceId || data.authorId || null,
+      publisherSlug: data.sourceSlug || data.source || null,
+      publisherName: data.sourceLabel || data.source || data.authorDisplayName || 'Kaynak',
+      publisherLogoUrl: data.sourceLogoUrl || null,
+      publisherVerified: Boolean(data.publisherVerified || data.verified),
+      headline: data.title || '',
+      summary: data.summary || data.spot || null,
+      category: data.categoryId || data.category || 'gundem',
+      image: data.coverImageUrl || data.thumbnail || data.imageUrl || null,
+      video: data.videoUrl || null,
+      publishedAt: pubDate,
+      updatedAt: parseDate(data.updatedAt) || pubDate,
+      breaking: Boolean(data.isBreaking || data.breaking),
+      materialUpdate: Boolean(data.materialUpdate),
+      clusterSourceCount: Number(data.clusterSourceCount || 1),
+      clusterImportance: Number(data.clusterImportance || (data.isBreaking ? 80 : 50)),
+      sourceQualityTier: data.sourceQualityTier || 'STANDARD',
+      sourceHealthScore: Number(data.sourceHealthScore || 75),
+      citySlug: data.citySlug || null,
+      districtSlug: data.districtSlug || null,
+      likesCount: Number(data.likesCount || 0),
+      commentsCount: Number(data.commentsCount || data.commentCount || 0),
+      savesCount: Number(data.savesCount || 0),
+      sharesCount: Number(data.sharesCount || 0),
+      viewsCount: Number(data.viewsCount || 0),
+      slug: data.slug || docId,
+      source,
+      sortScore: pubDate.getTime(),
+    }
+  }
+
+  /**
+   * Bounded Firestore candidate fetch with P18.3 policy filter + refill.
+   * Does not scan the full 40k corpus — max FS_SUPPLEMENT_MAX_ATTEMPTS batches.
+   */
   private async fetchFirestoreFallback(
     source: FeedCandidateSource,
-    opts: BaseQueryOpts
+    opts: BaseQueryOpts & { needed?: number }
   ): Promise<FeedCandidateRow[]> {
+    const needed = Math.min(
+      Math.max(opts.needed ?? opts.limit, 1),
+      FS_SUPPLEMENT_HARD_CAP
+    )
     try {
       const db = getAdminFirestore()
-      let q = db
-        .collection(Collections.NEWS)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(Math.min(opts.limit * 2, 100))
-
-      const snap = await q.get()
-      const now = Date.now()
       const rows: FeedCandidateRow[] = []
+      const seen = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+      let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
+      let attempts = 0
 
-      for (const doc of snap.docs) {
-        const data = doc.data()
-        const pubDate = parseDate(data.publishedAt) || parseDate(data.createdAt)
-        if (!pubDate || pubDate.getTime() > now) continue
-        if (opts.excludeArticleIds?.has(doc.id)) continue
-        if (opts.category && data.categoryId !== opts.category && data.category !== opts.category) continue
-
-        // P18.3 — LEGACY_QUARANTINED must not enter Smart Feed candidates
-        const readClass = classifyPublicRead(
-          publicReadMetaFromFirestoreDoc(doc.id, data as Record<string, unknown>)
+      while (rows.length < needed && attempts < FS_SUPPLEMENT_MAX_ATTEMPTS) {
+        attempts += 1
+        const batchSize = Math.min(
+          FS_SUPPLEMENT_BATCH,
+          Math.max(needed - rows.length, 20) * 2
         )
-        if (!canAppearInSmartFeed(readClass)) continue
+        let q: FirebaseFirestore.Query = db
+          .collection(Collections.NEWS)
+          .where('status', '==', 'published')
+          .orderBy('publishedAt', 'desc')
+          .limit(batchSize)
 
-        rows.push({
-          articleId: doc.id,
-          clusterId: data.clusterId || null,
-          publisherId: data.sourceId || data.authorId || null,
-          publisherSlug: data.sourceSlug || data.source || null,
-          publisherName: data.sourceLabel || data.source || data.authorDisplayName || 'Kaynak',
-          publisherLogoUrl: data.sourceLogoUrl || null,
-          publisherVerified: Boolean(data.publisherVerified || data.verified),
-          headline: data.title || '',
-          summary: data.summary || data.spot || null,
-          category: data.categoryId || data.category || 'gundem',
-          image: data.coverImageUrl || data.thumbnail || data.imageUrl || null,
-          video: data.videoUrl || null,
-          publishedAt: pubDate,
-          updatedAt: parseDate(data.updatedAt) || pubDate,
-          breaking: Boolean(data.isBreaking || data.breaking),
-          materialUpdate: Boolean(data.materialUpdate),
-          clusterSourceCount: Number(data.clusterSourceCount || 1),
-          clusterImportance: Number(data.clusterImportance || (data.isBreaking ? 80 : 50)),
-          sourceQualityTier: data.sourceQualityTier || 'STANDARD',
-          sourceHealthScore: Number(data.sourceHealthScore || 75),
-          citySlug: data.citySlug || null,
-          districtSlug: data.districtSlug || null,
-          likesCount: Number(data.likesCount || 0),
-          commentsCount: Number(data.commentsCount || data.commentCount || 0),
-          savesCount: Number(data.savesCount || 0),
-          sharesCount: Number(data.sharesCount || 0),
-          viewsCount: Number(data.viewsCount || 0),
-          slug: data.slug || doc.id,
-          source,
-          sortScore: pubDate.getTime(),
-        })
+        if (lastDoc) q = q.startAfter(lastDoc)
+
+        const snap = await q.get()
+        if (snap.empty) break
+        lastDoc = snap.docs[snap.docs.length - 1]
+
+        for (const doc of snap.docs) {
+          if (seen.has(doc.id)) continue
+          if (opts.excludeClusterIds?.size) {
+            const clusterId = typeof doc.data().clusterId === 'string' ? doc.data().clusterId : null
+            if (clusterId && opts.excludeClusterIds.has(clusterId)) continue
+          }
+          if (
+            opts.category &&
+            doc.data().categoryId !== opts.category &&
+            doc.data().category !== opts.category
+          ) {
+            continue
+          }
+
+          const data = doc.data()
+          if (source === 'BREAKING') {
+            const isBreaking =
+              data.isBreaking === true ||
+              data.breaking === true ||
+              data.categoryId === 'son-dakika' ||
+              data.category === 'son-dakika' ||
+              data.editorType === 'breaking'
+            if (!isBreaking) continue
+          }
+
+          const row = this.mapFirestoreDocToRow(doc.id, data, source)
+          if (!row) continue
+          if (row.clusterId && opts.excludeClusterIds?.has(row.clusterId)) continue
+
+          seen.add(doc.id)
+          rows.push(row)
+          if (rows.length >= needed) break
+        }
+
+        if (snap.docs.length < batchSize) break
       }
 
-      return rows.slice(0, opts.limit)
+      return rows.slice(0, needed)
     } catch (err) {
       console.warn('[feed] firestore fallback candidate fetch failed:', err)
       return []
     }
+  }
+
+  /**
+   * P18.3A — PG primary stays preferred; when PG underfills page/pool capacity,
+   * supplement remaining slots from LEGACY_ALLOWED (not quarantined).
+   */
+  private async mergeWithLegacySupplement(
+    source: FeedCandidateSource,
+    primary: FeedCandidateRow[],
+    opts: BaseQueryOpts
+  ): Promise<FeedCandidateRow[]> {
+    if (primary.length >= opts.limit) return primary.slice(0, opts.limit)
+
+    const exclude = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+    for (const row of primary) exclude.add(row.articleId)
+
+    const remaining = opts.limit - primary.length
+    const fallback = await this.fetchFirestoreFallback(source, {
+      ...opts,
+      excludeArticleIds: exclude,
+      needed: remaining,
+      limit: remaining,
+    })
+
+    if (fallback.length === 0) return primary.slice(0, opts.limit)
+
+    console.info('[feed] legacy_allowed_supplement', {
+      source,
+      pg: primary.length,
+      fs: fallback.length,
+      target: opts.limit,
+    })
+
+    return [...primary, ...fallback].slice(0, opts.limit)
   }
 
   /**
@@ -279,7 +374,7 @@ export class FeedCandidateService {
   async fetchRecent(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
-      return this.fetchFirestoreFallback('RECENT', opts)
+      return this.fetchFirestoreFallback('RECENT', { ...opts, needed: opts.limit })
     }
 
     try {
@@ -301,20 +396,16 @@ export class FeedCandidateService {
         .limit(poolLimit)
 
       const mapped = mapRows(rows, 'RECENT', opts.excludeArticleIds, opts.excludeClusterIds)
-      if (mapped.length === 0 && (!opts.excludeArticleIds || opts.excludeArticleIds.size === 0)) {
-        const fallback = await this.fetchFirestoreFallback('RECENT', opts)
-        if (fallback.length > 0) return fallback
-      }
-      return mapped.slice(0, opts.limit)
+      return this.mergeWithLegacySupplement('RECENT', mapped, opts)
     } catch {
-      return this.fetchFirestoreFallback('RECENT', opts)
+      return this.fetchFirestoreFallback('RECENT', { ...opts, needed: opts.limit })
     }
   }
 
   async fetchBreaking(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
-      return this.fetchFirestoreFallback('BREAKING', opts)
+      return this.fetchFirestoreFallback('BREAKING', { ...opts, needed: opts.limit })
     }
 
     try {
@@ -336,16 +427,17 @@ export class FeedCandidateService {
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
 
-      return mapRows(rows, 'BREAKING', opts.excludeArticleIds, opts.excludeClusterIds).slice(0, opts.limit)
+      const mapped = mapRows(rows, 'BREAKING', opts.excludeArticleIds, opts.excludeClusterIds)
+      return this.mergeWithLegacySupplement('BREAKING', mapped, opts)
     } catch {
-      return this.fetchFirestoreFallback('BREAKING', opts)
+      return this.fetchFirestoreFallback('BREAKING', { ...opts, needed: opts.limit })
     }
   }
 
   async fetchPopular(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
-      return this.fetchFirestoreFallback('POPULAR', opts)
+      return this.fetchFirestoreFallback('POPULAR', { ...opts, needed: opts.limit })
     }
 
     try {
@@ -372,9 +464,10 @@ export class FeedCandidateService {
         )
         .limit(poolLimit)
 
-      return mapRows(rows, 'POPULAR', opts.excludeArticleIds, opts.excludeClusterIds).slice(0, opts.limit)
+      const mapped = mapRows(rows, 'POPULAR', opts.excludeArticleIds, opts.excludeClusterIds)
+      return this.mergeWithLegacySupplement('POPULAR', mapped, opts)
     } catch {
-      return this.fetchFirestoreFallback('POPULAR', opts)
+      return this.fetchFirestoreFallback('POPULAR', { ...opts, needed: opts.limit })
     }
   }
 
@@ -462,31 +555,52 @@ export class FeedCandidateService {
 
   async fetchByIds(articleIds: string[]): Promise<FeedCandidateRow[]> {
     if (!articleIds.length) return []
-    if (!hasDatabaseUrl()) {
-      return this.fetchFirestoreFallback('RECENT', { limit: articleIds.length, cursor: null })
+
+    const byId = new Map<string, FeedCandidateRow>()
+
+    if (hasDatabaseUrl()) {
+      try {
+        const db = requireDb()
+        const rows = await db
+          .select(baseSelect())
+          .from(news)
+          .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+          .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
+          .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
+          .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+          .where(and(publishedStatusWhere(), inArray(news.id, articleIds)))
+
+        for (const row of mapRows(rows, 'RECENT')) {
+          byId.set(row.articleId, row)
+        }
+      } catch {
+        /* fall through to Firestore hydrate */
+      }
     }
 
-    try {
-      const db = requireDb()
-      const rows = await db
-        .select(baseSelect())
-        .from(news)
-        .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
-        .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
-        .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
-        .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
-        .where(and(publishedStatusWhere(), inArray(news.id, articleIds)))
-
-      return mapRows(rows, 'RECENT')
-    } catch {
-      return []
+    const missing = articleIds.filter((id) => !byId.has(id)).slice(0, FS_SUPPLEMENT_HARD_CAP)
+    if (missing.length > 0) {
+      try {
+        const fs = getAdminFirestore()
+        const refs = missing.map((id) => fs.collection(Collections.NEWS).doc(id))
+        const snaps = await fs.getAll(...refs)
+        for (const snap of snaps) {
+          if (!snap.exists) continue
+          const row = this.mapFirestoreDocToRow(snap.id, snap.data()!, 'RECENT')
+          if (row) byId.set(row.articleId, row)
+        }
+      } catch (err) {
+        console.warn('[feed] fetchByIds firestore hydrate failed:', err)
+      }
     }
+
+    return articleIds.map((id) => byId.get(id)).filter((r): r is FeedCandidateRow => Boolean(r))
   }
 
   async fetchDiscovery(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
-      return this.fetchFirestoreFallback('DISCOVERY', opts)
+      return this.fetchFirestoreFallback('DISCOVERY', { ...opts, needed: opts.limit })
     }
 
     try {
@@ -512,11 +626,10 @@ export class FeedCandidateService {
         .limit(poolLimit)
 
       const mapped = mapRows(rows, 'DISCOVERY', opts.excludeArticleIds, opts.excludeClusterIds)
-      return mapped
         .map((r) => ({ ...r, sortScore: deterministicScore(r.articleId, dk) * 1_000_000_000 }))
-        .slice(0, opts.limit)
+      return this.mergeWithLegacySupplement('DISCOVERY', mapped, opts)
     } catch {
-      return this.fetchFirestoreFallback('DISCOVERY', opts)
+      return this.fetchFirestoreFallback('DISCOVERY', { ...opts, needed: opts.limit })
     }
   }
 
