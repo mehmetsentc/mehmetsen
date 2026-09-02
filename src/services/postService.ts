@@ -734,6 +734,12 @@ export const postService = {
     const resolvedCitySlug = data.citySlug?.trim() || (location?.city ? slugifyCity(location.city) : '')
     const cityCategory = resolvedCitySlug ? cityCategoryId(resolvedCitySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
+    // P18.1A: client SDK must not create public published news.
+    if (data.status === 'published') {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: client createNews cannot set status=published; use authenticated server publication API'
+      )
+    }
     const status = data.status ?? 'pending'
 
     const ref = await addDoc(collection(db, VIDEO_FEED_COLLECTION), {
@@ -838,9 +844,9 @@ export const postService = {
       type?: string
       tags?: string[]
       location?: PostLocation | null
-      // Resolved by moderation: 'published' (clean) or 'pending' (held for
-      // admin approval). Defaults to 'published' to preserve prior behaviour.
-      status?: 'published' | 'pending'
+      // Resolved by moderation: only 'pending' / 'draft' allowed from client.
+      // Public 'published' requires authenticated server publication authority (P18.1A).
+      status?: 'published' | 'pending' | 'draft'
       spot?: string
       seoTitle?: string
       seoDescription?: string
@@ -853,8 +859,12 @@ export const postService = {
     const citySlug = location?.city ? slugifyCity(location.city) : ''
     const cityCategory = citySlug ? cityCategoryId(citySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
-    const status = data.status ?? 'published'
-    const slug = buildNewsSlug(data.title.trim(), id.slice(0, 8))
+    if (data.status === 'published') {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: client publishNews cannot set status=published; use authenticated server publication API'
+      )
+    }
+    const status = data.status ?? 'pending'
 
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
       title: data.title.trim(),
@@ -879,10 +889,8 @@ export const postService = {
       tags: data.tags ?? [],
       type: data.type ?? 'news',
       status,
-      // Set slug on publish so the news detail URL (/haber/[slug]) works.
-      ...(status === 'published' ? { slug } : {}),
-      // A pending post is not yet live, so it has no publish time.
-      publishedAt: status === 'published' ? now : null,
+      // Client path never publishes — no public slug / publishedAt here (P18.1A).
+      publishedAt: null,
       updatedAt: now,
     })
   },

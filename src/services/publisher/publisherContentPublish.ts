@@ -165,6 +165,9 @@ function buildFirestorePayload(input: {
 /**
  * Idempotent publisher → Firestore + Postgres dual-write bridge.
  * ONE logical article → max 1 Firestore doc → max 1 PG news row.
+ *
+ * P18.1A: canonical news write requires HUMAN_EDITOR via authorizePublication.
+ * Caller must supply a real authenticated publisher member UID (not OWNER grant).
  */
 export class PublisherPublishService {
   constructor(
@@ -176,7 +179,8 @@ export class PublisherPublishService {
 
   /**
    * Ensure Firestore + PG representations for an already-authorized content item.
-   * Does not perform RBAC — caller (PublisherContentService) must authorize.
+   * Does not perform RBAC — caller (PublisherContentService) must authorize membership.
+   * Does enforce publicationAuthority HUMAN_EDITOR for the canonical news write.
    */
   async publishContent(input: {
     item: PublisherContentItem
@@ -205,6 +209,28 @@ export class PublisherPublishService {
       }
     }
 
+    const {
+      authorizePublication,
+      publicationProvenanceFields,
+    } = await import('@/services/editorial/publicationAuthority')
+
+    const bodyTextPreview =
+      contentBodyPlainText(item) ||
+      articleBlocksToPlainText(item.bodyBlocks) ||
+      item.summary ||
+      item.spot ||
+      ''
+
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: actorUserId,
+      actorDisplayName: input.actorDisplayName,
+      approvedAt: Date.now(),
+      editorialText: bodyTextPreview,
+      sourceText: null,
+    })
+    const provenance = publicationProvenanceFields(authz)
+
     const newsId =
       item.publishedNewsId ||
       input.preferredNewsId?.trim() ||
@@ -212,12 +238,7 @@ export class PublisherPublishService {
     const slug = resolveStablePublishSlug({ ...item, publishedNewsId: newsId }, newsId)
     const publishedAt = item.publishedAt ?? new Date()
     const publishedAtMs = publishedAt.getTime()
-    const bodyText =
-      contentBodyPlainText(item) ||
-      articleBlocksToPlainText(item.bodyBlocks) ||
-      item.summary ||
-      item.spot ||
-      ''
+    const bodyText = bodyTextPreview
     const html =
       (item.bodyHtml && item.bodyHtml.trim()) || articleBlocksToSafeHtml(item.bodyBlocks ?? [])
 
@@ -248,17 +269,20 @@ export class PublisherPublishService {
       try {
         await this.firestoreWriter.ensurePublishedNews({
           newsId,
-          payload: buildFirestorePayload({
-            item,
-            publisher,
-            actorUserId,
-            actorDisplayName: input.actorDisplayName,
-            newsId,
-            slug,
-            bodyText,
-            html,
-            publishedAtMs,
-          }),
+          payload: {
+            ...buildFirestorePayload({
+              item,
+              publisher,
+              actorUserId,
+              actorDisplayName: input.actorDisplayName,
+              newsId,
+              slug,
+              bodyText,
+              html,
+              publishedAtMs,
+            }),
+            ...provenance,
+          },
         })
         firestoreOk = true
         await this.contentRepo.insertAudit({

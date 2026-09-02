@@ -2,8 +2,12 @@
  * AI Genel Yayın Editörü
  *
  * Pending bir haberi son 48 saatte yayınlanan haberlerle karşılaştırır.
- * - Benzersiz → status: 'published' (otomatik yayınla)
- * - Tekrar haber → isDuplicate: true, status: 'pending' (insan onayına bırak)
+ * P18.1 / P18.1A:
+ * - Benzersiz → needs human publish (does NOT set status=published)
+ * - Tekrar haber → isDuplicate: true, status: 'pending'
+ *
+ * AI review result action name 'published' is historical vocabulary only —
+ * it does NOT authorize HUMAN_EDITOR or SYSTEM_ALERT publication.
  */
 
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -164,8 +168,8 @@ export async function applyReviewToFirestore(
   const ref = getAdminFirestore().collection('news').doc(articleId)
 
   if (result.action === 'published') {
+    // P18.1A defense-in-depth: never write status published from AI review.
     await ref.update({
-      // Intentionally NOT setting status: 'published'
       needsReview: true,
       needsAdminReview: true,
       isDuplicate: false,
@@ -173,6 +177,8 @@ export async function applyReviewToFirestore(
       editorialReviewedAt: new Date().toISOString(),
       editorialReviewAction: 'unique_pending_human_publish',
       publicationAuthorityRequired: 'HUMAN_EDITOR',
+      // Explicitly clear any accidental prior auto-publish attempt flags only;
+      // do not set status / publishedAt / publicationAuthority.
     })
   } else {
     await ref.update({

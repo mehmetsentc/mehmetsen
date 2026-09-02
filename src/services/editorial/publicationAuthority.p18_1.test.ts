@@ -216,7 +216,7 @@ describe('P18.1 AI editorial review no longer auto-publishes', () => {
       fs.readFileSync('src/lib/editorial/aiEditorialReview.ts', 'utf8')
     )
     expect(src).toMatch(/unique_pending_human_publish/)
-    expect(src).toMatch(/Intentionally NOT setting status: 'published'/)
+    expect(src).toMatch(/never write status published from AI review/)
     expect(src).not.toMatch(/status:\s*'published',\s*\n\s*publishedAt/)
   })
 })

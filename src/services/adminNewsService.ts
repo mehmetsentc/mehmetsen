@@ -504,20 +504,10 @@ export const adminNewsService = {
       return
     }
 
-    try {
-      await adminFetch(`/api/admin/news/${id}/approve`, 'POST')
-    } catch {
-      const now = Date.now()
-      await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
-        status: 'published',
-        publishedAt: now,
-        updatedAt: now,
-        needsReview: false,
-        needsAdminReview: false,
-        reviewedAt: now,
-        moderationNote: null,
-      })
-    }
+    // P18.1A: never fall back to client updateDoc(status=published).
+    // Publication must go through the authenticated server boundary
+    // (approveLegacyPending → authorizePublication HUMAN_EDITOR).
+    await adminFetch(`/api/admin/news/${id}/approve`, 'POST')
   },
 
   async reject(id: string, source: AdminNewsSource = 'news', reason?: string): Promise<void> {
@@ -612,6 +602,7 @@ export const adminNewsService = {
     const sanitizedMedia = sanitizeMediaItems(data.mediaItems)
 
     if (data.draftId) {
+      // P18.1A: client cannot self-publish — hold as pending for server HUMAN_EDITOR approve.
       await postService.publishNews(data.draftId, {
         title: data.title,
         description: data.description,
@@ -623,7 +614,7 @@ export const adminNewsService = {
         category: data.category,
         tags: data.tags,
         location,
-        status: 'published',
+        status: 'pending',
         type: 'news',
         spot: data.spot,
         seoTitle: data.seoTitle,
@@ -645,7 +636,7 @@ export const adminNewsService = {
       location,
       citySlug: data.citySlug?.trim() || undefined,
       districtSlug: data.districtSlug?.trim() || undefined,
-      status: 'published',
+      status: 'pending',
       type: 'news',
       spot: data.spot,
       seoTitle: data.seoTitle,
@@ -681,7 +672,13 @@ export const adminNewsService = {
     const cityCategory = citySlug ? cityCategoryId(citySlug) : ''
     const topicCategory = data.category?.trim() ?? ''
     const now = Date.now()
-    const status = data.status ?? 'published'
+    // P18.1A: client edit may not transition into public published.
+    if (data.status === 'published') {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: client updateAdminNews cannot set status=published; use /api/admin/news/[id]/approve'
+      )
+    }
+    const status = data.status ?? 'draft'
     const sanitizedMedia = sanitizeMediaItems(data.mediaItems)
 
     const finalCategoryId = topicCategory || cityCategory
@@ -705,7 +702,7 @@ export const adminNewsService = {
       seoTitle: data.seoTitle?.trim() || '',
       seoDescription: data.seoDescription?.trim() || '',
       status,
-      publishedAt: status === 'published' ? now : null,
+      publishedAt: null,
       updatedAt: now,
     })
   },
