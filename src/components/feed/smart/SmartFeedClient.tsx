@@ -197,7 +197,9 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
         setErrorState(null)
         setItems((prev) => {
-          const merged = append ? [...prev, ...page.items] : page.items
+          const guestSeen = !authUser ? readGuestSeen() : new Set<string>()
+          const incoming = page.items.filter((i) => !guestSeen.has(i.articleId))
+          const merged = append ? [...prev, ...incoming] : incoming
           const seen = new Set<string>()
           return merged.filter((i) => {
             if (seen.has(i.articleId)) return false
@@ -268,7 +270,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         }
       }
     },
-    [mode, initialCitySlug, initialDistrictSlug, searchParams]
+    [mode, initialCitySlug, initialDistrictSlug, searchParams, authUser]
   )
 
   const handleModeChange = useCallback(

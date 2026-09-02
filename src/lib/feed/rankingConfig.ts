@@ -67,6 +67,9 @@ export const FEED_RANKING_CONFIG_V1: FeedRankingConfigV1 = {
       discovery: 1.3,
       following: 1.1,
       local: 1.05,
+      // Elevate real popularity/most-read signals without overriding freshness/interest.
+      engagement: 1.15,
+      freshness: 1.1,
     },
     following: {
       following: 2.5,

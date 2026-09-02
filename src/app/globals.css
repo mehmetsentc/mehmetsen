@@ -815,8 +815,10 @@
 
   .back-nav-global--reels {
     display: block;
-    top: max(0.75rem, env(safe-area-inset-top, 0px));
+    /* Align with Smart Feed mode nav: clear notch + a little breathing room */
+    top: max(0.75rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 0.35rem));
     left: max(0.75rem, env(safe-area-inset-left, 0px));
+    z-index: 170;
   }
 
   .bbc-category-kicker {

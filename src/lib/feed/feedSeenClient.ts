@@ -17,9 +17,21 @@ export function getOrCreateFeedSessionId(): string {
 export function readGuestSeen(): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
-    const raw = sessionStorage.getItem(GUEST_SEEN_STORAGE_KEY)
-    const arr = raw ? (JSON.parse(raw) as string[]) : []
-    return new Set(arr)
+    // Prefer durable localStorage so refresh / re-entry suppress already-read cards.
+    // Migrate legacy sessionStorage once if present.
+    const fromLocal = localStorage.getItem(GUEST_SEEN_STORAGE_KEY)
+    if (fromLocal) {
+      const arr = JSON.parse(fromLocal) as string[]
+      return new Set(arr)
+    }
+    const fromSession = sessionStorage.getItem(GUEST_SEEN_STORAGE_KEY)
+    if (fromSession) {
+      const arr = JSON.parse(fromSession) as string[]
+      localStorage.setItem(GUEST_SEEN_STORAGE_KEY, fromSession)
+      sessionStorage.removeItem(GUEST_SEEN_STORAGE_KEY)
+      return new Set(arr)
+    }
+    return new Set()
   } catch {
     return new Set()
   }
@@ -28,7 +40,15 @@ export function readGuestSeen(): Set<string> {
 export function writeGuestSeen(ids: Set<string>): void {
   if (typeof window === 'undefined') return
   const arr = [...ids].slice(-GUEST_SEEN_MAX)
-  sessionStorage.setItem(GUEST_SEEN_STORAGE_KEY, JSON.stringify(arr))
+  try {
+    localStorage.setItem(GUEST_SEEN_STORAGE_KEY, JSON.stringify(arr))
+  } catch {
+    try {
+      sessionStorage.setItem(GUEST_SEEN_STORAGE_KEY, JSON.stringify(arr))
+    } catch {
+      /* quota / private mode */
+    }
+  }
 }
 
 export function useFeedImpressionRef(

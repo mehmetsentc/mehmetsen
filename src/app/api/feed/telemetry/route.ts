@@ -30,9 +30,15 @@ export async function POST(request: Request) {
   const events = Array.isArray(body.events) ? body.events.slice(0, 50) : []
   const impressions = Array.isArray(body.impressions) ? body.impressions.slice(0, 30) : []
 
-  if (auth && impressions.length && hasDatabaseUrl()) {
+  if (impressions.length && hasDatabaseUrl()) {
     const feedType = impressions[0]?.feedType ?? 'personal'
-    await feedSeenService.recordImpressions(auth.uid, null, feedType, impressions)
+    // Authenticated: persist by UID. Guest: persist by feed session so refresh
+    // can suppress qualified impressions without mixing identities.
+    if (auth?.uid) {
+      await feedSeenService.recordImpressions(auth.uid, null, feedType, impressions)
+    } else if (sessionId) {
+      await feedSeenService.recordImpressions(null, sessionId, feedType, impressions)
+    }
   }
 
   await feedTelemetryService.recordBatch(auth?.uid ?? null, sessionId, events)

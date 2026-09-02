@@ -23,7 +23,7 @@ export function FullscreenNewsCardSkeleton({ className }: FullscreenNewsCardSkel
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/30" aria-hidden />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-16 pb-6 md:mx-auto md:max-w-lg md:w-full">
+      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-[5.75rem] pb-6 md:mx-auto md:max-w-lg md:w-full">
         {/* Publisher header skeleton */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm">

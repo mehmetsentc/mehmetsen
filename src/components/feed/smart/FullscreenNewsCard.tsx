@@ -118,7 +118,7 @@ export function FullscreenNewsCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/30" aria-hidden />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-16 pb-6 md:mx-auto md:max-w-lg md:w-full">
+      <div className="relative z-10 flex flex-1 flex-col justify-between p-4 pt-[5.75rem] pb-6 md:mx-auto md:max-w-lg md:w-full">
         {/* Publisher header */}
         {item.publisher ? (
           <div className="flex items-center justify-between gap-2">
@@ -213,9 +213,14 @@ export function FullscreenNewsCard({
             ) : null}
           </div>
 
-          <h2 className="line-clamp-3 text-2xl font-bold leading-tight text-white md:text-3xl">{item.headline}</h2>
+          <h2 className="text-2xl font-bold leading-tight text-white md:text-3xl">{item.headline}</h2>
           {item.summary ? (
-            <p className="line-clamp-2 text-sm leading-relaxed text-white/85 md:text-base">{item.summary}</p>
+            <p
+              className="max-h-[36vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-white/85 md:text-base"
+              data-testid="smart-feed-summary"
+            >
+              {item.summary}
+            </p>
           ) : null}
 
           <button
