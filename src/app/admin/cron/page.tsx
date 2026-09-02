@@ -1,5 +1,5 @@
 'use client'
-
+// deploy: firestore polling cost fix
 import { auth } from '@/lib/firebase/auth'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
