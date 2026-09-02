@@ -127,8 +127,9 @@ export default function NewsroomPage() {
 
   // ── Auto-refresh status every 30s ───────────────────────────────────────────
   useEffect(() => {
-    void fetchStatus()
-    intervalRef.current = setInterval(() => void fetchStatus(), 30_000)
+        if (typeof document !== 'undefined' && document.hidden) return
+        void fetchStatus()
+        intervalRef.current = setInterval(() => { if (!document.hidden) void fetchStatus() }, 300_000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [fetchStatus])
 
