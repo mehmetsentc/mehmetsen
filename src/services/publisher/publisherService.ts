@@ -40,18 +40,29 @@ export class PublisherService {
 
   async getPublisherArticles(
     publisherId: string,
-    limit = 24,
-    cursor?: string | null
+    limit = 30,
+    cursor?: string | null,
+    opts?: { categoryId?: string | null }
   ): Promise<PublisherArticlePage> {
     const sourceIds = await this.repo.getSourceIdsForPublisher(publisherId)
     const page = await this.repo.resolvePublishedArticles(sourceIds, limit, cursor)
-    const studio = await this.repo.resolveStudioPublishedArticles(publisherId, limit)
-    if (!studio.length) return page
+    // Category filter applied client-side for first page; FS path supports category via opts in service layer
+    let items = page.items
+    if (opts?.categoryId && opts.categoryId !== 'all') {
+      const cat = opts.categoryId.trim().toLowerCase()
+      items = items.filter((i) => (i.categoryId || 'gundem') === cat)
+    }
+    const studio = cursor ? [] : await this.repo.resolveStudioPublishedArticles(publisherId, limit)
+    if (!studio.length) return { items, nextCursor: page.nextCursor }
 
-    const seen = new Set(page.items.map((i) => i.id))
-    const merged = [...page.items]
+    const seen = new Set(items.map((i) => i.id))
+    const merged = [...items]
     for (const item of studio) {
       if (seen.has(item.id)) continue
+      if (opts?.categoryId && opts.categoryId !== 'all') {
+        const cat = opts.categoryId.trim().toLowerCase()
+        if ((item.categoryId || 'gundem') !== cat) continue
+      }
       seen.add(item.id)
       merged.push(item)
     }
@@ -64,6 +75,11 @@ export class PublisherService {
       items: merged.slice(0, Math.min(Math.max(limit, 1), 48)),
       nextCursor: page.nextCursor,
     }
+  }
+
+  async countPublisherPublicArticles(publisherId: string): Promise<number> {
+    const sourceIds = await this.repo.getSourceIdsForPublisher(publisherId)
+    return this.repo.countPublisherPublicArticles(publisherId, sourceIds)
   }
 
   /** @deprecated use getPublisherArticles which returns a page */

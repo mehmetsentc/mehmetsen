@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { BadgeCheck, ExternalLink, Globe, MapPin, Sparkles } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ROUTES } from '@/constants/routes'
@@ -18,13 +18,24 @@ type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
 
 export function PublisherProfileClient({
   publisher,
-  articles,
+  articles: initialArticles,
+  totalCount: initialTotalCount,
+  nextCursor: initialNextCursor = null,
 }: {
   publisher: PublicPublisherRecord
   articles: PublisherArticleItem[]
+  totalCount?: number
+  nextCursor?: string | null
 }) {
   const router = useRouter()
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const searchParams = useSearchParams()
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    () => searchParams.get('category') || 'all'
+  )
+  const [articles, setArticles] = useState(initialArticles)
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
+  const [totalCount, setTotalCount] = useState(initialTotalCount ?? initialArticles.length)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [claimOpen, setClaimOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [businessEmail, setBusinessEmail] = useState('')
@@ -66,6 +77,51 @@ export function PublisherProfileClient({
       return cat === selectedCategory
     })
   }, [articles, selectedCategory])
+
+  const selectCategory = useCallback(
+    (id: string) => {
+      setSelectedCategory(id)
+      const params = new URLSearchParams(searchParams.toString())
+      if (id === 'all') params.delete('category')
+      else params.set('category', id)
+      const q = params.toString()
+      router.replace(q ? `?${q}` : '?', { scroll: false })
+    },
+    [router, searchParams]
+  )
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const params = new URLSearchParams({ cursor: nextCursor, limit: '30' })
+      const res = await fetch(
+        `/api/publishers/${encodeURIComponent(publisher.slug)}/articles?${params.toString()}`
+      )
+      if (!res.ok) return
+      const body = (await res.json()) as {
+        items: PublisherArticleItem[]
+        nextCursor: string | null
+      }
+      setArticles((prev) => {
+        const seen = new Set(prev.map((p) => p.id))
+        const merged = [...prev]
+        for (const item of body.items ?? []) {
+          if (seen.has(item.id)) continue
+          seen.add(item.id)
+          merged.push({
+            ...item,
+            publishedAt: item.publishedAt ? new Date(item.publishedAt as unknown as string) : null,
+          })
+        }
+        setTotalCount((c) => Math.max(c, merged.length))
+        return merged
+      })
+      setNextCursor(body.nextCursor)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [nextCursor, loadingMore, publisher.slug])
 
   const refreshClaimStatus = useCallback(async () => {
     const user = auth.currentUser
@@ -188,7 +244,7 @@ export function PublisherProfileClient({
                   </a>
                 )}
                 <span className="inline-flex items-center gap-1 font-medium text-[rgb(var(--color-text))]">
-                  <span className="font-bold text-[rgb(var(--color-brand))]">{articles.length}</span> haber
+                  <span className="font-bold text-[rgb(var(--color-brand))]">{totalCount || articles.length}</span> haber
                 </span>
               </div>
               {publisher.description ? (
@@ -304,7 +360,8 @@ export function PublisherProfileClient({
         <div className="flex items-center justify-between pb-3">
           <h2 className="text-xl font-black text-[rgb(var(--color-text))] sm:text-2xl">Haberler</h2>
           <span className="text-xs font-semibold text-[rgb(var(--color-muted))]">
-            {filteredArticles.length} / {articles.length} içerik
+            {filteredArticles.length}
+            {totalCount > filteredArticles.length ? ` / ${totalCount}` : ''} içerik
           </span>
         </div>
 
@@ -312,7 +369,7 @@ export function PublisherProfileClient({
           <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-hide">
             <button
               type="button"
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => selectCategory('all')}
               className={cn(
                 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all',
                 selectedCategory === 'all'
@@ -321,13 +378,13 @@ export function PublisherProfileClient({
               )}
             >
               <Sparkles className="h-3 w-3" />
-              Tümü ({articles.length})
+              Tümü ({totalCount || articles.length})
             </button>
             {availableCategories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setSelectedCategory(cat.id)}
+                onClick={() => selectCategory(cat.id)}
                 className={cn(
                   'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-bold transition-all',
                   selectedCategory === cat.id
@@ -342,7 +399,7 @@ export function PublisherProfileClient({
         )}
       </section>
 
-      {/* Responsive News Grid: Mobile 1-col, Tablet 2-col, Desktop 3-col */}
+      {/* Pinterest-style masonry news grid */}
       <section>
         {filteredArticles.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
@@ -351,65 +408,80 @@ export function PublisherProfileClient({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
-            {filteredArticles.map((article) => {
-              const catLabel =
-                categoryMap.get((article.categoryId || '').toLowerCase()) ||
-                (article.categoryId ? article.categoryId.toUpperCase() : 'GÜNDEM')
+          <>
+            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
+              {filteredArticles.map((article) => {
+                const catLabel =
+                  categoryMap.get((article.categoryId || '').toLowerCase()) ||
+                  (article.categoryId ? article.categoryId.toUpperCase() : 'GÜNDEM')
 
-              return (
-                <Link
-                  key={article.id}
-                  href={ROUTES.NEWS_DETAIL(article.slug)}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
+                return (
+                  <Link
+                    key={article.id}
+                    href={ROUTES.NEWS_DETAIL(article.slug)}
+                    className="group mb-4 break-inside-avoid block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
+                  >
+                    {article.thumbnailUrl ? (
+                      <div className="relative w-full overflow-hidden bg-[rgb(var(--color-bg))]">
+                        <SafeNewsImage
+                          src={article.thumbnailUrl}
+                          alt={article.title}
+                          width={640}
+                          height={480}
+                          className="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+                          {catLabel}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="relative flex min-h-[120px] w-full items-center justify-center bg-[rgb(var(--color-bg))] p-4">
+                        <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+                          {catLabel}
+                        </span>
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] transition-colors group-hover:text-[rgb(var(--color-brand))]">
+                        {article.title}
+                      </h3>
+                      {article.summary ? (
+                        <p className="mt-2 hidden text-xs leading-relaxed text-[rgb(var(--color-muted))] sm:line-clamp-3 sm:block">
+                          {article.summary}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
+                        <span>
+                          {article.publishedAt
+                            ? new Date(article.publishedAt).toLocaleDateString('tr-TR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : null}
+                        </span>
+                        <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
+                          Oku →
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+            {nextCursor && selectedCategory === 'all' ? (
+              <div className="mt-8 flex justify-center">
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => void loadMore()}
+                  className="rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-6 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] shadow-sm transition hover:border-[rgb(var(--color-brand))]/40 disabled:opacity-60"
                 >
-                  {article.thumbnailUrl ? (
-                    <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))]">
-                      <SafeNewsImage
-                        src={article.thumbnailUrl}
-                        alt={article.title}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
-                        {catLabel}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="relative aspect-video w-full bg-[rgb(var(--color-bg))] p-4 flex items-center justify-center">
-                      <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
-                        {catLabel}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] line-clamp-2 transition-colors group-hover:text-[rgb(var(--color-brand))]">
-                      {article.title}
-                    </h3>
-                    {article.summary ? (
-                      <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))] line-clamp-2">
-                        {article.summary}
-                      </p>
-                    ) : null}
-                    <div className="mt-auto pt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
-                      <span>
-                        {article.publishedAt
-                          ? new Date(article.publishedAt).toLocaleDateString('tr-TR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : null}
-                      </span>
-                      <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
-                        Oku →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+                  {loadingMore ? 'Yükleniyor…' : 'Daha fazla haber'}
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </div>

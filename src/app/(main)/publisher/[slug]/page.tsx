@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { hasDatabaseUrl } from '@/db'
 import {
   isPublisherPlatformEnabled,
@@ -96,9 +97,17 @@ export default async function PublisherProfilePage({ params }: Props) {
   if (!publisher) notFound()
 
   const fullRecord = await publisherService.getPublisherBySlug(slug)
+  const categoryParam = null // category filtering is client + API; SSR loads Tümü
   const articlePage = fullRecord
-    ? await publisherService.getPublisherArticles(fullRecord.id, 24)
+    ? await publisherService.getPublisherArticles(fullRecord.id, 30, null, {
+        categoryId: categoryParam,
+      })
     : { items: [], nextCursor: null }
+
+  const eligibleCount = fullRecord
+    ? await publisherService.countPublisherPublicArticles(fullRecord.id).catch(() => articlePage.items.length)
+    : 0
+
 
   const publishedLayout = fullRecord
     ? await (async () => {
@@ -205,10 +214,14 @@ export default async function PublisherProfilePage({ params }: Props) {
           __html: JSON.stringify(buildPublisherOrganizationJsonLd(publisher)),
         }}
       />
-      <PublisherProfileClient
-        publisher={publisher}
-        articles={articlePage.items}
-      />
+      <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-8 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>}>
+        <PublisherProfileClient
+          publisher={publisher}
+          articles={articlePage.items}
+          totalCount={Math.max(eligibleCount, articlePage.items.length)}
+          nextCursor={articlePage.nextCursor}
+        />
+      </Suspense>
     </>
   )
 }

@@ -852,9 +852,30 @@ export class PublisherRepository {
       }
     }
 
-    // 3. Fallback to Firestore disabled for publication safety (P17.7H.3)
-    // Only PostgreSQL canonical published articles linked to publisher sources or studio are served.
-
+    // 3. P18.3E — provenance FS continuity (raw editorial_news_id → published FS)
+    // LEGACY_QUARANTINED excluded via publicReadPolicy. Ownership untouched.
+    let provenanceNextCursor: string | null = null
+    if (out.length < pageSize) {
+      try {
+        const { fetchFirestorePublisherArticles } = await import('./publisherArticleFirestore')
+        const exclude = new Set(out.map((i) => i.id))
+        const fsPage = await fetchFirestorePublisherArticles({
+          sourceIds,
+          limit: pageSize - out.length,
+          cursor: out.length === 0 ? cursor : null,
+          excludeIds: exclude,
+        })
+        for (const item of fsPage.items) {
+          if (seen.has(item.id)) continue
+          seen.add(item.id)
+          out.push(item)
+          if (out.length >= pageSize) break
+        }
+        provenanceNextCursor = fsPage.nextCursor
+      } catch (err) {
+        console.warn('[publisher] provenance FS supplement failed', err)
+      }
+    }
 
     out.sort((a, b) => {
       const am = a.publishedAt?.getTime() ?? 0
@@ -865,11 +886,45 @@ export class PublisherRepository {
     const items = out.slice(0, pageSize)
     const last = items[items.length - 1]
     const nextCursor =
-      out.length > pageSize && last?.publishedAt
+      provenanceNextCursor ??
+      (out.length > pageSize && last?.publishedAt
         ? Buffer.from(`${last.publishedAt.getTime()}:${last.id}`, 'utf8').toString('base64url')
-        : null
+        : null)
 
     return { items, nextCursor }
+  }
+
+  /**
+   * Eligible public article count (PG cluster/studio + bounded provenance FS).
+   * Same eligibility as resolvePublishedArticles list path.
+   */
+  async countPublisherPublicArticles(publisherId: string, sourceIds: string[]): Promise<number> {
+    let pgCount = 0
+    if (sourceIds.length && hasDatabaseUrl()) {
+      const db = this.requireDb()
+      const clusterCount = await db
+        .select({ c: sql<number>`count(distinct ${news.id})::int` })
+        .from(news)
+        .innerJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+        .where(and(eq(news.status, 'published'), inArray(newsClusters.primarySourceId, sourceIds)))
+      pgCount = clusterCount[0]?.c ?? 0
+    }
+
+    let fsCount = 0
+    if (sourceIds.length) {
+      try {
+        const { countEligibleFirestorePublisherArticles } = await import('./publisherArticleFirestore')
+        fsCount = await countEligibleFirestorePublisherArticles({ sourceIds, maxScan: 500 })
+      } catch (err) {
+        console.warn('[publisher] provenance count failed', err)
+      }
+    }
+
+    const studio = await this.resolveStudioPublishedArticles(publisherId, 48)
+    // Prefer provenance FS when PG cluster path is empty (common pre-mirror state).
+    // When both exist, take the larger bounded signal to avoid empty UI undercount.
+    const sourceLinked = Math.max(pgCount, fsCount)
+    return Math.max(sourceLinked, studio.length)
   }
 
   /**
