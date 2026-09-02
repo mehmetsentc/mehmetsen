@@ -105,6 +105,12 @@ describe('P18.1A residual public writer closure', () => {
     expect(src).toMatch(/authority:\s*'HUMAN_EDITOR'/)
   })
 
+  it('publishClusterEditorial requires authorizePublication (P18.2A)', () => {
+    const src = readFileSync('src/services/editorial/editorialSupplyService.ts', 'utf8')
+    expect(src).toMatch(/authorizePublication\(/)
+    expect(src).not.toMatch(/actorUserId\s*\|\|\s*['\"]editorial_ops['\"]/)
+  })
+
   it('manual AI remains draft-first (P17.13 needsDraft includes editorApproved)', () => {
     const src = readFileSync('src/services/newsroom/pipeline.ts', 'utf8')
     expect(src).toMatch(/const needsDraft[\s\S]*editorApproved/)

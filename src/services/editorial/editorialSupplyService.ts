@@ -15,7 +15,10 @@ import {
   type OverlapCategory,
 } from './editorialSimilarityGate'
 import { assertHumanEditorialApproval } from './humanReviewGate'
-import { publicationProvenanceFields } from './publicationAuthority'
+import {
+  authorizePublication,
+  publicationProvenanceFields,
+} from './publicationAuthority'
 import type {
   EditorialCandidateArticle,
   EditorialPublicationResult,
@@ -129,6 +132,16 @@ export class EditorialSupplyService {
    */
   async publishClusterEditorial(opts: PublishClusterOptions): Promise<EditorialPublicationResult> {
     if (!hasDatabaseUrl()) throw new Error('DATABASE_UNAVAILABLE')
+
+    // P18.2A: fail closed on missing/implicit actor BEFORE any datastore read/write.
+    const actorIdRaw = opts.actorUserId
+    if (typeof actorIdRaw !== 'string' || actorIdRaw.trim().length === 0) {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: HUMAN_EDITOR requires authenticated actor UID'
+      )
+    }
+    const actorId = actorIdRaw.trim()
+
     const db = getDb()
     const { cluster, candidates } = await this.loadClusterCandidates(opts.clusterId)
 
@@ -139,9 +152,9 @@ export class EditorialSupplyService {
       throw new Error(`No member articles found for cluster: ${opts.clusterId}`)
     }
 
-    // 0. Mandatory Human Editorial Review Gate
+    // 0. Mandatory Human Editorial Review Gate (kept; authorizePublication re-validates)
     const approval = assertHumanEditorialApproval({
-      reviewerId: opts.actorUserId,
+      reviewerId: actorId,
       reviewerDisplayName: opts.actorDisplayName,
       reviewedAt: opts.reviewedAt || new Date(),
       decision: opts.decision || 'APPROVED',
@@ -171,7 +184,7 @@ export class EditorialSupplyService {
       canonicalUrl: primaryArticle.canonicalUrl,
     })
 
-    // Pre-Publication Similarity & Rights Gate
+    // Pre-Publication Similarity & Rights Gate (preserved; forceAllow stays here)
     const rightsCheck = validatePublicationRights({
       canonicalText: qualityResult.sanitizedBody,
       rawSourceText: primaryArticle.body,
@@ -197,6 +210,21 @@ export class EditorialSupplyService {
 
     const heroImageUrl = selectBestEditorialImage(imageCandidates)
 
+    // 3b. Central P18.1 publication authority — BEFORE any FS / PG published write
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: actorId,
+      actorDisplayName: opts.actorDisplayName,
+      approvedAt: opts.reviewedAt || new Date(),
+      editorialText: qualityResult.sanitizedBody,
+      // forceAllow already cleared HIGH_OVERLAP above; omit sourceText to avoid
+      // double-block when forceAllowHighOverlap is set without rights metadata.
+      sourceText: opts.forceAllowHighOverlap ? null : primaryArticle.body,
+      rightsStatus: opts.rightsStatus,
+      rightsBasis: opts.rightsBasis,
+    })
+    const provenance = publicationProvenanceFields(authz)
+
     // 4. Stable Canonical Identity
     const firestore = getAdminFirestore()
     const newsId = cluster.publishedNewsId || firestore.collection(Collections.NEWS).doc().id
@@ -216,8 +244,10 @@ export class EditorialSupplyService {
     const draftCreatedAt = cluster.createdAt || now
     const draftCreatedAtMs = draftCreatedAt.getTime()
 
-    const actorId = opts.actorUserId || 'editorial_ops'
-    const actorName = opts.actorDisplayName || primaryArticle.sourceName || 'NaHaber Editör Masası'
+    const actorName =
+      opts.actorDisplayName?.trim() ||
+      primaryArticle.sourceName ||
+      'NaHaber Editör Masası'
 
     // 5. Firestore Canonical News Write
     const firestorePayload: Record<string, unknown> = {
@@ -243,7 +273,7 @@ export class EditorialSupplyService {
       sourceLabel: primaryArticle.sourceName,
       sourceUrl: primaryArticle.canonicalUrl || primaryArticle.originalUrl,
       author: actorName,
-      authorId: actorId,
+      authorId: authz.approvedBy || actorId,
       authorDisplayName: actorName,
       clusterId: cluster.id,
       ingestionSourceId: primaryArticle.sourceId,
@@ -264,14 +294,7 @@ export class EditorialSupplyService {
       commentCount: 0,
       savesCount: 0,
       sharesCount: 0,
-      ...publicationProvenanceFields({
-        authority: 'HUMAN_EDITOR',
-        approvedBy: actorId,
-        approvedAt: now.getTime(),
-        publishedBy: actorId,
-        publishedAt: now.getTime(),
-        humanReview: approval,
-      }),
+      ...provenance,
     }
 
     await firestore.collection(Collections.NEWS).doc(newsId).set(firestorePayload, { merge: true })
@@ -290,7 +313,7 @@ export class EditorialSupplyService {
       citySlug: qualityResult.citySlug,
       districtName: cluster.district || primaryArticle.district || null,
       districtSlug: qualityResult.districtSlug,
-      authorId: actorId,
+      authorId: authz.approvedBy || actorId,
       authorDisplayName: actorName,
       source: primaryArticle.sourceName,
       sourceUrl: primaryArticle.canonicalUrl || primaryArticle.originalUrl,
@@ -440,9 +463,18 @@ export class EditorialSupplyService {
 
   /**
    * Selects and publishes top quality clusters across diverse categories.
+   * P18.2A: requires an authenticated human actor — no automation UID seed.
    */
-  async seedControlledEditorialInventory(targetCount = 35): Promise<EditorialPublicationResult[]> {
+  async seedControlledEditorialInventory(
+    targetCount = 35,
+    actor?: { actorUserId: string; actorDisplayName?: string }
+  ): Promise<EditorialPublicationResult[]> {
     if (!hasDatabaseUrl()) throw new Error('DATABASE_UNAVAILABLE')
+    if (!actor?.actorUserId?.trim()) {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: seedControlledEditorialInventory requires authenticated HUMAN_EDITOR actor'
+      )
+    }
     const db = getDb()
 
     // Find top distinct clusters across diverse categories with good quality
@@ -488,8 +520,10 @@ export class EditorialSupplyService {
 
         const res = await this.publishClusterEditorial({
           clusterId: cl.id,
-          actorUserId: 'ap3scBglLIVwflfZN4qL8PKrM1A3',
-          actorDisplayName: primaryArticle.sourceName,
+          actorUserId: actor.actorUserId,
+          actorDisplayName: actor.actorDisplayName || primaryArticle.sourceName,
+          decision: 'APPROVED',
+          reviewedAt: new Date(),
         })
 
         published.push(res)
