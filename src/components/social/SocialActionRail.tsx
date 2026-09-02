@@ -24,6 +24,7 @@ interface SocialActionRailProps {
   className?: string
   /** horizontal (default) or vertical Reels-style rail */
   orientation?: 'horizontal' | 'vertical'
+  'data-testid'?: string
 }
 
 export function SocialActionRail({
@@ -42,6 +43,7 @@ export function SocialActionRail({
   saveLoading,
   className,
   orientation = 'horizontal',
+  'data-testid': dataTestId,
 }: SocialActionRailProps) {
   const vertical = orientation === 'vertical'
 
@@ -54,6 +56,7 @@ export function SocialActionRail({
         className
       )}
       data-orientation={orientation}
+      data-testid={dataTestId}
     >
       <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} variant="overlay" />
       <button

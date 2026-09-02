@@ -165,13 +165,13 @@ export function FullscreenNewsCard({
             </div>
           </div>
         )}
-        {/* Layered readability gradient — not full-card black */}
+        {/* Bottom-weighted gradient — keep media dominant */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25"
+          className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30"
           aria-hidden
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/90 via-black/40 to-transparent"
+          className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/95 via-black/55 to-transparent"
           aria-hidden
         />
       </div>
@@ -256,9 +256,9 @@ export function FullscreenNewsCard({
           </div>
         )}
 
-        {/* Lower content + right social rail */}
-        <div className="relative flex items-end gap-3">
-          <div className="min-w-0 flex-1 space-y-2.5 pr-1">
+        {/* Lower text zone + reserved right rail — never consume full viewport */}
+        <div className="relative mt-auto flex max-h-[46vh] items-end gap-3">
+          <div className="min-w-0 flex-1 space-y-2 pr-1" data-testid="smart-feed-text-zone">
             <div className="flex flex-wrap items-center gap-2">
               {cat ? (
                 <span className="text-[11px] font-bold tracking-wide text-[rgb(var(--color-brand))]">
@@ -284,15 +284,13 @@ export function FullscreenNewsCard({
               ) : null}
             </div>
 
-            {/* HEADLINE role — near-white, strong */}
-            <h2 className="text-[1.35rem] font-bold leading-snug text-white md:text-3xl">
+            <h2 className="text-[1.25rem] font-bold leading-snug text-white sm:text-[1.35rem] md:text-3xl">
               {item.headline}
             </h2>
 
-            {/* SUMMARY role — softer; full editorial paragraph, no CSS clamp or ellipsis */}
             {item.summary ? (
               <p
-                className="whitespace-pre-wrap break-words text-[0.925rem] leading-relaxed text-white/80 md:text-base"
+                className="break-words text-[0.9rem] leading-relaxed text-white/80 md:text-[0.95rem]"
                 data-testid="smart-feed-summary"
               >
                 {item.summary}
@@ -302,6 +300,7 @@ export function FullscreenNewsCard({
             <button
               type="button"
               onClick={onReadClick}
+              data-testid="smart-feed-read-cta"
               className="mt-1 inline-flex items-center justify-center rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-white active:scale-[0.99]"
             >
               Haberi Oku
@@ -339,6 +338,7 @@ export function FullscreenNewsCard({
             saveLoading={saveLoading}
             orientation="vertical"
             className="mb-1 shrink-0 text-white"
+            data-testid="smart-feed-social-rail"
           />
         </div>
       </div>

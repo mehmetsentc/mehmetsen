@@ -25,7 +25,11 @@ import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
+/** Keep a sliding DOM window; spacers preserve global scroll indices. */
 const WINDOW_MAX = 25
+const WINDOW_BEFORE = 5
+/** Guest filter may empty a page — keep fetching while server hasMore. */
+const EMPTY_PAGE_REFILL_MAX = 4
 
 function parseMode(raw: string | null): FeedMode {
   const m = (raw ?? 'personal').trim().toLowerCase()
@@ -131,6 +135,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const dwellStartRef = useRef<number | null>(null)
   const generationIdRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const loadingMoreRef = useRef(false)
+  const lastPrefetchCursorRef = useRef<string | null>(null)
 
   const [mode, setMode] = useState<FeedMode>(() => parseMode(searchParams.get('mode')))
   const [items, setItems] = useState<FeedItemDto[]>([])
@@ -149,11 +155,15 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  const windowStart = Math.max(0, activeIndex - 5)
-  const windowItems = items.slice(windowStart, windowStart + WINDOW_MAX)
+  const windowStart = Math.max(0, activeIndex - WINDOW_BEFORE)
+  const windowEnd = Math.min(items.length, windowStart + WINDOW_MAX)
+  const windowItems = items.slice(windowStart, windowEnd)
+  const spacerAfter = Math.max(0, items.length - windowEnd)
 
   const cursorRef = useRef<string | null>(null)
   cursorRef.current = cursor
+  const hasMoreRef = useRef(true)
+  hasMoreRef.current = hasMore
 
   const loadPage = useCallback(
     async (
@@ -163,16 +173,21 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       forceAuthRefresh = false
     ) => {
       const activeMode = targetMode ?? mode
-      const genId = ++generationIdRef.current
 
-      // If initiating a full refresh or mode change, abort previous controller
-      if (!append) {
+      if (append) {
+        if (loadingMoreRef.current) return
+        loadingMoreRef.current = true
+      } else {
         if (abortControllerRef.current) {
           abortControllerRef.current.abort()
         }
         abortControllerRef.current = new AbortController()
+        generationIdRef.current += 1
+        loadingMoreRef.current = false
+        lastPrefetchCursorRef.current = null
       }
 
+      const genId = generationIdRef.current
       const signal = !append ? abortControllerRef.current?.signal : undefined
 
       if (append) setLoadingMore(true)
@@ -182,26 +197,58 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       }
 
       try {
-        const page = await fetchFeedPage({
-          mode: activeMode,
-          cursor: append ? (nextCursor ?? cursorRef.current) : null,
-          city: initialCitySlug,
-          district: initialDistrictSlug,
-          refresh: !append,
-          signal,
-          forceAuthRefresh,
-        })
+        let pageCursor = append ? (nextCursor ?? cursorRef.current) : null
+        let emptyRefills = 0
+        let lastPage: FeedPageDto | null = null
+        let acceptedIncoming: FeedItemDto[] = []
 
-        // Drop out-of-order responses from stale generation requests
-        if (genId !== generationIdRef.current) return
+        // Keep requesting while guest/local filter empties a thin page but server has more.
+        while (emptyRefills <= EMPTY_PAGE_REFILL_MAX) {
+          if (append && pageCursor && lastPrefetchCursorRef.current === pageCursor && emptyRefills === 0) {
+            return
+          }
+          if (append && pageCursor) {
+            lastPrefetchCursorRef.current = pageCursor
+          }
 
-        setErrorState(null)
-        setItems((prev) => {
+          const page = await fetchFeedPage({
+            mode: activeMode,
+            cursor: pageCursor,
+            city: initialCitySlug,
+            district: initialDistrictSlug,
+            refresh: !append && emptyRefills === 0,
+            signal,
+            forceAuthRefresh,
+          })
+
+          if (genId !== generationIdRef.current) return
+          lastPage = page
+
           const guestSeen = !authUser ? readGuestSeen() : new Set<string>()
           const incoming = page.items.filter(
             (i) => !guestSeen.has(i.articleId) && !(i.slug && guestSeen.has(i.slug))
           )
-          const merged = append ? [...prev, ...incoming] : incoming
+
+          if (incoming.length > 0 || !page.hasMore || !page.nextCursor) {
+            acceptedIncoming = incoming
+            break
+          }
+
+          emptyRefills += 1
+          pageCursor = page.nextCursor
+          cursorRef.current = page.nextCursor
+          setCursor(page.nextCursor)
+          setHasMore(page.hasMore)
+          hasMoreRef.current = page.hasMore
+        }
+
+        if (genId !== generationIdRef.current || !lastPage) return
+
+        setErrorState(null)
+        setItems((prev) => {
+          const existing = new Set(prev.map((i) => i.articleId))
+          const uniqueIncoming = acceptedIncoming.filter((i) => !existing.has(i.articleId))
+          const merged = append ? [...prev, ...uniqueIncoming] : acceptedIncoming
           const seen = new Set<string>()
           return merged.filter((i) => {
             if (seen.has(i.articleId)) return false
@@ -211,7 +258,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         })
         setSocial((prev) => {
           const next = { ...prev }
-          for (const it of page.items) {
+          for (const it of lastPage!.items) {
             if (!next[it.articleId]) {
               next[it.articleId] = {
                 liked: it.socialState?.liked ?? false,
@@ -223,20 +270,23 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           }
           return next
         })
-        setCursor(page.nextCursor)
-        cursorRef.current = page.nextCursor
-        setHasMore(page.hasMore)
+        setCursor(lastPage.nextCursor)
+        cursorRef.current = lastPage.nextCursor
+        // Trust backend exhaustion only — never flip false because a filtered page was thin.
+        setHasMore(lastPage.hasMore)
+        hasMoreRef.current = lastPage.hasMore
         if (!append) {
           const restore = readFeedRestore()
           const restoreId = searchParams.get('restore') ?? restore?.articleId
           if (restoreId) {
-            const idx = page.items.findIndex((i) => i.articleId === restoreId)
+            const idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
             if (idx >= 0) setActiveIndex(idx)
             clearFeedRestore()
+          } else {
+            setActiveIndex(0)
           }
         }
       } catch (err: unknown) {
-        // Drop cancelled / aborted fetches silently
         if (err instanceof DOMException && err.name === 'AbortError') {
           return
         }
@@ -266,8 +316,13 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         }
         await postTelemetry({ events: [{ eventType: 'feed_error', feedType: activeMode }] })
       } finally {
+        if (append) {
+          loadingMoreRef.current = false
+        }
         if (genId === generationIdRef.current) {
           setLoading(false)
+          setLoadingMore(false)
+        } else if (append) {
           setLoadingMore(false)
         }
       }
@@ -334,25 +389,33 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
   useEffect(() => {
     activeIndexRef.current = activeIndex
-    const item = items[activeIndex]
     dwellStartRef.current = Date.now()
 
-    if (item && items.length - activeIndex <= FEED_PAGINATION.prefetchThreshold && hasMore && !loadingMore) {
+    const remaining = items.length - activeIndex
+    if (
+      items.length > 0 &&
+      remaining <= FEED_PAGINATION.prefetchThreshold &&
+      hasMore &&
+      !loadingMore &&
+      !loadingMoreRef.current
+    ) {
       void loadPage(true, cursor)
     }
-  }, [activeIndex, items, hasMore, loadingMore, cursor, loadPage])
+  }, [activeIndex, items.length, hasMore, loadingMore, cursor, loadPage])
 
   const scrollToIndex = useCallback(
     (index: number) => {
       const el = scrollRef.current
       if (!el) return
-      const child = el.children[index] as HTMLElement | undefined
-      if (child) {
-        child.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
-      }
-      setActiveIndex(index)
+      const h = el.clientHeight || 1
+      const clamped = Math.max(0, Math.min(index, Math.max(0, items.length - 1)))
+      el.scrollTo({
+        top: clamped * h,
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      })
+      setActiveIndex(clamped)
     },
-    [reducedMotion]
+    [reducedMotion, items.length]
   )
 
   useEffect(() => {
@@ -373,6 +436,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     const el = scrollRef.current
     if (!el) return
     const h = el.clientHeight || 1
+    // Global index: top spacer height + card heights map 1:1 with items[].
     const idx = Math.round(el.scrollTop / h)
     if (idx !== activeIndexRef.current && idx >= 0 && idx < items.length) {
       const prev = items[activeIndexRef.current]
@@ -720,7 +784,19 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             role="feed"
             aria-label="Akıllı haber akışı"
             data-testid="smart-feed-scroll-container"
+            data-window-start={windowStart}
+            data-items-length={items.length}
+            data-active-index={activeIndex}
+            data-has-more={hasMore ? 'true' : 'false'}
           >
+            {windowStart > 0 ? (
+              <div
+                aria-hidden
+                data-testid="smart-feed-spacer-before"
+                className="w-full shrink-0"
+                style={{ height: `calc(${windowStart} * 100dvh)` }}
+              />
+            ) : null}
             {windowItems.map((item, wi) => {
               const index = windowStart + wi
               const isActive = index === activeIndex
@@ -749,8 +825,19 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 />
               )
             })}
+            {spacerAfter > 0 ? (
+              <div
+                aria-hidden
+                data-testid="smart-feed-spacer-after"
+                className="w-full shrink-0"
+                style={{ height: `calc(${spacerAfter} * 100dvh)` }}
+              />
+            ) : null}
             {loadingMore ? (
-              <div className="flex h-24 items-center justify-center">
+              <div
+                className="flex h-[100dvh] w-full snap-start snap-always items-center justify-center bg-black"
+                data-testid="smart-feed-loading-more"
+              >
                 <Loader2 className="h-6 w-6 animate-spin text-white" />
               </div>
             ) : null}

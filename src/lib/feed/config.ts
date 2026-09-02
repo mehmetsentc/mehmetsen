@@ -10,7 +10,8 @@ export const FEED_PAGINATION = {
   defaultLimit: 15,
   minLimit: 10,
   maxLimit: 30,
-  prefetchThreshold: 3,
+  /** Prefetch when this many cards remain ahead of the active index. */
+  prefetchThreshold: 5,
 } as const
 
 /** Deterministic "Sana Özel" mix — no AI/ML. */
