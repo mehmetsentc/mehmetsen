@@ -3,7 +3,7 @@
  *
  * Periyodik AI Genel Yayın Editörü — her 5 dakikada çalışır.
  * editorialReviewedAt alanı olmayan pending haberleri alır, AI ile inceler.
- * - Benzersiz → otomatik yayınlar
+ * - Benzersiz → insan yayını bekler (otomatik yayın YOK — P18.1)
  * - Tekrar → isDuplicate=true ile pending bırakır
  */
 

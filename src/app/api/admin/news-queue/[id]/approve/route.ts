@@ -3,6 +3,8 @@
  *
  * Directly publishes a newsQueue item using its original content (no AI rewrite).
  * This unblocks admins from a stuck AI cron — items can be enriched later.
+ *
+ * P18.1: HUMAN_EDITOR authority with authenticated admin actor + provenance.
  */
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
@@ -13,6 +15,10 @@ import { buildNewsSlug } from '@/lib/newsSlug'
 import { normalizePublishedLocalCategory } from '@/lib/news/nationalLocalCategoryRouting'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
+import {
+  authorizePublication,
+  publicationProvenanceFields,
+} from '@/services/editorial/publicationAuthority'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -56,6 +62,22 @@ export async function POST(request: Request, context: RouteContext) {
   )
 
   const now = Date.now()
+  let authz
+  try {
+    authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: admin.uid,
+      approvedAt: now,
+      editorialText: content,
+      // Queue approve republishes original source text intentionally — treat as authorized.
+      sourceText: content,
+      rightsStatus: 'PRESS_RELEASE',
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: message }, { status: 403 })
+  }
+
   const slug = buildNewsSlug(title)
 
   const newsDoc = {
@@ -95,12 +117,12 @@ export async function POST(request: Request, context: RouteContext) {
     savesCount: 0,
     sharesCount: 0,
     viewsCount: 0,
-    publishedAt: now,
     createdAt: now,
     updatedAt: now,
     mediaItems: imageUrl ? [{ type: 'image', url: imageUrl, order: 0 }] : [],
     approvedFromQueue: true,
     queueJobId: id,
+    ...publicationProvenanceFields(authz),
   }
 
   const newsRef = db.collection(Collections.NEWS).doc()

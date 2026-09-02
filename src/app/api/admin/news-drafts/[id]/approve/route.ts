@@ -20,7 +20,7 @@ export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params
 
   try {
-    const result = await newsDraftService.approveDraft(id)
+    const result = await newsDraftService.approveDraft(id, { uid: admin.uid })
 
     try {
       const db = getAdminFirestore()
@@ -42,7 +42,14 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Approve failed'
-    const status = message.includes('not found') ? 404 : 500
+    const status =
+      message.includes('not found')
+        ? 404
+        : message.includes('PUBLICATION_AUTHORITY_REJECTED') ||
+            message.includes('EDITORIAL_GATE_REJECTED') ||
+            message.includes('HIGH_OVERLAP')
+          ? 403
+          : 500
     return NextResponse.json({ error: message }, { status })
   }
 }

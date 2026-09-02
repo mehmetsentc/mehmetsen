@@ -15,6 +15,7 @@ import {
   type OverlapCategory,
 } from './editorialSimilarityGate'
 import { assertHumanEditorialApproval } from './humanReviewGate'
+import { publicationProvenanceFields } from './publicationAuthority'
 import type {
   EditorialCandidateArticle,
   EditorialPublicationResult,
@@ -263,6 +264,14 @@ export class EditorialSupplyService {
       commentCount: 0,
       savesCount: 0,
       sharesCount: 0,
+      ...publicationProvenanceFields({
+        authority: 'HUMAN_EDITOR',
+        approvedBy: actorId,
+        approvedAt: now.getTime(),
+        publishedBy: actorId,
+        publishedAt: now.getTime(),
+        humanReview: approval,
+      }),
     }
 
     await firestore.collection(Collections.NEWS).doc(newsId).set(firestorePayload, { merge: true })

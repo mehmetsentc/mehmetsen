@@ -153,7 +153,8 @@ Sadece JSON döndür, başka hiçbir şey yazma:
 
 /**
  * İnceleme sonucunu Firestore'a yaz.
- * - Benzersiz → status: 'published', publishedAt set
+ * P18.1: AI uniqueness review ≠ publication authority.
+ * - Benzersiz → pending + needs human publish (does NOT auto-publish)
  * - Tekrar → isDuplicate: true, status: 'pending' olarak kalır
  */
 export async function applyReviewToFirestore(
@@ -164,11 +165,14 @@ export async function applyReviewToFirestore(
 
   if (result.action === 'published') {
     await ref.update({
-      status: 'published',
-      publishedAt: new Date().toISOString(),
+      // Intentionally NOT setting status: 'published'
+      needsReview: true,
+      needsAdminReview: true,
       isDuplicate: false,
       duplicateReason: FieldValue.delete(),
       editorialReviewedAt: new Date().toISOString(),
+      editorialReviewAction: 'unique_pending_human_publish',
+      publicationAuthorityRequired: 'HUMAN_EDITOR',
     })
   } else {
     await ref.update({
@@ -176,6 +180,7 @@ export async function applyReviewToFirestore(
       isDuplicate: true,
       duplicateReason: result.reason,
       editorialReviewedAt: new Date().toISOString(),
+      editorialReviewAction: 'duplicate_held',
     })
   }
 }

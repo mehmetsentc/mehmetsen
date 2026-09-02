@@ -13,6 +13,10 @@ import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
 import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
 import {
+  authorizePublication,
+  publicationProvenanceFields,
+} from '@/services/editorial/publicationAuthority'
+import {
   articleBlocksToPlainText,
   sanitizeArticleBlocks,
   type ArticleBlock,
@@ -392,6 +396,30 @@ export async function PUT(request: Request, context: RouteContext) {
         }
       }
 
+      // P18.1: first transition into public published requires HUMAN_EDITOR authority.
+      const prevStatus = String(prevData?.status || '').trim()
+      const becomingPublished =
+        willBePublished && prevStatus !== 'published' && update.status === 'published'
+      if (becomingPublished) {
+        try {
+          const authz = authorizePublication({
+            authority: 'HUMAN_EDITOR',
+            actorUid: auth.uid,
+            approvedAt: Date.now(),
+            editorialText: String(
+              update.description || update.content || prevData?.description || prevData?.content || ''
+            ),
+            sourceText: String(prevData?.originalContent || prevData?.sourceBodyText || ''),
+            rightsStatus: prevData?.rightsStatus ?? null,
+            rightsBasis: prevData?.rightsBasis ?? null,
+          })
+          Object.assign(update, publicationProvenanceFields(authz))
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          return NextResponse.json({ error: message }, { status: 403 })
+        }
+      }
+
       // Published articles must not keep CMS draft placeholders (`taslak-*`).
       if (willBePublished) {
         const nextSlug =
@@ -488,7 +516,7 @@ export async function PUT(request: Request, context: RouteContext) {
         if (Object.keys(draftUpdate).length > 0) {
           await draftRef.update(draftUpdate)
         }
-        const result = await newsDraftService.approveDraft(id)
+        const result = await newsDraftService.approveDraft(id, { uid: auth.uid })
         if (body.featured === true && result.newsId) {
           try {
             await demoteExcessFeaturedPins(db, {

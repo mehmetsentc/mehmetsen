@@ -7,6 +7,13 @@ import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { countPlainWords } from '@/lib/contentQuality'
 import type { NewsDraftDocument } from '@/types/news'
+import {
+  authorizePublication,
+  publicationProvenanceFields,
+  type HumanPublicationActor,
+} from '@/services/editorial/publicationAuthority'
+
+export type { HumanPublicationActor }
 
 /** Spot + gövde birlikte boşsa onaylanamaz (CMS'te “içerik yok” yayın engeli). */
 export function draftHasPublishableBody(draft: {
@@ -306,13 +313,57 @@ function draftToPublishedNews(
   })
 }
 
+function draftEditorialText(draft: NewsDraftDocument | NewsroomDraftFields): string {
+  const d = draft as NewsDraftDocument & { content?: string; spot?: string }
+  return [d.description, d.content, d.spot]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function draftSourceText(draft: NewsDraftDocument | NewsroomDraftFields): string {
+  const d = draft as NewsDraftDocument & {
+    originalContent?: string
+    sourceBodyText?: string
+    rawBodyText?: string
+  }
+  return [d.originalContent, d.sourceBodyText, d.rawBodyText]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
 export const newsDraftService = {
-  /** Auto-publish high-confidence pipeline output (skips draft queue). */
+  /**
+   * Pipeline public write — requires explicit publication authority.
+   * Ordinary crawler/editorial auto-publish without HUMAN_EDITOR actor is rejected (fail-closed).
+   */
   async publishFromPipeline(
     db: Firestore,
     doc: NewsroomDraftFields,
-    options?: { newsId?: string; publishedAt?: number; preferredSlug?: string }
+    options?: {
+      newsId?: string
+      publishedAt?: number
+      preferredSlug?: string
+      /** Required for NEW public publication — no implicit HUMAN_EDITOR. */
+      actor?: HumanPublicationActor | null
+    }
   ): Promise<{ newsId: string; slug: string }> {
+    if (!options?.actor?.uid) {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: publishFromPipeline requires HUMAN_EDITOR actor (auto-publish without authority is disabled)'
+      )
+    }
+
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: options.actor.uid,
+      actorDisplayName: options.actor.displayName,
+      approvedAt: Date.now(),
+      editorialText: draftEditorialText(doc),
+      sourceText: draftSourceText(doc),
+    })
+
     const now = Date.now()
     const draftId = doc.rssFingerprint.slice(0, 12)
     let slug = options?.preferredSlug?.trim() || ''
@@ -322,7 +373,8 @@ export const newsDraftService = {
 
     const payload = {
       ...draftToPublishedNews(doc, slug, now),
-      publishedAt: options?.publishedAt ?? now,
+      ...publicationProvenanceFields(authz),
+      publishedAt: options?.publishedAt ?? authz.publishedAt,
       coverImageUrl: doc.coverImageUrl || doc.thumbnail || '',
       ...(doc.aiAutoPublished === true ? { aiAutoPublished: true } : {}),
       ...(doc.needsReview === true ? { needsReview: true } : {}),
@@ -432,7 +484,16 @@ export const newsDraftService = {
     })
   },
 
-  async approveDraft(draftId: string): Promise<{ newsId: string; slug: string }> {
+  async approveDraft(
+    draftId: string,
+    actor: HumanPublicationActor
+  ): Promise<{ newsId: string; slug: string }> {
+    if (!actor?.uid) {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: approveDraft requires authenticated HUMAN_EDITOR actor'
+      )
+    }
+
     const db = getAdminFirestore()
     const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(draftId)
     const draftSnap = await draftRef.get()
@@ -473,13 +534,30 @@ export const newsDraftService = {
     }
 
     const now = Date.now()
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: actor.uid,
+      actorDisplayName: actor.displayName,
+      approvedAt: now,
+      editorialText: draftEditorialText(draft),
+      sourceText: draftSourceText(draft),
+      rightsStatus: (draft as { rightsStatus?: string }).rightsStatus,
+      rightsBasis: (draft as { rightsBasis?: string }).rightsBasis,
+    })
+
     const slug = await allocateUniqueSlug(db, draft.title, draftId)
-    const newsRef = await db.collection(Collections.NEWS).add(draftToPublishedNews(draft, slug, now))
+    const newsRef = await db.collection(Collections.NEWS).add({
+      ...draftToPublishedNews(draft, slug, now),
+      ...publicationProvenanceFields(authz),
+    })
 
     await draftRef.update({
       draftStatus: 'approved',
       approvedNewsId: newsRef.id,
       approvedSlug: slug,
+      approvedBy: authz.approvedBy,
+      approvedAt: authz.approvedAt,
+      publicationAuthority: authz.authority,
       updatedAt: now,
     })
 
@@ -500,7 +578,16 @@ export const newsDraftService = {
   },
 
   /** Legacy: approve pending doc still in `news` collection; also clears İnceleme flags. */
-  async approveLegacyPending(newsId: string): Promise<{ newsId: string; slug: string }> {
+  async approveLegacyPending(
+    newsId: string,
+    actor: HumanPublicationActor
+  ): Promise<{ newsId: string; slug: string }> {
+    if (!actor?.uid) {
+      throw new Error(
+        'PUBLICATION_AUTHORITY_REJECTED: approveLegacyPending requires authenticated HUMAN_EDITOR actor'
+      )
+    }
+
     const db = getAdminFirestore()
     const ref = db.collection(Collections.NEWS).doc(newsId)
     const snap = await ref.get()
@@ -517,8 +604,25 @@ export const newsDraftService = {
       localFeaturedAt?: number
       needsReview?: boolean
       aiAutoPublished?: boolean
+      description?: string
+      content?: string
+      originalContent?: string
+      sourceBodyText?: string
+      rightsStatus?: string
+      rightsBasis?: string
     }
     const now = Date.now()
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: actor.uid,
+      actorDisplayName: actor.displayName,
+      approvedAt: now,
+      editorialText: [data.description, data.content].filter(Boolean).join('\n'),
+      sourceText: [data.originalContent, data.sourceBodyText].filter(Boolean).join('\n'),
+      rightsStatus: data.rightsStatus,
+      rightsBasis: data.rightsBasis,
+    })
+
     let slug = data.slug?.trim() || ''
     if (!slug || isPlaceholderDraftSlug(slug)) {
       slug = await allocateUniqueSlug(db, data.title ?? 'haber', newsId, newsId)
@@ -533,8 +637,10 @@ export const newsDraftService = {
         needsReview: false,
         needsAdminReview: false,
         reviewedAt: now,
+        reviewedBy: authz.approvedBy,
         updatedAt: now,
         moderationNote: null,
+        ...publicationProvenanceFields(authz),
         // Upgrade leftover draft placeholders even on review-clear path
         ...(isPlaceholderDraftSlug(data.slug) ? { slug } : {}),
       })
@@ -544,11 +650,10 @@ export const newsDraftService = {
     await ref.update({
       status: 'published',
       slug,
-      publishedAt: now,
-      updatedAt: now,
       moderationNote: null,
       needsReview: false,
       needsAdminReview: false,
+      ...publicationProvenanceFields(authz),
       // Preserve / normalize featured pin so approve after “Öne Çıkan” still surfaces
       ...(data.featured === true || data.isEditorPick === true
         ? {

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   for (const doc of docs) {
     try {
-      const result = await newsDraftService.approveDraft(doc.id)
+      const result = await newsDraftService.approveDraft(doc.id, { uid: admin.uid })
       approved++
       if (result.slug) publishedSlugs.push(result.slug)
       const data = doc.data() as {

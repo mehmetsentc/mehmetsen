@@ -1,9 +1,18 @@
 /**
  * AFAD Deprem Worker — fetches recent earthquakes every 1 minute,
- * publishes M4.0+ as breaking news to the `news` collection.
+ * publishes M4.0+ as breaking SYSTEM_ALERT news to the `news` collection.
+ *
+ * P18.1: AFAD is classified as SYSTEM_ALERT (deterministic public-safety source),
+ * NOT HUMAN_EDITOR. Publication only through authorizeAfadSystemAlertPublication
+ * with the internal trusted path token — arbitrary callers cannot obtain SYSTEM_ALERT.
  */
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import {
+  AFAD_SYSTEM_ALERT_PATH_TOKEN,
+  authorizeAfadSystemAlertPublication,
+  publicationProvenanceFields,
+} from '@/services/editorial/publicationAuthority'
 
 const AFAD_API = 'https://deprem.afad.gov.tr/apiv2/event/filter'
 const MIN_MAGNITUDE = 4.0
@@ -102,6 +111,14 @@ export async function runAfadWorker(): Promise<{
         .get()
       if (!existing.empty) { result.skipped++; continue }
 
+      // P18.1 — SYSTEM_ALERT only via trusted AFAD path (not HUMAN_EDITOR)
+      const authz = authorizeAfadSystemAlertPublication({
+        sourceIdentity: 'AFAD',
+        ingestionSourceId: 'afad',
+        aiGenerated: false,
+        trustedPathToken: AFAD_SYSTEM_ALERT_PATH_TOKEN,
+      })
+
       const title = buildTitle(ev, mag)
       const content = buildContent(ev, mag)
       const now2 = Date.now()
@@ -152,10 +169,10 @@ export async function runAfadWorker(): Promise<{
         savesCount: 0,
         sharesCount: 0,
         isEditorPick: false,
-        publishedAt: now2,
         createdAt: now2,
         updatedAt: now2,
         sourcePublishedAt: new Date(ev.date).getTime() || now2,
+        ...publicationProvenanceFields(authz),
       })
 
       result.published++

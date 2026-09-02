@@ -105,8 +105,15 @@ export async function updateQueueItemPayload(
 export async function publishQueueItemManual(
   db: Firestore,
   queueId: string,
-  edits?: ManualQueueEditFields
+  edits: ManualQueueEditFields | undefined,
+  actor: { uid: string; displayName?: string | null }
 ): Promise<{ newsId: string; slug: string }> {
+  if (!actor?.uid) {
+    throw new Error(
+      'PUBLICATION_AUTHORITY_REJECTED: publishQueueItemManual requires HUMAN_EDITOR actor'
+    )
+  }
+
   const queueRef = db.collection(Collections.NEWS_QUEUE).doc(queueId)
   const queueSnap = await queueRef.get()
   if (!queueSnap.exists) {
@@ -135,6 +142,18 @@ export async function publishQueueItemManual(
   )
 
   const now = Date.now()
+  const { authorizePublication, publicationProvenanceFields } = await import(
+    '@/services/editorial/publicationAuthority'
+  )
+  const authz = authorizePublication({
+    authority: 'HUMAN_EDITOR',
+    actorUid: actor.uid,
+    actorDisplayName: actor.displayName,
+    approvedAt: now,
+    editorialText: content,
+    sourceText: content,
+    rightsStatus: 'PRESS_RELEASE',
+  })
   const slug = buildNewsSlug(title)
 
   const newsDoc = {
@@ -174,7 +193,6 @@ export async function publishQueueItemManual(
     savesCount: 0,
     sharesCount: 0,
     viewsCount: 0,
-    publishedAt: now,
     createdAt: now,
     updatedAt: now,
     mediaItems: imageUrl ? [{ type: 'image', url: imageUrl, order: 0 }] : [],
@@ -182,6 +200,7 @@ export async function publishQueueItemManual(
     publishedVia: 'manual-publish',
     manuallyEdited: true,
     queueJobId: queueId,
+    ...publicationProvenanceFields(authz),
   }
 
   const newsRef = db.collection(Collections.NEWS).doc()

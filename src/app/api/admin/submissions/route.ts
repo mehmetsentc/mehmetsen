@@ -130,6 +130,16 @@ export async function PATCH(request: NextRequest) {
 
     const title = String(data.title ?? '').trim() || 'Okuyucu haberi'
     const description = String(data.description ?? data.summary ?? '')
+    const { authorizePublication, publicationProvenanceFields } = await import(
+      '@/services/editorial/publicationAuthority'
+    )
+    const authz = authorizePublication({
+      authority: 'HUMAN_EDITOR',
+      actorUid: auth.uid,
+      approvedAt: Date.now(),
+      editorialText: description,
+      sourceText: null,
+    })
     const slugBase = title
       .toLowerCase()
       .normalize('NFD')
@@ -157,12 +167,11 @@ export async function PATCH(request: NextRequest) {
       source: 'ugc',
       type: 'ugc',
       city: data.city ?? null,
-      publishedAt: FieldValue.serverTimestamp(),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       aiGenerated: false,
       publishedFromDraftId: body.id,
-      publishedBy: auth.uid,
+      ...publicationProvenanceFields(authz),
     })
 
     await ref.set(

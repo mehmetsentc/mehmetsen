@@ -25,11 +25,16 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const db = getAdminFirestore()
-    const result = await publishQueueItemManual(db, id, body)
+    const result = await publishQueueItemManual(db, id, body, { uid: auth.uid })
     return NextResponse.json({ ok: true, ...result, publishedVia: 'manual-publish' })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    const status = msg.includes('not found') ? 404 : 500
+    const status =
+      msg.includes('not found')
+        ? 404
+        : msg.includes('PUBLICATION_AUTHORITY_REJECTED') || msg.includes('EDITORIAL_GATE_REJECTED')
+          ? 403
+          : 500
     return NextResponse.json({ error: msg }, { status })
   }
 }

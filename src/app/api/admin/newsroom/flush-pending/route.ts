@@ -99,8 +99,21 @@ export async function POST(request: Request) {
     .catch(() => null)
   queueStats.remainingRecent = remainingSnap?.size ?? 0
 
-  const draftApprove = { approved: 0, skipped: 0, errors: [] as string[], total: 0 }
+  const draftApprove = {
+    approved: 0,
+    skipped: 0,
+    errors: [] as string[],
+    total: 0,
+    /** P18.1: flush must not invent a human UID — only approve when CMS actor is present. */
+    blockedWithoutActor: 0,
+  }
   if (approveDrafts) {
+    if (!auth.uid) {
+      draftApprove.blockedWithoutActor = 1
+      draftApprove.errors.push(
+        'PUBLICATION_AUTHORITY_REJECTED: flush-pending cannot invent HUMAN_EDITOR actor'
+      )
+    } else {
     const snap = await db
       .collection(Collections.NEWS_DRAFTS)
       .where('draftStatus', '==', 'pending_review')
@@ -123,7 +136,8 @@ export async function POST(request: Request) {
 
     for (const doc of docs) {
       try {
-        await newsDraftService.approveDraft(doc.id)
+        // Authenticated CMS user who triggered flush is the publication actor.
+        await newsDraftService.approveDraft(doc.id, { uid: auth.uid })
         draftApprove.approved += 1
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -142,6 +156,7 @@ export async function POST(request: Request) {
       } catch {
         /* ignore */
       }
+    }
     }
   }
 

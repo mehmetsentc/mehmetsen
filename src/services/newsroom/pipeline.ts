@@ -481,6 +481,12 @@ export interface PipelineOptions {
    * “benzer haber” dedupe atlanır. Kalite / görsel / promo kapıları durur.
    */
   skipStoryLibraryDedupe?: boolean
+  /**
+   * P18.1 — optional HUMAN_EDITOR actor for rare explicit pipeline publish.
+   * Crawler / automated paths must omit this so output stays in draft/review.
+   */
+  publicationActorUid?: string
+  publicationActorDisplayName?: string | null
 }
 
 export interface PipelineResult {
@@ -2056,16 +2062,30 @@ export async function processNewsroomArticle(
       return { outcome: 'updated', lowConfidence, newsId: targetNewsId }
     }
 
-    const canAutoPublish = !needsDraft && moderation.decision === 'approve'
-
-    if (canAutoPublish) {
-      const publishOpts = options.targetNewsId
+    // P18.1: ordinary editorial/crawler pipeline cannot public-publish without an
+    // explicit HUMAN_EDITOR actor. Quality / confidence / auto-publish flags alone
+    // are not publication authority — fall through to draft/review.
+    const humanPublisher =
+      options.publicationActorUid && String(options.publicationActorUid).trim()
         ? {
-            newsId: options.targetNewsId,
-            publishedAt: options.publishedAt,
-            preferredSlug: options.preferredSlug,
+            uid: String(options.publicationActorUid).trim(),
+            displayName: options.publicationActorDisplayName ?? null,
           }
-        : undefined
+        : null
+    const canAutoPublish =
+      !needsDraft && moderation.decision === 'approve' && humanPublisher != null
+
+    if (canAutoPublish && humanPublisher) {
+      const publishOpts = {
+        ...(options.targetNewsId
+          ? {
+              newsId: options.targetNewsId,
+              publishedAt: options.publishedAt,
+              preferredSlug: options.preferredSlug,
+            }
+          : {}),
+        actor: humanPublisher,
+      }
       const { newsId, slug } = await newsDraftService.publishFromPipeline(db, doc, publishOpts)
       if (options.reprocessDraftId) {
         await db.collection(Collections.NEWS_DRAFTS).doc(options.reprocessDraftId).delete().catch(() => {})
