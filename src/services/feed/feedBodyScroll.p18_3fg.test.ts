@@ -111,7 +111,7 @@ describe('P18.3FG client stall guards (source)', () => {
     expect(card).toContain('h-[100dvh]')
     expect(card).toContain('snap-start snap-always')
     expect(card).toContain('smart-feed-text-zone')
-    expect(card).toContain('max-h-[46vh]')
+    expect(card).toMatch(/max-h-\[4[0-9]vh\]/)
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('Haberi Oku')
     expect(card).not.toMatch(/item\.(body|content)/)

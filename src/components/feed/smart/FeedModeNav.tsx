@@ -24,13 +24,14 @@ export function FeedModeNav({ mode, onChange, className }: FeedModeNavProps) {
         'absolute left-0 right-0 top-0 z-50 flex justify-center',
         'bg-gradient-to-b from-black/80 via-black/40 to-transparent',
         // Clear GlobalBackNav on the left; keep chips tappable on narrow phones.
-        'pl-14 pr-3 pb-3',
-        // Floor 2.75rem so chips sit below status/notch even when sat≈0 in some browsers.
+        'pl-14 pr-3 pb-2',
+        // Floor so chips sit below status/notch; publisher row clears this band via card padding.
         'pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
         className
       )}
       aria-label="Feed modları"
       data-testid="smart-feed-mode-nav"
+      data-region="mode-nav"
     >
       <div
         className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-black/60 p-1 backdrop-blur-md border border-white/10 shadow-lg scrollbar-none"

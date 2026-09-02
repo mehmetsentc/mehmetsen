@@ -19,6 +19,10 @@ interface FollowButtonProps {
   initialFollowerCount?: number
   className?: string
   showCount?: boolean
+  /** Dark media overlay (Smart Feed Reels card) */
+  variant?: 'default' | 'overlay'
+  /** Post-login return path (defaults to publisher profile or home) */
+  returnUrl?: string
 }
 
 export function FollowButton({
@@ -28,6 +32,8 @@ export function FollowButton({
   initialFollowerCount = 0,
   className,
   showCount = true,
+  variant = 'default',
+  returnUrl,
 }: FollowButtonProps) {
   const { user } = useAuth()
   const router = useRouter()
@@ -59,8 +65,10 @@ export function FollowButton({
   const toggle = useCallback(async () => {
     if (!user && !socialEnabled) return
     if (!user) {
-      const returnUrl = publisherSlug ? ROUTES.PUBLISHER(publisherSlug) : ROUTES.HOME
-      const intent = buildAuthIntent('FOLLOW', 'publisher', publisherId, returnUrl)
+      const next =
+        returnUrl ||
+        (publisherSlug ? ROUTES.PUBLISHER(publisherSlug) : ROUTES.HOME)
+      const intent = buildAuthIntent('FOLLOW', 'publisher', publisherId, next)
       if (intent) router.push(loginHrefWithIntent(intent))
       return
     }
@@ -86,34 +94,50 @@ export function FollowButton({
     } finally {
       setLoading(false)
     }
-  }, [socialEnabled, user, loading, following, followerCount, publisherId, publisherSlug, router])
+  }, [
+    socialEnabled,
+    user,
+    loading,
+    following,
+    followerCount,
+    publisherId,
+    publisherSlug,
+    router,
+    returnUrl,
+  ])
 
   if (!socialEnabled && !user) return null
 
+  const overlay = variant === 'overlay'
+
   return (
-    <div className={cn('inline-flex items-center gap-2', className)}>
+    <div className={cn('inline-flex items-center gap-2', className)} data-testid="smart-feed-follow">
       <button
         type="button"
         onClick={() => void toggle()}
-        disabled={loading}
+        disabled={loading || !publisherId}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60',
-          following
-            ? 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
-            : 'bg-brand-600 text-white hover:bg-brand-700'
+          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60',
+          overlay
+            ? following
+              ? 'border border-white/40 bg-black/40 text-white backdrop-blur-sm'
+              : 'bg-white text-black hover:bg-white/90'
+            : following
+              ? 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
+              : 'bg-brand-600 text-white hover:bg-brand-700'
         )}
       >
         {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : following ? (
-          <UserMinus className="h-4 w-4" aria-hidden />
+          <UserMinus className="h-3.5 w-3.5" aria-hidden />
         ) : (
-          <UserPlus className="h-4 w-4" aria-hidden />
+          <UserPlus className="h-3.5 w-3.5" aria-hidden />
         )}
-        {following ? 'Takipten çık' : 'Takip et'}
+        {following ? 'Takiptesin' : 'Takip et'}
       </button>
       {showCount ? (
-        <span className="text-xs text-[rgb(var(--color-muted))]">
+        <span className={cn('text-xs', overlay ? 'text-white/70' : 'text-[rgb(var(--color-muted))]')}>
           {formatCount(followerCount)} takipçi
         </span>
       ) : null}

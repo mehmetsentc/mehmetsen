@@ -4,6 +4,7 @@ import { useCallback, useEffect } from 'react'
 import { X, Link2, Share2, Mail, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { postService } from '@/services/postService'
+import { socialApi } from '@/lib/social/clientApi'
 import {
   SHARE_PLATFORMS,
   buildShareText,
@@ -103,6 +104,8 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
 
   const recordShare = useCallback(() => {
     if (!postId) return
+    // Prefer PG social graph (resolves legacy/Firestore ids); FS increment is best-effort legacy.
+    void socialApi.recordShare(postId).catch(() => {})
     void postService.incrementShares(postId).catch(() => {})
     onShared?.()
   }, [postId, onShared])

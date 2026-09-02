@@ -2,21 +2,29 @@
 
 import { auth, ensureAuthReady } from '@/lib/firebase/auth'
 
-async function socialFetch(path: string, init?: RequestInit, optionalAuth = false) {
+async function socialFetch(
+  path: string,
+  init?: RequestInit,
+  optionalAuth = false,
+  /** When true with optionalAuth, still POST/GET without Bearer (e.g. share telemetry). */
+  allowAnonymousRequest = false
+) {
   await ensureAuthReady()
   const user = auth.currentUser
   if (!user) {
-    if (optionalAuth) return {}
-    throw new Error('AUTH_REQUIRED')
+    if (optionalAuth && !allowAnonymousRequest) return {}
+    if (!optionalAuth) throw new Error('AUTH_REQUIRED')
   }
-  const token = await user.getIdToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  }
+  if (user) {
+    headers.Authorization = `Bearer ${await user.getIdToken()}`
+  }
   const res = await fetch(path, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
-    },
+    headers,
     credentials: 'include',
   })
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
@@ -64,10 +72,15 @@ export const socialApi = {
     })
   },
   recordShare(articleId: string) {
-    return socialFetch('/api/social/article/share', {
-      method: 'POST',
-      body: JSON.stringify({ articleId }),
-    })
+    return socialFetch(
+      '/api/social/article/share',
+      {
+        method: 'POST',
+        body: JSON.stringify({ articleId }),
+      },
+      true,
+      true
+    )
   },
   getArticleState(articleIds: string[]) {
     const q = encodeURIComponent(articleIds.join(','))
