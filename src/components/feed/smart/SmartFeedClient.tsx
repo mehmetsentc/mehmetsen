@@ -20,7 +20,7 @@ import { clearFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/f
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
-import { getClientAuthToken } from '@/lib/firebase/auth'
+import { getClientAuthToken, ensureAuthReady, auth } from '@/lib/firebase/auth'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
@@ -471,10 +471,24 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     [mode]
   )
 
+  const socialMutationError = (err: unknown, fallback: string) => {
+    const msg = err instanceof Error ? err.message : ''
+    if (msg === 'ARTICLE_NOT_FOUND') return 'Bu haber için etkileşim henüz açılamadı.'
+    if (msg === 'AUTH_REQUIRED' || msg === 'Unauthorized') return 'Bu işlem için giriş yapmalısınız.'
+    if (msg === 'Social graph disabled') return 'Sosyal özellikler şu an kapalı.'
+    if (msg === 'PUBLISHER_NOT_FOUND') return 'Yayıncı bulunamadı.'
+    return fallback
+  }
+
   const toggleLike = useCallback(
     async (item: FeedItemDto) => {
       if (actionLoading[item.articleId]) return
-      if (!authUser) {
+      if (authLoading) {
+        toast.error('Oturum hazırlanıyor, tekrar deneyin')
+        return
+      }
+      await ensureAuthReady()
+      if (!authUser || !auth.currentUser) {
         const returnUrl = `/feed-v2${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
         const intent = buildAuthIntent('LIKE', 'article', item.articleId, returnUrl)
         if (intent) router.push(loginHrefWithIntent(intent))
@@ -527,7 +541,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             likeCount: canonicalLikes !== undefined ? canonicalLikes : nextCount,
           },
         }))
-      } catch {
+      } catch (err) {
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
@@ -536,7 +550,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             likeCount: prevCount,
           },
         }))
-        toast.error('Beğeni kaydedilemedi')
+        toast.error(socialMutationError(err, 'Beğeni kaydedilemedi'))
       } finally {
         setActionLoading((s) => {
           const next = { ...s }
@@ -545,13 +559,18 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         })
       }
     },
-    [actionLoading, authUser, router, searchParams, social]
+    [actionLoading, authUser, authLoading, router, searchParams, social]
   )
 
   const toggleSave = useCallback(
     async (item: FeedItemDto) => {
       if (actionLoading[item.articleId]) return
-      if (!authUser) {
+      if (authLoading) {
+        toast.error('Oturum hazırlanıyor, tekrar deneyin')
+        return
+      }
+      await ensureAuthReady()
+      if (!authUser || !auth.currentUser) {
         const returnUrl = `/feed-v2${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
         const intent = buildAuthIntent('SAVE', 'article', item.articleId, returnUrl)
         if (intent) router.push(loginHrefWithIntent(intent))
@@ -594,7 +613,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             saved: canonicalSaved,
           },
         }))
-      } catch {
+      } catch (err) {
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
@@ -602,7 +621,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             saved: prevSaved,
           },
         }))
-        toast.error('Kaydetme işlemi başarısız')
+        toast.error(socialMutationError(err, 'Kaydetme işlemi başarısız'))
       } finally {
         setActionLoading((s) => {
           const next = { ...s }
@@ -611,7 +630,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         })
       }
     },
-    [actionLoading, authUser, router, searchParams, social]
+    [actionLoading, authUser, authLoading, router, searchParams, social]
   )
 
   const handleFeedback = useCallback((articleId: string) => {

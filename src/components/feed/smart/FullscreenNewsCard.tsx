@@ -373,7 +373,7 @@ export function FullscreenNewsCard({
             likeLoading={likeLoading}
             saveLoading={saveLoading}
             orientation="vertical"
-            className="mb-1 shrink-0 text-white"
+            className="relative z-20 mb-1 shrink-0 text-white"
             data-testid="smart-feed-social-rail"
           />
         </div>

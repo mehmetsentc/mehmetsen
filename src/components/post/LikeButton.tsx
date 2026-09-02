@@ -45,9 +45,14 @@ export function LikeButton({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onToggle()
+      }}
       disabled={loading}
       aria-label={liked ? 'Beğeniyi kaldır' : 'Beğen'}
+      data-testid="smart-feed-like"
       className={cn(
         'flex flex-col items-center gap-1.5 transition-transform active:scale-90 disabled:opacity-60',
         isReels || isOverlay
@@ -56,7 +61,12 @@ export function LikeButton({
       )}
     >
       {isReels ? (
-        <Heart className={cn('h-7 w-7 transition-all duration-150', liked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white')} />
+        <Heart
+          className={cn(
+            'h-7 w-7 transition-all duration-150',
+            liked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white'
+          )}
+        />
       ) : (
         <span
           className={cn(
@@ -65,15 +75,23 @@ export function LikeButton({
             liked ? '!text-rose-500 dark:!text-rose-400' : isOverlay ? 'text-white' : 'text-gray-500'
           )}
         >
-          <Heart className={cn('h-6 w-6 transition-transform duration-150', liked ? '!fill-rose-500 !text-rose-500 scale-110' : 'text-white')} />
+          <Heart
+            className={cn(
+              'h-6 w-6 transition-transform duration-150',
+              liked ? '!fill-rose-500 !text-rose-500 scale-110' : isOverlay ? 'text-white' : undefined
+            )}
+          />
         </span>
       )}
       <span
         className={cn(
           'text-xs font-semibold',
-          isOverlay || isReels
+          liked && (isOverlay || isReels) ? 'text-rose-400 drop-shadow' : null,
+          !liked && (isOverlay || isReels)
             ? 'text-white drop-shadow'
-            : 'text-gray-600 dark:text-gray-400'
+            : !liked
+              ? 'text-gray-600 dark:text-gray-400'
+              : 'text-rose-500'
         )}
       >
         {formatCount(safeCount)}

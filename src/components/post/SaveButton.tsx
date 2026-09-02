@@ -44,9 +44,14 @@ export function SaveButton({
   return (
     <button
       type="button"
-      onClick={onToggle}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onToggle()
+      }}
       disabled={loading}
       aria-label={saved ? 'Kayıttan kaldır' : 'Kaydet'}
+      data-testid="smart-feed-save"
       className={cn(
         'flex flex-col items-center gap-1.5 transition-transform active:scale-90 disabled:opacity-60',
         isReels || isOverlay

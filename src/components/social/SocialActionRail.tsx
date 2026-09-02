@@ -61,9 +61,14 @@ export function SocialActionRail({
       <BaseLikeButton liked={liked} count={likeCount} onToggle={onToggleLike} loading={likeLoading} variant="overlay" />
       <button
         type="button"
-        onClick={onCommentClick}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onCommentClick?.()
+        }}
         className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
         aria-label="Yorum yap"
+        data-testid="smart-feed-comment"
       >
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm">
           <MessageCircle className="h-6 w-6" />
