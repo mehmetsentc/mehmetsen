@@ -2,8 +2,8 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { combinedSourceText, countPlainWords } from '@/lib/contentQuality'
 import { isCrawlerAiDispatchEnabled } from '../dispatch'
-import { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } from '../automatedAiPolicy'
-import { runWithAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
+import { isManualEditorAiEnabled } from '../automatedAiPolicy'
+import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 import { draftPrefillFromRaw, rawArticleDisplay } from './prefill'
 import { syncCrawlerEditorial } from './newsLink'
 import type { CrawlerStore } from '../store/types'
@@ -178,24 +178,14 @@ export async function publishRawArticleWithAi(opts: {
   rawArticleId: string
   processArticle?: typeof import('@/services/newsroom/pipeline').processNewsroomArticle
 }): Promise<AiPublishItemResult> {
+  // This function is exclusively the human editor AI path (CMS enqueue / sync
+  // ai-publish). Never require crawler/legacy flags — only MANUAL_EDITOR_AI.
   try {
-    const ctx = getAiUsageContext()
-    const isManual = ctx?.ingestionLane === 'manual_editor'
-    if (isManual) {
-      if (!isManualEditorAiEnabled()) {
-        return {
-          rawArticleId: opts.rawArticleId,
-          outcome: 'skipped',
-          error: 'MANUAL_EDITOR_AI_ENABLED=false (Manuel editör AI kapalı)',
-        }
-      }
-    } else {
-      if (!mayAutomatedCrawlerUseAi()) {
-        return {
-          rawArticleId: opts.rawArticleId,
-          outcome: 'skipped',
-          error: 'CRAWLER_AI_DISPATCH_ENABLED=false (Otomatik AI yayını kapalı)',
-        }
+    if (!isManualEditorAiEnabled()) {
+      return {
+        rawArticleId: opts.rawArticleId,
+        outcome: 'skipped',
+        error: 'MANUAL_EDITOR_AI_ENABLED=false (Manuel editör AI kapalı)',
       }
     }
 
@@ -229,7 +219,12 @@ export async function publishRawArticleWithAi(opts: {
       opts.processArticle ??
       (await import('@/services/newsroom/pipeline')).processNewsroomArticle
 
-    const result = await processArticle(db, input, { skipStoryLibraryDedupe: true })
+    // skipStoryLibraryDedupe is the durable human-approval marker for pipeline
+    // policy (survives ALS loss across dynamic imports). Also set ALS here for
+    // provider gates that still read ingestionLane.
+    const result = await runWithAiUsageContext({ ingestionLane: 'manual_editor' }, () =>
+      processArticle(db, input, { skipStoryLibraryDedupe: true })
+    )
 
     if (result.outcome === 'skipped') {
       const code = result.skipReason?.trim() || ''

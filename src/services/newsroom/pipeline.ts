@@ -557,13 +557,25 @@ export async function processNewsroomArticle(
   const fingerprint =
     input.rssFingerprint ?? `${input.editorId}:${input.sourceUrl}`.slice(0, 128)
 
-  if (!getAiUsageContext()?.traceId) {
+  // Human editor AI passes skipStoryLibraryDedupe. Force manual_editor onto THIS
+  // module's ALS store — parent ALS from the editor queue worker can be invisible
+  // after dynamic import of pipeline (duplicate AsyncLocalStorage instance).
+  const editorApproved = isEditorAiApproved(options)
+  const ctxEarly = getAiUsageContext()
+  const needsTrace = !ctxEarly?.traceId
+  const needsManualLane = editorApproved && ctxEarly?.ingestionLane !== 'manual_editor'
+  if (needsTrace || needsManualLane) {
     return withAiUsageContext(
       {
-        traceId: crypto.randomUUID(),
-        queueId: options.queueJobId,
-        newsId: options.existingNewsId ?? options.targetNewsId ?? options.reprocessDraftId,
-        sourceItemId: fingerprint,
+        ...(needsTrace
+          ? {
+              traceId: crypto.randomUUID(),
+              queueId: options.queueJobId,
+              newsId: options.existingNewsId ?? options.targetNewsId ?? options.reprocessDraftId,
+              sourceItemId: fingerprint,
+            }
+          : {}),
+        ...(needsManualLane ? { ingestionLane: 'manual_editor' as const } : {}),
       },
       () => processNewsroomArticle(db, input, options)
     )
@@ -572,7 +584,7 @@ export async function processNewsroomArticle(
   attachStage1RetryOptimizationContext()
 
   const ctx = getAiUsageContext()
-  const isManual = ctx?.ingestionLane === 'manual_editor'
+  const isManual = ctx?.ingestionLane === 'manual_editor' || editorApproved
   if (isManual) {
     if (!isManualEditorAiEnabled()) {
       return { outcome: 'skipped', skipReason: 'MANUAL_EDITOR_AI_ENABLED=false' }

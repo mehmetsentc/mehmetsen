@@ -136,7 +136,7 @@ describe('Global Crawler & Editor AI Cost Containment Policy', () => {
     })
 
     expect(result.outcome).toBe('skipped')
-    expect(result.error).toContain('CRAWLER_AI_DISPATCH_ENABLED=false')
+    expect(result.error).toContain('MANUAL_EDITOR_AI_ENABLED=false')
     expect(mockStore.getRawArticle).not.toHaveBeenCalled()
     expect(processArticleMock).not.toHaveBeenCalled()
   })

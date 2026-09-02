@@ -62,4 +62,26 @@ describe('P17.12D ai-enqueue route', () => {
     expect(res.status).toBe(403)
     expect(enqueueRawArticlesForAi).not.toHaveBeenCalled()
   })
+
+  it('accepts 25 human-selected ids for queue (under AI_ENQUEUE_BATCH_CAP)', async () => {
+    const { enqueueRawArticlesForAi } = await import('@/services/crawler/editorial/aiEnqueue')
+    vi.mocked(enqueueRawArticlesForAi).mockResolvedValueOnce({
+      requested: 25,
+      enqueued: 25,
+      skipped: 0,
+    })
+    const ids = Array.from({ length: 25 }, (_, i) => `raw_${i}`)
+    const res = await POST(
+      new Request('http://localhost/api/admin/crawler/articles/ai-enqueue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test' },
+        body: JSON.stringify({ ids }),
+      })
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.requested).toBe(25)
+    expect(body.enqueued).toBe(25)
+    expect(enqueueRawArticlesForAi).toHaveBeenCalledWith(expect.anything(), ids)
+  })
 })
