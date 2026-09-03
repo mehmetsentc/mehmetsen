@@ -9,6 +9,7 @@ import {
   getSiteNavItems,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
+import { clearFeedRestore } from '@/lib/feed/feedRestoration'
 import { cn } from '@/lib/utils'
 
 const NAV = getSiteNavItems()
@@ -86,6 +87,9 @@ function HeaderNavList({
               href={item.href}
               aria-current={active ? 'page' : undefined}
               title={`${item.label} haberleri`}
+              onClick={() => {
+                if (item.id === 'feed-v2') clearFeedRestore()
+              }}
               className={cn(
                 'shrink-0 transition-colors',
                 isPrimary

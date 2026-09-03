@@ -62,7 +62,8 @@ async function fetchPools(
   const limits = FEED_RANKING_CONFIG_V1.candidatePoolLimits
 
   if (mode === 'personal') {
-    const [breaking, recent, popular, local, discovery, following] = await Promise.all([
+    const [featured, breaking, recent, popular, local, discovery, following] = await Promise.all([
+      feedCandidateService.fetchFeatured({ ...base, limit: limits.FEATURED }),
       feedCandidateService.fetchBreaking({ ...base, limit: limits.BREAKING }),
       feedCandidateService.fetchRecent({ ...base, limit: limits.RECENT }),
       feedCandidateService.fetchPopular({ ...base, limit: limits.POPULAR }),
@@ -70,7 +71,15 @@ async function fetchPools(
       feedCandidateService.fetchDiscovery({ ...base, limit: limits.DISCOVERY }),
       opts.userId ? feedCandidateService.fetchFollowing({ ...base, limit: limits.FOLLOWING }) : Promise.resolve([]),
     ])
-    return { BREAKING: breaking, RECENT: recent, POPULAR: popular, LOCAL: local, DISCOVERY: discovery, FOLLOWING: following }
+    return {
+      FEATURED: featured,
+      BREAKING: breaking,
+      RECENT: recent,
+      POPULAR: popular,
+      LOCAL: local,
+      DISCOVERY: discovery,
+      FOLLOWING: following,
+    }
   }
 
   const rows = await feedCandidateService.fetchForMode(mode, base)

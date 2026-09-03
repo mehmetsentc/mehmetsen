@@ -16,9 +16,10 @@ export const FEED_PAGINATION = {
 
 /** Deterministic "Sana Özel" mix — no AI/ML. */
 export const FEED_MIX_V1: Array<{ source: FeedCandidateSource; every: number }> = [
+  { source: 'FEATURED', every: 4 },
   { source: 'BREAKING', every: 5 },
+  { source: 'POPULAR', every: 3 },
   { source: 'RECENT', every: 2 },
-  { source: 'POPULAR', every: 4 },
   { source: 'LOCAL', every: 3 },
   { source: 'DISCOVERY', every: 6 },
   { source: 'FOLLOWING', every: 4 },
@@ -37,3 +38,7 @@ export const GUEST_SEEN_MAX = 120
 
 /** Feed position restoration after article detail. */
 export const FEED_RESTORE_STORAGE_KEY = 'nahaber_feed_restore_v1'
+/** Max age for article→back resume snapshot (ms). */
+export const FEED_RESTORE_TTL_MS = 45 * 60 * 1000
+/** Soft cap on persisted cards to keep sessionStorage lean. */
+export const FEED_RESTORE_MAX_ITEMS = 80

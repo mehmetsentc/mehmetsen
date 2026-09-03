@@ -1,13 +1,13 @@
 import 'server-only'
 
-import type { FeedCandidateRow, FeedCandidateSource, FeedMode, FeedUserContext, ScoredFeedCandidate } from '@/types/smartFeed'
+import type { FeedCandidateRow, FeedCandidateSource, FeedUserContext, ScoredFeedCandidate } from '@/types/smartFeed'
 import { isColdStartV2Enabled } from '@/lib/feed/featureFlag'
 import { FEED_RANKING_CONFIG_V1, FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import { feedCandidateService } from './FeedCandidateService'
 import { feedDiversityEngine } from './FeedDiversityEngine'
 import { feedRepresentativeSelector } from './FeedRepresentativeSelector'
 import { feedScoringService } from './FeedScoringService'
-import { feedSessionService, type FeedSessionPayload } from './FeedSessionService'
+import { feedSessionService } from './FeedSessionService'
 import type { RankingPipelineInput, RankingPipelineResult } from './FeedRankingPipeline'
 
 export type ColdStartProfileType = 'GUEST' | 'NEW_USER' | 'LIGHT_USER'
@@ -15,19 +15,22 @@ export type ColdStartProfileType = 'GUEST' | 'NEW_USER' | 'LIGHT_USER'
 const LIGHT_SIGNAL_THRESHOLD = 3
 
 export interface ColdStartMixWeights {
+  FEATURED: number
   BREAKING: number
+  POPULAR: number
   RECENT: number
   LOCAL: number
-  POPULAR: number
   DISCOVERY: number
 }
 
+/** Guest/light personal mix: featured → popular → rest (diversity still reranks). */
 const DEFAULT_MIX: ColdStartMixWeights = {
-  BREAKING: 0.2,
-  RECENT: 0.25,
-  LOCAL: 0.2,
-  POPULAR: 0.15,
-  DISCOVERY: 0.2,
+  FEATURED: 0.28,
+  BREAKING: 0.14,
+  POPULAR: 0.26,
+  RECENT: 0.14,
+  LOCAL: 0.1,
+  DISCOVERY: 0.08,
 }
 
 function countSignals(ctx: FeedUserContext): number {
@@ -101,7 +104,8 @@ export class FeedColdStartService {
       excludeClusterIds: input.seenClusters,
     }
 
-    const [breaking, recent, local, popular, discovery] = await Promise.all([
+    const [featured, breaking, recent, local, popular, discovery] = await Promise.all([
+      feedCandidateService.fetchFeatured({ ...base, limit: limits.FEATURED }),
       feedCandidateService.fetchBreaking({ ...base, limit: limits.BREAKING }),
       feedCandidateService.fetchRecent({ ...base, limit: limits.RECENT }),
       feedCandidateService.fetchLocal({ ...base, limit: limits.LOCAL }),
@@ -109,7 +113,14 @@ export class FeedColdStartService {
       feedCandidateService.fetchDiscovery({ ...base, limit: limits.DISCOVERY }),
     ])
 
-    return { BREAKING: breaking, RECENT: recent, LOCAL: local, POPULAR: popular, DISCOVERY: discovery }
+    return {
+      FEATURED: featured,
+      BREAKING: breaking,
+      RECENT: recent,
+      LOCAL: local,
+      POPULAR: popular,
+      DISCOVERY: discovery,
+    }
   }
 
   /** Build cold-start ranked page using P5 diversity + cluster dedup. */
@@ -129,13 +140,22 @@ export class FeedColdStartService {
     const flat: FeedCandidateRow[] = []
     const seen = new Set<string>()
     const weights = DEFAULT_MIX
-    const order: FeedCandidateSource[] = ['BREAKING', 'RECENT', 'LOCAL', 'POPULAR', 'DISCOVERY']
+    const order: FeedCandidateSource[] = [
+      'FEATURED',
+      'BREAKING',
+      'POPULAR',
+      'RECENT',
+      'LOCAL',
+      'DISCOVERY',
+    ]
 
     for (const source of order) {
       const pool = pools[source] ?? []
       const take = Math.max(1, Math.ceil(input.limit * 2 * (weights[source as keyof ColdStartMixWeights] ?? 0.1)))
       for (const row of pool.slice(0, take)) {
         if (seen.has(row.articleId)) continue
+        if (input.seenArticles.has(row.articleId) && !row.materialUpdate) continue
+        if (row.clusterId && input.seenClusters.has(row.clusterId) && !row.materialUpdate) continue
         seen.add(row.articleId)
         flat.push({ ...row, source })
       }
@@ -147,6 +167,8 @@ export class FeedColdStartService {
         const pool = pools[source] ?? []
         for (const row of pool) {
           if (seen.has(row.articleId)) continue
+          if (input.seenArticles.has(row.articleId) && !row.materialUpdate) continue
+          if (row.clusterId && input.seenClusters.has(row.clusterId) && !row.materialUpdate) continue
           seen.add(row.articleId)
           flat.push({ ...row, source })
           if (flat.length >= input.limit * 2) break
@@ -154,22 +176,7 @@ export class FeedColdStartService {
       }
     }
 
-    // Secondary backfill without seen exclusions if user has seen all current items
-    if (flat.length < input.limit && (input.seenArticles.size > 0 || input.seenClusters.size > 0)) {
-      const unsuppressedPools = await this.fetchColdPools(
-        { ...input, seenArticles: new Set(), seenClusters: new Set() },
-        ctx
-      )
-      for (const source of order) {
-        const pool = unsuppressedPools[source] ?? []
-        for (const row of pool) {
-          if (seen.has(row.articleId)) continue
-          seen.add(row.articleId)
-          flat.push({ ...row, source })
-          if (flat.length >= input.limit * 2) break
-        }
-      }
-    }
+    // NOTE: intentionally NO backfill that clears seen exclusions (hard no-replay).
 
     const reps = feedRepresentativeSelector.select(flat)
     let scored = feedScoringService.scoreAll(reps, ctx, input.mode, input.seenArticles, input.seenClusters)
@@ -183,9 +190,7 @@ export class FeedColdStartService {
     const rankedIds = diversified.map((r) => r.articleId)
     const olderThan =
       diversified.length > 0
-        ? new Date(
-            Math.min(...diversified.map((r) => r.publishedAt.getTime()))
-          ).toISOString()
+        ? new Date(Math.min(...diversified.map((r) => r.publishedAt.getTime()))).toISOString()
         : null
     const session = feedSessionService.create(input.mode, rankedIds, undefined, {
       olderThan,

@@ -112,6 +112,8 @@ describe('P6 cold start onboarding boost', () => {
             quality: 0,
             engagement: 0,
             discovery: 0,
+            featured: 0,
+            popularity: 0,
             materialUpdate: 0,
             penalties: 0,
             total: 0.5,

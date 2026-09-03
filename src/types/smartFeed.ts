@@ -7,6 +7,7 @@ export type FeedCandidateSource =
   | 'RECENT'
   | 'POPULAR'
   | 'DISCOVERY'
+  | 'FEATURED'
 
 export interface FeedPublisherDto {
   id: string
@@ -33,6 +34,7 @@ export type FeedRankReason =
   | 'INTEREST_MATCH'
   | 'BREAKING_URGENT'
   | 'EDITORIAL_PRIORITY'
+  | 'FEATURED_PRIORITY'
   | 'MATERIAL_UPDATE'
   | 'DISCOVERY'
   | 'POPULAR'
@@ -48,6 +50,10 @@ export interface FeedScoreBreakdown {
   quality: number
   engagement: number
   discovery: number
+  /** Soft featured/editor-pick priority (freshness-gated). */
+  featured: number
+  /** Time-decayed view-heavy popularity (not lifetime raw count). */
+  popularity: number
   materialUpdate: number
   penalties: number
   total: number
@@ -128,6 +134,10 @@ export interface FeedCandidateRow {
   updatedAt: Date
   breaking: boolean
   materialUpdate: boolean
+  /** Canonical PG/FS editorial pin — not invented. */
+  isFeatured?: boolean
+  /** Editor pick pin — treated as featured-tier signal. */
+  isEditorPick?: boolean
   clusterSourceCount: number
   clusterImportance?: number
   sourceQualityTier?: string | null

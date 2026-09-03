@@ -119,31 +119,31 @@ describe('Feed Inventory Flow & Ranking Algorithm Verification', () => {
         ...makeCandidate({ articleId: 'g1', category: 'gundem', publisherId: 'pub_1' }),
         score: 0.95,
         reason: 'RECENT',
-        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, materialUpdate: 0, penalties: 0, total: 0.95 },
+        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, featured: 0, popularity: 0, materialUpdate: 0, penalties: 0, total: 0.95 },
       },
       {
         ...makeCandidate({ articleId: 'g2', category: 'gundem', publisherId: 'pub_2' }),
         score: 0.94,
         reason: 'RECENT',
-        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, materialUpdate: 0, penalties: 0, total: 0.94 },
+        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, featured: 0, popularity: 0, materialUpdate: 0, penalties: 0, total: 0.94 },
       },
       {
         ...makeCandidate({ articleId: 'g3', category: 'gundem', publisherId: 'pub_3' }),
         score: 0.93,
         reason: 'RECENT',
-        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, materialUpdate: 0, penalties: 0, total: 0.93 },
+        breakdown: { following: 0, freshness: 0.9, interest: 0.8, local: 0, editorial: 0.8, quality: 0.8, engagement: 0.8, discovery: 0.1, featured: 0, popularity: 0, materialUpdate: 0, penalties: 0, total: 0.93 },
       },
       {
         ...makeCandidate({ articleId: 's1', category: 'spor', publisherId: 'pub_b' }),
         score: 0.85,
         reason: 'RECENT',
-        breakdown: { following: 0, freshness: 0.8, interest: 0.7, local: 0, editorial: 0.7, quality: 0.8, engagement: 0.7, discovery: 0.1, materialUpdate: 0, penalties: 0, total: 0.85 },
+        breakdown: { following: 0, freshness: 0.8, interest: 0.7, local: 0, editorial: 0.7, quality: 0.8, engagement: 0.7, discovery: 0.1, featured: 0, popularity: 0, materialUpdate: 0, penalties: 0, total: 0.85 },
       },
       {
         ...makeCandidate({ articleId: 'e1', category: 'ekonomi', publisherId: 'pub_c' }),
         score: 0.80,
         reason: 'RECENT',
-        breakdown: { following: 0, freshness: 0.8, interest: 0.6, local: 0, editorial: 0.6, quality: 0.8, engagement: 0.6, discovery: 0.1, materialUpdate: 0, penalties: 0, total: 0.80 },
+        breakdown: { following: 0, freshness: 0.8, interest: 0.6, local: 0, editorial: 0.6, quality: 0.8, engagement: 0.6, discovery: 0.1, featured: 0, popularity: 0, materialUpdate: 0, penalties: 0, total: 0.80 },
       },
     ]
 

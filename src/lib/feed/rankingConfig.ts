@@ -41,7 +41,16 @@ export interface FeedRankingConfigV1 {
   behavioralDecayDays: number
   behavioralLookbackDays: number
   materialUpdateBoost: number
+  /** Additive featured/editor-pick boost (freshness-gated). */
+  featuredBoost: number
+  /** Half-life for featured priority decay (hours). */
+  featuredHalfLifeHours: number
+  /** Additive time-decayed popularity boost for personal mix. */
+  popularityBoost: number
+  /** Views coefficient inside popularity raw (likes remain ×3). */
+  popularityViewWeight: number
   engagementNormCap: number
+  popularityNormCap: number
 }
 
 const BASE_WEIGHTS: FeedSignalWeights = {
@@ -68,7 +77,7 @@ export const FEED_RANKING_CONFIG_V1: FeedRankingConfigV1 = {
       following: 1.1,
       local: 1.05,
       // Elevate real popularity/most-read signals without overriding freshness/interest.
-      engagement: 1.15,
+      engagement: 1.35,
       freshness: 1.1,
     },
     following: {
@@ -122,13 +131,19 @@ export const FEED_RANKING_CONFIG_V1: FeedRankingConfigV1 = {
     RECENT: 150,
     POPULAR: 100,
     DISCOVERY: 80,
+    FEATURED: 60,
   },
   diversityWindowSize: 8,
   explorationRatioPersonal: 0.12,
   behavioralDecayDays: 60,
   behavioralLookbackDays: 60,
   materialUpdateBoost: 0.18,
+  featuredBoost: 0.32,
+  featuredHalfLifeHours: 18,
+  popularityBoost: 0.22,
+  popularityViewWeight: 0.2,
   engagementNormCap: 100,
+  popularityNormCap: 250,
 }
 
 const SPORT_CATEGORIES = new Set([
@@ -209,4 +224,37 @@ export function freshnessScore(publishedAt: Date, categoryClass: FeedCategoryCla
   const halfLifeH = FEED_RANKING_CONFIG_V1.freshnessHalfLifeHours[categoryClass]
   const ageHours = Math.max(0, (now.getTime() - publishedAt.getTime()) / 3_600_000)
   return Math.pow(0.5, ageHours / halfLifeH)
+}
+
+/** Featured pin decay — week-old pins must not dominate forever. */
+export function featuredFreshnessScore(publishedAt: Date, now = new Date()): number {
+  const halfLifeH = FEED_RANKING_CONFIG_V1.featuredHalfLifeHours
+  const ageHours = Math.max(0, (now.getTime() - publishedAt.getTime()) / 3_600_000)
+  return Math.pow(0.5, ageHours / halfLifeH)
+}
+
+/**
+ * Time-decayed popularity from real counters.
+ * Formula: normalize(likes×3 + comments×2 + saves×2.5 + shares×2 + views×viewWeight)
+ *          × freshness(GENERAL half-life)
+ * Views use news.views_count (canonical). Not impressions/telemetry.
+ */
+export function viewPopularityScore(input: {
+  viewsCount?: number | null
+  likesCount?: number | null
+  commentsCount?: number | null
+  savesCount?: number | null
+  sharesCount?: number | null
+  publishedAt: Date
+  now?: Date
+}): number {
+  const raw =
+    (input.likesCount ?? 0) * 3 +
+    (input.commentsCount ?? 0) * 2 +
+    (input.savesCount ?? 0) * 2.5 +
+    (input.sharesCount ?? 0) * 2 +
+    (input.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight
+  const normalized = normalizeEngagementRate(raw, FEED_RANKING_CONFIG_V1.popularityNormCap)
+  const decay = freshnessScore(input.publishedAt, 'GENERAL', input.now)
+  return Math.min(1, normalized * decay)
 }

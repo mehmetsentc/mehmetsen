@@ -110,6 +110,8 @@ function mapRows(
     savesCount: number
     sharesCount: number
     viewsCount: number
+    isFeatured?: boolean
+    isEditorPick?: boolean
     slug: string
     sortScore?: number
   }>,
@@ -151,6 +153,8 @@ function mapRows(
       updatedAt: row.updatedAt,
       breaking: Boolean(row.breaking),
       materialUpdate: row.materialUpdate === 1,
+      isFeatured: Boolean(row.isFeatured),
+      isEditorPick: Boolean(row.isEditorPick),
       clusterSourceCount: Math.max(1, row.clusterSourceCount || 1),
       clusterImportance: row.clusterImportance ?? 0,
       sourceQualityTier: row.sourceQualityTier,
@@ -201,6 +205,8 @@ function baseSelect() {
     savesCount: news.savesCount,
     sharesCount: news.sharesCount,
     viewsCount: news.viewsCount,
+    isFeatured: news.isFeatured,
+    isEditorPick: news.isEditorPick,
     slug: news.slug,
   }
 }
@@ -265,6 +271,8 @@ export class FeedCandidateService {
       updatedAt: parseDate(data.updatedAt) || pubDate,
       breaking: Boolean(data.isBreaking || data.breaking),
       materialUpdate: Boolean(data.materialUpdate),
+      isFeatured: Boolean(data.isFeatured || data.featured),
+      isEditorPick: Boolean(data.isEditorPick || data.editorPick),
       clusterSourceCount: Number(data.clusterSourceCount || 1),
       clusterImportance: Number(data.clusterImportance || (data.isBreaking ? 80 : 50)),
       sourceQualityTier: data.sourceQualityTier || 'STANDARD',
@@ -362,6 +370,14 @@ export class FeedCandidateService {
               data.category === 'son-dakika' ||
               data.editorType === 'breaking'
             if (!isBreaking) continue
+          }
+          if (source === 'FEATURED') {
+            const isFeatured =
+              data.isFeatured === true ||
+              data.featured === true ||
+              data.isEditorPick === true ||
+              data.editorPick === true
+            if (!isFeatured) continue
           }
 
           const row = this.mapFirestoreDocToRow(doc.id, data, source)
@@ -502,6 +518,39 @@ export class FeedCandidateService {
     }
   }
 
+  /** Editorial featured / editor-pick pins — real is_featured / is_editor_pick only. */
+  async fetchFeatured(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
+    const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
+    if (!hasDatabaseUrl()) {
+      return this.fetchFirestoreFallback('FEATURED', { ...opts, needed: opts.limit })
+    }
+
+    try {
+      const db = requireDb()
+      const where = and(
+        publishedStatusWhere(),
+        or(eq(news.isFeatured, true), eq(news.isEditorPick, true)),
+        opts.category ? eq(news.categoryId, opts.category) : undefined,
+        cursorWhere(opts.cursor, opts.publishedBefore)
+      )
+      const rows = await db
+        .select(baseSelect())
+        .from(news)
+        .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+        .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
+        .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
+        .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .where(where)
+        .orderBy(desc(news.publishedAt), desc(news.id))
+        .limit(poolLimit)
+
+      const mapped = mapRows(rows, 'FEATURED', opts.excludeArticleIds, opts.excludeClusterIds)
+      return this.mergeWithLegacySupplement('FEATURED', mapped, opts)
+    } catch {
+      return this.fetchFirestoreFallback('FEATURED', { ...opts, needed: opts.limit })
+    }
+  }
+
   async fetchPopular(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
@@ -515,10 +564,12 @@ export class FeedCandidateService {
         opts.category ? eq(news.categoryId, opts.category) : undefined,
         cursorWhere(opts.cursor, opts.publishedBefore)
       )
+      // View-heavy popularity sort (still freshness-bounded by published window / scoring decay).
+      const popularityExpr = sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.savesCount} * 2 + ${news.viewsCount} * 0.2)`
       const rows = await db
         .select({
           ...baseSelect(),
-          sortScore: sql<number>`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.viewsCount})::float`,
+          sortScore: sql<number>`(${popularityExpr})::float`,
         })
         .from(news)
         .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
@@ -526,10 +577,7 @@ export class FeedCandidateService {
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
         .where(where)
-        .orderBy(
-          desc(sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.viewsCount})`),
-          desc(news.publishedAt)
-        )
+        .orderBy(desc(popularityExpr), desc(news.publishedAt))
         .limit(poolLimit)
 
       const mapped = mapRows(rows, 'POPULAR', opts.excludeArticleIds, opts.excludeClusterIds)

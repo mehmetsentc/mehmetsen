@@ -67,7 +67,7 @@ describe('PHASE P17 — Real Pilot Usage & Feed Validation', () => {
     expect(FEED_PAGINATION.defaultLimit).toBe(15)
     expect(FEED_PAGINATION.minLimit).toBe(10)
     expect(FEED_PAGINATION.maxLimit).toBe(30)
-    expect(FEED_PAGINATION.prefetchThreshold).toBe(3)
+    expect(FEED_PAGINATION.prefetchThreshold).toBe(5)
   })
 
   it('3. Feed Mode Labels: defines Turkish labels for all 4 feed modes', () => {

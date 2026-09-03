@@ -1,10 +1,12 @@
 import type { FeedCandidateRow, FeedMode, FeedRankReason, FeedScoreBreakdown, ScoredFeedCandidate } from '@/types/smartFeed'
 import {
   FEED_RANKING_CONFIG_V1,
+  featuredFreshnessScore,
   freshnessScore,
   normalizeEngagementRate,
   resolveCategoryClass,
   resolveModeWeights,
+  viewPopularityScore,
 } from '@/lib/feed/rankingConfig'
 import type { FeedUserContext } from '@/types/smartFeed'
 import { feedUserContextService } from './FeedUserContextService'
@@ -29,10 +31,18 @@ function editorialScore(row: FeedCandidateRow, mode: FeedMode): number {
   const importance = Math.min(100, Math.max(0, row.clusterImportance ?? 0)) / 100
   const cat = (row.category ?? '').toLowerCase()
   const isUrgentCat = cat === 'son-dakika' || cat === 'gundem'
+  // Breaking ≠ materialUpdate — only real breaking / urgent+importance.
   const breaking = row.breaking ? 0.35 : isUrgentCat && importance > 0.6 ? 0.2 : 0
   const multiSource = Math.min(0.25, (row.clusterSourceCount - 1) * 0.08)
   const modeBoost = mode === 'breaking' ? 0.15 : 0
   return Math.min(1, importance * 0.5 + breaking + multiSource + modeBoost)
+}
+
+/** Soft featured tier from real is_featured / is_editor_pick (or FEATURED pool). */
+function featuredScore(row: FeedCandidateRow): number {
+  const pinned = Boolean(row.isFeatured || row.isEditorPick || row.source === 'FEATURED')
+  if (!pinned) return 0
+  return featuredFreshnessScore(row.publishedAt)
 }
 
 function localScore(row: FeedCandidateRow, ctx: FeedUserContext, mode: FeedMode): number {
@@ -59,8 +69,13 @@ function interestScore(row: FeedCandidateRow, ctx: FeedUserContext): number {
 }
 
 function engagementScore(row: FeedCandidateRow): number {
+  // Views matter more than the historical ×0.01 (≈1/300 like) so "most viewed" can surface.
   const raw =
-    row.likesCount * 3 + row.commentsCount * 2 + row.savesCount * 2.5 + row.sharesCount * 2 + (row.viewsCount ?? 0) * 0.01
+    row.likesCount * 3 +
+    row.commentsCount * 2 +
+    row.savesCount * 2.5 +
+    row.sharesCount * 2 +
+    (row.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight
   return normalizeEngagementRate(raw)
 }
 
@@ -71,13 +86,17 @@ function discoveryScore(row: FeedCandidateRow): number {
 
 function deriveReason(breakdown: FeedScoreBreakdown, row: FeedCandidateRow): FeedRankReason {
   if (row.materialUpdate) return 'MATERIAL_UPDATE'
+  if (breakdown.featured > 0.45) return 'FEATURED_PRIORITY'
   if (row.breaking && breakdown.editorial > 0.5) return 'BREAKING_URGENT'
   if (breakdown.following > 0.5) return 'FOLLOWING_FRESH'
   if (breakdown.local > 0.5) return 'LOCAL_RELEVANT'
   if (breakdown.interest > 0.45) return 'INTEREST_MATCH'
+  if (breakdown.popularity > 0.55 && breakdown.popularity >= breakdown.editorial) return 'POPULAR'
   if (breakdown.editorial > 0.55) return 'EDITORIAL_PRIORITY'
   if (row.source === 'DISCOVERY') return 'DISCOVERY'
-  if (row.source === 'POPULAR') return 'POPULAR'
+  if (row.source === 'POPULAR' || row.source === 'FEATURED') {
+    return row.source === 'FEATURED' ? 'FEATURED_PRIORITY' : 'POPULAR'
+  }
   if (row.source === 'BREAKING') return 'BREAKING_URGENT'
   return row.source === 'LOCAL' ? 'LOCAL_RELEVANT' : 'RECENT'
 }
@@ -92,6 +111,16 @@ export class FeedScoringService {
     const weights = resolveModeWeights(mode)
     const catClass = resolveCategoryClass(row.category, row.breaking)
 
+    const featured = featuredScore(row)
+    const popularity = viewPopularityScore({
+      viewsCount: row.viewsCount,
+      likesCount: row.likesCount,
+      commentsCount: row.commentsCount,
+      savesCount: row.savesCount,
+      sharesCount: row.sharesCount,
+      publishedAt: row.publishedAt,
+    })
+
     const signals = {
       following: followingScore(row, ctx),
       freshness: freshnessScore(row.publishedAt, catClass),
@@ -101,6 +130,8 @@ export class FeedScoringService {
       quality: qualityScore(row),
       engagement: engagementScore(row),
       discovery: discoveryScore(row),
+      featured,
+      popularity,
       materialUpdate: row.materialUpdate ? FEED_RANKING_CONFIG_V1.materialUpdateBoost : 0,
     }
 
@@ -115,6 +146,16 @@ export class FeedScoringService {
       penalties += weights.negativeFeedbackPenalty
     }
 
+    // Soft tier boosts: featured + popularity apply strongly on personal; lighter elsewhere.
+    const featuredAdd =
+      mode === 'personal'
+        ? signals.featured * FEED_RANKING_CONFIG_V1.featuredBoost
+        : signals.featured * FEED_RANKING_CONFIG_V1.featuredBoost * 0.35
+    const popularityAdd =
+      mode === 'personal'
+        ? signals.popularity * FEED_RANKING_CONFIG_V1.popularityBoost
+        : signals.popularity * FEED_RANKING_CONFIG_V1.popularityBoost * 0.25
+
     const weighted =
       signals.following * weights.following +
       signals.freshness * weights.freshness +
@@ -124,7 +165,9 @@ export class FeedScoringService {
       signals.quality * weights.quality +
       signals.engagement * weights.engagement +
       signals.discovery * weights.discovery +
-      signals.materialUpdate
+      signals.materialUpdate +
+      featuredAdd +
+      popularityAdd
 
     const maxWeight =
       weights.following +
@@ -135,12 +178,24 @@ export class FeedScoringService {
       weights.quality +
       weights.engagement +
       weights.discovery +
-      FEED_RANKING_CONFIG_V1.materialUpdateBoost
+      FEED_RANKING_CONFIG_V1.materialUpdateBoost +
+      FEED_RANKING_CONFIG_V1.featuredBoost +
+      FEED_RANKING_CONFIG_V1.popularityBoost
 
     const normalized = maxWeight > 0 ? Math.min(1, Math.max(0, (weighted - penalties) / maxWeight)) : 0
 
     const breakdown: FeedScoreBreakdown = {
-      ...signals,
+      following: signals.following,
+      freshness: signals.freshness,
+      interest: signals.interest,
+      local: signals.local,
+      editorial: signals.editorial,
+      quality: signals.quality,
+      engagement: signals.engagement,
+      discovery: signals.discovery,
+      featured: signals.featured,
+      popularity: signals.popularity,
+      materialUpdate: signals.materialUpdate,
       penalties,
       total: normalized,
     }
@@ -161,6 +216,13 @@ export class FeedScoringService {
     seenClusters: Set<string>
   ): ScoredFeedCandidate[] {
     return rows
+      .filter((row) => {
+        // Hard no-replay: qualified-seen articles never re-enter the ranked window,
+        // except genuine material-update members (cluster already re-eligible upstream).
+        if (seenArticles.has(row.articleId) && !row.materialUpdate) return false
+        if (row.clusterId && seenClusters.has(row.clusterId) && !row.materialUpdate) return false
+        return true
+      })
       .map((row) =>
         this.scoreCandidate(row, ctx, mode, {
           seenArticle: seenArticles.has(row.articleId),

@@ -17,7 +17,7 @@ import {
   writeGuestSeen,
   useFeedImpressionRef,
 } from '@/lib/feed/feedSeenClient'
-import { clearFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
+import { clearFeedRestore, consumePendingFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
@@ -140,7 +140,13 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const loadingMoreRef = useRef(false)
   const lastPrefetchCursorRef = useRef<string | null>(null)
 
-  const [mode, setMode] = useState<FeedMode>(() => parseMode(searchParams.get('mode')))
+  const [mode, setMode] = useState<FeedMode>(() => {
+    if (typeof window !== 'undefined') {
+      const restore = readFeedRestore()
+      if (restore?.pending && restore.mode) return restore.mode
+    }
+    return parseMode(searchParams.get('mode'))
+  })
   const [items, setItems] = useState<FeedItemDto[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
@@ -151,6 +157,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
   const [social, setSocial] = useState<Record<string, SocialItemState>>({})
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
+  const restoreAppliedRef = useRef(false)
+  const pendingRestoreScrollRef = useRef<number | null>(null)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const socialEnabled = isSocialGraphEnabledClient()
@@ -226,10 +234,16 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           if (genId !== generationIdRef.current) return
           lastPage = page
 
+          const restorePeek = !append ? readFeedRestore() : null
+          const restoreExemptId =
+            (!append && (searchParams.get('restore') ?? restorePeek?.articleId)) || null
           const guestSeen = !authUser ? readGuestSeen() : new Set<string>()
-          const incoming = page.items.filter(
-            (i) => !guestSeen.has(i.articleId) && !(i.slug && guestSeen.has(i.slug))
-          )
+          const incoming = page.items.filter((i) => {
+            if (restoreExemptId && (i.articleId === restoreExemptId || i.slug === restoreExemptId)) {
+              return true
+            }
+            return !guestSeen.has(i.articleId) && !(i.slug && guestSeen.has(i.slug))
+          })
 
           if (incoming.length > 0 || !page.hasMore || !page.nextCursor) {
             acceptedIncoming = incoming
@@ -282,9 +296,17 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           const restore = readFeedRestore()
           const restoreId = searchParams.get('restore') ?? restore?.articleId
           if (restoreId) {
-            const idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
-            if (idx >= 0) setActiveIndex(idx)
-            clearFeedRestore()
+            let idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
+            if (idx < 0 && typeof restore?.scrollIndex === 'number') {
+              idx = Math.min(restore.scrollIndex, Math.max(0, acceptedIncoming.length - 1))
+            }
+            if (idx >= 0) {
+              setActiveIndex(idx)
+              pendingRestoreScrollRef.current = idx
+              clearFeedRestore()
+            } else {
+              setActiveIndex(0)
+            }
           } else {
             setActiveIndex(0)
           }
@@ -336,6 +358,9 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const handleModeChange = useCallback(
     (newMode: FeedMode) => {
       if (newMode === mode && items.length > 0) return
+      clearFeedRestore()
+      restoreAppliedRef.current = false
+      pendingRestoreScrollRef.current = null
       setMode(newMode)
       setItems([])
       setCursor(null)
@@ -351,6 +376,30 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
   useEffect(() => {
     if (authLoading) return
+
+    // Article detail → back: hydrate snapshot instead of re-ranking from card 0.
+    if (!restoreAppliedRef.current) {
+      const pending = consumePendingFeedRestore()
+      if (pending) {
+        restoreAppliedRef.current = true
+        setMode(pending.mode)
+        setItems(pending.items ?? [])
+        setCursor(pending.cursor ?? null)
+        cursorRef.current = pending.cursor ?? null
+        setHasMore(pending.hasMore ?? true)
+        hasMoreRef.current = pending.hasMore ?? true
+        setActiveIndex(pending.scrollIndex)
+        activeIndexRef.current = pending.scrollIndex
+        pendingRestoreScrollRef.current = pending.scrollIndex
+        setLoading(false)
+        clearFeedRestore()
+        return
+      }
+    } else {
+      // Keep restored corpus across authReady flicker; do not restart at card 0.
+      return
+    }
+
     void loadPage(false)
 
     return () => {
@@ -359,6 +408,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       }
     }
   }, [authLoading, authUser?.uid, loadPage])
+
+  // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
+  useEffect(() => {
+    const target = pendingRestoreScrollRef.current
+    if (target == null || !items.length || loading) return
+    const el = scrollRef.current
+    if (!el) return
+    const h = el.clientHeight || 1
+    const clamped = Math.max(0, Math.min(target, items.length - 1))
+    el.scrollTo({ top: clamped * h, behavior: 'auto' })
+    setActiveIndex(clamped)
+    activeIndexRef.current = clamped
+    pendingRestoreScrollRef.current = null
+  }, [items, loading])
 
   useEffect(() => {
     if (!items.length) return
@@ -698,7 +761,16 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   }, [])
 
   const onRead = (item: FeedItemDto, index: number) => {
-    saveFeedRestore({ mode, articleId: item.articleId, cursor, scrollIndex: index })
+    saveFeedRestore({
+      mode,
+      articleId: item.articleId,
+      cursor,
+      hasMore,
+      scrollIndex: index,
+      items,
+      timestamp: Date.now(),
+      pending: true,
+    })
     void postTelemetry({ events: [{ eventType: 'article_opened', articleId: item.articleId, feedType: mode }] })
     router.push(ROUTES.NEWS_DETAIL(item.slug))
   }
