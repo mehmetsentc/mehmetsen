@@ -137,13 +137,15 @@ export function ArticleReaderTools({
     }
   }, [])
 
-  // ── FAB'ı sayfa sonunda gizle ─────────────────────────────────────
+  // ── FAB'ı sayfa sonunda gizle (like/share rail + related üstünü kapatmasın)
   useEffect(() => {
     let raf = 0
     const check = () => {
       raf = 0
       const doc = document.documentElement
-      const reachedEnd = window.innerHeight + window.scrollY >= doc.scrollHeight - 220
+      // Match --article-reader-clearance (~nav + FAB + gap); hide before covering end rails.
+      const hideBand = Math.max(Math.round(window.innerHeight * 0.28), 300)
+      const reachedEnd = window.innerHeight + window.scrollY >= doc.scrollHeight - hideBand
       setNearBottom(reachedEnd)
     }
     const onScroll = () => {
@@ -258,12 +260,11 @@ export function ArticleReaderTools({
             nearBottom && !open ? 'opacity-0' : 'opacity-100'
           )}
           style={{
-            bottom:
-              'calc(var(--mobile-nav-pill-h, 3.5rem) + var(--mobile-nav-float-gap, 0.625rem) + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+            bottom: 'var(--article-reader-fab-bottom, var(--mobile-nav-clearance, 5.5rem))',
           }}
           aria-hidden={nearBottom && !open}
         >
-          {/* Dinle FAB — panel kapalıyken göster */}
+          {/* Dinle FAB — panel kapalıyken göster (mobil: ikon-only, metni örtmesin) */}
           <AnimatePresence>
             {!open && (
               <motion.button
@@ -275,14 +276,16 @@ export function ArticleReaderTools({
                 onClick={togglePlay}
                 aria-label={playing ? 'Duraklat' : 'Haberi dinle'}
                 className={cn(
-                  'flex h-11 items-center gap-2 rounded-full px-4 shadow-lg shadow-black/30 transition-colors',
+                  'flex h-11 items-center justify-center rounded-full shadow-lg shadow-black/30 transition-colors',
                   playing
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-zinc-900 text-white'
+                    ? 'gap-2 bg-brand-500 px-3.5 text-white'
+                    : 'w-11 bg-zinc-900 text-white'
                 )}
               >
                 {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-                <span className="text-sm font-semibold">{playing ? 'Dinleniyor' : 'Dinle'}</span>
+                {playing ? (
+                  <span className="text-sm font-semibold">Dinleniyor</span>
+                ) : null}
               </motion.button>
             )}
           </AnimatePresence>

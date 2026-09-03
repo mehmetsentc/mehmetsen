@@ -122,7 +122,7 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
   }, [post.id, post.categoryId, citySlug])
 
   return (
-    <NewsArticlePage className="pb-10" articleId={post.id}>
+    <NewsArticlePage className="max-lg:pb-[var(--article-reader-clearance)] lg:pb-10" articleId={post.id}>
       <ArticleTOC postId={post.id} />
       <ArticleReaderTools post={post} />
 
