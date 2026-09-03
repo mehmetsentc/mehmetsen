@@ -26,9 +26,10 @@ export async function POST(request: Request) {
 
   try {
     await socialGraphRepository.unsaveArticle(auth.uid, articleId)
-    return NextResponse.json({ saved: false })
+    const counts = await socialGraphRepository.getArticleCounts(articleId)
+    return NextResponse.json({ saved: false, ...counts })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unsave failed'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: msg }, { status: msg === 'ARTICLE_NOT_FOUND' ? 404 : 500 })
   }
 }

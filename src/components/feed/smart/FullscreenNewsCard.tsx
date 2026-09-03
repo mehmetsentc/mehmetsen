@@ -55,6 +55,8 @@ interface FullscreenNewsCardProps {
   liked: boolean
   saved: boolean
   likeCount?: number
+  commentCount?: number
+  saveCount?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void
@@ -79,6 +81,8 @@ export function FullscreenNewsCard({
   liked,
   saved,
   likeCount,
+  commentCount,
+  saveCount,
   likeLoading,
   saveLoading,
   onToggleLike,
@@ -96,8 +100,11 @@ export function FullscreenNewsCard({
   const showVideo = Boolean(videoEnabled && item.video && isActive)
   const hasValidImage = Boolean(item.image && !imageError)
   const cat = categoryLabel(item.category)
-  const useContain = imageAspect === 'landscape'
   const timeLabel = formatRelativeTime(item.publishedAt)
+  const resolvedLikeCount = typeof likeCount === 'number' ? likeCount : item.socialCounts.likes ?? 0
+  const resolvedCommentCount =
+    typeof commentCount === 'number' ? commentCount : item.socialCounts.comments ?? 0
+  const resolvedSaveCount = typeof saveCount === 'number' ? saveCount : item.socialCounts.saves ?? 0
 
   return (
     <article
@@ -109,8 +116,8 @@ export function FullscreenNewsCard({
       data-media-aspect={showVideo ? 'video' : imageAspect ?? 'unknown'}
       data-testid="smart-feed-card"
     >
-      {/* Media plane — fills full card; mode/publisher/text overlay on top */}
-      <div className="absolute inset-0 bg-neutral-950" data-testid="smart-feed-media">
+      {/* Continuous full-bleed media canvas — no solid dead mid-band */}
+      <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
             key={item.video!}
@@ -124,47 +131,60 @@ export function FullscreenNewsCard({
           />
         ) : hasValidImage ? (
           <>
+            {/* Layer A: blurred cover fills entire card (same image, continuous) */}
             <Image
               src={item.image!}
               alt=""
               fill
-              className="scale-110 object-cover opacity-55 blur-2xl"
-              sizes="(max-width: 768px) 100vw, 512px"
+              className="scale-125 object-cover opacity-70 blur-2xl brightness-[0.55]"
+              sizes="100vw"
               aria-hidden
               unoptimized={
                 typeof item.image === 'string' &&
                 (item.image.startsWith('http://') || item.image.startsWith('https://'))
               }
             />
-            <Image
-              src={item.image!}
-              alt={item.headline || ''}
-              fill
+            {/* Layer B: sharp image — landscape stays natural; portrait/square cover */}
+            <div
               className={cn(
-                'transition-opacity duration-300',
-                useContain ? 'object-contain object-top' : 'object-cover object-center'
+                'absolute inset-x-0 top-0',
+                imageAspect === 'landscape' ? 'h-[58%]' : 'bottom-0'
               )}
-              sizes="(max-width: 768px) 100vw, 512px"
-              priority={isActive}
-              onError={() => setImageError(true)}
-              onLoad={(e) => {
-                const img = e.currentTarget
-                const w = img.naturalWidth
-                const h = img.naturalHeight
-                if (!w || !h) return
-                const ratio = w / h
-                if (ratio > 1.15) setImageAspect('landscape')
-                else if (ratio < 0.85) setImageAspect('portrait')
-                else setImageAspect('square')
-              }}
-              unoptimized={
-                typeof item.image === 'string' &&
-                (item.image.startsWith('http://') || item.image.startsWith('https://'))
-              }
-            />
+            >
+              <Image
+                src={item.image!}
+                alt={item.headline || ''}
+                fill
+                className={cn(
+                  'transition-opacity duration-300',
+                  imageAspect === 'landscape'
+                    ? 'object-contain object-top'
+                    : imageAspect === 'square'
+                      ? 'object-cover object-center'
+                      : 'object-cover object-center'
+                )}
+                sizes="100vw"
+                priority={isActive}
+                onError={() => setImageError(true)}
+                onLoad={(e) => {
+                  const img = e.currentTarget
+                  const w = img.naturalWidth
+                  const h = img.naturalHeight
+                  if (!w || !h) return
+                  const ratio = w / h
+                  if (ratio > 1.15) setImageAspect('landscape')
+                  else if (ratio < 0.85) setImageAspect('portrait')
+                  else setImageAspect('square')
+                }}
+                unoptimized={
+                  typeof item.image === 'string' &&
+                  (item.image.startsWith('http://') || item.image.startsWith('https://'))
+                }
+              />
+            </div>
           </>
         ) : (
-          <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-neutral-950 to-neutral-900 select-none">
+          <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-950 select-none">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
             <div className="flex flex-col items-center gap-2 opacity-25">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm">
@@ -177,13 +197,13 @@ export function FullscreenNewsCard({
           </div>
         )}
 
-        {/* Soft top read for mode/publisher; strong bottom for text */}
+        {/* Gradients over media — no flat mid-band */}
         <div
-          className="absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/55 via-black/15 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[30%] bg-gradient-to-b from-black/60 via-black/20 to-transparent"
           aria-hidden
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black via-black/75 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-black via-black/80 to-transparent"
           aria-hidden
         />
       </div>
@@ -286,11 +306,11 @@ export function FullscreenNewsCard({
           )}
         </div>
 
-        {/* Media breathing room — keeps text in lower band */}
-        <div className="min-h-[28vh] flex-1" aria-hidden />
+        {/* Flexible media breathing room — no solid fill; media canvas shows through */}
+        <div className="min-h-[12vh] flex-1" aria-hidden data-testid="smart-feed-media-breathing" />
 
         {/* Lower text + reserved right rail */}
-        <div className="relative flex max-h-[44vh] items-end gap-3">
+        <div className="relative flex max-h-[42vh] items-end gap-3">
           <div className="min-w-0 flex-1 space-y-2 pr-1" data-testid="smart-feed-text-zone">
             <div className="flex flex-wrap items-center gap-2">
               {cat ? (
@@ -318,7 +338,7 @@ export function FullscreenNewsCard({
             </div>
 
             <h2
-              className="text-[1.2rem] font-bold leading-snug text-white sm:text-[1.35rem] md:text-3xl"
+              className="line-clamp-2 text-[1.2rem] font-bold leading-snug text-white sm:text-[1.35rem] md:text-3xl"
               data-testid="smart-feed-headline"
             >
               {item.headline}
@@ -326,7 +346,7 @@ export function FullscreenNewsCard({
 
             {item.summary ? (
               <p
-                className="break-words text-[0.9rem] leading-relaxed text-white/75 md:text-[0.95rem]"
+                className="line-clamp-3 break-words text-[0.9rem] leading-relaxed text-white/75 md:line-clamp-4 md:text-[0.95rem]"
                 data-testid="smart-feed-summary"
               >
                 {item.summary}
@@ -365,8 +385,9 @@ export function FullscreenNewsCard({
             summary={item.summary ?? undefined}
             liked={liked}
             saved={saved}
-            likeCount={typeof likeCount === 'number' ? likeCount : item.socialCounts.likes}
-            commentCount={item.socialCounts.comments}
+            likeCount={resolvedLikeCount}
+            commentCount={resolvedCommentCount}
+            saveCount={resolvedSaveCount}
             onToggleLike={onToggleLike}
             onToggleSave={onToggleSave}
             onCommentClick={onCommentClick}

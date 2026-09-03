@@ -48,6 +48,7 @@ interface SocialItemState {
   saved: boolean
   likeCount: number
   commentCount: number
+  saveCount: number
 }
 
 async function fetchFeedPage(opts: {
@@ -265,6 +266,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 saved: it.socialState?.saved ?? false,
                 likeCount: it.socialCounts.likes ?? 0,
                 commentCount: it.socialCounts.comments ?? 0,
+                saveCount: it.socialCounts.saves ?? 0,
               }
             }
           }
@@ -365,17 +367,38 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       .getArticleState(ids)
       .then((res) => {
         if (cancelled) return
-        const states = (res as { states?: Array<{ articleId: string; liked: boolean; saved: boolean }> }).states ?? []
+        const states =
+          (res as {
+            states?: Array<{
+              articleId: string
+              liked: boolean
+              saved: boolean
+              likeCount?: number
+              commentCount?: number
+              saveCount?: number
+            }>
+          }).states ?? []
         if (!states.length) return
         setSocial((prev) => {
           const next = { ...prev }
           for (const s of states) {
             const existing = next[s.articleId]
+            const dto = items.find((i) => i.articleId === s.articleId)
             next[s.articleId] = {
               liked: s.liked,
               saved: s.saved,
-              likeCount: existing?.likeCount ?? 0,
-              commentCount: existing?.commentCount ?? 0,
+              likeCount:
+                typeof s.likeCount === 'number'
+                  ? s.likeCount
+                  : (existing?.likeCount ?? dto?.socialCounts.likes ?? 0),
+              commentCount:
+                typeof s.commentCount === 'number'
+                  ? s.commentCount
+                  : (existing?.commentCount ?? dto?.socialCounts.comments ?? 0),
+              saveCount:
+                typeof s.saveCount === 'number'
+                  ? s.saveCount
+                  : (existing?.saveCount ?? dto?.socialCounts.saves ?? 0),
             }
           }
           return next
@@ -501,6 +524,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         saved: item.socialState?.saved ?? false,
         likeCount: item.socialCounts.likes ?? 0,
         commentCount: item.socialCounts.comments ?? 0,
+        saveCount: item.socialCounts.saves ?? 0,
       }
 
       const prevLiked = current.liked
@@ -583,10 +607,13 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         saved: item.socialState?.saved ?? false,
         likeCount: item.socialCounts.likes ?? 0,
         commentCount: item.socialCounts.comments ?? 0,
+        saveCount: item.socialCounts.saves ?? 0,
       }
 
       const prevSaved = current.saved
+      const prevSaveCount = current.saveCount
       const nextSaved = !prevSaved
+      const nextSaveCount = nextSaved ? prevSaveCount + 1 : Math.max(0, prevSaveCount - 1)
 
       setActionLoading((s) => ({ ...s, [item.articleId]: 'save' }))
 
@@ -595,6 +622,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         [item.articleId]: {
           ...(s[item.articleId] ?? current),
           saved: nextSaved,
+          saveCount: nextSaveCount,
         },
       }))
 
@@ -603,14 +631,21 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           ? await socialApi.unsaveArticle(item.articleId)
           : await socialApi.saveArticle(item.articleId)
 
-        const body = res as { saved?: boolean }
+        const body = res as { saved?: boolean; saveCount?: number; saves?: number }
         const canonicalSaved = typeof body.saved === 'boolean' ? body.saved : nextSaved
+        const canonicalSaves =
+          typeof body.saveCount === 'number'
+            ? body.saveCount
+            : typeof body.saves === 'number'
+              ? body.saves
+              : undefined
 
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
             ...(s[item.articleId] ?? current),
             saved: canonicalSaved,
+            saveCount: canonicalSaves !== undefined ? canonicalSaves : nextSaveCount,
           },
         }))
       } catch (err) {
@@ -619,6 +654,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
           [item.articleId]: {
             ...(s[item.articleId] ?? current),
             saved: prevSaved,
+            saveCount: prevSaveCount,
           },
         }))
         toast.error(socialMutationError(err, 'Kaydetme işlemi başarısız'))
@@ -637,15 +673,24 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     setItems((prev) => prev.filter((i) => i.articleId !== articleId))
   }, [])
 
-  const handleCommentAdded = useCallback((articleId: string) => {
+  const handleCommentAdded = useCallback((articleId: string, nextCommentCount?: number) => {
     setSocial((s) => {
       const existing = s[articleId]
-      if (!existing) return s
+      const base = existing ?? {
+        liked: false,
+        saved: false,
+        likeCount: 0,
+        commentCount: 0,
+        saveCount: 0,
+      }
       return {
         ...s,
         [articleId]: {
-          ...existing,
-          commentCount: existing.commentCount + 1,
+          ...base,
+          commentCount:
+            typeof nextCommentCount === 'number'
+              ? nextCommentCount
+              : base.commentCount + 1,
         },
       }
     })
@@ -823,6 +868,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
               const liked = socialState?.liked ?? item.socialState?.liked ?? false
               const saved = socialState?.saved ?? item.socialState?.saved ?? false
               const likeCount = socialState?.likeCount ?? item.socialCounts.likes ?? 0
+              const commentCount = socialState?.commentCount ?? item.socialCounts.comments ?? 0
+              const saveCount = socialState?.saveCount ?? item.socialCounts.saves ?? 0
 
               return (
                 <FeedCardWithImpression
@@ -833,6 +880,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                   liked={liked}
                   saved={saved}
                   likeCount={likeCount}
+                  commentCount={commentCount}
+                  saveCount={saveCount}
                   likeLoading={actionLoading[item.articleId] === 'like'}
                   saveLoading={actionLoading[item.articleId] === 'save'}
                   onToggleLike={() => void toggleLike(item)}
@@ -897,8 +946,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 0)
               : 0
           }
-          onCommentAdded={() => {
-            if (commentArticleId) handleCommentAdded(commentArticleId)
+          onCommentAdded={(nextCount) => {
+            if (commentArticleId) handleCommentAdded(commentArticleId, nextCount)
           }}
         />
       </div>
@@ -913,6 +962,8 @@ function FeedCardWithImpression(props: {
   liked: boolean
   saved: boolean
   likeCount?: number
+  commentCount?: number
+  saveCount?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void

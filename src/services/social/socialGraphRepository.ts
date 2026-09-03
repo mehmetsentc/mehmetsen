@@ -110,6 +110,7 @@ export class SocialGraphRepository {
   private async countSocialEngagement(socialArticleId: string): Promise<{
     likeCount: number
     commentCount: number
+    saveCount: number
   }> {
     const db = requireDb()
     const likes = await db
@@ -120,10 +121,62 @@ export class SocialGraphRepository {
       .select({ c: count() })
       .from(articleComments)
       .where(and(eq(articleComments.articleId, socialArticleId), eq(articleComments.status, 'VISIBLE')))
+    const saves = await db
+      .select({ c: count() })
+      .from(savedArticles)
+      .where(eq(savedArticles.articleId, socialArticleId))
     return {
       likeCount: Number(likes[0]?.c ?? 0),
       commentCount: Number(comments[0]?.c ?? 0),
+      saveCount: Number(saves[0]?.c ?? 0),
     }
+  }
+
+  /** Bounded batch counts from social tables (authoritative for PG + FS-only). */
+  private async batchCountSocialEngagement(socialIds: string[]): Promise<
+    Map<string, { likeCount: number; commentCount: number; saveCount: number }>
+  > {
+    const out = new Map<string, { likeCount: number; commentCount: number; saveCount: number }>()
+    for (const id of socialIds) {
+      out.set(id, { likeCount: 0, commentCount: 0, saveCount: 0 })
+    }
+    if (!socialIds.length) return out
+    const db = requireDb()
+
+    const likeRows = await db
+      .select({ articleId: articleLikes.articleId, c: count() })
+      .from(articleLikes)
+      .where(inArray(articleLikes.articleId, socialIds))
+      .groupBy(articleLikes.articleId)
+    for (const row of likeRows) {
+      const cur = out.get(row.articleId) ?? { likeCount: 0, commentCount: 0, saveCount: 0 }
+      cur.likeCount = Number(row.c)
+      out.set(row.articleId, cur)
+    }
+
+    const commentRows = await db
+      .select({ articleId: articleComments.articleId, c: count() })
+      .from(articleComments)
+      .where(and(inArray(articleComments.articleId, socialIds), eq(articleComments.status, 'VISIBLE')))
+      .groupBy(articleComments.articleId)
+    for (const row of commentRows) {
+      const cur = out.get(row.articleId) ?? { likeCount: 0, commentCount: 0, saveCount: 0 }
+      cur.commentCount = Number(row.c)
+      out.set(row.articleId, cur)
+    }
+
+    const saveRows = await db
+      .select({ articleId: savedArticles.articleId, c: count() })
+      .from(savedArticles)
+      .where(inArray(savedArticles.articleId, socialIds))
+      .groupBy(savedArticles.articleId)
+    for (const row of saveRows) {
+      const cur = out.get(row.articleId) ?? { likeCount: 0, commentCount: 0, saveCount: 0 }
+      cur.saveCount = Number(row.c)
+      out.set(row.articleId, cur)
+    }
+
+    return out
   }
 
   /**
@@ -318,21 +371,13 @@ export class SocialGraphRepository {
     return rows.length > 0
   }
 
-  async getArticleCounts(articleId: string): Promise<{ likeCount: number; commentCount: number }> {
+  async getArticleCounts(
+    articleId: string
+  ): Promise<{ likeCount: number; commentCount: number; saveCount: number }> {
     const canonicalId = await this.tryResolveCanonicalArticleId(articleId)
-    if (!canonicalId) return { likeCount: 0, commentCount: 0 }
-    const db = requireDb()
-    const rows = await db
-      .select({ likesCount: news.likesCount, commentsCount: news.commentsCount })
-      .from(news)
-      .where(eq(news.id, canonicalId))
-      .limit(1)
-    if (rows[0]) {
-      return {
-        likeCount: Number(rows[0].likesCount ?? 0),
-        commentCount: Number(rows[0].commentsCount ?? 0),
-      }
-    }
+    if (!canonicalId) return { likeCount: 0, commentCount: 0, saveCount: 0 }
+    // Always count social tables — news.* counters are not authoritative for FS-only
+    // and can lag / stay 0 after P18.3K FK drop.
     return this.countSocialEngagement(canonicalId)
   }
 
@@ -605,12 +650,7 @@ export class SocialGraphRepository {
     )
 
     const canonicalIds = [...new Set(originalToCanonical.values())]
-
-    const counts = await db
-      .select({ id: news.id, likesCount: news.likesCount, commentsCount: news.commentsCount })
-      .from(news)
-      .where(inArray(news.id, canonicalIds))
-    const countsById = new Map(counts.map((c) => [c.id, c]))
+    const engagementById = await this.batchCountSocialEngagement(canonicalIds)
 
     let likedSet = new Set<string>()
     let savedSet = new Set<string>()
@@ -627,25 +667,16 @@ export class SocialGraphRepository {
       savedSet = new Set(saved.map((r) => r.articleId))
     }
 
-    const engagementFallback = new Map<string, { likeCount: number; commentCount: number }>()
-    await Promise.all(
-      canonicalIds
-        .filter((id) => !countsById.has(id))
-        .map(async (id) => {
-          engagementFallback.set(id, await this.countSocialEngagement(id))
-        })
-    )
-
     return articleIds.map((originalId) => {
       const canonical = originalToCanonical.get(originalId) ?? originalId
-      const c = countsById.get(canonical)
-      const fallback = engagementFallback.get(canonical)
+      const eng = engagementById.get(canonical)
       return {
         articleId: originalId,
         liked: likedSet.has(canonical),
         saved: savedSet.has(canonical),
-        likeCount: Number(c?.likesCount ?? fallback?.likeCount ?? 0),
-        commentCount: Number(c?.commentsCount ?? fallback?.commentCount ?? 0),
+        likeCount: eng?.likeCount ?? 0,
+        commentCount: eng?.commentCount ?? 0,
+        saveCount: eng?.saveCount ?? 0,
       }
     })
   }

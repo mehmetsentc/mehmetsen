@@ -31,7 +31,8 @@ async function handleSave(request: Request, save: boolean) {
       await socialGraphRepository.unsaveArticle(auth.uid, articleId)
     }
     const saved = save
-    return NextResponse.json({ saved })
+    const counts = await socialGraphRepository.getArticleCounts(articleId)
+    return NextResponse.json({ saved, ...counts })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Save failed'
     return NextResponse.json({ error: msg }, { status: msg === 'ARTICLE_NOT_FOUND' ? 404 : 500 })

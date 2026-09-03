@@ -53,7 +53,7 @@ interface CommentsBottomSheetProps {
   open: boolean
   onClose: () => void
   initialCount?: number
-  onCommentAdded?: () => void
+  onCommentAdded?: (nextCommentCount?: number) => void
 }
 
 /**
@@ -78,7 +78,12 @@ export function CommentsBottomSheet({
   const [disabled, setDisabled] = useState(false)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  const [viewportBox, setViewportBox] = useState<{
+    top: number
+    left: number
+    width: number
+    height: number
+  } | null>(null)
 
   // Lock background feed scroll + hide floating MobileNav so composer/send are tappable
   useEffect(() => {
@@ -94,13 +99,26 @@ export function CommentsBottomSheet({
     }
   }, [open])
 
-  // Track visualViewport so keyboard does not bury composer/send on iPhone
+  // Pin sheet overlay to visualViewport — vertical keyboard + no horizontal shift
   useEffect(() => {
     if (!open || typeof window === 'undefined') return
     const vv = window.visualViewport
     const sync = () => {
-      const h = vv?.height ?? window.innerHeight
-      setViewportHeight(Math.round(h))
+      if (vv) {
+        setViewportBox({
+          top: Math.round(vv.offsetTop),
+          left: Math.round(vv.offsetLeft),
+          width: Math.round(vv.width),
+          height: Math.round(vv.height),
+        })
+        return
+      }
+      setViewportBox({
+        top: 0,
+        left: 0,
+        width: Math.round(window.innerWidth),
+        height: Math.round(window.innerHeight),
+      })
     }
     sync()
     vv?.addEventListener('resize', sync)
@@ -192,10 +210,15 @@ export function CommentsBottomSheet({
         handleLoginRedirect()
         return
       }
-      await socialApi.createComment(articleId, content)
+      const created = (await socialApi.createComment(articleId, content)) as {
+        id?: string
+        commentCount?: number
+      }
       setDraft('')
       toast.success('Yorumunuz paylaşıldı')
-      onCommentAdded?.()
+      onCommentAdded?.(
+        typeof created.commentCount === 'number' ? created.commentCount : undefined
+      )
       await load()
       requestAnimationFrame(() => {
         listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -212,18 +235,27 @@ export function CommentsBottomSheet({
 
   const displayCount = Math.max(initialCount, items.length)
   const canSend = Boolean(draft.trim()) && !submitting
+  const vvHeight = viewportBox?.height ?? null
   const sheetMaxHeight =
-    viewportHeight != null
-      ? Math.min(viewportHeight * 0.92, viewportHeight - 8)
-      : undefined
+    vvHeight != null ? Math.min(vvHeight * 0.92, Math.max(240, vvHeight - 8)) : undefined
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-end justify-center"
+      className="z-[120] flex items-end justify-center overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
       data-testid="smart-feed-comments-sheet"
+      style={{
+        position: 'fixed',
+        top: viewportBox?.top ?? 0,
+        left: viewportBox?.left ?? 0,
+        width: viewportBox?.width ?? '100%',
+        height: viewportBox?.height ?? '100%',
+        maxWidth: '100%',
+        transform: 'none',
+        boxSizing: 'border-box',
+      }}
     >
       <button
         type="button"
@@ -236,8 +268,14 @@ export function CommentsBottomSheet({
       <div
         className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] shadow-2xl"
         style={{
+          width: '100%',
+          maxWidth: '100%',
           height: sheetMaxHeight ? `${Math.round(sheetMaxHeight * 0.88)}px` : 'min(75dvh, 85dvh)',
           maxHeight: sheetMaxHeight ? `${sheetMaxHeight}px` : '85dvh',
+          marginLeft: 0,
+          marginRight: 0,
+          transform: 'none',
+          boxSizing: 'border-box',
         }}
         data-testid="smart-feed-comments-panel"
       >

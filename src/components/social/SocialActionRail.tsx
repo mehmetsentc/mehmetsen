@@ -16,6 +16,7 @@ interface SocialActionRailProps {
   saved: boolean
   likeCount: number
   commentCount: number
+  saveCount?: number
   onToggleLike: () => void
   onToggleSave: () => void
   onCommentClick?: () => void
@@ -36,6 +37,7 @@ export function SocialActionRail({
   saved,
   likeCount,
   commentCount,
+  saveCount = 0,
   onToggleLike,
   onToggleSave,
   onCommentClick,
@@ -77,7 +79,13 @@ export function SocialActionRail({
           {formatCount(commentCount)}
         </span>
       </button>
-      <BaseSaveButton saved={saved} count={0} onToggle={onToggleSave} loading={saveLoading} variant="overlay" />
+      <BaseSaveButton
+        saved={saved}
+        count={saveCount}
+        onToggle={onToggleSave}
+        loading={saveLoading}
+        variant="overlay"
+      />
       <BaseShareButton postId={articleId} slug={slug} title={title} text={summary} variant="overlay" />
     </div>
   )

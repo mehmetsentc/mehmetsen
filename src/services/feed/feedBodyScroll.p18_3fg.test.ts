@@ -115,7 +115,9 @@ describe('P18.3FG client stall guards (source)', () => {
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('Haberi Oku')
     expect(card).not.toMatch(/item\.(body|content)/)
-    expect(card).not.toMatch(/line-clamp/)
+    // P18.3L: feed-card presentation clamp only (headline/summary), not body dump
+    expect(card).toContain('line-clamp-2')
+    expect(card).toMatch(/line-clamp-[34]/)
 
     const summarySrc = readFileSync(join(process.cwd(), 'src/lib/feed/smartFeedSummary.ts'), 'utf8')
     expect(summarySrc).toContain('void fields.body')

@@ -59,7 +59,8 @@ export async function POST(request: Request) {
       parentId,
       email: auth.email,
     })
-    return NextResponse.json(created, { status: 201 })
+    const counts = await socialGraphRepository.getArticleCounts(articleId)
+    return NextResponse.json({ ...created, ...counts }, { status: 201 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Comment failed'
     console.info('[social.comments]', {

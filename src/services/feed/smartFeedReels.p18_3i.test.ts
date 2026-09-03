@@ -110,7 +110,7 @@ describe('P18.3I layout hierarchy (source)', () => {
     expect(card).toContain('object-contain')
     expect(card).toContain('blur-2xl')
     expect(card).not.toMatch(/item\.(body|content)/)
-    expect(card).not.toMatch(/line-clamp/)
+    expect(card).toContain('line-clamp-2')
     expect(card).toContain('variant="overlay"')
     expect(card).toContain('returnUrl="/feed-v2"')
   })
