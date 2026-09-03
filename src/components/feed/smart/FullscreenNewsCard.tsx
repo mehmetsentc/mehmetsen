@@ -227,21 +227,28 @@ export function FullscreenNewsCard({
               ) : null}
             </div>
 
-            <h2
-              className="line-clamp-2 text-[1.22rem] font-extrabold leading-[1.22] tracking-[-0.02em] text-white sm:text-[1.35rem]"
-              data-testid="smart-feed-headline"
+            <div
+              className="max-h-[46vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              data-testid="smart-feed-copy-scroll"
+              onTouchStart={(e) => e.stopPropagation()}
+              onWheel={(e) => e.stopPropagation()}
             >
-              {item.headline}
-            </h2>
-
-            {item.summary ? (
-              <p
-                className="line-clamp-2 break-words text-[0.88rem] leading-snug text-white/78 sm:line-clamp-3"
-                data-testid="smart-feed-summary"
+              <h2
+                className="break-words text-[1.22rem] font-extrabold leading-[1.25] tracking-[-0.02em] text-white sm:text-[1.35rem]"
+                data-testid="smart-feed-headline"
               >
-                {item.summary}
-              </p>
-            ) : null}
+                {item.headline}
+              </h2>
+
+              {item.summary ? (
+                <p
+                  className="break-words text-[0.88rem] leading-snug text-white/78"
+                  data-testid="smart-feed-summary"
+                >
+                  {item.summary}
+                </p>
+              ) : null}
+            </div>
 
             {/* Publisher row — bottom of copy stack (reference composition) */}
             {item.publisher ? (
