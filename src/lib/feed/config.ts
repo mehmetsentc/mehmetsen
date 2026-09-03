@@ -36,6 +36,15 @@ export const FEED_MODE_LABELS: Record<FeedMode, string> = {
 export const GUEST_SEEN_STORAGE_KEY = 'nahaber_feed_seen_v1'
 export const GUEST_SEEN_MAX = 120
 
+/**
+ * Durable seen/read lookback for Smart Feed hard exclusion.
+ * Rationale: news corpus is short-lived; 30d covers multi-day reopen without
+ * unbounded lifetime history scans. Query is indexed + ORDER BY last_seen_at DESC.
+ */
+export const FEED_SEEN_LOOKBACK_DAYS = 30
+/** Max durable exclusion identities loaded per bootstrap (after lookback). */
+export const FEED_SEEN_QUERY_LIMIT = 500
+
 /** Feed position restoration after article detail. */
 export const FEED_RESTORE_STORAGE_KEY = 'nahaber_feed_restore_v1'
 /** Max age for article→back resume snapshot (ms). */

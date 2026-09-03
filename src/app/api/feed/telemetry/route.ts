@@ -41,6 +41,33 @@ export async function POST(request: Request) {
     }
   }
 
+  // Haberi Oku / article detail = durable consumed (NOT a qualified impression).
+  const articleOpens = events.filter(
+    (e) => e.eventType === 'article_opened' && typeof e.articleId === 'string' && e.articleId.trim()
+  )
+  if (articleOpens.length && hasDatabaseUrl()) {
+    const opens = articleOpens.map((e) => ({
+      articleId: e.articleId!.trim(),
+      clusterId:
+        typeof e.metadata?.clusterId === 'string'
+          ? e.metadata.clusterId
+          : typeof e.clusterId === 'string'
+            ? e.clusterId
+            : null,
+      publisherId:
+        typeof e.metadata?.publisherId === 'string'
+          ? e.metadata.publisherId
+          : null,
+      feedType: typeof e.feedType === 'string' ? e.feedType : 'personal',
+    }))
+    const feedType = opens[0]?.feedType ?? 'personal'
+    if (auth?.uid) {
+      await feedSeenService.recordArticleOpens(auth.uid, null, feedType, opens)
+    } else if (sessionId) {
+      await feedSeenService.recordArticleOpens(null, sessionId, feedType, opens)
+    }
+  }
+
   await feedTelemetryService.recordBatch(auth?.uid ?? null, sessionId, events)
 
   return NextResponse.json({ ok: true })

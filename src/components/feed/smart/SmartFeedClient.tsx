@@ -106,7 +106,14 @@ async function fetchFeedPage(opts: {
 }
 
 async function postTelemetry(payload: {
-  events?: Array<{ eventType: string; articleId?: string; feedType?: string; dwellMs?: number }>
+  events?: Array<{
+    eventType: string
+    articleId?: string
+    clusterId?: string | null
+    feedType?: string
+    dwellMs?: number
+    metadata?: Record<string, unknown>
+  }>
   impressions?: Array<{ articleId: string; clusterId?: string | null; publisherId?: string | null; feedType?: string }>
 }) {
   const headers: Record<string, string> = {
@@ -806,6 +813,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   }, [])
 
   const onRead = (item: FeedItemDto, index: number) => {
+    // Immediate back restore (ephemeral) — card may stay visible this session.
     saveFeedRestore({
       mode,
       articleId: item.articleId,
@@ -816,7 +824,21 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       timestamp: Date.now(),
       pending: true,
     })
-    void postTelemetry({ events: [{ eventType: 'article_opened', articleId: item.articleId, feedType: mode }] })
+    // Durable consumed: guest localStorage + server article_opened (not qualified impression).
+    const guestSeen = readGuestSeen()
+    for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
+    writeGuestSeen(guestSeen)
+    void postTelemetry({
+      events: [
+        {
+          eventType: 'article_opened',
+          articleId: item.articleId,
+          clusterId: item.clusterId,
+          feedType: mode,
+          metadata: { publisherId: item.publisher?.id ?? null },
+        },
+      ],
+    })
     router.push(ROUTES.NEWS_DETAIL(item.slug))
   }
 
