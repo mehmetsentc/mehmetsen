@@ -70,8 +70,8 @@ export function LikeButton({
       ) : (
         <span
           className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
-            isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800',
+            'flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm transition-colors sm:h-12 sm:w-12',
+            isOverlay ? 'bg-black/35' : 'bg-gray-100 dark:bg-gray-800',
             liked ? '!text-rose-500 dark:!text-rose-400' : isOverlay ? 'text-white' : 'text-gray-500'
           )}
         >
@@ -85,7 +85,7 @@ export function LikeButton({
       )}
       <span
         className={cn(
-          'text-xs font-semibold',
+          'text-[11px] font-bold tabular-nums sm:text-xs',
           liked && (isOverlay || isReels) ? 'text-rose-400 drop-shadow' : null,
           !liked && (isOverlay || isReels)
             ? 'text-white drop-shadow'

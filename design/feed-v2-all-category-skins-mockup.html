@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NaHaber Feed-v2 — Tüm Kategori Skin’leri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Serif:ital@0;1&family=Inter:wght@500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --brand: #e11d2e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      font-family: Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(1000px 500px at 50% -8%, #241018 0%, transparent 55%),
+        #0a0a0b;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1rem 0.85rem 2.5rem;
+    }
+    h1 { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; text-align: center; }
+    .note {
+      max-width: 34rem;
+      text-align: center;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.58);
+    }
+    .skin-switch {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      justify-content: center;
+      max-width: 42rem;
+    }
+    .skin-switch button {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.88);
+      border-radius: 999px;
+      padding: 0.38rem 0.72rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .skin-switch button[aria-pressed="true"] {
+      background: #fff;
+      color: #111;
+      border-color: #fff;
+    }
+    .meta {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+    }
+    .meta strong { color: rgba(255,255,255,0.85); font-weight: 700; }
+
+    .phone {
+      position: relative;
+      width: min(390px, 100%);
+      aspect-ratio: 390 / 844;
+      border-radius: 2rem;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+      background: #000;
+      --accent: #e11d2e;
+      --headline-font: Inter, sans-serif;
+      --headline-size: 1.38rem;
+      --headline-weight: 900;
+      --headline-style: normal;
+      --headline-transform: none;
+      --headline-tracking: -0.02em;
+      --summary-size: 1rem;
+      --badge-bg: var(--accent);
+      --badge-fg: #fff;
+      --badge-radius: 0.25rem;
+      --align: left;
+      --stack-pos: flex-end;
+      --copy-max: 100%;
+    }
+
+    .media {
+      position: absolute; inset: 0;
+      background-size: cover;
+      background-position: center;
+      transform: scale(1);
+    }
+    .phone.is-playing .media {
+      animation: mediaDolly 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes mediaDolly {
+      from { transform: scale(1); }
+      to { transform: scale(1.06); }
+    }
+    .scrim {
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.92) 0%,
+        rgba(0,0,0,0.55) 28%,
+        rgba(0,0,0,0.12) 52%,
+        rgba(0,0,0,0.28) 100%
+      );
+    }
+    .phone[data-layout="center"] .scrim {
+      background:
+        radial-gradient(ellipse 90% 55% at 50% 48%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 55%, transparent 75%),
+        linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 32%, transparent 58%),
+        linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 28%);
+    }
+
+    .frame {
+      position: absolute; inset: 0.7rem;
+      border: 1.5px solid transparent;
+      border-radius: 0.35rem;
+      pointer-events: none; opacity: 0; z-index: 2;
+    }
+    .phone[data-frame="magazine"].is-playing .frame {
+      border-color: color-mix(in srgb, var(--accent) 80%, white);
+      animation: frameIn 0.9s ease-out 0.15s forwards;
+    }
+    .phone[data-frame="thin"].is-playing .frame {
+      border-color: rgba(255,255,255,0.35);
+      inset: 0.55rem;
+      animation: frameIn 0.7s ease-out 0.1s forwards;
+    }
+    @keyframes frameIn {
+      from { opacity: 0; transform: scale(0.985); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .live-bar {
+      position: absolute; left: 0; right: 0; top: 0;
+      height: 0; z-index: 6; overflow: hidden;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .phone[data-live="1"].is-playing .live-bar {
+      animation: liveBar 0.45s ease-out forwards;
+    }
+    @keyframes liveBar {
+      from { height: 0; }
+      to { height: 1.55rem; padding-top: var(--safe-top); }
+    }
+    .live-dot {
+      width: 0.45rem; height: 0.45rem; border-radius: 999px; background: #fff;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    .wipe {
+      position: absolute; left: 0; right: 0; bottom: 36%;
+      height: 3px;
+      background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+      transform: scaleX(0); transform-origin: left;
+      z-index: 3; opacity: 0;
+    }
+    .phone[data-wipe="1"].is-playing .wipe {
+      opacity: 1;
+      animation: wipe 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+    }
+    @keyframes wipe {
+      from { transform: scaleX(0); } to { transform: scaleX(1); }
+    }
+
+    .ticker {
+      position: absolute; left: 0; right: 0; bottom: 34%;
+      height: 1.5px; z-index: 3; opacity: 0;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      overflow: hidden;
+    }
+    .phone[data-ticker="1"].is-playing .ticker {
+      opacity: 1;
+      animation: tickerIn 0.5s ease 0.25s forwards;
+    }
+    @keyframes tickerIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .tap-zone {
+      position: absolute; left: 0; right: 0; top: 16%; bottom: 40%;
+      z-index: 3; touch-action: manipulation;
+    }
+    .heart-burst {
+      position: absolute; width: 5rem; height: 5rem;
+      margin: -2.5rem 0 0 -2.5rem; pointer-events: none; color: #f43f5e;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.45));
+      animation: heartBurst 0.85s ease-out forwards;
+    }
+    @keyframes heartBurst {
+      0% { opacity: 0; transform: scale(0.35); }
+      18% { opacity: 1; transform: scale(1.15); }
+      55% { opacity: 1; transform: scale(1) translateY(-6%); }
+      100% { opacity: 0; transform: scale(0.85) translateY(-30%); }
+    }
+
+    .top {
+      position: absolute; left: 0; right: 0; top: 0; z-index: 5;
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: calc(var(--safe-top) + 2.55rem) 0.75rem 0.5rem;
+    }
+    .phone[data-live="1"].is-playing .top {
+      padding-top: calc(var(--safe-top) + 3.2rem);
+      transition: padding-top 0.35s ease;
+    }
+    .icon-btn {
+      width: 2.25rem; height: 2.25rem; border-radius: 999px; border: 0;
+      background: rgba(0,0,0,0.42); color: #fff; display: grid; place-items: center;
+      backdrop-filter: blur(8px);
+    }
+    .modes {
+      flex: 1; display: flex; gap: 0.25rem; overflow: hidden; padding: 0.2rem;
+      border-radius: 999px; background: rgba(0,0,0,0.28); backdrop-filter: blur(10px);
+    }
+    .mode {
+      flex: 0 0 auto; padding: 0.35rem 0.7rem; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.85); white-space: nowrap;
+    }
+    .mode.on { background: #fff; color: #111; }
+
+    .stack {
+      position: absolute; left: 0; right: 0; bottom: 0; top: 0;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      justify-content: var(--stack-pos);
+      padding: 0 0.85rem calc(1.05rem + var(--safe-bottom));
+      pointer-events: none;
+    }
+    .phone[data-layout="center"] .stack {
+      padding-top: 28%;
+      padding-bottom: calc(5.5rem + var(--safe-bottom));
+    }
+    .row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+      width: 100%;
+      pointer-events: auto;
+    }
+    .phone[data-layout="center"] .row {
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .copy {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 0.55rem;
+      max-width: var(--copy-max);
+      opacity: 0; transform: translateY(14px);
+      align-items: var(--align);
+      text-align: var(--align);
+    }
+    .phone[data-layout="center"] .copy {
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      transform: translateY(10px) scale(0.98);
+    }
+    .phone.is-playing .copy {
+      animation: lowerThird 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+    }
+    @keyframes lowerThird {
+      to { opacity: 1; transform: none; }
+    }
+
+    .badge-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+      justify-content: var(--align);
+    }
+    .phone[data-layout="center"] .badge-row { justify-content: center; }
+
+    .badge {
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+      background: var(--badge-bg); color: var(--badge-fg);
+      padding: 0.22rem 0.55rem; border-radius: var(--badge-radius);
+    }
+    .phone[data-badge="ghost"] .badge {
+      background: transparent; color: var(--accent);
+      padding: 0; letter-spacing: 0.14em;
+    }
+
+    .copy-panel {
+      border-radius: 1rem;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(12px);
+      padding: 0.85rem 0.9rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+      width: 100%;
+      text-align: var(--align);
+    }
+    .phone[data-layout="center"] .copy-panel {
+      background: rgba(0,0,0,0.38);
+      max-width: 22rem;
+      margin-inline: auto;
+    }
+    .phone[data-panel="soft"] .copy-panel {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .phone[data-panel="none"] .copy-panel {
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+      padding: 0;
+    }
+
+    .headline {
+      color: #fff;
+      font-family: var(--headline-font);
+      font-size: var(--headline-size);
+      font-weight: var(--headline-weight);
+      font-style: var(--headline-style);
+      letter-spacing: var(--headline-tracking);
+      text-transform: var(--headline-transform);
+      line-height: 1.2;
+      min-height: 2.2em;
+    }
+    .cursor {
+      display: inline-block; width: 0.08em; height: 0.95em; margin-left: 0.08em;
+      background: var(--accent); vertical-align: -0.08em;
+      animation: blink 0.7s step-end infinite;
+    }
+    .cursor.done { display: none; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .summary {
+      margin-top: 0.45rem;
+      font-size: var(--summary-size);
+      font-weight: 500;
+      line-height: 1.4;
+      color: rgba(255,255,255,0.92);
+      opacity: 0;
+    }
+    .summary.show { animation: fadeUp 0.4s ease forwards; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .publisher-row {
+      display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;
+      justify-content: var(--align);
+      width: 100%;
+    }
+    .phone[data-layout="center"] .publisher-row { justify-content: center; }
+
+    .publisher {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      text-decoration: none; color: inherit;
+      background: rgba(0,0,0,0.35); border-radius: 999px;
+      padding: 0.25rem 0.65rem 0.25rem 0.25rem;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+    }
+    .publisher.show { animation: fadeUp 0.35s ease 0.05s forwards; }
+    .publisher:hover .pub-name { text-decoration: underline; }
+    .avatar {
+      width: 1.75rem; height: 1.75rem; border-radius: 999px; background: var(--accent);
+      display: grid; place-items: center; font-size: 0.7rem; font-weight: 800;
+    }
+    .pub-name { font-size: 0.95rem; font-weight: 700; }
+    .pub-time { font-size: 0.72rem; color: rgba(255,255,255,0.7); }
+    .follow {
+      border: 0; background: #111; color: #fff; border-radius: 999px;
+      padding: 0.28rem 0.65rem; font-size: 0.72rem; font-weight: 700;
+    }
+    .cta {
+      align-self: var(--align);
+      border: 0; background: #fff; color: #111; border-radius: 999px;
+      padding: 0.55rem 1.1rem; font-size: 0.84rem; font-weight: 800; opacity: 0;
+    }
+    .phone[data-layout="center"] .cta { align-self: center; }
+    .cta.show { animation: fadeUp 0.35s ease forwards; }
+
+    .rail {
+      display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+      margin-bottom: 3.25rem; opacity: 0; flex-shrink: 0;
+    }
+    .phone[data-layout="center"] .rail {
+      position: absolute; right: 0.7rem; bottom: calc(1.1rem + var(--safe-bottom));
+      margin-bottom: 0;
+    }
+    .rail.show { animation: fadeUp 0.4s ease 0.1s forwards; }
+    .rail-item {
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      font-size: 0.7rem; font-weight: 800; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .rail-icon {
+      width: 2.75rem; height: 2.75rem; border-radius: 999px;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(8px);
+      display: grid; place-items: center;
+    }
+    .rail-item svg { width: 1.4rem; height: 1.4rem; }
+
+    .actions {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;
+    }
+    .actions button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: #fff; border-radius: 999px;
+      padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .phone.is-playing .media,
+      .phone.is-playing .copy,
+      .phone.is-playing .live-bar,
+      .phone.is-playing .wipe,
+      .phone.is-playing .frame,
+      .heart-burst { animation: none !important; }
+      .phone.is-playing .media { transform: scale(1.03); }
+      .phone.is-playing .copy { opacity: 1; transform: none; }
+      .cursor { display: none !important; }
+      .summary, .publisher, .cta, .rail { opacity: 1 !important; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Feed-v2 — Tüm kategori skin’leri</h1>
+  <p class="note">
+    Her kategori farklı kostüm. <strong>Ortadan başlayanlar:</strong> kültür, teknoloji, dünya, sağlık, gastronomi.
+    Çift dokunuş = beğeni. Yayıncı adına tıkla = profil.
+  </p>
+
+  <div class="skin-switch" id="switch" role="tablist" aria-label="Kategori skin"></div>
+  <p class="meta" id="meta">—</p>
+
+  <div class="phone is-playing" id="phone" data-skin="son-dakika" data-layout="bottom">
+    <div class="live-bar" aria-hidden="true"><span class="live-dot"></span><span>Son Dakika</span></div>
+    <div class="media" id="media"></div>
+    <div class="scrim"></div>
+    <div class="frame" aria-hidden="true"></div>
+    <div class="wipe" aria-hidden="true"></div>
+    <div class="ticker" aria-hidden="true"></div>
+    <div class="tap-zone" id="tapZone"></div>
+
+    <div class="top">
+      <div class="icon-btn">←</div>
+      <div class="modes">
+        <span class="mode on">Sana Özel</span>
+        <span class="mode">Takip</span>
+        <span class="mode">Son Dakika</span>
+      </div>
+      <div class="icon-btn">···</div>
+    </div>
+
+    <div class="stack">
+      <div class="row">
+        <div class="copy" id="copy">
+          <div class="badge-row"><span class="badge" id="badge">SON DAKİKA</span></div>
+          <div class="copy-panel">
+            <h2 class="headline" id="headline" aria-live="polite"></h2>
+            <p class="summary" id="summary"></p>
+          </div>
+          <div class="publisher-row">
+            <a class="publisher" id="publisher" href="/publisher/anadolu-ajansi">
+              <span class="avatar" id="avatar">A</span>
+              <span class="pub-name" id="pubName">Anadolu Ajansı</span>
+              <span class="pub-time">· 12dk önce</span>
+            </a>
+            <button type="button" class="follow">+ Takip et</button>
+          </div>
+          <button type="button" class="cta" id="cta">Haberi Oku</button>
+        </div>
+        <div class="rail" id="rail">
+          <div class="rail-item"><span class="rail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>24</div>
+          <div class="rail-item"><span class="rail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span>3</div>
+          <div class="rail-item"><span class="rail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>1</div>
+          <div class="rail-item"><span class="rail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></span>Paylaş</div>
+          <div class="rail-item">2 / 15 ▾</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="replay">▶ Animasyonu tekrar</button>
+    <button type="button" id="next">Sonraki kategori →</button>
+  </div>
+
+  <script>
+    const SKINS = {
+      'son-dakika': {
+        label: 'Son Dakika',
+        layout: 'bottom', live: true, wipe: false, ticker: false, frame: 'none', badge: 'solid', panel: 'dark',
+        accent: '#e11d2e',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.38rem', headlineWeight: '900',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.02em',
+        summarySize: '1rem', badgeRadius: '0.2rem', typeMs: 20,
+        image: 'https://images.unsplash.com/photo-1586339949916-3e9457bef6d3?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'SON DAKİKA',
+        headline: 'İstanbul’da yoğun yağış: Bazı ilçelerde ulaşım aksadı',
+        summary: 'Meteoroloji uyarıyı yükseltti. Belediye ekipleri sahada; kritik kavşaklarda trafik yoğun.',
+        pub: 'Anadolu Ajansı', avatar: 'A', href: '/publisher/anadolu-ajansi',
+        blurb: 'Kırmızı live bar · agresif daktilo · alt lower-third',
+      },
+      gundem: {
+        label: 'Gündem',
+        layout: 'bottom', live: false, wipe: false, ticker: false, frame: 'none', badge: 'solid', panel: 'dark',
+        accent: '#e11d2e',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.36rem', headlineWeight: '800',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.02em',
+        summarySize: '1rem', badgeRadius: '0.35rem', typeMs: 26,
+        image: 'https://images.unsplash.com/photo-1504711334032-d2a4e4d3d0b0?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'GÜNDEM',
+        headline: 'Meclis’te yoğun mesai: Yeni düzenleme görüşülecek',
+        summary: 'Komisyon çalışmaları tamamlandı. Genel kurulda kritik maddeler sıraya alındı.',
+        pub: 'Anadolu Ajansı', avatar: 'A', href: '/publisher/anadolu-ajansi',
+        blurb: 'Baseline Reels · ciddi sans · dolgulu panel',
+      },
+      siyaset: {
+        label: 'Siyaset',
+        layout: 'bottom', live: false, wipe: false, ticker: false, frame: 'none', badge: 'ghost', panel: 'none',
+        accent: '#cbd5e1',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.32rem', headlineWeight: '800',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.015em',
+        summarySize: '0.95rem', badgeRadius: '0', typeMs: 28,
+        image: 'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'SİYASET',
+        headline: 'Parti genel başkanları ortak açıklama için bir araya geliyor',
+        summary: 'Gündem: seçim takvimi ve ekonomi paketinin ikinci ayağı.',
+        pub: 'Habertürk', avatar: 'H', href: '/publisher/haberturk',
+        blurb: 'Minimal chrome · panelsiz · soğuk accent',
+      },
+      magazin: {
+        label: 'Magazin',
+        layout: 'bottom', live: false, wipe: false, ticker: false, frame: 'magazine', badge: 'ghost', panel: 'dark',
+        accent: '#f4b460',
+        headlineFont: '"Instrument Serif", Georgia, serif', headlineSize: '1.5rem', headlineWeight: '400',
+        headlineStyle: 'italic', headlineTransform: 'none', headlineTracking: '-0.01em',
+        summarySize: '0.95rem', badgeRadius: '0', typeMs: 34,
+        image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'MAGAZİN',
+        headline: 'Kırmızı halıda gece: Yeni dizi galası konuşuluyor',
+        summary: 'Yıldızlar İstanbul’da buluştu. Stil seçimleri ve sahne arkası kısa kesitler.',
+        pub: 'Chip', avatar: 'C', href: '/publisher/chip',
+        blurb: 'Altın çerçeve · serif daktilo · editorial',
+      },
+      kultur: {
+        label: 'Kültür',
+        layout: 'center', live: false, wipe: false, ticker: false, frame: 'thin', badge: 'ghost', panel: 'soft',
+        accent: '#e8c4a8',
+        headlineFont: '"Instrument Serif", Georgia, serif', headlineSize: '1.55rem', headlineWeight: '400',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.01em',
+        summarySize: '0.95rem', badgeRadius: '0', typeMs: 32,
+        image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'KÜLTÜR',
+        headline: 'İstanbul’da yeni sergi: Kentin sesleri bir arada',
+        summary: 'Çağdaş sanat ve arşiv görüntüleri aynı mekânda buluşuyor.',
+        pub: 'Sanat Dünyamız', avatar: 'S', href: '/publisher/sanat-dunyamiz',
+        blurb: 'ORTA hizalı · ince frame · yumuşak panel',
+      },
+      spor: {
+        label: 'Spor',
+        layout: 'bottom', live: false, wipe: true, ticker: false, frame: 'none', badge: 'solid', panel: 'dark',
+        accent: '#16a34a',
+        headlineFont: '"Bebas Neue", Impact, sans-serif', headlineSize: '1.75rem', headlineWeight: '400',
+        headlineStyle: 'normal', headlineTransform: 'uppercase', headlineTracking: '0.02em',
+        summarySize: '0.95rem', badgeRadius: '999px', typeMs: 16,
+        image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'SPOR',
+        headline: 'Derbiye son 48 saat: Kadrolar netleşiyor',
+        summary: 'Teknik direktörler basın toplantısında mesaj verdi. Stadyum çevresi hazırlık temposunda.',
+        pub: 'Fanatik', avatar: 'F', href: '/publisher/fanatik',
+        blurb: 'Condensed başlık · renk wipe · pill badge',
+      },
+      ekonomi: {
+        label: 'Ekonomi',
+        layout: 'bottom', live: false, wipe: false, ticker: true, frame: 'none', badge: 'solid', panel: 'dark',
+        accent: '#3b82f6',
+        headlineFont: '"Space Grotesk", Inter, sans-serif', headlineSize: '1.32rem', headlineWeight: '700',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.01em',
+        summarySize: '0.95rem', badgeRadius: '0.2rem', typeMs: 24,
+        image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'EKONOMİ',
+        headline: 'Piyasalarda temkinli seyir: Gözler faiz kararında',
+        summary: 'Analistler kısa vadede volatilitenin süreceğini öngörüyor.',
+        pub: 'Bloomberg HT', avatar: 'B', href: '/publisher/bloomberg-ht',
+        blurb: 'Mavi ticker çizgisi · grotesk tipografi',
+      },
+      teknoloji: {
+        label: 'Teknoloji',
+        layout: 'center', live: false, wipe: false, ticker: false, frame: 'none', badge: 'solid', panel: 'soft',
+        accent: '#22d3ee',
+        headlineFont: '"Space Grotesk", Inter, sans-serif', headlineSize: '1.4rem', headlineWeight: '700',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.025em',
+        summarySize: '0.95rem', badgeRadius: '0.35rem', typeMs: 26,
+        image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'TEKNOLOJİ',
+        headline: 'Yeni yapay zekâ modeli günlük iş akışını hızlandırıyor',
+        summary: 'Geliştiriciler için API erişimi açıldı; ilk entegrasyon örnekleri yayında.',
+        pub: 'Chip', avatar: 'C', href: '/publisher/chip',
+        blurb: 'ORTA hizalı · cyan accent · product dili',
+      },
+      dunya: {
+        label: 'Dünya',
+        layout: 'center', live: false, wipe: false, ticker: false, frame: 'none', badge: 'ghost', panel: 'none',
+        accent: '#94a3b8',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.42rem', headlineWeight: '800',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.02em',
+        summarySize: '0.95rem', badgeRadius: '0', typeMs: 30,
+        image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'DÜNYA',
+        headline: 'Uluslararası görüşmeler yeni turda devam ediyor',
+        summary: 'Taraflar ortak bildiride ‘dikkatli iyimserlik’ mesajı verdi.',
+        pub: 'BBC Türkçe', avatar: 'B', href: '/publisher/bbc-turkce',
+        blurb: 'ORTA · documentary · panelsiz, görsel konuşur',
+      },
+      saglik: {
+        label: 'Sağlık',
+        layout: 'center', live: false, wipe: false, ticker: false, frame: 'thin', badge: 'solid', panel: 'soft',
+        accent: '#2dd4bf',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.36rem', headlineWeight: '800',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.02em',
+        summarySize: '0.98rem', badgeRadius: '999px', typeMs: 28,
+        image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'SAĞLIK',
+        headline: 'Uzmanlar uyardı: Mevsim geçişinde bağışıklık desteği önemli',
+        summary: 'Uyku, sıvı ve dengeli beslenme önerileri yenilendi.',
+        pub: 'NTV', avatar: 'N', href: '/publisher/ntv',
+        blurb: 'ORTA · teal · ince frame · yumuşak panel',
+      },
+      yerel: {
+        label: 'Yerel',
+        layout: 'bottom', live: false, wipe: false, ticker: false, frame: 'none', badge: 'solid', panel: 'dark',
+        accent: '#f59e0b',
+        headlineFont: 'Inter, sans-serif', headlineSize: '1.34rem', headlineWeight: '800',
+        headlineStyle: 'normal', headlineTransform: 'none', headlineTracking: '-0.02em',
+        summarySize: '0.98rem', badgeRadius: '0.35rem', typeMs: 24,
+        image: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'YEREL',
+        headline: 'Çanakkale’de sahil düzenlemesi için yeni takvim açıklandı',
+        summary: 'Belediye: çalışmalar yaz sezonu öncesinde tamamlanacak.',
+        pub: 'Çanakkale Olay', avatar: 'Ç', href: '/publisher/canakkale-olay',
+        blurb: 'Sıcak amber · yerel chip hissi · alt stack',
+      },
+      gastronomi: {
+        label: 'Gastronomi',
+        layout: 'center', live: false, wipe: false, ticker: false, frame: 'magazine', badge: 'solid', panel: 'soft',
+        accent: '#fb7185',
+        headlineFont: '"Instrument Serif", Georgia, serif', headlineSize: '1.52rem', headlineWeight: '400',
+        headlineStyle: 'italic', headlineTransform: 'none', headlineTracking: '-0.01em',
+        summarySize: '0.95rem', badgeRadius: '999px', typeMs: 33,
+        image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=80',
+        badgeText: 'GASTRONOMİ',
+        headline: 'Şeflerin yeni menüsü: Mevsimin en iyi halleri',
+        summary: 'Yerel üreticiden sofraya kısa mesafe hikâyesi.',
+        pub: 'Sofra', avatar: 'S', href: '/publisher/sofra',
+        blurb: 'ORTA · rose frame · lifestyle serif',
+      },
+    }
+
+    const ORDER = Object.keys(SKINS)
+    const phone = document.getElementById('phone')
+    const switchEl = document.getElementById('switch')
+    const metaEl = document.getElementById('meta')
+    const media = document.getElementById('media')
+    const headlineEl = document.getElementById('headline')
+    const summaryEl = document.getElementById('summary')
+    const publisherEl = document.getElementById('publisher')
+    const ctaEl = document.getElementById('cta')
+    const railEl = document.getElementById('rail')
+    const badgeEl = document.getElementById('badge')
+    const pubName = document.getElementById('pubName')
+    const avatar = document.getElementById('avatar')
+    const tapZone = document.getElementById('tapZone')
+    let typeTimer = null
+    let reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+    let lastTap = 0
+    let liked = false
+    let current = 'son-dakika'
+
+    ORDER.forEach((key) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.dataset.skin = key
+      btn.textContent = SKINS[key].label
+      btn.setAttribute('aria-pressed', key === current ? 'true' : 'false')
+      btn.addEventListener('click', () => play(key))
+      switchEl.appendChild(btn)
+    })
+
+    function clearType() {
+      if (typeTimer) { clearTimeout(typeTimer); typeTimer = null }
+    }
+
+    function applySkinVars(s) {
+      phone.style.setProperty('--accent', s.accent)
+      phone.style.setProperty('--headline-font', s.headlineFont)
+      phone.style.setProperty('--headline-size', s.headlineSize)
+      phone.style.setProperty('--headline-weight', s.headlineWeight)
+      phone.style.setProperty('--headline-style', s.headlineStyle)
+      phone.style.setProperty('--headline-transform', s.headlineTransform)
+      phone.style.setProperty('--headline-tracking', s.headlineTracking)
+      phone.style.setProperty('--summary-size', s.summarySize)
+      phone.style.setProperty('--badge-bg', s.badge === 'ghost' ? 'transparent' : s.accent)
+      phone.style.setProperty('--badge-fg', s.badge === 'ghost' ? s.accent : '#fff')
+      phone.style.setProperty('--badge-radius', s.badgeRadius)
+      phone.style.setProperty('--align', s.layout === 'center' ? 'center' : 'flex-start')
+      phone.style.setProperty('--stack-pos', s.layout === 'center' ? 'center' : 'flex-end')
+      phone.dataset.layout = s.layout
+      phone.dataset.live = s.live ? '1' : '0'
+      phone.dataset.wipe = s.wipe ? '1' : '0'
+      phone.dataset.ticker = s.ticker ? '1' : '0'
+      phone.dataset.frame = s.frame
+      phone.dataset.badge = s.badge
+      phone.dataset.panel = s.panel
+      media.style.backgroundImage = `url("${s.image}")`
+    }
+
+    function showChromeSoon() {
+      requestAnimationFrame(() => {
+        publisherEl.classList.add('show')
+        ctaEl.classList.add('show')
+        railEl.classList.add('show')
+      })
+    }
+
+    function burstHeart(x, y) {
+      const el = document.createElement('div')
+      el.className = 'heart-burst'
+      el.style.left = x + 'px'
+      el.style.top = y + 'px'
+      el.innerHTML = '<svg viewBox="0 0 24 24" width="80" height="80" fill="currentColor"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>'
+      tapZone.appendChild(el)
+      setTimeout(() => el.remove(), 900)
+      liked = true
+    }
+
+    tapZone.addEventListener('pointerup', (e) => {
+      const now = Date.now()
+      if (now - lastTap < 280) {
+        const rect = tapZone.getBoundingClientRect()
+        burstHeart(e.clientX - rect.left, e.clientY - rect.top)
+        lastTap = 0
+      } else lastTap = now
+    })
+
+    function typeHeadline(text, ms, summary) {
+      clearType()
+      headlineEl.replaceChildren()
+      summaryEl.classList.remove('show')
+      summaryEl.textContent = ''
+      if (reduced) {
+        headlineEl.textContent = text
+        summaryEl.textContent = summary
+        summaryEl.classList.add('show')
+        return
+      }
+      const textNode = document.createTextNode('')
+      const cursor = document.createElement('span')
+      cursor.className = 'cursor'
+      cursor.setAttribute('aria-hidden', 'true')
+      headlineEl.append(textNode, cursor)
+      let i = 0
+      const tick = () => {
+        if (i <= text.length) {
+          textNode.textContent = text.slice(0, i)
+          i += 1
+          typeTimer = setTimeout(tick, ms)
+          return
+        }
+        cursor.classList.add('done')
+        summaryEl.textContent = summary
+        summaryEl.classList.add('show')
+      }
+      tick()
+    }
+
+    function play(key) {
+      current = key
+      liked = false
+      const s = SKINS[key]
+      clearType()
+      ;[...switchEl.children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.skin === key ? 'true' : 'false'))
+      applySkinVars(s)
+      phone.classList.remove('is-playing')
+      void phone.offsetWidth
+      phone.classList.add('is-playing')
+
+      badgeEl.textContent = s.badgeText
+      pubName.textContent = s.pub
+      avatar.textContent = s.avatar
+      publisherEl.href = s.href
+      metaEl.innerHTML = `<strong>${s.label}</strong> · layout: ${s.layout === 'center' ? 'ORTA' : 'alt'} · ${s.blurb}`
+
+      publisherEl.classList.remove('show')
+      ctaEl.classList.remove('show')
+      railEl.classList.remove('show')
+      summaryEl.classList.remove('show')
+      showChromeSoon()
+      setTimeout(() => typeHeadline(s.headline, s.typeMs, s.summary), reduced ? 0 : 160)
+    }
+
+    document.getElementById('replay').onclick = () => play(current)
+    document.getElementById('next').onclick = () => {
+      const i = ORDER.indexOf(current)
+      play(ORDER[(i + 1) % ORDER.length])
+    }
+
+    play('son-dakika')
+  </script>
+</body>
+</html>

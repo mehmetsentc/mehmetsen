@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ChevronDown, Layers, Newspaper, Zap } from 'lucide-react'
+import { Check, ChevronDown, Heart, Layers, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
@@ -11,6 +11,7 @@ import { SocialActionRail } from '@/components/social/SocialActionRail'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
+import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -49,6 +50,20 @@ function categoryLabel(raw: string | null | undefined): string | null {
   return map[key] ?? raw.replace(/-/g, ' ').toUpperCase()
 }
 
+/** Prefer real profile slug; fall back to id when it is a routable slug. */
+function publisherProfileHref(publisher: {
+  slug?: string | null
+  id?: string | null
+}): string | null {
+  if (isPublisherProfileSlug(publisher.slug)) {
+    return ROUTES.PUBLISHER(publisher.slug!.trim().toLowerCase())
+  }
+  if (isPublisherProfileSlug(publisher.id)) {
+    return ROUTES.PUBLISHER(publisher.id!.trim().toLowerCase())
+  }
+  return null
+}
+
 interface FullscreenNewsCardProps {
   item: FeedItemDto
   isActive: boolean
@@ -79,6 +94,9 @@ interface FullscreenNewsCardProps {
 const MODE_NAV_CLEARANCE =
   'pt-[max(5.5rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+4.25rem))]'
 
+const DOUBLE_TAP_MS = 280
+const TAP_MOVE_PX = 14
+
 export function FullscreenNewsCard({
   item,
   isActive,
@@ -100,6 +118,13 @@ export function FullscreenNewsCard({
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
+  const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
+
+  const lastTapRef = useRef(0)
+  const tapOriginRef = useRef<{ x: number; y: number } | null>(null)
+  const movedRef = useRef(false)
+  const likedRef = useRef(liked)
+  likedRef.current = liked
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const showVideo = Boolean(videoEnabled && item.video && isActive)
@@ -114,6 +139,99 @@ export function FullscreenNewsCard({
     typeof cardIndex === 'number' && typeof cardTotal === 'number' && cardTotal > 0
       ? `${cardIndex} / ${cardTotal}`
       : null
+  const publisherHref = item.publisher ? publisherProfileHref(item.publisher) : null
+  const skin = resolveFeedCardSkin(item.category, { breaking: item.breaking })
+  const isCenter = skin.layout === 'center'
+
+  const triggerDoubleTapLike = useCallback(
+    (clientX: number, clientY: number, target: HTMLElement) => {
+      const rect = target.getBoundingClientRect()
+      const x = clientX - rect.left
+      const y = clientY - rect.top
+      const id = Date.now()
+      setHeartBurst({ id, x, y })
+      window.setTimeout(() => {
+        setHeartBurst((prev) => (prev?.id === id ? null : prev))
+      }, 900)
+      // Instagram-style: double-tap likes; does not unlike
+      if (!likedRef.current) onToggleLike()
+    },
+    [onToggleLike]
+  )
+
+  const onTapZonePointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    movedRef.current = false
+    tapOriginRef.current = { x: e.clientX, y: e.clientY }
+  }, [])
+
+  const onTapZonePointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const origin = tapOriginRef.current
+    if (!origin) return
+    if (
+      Math.abs(e.clientX - origin.x) > TAP_MOVE_PX ||
+      Math.abs(e.clientY - origin.y) > TAP_MOVE_PX
+    ) {
+      movedRef.current = true
+    }
+  }, [])
+
+  const onTapZonePointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (movedRef.current) {
+        lastTapRef.current = 0
+        tapOriginRef.current = null
+        return
+      }
+      const now = Date.now()
+      if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+        lastTapRef.current = 0
+        triggerDoubleTapLike(e.clientX, e.clientY, e.currentTarget)
+      } else {
+        lastTapRef.current = now
+      }
+      tapOriginRef.current = null
+    },
+    [triggerDoubleTapLike]
+  )
+
+  const publisherBlock = item.publisher ? (
+    <>
+      {item.publisher.logoUrl && !logoError ? (
+        <Image
+          src={item.publisher.logoUrl}
+          alt={item.publisher.name}
+          width={28}
+          height={28}
+          className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/25"
+          onError={() => setLogoError(true)}
+          unoptimized={
+            item.publisher.logoUrl.startsWith('http://') ||
+            item.publisher.logoUrl.startsWith('https://')
+          }
+        />
+      ) : (
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+          {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+        </span>
+      )}
+      <span className="min-w-0 truncate text-[0.95rem] font-bold text-white underline-offset-2 group-hover:underline">
+        {item.publisher.name}
+      </span>
+      {publisherHref ? (
+        <span
+          className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
+          title="Doğrulanmış"
+          aria-label="Doğrulanmış yayıncı"
+        >
+          <Check className="h-2.5 w-2.5 stroke-[3]" aria-hidden />
+        </span>
+      ) : null}
+      {timeLabel ? (
+        <span className="shrink-0 text-xs font-medium text-white/70">· {timeLabel}</span>
+      ) : null}
+    </>
+  ) : null
 
   return (
     <article
@@ -122,15 +240,20 @@ export function FullscreenNewsCard({
       aria-label={item.headline}
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}
+      data-feed-skin={skin.id}
+      data-feed-layout={skin.layout}
       data-testid="smart-feed-card"
+      style={{ ['--feed-skin-accent' as string]: skin.accent }}
     >
-      {/* Full-bleed media canvas — continuous Reels composition */}
       <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
             key={item.video!}
             src={item.video!}
-            className="h-full w-full object-cover"
+            className={cn(
+              'h-full w-full object-cover',
+              isActive && 'animate-[smart-feed-media-dolly_3.2s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+            )}
             autoPlay
             playsInline
             muted
@@ -155,7 +278,10 @@ export function FullscreenNewsCard({
               src={item.image!}
               alt={item.headline || ''}
               fill
-              className="object-cover object-center"
+              className={cn(
+                'object-cover object-center',
+                isActive && 'animate-[smart-feed-media-dolly_3.2s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+              )}
               sizes="100vw"
               priority={isActive}
               onError={() => setImageError(true)}
@@ -180,36 +306,133 @@ export function FullscreenNewsCard({
         )}
 
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[22%] bg-gradient-to-b from-black/50 via-black/15 to-transparent"
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 h-[22%] bg-gradient-to-b from-black/50 via-black/15 to-transparent',
+            isCenter && 'from-black/40'
+          )}
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black via-black/75 to-transparent"
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-black via-black/80 to-transparent',
+            isCenter && 'h-[55%] via-black/55'
+          )}
           aria-hidden
         />
+
+        {skin.frame !== 'none' ? (
+          <div
+            className={cn(
+              'pointer-events-none absolute z-[2] rounded-md border-[1.5px]',
+              skin.frame === 'magazine'
+                ? 'inset-3 border-[color:var(--feed-skin-accent)]/75'
+                : 'inset-2.5 border-white/35',
+              isActive && 'animate-[smart-feed-frame-in_0.85s_ease-out_forwards]'
+            )}
+            aria-hidden
+            data-testid="smart-feed-skin-frame"
+          />
+        ) : null}
+
+        {skin.wipe ? (
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-x-0 bottom-[36%] z-[3] h-[3px] origin-left scale-x-0 bg-gradient-to-r from-green-500 via-yellow-400 to-red-500',
+              isActive &&
+                'animate-[smart-feed-wipe_0.7s_cubic-bezier(0.16,1,0.3,1)_0.15s_forwards]'
+            )}
+            aria-hidden
+          />
+        ) : null}
+
+        {skin.ticker ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-[34%] z-[3] h-px bg-gradient-to-r from-transparent via-[color:var(--feed-skin-accent)] to-transparent opacity-90"
+            aria-hidden
+          />
+        ) : null}
       </div>
+
+      {skin.liveBar ? (
+        <div
+          className={cn(
+            'absolute inset-x-0 top-0 z-[6] flex h-0 items-center justify-center gap-2 overflow-hidden bg-[color:var(--feed-skin-accent)] text-[0.68rem] font-extrabold uppercase tracking-[0.12em] text-white',
+            isActive && 'animate-[smart-feed-live-bar_0.45s_ease-out_forwards]'
+          )}
+          aria-hidden
+          data-testid="smart-feed-live-bar"
+        >
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+          Son Dakika
+        </div>
+      ) : null}
 
       <div
         className={cn(
           'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
           'pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]',
           MODE_NAV_CLEARANCE,
-          'md:mx-auto md:w-full md:max-w-lg'
+          'md:mx-auto md:w-full md:max-w-lg',
+          isCenter &&
+            'justify-center pt-[max(6.5rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+5rem))]'
         )}
       >
-        {/* Open media mid-band — no publisher chrome here */}
-        <div className="min-h-[18vh] flex-1" aria-hidden data-testid="smart-feed-media-breathing" />
+        <div
+          className={cn(
+            'relative touch-manipulation',
+            isCenter ? 'absolute inset-x-3 top-[18%] bottom-[42%] z-[1]' : 'min-h-[12vh] flex-1'
+          )}
+          aria-hidden
+          data-testid="smart-feed-double-tap-zone"
+          onPointerDown={onTapZonePointerDown}
+          onPointerMove={onTapZonePointerMove}
+          onPointerUp={onTapZonePointerUp}
+          onPointerCancel={() => {
+            lastTapRef.current = 0
+            tapOriginRef.current = null
+          }}
+        >
+          {heartBurst ? (
+            <span
+              key={heartBurst.id}
+              className="pointer-events-none absolute z-30 animate-[smart-feed-heart-burst_0.85s_ease-out_forwards]"
+              style={{ left: heartBurst.x, top: heartBurst.y }}
+              data-testid="smart-feed-heart-burst"
+            >
+              <Heart className="h-20 w-20 fill-rose-500 text-rose-500 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]" />
+            </span>
+          ) : null}
+        </div>
 
-        {/* Bottom stack: copy + publisher + CTA | social rail + progress */}
-        <div className="relative flex items-end gap-3">
-          <div className="min-w-0 flex-1 space-y-2.5 pr-1" data-testid="smart-feed-text-zone">
-            <div className="flex flex-wrap items-center gap-2">
+        <div
+          className={cn(
+            'relative z-[2] flex gap-3',
+            isCenter ? 'flex-col items-center text-center' : 'items-end'
+          )}
+        >
+          <div
+            className={cn(
+              'min-w-0 space-y-2.5',
+              isCenter ? 'flex w-full max-w-md flex-col items-center px-1' : 'flex-1 pr-1'
+            )}
+            data-testid="smart-feed-text-zone"
+          >
+            <div className={cn('flex flex-wrap items-center gap-2', isCenter && 'justify-center')}>
               {cat ? (
-                <span className="text-[11px] font-extrabold tracking-[0.06em] text-[rgb(var(--color-brand))]">
+                <span
+                  className={cn(
+                    'text-[11px] font-extrabold tracking-[0.06em]',
+                    skin.badge === 'ghost'
+                      ? 'text-[color:var(--feed-skin-accent)]'
+                      : 'rounded-md px-2 py-0.5 text-white backdrop-blur-sm',
+                    skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
+                    skin.id === 'spor' && 'rounded-full'
+                  )}
+                >
                   {cat}
                 </span>
               ) : null}
-              {item.breaking ? (
+              {item.breaking && skin.id !== 'son-dakika' ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
                   <Zap className="h-3 w-3" aria-hidden />
                   Son Dakika
@@ -229,104 +452,60 @@ export function FullscreenNewsCard({
             </div>
 
             <div
-              className="max-h-[46vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              className={cn(
+                'max-h-[48vh] space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
+                skin.panel === 'dark' &&
+                  'rounded-2xl bg-black/42 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-3.5',
+                skin.panel === 'soft' &&
+                  'rounded-2xl border border-white/12 bg-white/10 p-3 backdrop-blur-md sm:p-3.5',
+                skin.panel === 'none' && 'p-0',
+                isCenter && 'w-full text-center'
+              )}
               data-testid="smart-feed-copy-scroll"
               onTouchStart={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
             >
-              <h2
-                className="break-words text-[1.22rem] font-extrabold leading-[1.25] tracking-[-0.02em] text-white sm:text-[1.35rem]"
-                data-testid="smart-feed-headline"
-              >
+              <h2 className={cn('break-words', skin.headlineClass)} data-testid="smart-feed-headline">
                 {item.headline}
               </h2>
 
               {item.summary ? (
-                <p
-                  className="break-words text-[0.88rem] leading-snug text-white/78"
-                  data-testid="smart-feed-summary"
-                >
+                <p className={cn('break-words', skin.summaryClass)} data-testid="smart-feed-summary">
                   {item.summary}
                 </p>
               ) : null}
             </div>
 
-            {/* Publisher row — bottom of copy stack (reference composition) */}
             {item.publisher ? (
               <div
-                className="flex min-w-0 flex-wrap items-center gap-2"
+                className={cn(
+                  'flex min-w-0 flex-wrap items-center gap-2',
+                  isCenter && 'justify-center'
+                )}
                 data-testid="smart-feed-publisher-row"
               >
-                {isPublisherProfileSlug(item.publisher.slug) ? (
+                {publisherHref ? (
                   <Link
-                    href={ROUTES.PUBLISHER(item.publisher.slug)}
-                    className="flex min-w-0 max-w-full items-center gap-2"
+                    href={publisherHref}
+                    className="group flex min-w-0 max-w-full items-center gap-2 rounded-full bg-black/35 py-1 pl-1 pr-2.5 backdrop-blur-sm"
+                    data-testid="smart-feed-publisher-link"
                   >
-                    {item.publisher.logoUrl && !logoError ? (
-                      <Image
-                        src={item.publisher.logoUrl}
-                        alt={item.publisher.name}
-                        width={28}
-                        height={28}
-                        className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/20"
-                        onError={() => setLogoError(true)}
-                        unoptimized={
-                          item.publisher.logoUrl.startsWith('http://') ||
-                          item.publisher.logoUrl.startsWith('https://')
-                        }
-                      />
-                    ) : (
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
-                        {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                      </span>
-                    )}
-                    <span className="min-w-0 truncate text-sm font-semibold text-white">
-                      {item.publisher.name}
-                    </span>
-                    <span
-                      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
-                      title="Doğrulanmış"
-                      aria-label="Doğrulanmış yayıncı"
-                    >
-                      <Check className="h-2.5 w-2.5 stroke-[3]" aria-hidden />
-                    </span>
-                    {timeLabel ? (
-                      <span className="shrink-0 text-xs text-white/65">· {timeLabel}</span>
-                    ) : null}
+                    {publisherBlock}
                   </Link>
                 ) : (
-                  <div className="flex min-w-0 items-center gap-2">
-                    {item.publisher.logoUrl && !logoError ? (
-                      <Image
-                        src={item.publisher.logoUrl}
-                        alt={item.publisher.name}
-                        width={28}
-                        height={28}
-                        className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/20"
-                        onError={() => setLogoError(true)}
-                        unoptimized={
-                          item.publisher.logoUrl.startsWith('http://') ||
-                          item.publisher.logoUrl.startsWith('https://')
-                        }
-                      />
-                    ) : (
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
-                        {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                      </span>
-                    )}
-                    <span className="min-w-0 truncate text-sm font-semibold text-white">
-                      {item.publisher.name}
-                    </span>
-                    {timeLabel ? (
-                      <span className="shrink-0 text-xs text-white/65">· {timeLabel}</span>
-                    ) : null}
+                  <div className="flex min-w-0 items-center gap-2 rounded-full bg-black/35 py-1 pl-1 pr-2.5 backdrop-blur-sm">
+                    {publisherBlock}
                   </div>
                 )}
                 {isFollowablePublisherId(item.publisher.id) ? (
                   <FollowButton
                     publisherId={item.publisher.id}
                     publisherSlug={
-                      isPublisherProfileSlug(item.publisher.slug) ? item.publisher.slug : undefined
+                      isPublisherProfileSlug(item.publisher.slug)
+                        ? item.publisher.slug
+                        : isPublisherProfileSlug(item.publisher.id)
+                          ? item.publisher.id
+                          : undefined
                     }
                     className="shrink-0"
                     showCount={false}
@@ -341,7 +520,10 @@ export function FullscreenNewsCard({
               type="button"
               onClick={onReadClick}
               data-testid="smart-feed-read-cta"
-              className="mt-0.5 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-black transition hover:bg-white/95 active:scale-[0.99]"
+              className={cn(
+                'mt-0.5 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-black transition hover:bg-white/95 active:scale-[0.99]',
+                isCenter && 'self-center'
+              )}
             >
               Haberi Oku
             </button>
@@ -350,10 +532,12 @@ export function FullscreenNewsCard({
               <pre className="max-h-24 overflow-auto rounded bg-black/60 p-2 text-[10px] text-green-300">
                 {JSON.stringify(
                   {
+                    skin: skin.id,
+                    layout: skin.layout,
                     reason: item.reason,
-                    scoreBreakdown: item.scoreBreakdown,
-                    clusterId: item.clusterId,
-                    articleId: item.articleId,
+                    category: item.category,
+                    publisherSlug: item.publisher?.slug,
+                    publisherId: item.publisher?.id,
                   },
                   null,
                   0
@@ -362,7 +546,12 @@ export function FullscreenNewsCard({
             ) : null}
           </div>
 
-          <div className="relative z-20 mb-0.5 flex shrink-0 flex-col items-center gap-3">
+          <div
+            className={cn(
+              'relative z-20 flex shrink-0 flex-col items-center gap-3',
+              isCenter ? 'absolute bottom-2 right-0 mb-0' : 'mb-14 self-end sm:mb-16'
+            )}
+          >
             <SocialActionRail
               articleId={item.articleId}
               slug={item.slug}

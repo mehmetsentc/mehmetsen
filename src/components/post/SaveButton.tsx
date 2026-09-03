@@ -53,7 +53,7 @@ export function SaveButton({
       aria-label={saved ? 'Kayıttan kaldır' : 'Kaydet'}
       data-testid="smart-feed-save"
       className={cn(
-        'flex flex-col items-center gap-1.5 transition-transform active:scale-90 disabled:opacity-60',
+        'flex flex-col items-center gap-1 transition-transform active:scale-90 disabled:opacity-60',
         isReels || isOverlay
           ? 'text-white'
           : 'text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400'
@@ -64,8 +64,8 @@ export function SaveButton({
       ) : (
         <span
           className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
-            isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800',
+            'flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm transition-colors sm:h-12 sm:w-12',
+            isOverlay ? 'bg-black/35' : 'bg-gray-100 dark:bg-gray-800',
             saved ? '!text-amber-400 dark:!text-amber-300' : isOverlay ? 'text-white' : 'text-gray-500'
           )}
         >
@@ -75,7 +75,7 @@ export function SaveButton({
       {!isReels && (
         <span
           className={cn(
-            'text-xs font-semibold',
+            'text-[11px] font-bold tabular-nums sm:text-xs',
             isOverlay
               ? 'text-white drop-shadow'
               : 'text-gray-600 dark:text-gray-400'

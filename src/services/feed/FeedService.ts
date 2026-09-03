@@ -1,8 +1,9 @@
 import 'server-only'
 
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, or } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
+import { publisherSources, publishers } from '@/db/schema/publishers'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
@@ -43,7 +44,11 @@ function clampLimit(limit?: number): number {
 function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
   const scored = 'score' in row ? row : null
   const rawSlug = row.publisherSlug ?? null
-  const linkableSlug = isPublisherProfileSlug(rawSlug) ? rawSlug!.trim().toLowerCase() : null
+  const idAsSlug =
+    row.publisherId && isPublisherProfileSlug(row.publisherId) ? row.publisherId.trim().toLowerCase() : null
+  const linkableSlug = isPublisherProfileSlug(rawSlug)
+    ? rawSlug!.trim().toLowerCase()
+    : idAsSlug
   return {
     id: row.articleId,
     type: 'article',
@@ -111,6 +116,57 @@ async function loadSocialState(userId: string | null, articleIds: string[]): Pro
     // Graceful fallback if social state query is unavailable
   }
   return map
+}
+
+/**
+ * Fill missing publisherSlug so feed cards can link to /publisher/[slug].
+ * Resolves publishers.id and publisher_sources.sourceId → publishers.slug.
+ */
+async function enrichPublisherSlugs<T extends FeedCandidateRow | ScoredFeedCandidate>(
+  rows: T[]
+): Promise<T[]> {
+  if (!rows.length || !hasDatabaseUrl()) return rows
+
+  const needKeys = new Set<string>()
+  for (const row of rows) {
+    if (isPublisherProfileSlug(row.publisherSlug)) continue
+    if (row.publisherId?.trim()) needKeys.add(row.publisherId.trim())
+  }
+  if (!needKeys.size) return rows
+
+  try {
+    const db = getDb()
+    const keys = [...needKeys]
+    const found = await db
+      .select({
+        id: publishers.id,
+        slug: publishers.slug,
+        sourceId: publisherSources.sourceId,
+      })
+      .from(publishers)
+      .leftJoin(publisherSources, eq(publisherSources.publisherId, publishers.id))
+      .where(or(inArray(publishers.id, keys), inArray(publisherSources.sourceId, keys)))
+
+    const slugByKey = new Map<string, string>()
+    for (const row of found) {
+      if (!isPublisherProfileSlug(row.slug)) continue
+      const slug = row.slug.trim().toLowerCase()
+      slugByKey.set(row.id, slug)
+      if (row.sourceId) slugByKey.set(row.sourceId, slug)
+    }
+    if (!slugByKey.size) return rows
+
+    return rows.map((row) => {
+      if (isPublisherProfileSlug(row.publisherSlug)) return row
+      const key = row.publisherId?.trim()
+      if (!key) return row
+      const slug = slugByKey.get(key)
+      if (!slug) return row
+      return { ...row, publisherSlug: slug }
+    })
+  } catch {
+    return rows
+  }
 }
 
 export class FeedService {
@@ -194,8 +250,11 @@ export class FeedService {
         }
 
         const articleIds = ranked.map((r) => r.articleId)
-        const socialMap = await loadSocialState(ctx.userId, articleIds)
-        const items = ranked.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+        const [socialMap, enriched] = await Promise.all([
+          loadSocialState(ctx.userId, articleIds),
+          enrichPublisherSlugs(ranked),
+        ])
+        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
 
         const last = ranked[ranked.length - 1]
         const nextCursor = pipelineResult.sessionToken
@@ -251,8 +310,11 @@ export class FeedService {
       }
 
       const articleIds = ranked.map((r) => r.articleId)
-      const socialMap = await loadSocialState(ctx.userId, articleIds)
-      const items = ranked.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+      const [socialMap, enriched] = await Promise.all([
+        loadSocialState(ctx.userId, articleIds),
+        enrichPublisherSlugs(ranked),
+      ])
+      const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
 
       const last = ranked[ranked.length - 1]
       const nextCursor = encodeFeedCursor({

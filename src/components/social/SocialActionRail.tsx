@@ -53,7 +53,7 @@ export function SocialActionRail({
     <div
       className={cn(
         vertical
-          ? 'flex flex-col items-center gap-4'
+          ? 'flex flex-col items-center gap-3.5'
           : 'flex items-center justify-around gap-2 py-2',
         className
       )}
@@ -68,14 +68,14 @@ export function SocialActionRail({
           e.stopPropagation()
           onCommentClick?.()
         }}
-        className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
+        className="flex flex-col items-center gap-1 text-white transition-transform active:scale-90"
         aria-label="Yorum yap"
         data-testid="smart-feed-comment"
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm">
-          <MessageCircle className="h-6 w-6" />
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm sm:h-12 sm:w-12">
+          <MessageCircle className="h-6 w-6" strokeWidth={2.25} />
         </span>
-        <span className="text-xs font-semibold text-white drop-shadow">
+        <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
           {formatCount(commentCount)}
         </span>
       </button>

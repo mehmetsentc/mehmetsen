@@ -65,15 +65,15 @@ export function ShareButton({
           <>
             <span
               className={cn(
-                'flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-sm',
-                isOverlay ? 'bg-black/30' : 'bg-gray-100 dark:bg-gray-800'
+                'flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm sm:h-12 sm:w-12',
+                isOverlay ? 'bg-black/35' : 'bg-gray-100 dark:bg-gray-800'
               )}
             >
               <Share2 className="h-6 w-6" />
             </span>
             <span
               className={cn(
-                'text-xs font-semibold',
+                'text-[11px] font-bold sm:text-xs',
                 isOverlay ? 'text-white drop-shadow' : 'text-gray-600 dark:text-gray-400'
               )}
             >
