@@ -9,6 +9,7 @@ import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail } from '@/components/social/SocialActionRail'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
+import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -248,7 +249,7 @@ export function FullscreenNewsCard({
                 className="flex min-w-0 flex-wrap items-center gap-2"
                 data-testid="smart-feed-publisher-row"
               >
-                {item.publisher.slug && !item.publisher.slug.startsWith('src_') ? (
+                {isPublisherProfileSlug(item.publisher.slug) ? (
                   <Link
                     href={ROUTES.PUBLISHER(item.publisher.slug)}
                     className="flex min-w-0 max-w-full items-center gap-2"
@@ -287,9 +288,24 @@ export function FullscreenNewsCard({
                   </Link>
                 ) : (
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
-                      {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                    </span>
+                    {item.publisher.logoUrl && !logoError ? (
+                      <Image
+                        src={item.publisher.logoUrl}
+                        alt={item.publisher.name}
+                        width={28}
+                        height={28}
+                        className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/20"
+                        onError={() => setLogoError(true)}
+                        unoptimized={
+                          item.publisher.logoUrl.startsWith('http://') ||
+                          item.publisher.logoUrl.startsWith('https://')
+                        }
+                      />
+                    ) : (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+                        {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+                      </span>
+                    )}
                     <span className="min-w-0 truncate text-sm font-semibold text-white">
                       {item.publisher.name}
                     </span>
@@ -298,14 +314,18 @@ export function FullscreenNewsCard({
                     ) : null}
                   </div>
                 )}
-                <FollowButton
-                  publisherId={item.publisher.id}
-                  publisherSlug={item.publisher.slug}
-                  className="shrink-0"
-                  showCount={false}
-                  variant="overlay"
-                  returnUrl="/feed-v2"
-                />
+                {item.publisher.id && item.publisher.id !== 'source' ? (
+                  <FollowButton
+                    publisherId={item.publisher.id}
+                    publisherSlug={
+                      isPublisherProfileSlug(item.publisher.slug) ? item.publisher.slug : undefined
+                    }
+                    className="shrink-0"
+                    showCount={false}
+                    variant="overlay"
+                    returnUrl="/feed-v2"
+                  />
+                ) : null}
               </div>
             ) : null}
 

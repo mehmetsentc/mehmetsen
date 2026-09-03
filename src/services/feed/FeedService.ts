@@ -6,6 +6,7 @@ import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
+import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -40,6 +41,8 @@ function clampLimit(limit?: number): number {
 
 function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
   const scored = 'score' in row ? row : null
+  const rawSlug = row.publisherSlug ?? null
+  const linkableSlug = isPublisherProfileSlug(rawSlug) ? rawSlug!.trim().toLowerCase() : null
   return {
     id: row.articleId,
     type: 'article',
@@ -47,8 +50,9 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     clusterId: row.clusterId,
     publisher: (row.publisherId || row.publisherName)
       ? {
-          id: row.publisherId ?? row.publisherSlug ?? 'source',
-          slug: row.publisherSlug ?? row.publisherId ?? 'source',
+          id: row.publisherId ?? linkableSlug ?? 'source',
+          // Empty slug → card renders name without /publisher link (avoids 404).
+          slug: linkableSlug ?? '',
           name: row.publisherName ?? 'Kaynak',
           logoUrl: row.publisherLogoUrl,
         }

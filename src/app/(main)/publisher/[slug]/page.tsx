@@ -17,6 +17,7 @@ import { buildPublisherOrganizationJsonLd } from '@/lib/seo/structuredData'
 import { recordSeoIndexable } from '@/lib/seo/observability'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { publisherService } from '@/services/publisher/publisherService'
 import { publisherLayoutService } from '@/services/publisher/publisherLayoutService'
 import { PublisherLayoutRenderer } from '@/components/publisher/PublisherLayoutRenderer'
@@ -83,7 +84,7 @@ export default async function PublisherProfilePage({ params }: Props) {
   if (!hasDatabaseUrl()) notFound()
 
   const slug = decodeSlug((await params).slug)
-  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
+  if (!slug || !isPublisherProfileSlug(slug)) notFound()
 
   // Global OFF still allows allowlisted publishers (P11 controlled rollout).
   if (!isPublisherPlatformEnabled()) {

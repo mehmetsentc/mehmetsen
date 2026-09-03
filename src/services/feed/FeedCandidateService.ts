@@ -16,6 +16,7 @@ import {
   publicReadMetaFromFirestoreDoc,
 } from '@/services/editorial/publicReadPolicy'
 import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
+import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
@@ -174,7 +175,9 @@ function baseSelect() {
     articleId: news.id,
     clusterId: newsClusters.id,
     publisherId: sql<string | null>`coalesce(${publishers.id}, ${publisherSources.publisherId}, ${newsSources.id}, ${news.authorId})`,
-    publisherSlug: sql<string | null>`coalesce(${publishers.slug}, ${newsSources.id}, ${news.source})`,
+    // Only real publishers.slug is linkable to /publisher/[slug]. Never fall back to
+    // newsSources.id / news.source display labels (those 404 on the profile page).
+    publisherSlug: publishers.slug,
     publisherName: sql<string | null>`coalesce(${publishers.displayName}, ${newsSources.name}, ${news.authorDisplayName}, ${news.source}, 'Kaynak')`,
     publisherLogoUrl: publishers.logoUrl,
     publisherVerified: sql<boolean>`coalesce(${publishers.verificationStatus} = 'VERIFIED', false)`,
@@ -232,11 +235,17 @@ export class FeedCandidateService {
     )
     if (!canAppearInSmartFeed(readClass)) return null
 
+    const rawSlug =
+      (typeof data.sourceSlug === 'string' && data.sourceSlug.trim()) ||
+      (typeof data.publisherSlug === 'string' && data.publisherSlug.trim()) ||
+      ''
+    const publisherSlug = isPublisherProfileSlug(rawSlug) ? rawSlug.trim().toLowerCase() : null
+
     return {
       articleId: docId,
       clusterId: data.clusterId || null,
       publisherId: data.sourceId || data.authorId || null,
-      publisherSlug: data.sourceSlug || data.source || null,
+      publisherSlug,
       publisherName: data.sourceLabel || data.source || data.authorDisplayName || 'Kaynak',
       publisherLogoUrl: data.sourceLogoUrl || null,
       publisherVerified: Boolean(data.publisherVerified || data.verified),
