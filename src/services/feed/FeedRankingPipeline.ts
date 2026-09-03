@@ -11,6 +11,7 @@ import { feedSessionService, type FeedSessionPayload } from './FeedSessionServic
 import { feedUserContextService } from './FeedUserContextService'
 import { feedColdStartService } from './FeedColdStartService'
 import { isColdStartEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { feedSeenService } from './FeedSeenService'
 
 export interface RankingPipelineInput {
   userId: string | null
@@ -193,10 +194,8 @@ export class FeedRankingPipeline {
     // Ensure enough unused IDs remain; otherwise refill a bounded older/unseen window.
     const remaining = working.rankedIds.length - (working.offset ?? 0)
     if (remaining < input.limit && !working.corpusExhausted) {
-      const exclude = new Set<string>([
-        ...input.seenArticles,
-        ...working.rankedIds,
-      ])
+      const seed = new Set<string>([...input.seenArticles, ...working.rankedIds])
+      const exclude = await feedSeenService.expandArticleIdentities(seed)
       const { ranked, candidateCounts: counts, olderThan } = await this.buildNextWindow(
         input,
         ctx,
@@ -272,7 +271,7 @@ export class FeedRankingPipeline {
     }
 
     // 3–6. First window
-    const exclude = new Set<string>(input.seenArticles)
+    const exclude = await feedSeenService.expandArticleIdentities(new Set(input.seenArticles))
     const { ranked: diversified, candidateCounts, olderThan } = await this.buildNextWindow(
       input,
       ctx,

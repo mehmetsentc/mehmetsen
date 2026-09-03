@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { formatCount } from '@/lib/postUtils'
 import { useAuth } from '@/hooks/useAuth'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
+import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 import { ROUTES } from '@/constants/routes'
@@ -87,10 +88,14 @@ export function FollowButton({
       const body = res as { following?: boolean; followerCount?: number }
       setFollowing(Boolean(body.following ?? !prevFollowing))
       if (typeof body.followerCount === 'number') setFollowerCount(body.followerCount)
-    } catch {
+    } catch (err) {
       setFollowing(prevFollowing)
       setFollowerCount(prevCount)
-      toast.error('Takip işlemi başarısız oldu')
+      const msg = err instanceof Error ? err.message : ''
+      // Invalid feed publisher ids should not spam the operator — DTO guard is primary.
+      if (msg !== 'PUBLISHER_NOT_FOUND') {
+        toast.error('Takip işlemi başarısız oldu')
+      }
     } finally {
       setLoading(false)
     }
@@ -107,6 +112,7 @@ export function FollowButton({
   ])
 
   if (!socialEnabled && !user) return null
+  if (!isFollowablePublisherId(publisherId)) return null
 
   const overlay = variant === 'overlay'
 

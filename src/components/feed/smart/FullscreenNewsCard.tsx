@@ -10,6 +10,7 @@ import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail } from '@/components/social/SocialActionRail'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
+import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -117,7 +118,7 @@ export function FullscreenNewsCard({
   return (
     <article
       ref={cardRef}
-      className="relative flex h-[100dvh] w-full snap-start snap-always flex-col overflow-hidden bg-black"
+      className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-black"
       aria-label={item.headline}
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}
@@ -321,7 +322,7 @@ export function FullscreenNewsCard({
                     ) : null}
                   </div>
                 )}
-                {item.publisher.id && item.publisher.id !== 'source' ? (
+                {isFollowablePublisherId(item.publisher.id) ? (
                   <FollowButton
                     publisherId={item.publisher.id}
                     publisherSlug={

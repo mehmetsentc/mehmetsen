@@ -17,6 +17,7 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
+import { feedSeenService } from '@/services/feed/FeedSeenService'
 
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
@@ -178,9 +179,10 @@ function baseSelect() {
   return {
     articleId: news.id,
     clusterId: newsClusters.id,
-    publisherId: sql<string | null>`coalesce(${publishers.id}, ${publisherSources.publisherId}, ${newsSources.id}, ${news.authorId})`,
+    publisherId: sql<string | null>`coalesce(${publishers.id}, ${publisherSources.publisherId}, ${newsSources.id})`,
     // Only real publishers.slug is linkable to /publisher/[slug]. Never fall back to
     // newsSources.id / news.source display labels (those 404 on the profile page).
+    // Never coalesce news.authorId — AI editor UIDs are not followable publishers.
     publisherSlug: publishers.slug,
     publisherName: sql<string | null>`coalesce(${publishers.displayName}, ${newsSources.name}, ${news.authorDisplayName}, ${news.source}, 'Kaynak')`,
     publisherLogoUrl: publishers.logoUrl,
@@ -250,7 +252,11 @@ export class FeedCandidateService {
     return {
       articleId: docId,
       clusterId: data.clusterId || null,
-      publisherId: data.sourceId || data.authorId || null,
+      // Follow identity: source registry / ingestion id only — never AI authorId.
+      publisherId:
+        (typeof data.sourceId === 'string' && data.sourceId.trim()) ||
+        (typeof data.ingestionSourceId === 'string' && data.ingestionSourceId.trim()) ||
+        null,
       publisherSlug,
       publisherName: data.sourceLabel || data.source || data.authorDisplayName || 'Kaynak',
       publisherLogoUrl: data.sourceLogoUrl || null,
@@ -318,7 +324,10 @@ export class FeedCandidateService {
     try {
       const db = getAdminFirestore()
       const rows: FeedCandidateRow[] = []
-      const seen = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+      const expandedExclude = await feedSeenService.expandArticleIdentities(
+        new Set(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+      )
+      const seen = new Set<string>(expandedExclude)
       let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
       let attempts = 0
 
@@ -393,10 +402,45 @@ export class FeedCandidateService {
         if (snap.docs.length < batchSize) break
       }
 
-      return rows.slice(0, needed)
+      return this.canonicalizeFirestoreRows(rows.slice(0, needed))
     } catch (err) {
       console.warn('[feed] firestore fallback candidate fetch failed:', err)
       return []
+    }
+  }
+
+  /**
+   * When a Firestore doc has a PG mirror (legacy_firestore_id), emit the PG news.id
+   * so rankedIds / impressions / exclusions share one suppression identity.
+   */
+  private async canonicalizeFirestoreRows(rows: FeedCandidateRow[]): Promise<FeedCandidateRow[]> {
+    if (!rows.length || !hasDatabaseUrl()) return rows
+    const fsIds = [...new Set(rows.map((r) => r.articleId))].slice(0, 500)
+    if (!fsIds.length) return rows
+    try {
+      const db = requireDb()
+      const mirrors = await db
+        .select({ id: news.id, legacyFirestoreId: news.legacyFirestoreId, slug: news.slug })
+        .from(news)
+        .where(or(inArray(news.legacyFirestoreId, fsIds), inArray(news.id, fsIds)))
+        .limit(500)
+      if (!mirrors.length) return rows
+      const fsToPg = new Map<string, { id: string; slug: string | null }>()
+      for (const m of mirrors) {
+        if (m.legacyFirestoreId) fsToPg.set(m.legacyFirestoreId, { id: m.id, slug: m.slug })
+        fsToPg.set(m.id, { id: m.id, slug: m.slug })
+      }
+      return rows.map((row) => {
+        const hit = fsToPg.get(row.articleId)
+        if (!hit || hit.id === row.articleId) return row
+        return {
+          ...row,
+          articleId: hit.id,
+          slug: hit.slug || row.slug,
+        }
+      })
+    } catch {
+      return rows
     }
   }
 
@@ -423,8 +467,9 @@ export class FeedCandidateService {
   ): Promise<FeedCandidateRow[]> {
     if (primary.length >= opts.limit) return primary.slice(0, opts.limit)
 
-    const exclude = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
-    for (const row of primary) exclude.add(row.articleId)
+    const seed = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+    for (const row of primary) seed.add(row.articleId)
+    const exclude = await feedSeenService.expandArticleIdentities(seed)
 
     const remaining = opts.limit - primary.length
     const fallback = await this.fetchFirestoreFallback(source, {
@@ -444,7 +489,15 @@ export class FeedCandidateService {
       target: opts.limit,
     })
 
-    return [...primary, ...fallback].slice(0, opts.limit)
+    // Collapse PG/FS twins if canonicalize left any exact overlap.
+    const seen = new Set(primary.map((r) => r.articleId))
+    const merged = [...primary]
+    for (const row of fallback) {
+      if (seen.has(row.articleId)) continue
+      seen.add(row.articleId)
+      merged.push(row)
+    }
+    return merged.slice(0, opts.limit)
   }
 
   /**

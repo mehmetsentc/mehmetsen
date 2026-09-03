@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
@@ -17,6 +17,7 @@ import {
   writeGuestSeen,
   useFeedImpressionRef,
 } from '@/lib/feed/feedSeenClient'
+import { feedItemIdentityKeys, feedItemsOverlap } from '@/lib/feed/feedIdentity'
 import { clearFeedRestore, consumePendingFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
@@ -159,6 +160,9 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
   const restoreAppliedRef = useRef(false)
   const pendingRestoreScrollRef = useRef<number | null>(null)
+  const cardHeightRef = useRef(0)
+  const programmaticScrollRef = useRef(false)
+  const [cardHeightPx, setCardHeightPx] = useState(0)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const socialEnabled = isSocialGraphEnabledClient()
@@ -242,7 +246,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             if (restoreExemptId && (i.articleId === restoreExemptId || i.slug === restoreExemptId)) {
               return true
             }
-            return !guestSeen.has(i.articleId) && !(i.slug && guestSeen.has(i.slug))
+            const keys = feedItemIdentityKeys(i)
+            return !keys.some((k) => guestSeen.has(k))
           })
 
           if (incoming.length > 0 || !page.hasMore || !page.nextCursor) {
@@ -262,15 +267,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
         setErrorState(null)
         setItems((prev) => {
-          const existing = new Set(prev.map((i) => i.articleId))
-          const uniqueIncoming = acceptedIncoming.filter((i) => !existing.has(i.articleId))
-          const merged = append ? [...prev, ...uniqueIncoming] : acceptedIncoming
-          const seen = new Set<string>()
-          return merged.filter((i) => {
-            if (seen.has(i.articleId)) return false
-            seen.add(i.articleId)
-            return true
-          })
+          const merged = append ? [...prev] : []
+          for (const item of acceptedIncoming) {
+            if (merged.some((existing) => feedItemsOverlap(existing, item))) continue
+            merged.push(item)
+          }
+          return merged
         })
         setSocial((prev) => {
           const next = { ...prev }
@@ -410,18 +412,58 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   }, [authLoading, authUser?.uid, loadPage])
 
   // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const target = pendingRestoreScrollRef.current
     if (target == null || !items.length || loading) return
     const el = scrollRef.current
     if (!el) return
-    const h = el.clientHeight || 1
+    const h = cardHeightRef.current || el.clientHeight || 1
     const clamped = Math.max(0, Math.min(target, items.length - 1))
+    programmaticScrollRef.current = true
     el.scrollTo({ top: clamped * h, behavior: 'auto' })
     setActiveIndex(clamped)
     activeIndexRef.current = clamped
     pendingRestoreScrollRef.current = null
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false
+    })
   }, [items, loading])
+
+  const syncCardHeight = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const measured =
+      Math.round(el.clientHeight) ||
+      Math.round(typeof window !== 'undefined' ? window.visualViewport?.height ?? window.innerHeight : 0)
+    if (measured <= 0) return
+    const prev = cardHeightRef.current
+    cardHeightRef.current = measured
+    el.style.setProperty('--feed-card-h', `${measured}px`)
+    if (measured !== cardHeightPx) setCardHeightPx(measured)
+    // Safari toolbar: keep the same GLOBAL card when the unit height changes.
+    if (prev > 0 && prev !== measured && items.length > 0) {
+      programmaticScrollRef.current = true
+      el.scrollTop = activeIndexRef.current * measured
+      requestAnimationFrame(() => {
+        programmaticScrollRef.current = false
+      })
+    }
+  }, [cardHeightPx, items.length])
+
+  useLayoutEffect(() => {
+    syncCardHeight()
+  }, [syncCardHeight, loading, items.length])
+
+  useEffect(() => {
+    const onResize = () => syncCardHeight()
+    window.addEventListener('resize', onResize)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      vv?.removeEventListener('resize', onResize)
+    }
+  }, [syncCardHeight])
 
   useEffect(() => {
     if (!items.length) return
@@ -494,13 +536,17 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     (index: number) => {
       const el = scrollRef.current
       if (!el) return
-      const h = el.clientHeight || 1
+      const h = cardHeightRef.current || el.clientHeight || 1
       const clamped = Math.max(0, Math.min(index, Math.max(0, items.length - 1)))
+      programmaticScrollRef.current = true
       el.scrollTo({
         top: clamped * h,
         behavior: reducedMotion ? 'auto' : 'smooth',
       })
       setActiveIndex(clamped)
+      requestAnimationFrame(() => {
+        programmaticScrollRef.current = false
+      })
     },
     [reducedMotion, items.length]
   )
@@ -521,8 +567,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current
-    if (!el) return
-    const h = el.clientHeight || 1
+    if (!el || programmaticScrollRef.current) return
+    const h = cardHeightRef.current || el.clientHeight || 1
     // Global index: top spacer height + card heights map 1:1 with items[].
     const idx = Math.round(el.scrollTop / h)
     if (idx !== activeIndexRef.current && idx >= 0 && idx < items.length) {
@@ -540,8 +586,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const recordImpression = useCallback(
     (item: FeedItemDto) => {
       const guestSeen = readGuestSeen()
-      guestSeen.add(item.articleId)
-      if (item.slug) guestSeen.add(item.slug)
+      for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
       writeGuestSeen(guestSeen)
       void postTelemetry({
         events: [{ eventType: 'feed_impression', articleId: item.articleId, feedType: mode }],
@@ -925,7 +970,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             ref={scrollRef}
             onScroll={onScroll}
             className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll"
-            style={{ scrollSnapType: reducedMotion ? 'none' : 'y mandatory' }}
+            style={
+              {
+                scrollSnapType: reducedMotion ? 'none' : 'y mandatory',
+                ['--feed-card-h' as string]: cardHeightPx > 0 ? `${cardHeightPx}px` : undefined,
+              } as CSSProperties
+            }
             role="feed"
             aria-label="Akıllı haber akışı"
             data-testid="smart-feed-scroll-container"
@@ -933,13 +983,14 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             data-items-length={items.length}
             data-active-index={activeIndex}
             data-has-more={hasMore ? 'true' : 'false'}
+            data-card-height={cardHeightPx || undefined}
           >
             {windowStart > 0 ? (
               <div
                 aria-hidden
                 data-testid="smart-feed-spacer-before"
                 className="w-full shrink-0"
-                style={{ height: `calc(${windowStart} * 100dvh)` }}
+                style={{ height: `calc(${windowStart} * var(--feed-card-h, 100dvh))` }}
               />
             ) : null}
             {windowItems.map((item, wi) => {
@@ -980,19 +1031,19 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                 aria-hidden
                 data-testid="smart-feed-spacer-after"
                 className="w-full shrink-0"
-                style={{ height: `calc(${spacerAfter} * 100dvh)` }}
+                style={{ height: `calc(${spacerAfter} * var(--feed-card-h, 100dvh))` }}
               />
             ) : null}
             {loadingMore ? (
               <div
-                className="flex h-[100dvh] w-full snap-start snap-always items-center justify-center bg-black"
+                className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always items-center justify-center bg-black"
                 data-testid="smart-feed-loading-more"
               >
                 <Loader2 className="h-6 w-6 animate-spin text-white" />
               </div>
             ) : null}
             {!hasMore && items.length > 0 ? (
-              <div className="flex h-[100dvh] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
+              <div className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
                 <div className="mb-4 rounded-full bg-white/10 p-4">
                   <CheckCircle2 className="h-8 w-8 text-emerald-400" />
                 </div>

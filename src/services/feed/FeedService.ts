@@ -7,6 +7,7 @@ import { FEED_PAGINATION } from '@/lib/feed/config'
 import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
+import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -50,7 +51,11 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     clusterId: row.clusterId,
     publisher: (row.publisherId || row.publisherName)
       ? {
-          id: row.publisherId ?? linkableSlug ?? 'source',
+          id: isFollowablePublisherId(row.publisherId)
+            ? (row.publisherId as string)
+            : linkableSlug && isFollowablePublisherId(linkableSlug)
+              ? linkableSlug
+              : 'source',
           // Empty slug → card renders name without /publisher link (avoids 404).
           slug: linkableSlug ?? '',
           name: row.publisherName ?? 'Kaynak',
