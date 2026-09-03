@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Check, ChevronDown, Heart, Layers, Newspaper, Zap } from 'lucide-react'
@@ -119,12 +119,16 @@ export function FullscreenNewsCard({
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
+  const [typedHeadline, setTypedHeadline] = useState(item.headline)
+  const [headlineDone, setHeadlineDone] = useState(true)
+  const [showCursor, setShowCursor] = useState(false)
 
   const lastTapRef = useRef(0)
   const tapOriginRef = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
+  const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const showVideo = Boolean(videoEnabled && item.video && isActive)
@@ -142,6 +146,60 @@ export function FullscreenNewsCard({
   const publisherHref = item.publisher ? publisherProfileHref(item.publisher) : null
   const skin = resolveFeedCardSkin(item.category, { breaking: item.breaking })
   const isCenter = skin.layout === 'center'
+
+  // Typewriter: only when card becomes active (skip if reduced motion)
+  useEffect(() => {
+    const clearType = () => {
+      if (typeTimerRef.current != null) {
+        window.clearTimeout(typeTimerRef.current)
+        typeTimerRef.current = null
+      }
+    }
+
+    clearType()
+
+    if (!isActive) {
+      setTypedHeadline(item.headline)
+      setHeadlineDone(true)
+      setShowCursor(false)
+      return
+    }
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (reduced || !item.headline) {
+      setTypedHeadline(item.headline)
+      setHeadlineDone(true)
+      setShowCursor(false)
+      return
+    }
+
+    const full = item.headline
+    // Cap total typewriter ~1.6s regardless of length
+    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
+    setTypedHeadline('')
+    setHeadlineDone(false)
+    setShowCursor(true)
+
+    let i = 0
+    const tick = () => {
+      i += 1
+      setTypedHeadline(full.slice(0, i))
+      if (i >= full.length) {
+        setHeadlineDone(true)
+        setShowCursor(false)
+        typeTimerRef.current = null
+        return
+      }
+      typeTimerRef.current = window.setTimeout(tick, step)
+    }
+    // slight delay so lower-third / skin chrome settles
+    typeTimerRef.current = window.setTimeout(tick, 120)
+
+    return clearType
+  }, [isActive, item.headline, item.articleId, skin.typeMs])
 
   const triggerDoubleTapLike = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -313,10 +371,7 @@ export function FullscreenNewsCard({
           aria-hidden
         />
         <div
-          className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-black via-black/80 to-transparent',
-            isCenter && 'h-[55%] via-black/55'
-          )}
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/85 to-transparent"
           aria-hidden
         />
 
@@ -423,7 +478,7 @@ export function FullscreenNewsCard({
                   className={cn(
                     'text-[11px] font-extrabold tracking-[0.06em]',
                     skin.badge === 'ghost'
-                      ? 'text-[color:var(--feed-skin-accent)]'
+                      ? 'rounded-md bg-black/70 px-2 py-0.5 text-[color:var(--feed-skin-accent)] backdrop-blur-sm'
                       : 'rounded-md px-2 py-0.5 text-white backdrop-blur-sm',
                     skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
                     skin.id === 'spor' && 'rounded-full'
@@ -454,23 +509,37 @@ export function FullscreenNewsCard({
             <div
               className={cn(
                 'max-h-[48vh] space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
-                skin.panel === 'dark' &&
-                  'rounded-2xl bg-black/42 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md sm:p-3.5',
-                skin.panel === 'soft' &&
-                  'rounded-2xl border border-white/12 bg-white/10 p-3 backdrop-blur-md sm:p-3.5',
-                skin.panel === 'none' && 'p-0',
+                // Always ink panel — white/soft panels fail on light photos
+                'rounded-2xl border border-white/10 bg-black/78 p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md sm:p-4',
                 isCenter && 'w-full text-center'
               )}
               data-testid="smart-feed-copy-scroll"
               onTouchStart={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
             >
-              <h2 className={cn('break-words', skin.headlineClass)} data-testid="smart-feed-headline">
-                {item.headline}
+              <h2
+                className={cn('break-words drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]', skin.headlineClass)}
+                data-testid="smart-feed-headline"
+              >
+                {typedHeadline}
+                {showCursor ? (
+                  <span
+                    className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
+                    style={{ background: 'var(--feed-skin-accent)' }}
+                    aria-hidden
+                  />
+                ) : null}
               </h2>
 
               {item.summary ? (
-                <p className={cn('break-words', skin.summaryClass)} data-testid="smart-feed-summary">
+                <p
+                  className={cn(
+                    'break-words drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] transition-opacity duration-300',
+                    skin.summaryClass,
+                    headlineDone ? 'opacity-100' : 'opacity-0'
+                  )}
+                  data-testid="smart-feed-summary"
+                >
                   {item.summary}
                 </p>
               ) : null}

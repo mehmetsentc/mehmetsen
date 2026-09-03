@@ -79,7 +79,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'none',
     badge: 'ghost',
-    panel: 'none',
+    panel: 'dark',
     accent: '#cbd5e1',
     typeMs: 28,
     headlineClass:
@@ -109,7 +109,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'thin',
     badge: 'ghost',
-    panel: 'soft',
+    panel: 'dark',
     accent: '#e8c4a8',
     typeMs: 32,
     headlineClass:
@@ -154,7 +154,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'none',
     badge: 'solid',
-    panel: 'soft',
+    panel: 'dark',
     accent: '#22d3ee',
     typeMs: 26,
     headlineClass:
@@ -169,7 +169,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'none',
     badge: 'ghost',
-    panel: 'none',
+    panel: 'dark',
     accent: '#94a3b8',
     typeMs: 30,
     headlineClass:
@@ -184,7 +184,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'thin',
     badge: 'solid',
-    panel: 'soft',
+    panel: 'dark',
     accent: '#2dd4bf',
     typeMs: 28,
     headlineClass:
@@ -214,7 +214,7 @@ const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
     ticker: false,
     frame: 'magazine',
     badge: 'solid',
-    panel: 'soft',
+    panel: 'dark',
     accent: '#fb7185',
     typeMs: 33,
     headlineClass:
