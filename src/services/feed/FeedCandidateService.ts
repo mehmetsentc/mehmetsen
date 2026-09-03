@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { and, desc, eq, inArray, isNotNull, lt, lte, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, lt, lte, notInArray, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
 import { newsClusters, newsSources } from '@/db/schema/crawler'
@@ -78,8 +78,35 @@ export type BaseQueryOpts = {
   region?: string | null
   userId?: string | null
   category?: string | null
+  /** Expanded category ids (parent + children). Prefer over `category`. */
+  categoryIds?: string[] | null
   /** Exclusive upper bound for older corpus windows (ISO or Date). */
   publishedBefore?: Date | string | null
+}
+
+function categoryFilterWhere(opts: BaseQueryOpts) {
+  const ids =
+    opts.categoryIds && opts.categoryIds.length > 0
+      ? opts.categoryIds
+      : opts.category
+        ? [opts.category]
+        : null
+  if (!ids?.length) return undefined
+  if (ids.length === 1) return eq(news.categoryId, ids[0]!)
+  return inArray(news.categoryId, ids)
+}
+
+/** Push exclusions into SQL so pagination can walk past a large seen/served set. */
+function excludeIdsWhere(opts: BaseQueryOpts) {
+  if (!opts.excludeArticleIds?.size) return undefined
+  const ids = [...opts.excludeArticleIds].slice(0, 300)
+  if (!ids.length) return undefined
+  return notInArray(news.id, ids)
+}
+
+function poolLimitFor(opts: BaseQueryOpts, floor = DEFAULT_POOL_SIZE) {
+  const excluded = opts.excludeArticleIds?.size ?? 0
+  return Math.max(opts.limit * 3, floor, Math.min(excluded + opts.limit * 2, 400))
 }
 
 function mapRows(
@@ -509,7 +536,7 @@ export class FeedCandidateService {
   }
 
   async fetchRecent(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
-    const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
+    const poolLimit = poolLimitFor(opts)
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('RECENT', { ...opts, needed: opts.limit })
     }
@@ -518,8 +545,9 @@ export class FeedCandidateService {
       const db = requireDb()
       const where = and(
         publishedStatusWhere(),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select(baseSelect())
@@ -550,8 +578,9 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         or(eq(news.isBreaking, true), eq(news.editorType, 'breaking')),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select(baseSelect())
@@ -583,8 +612,9 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         or(eq(news.isFeatured, true), eq(news.isEditorPick, true)),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select(baseSelect())
@@ -614,8 +644,9 @@ export class FeedCandidateService {
       const db = requireDb()
       const where = and(
         publishedStatusWhere(),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       // View-heavy popularity sort (still freshness-bounded by published window / scoring decay).
       const popularityExpr = sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.savesCount} * 2 + ${news.viewsCount} * 0.2)`
@@ -656,8 +687,9 @@ export class FeedCandidateService {
       const where = and(
         publishedStatusWhere(),
         geo,
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select(baseSelect())
@@ -702,8 +734,9 @@ export class FeedCandidateService {
           inArray(news.authorId, publisherIds),
           sourceIds.length ? inArray(newsClusters.primarySourceId, sourceIds) : sql`false`
         ),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select(baseSelect())
@@ -777,8 +810,9 @@ export class FeedCandidateService {
       const dk = dayKey()
       const where = and(
         publishedStatusWhere(),
-        opts.category ? eq(news.categoryId, opts.category) : undefined,
-        cursorWhere(opts.cursor, opts.publishedBefore)
+        categoryFilterWhere(opts),
+        cursorWhere(opts.cursor, opts.publishedBefore),
+        excludeIdsWhere(opts)
       )
       const rows = await db
         .select({

@@ -2446,6 +2446,9 @@
   .content-main-reels {
     width: 100%;
     max-width: none;
+    /* Immersive: fill the stage edge-to-edge; no nav clearance band */
+    padding-bottom: 0 !important;
+    min-height: 100dvh;
     @apply mx-auto;
   }
 
@@ -3580,11 +3583,11 @@ video.reels-video {
   animation: marquee 18s linear infinite;
 }
 
-/* Clear the floating bottom-nav pill on mobile + tablet. Keyed on data-platform
-   (set pre-hydration by PlatformScript) instead of the .app-shell-mobile class,
-   so the spacing is correct on first paint and doesn't wait for hydration. */
-html[data-platform='mobile'] .content-main,
-html[data-platform='tablet'] .content-main {
+/* Clear the floating bottom-nav pill on mobile + tablet.
+   Reels / feed-v2 hide MobileNav — do NOT reserve clearance there
+   (creates a dead band of surface color under the fullscreen card). */
+html[data-platform='mobile'] .content-main:not(.content-main-reels),
+html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);
 }
 

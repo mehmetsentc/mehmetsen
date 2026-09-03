@@ -37,6 +37,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url)
   const mode = parseMode(url.searchParams.get('mode'))
+  const category = url.searchParams.get('category')?.trim().toLowerCase() || null
   const cursor = url.searchParams.get('cursor')
   const limitRaw = url.searchParams.get('limit')
   const limit = limitRaw ? Number(limitRaw) : undefined
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
   const refresh = url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true'
   const debug = process.env.NODE_ENV !== 'production' && url.searchParams.get('debug') === '1'
 
-  if (mode === 'following' && !auth) {
+  if (mode === 'following' && !auth && !category) {
     return NextResponse.json({ error: 'auth_required', items: [], hasMore: false, nextCursor: null, mode }, { status: 401 })
   }
 
@@ -55,13 +56,14 @@ export async function GET(request: Request) {
     const page = await feedService.getFeed({
       userId: auth?.uid ?? null,
       sessionId,
-      mode,
+      mode: category ? 'personal' : mode,
       cursor,
       limit,
       citySlug,
       districtSlug,
       region,
       refresh,
+      category,
     }, { debug })
     return NextResponse.json(page)
   } catch (err) {

@@ -9,6 +9,7 @@ import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlag
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
+import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -34,6 +35,8 @@ export interface FeedRequestContext {
   districtSlug?: string | null
   region?: string | null
   refresh?: boolean
+  /** When set, restrict corpus to this category (+ children). */
+  category?: string | null
 }
 
 function clampLimit(limit?: number): number {
@@ -193,14 +196,95 @@ export class FeedService {
     ])
 
     try {
+      const timeCursor =
+        cursorPayload?.publishedAt && cursorPayload?.id
+          ? { publishedAt: cursorPayload.publishedAt, id: cursorPayload.id }
+          : null
+      const categoryIds = ctx.category ? resolveCategoryFilterIds(ctx.category) : null
       const candidateOpts = {
         limit: limit * 3,
-        cursor: null,
+        cursor: timeCursor,
         cursorRaw: ctx.cursor,
         citySlug: ctx.citySlug,
         districtSlug: ctx.districtSlug,
         region: ctx.region,
         userId: ctx.userId,
+        category: ctx.category ?? null,
+        categoryIds,
+      }
+
+      // Category tab: first page mixes recent/popular/featured; later pages walk recent by cursor.
+      if (ctx.category) {
+        const previewRows = await feedCandidateService.fetchRecent({
+          ...candidateOpts,
+          cursor: timeCursor,
+        })
+        const clusterIds = previewRows.map((r) => r.clusterId).filter((id): id is string => Boolean(id))
+        const { seenArticles, seenClusters } = await feedSeenService.filterSuppressible(
+          ctx.userId,
+          ctx.sessionId,
+          `category:${ctx.category}`,
+          clusterIds
+        )
+        const suppressOpts = {
+          ...candidateOpts,
+          excludeArticleIds: seenArticles,
+          excludeClusterIds: seenClusters,
+        }
+
+        let ranked: FeedCandidateRow[]
+        if (timeCursor) {
+          ranked = feedRankingV1.rankMode(
+            'personal',
+            await feedCandidateService.fetchRecent(suppressOpts),
+            limit
+          )
+        } else {
+          const [recent, popular, featured] = await Promise.all([
+            feedCandidateService.fetchRecent(suppressOpts),
+            feedCandidateService.fetchPopular(suppressOpts),
+            feedCandidateService.fetchFeatured(suppressOpts),
+          ])
+          ranked = feedRankingV1.rankPersonal(
+            {
+              BREAKING: [],
+              RECENT: recent,
+              POPULAR: popular,
+              LOCAL: [],
+              DISCOVERY: featured,
+              FOLLOWING: [],
+            },
+            limit,
+            false
+          )
+        }
+        if (!ranked.length) {
+          return {
+            items: [],
+            nextCursor: null,
+            hasMore: false,
+            mode: ctx.mode,
+            emptyReason: 'no_items',
+            rankingVersion: 'category_mix_v1',
+          }
+        }
+        const articleIds = ranked.map((r) => r.articleId)
+        const [socialMap, enriched] = await Promise.all([
+          loadSocialState(ctx.userId, articleIds),
+          enrichPublisherSlugs(ranked),
+        ])
+        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+        const last = ranked[ranked.length - 1]!
+        return {
+          items,
+          nextCursor: encodeFeedCursor({
+            publishedAt: last.publishedAt.toISOString(),
+            id: last.articleId,
+          }),
+          hasMore: ranked.length >= limit,
+          mode: ctx.mode,
+          rankingVersion: 'category_mix_v1',
+        }
       }
 
       const previewRows = await feedCandidateService.fetchForMode(ctx.mode, candidateOpts)
@@ -235,15 +319,24 @@ export class FeedService {
 
         const ranked = pipelineResult.ranked
         if (!ranked.length) {
+          const mayHaveMore = pipelineResult.session.corpusExhausted !== true
           await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
             { eventType: 'feed_empty', feedType: ctx.mode, metadata: { ranking_version: pipelineResult.rankingVersion } },
           ])
           return {
             items: [],
-            nextCursor: null,
-            hasMore: false,
+            nextCursor:
+              mayHaveMore && pipelineResult.sessionToken
+                ? encodeFeedCursor({
+                    publishedAt: new Date(0).toISOString(),
+                    id: 'resume',
+                    session: pipelineResult.sessionToken,
+                    offset: pipelineResult.session.offset,
+                  })
+                : null,
+            hasMore: mayHaveMore,
             mode: ctx.mode,
-            emptyReason: 'no_items',
+            emptyReason: mayHaveMore ? undefined : 'no_items',
             rankingVersion: pipelineResult.rankingVersion,
             feedSessionId: pipelineResult.session.sessionId,
           }
@@ -283,7 +376,11 @@ export class FeedService {
 
       let ranked: FeedCandidateRow[] = []
 
-      if (ctx.mode === 'personal') {
+      if (ctx.mode === 'personal' && timeCursor) {
+        // Append pages: walk recent corpus by cursor (remixing the head would stall ~1–2 pages).
+        const rows = await feedCandidateService.fetchRecent(suppressOpts)
+        ranked = feedRankingV1.rankMode(ctx.mode, rows, limit)
+      } else if (ctx.mode === 'personal') {
         const [breaking, recent, popular, local, discovery, following] = await Promise.all([
           feedCandidateService.fetchBreaking(suppressOpts),
           feedCandidateService.fetchRecent(suppressOpts),

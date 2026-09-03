@@ -139,8 +139,8 @@ export class FeedRankingPipeline {
     excludeArticleIds: Set<string>,
     publishedBefore: string | null | undefined
   ): Promise<{ ranked: ScoredFeedCandidate[]; candidateCounts: Record<string, number>; olderThan: string | null }> {
-    // Recent/popular/personal pools: exclude served IDs only (do not time-gate yet),
-    // so remaining unseen recent inventory is consumed before older fallback.
+    // Exclude served IDs in SQL (see fetchRecent) — do not time-gate first, so
+    // remaining unseen recent inventory is consumed before older fallback.
     let pools = await fetchPools(input.mode, {
       limit: input.limit * 4,
       userId: input.userId,
@@ -153,6 +153,27 @@ export class FeedRankingPipeline {
     })
     let flat = flattenPools(pools)
     let candidateCounts = countPools(pools)
+
+    if (flat.length < input.limit && publishedBefore) {
+      pools = await fetchPools(input.mode, {
+        limit: input.limit * 4,
+        userId: input.userId,
+        citySlug: input.citySlug,
+        districtSlug: input.districtSlug,
+        region: input.region,
+        excludeArticleIds,
+        excludeClusterIds: input.seenClusters,
+        publishedBefore,
+      })
+      const boundFlat = flattenPools(pools)
+      candidateCounts = { ...candidateCounts, ...countPools(pools), older_bound: boundFlat.length }
+      const seen = new Set(flat.map((r) => r.articleId))
+      for (const row of boundFlat) {
+        if (seen.has(row.articleId) || excludeArticleIds.has(row.articleId)) continue
+        seen.add(row.articleId)
+        flat.push(row)
+      }
+    }
 
     // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions
     if (flat.length < input.limit) {
@@ -196,17 +217,26 @@ export class FeedRankingPipeline {
     if (remaining < input.limit && !working.corpusExhausted) {
       const seed = new Set<string>([...input.seenArticles, ...working.rankedIds])
       const exclude = await feedSeenService.expandArticleIdentities(seed)
+      // Prefer time-cursor past the oldest served item so SQL can skip the head of the table.
+      const olderBound = working.olderThan ?? null
       const { ranked, candidateCounts: counts, olderThan } = await this.buildNextWindow(
         input,
         ctx,
         exclude,
-        working.olderThan
+        olderBound
       )
       candidateCounts = { ...candidateCounts, ...counts, session_refill: ranked.length }
       const newIds = ranked.map((r) => r.articleId)
       working = feedSessionService.appendWindow(working, newIds, olderThan)
       if (newIds.length === 0) {
-        working = { ...working, corpusExhausted: true }
+        // Second chance: pure recent walk without publishedBefore gate (exclude-only).
+        const retry = await this.buildNextWindow(input, ctx, exclude, null)
+        const retryIds = retry.ranked.map((r) => r.articleId)
+        working = feedSessionService.appendWindow(working, retryIds, retry.olderThan)
+        candidateCounts.session_refill_retry = retryIds.length
+        if (retryIds.length === 0) {
+          working = { ...working, corpusExhausted: true }
+        }
       }
     }
 

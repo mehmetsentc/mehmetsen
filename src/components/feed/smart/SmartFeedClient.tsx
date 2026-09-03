@@ -156,6 +156,8 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     return parseMode(searchParams.get('mode'))
   })
   const [items, setItems] = useState<FeedItemDto[]>([])
+  const itemsRef = useRef<FeedItemDto[]>([])
+  itemsRef.current = items
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -273,14 +275,15 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         if (genId !== generationIdRef.current || !lastPage) return
 
         setErrorState(null)
-        setItems((prev) => {
-          const merged = append ? [...prev] : []
-          for (const item of acceptedIncoming) {
-            if (merged.some((existing) => feedItemsOverlap(existing, item))) continue
-            merged.push(item)
-          }
-          return merged
-        })
+        const base = append ? itemsRef.current : []
+        const merged = [...base]
+        for (const item of acceptedIncoming) {
+          if (merged.some((existing) => feedItemsOverlap(existing, item))) continue
+          merged.push(item)
+        }
+        const added = merged.length - base.length
+        itemsRef.current = merged
+        setItems(merged)
         setSocial((prev) => {
           const next = { ...prev }
           for (const it of lastPage!.items) {
@@ -298,9 +301,19 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         })
         setCursor(lastPage.nextCursor)
         cursorRef.current = lastPage.nextCursor
-        // Trust backend exhaustion only — never flip false because a filtered page was thin.
-        setHasMore(lastPage.hasMore)
-        hasMoreRef.current = lastPage.hasMore
+
+        // Trust backend exhaustion, but don't stall when a page was all-duplicates.
+        let nextHasMore = lastPage.hasMore
+        if (append && added === 0) {
+          if (!lastPage.hasMore || !lastPage.nextCursor) {
+            nextHasMore = false
+          } else {
+            // Allow another prefetch with the advanced cursor.
+            lastPrefetchCursorRef.current = null
+          }
+        }
+        setHasMore(nextHasMore)
+        hasMoreRef.current = nextHasMore
         if (!append) {
           const restore = readFeedRestore()
           const restoreId = searchParams.get('restore') ?? restore?.articleId

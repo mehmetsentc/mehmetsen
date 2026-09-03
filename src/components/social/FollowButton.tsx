@@ -126,8 +126,8 @@ export function FollowButton({
           'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60',
           overlay
             ? following
-              ? 'border border-white/45 bg-black/35 text-white backdrop-blur-sm'
-              : 'border-[1.5px] border-[rgb(var(--color-brand))] bg-transparent text-white hover:bg-[rgb(var(--color-brand))]/15'
+              ? 'border border-white/45 bg-black/70 text-white'
+              : 'border-[1.5px] border-[rgb(var(--color-brand))] bg-black/70 text-white hover:bg-[rgb(var(--color-brand))]/25'
             : following
               ? 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
               : 'bg-brand-600 text-white hover:bg-brand-700'
