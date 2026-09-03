@@ -117,11 +117,11 @@ export function FollowButton({
         onClick={() => void toggle()}
         disabled={loading || !publisherId}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60',
+          'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60',
           overlay
             ? following
-              ? 'border border-white/40 bg-black/40 text-white backdrop-blur-sm'
-              : 'bg-white text-black hover:bg-white/90'
+              ? 'border border-white/45 bg-black/35 text-white backdrop-blur-sm'
+              : 'border-[1.5px] border-[rgb(var(--color-brand))] bg-transparent text-white hover:bg-[rgb(var(--color-brand))]/15'
             : following
               ? 'border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]'
               : 'bg-brand-600 text-white hover:bg-brand-700'
@@ -129,12 +129,14 @@ export function FollowButton({
       >
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : overlay && !following ? (
+          <span aria-hidden>+</span>
         ) : following ? (
           <UserMinus className="h-3.5 w-3.5" aria-hidden />
         ) : (
           <UserPlus className="h-3.5 w-3.5" aria-hidden />
         )}
-        {following ? 'Takiptesin' : 'Takip et'}
+        {following ? 'Takiptesin' : overlay ? 'Takip et' : 'Takip et'}
       </button>
       {showCount ? (
         <span className={cn('text-xs', overlay ? 'text-white/70' : 'text-[rgb(var(--color-muted))]')}>

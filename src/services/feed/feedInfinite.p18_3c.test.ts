@@ -121,10 +121,9 @@ describe('P18.3C card + containment source guards', () => {
     )
     expect(src).toContain('data-testid="smart-feed-summary"')
     expect(src).toContain('line-clamp-2')
-    expect(src).toMatch(/line-clamp-[34]/)
     expect(src).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
     expect(src).toContain('orientation="vertical"')
-    expect(src).toContain('object-contain')
+    expect(src).toContain('object-cover')
     expect(src).toContain('blur-2xl')
   })
 

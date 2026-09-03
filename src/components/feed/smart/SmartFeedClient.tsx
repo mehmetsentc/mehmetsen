@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
+import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
@@ -744,6 +745,14 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         <FeedModeNav
           mode={mode}
           onChange={handleModeChange}
+          trailing={
+            items[activeIndex] ? (
+              <FeedCardMenu
+                item={items[activeIndex]!}
+                onFeedback={() => handleFeedback(items[activeIndex]!.articleId)}
+              />
+            ) : null
+          }
         />
 
         {/* Viewport Content States */}
@@ -882,13 +891,14 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                   likeCount={likeCount}
                   commentCount={commentCount}
                   saveCount={saveCount}
+                  cardIndex={index + 1}
+                  cardTotal={Math.max(items.length, 1)}
                   likeLoading={actionLoading[item.articleId] === 'like'}
                   saveLoading={actionLoading[item.articleId] === 'save'}
                   onToggleLike={() => void toggleLike(item)}
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
                   onReadClick={() => onRead(item, index)}
-                  onFeedback={() => handleFeedback(item.articleId)}
                   onImpression={() => recordImpression(item)}
                 />
               )
@@ -964,13 +974,14 @@ function FeedCardWithImpression(props: {
   likeCount?: number
   commentCount?: number
   saveCount?: number
+  cardIndex?: number
+  cardTotal?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
-  onFeedback?: () => void
   onImpression: () => void
 }) {
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)

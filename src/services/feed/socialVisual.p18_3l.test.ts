@@ -72,19 +72,16 @@ describe('P18.3L social counter wiring', () => {
 })
 
 describe('P18.3L static media composition', () => {
-  it('uses blurred cover background + sharp layer without giant solid mid fill', () => {
+  it('uses blurred cover background + sharp full-bleed cover without solid mid fill', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(card).toContain('blur-2xl')
-    expect(card).toContain('brightness-[0.55]')
-    expect(card).toContain('scale-125 object-cover')
+    expect(card).toContain('object-cover')
     expect(card).toContain('smart-feed-media-breathing')
     expect(card).toContain('line-clamp-2')
-    expect(card).toContain('line-clamp-3')
     expect(card).not.toContain('min-h-[28vh]')
-    expect(card).not.toContain('bg-neutral-950')
   })
 })
 

@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Zap, Layers, Newspaper } from 'lucide-react'
+import { Check, ChevronDown, Layers, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail } from '@/components/social/SocialActionRail'
-import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import type { FeedItemDto } from '@/types/smartFeed'
 
@@ -59,6 +58,10 @@ interface FullscreenNewsCardProps {
   saveCount?: number
   likeLoading?: boolean
   saveLoading?: boolean
+  /** 1-based card index for Reels-style progress */
+  cardIndex?: number
+  /** Total loaded cards (progress denominator) */
+  cardTotal?: number
   onToggleLike: () => void
   onToggleSave: () => void
   onCommentClick: () => void
@@ -68,11 +71,11 @@ interface FullscreenNewsCardProps {
 }
 
 /**
- * Reserved space under absolute mode nav (safe-area + chips + gap).
- * Mode nav lives in SmartFeedClient; publisher row must sit below it.
+ * Top clearance for absolute mode nav only.
+ * Publisher lives in the bottom text stack (reference Reels composition).
  */
 const MODE_NAV_CLEARANCE =
-  'pt-[max(6.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+5.5rem))]'
+  'pt-[max(5.5rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+4.25rem))]'
 
 export function FullscreenNewsCard({
   item,
@@ -85,16 +88,16 @@ export function FullscreenNewsCard({
   saveCount,
   likeLoading,
   saveLoading,
+  cardIndex,
+  cardTotal,
   onToggleLike,
   onToggleSave,
   onCommentClick,
   onReadClick,
-  onFeedback,
   cardRef,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
-  const [imageAspect, setImageAspect] = useState<'portrait' | 'landscape' | 'square' | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const showVideo = Boolean(videoEnabled && item.video && isActive)
@@ -105,6 +108,10 @@ export function FullscreenNewsCard({
   const resolvedCommentCount =
     typeof commentCount === 'number' ? commentCount : item.socialCounts.comments ?? 0
   const resolvedSaveCount = typeof saveCount === 'number' ? saveCount : item.socialCounts.saves ?? 0
+  const progressLabel =
+    typeof cardIndex === 'number' && typeof cardTotal === 'number' && cardTotal > 0
+      ? `${cardIndex} / ${cardTotal}`
+      : null
 
   return (
     <article
@@ -113,10 +120,9 @@ export function FullscreenNewsCard({
       aria-label={item.headline}
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}
-      data-media-aspect={showVideo ? 'video' : imageAspect ?? 'unknown'}
       data-testid="smart-feed-card"
     >
-      {/* Continuous full-bleed media canvas — no solid dead mid-band */}
+      {/* Full-bleed media canvas — continuous Reels composition */}
       <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
@@ -131,12 +137,11 @@ export function FullscreenNewsCard({
           />
         ) : hasValidImage ? (
           <>
-            {/* Layer A: blurred cover fills entire card (same image, continuous) */}
             <Image
               src={item.image!}
               alt=""
               fill
-              className="scale-125 object-cover opacity-70 blur-2xl brightness-[0.55]"
+              className="scale-110 object-cover opacity-60 blur-2xl brightness-[0.5]"
               sizes="100vw"
               aria-hidden
               unoptimized={
@@ -144,44 +149,19 @@ export function FullscreenNewsCard({
                 (item.image.startsWith('http://') || item.image.startsWith('https://'))
               }
             />
-            {/* Layer B: sharp image — landscape stays natural; portrait/square cover */}
-            <div
-              className={cn(
-                'absolute inset-x-0 top-0',
-                imageAspect === 'landscape' ? 'h-[58%]' : 'bottom-0'
-              )}
-            >
-              <Image
-                src={item.image!}
-                alt={item.headline || ''}
-                fill
-                className={cn(
-                  'transition-opacity duration-300',
-                  imageAspect === 'landscape'
-                    ? 'object-contain object-top'
-                    : imageAspect === 'square'
-                      ? 'object-cover object-center'
-                      : 'object-cover object-center'
-                )}
-                sizes="100vw"
-                priority={isActive}
-                onError={() => setImageError(true)}
-                onLoad={(e) => {
-                  const img = e.currentTarget
-                  const w = img.naturalWidth
-                  const h = img.naturalHeight
-                  if (!w || !h) return
-                  const ratio = w / h
-                  if (ratio > 1.15) setImageAspect('landscape')
-                  else if (ratio < 0.85) setImageAspect('portrait')
-                  else setImageAspect('square')
-                }}
-                unoptimized={
-                  typeof item.image === 'string' &&
-                  (item.image.startsWith('http://') || item.image.startsWith('https://'))
-                }
-              />
-            </div>
+            <Image
+              src={item.image!}
+              alt={item.headline || ''}
+              fill
+              className="object-cover object-center"
+              sizes="100vw"
+              priority={isActive}
+              onError={() => setImageError(true)}
+              unoptimized={
+                typeof item.image === 'string' &&
+                (item.image.startsWith('http://') || item.image.startsWith('https://'))
+              }
+            />
           </>
         ) : (
           <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-950 select-none">
@@ -197,13 +177,12 @@ export function FullscreenNewsCard({
           </div>
         )}
 
-        {/* Gradients over media — no flat mid-band */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[30%] bg-gradient-to-b from-black/60 via-black/20 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[22%] bg-gradient-to-b from-black/50 via-black/15 to-transparent"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%] bg-gradient-to-t from-black via-black/80 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black via-black/75 to-transparent"
           aria-hidden
         />
       </div>
@@ -211,110 +190,20 @@ export function FullscreenNewsCard({
       <div
         className={cn(
           'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
-          'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]',
+          'pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]',
           MODE_NAV_CLEARANCE,
           'md:mx-auto md:w-full md:max-w-lg'
         )}
       >
-        {/* Publisher row — own band below mode nav; never absolute-over-tabs */}
-        <div
-          className="flex shrink-0 items-center justify-between gap-2"
-          data-testid="smart-feed-publisher-row"
-        >
-          {item.publisher ? (
-            <>
-              {item.publisher.slug && !item.publisher.slug.startsWith('src_') ? (
-                <Link
-                  href={ROUTES.PUBLISHER(item.publisher.slug)}
-                  className="flex min-w-0 items-center gap-2 rounded-full bg-black/45 py-1.5 pl-1.5 pr-3 backdrop-blur-md transition hover:bg-black/60"
-                >
-                  {item.publisher.logoUrl && !logoError ? (
-                    <Image
-                      src={item.publisher.logoUrl}
-                      alt={item.publisher.name}
-                      width={28}
-                      height={28}
-                      className="h-7 w-7 shrink-0 rounded-full object-cover"
-                      onError={() => setLogoError(true)}
-                      unoptimized={
-                        item.publisher.logoUrl.startsWith('http://') ||
-                        item.publisher.logoUrl.startsWith('https://')
-                      }
-                    />
-                  ) : (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold uppercase text-white">
-                      {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                    </span>
-                  )}
-                  <span className="min-w-0 truncate text-sm font-semibold text-white">
-                    {item.publisher.name}
-                  </span>
-                  {timeLabel ? (
-                    <>
-                      <span className="select-none text-white/35">·</span>
-                      <span className="shrink-0 text-xs text-white/70">{timeLabel}</span>
-                    </>
-                  ) : null}
-                </Link>
-              ) : (
-                <div className="flex min-w-0 items-center gap-2 rounded-full bg-black/45 py-1.5 pl-1.5 pr-3 backdrop-blur-md">
-                  {item.publisher.logoUrl && !logoError ? (
-                    <Image
-                      src={item.publisher.logoUrl}
-                      alt={item.publisher.name}
-                      width={28}
-                      height={28}
-                      className="h-7 w-7 shrink-0 rounded-full object-cover"
-                      onError={() => setLogoError(true)}
-                      unoptimized={
-                        item.publisher.logoUrl.startsWith('http://') ||
-                        item.publisher.logoUrl.startsWith('https://')
-                      }
-                    />
-                  ) : (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold uppercase text-white">
-                      {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
-                    </span>
-                  )}
-                  <span className="min-w-0 truncate text-sm font-semibold text-white">
-                    {item.publisher.name}
-                  </span>
-                  {timeLabel ? (
-                    <>
-                      <span className="select-none text-white/35">·</span>
-                      <span className="shrink-0 text-xs text-white/70">{timeLabel}</span>
-                    </>
-                  ) : null}
-                </div>
-              )}
-              <div className="flex shrink-0 items-center gap-1.5">
-                <FollowButton
-                  publisherId={item.publisher.id}
-                  publisherSlug={item.publisher.slug}
-                  className="shrink-0"
-                  showCount={false}
-                  variant="overlay"
-                  returnUrl="/feed-v2"
-                />
-                <FeedCardMenu item={item} onFeedback={onFeedback} />
-              </div>
-            </>
-          ) : (
-            <div className="ml-auto">
-              <FeedCardMenu item={item} onFeedback={onFeedback} />
-            </div>
-          )}
-        </div>
+        {/* Open media mid-band — no publisher chrome here */}
+        <div className="min-h-[18vh] flex-1" aria-hidden data-testid="smart-feed-media-breathing" />
 
-        {/* Flexible media breathing room — no solid fill; media canvas shows through */}
-        <div className="min-h-[12vh] flex-1" aria-hidden data-testid="smart-feed-media-breathing" />
-
-        {/* Lower text + reserved right rail */}
-        <div className="relative flex max-h-[42vh] items-end gap-3">
-          <div className="min-w-0 flex-1 space-y-2 pr-1" data-testid="smart-feed-text-zone">
+        {/* Bottom stack: copy + publisher + CTA | social rail + progress */}
+        <div className="relative flex items-end gap-3">
+          <div className="min-w-0 flex-1 space-y-2.5 pr-1" data-testid="smart-feed-text-zone">
             <div className="flex flex-wrap items-center gap-2">
               {cat ? (
-                <span className="text-[11px] font-bold tracking-wide text-[rgb(var(--color-brand))]">
+                <span className="text-[11px] font-extrabold tracking-[0.06em] text-[rgb(var(--color-brand))]">
                   {cat}
                 </span>
               ) : null}
@@ -338,7 +227,7 @@ export function FullscreenNewsCard({
             </div>
 
             <h2
-              className="line-clamp-2 text-[1.2rem] font-bold leading-snug text-white sm:text-[1.35rem] md:text-3xl"
+              className="line-clamp-2 text-[1.22rem] font-extrabold leading-[1.22] tracking-[-0.02em] text-white sm:text-[1.35rem]"
               data-testid="smart-feed-headline"
             >
               {item.headline}
@@ -346,18 +235,85 @@ export function FullscreenNewsCard({
 
             {item.summary ? (
               <p
-                className="line-clamp-3 break-words text-[0.9rem] leading-relaxed text-white/75 md:line-clamp-4 md:text-[0.95rem]"
+                className="line-clamp-2 break-words text-[0.88rem] leading-snug text-white/78 sm:line-clamp-3"
                 data-testid="smart-feed-summary"
               >
                 {item.summary}
               </p>
             ) : null}
 
+            {/* Publisher row — bottom of copy stack (reference composition) */}
+            {item.publisher ? (
+              <div
+                className="flex min-w-0 flex-wrap items-center gap-2"
+                data-testid="smart-feed-publisher-row"
+              >
+                {item.publisher.slug && !item.publisher.slug.startsWith('src_') ? (
+                  <Link
+                    href={ROUTES.PUBLISHER(item.publisher.slug)}
+                    className="flex min-w-0 max-w-full items-center gap-2"
+                  >
+                    {item.publisher.logoUrl && !logoError ? (
+                      <Image
+                        src={item.publisher.logoUrl}
+                        alt={item.publisher.name}
+                        width={28}
+                        height={28}
+                        className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/20"
+                        onError={() => setLogoError(true)}
+                        unoptimized={
+                          item.publisher.logoUrl.startsWith('http://') ||
+                          item.publisher.logoUrl.startsWith('https://')
+                        }
+                      />
+                    ) : (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+                        {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+                      </span>
+                    )}
+                    <span className="min-w-0 truncate text-sm font-semibold text-white">
+                      {item.publisher.name}
+                    </span>
+                    <span
+                      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
+                      title="Doğrulanmış"
+                      aria-label="Doğrulanmış yayıncı"
+                    >
+                      <Check className="h-2.5 w-2.5 stroke-[3]" aria-hidden />
+                    </span>
+                    {timeLabel ? (
+                      <span className="shrink-0 text-xs text-white/65">· {timeLabel}</span>
+                    ) : null}
+                  </Link>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+                      {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
+                    </span>
+                    <span className="min-w-0 truncate text-sm font-semibold text-white">
+                      {item.publisher.name}
+                    </span>
+                    {timeLabel ? (
+                      <span className="shrink-0 text-xs text-white/65">· {timeLabel}</span>
+                    ) : null}
+                  </div>
+                )}
+                <FollowButton
+                  publisherId={item.publisher.id}
+                  publisherSlug={item.publisher.slug}
+                  className="shrink-0"
+                  showCount={false}
+                  variant="overlay"
+                  returnUrl="/feed-v2"
+                />
+              </div>
+            ) : null}
+
             <button
               type="button"
               onClick={onReadClick}
               data-testid="smart-feed-read-cta"
-              className="mt-1 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-bold text-black transition hover:bg-white/95 active:scale-[0.99]"
+              className="mt-0.5 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-black transition hover:bg-white/95 active:scale-[0.99]"
             >
               Haberi Oku
             </button>
@@ -378,25 +334,37 @@ export function FullscreenNewsCard({
             ) : null}
           </div>
 
-          <SocialActionRail
-            articleId={item.articleId}
-            slug={item.slug}
-            title={item.headline}
-            summary={item.summary ?? undefined}
-            liked={liked}
-            saved={saved}
-            likeCount={resolvedLikeCount}
-            commentCount={resolvedCommentCount}
-            saveCount={resolvedSaveCount}
-            onToggleLike={onToggleLike}
-            onToggleSave={onToggleSave}
-            onCommentClick={onCommentClick}
-            likeLoading={likeLoading}
-            saveLoading={saveLoading}
-            orientation="vertical"
-            className="relative z-20 mb-1 shrink-0 text-white"
-            data-testid="smart-feed-social-rail"
-          />
+          <div className="relative z-20 mb-0.5 flex shrink-0 flex-col items-center gap-3">
+            <SocialActionRail
+              articleId={item.articleId}
+              slug={item.slug}
+              title={item.headline}
+              summary={item.summary ?? undefined}
+              liked={liked}
+              saved={saved}
+              likeCount={resolvedLikeCount}
+              commentCount={resolvedCommentCount}
+              saveCount={resolvedSaveCount}
+              onToggleLike={onToggleLike}
+              onToggleSave={onToggleSave}
+              onCommentClick={onCommentClick}
+              likeLoading={likeLoading}
+              saveLoading={saveLoading}
+              orientation="vertical"
+              className="text-white"
+              data-testid="smart-feed-social-rail"
+            />
+            {progressLabel ? (
+              <div
+                className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
+                data-testid="smart-feed-card-progress"
+                aria-label={`Kart ${progressLabel}`}
+              >
+                <span>{progressLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </article>

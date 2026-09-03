@@ -94,7 +94,7 @@ describe('P18.3I social UI wiring (source)', () => {
 })
 
 describe('P18.3I layout hierarchy (source)', () => {
-  it('card reserves mode-nav clearance and publisher row below tabs', () => {
+  it('card reserves mode-nav clearance; publisher in bottom stack; full-bleed cover', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
@@ -107,7 +107,7 @@ describe('P18.3I layout hierarchy (source)', () => {
     expect(card).toContain('smart-feed-text-zone')
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('smart-feed-social-rail')
-    expect(card).toContain('object-contain')
+    expect(card).toContain('object-cover')
     expect(card).toContain('blur-2xl')
     expect(card).not.toMatch(/item\.(body|content)/)
     expect(card).toContain('line-clamp-2')
