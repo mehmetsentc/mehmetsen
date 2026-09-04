@@ -43,6 +43,25 @@ export const publicationAuthorityEnum = pgEnum('publication_authority', [
   'LEGACY',
 ])
 
+/** P18.4D.2 — human rights decision on canonical PG news (independent of publication_authority). */
+export const newsRightsStatusEnum = pgEnum('news_rights_status', [
+  'PENDING',
+  'CLEARED',
+  'REWRITE_REQUIRED',
+  'DO_NOT_PUBLISH',
+])
+
+export const newsRightsBasisEnum = pgEnum('news_rights_basis', [
+  'UNKNOWN',
+  'PUBLISHER_ORIGINAL',
+  'SOURCE_ASSOCIATED',
+  'LICENSED',
+  'OWNED',
+  'OFFICIAL_RELEASE',
+  'EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION',
+  'HUMAN_REVIEWED_OTHER',
+])
+
 export const news = pgTable(
   'news',
   {
@@ -120,6 +139,14 @@ export const news = pgTable(
     migratedAt: timestamp('migrated_at', { withTimezone: true }),
     migrationBatchId: varchar('migration_batch_id', { length: 64 }),
 
+    // P18.4D.2 — human rights decision (independent of publication_authority)
+    rightsStatus: newsRightsStatusEnum('rights_status').default('PENDING'),
+    rightsBasis: newsRightsBasisEnum('rights_basis').default('UNKNOWN'),
+    rightsDecidedBy: varchar('rights_decided_by', { length: 128 }),
+    rightsDecidedAt: timestamp('rights_decided_at', { withTimezone: true }),
+    /** Non-null blocks publish regardless of CLEARED (e.g. HIGH_SOURCE_OVERLAP). */
+    editorialBlocker: varchar('editorial_blocker', { length: 64 }),
+
     // Timestamps
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -138,5 +165,7 @@ export const news = pgTable(
     index('news_created_at_idx').on(t.createdAt),
     index('news_publication_authority_idx').on(t.publicationAuthority),
     index('news_migration_batch_idx').on(t.migrationBatchId),
+    index('news_rights_status_idx').on(t.rightsStatus),
+    index('news_editorial_blocker_idx').on(t.editorialBlocker),
   ]
 )
