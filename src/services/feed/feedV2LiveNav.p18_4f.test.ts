@@ -31,7 +31,8 @@ describe('P18 feed-v2 live nav + card chrome', () => {
   it('SSR shell + category nav + discovery + mid-right social + CTA', () => {
     const page = readFileSync(join(process.cwd(), 'src/app/(main)/feed-v2/page.tsx'), 'utf8')
     expect(page).toContain('smart-feed-ssr-shell')
-    expect(page).toContain('FullscreenNewsCardSkeleton')
+    expect(page).toContain('feedService.getFeed')
+    expect(page).toContain('initialPage')
 
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
@@ -40,6 +41,8 @@ describe('P18 feed-v2 live nav + card chrome', () => {
     expect(client).toContain('FeedV2CategoryNav')
     expect(client).toContain('showDiscoveryRail')
     expect(client).toContain('applyReaction')
+    expect(client).toContain('isLoadingFirstTime = items.length === 0 && loading')
+    expect(client).not.toContain('loading || authLoading')
 
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
@@ -47,7 +50,8 @@ describe('P18 feed-v2 live nav + card chrome', () => {
     )
     expect(card).toContain('smart-feed-social-dock')
     expect(card).toContain('Haberi Oku')
-    expect(card).toContain('line-clamp-3')
+    expect(card).not.toMatch(/line-clamp/)
+    expect(card).not.toContain('smart-feed-mid-copy')
     expect(card).toContain('FeedDiscoveryRail')
     expect(card).toContain('--feed-publisher-accent')
 

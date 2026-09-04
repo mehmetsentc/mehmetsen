@@ -137,10 +137,17 @@ async function postTelemetry(payload: {
 interface SmartFeedClientProps {
   initialCitySlug?: string | null
   initialDistrictSlug?: string | null
+  /** SSR-prefetched first page — paints cards before auth/profile finishes. */
+  initialPage?: FeedPageDto | null
   debug?: boolean
 }
 
-export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }: SmartFeedClientProps) {
+export function SmartFeedClient({
+  initialCitySlug,
+  initialDistrictSlug,
+  initialPage = null,
+  debug,
+}: SmartFeedClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user: authUser, loading: authLoading } = useAuthContext()
@@ -151,6 +158,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const abortControllerRef = useRef<AbortController | null>(null)
   const loadingMoreRef = useRef(false)
   const lastPrefetchCursorRef = useRef<string | null>(null)
+  const personalizedOnceRef = useRef(false)
 
   const [mode, setMode] = useState<FeedMode>(() => {
     if (typeof window !== 'undefined') {
@@ -174,12 +182,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       category: searchParams.get('category'),
     }).tabId
   )
-  const [items, setItems] = useState<FeedItemDto[]>([])
+  const [items, setItems] = useState<FeedItemDto[]>(() => initialPage?.items ?? [])
   const itemsRef = useRef<FeedItemDto[]>([])
   itemsRef.current = items
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
-  const [loading, setLoading] = useState(true)
+  const [cursor, setCursor] = useState<string | null>(() => initialPage?.nextCursor ?? null)
+  const [hasMore, setHasMore] = useState(() => initialPage?.hasMore ?? true)
+  const [loading, setLoading] = useState(() => !(initialPage?.items && initialPage.items.length > 0))
   const [loadingMore, setLoadingMore] = useState(false)
   const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -202,9 +210,9 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   const windowItems = items.slice(windowStart, windowEnd)
   const spacerAfter = Math.max(0, items.length - windowEnd)
 
-  const cursorRef = useRef<string | null>(null)
+  const cursorRef = useRef<string | null>(initialPage?.nextCursor ?? null)
   cursorRef.current = cursor
-  const hasMoreRef = useRef(true)
+  const hasMoreRef = useRef(Boolean(initialPage?.hasMore ?? true))
   hasMoreRef.current = hasMore
 
   const loadPage = useCallback(
@@ -442,13 +450,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
   )
 
   useEffect(() => {
-    if (authLoading) return
-
     // Article detail → back: hydrate snapshot instead of re-ranking from card 0.
     if (!restoreAppliedRef.current) {
       const pending = consumePendingFeedRestore()
       if (pending) {
         restoreAppliedRef.current = true
+        personalizedOnceRef.current = true
         setMode(pending.mode)
         setItems(pending.items ?? [])
         setCursor(pending.cursor ?? null)
@@ -467,14 +474,42 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       return
     }
 
-    void loadPage(false)
+    const hasCards = itemsRef.current.length > 0
+
+    // Keep SSR/bootstrap cards visible while Firebase profile still loads.
+    if (authLoading && hasCards) return
+
+    // Auth ready as guest — no personalization pass needed.
+    if (!authLoading && !authUser) {
+      personalizedOnceRef.current = true
+    }
+
+    // One soft refresh after login so personal ranking applies — only at card 0.
+    if (
+      !authLoading &&
+      authUser?.uid &&
+      hasCards &&
+      !personalizedOnceRef.current &&
+      activeIndexRef.current === 0 &&
+      mode === 'personal' &&
+      !category
+    ) {
+      personalizedOnceRef.current = true
+      void loadPage(false, null, 'personal', true)
+      return
+    }
+
+    // Cold start / no SSR: fetch immediately — do not wait for auth profile.
+    if (!hasCards) {
+      void loadPage(false)
+    }
 
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
-  }, [authLoading, authUser?.uid, loadPage])
+  }, [authLoading, authUser?.uid, loadPage, mode, category])
 
   // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
   useLayoutEffect(() => {
@@ -1007,7 +1042,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     }
   }, [loading, mode])
 
-  const isLoadingFirstTime = items.length === 0 && (loading || authLoading)
+  const isLoadingFirstTime = items.length === 0 && loading
 
   return (
     <div

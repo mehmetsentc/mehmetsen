@@ -80,8 +80,9 @@ describe('P18.3L static media composition', () => {
     expect(card).toContain('blur-2xl')
     expect(card).toContain('object-cover')
     expect(card).toContain('smart-feed-media-dolly')
-    expect(card).toContain('line-clamp-3')
+    expect(card).not.toMatch(/line-clamp/)
     expect(card).not.toContain('min-h-[28vh]')
+    expect(card).not.toContain('smart-feed-mid-copy')
   })
 })
 

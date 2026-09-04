@@ -454,7 +454,7 @@ export function FullscreenNewsCard({
           'md:mx-auto md:w-full md:max-w-lg'
         )}
       >
-        {/* Double-tap zone + optional mid-frame copy (center skins) */}
+        {/* Double-tap zone — media only; copy always bottom (standard news) */}
         <div
           className="relative min-h-[12vh] flex-1 touch-manipulation"
           data-testid="smart-feed-double-tap-zone"
@@ -476,161 +476,85 @@ export function FullscreenNewsCard({
               <Heart className="h-20 w-20 fill-rose-500 text-rose-500 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]" />
             </span>
           ) : null}
-
-          {isCenter ? (
-            <div
-              className="pointer-events-none absolute inset-x-0 top-[18%] bottom-[28%] z-[2] flex flex-col items-center justify-center px-1"
-              data-testid="smart-feed-mid-copy"
-            >
-              <div
-                className={cn(
-                  'pointer-events-auto max-h-[40vh] w-full max-w-md space-y-2.5 overflow-y-auto overscroll-contain text-center [-webkit-overflow-scrolling:touch]',
-                  FEED_INK_PANEL
-                )}
-                data-testid="smart-feed-copy-scroll"
-                onTouchStart={(e) => e.stopPropagation()}
-                onWheel={(e) => e.stopPropagation()}
-              >
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {cat ? (
-                    <span
-                      className={cn(
-                        'text-[11px] font-extrabold tracking-[0.06em]',
-                        skin.badge === 'ghost'
-                          ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
-                          : 'rounded-md px-2 py-0.5 text-white',
-                        skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
-                        skin.id === 'spor' && 'rounded-full'
-                      )}
-                    >
-                      {cat}
-                    </span>
-                  ) : null}
-                  {item.breaking && skin.id !== 'son-dakika' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                      <Zap className="h-3 w-3" aria-hidden />
-                      Son Dakika
-                    </span>
-                  ) : null}
-                  {item.materialUpdate ? (
-                    <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-black">
-                      YENİ GELİŞME
-                    </span>
-                  ) : null}
-                </div>
-                <h2
-                  className={cn('line-clamp-3 break-words text-white', skin.headlineClass)}
-                  data-testid="smart-feed-headline"
-                >
-                  {typedHeadline}
-                  {showCursor ? (
-                    <span
-                      className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
-                      style={{ background: 'var(--feed-skin-accent)' }}
-                      aria-hidden
-                    />
-                  ) : null}
-                </h2>
-                {item.summary ? (
-                  <p
-                    className={cn(
-                      'line-clamp-3 break-words transition-opacity duration-300',
-                      skin.summaryClass,
-                      headlineDone ? 'opacity-100' : 'opacity-0'
-                    )}
-                    data-testid="smart-feed-summary"
-                  >
-                    {item.summary}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={onReadClick}
-                  data-testid="smart-feed-read-cta"
-                  className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
-                  style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
-                >
-                  Haberi Oku →
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
 
-        {/* Bottom copy stack — CTA before publisher; social is viewport mid-right */}
+        {/* Bottom copy stack — full summary, CTA, publisher; social mid-right */}
         <div
-          className="relative z-[2] flex max-h-[52vh] min-h-0 flex-col justify-end gap-2.5 pr-[3.75rem]"
+          className="relative z-[2] flex max-h-[62vh] min-h-0 flex-col justify-end gap-2.5 pr-[3.75rem]"
           data-testid="smart-feed-bottom-chrome"
         >
           <div className="min-w-0 space-y-2" data-testid="smart-feed-text-zone">
-            {!isCenter ? (
-              <div
-                className={cn('space-y-2', FEED_INK_PANEL)}
-                data-testid="smart-feed-copy-scroll"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  {cat ? (
-                    <span
-                      className={cn(
-                        'text-[11px] font-extrabold tracking-[0.06em]',
-                        skin.badge === 'ghost'
-                          ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
-                          : 'rounded-md px-2 py-0.5 text-white',
-                        skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
-                        skin.id === 'spor' && 'rounded-full'
-                      )}
-                    >
-                      {cat}
-                    </span>
-                  ) : null}
-                  {item.breaking && skin.id !== 'son-dakika' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                      <Zap className="h-3 w-3" aria-hidden />
-                      Son Dakika
-                    </span>
-                  ) : null}
-                  {item.materialUpdate ? (
-                    <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-black">
-                      YENİ GELİŞME
-                    </span>
-                  ) : null}
-                </div>
-                <h2
-                  className={cn('line-clamp-3 break-words text-white', skin.headlineClass)}
-                  data-testid="smart-feed-headline"
-                >
-                  {typedHeadline}
-                  {showCursor ? (
-                    <span
-                      className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
-                      style={{ background: 'var(--feed-skin-accent)' }}
-                      aria-hidden
-                    />
-                  ) : null}
-                </h2>
-                {item.summary ? (
-                  <p
+            <div
+              className={cn(
+                'max-h-[48vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
+                FEED_INK_PANEL
+              )}
+              data-testid="smart-feed-copy-scroll"
+              onTouchStart={(e) => e.stopPropagation()}
+              onWheel={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                {cat ? (
+                  <span
                     className={cn(
-                      'line-clamp-3 break-words transition-opacity duration-300',
-                      skin.summaryClass,
-                      headlineDone ? 'opacity-100' : 'opacity-0'
+                      'text-[11px] font-extrabold tracking-[0.06em]',
+                      skin.badge === 'ghost'
+                        ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
+                        : 'rounded-md px-2 py-0.5 text-white',
+                      skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
+                      skin.id === 'spor' && 'rounded-full'
                     )}
-                    data-testid="smart-feed-summary"
                   >
-                    {item.summary}
-                  </p>
+                    {cat}
+                  </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={onReadClick}
-                  data-testid="smart-feed-read-cta"
-                  className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
-                  style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
-                >
-                  Haberi Oku →
-                </button>
+                {item.breaking && skin.id !== 'son-dakika' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                    <Zap className="h-3 w-3" aria-hidden />
+                    Son Dakika
+                  </span>
+                ) : null}
+                {item.materialUpdate ? (
+                  <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-black">
+                    YENİ GELİŞME
+                  </span>
+                ) : null}
               </div>
-            ) : null}
+              <h2
+                className={cn('break-words text-white', skin.headlineClass)}
+                data-testid="smart-feed-headline"
+              >
+                {typedHeadline}
+                {showCursor ? (
+                  <span
+                    className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
+                    style={{ background: 'var(--feed-skin-accent)' }}
+                    aria-hidden
+                  />
+                ) : null}
+              </h2>
+              {item.summary ? (
+                <p
+                  className={cn(
+                    'break-words transition-opacity duration-300',
+                    skin.summaryClass,
+                    headlineDone ? 'opacity-100' : 'opacity-0'
+                  )}
+                  data-testid="smart-feed-summary"
+                >
+                  {item.summary}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={onReadClick}
+                data-testid="smart-feed-read-cta"
+                className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+                style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
+              >
+                Haberi Oku →
+              </button>
+            </div>
 
             {item.publisher ? (
               <div

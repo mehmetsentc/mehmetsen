@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { SmartFeedClient } from '@/components/feed/smart/SmartFeedClient'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
+import { hasDatabaseUrl } from '@/db'
+import { FEED_PAGINATION } from '@/lib/feed/config'
+import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { feedService } from '@/services/feed/FeedService'
+import type { FeedPageDto } from '@/types/smartFeed'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,11 +16,25 @@ export const metadata: Metadata = {
 }
 
 /**
- * SSR paints the black shell + skeleton immediately so first open is never a
- * naked blank wait for JS hydration / auth.
+ * SSR paints skeleton + boots first feed page so hydration is not blocked on
+ * Firebase auth/profile (which previously left a 10–15s black wait).
  */
-export default function FeedV2Page() {
+export default async function FeedV2Page() {
   const debug = process.env.NODE_ENV !== 'production'
+  let initialPage: FeedPageDto | null = null
+
+  try {
+    if (hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
+      initialPage = await feedService.getFeed({
+        userId: null,
+        sessionId: null,
+        mode: 'personal',
+        limit: FEED_PAGINATION.defaultLimit,
+      })
+    }
+  } catch (err) {
+    console.warn('[feed-v2] SSR bootstrap failed', err)
+  }
 
   return (
     <div
@@ -27,9 +46,9 @@ export default function FeedV2Page() {
           className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-14 bg-gradient-to-b from-black/50 to-transparent"
           aria-hidden
         />
-        <FullscreenNewsCardSkeleton />
+        {initialPage?.items?.length ? null : <FullscreenNewsCardSkeleton />}
         <div className="absolute inset-0 z-30">
-          <SmartFeedClient debug={debug} />
+          <SmartFeedClient initialPage={initialPage} debug={debug} />
         </div>
       </div>
     </div>

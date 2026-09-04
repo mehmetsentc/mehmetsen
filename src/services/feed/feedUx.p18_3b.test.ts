@@ -14,14 +14,15 @@ describe('P18.3B Smart Feed UX', () => {
     expect(src).toContain('data-testid="smart-feed-category-nav"')
   })
 
-  it('summary uses line-clamp-3 (no JS truncation)', () => {
+  it('summary uses full text (no CSS line-clamp)', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(src).toContain('data-testid="smart-feed-summary"')
-    expect(src).toContain('line-clamp-3')
+    expect(src).not.toMatch(/line-clamp/)
     expect(src).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
+    expect(src).not.toContain('smart-feed-mid-copy')
   })
 
   it('exit nav treats /feed-v2 as immersive with home fallback', () => {
