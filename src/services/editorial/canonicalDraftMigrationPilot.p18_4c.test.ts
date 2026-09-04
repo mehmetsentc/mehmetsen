@@ -12,8 +12,23 @@ describe('P18.4C draft migration safety contracts', () => {
       'utf8'
     )
     expect(src).toContain('MAX_PILOT_RECORDS = 5')
-    expect(src).toMatch(/if \(cleaned\.length > MAX_PILOT_RECORDS\)/)
+    expect(src).toMatch(/if \(cleaned\.length > hardMax\)/)
     expect(src).not.toMatch(/limit\s*[:=]\s*\d{3,}/)
+  })
+
+  it('enforces P18.4E cohort hard max = 10 with P18_4E batch prefix', async () => {
+    const { MAX_COHORT_RECORDS, P18_4E_BATCH_PREFIX } = await import(
+      '@/services/editorial/canonicalDraftMigrationPilot'
+    )
+    expect(MAX_COHORT_RECORDS).toBe(10)
+    expect(P18_4E_BATCH_PREFIX).toBe('P18_4E_')
+    const src = readFileSync(
+      resolve(process.cwd(), 'src/services/editorial/canonicalDraftMigrationPilot.ts'),
+      'utf8'
+    )
+    expect(src).toContain('runCanonicalDraftMigrationCohort')
+    expect(src).toContain("rightsStatus: 'PENDING'")
+    expect(src).toContain("rightsBasis: 'UNKNOWN'")
   })
 
   it('getNewsBySlug documents draft non-shadowing via published-only canonical path', () => {

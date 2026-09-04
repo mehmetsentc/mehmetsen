@@ -308,6 +308,37 @@ function PilotCard({
 export default function CanonicalDraftRightsPage() {
   const { user, loading } = useAuth()
   const [tick, setTick] = useState(0)
+  const [queueIds, setQueueIds] = useState<string[]>([...PILOT_IDS])
+  const [cohortCount, setCohortCount] = useState(0)
+  const [queueError, setQueueError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const headers = await authHeaders()
+        const res = await fetch('/api/admin/canonical-news/rights-queue', { headers })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Kuyruk yüklenemedi')
+        if (cancelled) return
+        const ids = Array.isArray(data.queue)
+          ? (data.queue as Array<{ id: string }>).map((q) => q.id).filter(Boolean)
+          : [...PILOT_IDS]
+        setQueueIds(ids.length ? ids : [...PILOT_IDS])
+        setCohortCount(typeof data.cohortCount === 'number' ? data.cohortCount : 0)
+        setQueueError(null)
+      } catch (e) {
+        if (!cancelled) {
+          setQueueIds([...PILOT_IDS])
+          setQueueError(e instanceof Error ? e.message : 'Kuyruk hatası')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user, tick])
 
   if (loading) {
     return (
@@ -326,13 +357,20 @@ export default function CanonicalDraftRightsPage() {
       <header>
         <h1 className="text-2xl font-semibold text-zinc-900">Canonical draft rights review</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          P18.4D.8 — hak kararı + açık «Yayınla». Otomatik yayın yok. Candidate 2 rewrite
-          blocker ile CLEAR/Yayın edilemez. C3 rights PENDING iken yayın kapalı.
+          P18.4D/E — hak kararı + açık «Yayınla». Otomatik yayın yok. Cohort #1 draft’ları
+          PENDING/UNKNOWN ile listelenir; insan incelemesi zorunlu.
         </p>
-        <p className="mt-1 font-mono text-xs text-zinc-500">/admin/canonical-drafts/rights</p>
+        <p className="mt-1 font-mono text-xs text-zinc-500">
+          /admin/canonical-drafts/rights · pilots {PILOT_IDS.length} · cohort {cohortCount}
+        </p>
+        {queueError && (
+          <p className="mt-2 text-xs text-amber-800">
+            Kuyruk API: {queueError} — pilot ID’ler gösteriliyor.
+          </p>
+        )}
       </header>
 
-      {PILOT_IDS.map((id) => (
+      {queueIds.map((id) => (
         <PilotCard key={`${id}-${tick}`} id={id} onSaved={() => setTick((t) => t + 1)} />
       ))}
     </div>

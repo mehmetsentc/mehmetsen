@@ -1,13 +1,14 @@
 /**
- * P18.4C — Tiny canonical DRAFT migration pilot (write path).
+ * P18.4C / P18.4E — Canonical DRAFT migration write path.
  *
  * Hard constraints:
- * - MAX_PILOT_RECORDS = 5 (server-side; no caller override)
+ * - MAX_PILOT_RECORDS = 5 (P18.4C); MAX_COHORT_RECORDS = 10 (P18.4E)
  * - status always = draft
  * - no Firestore mutation
  * - no social/seen remaps
  * - no cluster rewrite
  * - no public API / cron / worker
+ * - never publishes
  */
 
 import 'server-only'
@@ -27,10 +28,14 @@ import {
 } from '@/services/editorial/canonicalMigrationEligibility'
 import { planCanonicalMigrationDryRun } from '@/services/editorial/canonicalMigrationPlanner'
 
-/** Absolute hard max for this pilot phase. Not configurable. */
+/** Absolute hard max for P18.4C pilot. Not configurable. */
 export const MAX_PILOT_RECORDS = 5 as const
 
+/** Absolute hard max for P18.4E bounded cohort #1. Not configurable. */
+export const MAX_COHORT_RECORDS = 10 as const
+
 export const P18_4C_BATCH_PREFIX = 'P18_4C_' as const
+export const P18_4E_BATCH_PREFIX = 'P18_4E_' as const
 
 export type PilotExecuteMode = 'dry-run' | 'execute'
 
@@ -54,7 +59,7 @@ export type PilotCandidateResult = {
 export type PilotRunResult = {
   mode: PilotExecuteMode
   batchId: string
-  hardMax: typeof MAX_PILOT_RECORDS
+  hardMax: number
   requestedIds: string[]
   results: PilotCandidateResult[]
   insertedCount: number
@@ -91,26 +96,26 @@ function asDate(v: unknown): Date | null {
   return null
 }
 
-function buildBatchId(now: Date = new Date()): string {
+function buildBatchId(prefix: string, now: Date = new Date()): string {
   // Deterministic within the same UTC minute for ops readability; not a secret.
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')
-  return `${P18_4C_BATCH_PREFIX}${stamp}`
+  return `${prefix}${stamp}`
 }
 
-function assertHardIdList(ids: string[]): string[] {
+function assertHardIdList(ids: string[], hardMax: number): string[] {
   const cleaned = ids.map((id) => id.trim()).filter(Boolean)
   if (cleaned.length === 0) {
-    throw new Error('P18.4C requires an explicit non-empty Firestore ID list')
+    throw new Error('canonical draft migration requires an explicit non-empty Firestore ID list')
   }
-  if (cleaned.length > MAX_PILOT_RECORDS) {
+  if (cleaned.length > hardMax) {
     throw new Error(
-      `P18.4C hard max exceeded: requested ${cleaned.length} > MAX_PILOT_RECORDS=${MAX_PILOT_RECORDS}`
+      `canonical draft migration hard max exceeded: requested ${cleaned.length} > hardMax=${hardMax}`
     )
   }
   // Exact uniqueness — refuse silent de-dup that could hide operator error.
   const seen = new Set<string>()
   for (const id of cleaned) {
-    if (seen.has(id)) throw new Error(`P18.4C duplicate ID in list: ${id}`)
+    if (seen.has(id)) throw new Error(`duplicate ID in migration list: ${id}`)
     seen.add(id)
   }
   return cleaned
@@ -331,6 +336,9 @@ export async function migrateOneCanonicalDraftPilot(opts: {
       publishedBy,
       migratedAt: now,
       migrationBatchId: opts.batchId,
+      // Safe migration defaults — never fabricate CLEARED/LICENSED/OWNED.
+      rightsStatus: 'PENDING',
+      rightsBasis: 'UNKNOWN',
       // Historical publish timestamp preserved; status remains draft (not public).
       publishedAt,
       createdAt,
@@ -366,14 +374,15 @@ export async function migrateOneCanonicalDraftPilot(opts: {
  * Sequential pilot runner. Enforces MAX_PILOT_RECORDS.
  * Stops after first unexpected REFUSED during execute mode (after dry-run gates).
  */
-export async function runCanonicalDraftMigrationPilot(opts: {
+async function runSequentialMigration(opts: {
   firestoreIds: string[]
   mode: PilotExecuteMode
-  /** Stop remaining candidates after first non-success in execute mode. */
+  hardMax: number
+  batchPrefix: string
   stopOnUnexpected?: boolean
 }): Promise<PilotRunResult> {
-  const ids = assertHardIdList(opts.firestoreIds)
-  const batchId = buildBatchId()
+  const ids = assertHardIdList(opts.firestoreIds, opts.hardMax)
+  const batchId = buildBatchId(opts.batchPrefix)
   const trusted = await loadTrustedEditorialActorUids()
   const results: PilotCandidateResult[] = []
   let stop = false
@@ -415,13 +424,50 @@ export async function runCanonicalDraftMigrationPilot(opts: {
   return {
     mode: opts.mode,
     batchId,
-    hardMax: MAX_PILOT_RECORDS,
+    hardMax: opts.hardMax,
     requestedIds: ids,
     results,
     insertedCount: results.filter((r) => r.outcome === 'INSERTED').length,
     refusedCount: results.filter((r) => r.outcome === 'REFUSED').length,
     alreadyMigratedCount: results.filter((r) => r.outcome === 'ALREADY_MIGRATED').length,
   }
+}
+
+/**
+ * Sequential pilot runner. Enforces MAX_PILOT_RECORDS (P18.4C).
+ * Stops after first unexpected REFUSED during execute mode (after dry-run gates).
+ */
+export async function runCanonicalDraftMigrationPilot(opts: {
+  firestoreIds: string[]
+  mode: PilotExecuteMode
+  /** Stop remaining candidates after first non-success in execute mode. */
+  stopOnUnexpected?: boolean
+}): Promise<PilotRunResult> {
+  return runSequentialMigration({
+    firestoreIds: opts.firestoreIds,
+    mode: opts.mode,
+    hardMax: MAX_PILOT_RECORDS,
+    batchPrefix: P18_4C_BATCH_PREFIX,
+    stopOnUnexpected: opts.stopOnUnexpected,
+  })
+}
+
+/**
+ * P18.4E bounded cohort #1 runner. Reuses same migrateOne path; hard max 10;
+ * batch prefix P18_4E_. Never publishes.
+ */
+export async function runCanonicalDraftMigrationCohort(opts: {
+  firestoreIds: string[]
+  mode: PilotExecuteMode
+  stopOnUnexpected?: boolean
+}): Promise<PilotRunResult> {
+  return runSequentialMigration({
+    firestoreIds: opts.firestoreIds,
+    mode: opts.mode,
+    hardMax: MAX_COHORT_RECORDS,
+    batchPrefix: P18_4E_BATCH_PREFIX,
+    stopOnUnexpected: opts.stopOnUnexpected,
+  })
 }
 
 /** Snapshot counts for pre/post reports (no secrets). */
