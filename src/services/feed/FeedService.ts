@@ -213,7 +213,8 @@ export class FeedService {
         categoryIds,
       }
 
-      // Category tab: first page mixes recent/popular/featured; later pages walk recent by cursor.
+      // Category tab: prefer unseen, then soft-walk older (incl. previously seen in other modes)
+      // so sparse categories still infinite-scroll until the corpus is truly empty.
       if (ctx.category) {
         const previewRows = await feedCandidateService.fetchRecent({
           ...candidateOpts,
@@ -226,26 +227,31 @@ export class FeedService {
           `category:${ctx.category}`,
           clusterIds
         )
-        const suppressOpts = {
-          ...candidateOpts,
-          excludeArticleIds: seenArticles,
-          excludeClusterIds: seenClusters,
-        }
 
-        let ranked: FeedCandidateRow[]
-        if (timeCursor) {
-          ranked = feedRankingV1.rankMode(
-            'personal',
-            await feedCandidateService.fetchRecent(suppressOpts),
-            limit
-          )
-        } else {
+        const collectRanked = async (
+          excludeArticleIds: Set<string> | undefined,
+          excludeClusterIds: Set<string> | undefined,
+          cursor: typeof timeCursor
+        ): Promise<FeedCandidateRow[]> => {
+          const opts = {
+            ...candidateOpts,
+            cursor,
+            excludeArticleIds,
+            excludeClusterIds,
+          }
+          if (cursor) {
+            return feedRankingV1.rankMode(
+              'personal',
+              await feedCandidateService.fetchRecent(opts),
+              limit
+            )
+          }
           const [recent, popular, featured] = await Promise.all([
-            feedCandidateService.fetchRecent(suppressOpts),
-            feedCandidateService.fetchPopular(suppressOpts),
-            feedCandidateService.fetchFeatured(suppressOpts),
+            feedCandidateService.fetchRecent(opts),
+            feedCandidateService.fetchPopular(opts),
+            feedCandidateService.fetchFeatured(opts),
           ])
-          ranked = feedRankingV1.rankPersonal(
+          return feedRankingV1.rankPersonal(
             {
               BREAKING: [],
               RECENT: recent,
@@ -258,6 +264,49 @@ export class FeedService {
             false
           )
         }
+
+        let ranked = await collectRanked(seenArticles, seenClusters, timeCursor)
+
+        // Soft refill: drop cross-mode seen exclusions and walk older by cursor.
+        if (ranked.length < limit) {
+          const have = new Set(ranked.map((r) => r.articleId))
+          let walkCursor =
+            timeCursor ??
+            (ranked.length
+              ? {
+                  publishedAt: ranked[ranked.length - 1]!.publishedAt.toISOString(),
+                  id: ranked[ranked.length - 1]!.articleId,
+                }
+              : null)
+
+          for (let walk = 0; walk < 8 && ranked.length < limit; walk++) {
+            const older = await feedCandidateService.fetchRecent({
+              ...candidateOpts,
+              cursor: walkCursor,
+              // Only skip rows already on this page — allow category re-browse of older/seen.
+              excludeArticleIds: have,
+              excludeClusterIds: undefined,
+            })
+            if (!older.length) break
+
+            for (const row of older) {
+              if (have.has(row.articleId)) continue
+              have.add(row.articleId)
+              ranked.push(row)
+              if (ranked.length >= limit) break
+            }
+
+            const lastOlder = older[older.length - 1]!
+            walkCursor = {
+              publishedAt: lastOlder.publishedAt.toISOString(),
+              id: lastOlder.articleId,
+            }
+            // Thin older page → likely near end of category corpus.
+            if (older.length < Math.max(3, Math.floor(limit / 2))) break
+          }
+          ranked = ranked.slice(0, limit)
+        }
+
         if (!ranked.length) {
           return {
             items: [],
@@ -268,6 +317,7 @@ export class FeedService {
             rankingVersion: 'category_mix_v1',
           }
         }
+
         const articleIds = ranked.map((r) => r.articleId)
         const [socialMap, enriched] = await Promise.all([
           loadSocialState(ctx.userId, articleIds),
@@ -275,13 +325,24 @@ export class FeedService {
         ])
         const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
         const last = ranked[ranked.length - 1]!
+        const pageCursor = {
+          publishedAt: last.publishedAt.toISOString(),
+          id: last.articleId,
+        }
+        // Probe one step older so short first pages don't falsely end the feed.
+        const olderProbe = await feedCandidateService.fetchRecent({
+          ...candidateOpts,
+          cursor: pageCursor,
+          excludeArticleIds: new Set(articleIds),
+          excludeClusterIds: undefined,
+          limit: Math.max(limit, 8),
+        })
+        const hasMore = olderProbe.length > 0
+
         return {
           items,
-          nextCursor: encodeFeedCursor({
-            publishedAt: last.publishedAt.toISOString(),
-            id: last.articleId,
-          }),
-          hasMore: ranked.length >= limit,
+          nextCursor: hasMore ? encodeFeedCursor(pageCursor) : null,
+          hasMore,
           mode: ctx.mode,
           rankingVersion: 'category_mix_v1',
         }

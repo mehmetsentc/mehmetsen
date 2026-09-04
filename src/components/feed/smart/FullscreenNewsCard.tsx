@@ -134,12 +134,14 @@ export function FullscreenNewsCard({
   const [typedHeadline, setTypedHeadline] = useState(item.headline)
   const [headlineDone, setHeadlineDone] = useState(true)
   const [showCursor, setShowCursor] = useState(false)
+  const [motionOk, setMotionOk] = useState(true)
 
   const lastTapRef = useRef(0)
   const tapOriginRef = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
+  const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const showVideo = Boolean(videoEnabled && item.video && isActive)
@@ -159,13 +161,70 @@ export function FullscreenNewsCard({
   const skin = resolveFeedCardSkin(item.category, { breaking: item.breaking })
   void skin.layout
   const isCenter = false
+  const playMediaDolly = isActive && motionOk
 
-  // Headline paints immediately — typewriter made mid-word cuts look like truncation.
   useEffect(() => {
-    setTypedHeadline(item.headline)
-    setHeadlineDone(true)
-    setShowCursor(false)
-  }, [item.headline, item.articleId])
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setMotionOk(!mq.matches)
+    sync()
+    mq.addEventListener?.('change', sync)
+    return () => mq.removeEventListener?.('change', sync)
+  }, [])
+
+  // Typewriter: only when card becomes active (skip if reduced motion)
+  useEffect(() => {
+    const clearType = () => {
+      if (typeTimerRef.current != null) {
+        window.clearTimeout(typeTimerRef.current)
+        typeTimerRef.current = null
+      }
+    }
+
+    clearType()
+
+    if (!isActive) {
+      setTypedHeadline(item.headline)
+      setHeadlineDone(true)
+      setShowCursor(false)
+      return
+    }
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (reduced || !item.headline) {
+      setTypedHeadline(item.headline)
+      setHeadlineDone(true)
+      setShowCursor(false)
+      return
+    }
+
+    const full = item.headline
+    // Cap total typewriter ~1.6s regardless of length
+    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
+    setTypedHeadline('')
+    setHeadlineDone(false)
+    setShowCursor(true)
+
+    let i = 0
+    const tick = () => {
+      i += 1
+      setTypedHeadline(full.slice(0, i))
+      if (i >= full.length) {
+        setHeadlineDone(true)
+        setShowCursor(false)
+        typeTimerRef.current = null
+        return
+      }
+      typeTimerRef.current = window.setTimeout(tick, step)
+    }
+    // slight delay so media expand / chrome settle
+    typeTimerRef.current = window.setTimeout(tick, 140)
+
+    return clearType
+  }, [isActive, item.headline, item.articleId, skin.typeMs])
 
   const triggerDoubleTapLike = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -279,11 +338,13 @@ export function FullscreenNewsCard({
       <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
-            key={item.video!}
+            key={`vid-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
             src={item.video!}
             className={cn(
-              'h-full w-full object-cover',
-              isActive && 'animate-[smart-feed-media-dolly_3.2s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+              'h-full w-full object-cover will-change-transform',
+              playMediaDolly
+                ? 'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+                : 'scale-100'
             )}
             autoPlay
             playsInline
@@ -306,12 +367,15 @@ export function FullscreenNewsCard({
               }
             />
             <Image
+              key={`img-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
               src={item.image!}
               alt={item.headline || ''}
               fill
               className={cn(
-                'object-cover object-center',
-                isActive && 'animate-[smart-feed-media-dolly_3.2s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+                'object-cover object-center will-change-transform',
+                playMediaDolly
+                  ? 'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+                  : 'scale-100'
               )}
               sizes="100vw"
               priority={isActive}

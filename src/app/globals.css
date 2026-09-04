@@ -3538,12 +3538,18 @@ video.reels-video {
   }
 }
 
+/* Video-feel: image expands from small frame into full cover */
 @keyframes smart-feed-media-dolly {
-  from {
-    transform: scale(1);
+  0% {
+    transform: scale(0.72);
+    opacity: 0.88;
   }
-  to {
-    transform: scale(1.06);
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 1;
   }
 }
 

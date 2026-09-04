@@ -395,9 +395,22 @@ export class FeedCandidateService {
             if (clusterId && opts.excludeClusterIds.has(clusterId)) continue
           }
           if (
-            opts.category &&
-            doc.data().categoryId !== opts.category &&
-            doc.data().category !== opts.category
+            (opts.categoryIds?.length || opts.category) &&
+            (() => {
+              const ids =
+                opts.categoryIds && opts.categoryIds.length > 0
+                  ? opts.categoryIds
+                  : opts.category
+                    ? [opts.category]
+                    : []
+              const docCat =
+                typeof doc.data().categoryId === 'string'
+                  ? doc.data().categoryId
+                  : typeof doc.data().category === 'string'
+                    ? doc.data().category
+                    : null
+              return !docCat || !ids.includes(docCat)
+            })()
           ) {
             continue
           }

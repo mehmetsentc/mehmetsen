@@ -33,7 +33,7 @@ import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 const WINDOW_MAX = 25
 const WINDOW_BEFORE = 5
 /** Guest filter may empty a page — keep fetching while server hasMore. */
-const EMPTY_PAGE_REFILL_MAX = 4
+const EMPTY_PAGE_REFILL_MAX = 8
 
 function parseMode(raw: string | null): FeedMode {
   const m = (raw ?? 'personal').trim().toLowerCase()
@@ -288,7 +288,10 @@ export function SmartFeedClient({
           const restorePeek = !append ? readFeedRestore() : null
           const restoreExemptId =
             (!append && (searchParams.get('restore') ?? restorePeek?.articleId)) || null
-          const guestSeen = !authUser ? readGuestSeen() : new Set<string>()
+          // Category tabs: allow re-browse of older stories (server already walks corpus).
+          // Personal/following still hide guest-seen to reduce replay.
+          const guestSeen =
+            !authUser && !activeCategory ? readGuestSeen() : new Set<string>()
           const incoming = page.items.filter((i) => {
             if (restoreExemptId && (i.articleId === restoreExemptId || i.slug === restoreExemptId)) {
               return true
@@ -1035,11 +1038,17 @@ export function SmartFeedClient({
         description: 'Şu an son dakika haberi bulunmuyor.',
       }
     }
+    if (category) {
+      return {
+        title: 'Bu Kategoride Haber Yok',
+        description: 'Bu kategoride şu an gösterilecek haber kalmadı. Başka bir kategori deneyin.',
+      }
+    }
     return {
       title: 'Haber Akışı Boş',
       description: 'Şu an gösterilecek haber bulunamadı.',
     }
-  }, [loading, mode])
+  }, [loading, mode, category])
 
   const isLoadingFirstTime = items.length === 0 && loading
   const isTabSwitching = loading && items.length > 0
