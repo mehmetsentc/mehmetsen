@@ -23,10 +23,24 @@ import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 /** Migration eligibility classes — not public-read classes. */
 export type MigrationEligibilityClass =
   | 'MIRROR_ALREADY_CANONICAL'
+  /** Positive: HUMAN_EDITOR + non-automation actor + trusted editorial role mapping. */
+  | 'HUMAN_ACTOR_VERIFIED'
+  /** HUMAN_EDITOR + non-automation actor but NOT in trusted users/roles. */
+  | 'HUMAN_AUTHORITY_UNVERIFIED_ACTOR'
+  /** @deprecated alias kept for older tests — prefer HUMAN_ACTOR_VERIFIED */
   | 'PROVEN_HUMAN'
   | 'LEGACY_REVIEW_REQUIRED'
   | 'QUARANTINED'
   | 'INSUFFICIENT_EVIDENCE'
+
+/** PG users.role values that positively prove an editorial human actor. */
+export const TRUSTED_EDITORIAL_ROLES = [
+  'author',
+  'video_editor',
+  'editor',
+  'managing_editor',
+  'super_admin',
+] as const
 
 export const MIN_MIGRATION_BODY_CHARS = 120
 
@@ -68,6 +82,11 @@ export type MigrationEligibilityInput = {
   evidence: MigrationFsEvidence
   /** Exact PG row matched by legacy_firestore_id === fsId or id === fsId. */
   pgMirror?: PgMirrorRow | null
+  /**
+   * Exact Firebase UIDs from `users` with trusted editorial roles.
+   * Required for HUMAN_ACTOR_VERIFIED. Exact string membership only.
+   */
+  trustedEditorialActorUids?: ReadonlySet<string> | null
 }
 
 export type BodyEligibility = {
@@ -83,7 +102,11 @@ export type BodyEligibility = {
 }
 
 export type HumanActorEvidence = {
+  /** True only when positively verified against trusted editorial UIDs. */
   proven: boolean
+  /** Non-automation actor present under HUMAN_EDITOR (may still be unverified). */
+  nonAutomationActor: boolean
+  actorInTrustedEditorialMap: boolean
   authority: string | null
   approvedBy: string | null
   publishedBy: string | null
@@ -143,41 +166,44 @@ export function evaluateBodyEligibility(evidence: MigrationFsEvidence): BodyElig
 /**
  * Strict human actor proof.
  * authorId ALONE is never sufficient.
- * approvedBy / publishedBy must not be automation (reuse central gates).
+ * Non-automation alone is NOT HUMAN_ACTOR_VERIFIED — trusted editorial UID map required.
  */
-export function evaluateProvenHumanActor(evidence: MigrationFsEvidence): HumanActorEvidence {
+export function evaluateProvenHumanActor(
+  evidence: MigrationFsEvidence,
+  trustedEditorialActorUids?: ReadonlySet<string> | null
+): HumanActorEvidence {
   const authority = asTrimmed(evidence.publicationAuthority)?.toUpperCase() ?? null
   const approvedBy = asTrimmed(evidence.approvedBy)
   const publishedBy = asTrimmed(evidence.publishedBy)
-
   const actors = [approvedBy, publishedBy].filter(Boolean) as string[]
+  const base = {
+    authority,
+    approvedBy,
+    publishedBy,
+    nonAutomationActor: false,
+    actorInTrustedEditorialMap: false,
+  }
 
   if (authority !== 'HUMAN_EDITOR') {
     return {
+      ...base,
       proven: false,
-      authority,
-      approvedBy,
-      publishedBy,
       reason: 'publicationAuthority is not HUMAN_EDITOR',
     }
   }
 
   if (evidence.aiAutoPublished === true) {
     return {
+      ...base,
       proven: false,
-      authority,
-      approvedBy,
-      publishedBy,
-      reason: 'aiAutoPublished=true cannot be PROVEN_HUMAN',
+      reason: 'aiAutoPublished=true cannot be HUMAN_ACTOR_VERIFIED',
     }
   }
 
   if (!actors.length) {
     return {
+      ...base,
       proven: false,
-      authority,
-      approvedBy,
-      publishedBy,
       reason: 'HUMAN_EDITOR without approvedBy/publishedBy — authorId alone is insufficient',
     }
   }
@@ -185,17 +211,14 @@ export function evaluateProvenHumanActor(evidence: MigrationFsEvidence): HumanAc
   for (const actor of actors) {
     if (isExactKnownAutomationUid(actor) || isAutomationIdentity(actor)) {
       return {
+        ...base,
         proven: false,
-        authority,
-        approvedBy,
-        publishedBy,
         rejectedActor: actor,
         reason: `automation/system actor rejected: ${actor}`,
       }
     }
   }
 
-  // Prefer full human-review gate when timestamp exists.
   const primary = approvedBy || publishedBy!
   if (evidence.approvedAt != null) {
     const evalResult = evaluateEditorialApproval({
@@ -206,21 +229,47 @@ export function evaluateProvenHumanActor(evidence: MigrationFsEvidence): HumanAc
     })
     if (evalResult.status !== 'HUMAN_APPROVED') {
       return {
+        ...base,
         proven: false,
-        authority,
-        approvedBy,
-        publishedBy,
         reason: `humanReviewGate: ${evalResult.status}: ${evalResult.reason}`,
       }
     }
   }
 
+  const trusted = trustedEditorialActorUids
+  const actorInTrusted =
+    Boolean(trusted) &&
+    actors.every((a) => trusted!.has(a))
+
+  if (!trusted || trusted.size === 0) {
+    return {
+      ...base,
+      proven: false,
+      nonAutomationActor: true,
+      actorInTrustedEditorialMap: false,
+      reason:
+        'HUMAN_EDITOR + non-automation actor, but trusted editorial UID map not provided — HUMAN_AUTHORITY_UNVERIFIED_ACTOR',
+    }
+  }
+
+  if (!actorInTrusted) {
+    return {
+      ...base,
+      proven: false,
+      nonAutomationActor: true,
+      actorInTrustedEditorialMap: false,
+      reason:
+        'HUMAN_EDITOR + non-automation actor, but actor UID not in trusted editorial users map — HUMAN_AUTHORITY_UNVERIFIED_ACTOR',
+    }
+  }
+
   return {
+    ...base,
     proven: true,
-    authority,
-    approvedBy,
-    publishedBy,
-    reason: 'HUMAN_EDITOR with non-automation approvedBy/publishedBy',
+    nonAutomationActor: true,
+    actorInTrustedEditorialMap: true,
+    reason:
+      'HUMAN_EDITOR + non-automation approvedBy/publishedBy + exact trusted editorial UID membership',
   }
 }
 
@@ -242,7 +291,7 @@ export function resolveMigrationTargetPgId(
 export function classifyMigrationEligibility(
   input: MigrationEligibilityInput
 ): MigrationEligibilityResult {
-  const { evidence, pgMirror } = input
+  const { evidence, pgMirror, trustedEditorialActorUids } = input
   const firestoreId = evidence.firestoreId.trim()
   const blockers: string[] = []
 
@@ -262,7 +311,7 @@ export function classifyMigrationEligibility(
     publisherType: evidence.publisherType,
   })
   const currentReadClass = classifyPublicRead(readMeta)
-  const human = evaluateProvenHumanActor(evidence)
+  const human = evaluateProvenHumanActor(evidence, trustedEditorialActorUids)
   const body = evaluateBodyEligibility(evidence)
   const targetPgId = resolveMigrationTargetPgId(firestoreId, pgMirror)
   const targetSlug = asTrimmed(evidence.slug)
@@ -320,7 +369,7 @@ export function classifyMigrationEligibility(
     return {
       firestoreId,
       currentReadClass,
-      migrationClass: 'PROVEN_HUMAN',
+      migrationClass: 'HUMAN_ACTOR_VERIFIED',
       human,
       body,
       proposedAuthority: 'HUMAN_EDITOR',
@@ -331,7 +380,7 @@ export function classifyMigrationEligibility(
     }
   }
 
-  // HUMAN_EDITOR claimed but actors failed → insufficient / quarantine automation
+  // HUMAN_EDITOR claimed but actors failed → unverified / quarantine automation
   if (asTrimmed(evidence.publicationAuthority)?.toUpperCase() === 'HUMAN_EDITOR') {
     if (human.rejectedActor) {
       blockers.push('automation_actor')
@@ -339,6 +388,21 @@ export function classifyMigrationEligibility(
         firestoreId,
         currentReadClass,
         migrationClass: 'QUARANTINED',
+        human,
+        body,
+        proposedAuthority: null,
+        targetPgId,
+        targetSlug,
+        blockers,
+        executable: false,
+      }
+    }
+    if (human.nonAutomationActor) {
+      blockers.push('human_authority_unverified_actor')
+      return {
+        firestoreId,
+        currentReadClass,
+        migrationClass: 'HUMAN_AUTHORITY_UNVERIFIED_ACTOR',
         human,
         body,
         proposedAuthority: null,

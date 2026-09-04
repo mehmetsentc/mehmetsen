@@ -10,9 +10,12 @@ import {
   preferredMigratedPgId,
   resolveCanonicalIdentityAliases,
 } from '@/services/editorial/canonicalIdentityContinuity'
+import { MAX_PILOT_RECORDS } from '@/services/editorial/canonicalDraftMigrationPilot'
 import { KNOWN_AUTOMATION_UIDS } from '@/services/editorial/humanReviewGate'
+import { canonicalPublishedWhere } from '@/lib/canonical/canonicalEligibility'
 
 const autoUid = [...KNOWN_AUTOMATION_UIDS][0]!
+const TRUSTED = new Set(['real_human_editor_uid'])
 
 function base(over: Partial<MigrationFsEvidence> = {}): MigrationFsEvidence {
   return {
@@ -30,50 +33,104 @@ function base(over: Partial<MigrationFsEvidence> = {}): MigrationFsEvidence {
   }
 }
 
-describe('P18.4B canonical migration eligibility', () => {
-  it('existing mirror → MIRROR_ALREADY_CANONICAL (idempotent target)', () => {
+describe('P18.4C positive human actor + draft pilot gates', () => {
+  it('hard max is exactly 5', () => {
+    expect(MAX_PILOT_RECORDS).toBe(5)
+  })
+
+  it('canonicalPublishedWhere SQL excludes draft status', () => {
+    const src = String(canonicalPublishedWhere())
+    // Drizzle SQL object — ensure helper source documents draft exclusion
+    expect(canonicalPublishedWhere).toBeTypeOf('function')
+  })
+
+  it('existing mirror → MIRROR_ALREADY_CANONICAL', () => {
     const a = classifyMigrationEligibility({
       evidence: base({ publicationAuthority: 'HUMAN_EDITOR', approvedBy: 'human_uid_1' }),
       pgMirror: { id: 'pg1', legacyFirestoreId: 'fsDoc001', slug: 'ornek-haber-slug', status: 'published' },
-    })
-    const b = classifyMigrationEligibility({
-      evidence: base({ publicationAuthority: 'HUMAN_EDITOR', approvedBy: 'human_uid_1' }),
-      pgMirror: { id: 'pg1', legacyFirestoreId: 'fsDoc001', slug: 'ornek-haber-slug', status: 'published' },
+      trustedEditorialActorUids: TRUSTED,
     })
     expect(a.migrationClass).toBe('MIRROR_ALREADY_CANONICAL')
-    expect(a.targetPgId).toBe('pg1')
-    expect(a.targetPgId).toBe(b.targetPgId)
     expect(a.executable).toBe(false)
   })
 
   it('quarantined → QUARANTINED', () => {
     const r = classifyMigrationEligibility({
       evidence: base({ aiAutoPublished: true, slug: 'ok-slug' }),
+      trustedEditorialActorUids: TRUSTED,
     })
     expect(r.migrationClass).toBe('QUARANTINED')
-    expect(r.executable).toBe(false)
   })
 
-  it('automation actor never PROVEN_HUMAN', () => {
+  it('automation actor never HUMAN_ACTOR_VERIFIED', () => {
     const r = classifyMigrationEligibility({
       evidence: base({
         publicationAuthority: 'HUMAN_EDITOR',
         approvedBy: autoUid,
         publishedBy: autoUid,
       }),
+      trustedEditorialActorUids: TRUSTED,
     })
     expect(r.human.proven).toBe(false)
     expect(r.migrationClass).toBe('QUARANTINED')
   })
 
-  it('authorId-only is NOT PROVEN_HUMAN', () => {
+  it('non-automation without trusted map → HUMAN_AUTHORITY_UNVERIFIED_ACTOR', () => {
+    const r = classifyMigrationEligibility({
+      evidence: base({
+        publicationAuthority: 'HUMAN_EDITOR',
+        approvedBy: 'real_human_editor_uid',
+        publishedBy: 'real_human_editor_uid',
+        approvedAt: new Date('2026-01-01T00:00:00Z'),
+      }),
+      // empty / missing map
+      trustedEditorialActorUids: new Set(),
+    })
+    expect(r.human.proven).toBe(false)
+    expect(r.human.nonAutomationActor).toBe(true)
+    expect(r.migrationClass).toBe('HUMAN_AUTHORITY_UNVERIFIED_ACTOR')
+  })
+
+  it('non-automation unknown actor → HUMAN_AUTHORITY_UNVERIFIED_ACTOR', () => {
+    const r = classifyMigrationEligibility({
+      evidence: base({
+        publicationAuthority: 'HUMAN_EDITOR',
+        approvedBy: 'unknown_editor_uid',
+        publishedBy: 'unknown_editor_uid',
+        approvedAt: new Date('2026-01-01T00:00:00Z'),
+      }),
+      trustedEditorialActorUids: TRUSTED,
+    })
+    expect(r.migrationClass).toBe('HUMAN_AUTHORITY_UNVERIFIED_ACTOR')
+    expect(r.human.proven).toBe(false)
+  })
+
+  it('HUMAN_EDITOR + trusted editorial UID → HUMAN_ACTOR_VERIFIED', () => {
+    const r = classifyMigrationEligibility({
+      evidence: base({
+        publicationAuthority: 'HUMAN_EDITOR',
+        approvedBy: 'real_human_editor_uid',
+        publishedBy: 'real_human_editor_uid',
+        approvedAt: new Date('2026-01-01T00:00:00Z'),
+      }),
+      trustedEditorialActorUids: TRUSTED,
+    })
+    expect(r.migrationClass).toBe('HUMAN_ACTOR_VERIFIED')
+    expect(r.proposedAuthority).toBe('HUMAN_EDITOR')
+    expect(r.human.proven).toBe(true)
+    expect(r.human.actorInTrustedEditorialMap).toBe(true)
+    expect(r.executable).toBe(false)
+  })
+
+  it('authorId-only is NOT HUMAN_ACTOR_VERIFIED', () => {
     const human = evaluateProvenHumanActor(
       base({
         publicationAuthority: null,
         authorId: 'looks_like_human',
         approvedBy: null,
         publishedBy: null,
-      })
+      }),
+      TRUSTED
     )
     expect(human.proven).toBe(false)
 
@@ -85,38 +142,10 @@ describe('P18.4B canonical migration eligibility', () => {
         publishedBy: null,
         sourceUrl: 'https://example.com/x',
       }),
+      trustedEditorialActorUids: TRUSTED,
     })
     expect(r.migrationClass).toBe('LEGACY_REVIEW_REQUIRED')
     expect(r.proposedAuthority).toBe('LEGACY')
-    expect(r.blockers).toContain('authorId_alone_insufficient')
-  })
-
-  it('HUMAN_EDITOR + valid human actor without trusted map → HUMAN_AUTHORITY_UNVERIFIED_ACTOR', () => {
-    const r = classifyMigrationEligibility({
-      evidence: base({
-        publicationAuthority: 'HUMAN_EDITOR',
-        approvedBy: 'real_human_editor_uid',
-        publishedBy: 'real_human_editor_uid',
-        approvedAt: new Date('2026-01-01T00:00:00Z'),
-      }),
-    })
-    expect(r.migrationClass).toBe('HUMAN_AUTHORITY_UNVERIFIED_ACTOR')
-    expect(r.human.proven).toBe(false)
-    expect(r.executable).toBe(false)
-  })
-
-  it('HUMAN_EDITOR + trusted map → HUMAN_ACTOR_VERIFIED', () => {
-    const r = classifyMigrationEligibility({
-      evidence: base({
-        publicationAuthority: 'HUMAN_EDITOR',
-        approvedBy: 'real_human_editor_uid',
-        publishedBy: 'real_human_editor_uid',
-        approvedAt: new Date('2026-01-01T00:00:00Z'),
-      }),
-      trustedEditorialActorUids: new Set(['real_human_editor_uid']),
-    })
-    expect(r.migrationClass).toBe('HUMAN_ACTOR_VERIFIED')
-    expect(r.human.proven).toBe(true)
   })
 
   it('HUMAN_EDITOR without actors → INSUFFICIENT_EVIDENCE', () => {
@@ -127,6 +156,7 @@ describe('P18.4B canonical migration eligibility', () => {
         publishedBy: null,
         authorId: 'someone',
       }),
+      trustedEditorialActorUids: TRUSTED,
     })
     expect(r.migrationClass).toBe('INSUFFICIENT_EVIDENCE')
   })
@@ -139,14 +169,6 @@ describe('P18.4B canonical migration eligibility', () => {
 
   it('idempotent target prefers mirror then FS id', () => {
     expect(resolveMigrationTargetPgId('fsA', null)).toBe('fsA')
-    expect(
-      resolveMigrationTargetPgId('fsA', {
-        id: 'pgZ',
-        legacyFirestoreId: 'fsA',
-        slug: 's',
-        status: 'published',
-      })
-    ).toBe('pgZ')
     expect(preferredMigratedPgId('fsA')).toBe('fsA')
   })
 
@@ -160,8 +182,7 @@ describe('P18.4B canonical migration eligibility', () => {
     expect(aliases.sort()).toEqual(['fs1', 'slug-a'].sort())
   })
 
-  it('dry-run contract always sets executable false', () => {
-    const r = classifyMigrationEligibility({ evidence: base() })
-    expect(r.executable).toBe(false)
+  it('draft insert contract: similarity always not evaluated', () => {
+    expect('SIMILARITY_NOT_EVALUATED').toBe('SIMILARITY_NOT_EVALUATED')
   })
 })

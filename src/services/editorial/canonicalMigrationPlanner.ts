@@ -23,6 +23,7 @@ import {
   type MigrationEligibilityResult,
 } from '@/services/editorial/canonicalMigrationEligibility'
 import { resolveCanonicalIdentityAliases } from '@/services/editorial/canonicalIdentityContinuity'
+import { loadTrustedEditorialActorUids } from '@/services/editorial/trustedEditorialActors'
 
 export type MigrationPlanResult = {
   firestoreId: string
@@ -93,6 +94,7 @@ export async function planCanonicalMigrationDryRun(
   const evidence = migrationEvidenceFromFirestoreDoc(snap.id, data)
 
   const db = requireDb()
+  const trustedEditorialActorUids = await loadTrustedEditorialActorUids()
   const mirrors = await db
     .select({
       id: news.id,
@@ -117,7 +119,11 @@ export async function planCanonicalMigrationDryRun(
     // Should be impossible under unique legacy_firestore_id — surface as blocker.
   }
 
-  const eligibility = classifyMigrationEligibility({ evidence, pgMirror })
+  const eligibility = classifyMigrationEligibility({
+    evidence,
+    pgMirror,
+    trustedEditorialActorUids,
+  })
   const blockers = [...eligibility.blockers]
   if (mirrors.length > 1) blockers.push('duplicate_pg_mirror_rows')
 
@@ -367,6 +373,8 @@ function emptyBlockedPlan(id: string, blockers: string[]): MigrationPlanResult {
     },
     human: {
       proven: false,
+      nonAutomationActor: false,
+      actorInTrustedEditorialMap: false,
       authority: null,
       approvedBy: null,
       publishedBy: null,
