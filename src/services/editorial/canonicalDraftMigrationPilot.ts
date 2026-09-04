@@ -287,8 +287,7 @@ export async function migrateOneCanonicalDraftPilot(opts: {
   const seoTitle = asString(data.seoTitle)
   const seoDescription = asString(data.seoDescription)
 
-  await db.transaction(async (tx) => {
-    await tx.insert(news).values({
+  await db.insert(news).values({
       id: firestoreId,
       legacyFirestoreId: firestoreId,
       slug,
@@ -326,7 +325,6 @@ export async function migrateOneCanonicalDraftPilot(opts: {
       createdAt,
       updatedAt,
     })
-  })
 
   const verify = await db
     .select({
