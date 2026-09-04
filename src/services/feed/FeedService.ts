@@ -26,6 +26,7 @@ import { feedCandidateService } from './FeedCandidateService'
 import { feedRankingPipeline, type NfRankPipelineMode } from './FeedRankingPipeline'
 import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
+import { feedSessionService } from './FeedSessionService'
 import { feedTelemetryService } from './FeedTelemetryService'
 
 export interface FeedRequestContext {
@@ -251,101 +252,120 @@ export class FeedService {
         categoryIds,
       }
 
-      // Category tab: prefer unseen, then soft-walk older (incl. previously seen in other modes)
-      // so sparse categories still infinite-scroll until the corpus is truly empty.
+      // Category tab: category-native archive walk with session-wide exclusion (no soft-refill replay).
       if (ctx.category) {
-        const previewRows = await feedCandidateService.fetchRecent({
-          ...candidateOpts,
-          cursor: timeCursor,
-        })
-        const clusterIds = previewRows.map((r) => r.clusterId).filter((id): id is string => Boolean(id))
-        const { seenArticles, seenClusters } = await feedSeenService.filterSuppressible(
-          ctx.userId,
-          ctx.sessionId,
-          `category:${ctx.category}`,
-          clusterIds
-        )
+        const categoryKey = ctx.category.trim().toLowerCase()
+        const existingSession =
+          sessionToken && !ctx.refresh
+            ? feedSessionService.decode(sessionToken)
+            : null
+        const sessionOk =
+          existingSession &&
+          existingSession.mode === 'personal' &&
+          (existingSession.category ?? null) === categoryKey
 
-        const collectRanked = async (
-          excludeArticleIds: Set<string> | undefined,
-          excludeClusterIds: Set<string> | undefined,
-          cursor: typeof timeCursor
-        ): Promise<FeedCandidateRow[]> => {
-          const opts = {
-            ...candidateOpts,
-            cursor,
-            excludeArticleIds,
-            excludeClusterIds,
-          }
-          if (cursor) {
-            return feedRankingV1.rankMode(
-              'personal',
-              await feedCandidateService.fetchRecent(opts),
-              limit
-            )
-          }
-          const [recent, popular, featured] = await Promise.all([
-            feedCandidateService.fetchRecent(opts),
-            feedCandidateService.fetchPopular(opts),
-            feedCandidateService.fetchFeatured(opts),
-          ])
-          return feedRankingV1.rankPersonal(
-            {
-              BREAKING: [],
-              RECENT: recent,
-              POPULAR: popular,
-              LOCAL: [],
-              DISCOVERY: featured,
-              FOLLOWING: [],
-            },
-            limit,
-            false
-          )
-        }
-
-        let ranked = await collectRanked(seenArticles, seenClusters, timeCursor)
-
-        // Soft refill: drop cross-mode seen exclusions and walk older by cursor.
-        if (ranked.length < limit) {
-          const have = new Set(ranked.map((r) => r.articleId))
-          let walkCursor =
-            timeCursor ??
-            (ranked.length
-              ? {
-                  publishedAt: ranked[ranked.length - 1]!.publishedAt.toISOString(),
-                  id: ranked[ranked.length - 1]!.articleId,
-                }
-              : null)
-
-          for (let walk = 0; walk < 8 && ranked.length < limit; walk++) {
-            const older = await feedCandidateService.fetchRecent({
-              ...candidateOpts,
-              cursor: walkCursor,
-              // Only skip rows already on this page — allow category re-browse of older/seen.
-              excludeArticleIds: have,
-              excludeClusterIds: undefined,
+        let session = sessionOk
+          ? existingSession!
+          : feedSessionService.create('personal', [], undefined, {
+              category: categoryKey,
+              olderThan: null,
+              corpusExhausted: false,
             })
-            if (!older.length) break
 
-            for (const row of older) {
-              if (have.has(row.articleId)) continue
-              have.add(row.articleId)
-              ranked.push(row)
-              if (ranked.length >= limit) break
-            }
+        // Bootstrap / refill until we have a page of unread IDs or true exhaustion.
+        let refillPasses = 0
+        while (
+          session.rankedIds.length - (session.offset ?? 0) < limit &&
+          !session.corpusExhausted &&
+          refillPasses < 6
+        ) {
+          refillPasses += 1
+          const seed = new Set<string>([...session.rankedIds])
+          // Durable seen + session-returned IDs — never drop seen to fake infinity.
+          const { seenArticles, seenClusters } = await feedSeenService.filterSuppressible(
+            ctx.userId,
+            ctx.sessionId,
+            `category:${categoryKey}`,
+            []
+          )
+          for (const id of seenArticles) seed.add(id)
+          const exclude = await feedSeenService.expandArticleIdentities(seed)
 
-            const lastOlder = older[older.length - 1]!
-            walkCursor = {
-              publishedAt: lastOlder.publishedAt.toISOString(),
-              id: lastOlder.articleId,
-            }
-            // Thin older page → likely near end of category corpus.
-            if (older.length < Math.max(3, Math.floor(limit / 2))) break
+          const walkCursor =
+            session.olderThan && session.rankedIds.length > 0
+              ? {
+                  publishedAt: session.olderThan,
+                  id: session.rankedIds[session.rankedIds.length - 1] ?? '0',
+                }
+              : timeCursor
+
+          const fetchOpts = {
+            ...candidateOpts,
+            cursor: walkCursor,
+            excludeArticleIds: exclude,
+            excludeClusterIds: seenClusters,
+            // Deepen pool for category archive pages (still bounded).
+            limit: Math.max(limit * 4, 40),
           }
-          ranked = ranked.slice(0, limit)
+
+          const recent = await feedCandidateService.fetchRecent(fetchOpts)
+          let batch = feedRankingV1.rankMode('personal', recent, Math.max(limit * 2, 20))
+
+          // Progressive archive: if thin, walk older with publishedBefore while keeping exclusions.
+          if (batch.length < limit) {
+            const have = new Set(batch.map((r) => r.articleId))
+            let olderBound =
+              session.olderThan ??
+              (batch.length
+                ? batch[batch.length - 1]!.publishedAt.toISOString()
+                : walkCursor?.publishedAt ?? null)
+            for (let walk = 0; walk < 6 && batch.length < limit * 2; walk++) {
+              if (!olderBound) break
+              const older = await feedCandidateService.fetchRecent({
+                ...candidateOpts,
+                cursor: null,
+                publishedBefore: olderBound,
+                excludeArticleIds: new Set([...exclude, ...have]),
+                excludeClusterIds: seenClusters,
+                limit: Math.max(limit * 4, 40),
+              })
+              if (!older.length) break
+              for (const row of older) {
+                if (have.has(row.articleId)) continue
+                have.add(row.articleId)
+                batch.push(row)
+              }
+              const last = older[older.length - 1]!
+              olderBound = last.publishedAt.toISOString()
+              if (older.length < Math.max(3, Math.floor(limit / 2))) break
+            }
+            batch = feedRankingV1.rankMode('personal', batch, Math.max(limit * 2, 20))
+          }
+
+          const newIds = batch.map((r) => r.articleId)
+          const olderThan =
+            batch.length > 0
+              ? batch.reduce(
+                  (min, r) =>
+                    r.publishedAt.getTime() < min ? r.publishedAt.getTime() : min,
+                  batch[0]!.publishedAt.getTime()
+                )
+              : null
+          const olderThanIso = olderThan != null ? new Date(olderThan).toISOString() : session.olderThan
+          const beforeLen = session.rankedIds.length - (session.offset ?? 0)
+          session = {
+            ...feedSessionService.appendWindow(session, newIds, olderThanIso),
+            category: categoryKey,
+          }
+          const afterLen = session.rankedIds.length - (session.offset ?? 0)
+          if (newIds.length === 0 || afterLen <= beforeLen) {
+            session = { ...session, corpusExhausted: true }
+            break
+          }
         }
 
-        if (!ranked.length) {
+        const { ids, nextPayload, hasMoreInSnapshot } = feedSessionService.slicePage(session, limit)
+        if (!ids.length) {
           return {
             items: [],
             nextCursor: null,
@@ -353,36 +373,41 @@ export class FeedService {
             mode: ctx.mode,
             emptyReason: 'no_items',
             rankingVersion: 'category_mix_v1',
+            feedSessionId: session.sessionId,
           }
         }
 
-        const articleIds = ranked.map((r) => r.articleId)
+        const rows = await feedCandidateService.fetchByIds(ids)
+        const ordered = feedSessionService.reorderBySession(rows, nextPayload)
+        const articleIds = ordered.map((r) => r.articleId)
         const [socialMap, enriched] = await Promise.all([
           loadSocialState(ctx.userId, articleIds),
-          enrichPublisherSlugs(ranked),
+          enrichPublisherSlugs(ordered),
         ])
         const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
-        const last = ranked[ranked.length - 1]!
-        const pageCursor = {
-          publishedAt: last.publishedAt.toISOString(),
-          id: last.articleId,
-        }
-        // Probe one step older so short first pages don't falsely end the feed.
-        const olderProbe = await feedCandidateService.fetchRecent({
-          ...candidateOpts,
-          cursor: pageCursor,
-          excludeArticleIds: new Set(articleIds),
-          excludeClusterIds: undefined,
-          limit: Math.max(limit, 8),
+
+        const last = ordered[ordered.length - 1]!
+        const mayHaveMore = hasMoreInSnapshot || !nextPayload.corpusExhausted
+        const sessionTokenOut = feedSessionService.encode({
+          ...nextPayload,
+          category: categoryKey,
         })
-        const hasMore = olderProbe.length > 0
+        const nextCursor = mayHaveMore
+          ? encodeFeedCursor({
+              publishedAt: last.publishedAt.toISOString(),
+              id: last.articleId,
+              session: sessionTokenOut,
+              offset: nextPayload.offset,
+            })
+          : null
 
         return {
           items,
-          nextCursor: hasMore ? encodeFeedCursor(pageCursor) : null,
-          hasMore,
+          nextCursor,
+          hasMore: mayHaveMore,
           mode: ctx.mode,
           rankingVersion: 'category_mix_v1',
+          feedSessionId: nextPayload.sessionId,
         }
       }
 

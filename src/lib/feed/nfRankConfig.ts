@@ -38,6 +38,8 @@ export const NFRANK_CONFIG_V1 = {
     quality: 0.08,
     engagement: 0.06,
     discovery: 0.05,
+    /** Soft boost for older eligible items with strong affinity (not a validity claim). */
+    archiveRediscovery: 0.06,
     quickSkipPenalty: 0.12,
     explicitNegativePenalty: 0.22,
     clusterRepeatPenalty: 0.35,
@@ -53,6 +55,15 @@ export const NFRANK_CONFIG_V1 = {
     ANALYSIS: 48,
     CULTURE: 72,
   } as Record<NfRankCategoryClass, number>,
+  /**
+   * Archive rediscovery: only when age exceeds freshness half-life × this factor
+   * AND affinity/quality justify resurfacing. Not a staleness classifier.
+   */
+  archiveRediscovery: {
+    minAgeHalfLifeFactor: 2,
+    maxContribution: 0.55,
+    requireMinAffinity: 0.35,
+  },
   diversity: {
     windowSize: 12,
     maxSamePublisherInWindow: 2,
@@ -94,4 +105,29 @@ export function nfRankFreshnessScore(
   const halfLife = NFRANK_CONFIG_V1.freshnessHalfLifeHours[cls]
   const ageHours = Math.max(0, (nowMs - publishedAt.getTime()) / 3_600_000)
   return Math.pow(0.5, ageHours / halfLife)
+}
+
+/** Conservative archive rediscovery feature (0..1). Validity/staleness metadata is MISSING — age decay only. */
+export function nfRankArchiveRediscoveryScore(input: {
+  publishedAt: Date
+  category: string | null | undefined
+  breaking: boolean
+  categoryAffinity: number
+  publisherAffinity: number
+  quality: number
+  nowMs?: number
+}): number {
+  const cfg = NFRANK_CONFIG_V1.archiveRediscovery
+  const cls = resolveNfRankCategoryClass(input.category, input.breaking)
+  const halfLife = NFRANK_CONFIG_V1.freshnessHalfLifeHours[cls]
+  const nowMs = input.nowMs ?? Date.now()
+  const ageHours = Math.max(0, (nowMs - input.publishedAt.getTime()) / 3_600_000)
+  if (ageHours < halfLife * cfg.minAgeHalfLifeFactor) return 0
+  // Breaking / high-tempo classes: do not rediscover as archive without validity fields.
+  if (cls === 'BREAKING' || input.breaking) return 0
+  const affinity = Math.max(input.categoryAffinity, input.publisherAffinity * 0.85)
+  if (affinity < cfg.requireMinAffinity) return 0
+  const ageDecay = Math.pow(0.5, ageHours / (halfLife * 6))
+  const raw = affinity * 0.55 + input.quality * 0.25 + ageDecay * 0.2
+  return Math.min(cfg.maxContribution, Math.max(0, raw))
 }

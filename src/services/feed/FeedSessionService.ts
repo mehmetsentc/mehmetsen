@@ -14,6 +14,8 @@ export interface FeedSessionPayload {
   olderThan?: string | null
   /** True only when all refill tiers returned no new eligible unseen IDs. */
   corpusExhausted?: boolean
+  /** Explicit Feed V2 category tab (e.g. magazin) — session exclusion scoped here. */
+  category?: string | null
 }
 
 /** Soft cap so session tokens stay bounded; older windows keep appending within this. */
@@ -32,7 +34,9 @@ export class FeedSessionService {
     mode: FeedMode,
     rankedIds: string[],
     seed?: number,
-    extras?: Partial<Pick<FeedSessionPayload, 'olderThan' | 'generation' | 'corpusExhausted'>>
+    extras?: Partial<
+      Pick<FeedSessionPayload, 'olderThan' | 'generation' | 'corpusExhausted' | 'category'>
+    >
   ): FeedSessionPayload {
     return {
       sessionId: randomUUID(),
@@ -44,6 +48,7 @@ export class FeedSessionService {
       generation: extras?.generation ?? 0,
       olderThan: extras?.olderThan ?? null,
       corpusExhausted: extras?.corpusExhausted ?? false,
+      category: extras?.category ?? null,
     }
   }
 

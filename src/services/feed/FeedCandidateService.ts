@@ -25,7 +25,17 @@ const FS_SUPPLEMENT_BATCH = 80
 const FS_SUPPLEMENT_MAX_ATTEMPTS = 4
 /** Extra attempts when walking older LEGACY_ALLOWED windows / large exclude sets. */
 const FS_OLDER_MAX_ATTEMPTS = 8
+/** Category-native archive walks can afford more batches (indexed query, not global scan). */
+const FS_CATEGORY_MAX_ATTEMPTS = 12
 const FS_SUPPLEMENT_HARD_CAP = 180
+
+function resolveOptsCategoryIds(opts: BaseQueryOpts): string[] {
+  if (opts.categoryIds?.length) {
+    return [...new Set(opts.categoryIds.map((c) => c.trim().toLowerCase()).filter(Boolean))]
+  }
+  if (opts.category?.trim()) return [opts.category.trim().toLowerCase()]
+  return []
+}
 
 function requireDb() {
   if (!hasDatabaseUrl()) throw new Error('DATABASE_URL not configured')
@@ -332,6 +342,9 @@ export class FeedCandidateService {
    * Bounded Firestore candidate fetch with P18.3 policy filter + refill.
    * Does not scan the full 40k corpus — max FS_*_MAX_ATTEMPTS batches per call.
    * publishedBefore walks older LEGACY_ALLOWED windows without replaying recent docs.
+   *
+   * Category-native path (P18 infinite archive): when category filter is set, query
+   * status+categoryId+publishedAt (composite index) instead of global recent → in-memory filter.
    */
   private async fetchFirestoreFallback(
     source: FeedCandidateSource,
@@ -341,17 +354,25 @@ export class FeedCandidateService {
       Math.max(opts.needed ?? opts.limit, 1),
       FS_SUPPLEMENT_HARD_CAP
     )
-    const maxAttempts = opts.olderWindow
-      ? FS_OLDER_MAX_ATTEMPTS
-      : opts.excludeArticleIds && opts.excludeArticleIds.size > 20
+    const categoryIds = resolveOptsCategoryIds(opts)
+    const categoryNative = categoryIds.length > 0
+    const maxAttempts = categoryNative
+      ? FS_CATEGORY_MAX_ATTEMPTS
+      : opts.olderWindow
         ? FS_OLDER_MAX_ATTEMPTS
-        : FS_SUPPLEMENT_MAX_ATTEMPTS
+        : opts.excludeArticleIds && opts.excludeArticleIds.size > 20
+          ? FS_OLDER_MAX_ATTEMPTS
+          : FS_SUPPLEMENT_MAX_ATTEMPTS
     const publishedBefore = opts.publishedBefore
       ? opts.publishedBefore instanceof Date
         ? opts.publishedBefore
         : new Date(opts.publishedBefore)
       : null
-    const beforeOk = publishedBefore && !Number.isNaN(publishedBefore.getTime())
+    const beforeOk = Boolean(publishedBefore && !Number.isNaN(publishedBefore.getTime()))
+    // Keyset cursor from Feed V2 (publishedAt + id) — exclusive upper bound.
+    const cursorTs = opts.cursor?.publishedAt ? new Date(opts.cursor.publishedAt) : null
+    const cursorOk = Boolean(cursorTs && !Number.isNaN(cursorTs.getTime()))
+    const cursorId = opts.cursor?.id?.trim() || null
 
     try {
       const db = getAdminFirestore()
@@ -360,92 +381,181 @@ export class FeedCandidateService {
         new Set(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
       )
       const seen = new Set<string>(expandedExclude)
-      let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
-      let attempts = 0
 
-      while (rows.length < needed && attempts < maxAttempts) {
-        attempts += 1
-        const batchSize = Math.min(
-          FS_SUPPLEMENT_BATCH,
-          Math.max(needed - rows.length, 20) * 2
-        )
-        let q: FirebaseFirestore.Query = db
-          .collection(Collections.NEWS)
-          .where('status', '==', 'published')
-          .orderBy('publishedAt', 'desc')
-
-        // Older windows: continue past boundary via startAfter on the same orderBy
-        // (avoids a second inequality that needs a new composite index).
-        if (lastDoc) {
-          q = q.startAfter(lastDoc)
-        } else if (beforeOk) {
-          q = q.startAfter(publishedBefore)
+      const acceptDoc = (
+        doc: FirebaseFirestore.QueryDocumentSnapshot,
+        allowCategoryPassThrough: boolean
+      ): FeedCandidateRow | null => {
+        if (seen.has(doc.id)) return null
+        const data = doc.data()
+        if (opts.excludeClusterIds?.size) {
+          const clusterId = typeof data.clusterId === 'string' ? data.clusterId : null
+          if (clusterId && opts.excludeClusterIds.has(clusterId)) return null
         }
-
-        q = q.limit(batchSize)
-
-        const snap = await q.get()
-        if (snap.empty) break
-        lastDoc = snap.docs[snap.docs.length - 1]
-
-        for (const doc of snap.docs) {
-          if (seen.has(doc.id)) continue
-          if (opts.excludeClusterIds?.size) {
-            const clusterId = typeof doc.data().clusterId === 'string' ? doc.data().clusterId : null
-            if (clusterId && opts.excludeClusterIds.has(clusterId)) continue
-          }
-          if (
-            (opts.categoryIds?.length || opts.category) &&
-            (() => {
-              const ids =
-                opts.categoryIds && opts.categoryIds.length > 0
-                  ? opts.categoryIds
-                  : opts.category
-                    ? [opts.category]
-                    : []
-              const docCat =
-                typeof doc.data().categoryId === 'string'
-                  ? doc.data().categoryId
-                  : typeof doc.data().category === 'string'
-                    ? doc.data().category
-                    : null
-              return !docCat || !ids.includes(docCat)
-            })()
-          ) {
-            continue
-          }
-
-          const data = doc.data()
-          if (source === 'BREAKING') {
-            const isBreaking =
-              data.isBreaking === true ||
-              data.breaking === true ||
-              data.categoryId === 'son-dakika' ||
-              data.category === 'son-dakika' ||
-              data.editorType === 'breaking'
-            if (!isBreaking) continue
-          }
-          if (source === 'FEATURED') {
-            const isFeatured =
-              data.isFeatured === true ||
-              data.featured === true ||
-              data.isEditorPick === true ||
-              data.editorPick === true
-            if (!isFeatured) continue
-          }
-
-          const row = this.mapFirestoreDocToRow(doc.id, data, source)
-          if (!row) continue
-          if (beforeOk && row.publishedAt.getTime() >= publishedBefore!.getTime()) continue
-          if (row.clusterId && opts.excludeClusterIds?.has(row.clusterId)) continue
-
-          seen.add(doc.id)
-          rows.push(row)
-          if (rows.length >= needed) break
+        if (!allowCategoryPassThrough && categoryIds.length) {
+          const docCat =
+            typeof data.categoryId === 'string'
+              ? data.categoryId
+              : typeof data.category === 'string'
+                ? data.category
+                : null
+          if (!docCat || !categoryIds.includes(String(docCat).toLowerCase())) return null
         }
-
-        if (snap.docs.length < batchSize) break
+        if (source === 'BREAKING') {
+          const isBreaking =
+            data.isBreaking === true ||
+            data.breaking === true ||
+            data.categoryId === 'son-dakika' ||
+            data.category === 'son-dakika' ||
+            data.editorType === 'breaking'
+          if (!isBreaking) return null
+        }
+        if (source === 'FEATURED') {
+          const isFeatured =
+            data.isFeatured === true ||
+            data.featured === true ||
+            data.isEditorPick === true ||
+            data.editorPick === true
+          if (!isFeatured) return null
+        }
+        const row = this.mapFirestoreDocToRow(doc.id, data, source)
+        if (!row) return null
+        if (beforeOk && row.publishedAt.getTime() >= publishedBefore!.getTime()) return null
+        // Cursor keyset: publishedAt < cursor OR (publishedAt == cursor AND id < cursorId)
+        if (cursorOk && cursorTs) {
+          const t = row.publishedAt.getTime()
+          const c = cursorTs.getTime()
+          if (t > c) return null
+          if (t === c && cursorId && row.articleId >= cursorId) return null
+        }
+        if (row.clusterId && opts.excludeClusterIds?.has(row.clusterId)) return null
+        return row
       }
+
+      const runQueryLoop = async (
+        buildBase: () => FirebaseFirestore.Query,
+        allowCategoryPassThrough: boolean
+      ) => {
+        let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
+        let attempts = 0
+        while (rows.length < needed && attempts < maxAttempts) {
+          attempts += 1
+          const batchSize = Math.min(
+            FS_SUPPLEMENT_BATCH,
+            Math.max(needed - rows.length, 20) * 2
+          )
+          let q = buildBase().limit(batchSize)
+          if (lastDoc) {
+            q = q.startAfter(lastDoc)
+          } else if (beforeOk) {
+            q = q.startAfter(publishedBefore)
+          } else if (cursorOk && cursorTs) {
+            q = q.startAfter(cursorTs)
+          }
+
+          const snap = await q.get()
+          if (snap.empty) break
+          lastDoc = snap.docs[snap.docs.length - 1]
+
+          for (const doc of snap.docs) {
+            const row = acceptDoc(doc, allowCategoryPassThrough)
+            if (!row) continue
+            seen.add(doc.id)
+            rows.push(row)
+            if (rows.length >= needed) break
+          }
+          if (snap.docs.length < batchSize) break
+        }
+      }
+
+      if (categoryNative) {
+        // Indexed: status + categoryId + publishedAt (see firestore.indexes.json).
+        const merged: FeedCandidateRow[] = []
+        const mergedSeen = new Set<string>()
+        let usedGlobalFallback = false
+
+        for (const catId of categoryIds) {
+          if (merged.length >= needed) break
+          const bucket: FeedCandidateRow[] = []
+          let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
+          let attempts = 0
+          try {
+            while (bucket.length + merged.length < needed && attempts < maxAttempts) {
+              attempts += 1
+              const batchSize = Math.min(
+                FS_SUPPLEMENT_BATCH,
+                Math.max(needed - merged.length - bucket.length, 20) * 2
+              )
+              let q: FirebaseFirestore.Query = db
+                .collection(Collections.NEWS)
+                .where('status', '==', 'published')
+                .where('categoryId', '==', catId)
+                .orderBy('publishedAt', 'desc')
+                .limit(batchSize)
+              if (lastDoc) q = q.startAfter(lastDoc)
+              else if (beforeOk) q = q.startAfter(publishedBefore)
+              else if (cursorOk && cursorTs) q = q.startAfter(cursorTs)
+
+              const snap = await q.get()
+              if (snap.empty) break
+              lastDoc = snap.docs[snap.docs.length - 1]
+              for (const doc of snap.docs) {
+                const row = acceptDoc(doc, true)
+                if (!row) continue
+                seen.add(doc.id)
+                bucket.push(row)
+                if (bucket.length + merged.length >= needed) break
+              }
+              if (snap.docs.length < batchSize) break
+            }
+          } catch (err) {
+            console.warn('[feed] category-native FS query failed; falling back to global filter', {
+              categoryId: catId,
+              err,
+            })
+            usedGlobalFallback = true
+            break
+          }
+          for (const r of bucket) {
+            if (mergedSeen.has(r.articleId)) continue
+            mergedSeen.add(r.articleId)
+            merged.push(r)
+          }
+        }
+
+        if (usedGlobalFallback && merged.length < needed) {
+          rows.length = 0
+          await runQueryLoop(
+            () =>
+              db
+                .collection(Collections.NEWS)
+                .where('status', '==', 'published')
+                .orderBy('publishedAt', 'desc'),
+            false
+          )
+          for (const r of rows) {
+            if (mergedSeen.has(r.articleId)) continue
+            mergedSeen.add(r.articleId)
+            merged.push(r)
+          }
+        }
+
+        merged.sort((a, b) => {
+          const dt = b.publishedAt.getTime() - a.publishedAt.getTime()
+          if (dt !== 0) return dt
+          return a.articleId.localeCompare(b.articleId)
+        })
+        return this.canonicalizeFirestoreRows(merged.slice(0, needed))
+      }
+
+      await runQueryLoop(
+        () =>
+          db
+            .collection(Collections.NEWS)
+            .where('status', '==', 'published')
+            .orderBy('publishedAt', 'desc'),
+        false
+      )
 
       return this.canonicalizeFirestoreRows(rows.slice(0, needed))
     } catch (err) {

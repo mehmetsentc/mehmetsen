@@ -14,6 +14,7 @@ import type {
 import {
   NFRANK_CONFIG_V1,
   NFRANK_VERSION,
+  nfRankArchiveRediscoveryScore,
   nfRankFreshnessScore,
 } from '@/lib/feed/nfRankConfig'
 import { feedUserContextService } from '../FeedUserContextService'
@@ -44,6 +45,7 @@ export interface NfRankComponents {
   engagement: number
   discovery: number
   sessionIntent: number
+  archiveRediscovery: number
   explorationBonus: number
   quickSkipPenalty: number
   explicitNegativePenalty: number
@@ -257,6 +259,15 @@ export class NFRankEngine {
         10
     )
     const discovery = sources.includes('DISCOVERY') ? 0.85 : 0.12
+    const archiveRediscovery = nfRankArchiveRediscoveryScore({
+      publishedAt: row.publishedAt,
+      category: row.category,
+      breaking: row.breaking,
+      categoryAffinity,
+      publisherAffinity,
+      quality,
+      nowMs,
+    })
 
     let quickSkipPenalty = 0
     const skips = cat ? session.categoryQuickSkips.get(cat) ?? 0 : 0
@@ -300,7 +311,8 @@ export class NFRankEngine {
       editorialImportance * w.editorialImportance +
       quality * w.quality +
       engagement * w.engagement +
-      discovery * w.discovery -
+      discovery * w.discovery +
+      archiveRediscovery * w.archiveRediscovery -
       quickSkipPenalty * w.quickSkipPenalty -
       explicitNegativePenalty * w.explicitNegativePenalty
 
@@ -320,6 +332,7 @@ export class NFRankEngine {
       engagement,
       discovery,
       sessionIntent,
+      archiveRediscovery,
       explorationBonus: 0,
       quickSkipPenalty,
       explicitNegativePenalty,
