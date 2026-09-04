@@ -26,6 +26,7 @@ import { getClientAuthToken, ensureAuthReady, auth } from '@/lib/firebase/auth'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
+import { cn } from '@/lib/utils'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
 /** Keep a sliding DOM window; spacers preserve global scroll indices. */
@@ -426,7 +427,7 @@ export function SmartFeedClient({
       setActiveTabId(tab.id)
       setMode(nextMode)
       setCategory(nextCategory)
-      setItems([])
+      // Keep current cards painted while the next category loads — avoids full black wait.
       setCursor(null)
       setActiveIndex(0)
       setErrorState(null)
@@ -1043,6 +1044,7 @@ export function SmartFeedClient({
   }, [loading, mode])
 
   const isLoadingFirstTime = items.length === 0 && loading
+  const isTabSwitching = loading && items.length > 0
 
   return (
     <div
@@ -1067,6 +1069,19 @@ export function SmartFeedClient({
             ) : null
           }
         />
+
+        {isTabSwitching ? (
+          <div
+            className="pointer-events-none absolute left-3 right-3 z-[55] h-0.5 overflow-hidden rounded-full bg-white/15"
+            style={{
+              top: 'max(4.85rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.35rem))',
+            }}
+            data-testid="smart-feed-tab-loading"
+            aria-hidden
+          >
+            <div className="h-full w-2/5 animate-pulse rounded-full bg-white/85" />
+          </div>
+        ) : null}
 
         {/* Viewport Content States */}
         {isLoadingFirstTime ? (
@@ -1165,7 +1180,10 @@ export function SmartFeedClient({
           <div
             ref={scrollRef}
             onScroll={onScroll}
-            className="h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll"
+            className={cn(
+              'h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
+              isTabSwitching && 'opacity-55'
+            )}
             style={
               {
                 scrollSnapType: reducedMotion ? 'none' : 'y mandatory',

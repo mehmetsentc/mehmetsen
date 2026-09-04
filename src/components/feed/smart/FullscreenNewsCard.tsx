@@ -140,7 +140,6 @@ export function FullscreenNewsCard({
   const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
-  const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const showVideo = Boolean(videoEnabled && item.video && isActive)
@@ -161,59 +160,12 @@ export function FullscreenNewsCard({
   void skin.layout
   const isCenter = false
 
-  // Typewriter: only when card becomes active (skip if reduced motion)
+  // Headline paints immediately — typewriter made mid-word cuts look like truncation.
   useEffect(() => {
-    const clearType = () => {
-      if (typeTimerRef.current != null) {
-        window.clearTimeout(typeTimerRef.current)
-        typeTimerRef.current = null
-      }
-    }
-
-    clearType()
-
-    if (!isActive) {
-      setTypedHeadline(item.headline)
-      setHeadlineDone(true)
-      setShowCursor(false)
-      return
-    }
-
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    if (reduced || !item.headline) {
-      setTypedHeadline(item.headline)
-      setHeadlineDone(true)
-      setShowCursor(false)
-      return
-    }
-
-    const full = item.headline
-    // Cap total typewriter ~1.6s regardless of length
-    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
-    setTypedHeadline('')
-    setHeadlineDone(false)
-    setShowCursor(true)
-
-    let i = 0
-    const tick = () => {
-      i += 1
-      setTypedHeadline(full.slice(0, i))
-      if (i >= full.length) {
-        setHeadlineDone(true)
-        setShowCursor(false)
-        typeTimerRef.current = null
-        return
-      }
-      typeTimerRef.current = window.setTimeout(tick, step)
-    }
-    // slight delay so lower-third / skin chrome settles
-    typeTimerRef.current = window.setTimeout(tick, 120)
-
-    return clearType
-  }, [isActive, item.headline, item.articleId, skin.typeMs])
+    setTypedHeadline(item.headline)
+    setHeadlineDone(true)
+    setShowCursor(false)
+  }, [item.headline, item.articleId])
 
   const triggerDoubleTapLike = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -446,14 +398,15 @@ export function FullscreenNewsCard({
       <div
         className={cn(
           'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
-          'pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]',
+          /* Lift chrome off home-indicator — publisher/follow sit a few points higher */
+          'pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))]',
           MODE_NAV_CLEARANCE,
           'md:mx-auto md:w-full md:max-w-lg'
         )}
       >
         {/* Double-tap zone — media only; copy always bottom (standard news) */}
         <div
-          className="relative min-h-[12vh] flex-1 touch-manipulation"
+          className="relative min-h-[18vh] flex-1 touch-manipulation"
           data-testid="smart-feed-double-tap-zone"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
@@ -475,14 +428,14 @@ export function FullscreenNewsCard({
           ) : null}
         </div>
 
-        {/* Bottom lower-third — no mid floating card; full summary; global type */}
+        {/* Bottom lower-third — text starts higher; publisher/follow lifted */}
         <div
-          className="relative z-[2] mt-auto flex w-full min-h-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-20 pr-[3.75rem]"
+          className="relative z-[2] mt-auto flex w-full min-h-0 flex-col justify-end bg-gradient-to-t from-black via-black/88 to-transparent pt-14 pr-[3.75rem]"
           data-testid="smart-feed-bottom-chrome"
         >
-          <div className="min-w-0 space-y-2.5 pb-1" data-testid="smart-feed-text-zone">
+          <div className="min-w-0 space-y-2.5 pb-2" data-testid="smart-feed-text-zone">
             <div
-              className="max-h-[46vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              className="max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
               data-testid="smart-feed-copy-scroll"
               onTouchStart={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
@@ -552,7 +505,7 @@ export function FullscreenNewsCard({
 
             {item.publisher ? (
               <div
-                className="flex min-w-0 flex-nowrap items-center gap-1.5"
+                className="mb-1 flex min-w-0 flex-nowrap items-center gap-1.5"
                 data-testid="smart-feed-publisher-row"
               >
                 {publisherHref ? (
