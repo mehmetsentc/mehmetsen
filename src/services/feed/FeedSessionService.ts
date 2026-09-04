@@ -107,10 +107,18 @@ export class FeedSessionService {
       existing.add(id)
       appended.push(id)
     }
-    const rankedIds = [...payload.rankedIds, ...appended].slice(0, FEED_SESSION_RANKED_SOFT_CAP)
+    // Drop already-served prefix so the soft cap cannot truncate *new* IDs
+    // (slice(0, CAP) on the full history was ending the feed around ~CAP cards).
+    const offset = payload.offset ?? 0
+    const unread = payload.rankedIds.slice(offset)
+    let rankedIds = [...unread, ...appended]
+    if (rankedIds.length > FEED_SESSION_RANKED_SOFT_CAP) {
+      rankedIds = rankedIds.slice(rankedIds.length - FEED_SESSION_RANKED_SOFT_CAP)
+    }
     return {
       ...payload,
       rankedIds,
+      offset: 0,
       generation: (payload.generation ?? 0) + 1,
       olderThan: olderThan ?? payload.olderThan ?? null,
       corpusExhausted: appended.length === 0,

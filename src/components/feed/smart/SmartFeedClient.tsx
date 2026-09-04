@@ -227,11 +227,12 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
         // Keep requesting while guest/local filter empties a thin page but server has more.
         while (emptyRefills <= EMPTY_PAGE_REFILL_MAX) {
+          // Deduplicate in-flight append for the same cursor via loadingMoreRef only.
+          // Do NOT latch lastPrefetchCursorRef before the fetch — that deadlocks when
+          // a request aborts/returns without advancing the cursor (feed stops mid-stream).
           if (append && pageCursor && lastPrefetchCursorRef.current === pageCursor && emptyRefills === 0) {
+            // A successful prior fetch already owns this cursor; wait for cursor advance.
             return
-          }
-          if (append && pageCursor) {
-            lastPrefetchCursorRef.current = pageCursor
           }
 
           const page = await fetchFeedPage({
@@ -244,8 +245,14 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
             forceAuthRefresh,
           })
 
-          if (genId !== generationIdRef.current) return
+          if (genId !== generationIdRef.current) {
+            if (append) lastPrefetchCursorRef.current = null
+            return
+          }
           lastPage = page
+          if (append && pageCursor) {
+            lastPrefetchCursorRef.current = pageCursor
+          }
 
           const restorePeek = !append ? readFeedRestore() : null
           const restoreExemptId =
@@ -303,13 +310,14 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         cursorRef.current = lastPage.nextCursor
 
         // Trust backend exhaustion, but don't stall when a page was all-duplicates.
-        let nextHasMore = lastPage.hasMore
+        let nextHasMore = Boolean(lastPage.hasMore && lastPage.nextCursor)
         if (append && added === 0) {
           if (!lastPage.hasMore || !lastPage.nextCursor) {
             nextHasMore = false
           } else {
             // Allow another prefetch with the advanced cursor.
             lastPrefetchCursorRef.current = null
+            nextHasMore = true
           }
         }
         setHasMore(nextHasMore)

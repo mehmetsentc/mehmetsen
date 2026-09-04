@@ -6,7 +6,7 @@ import {
   selectSmartFeedSummary,
   trimToCompleteSentences,
 } from '@/lib/feed/smartFeedSummary'
-import { feedSessionService } from '@/services/feed/FeedSessionService'
+import { feedSessionService, FEED_SESSION_RANKED_SOFT_CAP } from '@/services/feed/FeedSessionService'
 
 describe('P18.3C smart feed summary selection', () => {
   it('trims orphan trailing fragment (... yasakladı. K)', () => {
@@ -52,6 +52,24 @@ describe('P18.3C session multi-window append', () => {
     const next = feedSessionService.appendWindow(session, ['a1', 'a2'])
     expect(next.corpusExhausted).toBe(true)
     expect(next.rankedIds).toEqual(['a1', 'a2'])
+  })
+
+  it('soft-cap drops served prefix so new windows keep appending past CAP', () => {
+    let session = feedSessionService.create(
+      'personal',
+      Array.from({ length: FEED_SESSION_RANKED_SOFT_CAP }, (_, i) => `old_${i}`)
+    )
+    // Consume the whole snapshot
+    session = { ...session, offset: FEED_SESSION_RANKED_SOFT_CAP }
+    const next = feedSessionService.appendWindow(
+      session,
+      Array.from({ length: 50 }, (_, i) => `new_${i}`)
+    )
+    expect(next.corpusExhausted).toBe(false)
+    expect(next.offset).toBe(0)
+    expect(next.rankedIds.some((id) => id.startsWith('new_'))).toBe(true)
+    expect(next.rankedIds.filter((id) => id.startsWith('new_'))).toHaveLength(50)
+    expect(next.rankedIds.length).toBeLessThanOrEqual(FEED_SESSION_RANKED_SOFT_CAP)
   })
 
   it('paginates across appended windows without duplicate pages', () => {
@@ -110,6 +128,36 @@ describe('P18.3C 100-card unique pagination simulation', () => {
     expect(returned.length).toBeGreaterThanOrEqual(100)
     expect(new Set(returned).size).toBe(returned.length)
     expect(cursorPages).toBeGreaterThan(3)
+  })
+
+  it('simulates 500 unique cards past soft-cap via compacting append', () => {
+    const supply = Array.from({ length: 600 }, (_, i) => `deep_${i}`)
+    let session = feedSessionService.create('personal', supply.slice(0, 80))
+    const returned: string[] = []
+    let supplyOffset = 80
+    let pages = 0
+
+    while (returned.length < 500 && pages < 80) {
+      pages += 1
+      const remaining = session.rankedIds.length - session.offset
+      if (remaining < 15 && !session.corpusExhausted) {
+        const nextBatch = supply.slice(supplyOffset, supplyOffset + 60)
+        supplyOffset += 60
+        if (!nextBatch.length) {
+          session = { ...session, corpusExhausted: true }
+        } else {
+          session = feedSessionService.appendWindow(session, nextBatch)
+        }
+      }
+      const { ids, nextPayload } = feedSessionService.slicePage(session, 15)
+      if (!ids.length) break
+      returned.push(...ids)
+      session = nextPayload
+    }
+
+    expect(returned.length).toBeGreaterThanOrEqual(500)
+    expect(new Set(returned).size).toBe(returned.length)
+    expect(returned.length).toBeGreaterThan(FEED_SESSION_RANKED_SOFT_CAP)
   })
 })
 

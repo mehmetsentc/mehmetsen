@@ -213,8 +213,14 @@ export class FeedRankingPipeline {
     let candidateCounts: Record<string, number> = { ...(extraCounts ?? {}) }
 
     // Ensure enough unused IDs remain; otherwise refill a bounded older/unseen window.
-    const remaining = working.rankedIds.length - (working.offset ?? 0)
-    if (remaining < input.limit && !working.corpusExhausted) {
+    // Up to 3 refill passes so a thin window (dupes / sparse FS batch) does not stall the feed.
+    let refillPasses = 0
+    while (
+      working.rankedIds.length - (working.offset ?? 0) < input.limit &&
+      !working.corpusExhausted &&
+      refillPasses < 3
+    ) {
+      refillPasses += 1
       const seed = new Set<string>([...input.seenArticles, ...working.rankedIds])
       const exclude = await feedSeenService.expandArticleIdentities(seed)
       // Prefer time-cursor past the oldest served item so SQL can skip the head of the table.
@@ -225,19 +231,29 @@ export class FeedRankingPipeline {
         exclude,
         olderBound
       )
-      candidateCounts = { ...candidateCounts, ...counts, session_refill: ranked.length }
+      candidateCounts = {
+        ...candidateCounts,
+        ...counts,
+        session_refill: (candidateCounts.session_refill ?? 0) + ranked.length,
+      }
       const newIds = ranked.map((r) => r.articleId)
+      const beforeLen = working.rankedIds.length - (working.offset ?? 0)
       working = feedSessionService.appendWindow(working, newIds, olderThan)
-      if (newIds.length === 0) {
+      if (newIds.length === 0 || working.corpusExhausted) {
         // Second chance: pure recent walk without publishedBefore gate (exclude-only).
         const retry = await this.buildNextWindow(input, ctx, exclude, null)
         const retryIds = retry.ranked.map((r) => r.articleId)
         working = feedSessionService.appendWindow(working, retryIds, retry.olderThan)
-        candidateCounts.session_refill_retry = retryIds.length
+        candidateCounts.session_refill_retry =
+          (candidateCounts.session_refill_retry ?? 0) + retryIds.length
         if (retryIds.length === 0) {
           working = { ...working, corpusExhausted: true }
+          break
         }
       }
+      const afterLen = working.rankedIds.length - (working.offset ?? 0)
+      // No net growth → stop spinning even if corpusExhausted stayed false.
+      if (afterLen <= beforeLen) break
     }
 
     const { ids, nextPayload, hasMoreInSnapshot } = feedSessionService.slicePage(working, input.limit)

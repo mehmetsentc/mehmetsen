@@ -98,9 +98,12 @@ describe('P18.3FG client stall guards (source)', () => {
     expect(src).toContain('h-[100dvh]')
     expect(src).toContain('smart-feed-loading-more')
     // Do not hard-end because local window emptied
-    expect(src).toContain('setHasMore(lastPage.hasMore)')
+    expect(src).toMatch(/setHasMore\(nextHasMore\)/)
+    expect(src).toContain('lastPage.hasMore && lastPage.nextCursor')
     expect(src).not.toMatch(/setHasMore\(\s*false\s*\)/)
     expect(src).not.toMatch(/setHasMore\(items\.length/)
+    // Prefetch latch must not be set before fetch (deadlock on aborted/same cursor)
+    expect(src).toContain('Do NOT latch lastPrefetchCursorRef before the fetch')
   })
 
   it('card keeps 100dvh, CTA, text zone, no body dump path', () => {

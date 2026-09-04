@@ -21,11 +21,11 @@ import { feedSeenService } from '@/services/feed/FeedSeenService'
 
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
-const FS_SUPPLEMENT_BATCH = 50
-const FS_SUPPLEMENT_MAX_ATTEMPTS = 3
-/** Extra attempts when walking older LEGACY_ALLOWED windows. */
-const FS_OLDER_MAX_ATTEMPTS = 5
-const FS_SUPPLEMENT_HARD_CAP = 100
+const FS_SUPPLEMENT_BATCH = 80
+const FS_SUPPLEMENT_MAX_ATTEMPTS = 4
+/** Extra attempts when walking older LEGACY_ALLOWED windows / large exclude sets. */
+const FS_OLDER_MAX_ATTEMPTS = 8
+const FS_SUPPLEMENT_HARD_CAP = 180
 
 function requireDb() {
   if (!hasDatabaseUrl()) throw new Error('DATABASE_URL not configured')
@@ -99,7 +99,7 @@ function categoryFilterWhere(opts: BaseQueryOpts) {
 /** Push exclusions into SQL so pagination can walk past a large seen/served set. */
 function excludeIdsWhere(opts: BaseQueryOpts) {
   if (!opts.excludeArticleIds?.size) return undefined
-  const ids = [...opts.excludeArticleIds].slice(0, 300)
+  const ids = [...opts.excludeArticleIds].slice(0, 500)
   if (!ids.length) return undefined
   return notInArray(news.id, ids)
 }
@@ -492,28 +492,36 @@ export class FeedCandidateService {
     primary: FeedCandidateRow[],
     opts: BaseQueryOpts
   ): Promise<FeedCandidateRow[]> {
-    if (primary.length >= opts.limit) return primary.slice(0, opts.limit)
+    // Fill toward the SQL pool target (not just page limit) so ranking windows stay deep.
+    const target = Math.max(opts.limit, poolLimitFor(opts, Math.min(opts.limit * 2, DEFAULT_POOL_SIZE)))
+    if (primary.length >= target) return primary.slice(0, target)
 
     const seed = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
     for (const row of primary) seed.add(row.articleId)
     const exclude = await feedSeenService.expandArticleIdentities(seed)
 
-    const remaining = opts.limit - primary.length
+    const remaining = target - primary.length
+    const forceOlder =
+      Boolean(opts.publishedBefore) ||
+      exclude.size >= 15 ||
+      primary.length === 0
     const fallback = await this.fetchFirestoreFallback(source, {
       ...opts,
       excludeArticleIds: exclude,
       needed: remaining,
       limit: remaining,
-      olderWindow: Boolean(opts.publishedBefore),
+      olderWindow: forceOlder,
     })
 
-    if (fallback.length === 0) return primary.slice(0, opts.limit)
+    if (fallback.length === 0) return primary.slice(0, target)
 
     console.info('[feed] legacy_allowed_supplement', {
       source,
       pg: primary.length,
       fs: fallback.length,
-      target: opts.limit,
+      target,
+      olderWindow: forceOlder,
+      exclude: exclude.size,
     })
 
     // Collapse PG/FS twins if canonicalize left any exact overlap.
@@ -524,7 +532,7 @@ export class FeedCandidateService {
       seen.add(row.articleId)
       merged.push(row)
     }
-    return merged.slice(0, opts.limit)
+    return merged.slice(0, target)
   }
 
   /**
