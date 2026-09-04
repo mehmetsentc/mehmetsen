@@ -415,40 +415,67 @@ function PilotCard({
         {overlap && (
           <dl className="mt-2 grid gap-1 md:grid-cols-2">
             <div>
-              <dt className="text-xs opacity-70">Similarity risk</dt>
-              <dd className="font-mono font-semibold">{overlap.risk}</dd>
+              <dt className="text-xs opacity-70">SOURCE SIMILARITY · Risk</dt>
+              <dd className="font-mono font-semibold">
+                {overlap.risk === 'HIGH_SOURCE_OVERLAP'
+                  ? 'HIGH'
+                  : overlap.risk === 'MEDIUM_OVERLAP'
+                    ? 'MEDIUM'
+                    : overlap.risk === 'LOW_OVERLAP'
+                      ? 'LOW'
+                      : overlap.risk}
+              </dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">DB editorial blocker</dt>
-              <dd className="font-mono font-semibold">{review.editorialBlocker || 'None'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Final weighted score</dt>
+              <dt className="text-xs opacity-70">Final similarity</dt>
               <dd className="font-mono font-semibold">{pct(overlap.similarity)}</dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">Classification reason</dt>
-              <dd className="font-mono text-xs">{overlap.classificationReason || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Jaccard (component)</dt>
-              <dd className="font-mono">{pct(overlap.jaccard)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">3-gram overlap (component)</dt>
-              <dd className="font-mono">{pct(overlap.ngram3)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Token match (component)</dt>
-              <dd className="font-mono">{pct(overlap.tokenMatchRatio)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Max shared run (EVIDENCE_ONLY)</dt>
+              <dt className="text-xs opacity-70">Longest matching section</dt>
               <dd className="font-mono">
                 {overlap.maxSharedContiguousRun != null
                   ? `${overlap.maxSharedContiguousRun} tokens`
                   : '—'}
               </dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Recommendation</dt>
+              <dd className="font-semibold">
+                {overlap.risk === 'HIGH_SOURCE_OVERLAP'
+                  ? 'REWRITE REQUIRED'
+                  : overlap.risk === 'MEDIUM_OVERLAP'
+                    ? 'REVIEW CAREFULLY'
+                    : 'HUMAN REVIEW'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">DB editorial blocker</dt>
+              <dd className="font-mono font-semibold">{review.editorialBlocker || 'None'}</dd>
+            </div>
+            <div className="md:col-span-2">
+              <details className="mt-1">
+                <summary className="cursor-pointer text-xs font-medium underline">
+                  Teknik detayları göster
+                </summary>
+                <dl className="mt-2 grid gap-1 md:grid-cols-2">
+                  <div>
+                    <dt className="text-xs opacity-70">Jaccard</dt>
+                    <dd className="font-mono">{pct(overlap.jaccard)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs opacity-70">3-gram</dt>
+                    <dd className="font-mono">{pct(overlap.ngram3)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs opacity-70">Token match</dt>
+                    <dd className="font-mono">{pct(overlap.tokenMatchRatio)}</dd>
+                  </div>
+                  <div className="md:col-span-2">
+                    <dt className="text-xs opacity-70">Classification reason</dt>
+                    <dd className="font-mono text-xs">{overlap.classificationReason || '—'}</dd>
+                  </div>
+                </dl>
+              </details>
             </div>
           </dl>
         )}
@@ -572,6 +599,9 @@ export default function CanonicalDraftRightsPage() {
   const [sortStatus, setSortStatus] = useState<string | null>(null)
   const [queueError, setQueueError] = useState<string | null>(null)
   const [firstTwo, setFirstTwo] = useState<string[]>([])
+  const [finalizeBusy, setFinalizeBusy] = useState(false)
+  const [finalizeMsg, setFinalizeMsg] = useState<string | null>(null)
+  const [finalizeErr, setFinalizeErr] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -640,6 +670,54 @@ export default function CanonicalDraftRightsPage() {
     }
   }, [user, tick, filter])
 
+  async function finalizeCohort1() {
+    if (finalizeBusy) return
+    const ok = window.confirm(
+      [
+        'P18.4E.4 — Cohort #1 FINALIZE',
+        '',
+        'ALL 10 → REWRITE_REQUIRED',
+        '8 HIGH → also HIGH_SOURCE_OVERLAP blocker',
+        '2 MEDIUM → REWRITE_REQUIRED without fabricated HIGH blocker',
+        '',
+        'NO publications. Actor = your CMS session only.',
+        '',
+        'Devam?',
+      ].join('\n')
+    )
+    if (!ok) return
+    setFinalizeBusy(true)
+    setFinalizeErr(null)
+    setFinalizeMsg(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/canonical-news/rights-queue/finalize-cohort', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          confirm: 'REWRITE_REQUIRED_COHORT_1',
+          batch: P18_4E_COHORT1_BATCH_ID,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? `${data.error}${data.detail ? `: ${data.detail}` : ''}`
+            : 'Finalize failed'
+        )
+      }
+      setFinalizeMsg(
+        `Finalize OK: rewrite=${data.rewriteRequired} · HIGH blockers=${data.highBlockers} · published=${data.published}`
+      )
+      setTick((t) => t + 1)
+    } catch (e) {
+      setFinalizeErr(e instanceof Error ? e.message : 'Finalize hatası')
+    } finally {
+      setFinalizeBusy(false)
+    }
+  }
+
   const progressLine = useMemo(() => {
     if (!progress) return null
     return `Total: ${progress.total} · Pending: ${progress.pending} · Cleared: ${progress.cleared} · Rewrite required: ${progress.rewriteRequired} · Do not publish: ${progress.doNotPublish} · Published: ${progress.published}`
@@ -657,13 +735,22 @@ export default function CanonicalDraftRightsPage() {
     return <div className="p-8 text-center text-zinc-600">CMS oturumu gerekli</div>
   }
 
+  const canFinalize =
+    filter === 'cohort1' &&
+    progress &&
+    progress.total === 10 &&
+    progress.pending === 10 &&
+    progress.rewriteRequired === 0 &&
+    progress.cleared === 0 &&
+    progress.published === 0
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
       <header>
         <h1 className="text-2xl font-semibold text-zinc-900">Canonical draft rights review</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          P18.4E.3 — human rights decision session. Auto-clear / auto-publish / AI yok. Cohort #1
-          yayın bu fazda kapalı.
+          P18.4E.4 — human rights decision session. Auto-clear / auto-publish / AI yok. Cohort #1
+          yayın kapalı.
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500">/admin/canonical-drafts/rights</p>
 
@@ -679,6 +766,18 @@ export default function CanonicalDraftRightsPage() {
               <option value="all">All (pilots + cohort)</option>
             </select>
           </label>
+          {filter === 'cohort1' && (
+            <button
+              type="button"
+              disabled={!canFinalize || finalizeBusy}
+              onClick={() => void finalizeCohort1()}
+              className="rounded bg-amber-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {finalizeBusy
+                ? 'Finalize çalışıyor…'
+                : 'Finalize Cohort #1 → REWRITE_REQUIRED (no publish)'}
+            </button>
+          )}
         </div>
 
         {progressLine && (
@@ -692,6 +791,8 @@ export default function CanonicalDraftRightsPage() {
             First two (MEDIUM ascending): {firstTwo[0]} → {firstTwo[1]}
           </p>
         )}
+        {finalizeMsg && <p className="mt-2 text-sm text-emerald-800">{finalizeMsg}</p>}
+        {finalizeErr && <p className="mt-2 text-sm text-red-700">{finalizeErr}</p>}
         {queueError && (
           <p className="mt-2 text-xs text-amber-800">Kuyruk API: {queueError}</p>
         )}
