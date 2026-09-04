@@ -17,16 +17,19 @@ export interface FeedV2Tab {
 /** Sticky leading tabs — always before algorithmic categories. */
 export const FEED_V2_LEAD_TABS: FeedV2Tab[] = [
   { id: 'personal', kind: 'mode', label: FEED_MODE_LABELS.personal, mode: 'personal' },
-  { id: 'following', kind: 'mode', label: FEED_MODE_LABELS.following, mode: 'following' },
 ]
 
 const FALLBACK_CATEGORY_IDS = [
+  'following',
   'son-dakika',
   'yerel',
   ...TOP_NAV_CATEGORY_IDS.filter((id) => id !== 'asayis'),
 ] as const
 
 export function categoryTabFromId(id: string): FeedV2Tab | null {
+  if (id === 'following') {
+    return { id: 'following', kind: 'mode', label: FEED_MODE_LABELS.following, mode: 'following' }
+  }
   if (id === 'yerel') {
     return { id: 'yerel', kind: 'mode', label: FEED_MODE_LABELS.local, mode: 'local' }
   }

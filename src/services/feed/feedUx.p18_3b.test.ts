@@ -3,24 +3,24 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('P18.3B Smart Feed UX', () => {
-  it('mode nav uses safe-area floor and clears exit control horizontally', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/feed/smart/FeedModeNav.tsx'), 'utf8')
+  it('category nav uses safe-area floor and clears exit control horizontally', () => {
+    const src = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
+      'utf8'
+    )
     expect(src).toContain('safe-area-inset-top')
     expect(src).toContain('max(2.75rem')
     expect(src).toContain('pl-14')
-    expect(src).toContain('data-testid="smart-feed-mode-nav"')
-    expect(src).toContain("FEED_MODE_LABELS")
-    expect(src).toContain("'personal', 'following', 'breaking', 'local'")
-    expect(src).not.toMatch(/line-clamp/)
+    expect(src).toContain('data-testid="smart-feed-category-nav"')
   })
 
-  it('summary is not CSS line-clamped; full paragraph renders', () => {
+  it('summary uses line-clamp-3 (no JS truncation)', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(src).toContain('data-testid="smart-feed-summary"')
-    expect(src).not.toMatch(/line-clamp/)
+    expect(src).toContain('line-clamp-3')
     expect(src).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
   })
 

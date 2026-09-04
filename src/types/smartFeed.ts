@@ -100,6 +100,8 @@ export type FeedTelemetryEventType =
   | 'article_dwell'
   | 'quick_skip'
   | 'article_opened'
+  | 'discovery_module_viewed'
+  | 'discovery_card_opened'
 
 export interface FeedTelemetryBatchItem {
   eventType: FeedTelemetryEventType

@@ -7,7 +7,7 @@ import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } fro
 import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
-import { FeedModeNav } from '@/components/feed/smart/FeedModeNav'
+import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
@@ -25,6 +25,7 @@ import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 import { getClientAuthToken, ensureAuthReady, auth } from '@/lib/firebase/auth'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { ROUTES } from '@/constants/routes'
+import { parseFeedV2TabFromSearch, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
 /** Keep a sliding DOM window; spacers preserve global scroll indices. */
@@ -51,10 +52,12 @@ interface SocialItemState {
   likeCount: number
   commentCount: number
   saveCount: number
+  reaction?: string | null
 }
 
 async function fetchFeedPage(opts: {
   mode: FeedMode
+  category?: string | null
   cursor?: string | null
   city?: string | null
   district?: string | null
@@ -64,6 +67,7 @@ async function fetchFeedPage(opts: {
 }): Promise<FeedPageDto> {
   const params = new URLSearchParams()
   if (opts.mode !== 'personal') params.set('mode', opts.mode)
+  if (opts.category) params.set('category', opts.category)
   if (opts.cursor) params.set('cursor', opts.cursor)
   if (opts.refresh) params.set('refresh', '1')
   params.set('limit', String(FEED_PAGINATION.defaultLimit))
@@ -153,8 +157,23 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       const restore = readFeedRestore()
       if (restore?.pending && restore.mode) return restore.mode
     }
-    return parseMode(searchParams.get('mode'))
+    return parseFeedV2TabFromSearch({
+      mode: searchParams.get('mode'),
+      category: searchParams.get('category'),
+    }).mode
   })
+  const [category, setCategory] = useState<string | null>(() =>
+    parseFeedV2TabFromSearch({
+      mode: searchParams.get('mode'),
+      category: searchParams.get('category'),
+    }).category
+  )
+  const [activeTabId, setActiveTabId] = useState(() =>
+    parseFeedV2TabFromSearch({
+      mode: searchParams.get('mode'),
+      category: searchParams.get('category'),
+    }).tabId
+  )
   const [items, setItems] = useState<FeedItemDto[]>([])
   const itemsRef = useRef<FeedItemDto[]>([])
   itemsRef.current = items
@@ -193,9 +212,11 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       append: boolean,
       nextCursor?: string | null,
       targetMode?: FeedMode,
-      forceAuthRefresh = false
+      forceAuthRefresh = false,
+      targetCategory?: string | null
     ) => {
       const activeMode = targetMode ?? mode
+      const activeCategory = targetCategory !== undefined ? targetCategory : category
 
       if (append) {
         if (loadingMoreRef.current) return
@@ -237,6 +258,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
 
           const page = await fetchFeedPage({
             mode: activeMode,
+            category: activeCategory,
             cursor: pageCursor,
             city: initialCitySlug,
             district: initialDistrictSlug,
@@ -382,16 +404,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         }
       }
     },
-    [mode, initialCitySlug, initialDistrictSlug, searchParams, authUser]
+    [mode, category, initialCitySlug, initialDistrictSlug, searchParams, authUser]
   )
 
-  const handleModeChange = useCallback(
-    (newMode: FeedMode) => {
-      if (newMode === mode && items.length > 0) return
+  const handleTabChange = useCallback(
+    (tab: FeedV2Tab) => {
+      const nextMode = tab.mode ?? 'personal'
+      const nextCategory = tab.kind === 'category' ? tab.category ?? null : null
+      if (tab.id === activeTabId && items.length > 0) return
       clearFeedRestore()
       restoreAppliedRef.current = false
       pendingRestoreScrollRef.current = null
-      setMode(newMode)
+      setActiveTabId(tab.id)
+      setMode(nextMode)
+      setCategory(nextCategory)
       setItems([])
       setCursor(null)
       setActiveIndex(0)
@@ -399,9 +425,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
       if (scrollRef.current) {
         scrollRef.current.scrollTop = 0
       }
-      void loadPage(false, null, newMode)
+      const params = new URLSearchParams(searchParams.toString())
+      if (nextCategory) {
+        params.set('category', nextCategory)
+        params.delete('mode')
+      } else {
+        params.delete('category')
+        if (nextMode === 'personal') params.delete('mode')
+        else params.set('mode', nextMode)
+      }
+      const q = params.toString()
+      router.replace(q ? `/feed-v2?${q}` : '/feed-v2', { scroll: false })
+      void loadPage(false, null, nextMode, false, nextCategory)
     },
-    [mode, items.length, loadPage]
+    [activeTabId, items.length, loadPage, router, searchParams]
   )
 
   useEffect(() => {
@@ -723,6 +760,87 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     [actionLoading, authUser, authLoading, router, searchParams, social]
   )
 
+  const applyReaction = useCallback(
+    async (item: FeedItemDto, reaction: string) => {
+      if (actionLoading[item.articleId]) return
+      if (authLoading) {
+        toast.error('Oturum hazırlanıyor, tekrar deneyin')
+        return
+      }
+      await ensureAuthReady()
+      if (!authUser || !auth.currentUser) {
+        const returnUrl = `/feed-v2${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+        const intent = buildAuthIntent('LIKE', 'article', item.articleId, returnUrl)
+        if (intent) router.push(loginHrefWithIntent(intent))
+        else router.push(`/login?next=${encodeURIComponent(returnUrl)}`)
+        return
+      }
+
+      const current = social[item.articleId] ?? {
+        liked: item.socialState?.liked ?? false,
+        saved: item.socialState?.saved ?? false,
+        likeCount: item.socialCounts.likes ?? 0,
+        commentCount: item.socialCounts.comments ?? 0,
+        saveCount: item.socialCounts.saves ?? 0,
+        reaction: null,
+      }
+
+      const prevLiked = current.liked
+      const prevCount = current.likeCount
+      const prevReaction = current.reaction ?? null
+      const nextCount = prevLiked ? prevCount : prevCount + 1
+
+      setActionLoading((s) => ({ ...s, [item.articleId]: 'like' }))
+      setSocial((s) => ({
+        ...s,
+        [item.articleId]: {
+          ...(s[item.articleId] ?? current),
+          liked: true,
+          likeCount: nextCount,
+          reaction,
+        },
+      }))
+
+      try {
+        const res = await socialApi.likeArticle(item.articleId, reaction)
+        const body = res as { liked?: boolean; likeCount?: number; likes?: number }
+        const canonicalLikes =
+          typeof body.likeCount === 'number'
+            ? body.likeCount
+            : typeof body.likes === 'number'
+              ? body.likes
+              : undefined
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            liked: true,
+            likeCount: canonicalLikes !== undefined ? canonicalLikes : nextCount,
+            reaction,
+          },
+        }))
+      } catch (err) {
+        setSocial((s) => ({
+          ...s,
+          [item.articleId]: {
+            ...(s[item.articleId] ?? current),
+            liked: prevLiked,
+            likeCount: prevCount,
+            reaction: prevReaction,
+          },
+        }))
+        toast.error(socialMutationError(err, 'Tepki kaydedilemedi'))
+      } finally {
+        setActionLoading((s) => {
+          const next = { ...s }
+          delete next[item.articleId]
+          return next
+        })
+      }
+    },
+    [actionLoading, authUser, authLoading, router, searchParams, social]
+  )
+
   const toggleSave = useCallback(
     async (item: FeedItemDto) => {
       if (actionLoading[item.articleId]) return
@@ -889,7 +1007,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
     }
   }, [loading, mode])
 
-  const isLoadingFirstTime = (loading || authLoading) && items.length === 0
+  const isLoadingFirstTime = items.length === 0 && (loading || authLoading)
 
   return (
     <div
@@ -901,10 +1019,10 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
         className="relative h-[100dvh] w-full md:max-w-lg md:mx-auto overflow-hidden bg-black flex flex-col"
         data-testid="smart-feed-canonical-shell"
       >
-        {/* Top Mode Navigation — Always mounted at canonical container top */}
-        <FeedModeNav
-          mode={mode}
-          onChange={handleModeChange}
+        {/* Top category navigation — Always mounted */}
+        <FeedV2CategoryNav
+          activeTabId={activeTabId}
+          onChange={handleTabChange}
           trailing={
             items[activeIndex] ? (
               <FeedCardMenu
@@ -1045,6 +1163,7 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
               const likeCount = socialState?.likeCount ?? item.socialCounts.likes ?? 0
               const commentCount = socialState?.commentCount ?? item.socialCounts.comments ?? 0
               const saveCount = socialState?.saveCount ?? item.socialCounts.saves ?? 0
+              const reaction = socialState?.reaction ?? null
 
               return (
                 <FeedCardWithImpression
@@ -1057,15 +1176,20 @@ export function SmartFeedClient({ initialCitySlug, initialDistrictSlug, debug }:
                   likeCount={likeCount}
                   commentCount={commentCount}
                   saveCount={saveCount}
+                  reaction={reaction}
                   cardIndex={index + 1}
                   cardTotal={Math.max(items.length, 1)}
                   likeLoading={actionLoading[item.articleId] === 'like'}
                   saveLoading={actionLoading[item.articleId] === 'save'}
                   onToggleLike={() => void toggleLike(item)}
+                  onReact={(r) => void applyReaction(item, r)}
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
                   onReadClick={() => onRead(item, index)}
                   onImpression={() => recordImpression(item)}
+                  showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
+                  discoveryCategory={category}
+                  discoveryExcludeIds={items.map((i) => i.articleId)}
                 />
               )
             })}
@@ -1140,21 +1264,21 @@ function FeedCardWithImpression(props: {
   likeCount?: number
   commentCount?: number
   saveCount?: number
+  reaction?: string | null
   cardIndex?: number
   cardTotal?: number
   likeLoading?: boolean
   saveLoading?: boolean
   onToggleLike: () => void
+  onReact?: (reaction: import('@/components/social/SocialActionRail').FeedReactionId) => void
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
   onImpression: () => void
+  showDiscoveryRail?: boolean
+  discoveryCategory?: string | null
+  discoveryExcludeIds?: string[]
 }) {
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
-  return (
-    <FullscreenNewsCard
-      {...props}
-      cardRef={impressionRef}
-    />
-  )
+  return <FullscreenNewsCard {...props} cardRef={impressionRef} />
 }

@@ -62,6 +62,8 @@ export const articleLikes = pgTable(
       .references(() => users.firebaseUid, { onDelete: 'cascade' }),
     /** Durable social article id: news.id or LEGACY_ALLOWED Firestore doc id. */
     articleId: varchar('article_id', { length: 64 }).notNull(),
+    /** Feed-v2 reaction; LIKE preserves prior heart semantics. */
+    reaction: varchar('reaction', { length: 24 }).default('LIKE').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

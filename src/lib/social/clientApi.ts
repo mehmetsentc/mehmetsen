@@ -47,10 +47,10 @@ export const socialApi = {
       body: JSON.stringify({ publisherId }),
     })
   },
-  likeArticle(articleId: string) {
+  likeArticle(articleId: string, reaction: string = 'LIKE') {
     return socialFetch('/api/social/article/like', {
       method: 'POST',
-      body: JSON.stringify({ articleId }),
+      body: JSON.stringify({ articleId, reaction }),
     })
   },
   unlikeArticle(articleId: string) {

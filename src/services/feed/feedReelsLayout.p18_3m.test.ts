@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('P18.3M feed-v2 Reels reference layout', () => {
-  it('publisher sits in bottom text stack; mode nav has trailing menu', () => {
+  it('publisher sits in bottom text stack; category nav has trailing menu', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
@@ -12,7 +12,7 @@ describe('P18.3M feed-v2 Reels reference layout', () => {
     expect(card).toContain('smart-feed-text-zone')
     expect(card).toContain('smart-feed-card-progress')
     expect(card).toContain('object-cover object-center')
-    expect(card).toContain('line-clamp-2')
+    expect(card).toContain('line-clamp-3')
     expect(card).toContain('Haberi Oku')
     expect(card).toContain('variant="overlay"')
     // Publisher must not be the first chrome under mode nav (reference: bottom)
@@ -21,7 +21,7 @@ describe('P18.3M feed-v2 Reels reference layout', () => {
     expect(pubIdx).toBeGreaterThan(textIdx)
 
     const nav = readFileSync(
-      join(process.cwd(), 'src/components/feed/smart/FeedModeNav.tsx'),
+      join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
     expect(nav).toContain('trailing')

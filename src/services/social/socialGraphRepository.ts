@@ -277,20 +277,54 @@ export class SocialGraphRepository {
     return Number(rows[0]?.c ?? 0)
   }
 
-  async likeArticle(userId: string, articleId: string, email?: string | null): Promise<boolean> {
+  async likeArticle(
+    userId: string,
+    articleId: string,
+    email?: string | null,
+    reaction: string = 'LIKE'
+  ): Promise<boolean> {
     await ensureUser(userId, email)
     const db = requireDb()
     const canonicalId = await this.resolveCanonicalArticleId(articleId)
+    const safeReaction = (reaction || 'LIKE').trim().toUpperCase().slice(0, 24) || 'LIKE'
+
+    const existing = await db
+      .select({ reaction: articleLikes.reaction })
+      .from(articleLikes)
+      .where(and(eq(articleLikes.userId, userId), eq(articleLikes.articleId, canonicalId)))
+      .limit(1)
+
+    if (existing[0]) {
+      if (existing[0].reaction === safeReaction) return false
+      await db
+        .update(articleLikes)
+        .set({ reaction: safeReaction })
+        .where(and(eq(articleLikes.userId, userId), eq(articleLikes.articleId, canonicalId)))
+      await recordSocialEvent({
+        eventType: 'article_reaction_changed',
+        userId,
+        targetType: 'article',
+        targetId: canonicalId,
+        metadata: { reaction: safeReaction },
+      })
+      return true
+    }
 
     const inserted = await db
       .insert(articleLikes)
-      .values({ userId, articleId: canonicalId })
+      .values({ userId, articleId: canonicalId, reaction: safeReaction })
       .onConflictDoNothing()
       .returning({ userId: articleLikes.userId })
 
     if (inserted.length > 0) {
       await this.bumpNewsCounter(canonicalId, 'likesCount', 1)
-      await recordSocialEvent({ eventType: 'article_liked', userId, targetType: 'article', targetId: canonicalId })
+      await recordSocialEvent({
+        eventType: 'article_liked',
+        userId,
+        targetType: 'article',
+        targetId: canonicalId,
+        metadata: { reaction: safeReaction },
+      })
       return true
     }
     return false

@@ -7,6 +7,7 @@ export type SocialEventType =
   | 'publisher_unfollowed'
   | 'article_liked'
   | 'article_unliked'
+  | 'article_reaction_changed'
   | 'article_saved'
   | 'article_unsaved'
   | 'comment_created'
@@ -18,6 +19,8 @@ export type SocialEventType =
   | 'article_dwell'
   | 'quick_skip'
   | 'article_opened'
+  | 'discovery_module_viewed'
+  | 'discovery_card_opened'
 
 export interface PublicUserProfile {
   userId: string

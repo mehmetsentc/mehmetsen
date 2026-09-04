@@ -1,17 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ChevronDown, Heart, Layers, Newspaper, Zap } from 'lucide-react'
+import { Check, ChevronDown, Heart, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
-import { SocialActionRail } from '@/components/social/SocialActionRail'
+import { SocialActionRail, type FeedReactionId } from '@/components/social/SocialActionRail'
+import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
+import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -84,11 +86,16 @@ interface FullscreenNewsCardProps {
   /** Total loaded cards (progress denominator) */
   cardTotal?: number
   onToggleLike: () => void
+  onReact?: (reaction: FeedReactionId) => void
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
   onFeedback?: (type: 'hide_article' | 'less_publisher' | 'less_topic') => void
   cardRef?: (node: HTMLElement | null) => void
+  reaction?: string | null
+  showDiscoveryRail?: boolean
+  discoveryCategory?: string | null
+  discoveryExcludeIds?: string[]
 }
 
 /**
@@ -115,10 +122,15 @@ export function FullscreenNewsCard({
   cardIndex,
   cardTotal,
   onToggleLike,
+  onReact,
   onToggleSave,
   onCommentClick,
   onReadClick,
   cardRef,
+  reaction,
+  showDiscoveryRail,
+  discoveryCategory,
+  discoveryExcludeIds,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -148,6 +160,7 @@ export function FullscreenNewsCard({
       ? `${cardIndex} / ${cardTotal}`
       : null
   const publisherHref = item.publisher ? publisherProfileHref(item.publisher) : null
+  const publisherAccent = publisherAccentFromId(item.publisher?.id ?? item.publisher?.slug)
   const skin = resolveFeedCardSkin(item.category, { breaking: item.breaking })
   const isCenter = skin.layout === 'center'
 
@@ -307,7 +320,12 @@ export function FullscreenNewsCard({
       data-feed-skin={skin.id}
       data-feed-layout={skin.layout}
       data-testid="smart-feed-card"
-      style={{ ['--feed-skin-accent' as string]: skin.accent }}
+      style={
+        {
+          ['--feed-skin-accent']: skin.accent,
+          ['--feed-publisher-accent']: publisherAccent,
+        } as CSSProperties
+      }
     >
       <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
@@ -501,7 +519,7 @@ export function FullscreenNewsCard({
                   ) : null}
                 </div>
                 <h2
-                  className={cn('break-words text-white', skin.headlineClass)}
+                  className={cn('line-clamp-3 break-words text-white', skin.headlineClass)}
                   data-testid="smart-feed-headline"
                 >
                   {typedHeadline}
@@ -516,7 +534,7 @@ export function FullscreenNewsCard({
                 {item.summary ? (
                   <p
                     className={cn(
-                      'break-words transition-opacity duration-300',
+                      'line-clamp-3 break-words transition-opacity duration-300',
                       skin.summaryClass,
                       headlineDone ? 'opacity-100' : 'opacity-0'
                     )}
@@ -525,91 +543,92 @@ export function FullscreenNewsCard({
                     {item.summary}
                   </p>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={onReadClick}
+                  data-testid="smart-feed-read-cta"
+                  className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+                  style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
+                >
+                  Haberi Oku →
+                </button>
               </div>
             </div>
           ) : null}
         </div>
 
-        {/* Global bottom chrome — identical on every skin */}
-        <div className="relative z-[2] flex items-end gap-3" data-testid="smart-feed-bottom-chrome">
-          <div className="min-w-0 flex-1 space-y-2.5 pr-1" data-testid="smart-feed-text-zone">
+        {/* Bottom copy stack — CTA before publisher; social is viewport mid-right */}
+        <div
+          className="relative z-[2] flex max-h-[52vh] min-h-0 flex-col justify-end gap-2.5 pr-[3.75rem]"
+          data-testid="smart-feed-bottom-chrome"
+        >
+          <div className="min-w-0 space-y-2" data-testid="smart-feed-text-zone">
             {!isCenter ? (
-              <>
-                <div
-                  className={cn(
-                    'max-h-[48vh] space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
-                    FEED_INK_PANEL
-                  )}
-                  data-testid="smart-feed-copy-scroll"
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onWheel={(e) => e.stopPropagation()}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    {cat ? (
-                      <span
-                        className={cn(
-                          'text-[11px] font-extrabold tracking-[0.06em]',
-                          skin.badge === 'ghost'
-                            ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
-                            : 'rounded-md px-2 py-0.5 text-white',
-                          skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
-                          skin.id === 'spor' && 'rounded-full'
-                        )}
-                      >
-                        {cat}
-                      </span>
-                    ) : null}
-                    {item.breaking && skin.id !== 'son-dakika' ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                        <Zap className="h-3 w-3" aria-hidden />
-                        Son Dakika
-                      </span>
-                    ) : null}
-                    {item.materialUpdate ? (
-                      <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-black">
-                        YENİ GELİŞME
-                      </span>
-                    ) : null}
-                    {item.clusterSourceCount >= 2 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white">
-                        <Layers className="h-3 w-3" aria-hidden />
-                        {item.clusterSourceCount} kaynak
-                      </span>
-                    ) : null}
-                  </div>
-                  <h2
-                    className={cn('break-words text-white', skin.headlineClass)}
-                    data-testid="smart-feed-headline"
-                  >
-                    {typedHeadline}
-                    {showCursor ? (
-                      <span
-                        className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
-                        style={{ background: 'var(--feed-skin-accent)' }}
-                        aria-hidden
-                      />
-                    ) : null}
-                  </h2>
-                  {item.summary ? (
-                    <p
+              <div
+                className={cn('space-y-2', FEED_INK_PANEL)}
+                data-testid="smart-feed-copy-scroll"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {cat ? (
+                    <span
                       className={cn(
-                        'break-words transition-opacity duration-300',
-                        skin.summaryClass,
-                        headlineDone ? 'opacity-100' : 'opacity-0'
+                        'text-[11px] font-extrabold tracking-[0.06em]',
+                        skin.badge === 'ghost'
+                          ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
+                          : 'rounded-md px-2 py-0.5 text-white',
+                        skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
+                        skin.id === 'spor' && 'rounded-full'
                       )}
-                      data-testid="smart-feed-summary"
                     >
-                      {item.summary}
-                    </p>
+                      {cat}
+                    </span>
+                  ) : null}
+                  {item.breaking && skin.id !== 'son-dakika' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
+                      <Zap className="h-3 w-3" aria-hidden />
+                      Son Dakika
+                    </span>
+                  ) : null}
+                  {item.materialUpdate ? (
+                    <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-black">
+                      YENİ GELİŞME
+                    </span>
                   ) : null}
                 </div>
-              </>
-            ) : item.clusterSourceCount >= 2 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white">
-                  <Layers className="h-3 w-3" aria-hidden />
-                  {item.clusterSourceCount} kaynak
-                </span>
+                <h2
+                  className={cn('line-clamp-3 break-words text-white', skin.headlineClass)}
+                  data-testid="smart-feed-headline"
+                >
+                  {typedHeadline}
+                  {showCursor ? (
+                    <span
+                      className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
+                      style={{ background: 'var(--feed-skin-accent)' }}
+                      aria-hidden
+                    />
+                  ) : null}
+                </h2>
+                {item.summary ? (
+                  <p
+                    className={cn(
+                      'line-clamp-3 break-words transition-opacity duration-300',
+                      skin.summaryClass,
+                      headlineDone ? 'opacity-100' : 'opacity-0'
+                    )}
+                    data-testid="smart-feed-summary"
+                  >
+                    {item.summary}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onReadClick}
+                  data-testid="smart-feed-read-cta"
+                  className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+                  style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
+                >
+                  Haberi Oku →
+                </button>
               </div>
             ) : null}
 
@@ -621,13 +640,17 @@ export function FullscreenNewsCard({
                 {publisherHref ? (
                   <Link
                     href={publisherHref}
-                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
+                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1"
+                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
                     data-testid="smart-feed-publisher-link"
                   >
                     {publisherBlock}
                   </Link>
                 ) : (
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5">
+                  <div
+                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
+                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
+                  >
                     {publisherBlock}
                   </div>
                 )}
@@ -650,14 +673,12 @@ export function FullscreenNewsCard({
               </div>
             ) : null}
 
-            <button
-              type="button"
-              onClick={onReadClick}
-              data-testid="smart-feed-read-cta"
-              className="mt-0.5 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-black transition hover:bg-white/95 active:scale-[0.99]"
-            >
-              Haberi Oku
-            </button>
+            {showDiscoveryRail && isActive ? (
+              <FeedDiscoveryRail
+                category={discoveryCategory}
+                excludeIds={new Set([item.articleId, ...(discoveryExcludeIds ?? [])])}
+              />
+            ) : null}
 
             {debug ? (
               <pre className="max-h-24 overflow-auto rounded bg-black/60 p-2 text-[10px] text-green-300">
@@ -676,38 +697,44 @@ export function FullscreenNewsCard({
               </pre>
             ) : null}
           </div>
+        </div>
 
-          <div className="relative z-20 mb-1 flex shrink-0 flex-col items-center gap-3 self-end">
-            <SocialActionRail
-              articleId={item.articleId}
-              slug={item.slug}
-              title={item.headline}
-              summary={item.summary ?? undefined}
-              liked={liked}
-              saved={saved}
-              likeCount={resolvedLikeCount}
-              commentCount={resolvedCommentCount}
-              saveCount={resolvedSaveCount}
-              onToggleLike={onToggleLike}
-              onToggleSave={onToggleSave}
-              onCommentClick={onCommentClick}
-              likeLoading={likeLoading}
-              saveLoading={saveLoading}
-              orientation="vertical"
-              className="text-white"
-              data-testid="smart-feed-social-rail"
-            />
-            {progressLabel ? (
-              <div
-                className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
-                data-testid="smart-feed-card-progress"
-                aria-label={`Kart ${progressLabel}`}
-              >
-                <span>{progressLabel}</span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
-              </div>
-            ) : null}
-          </div>
+        {/* Viewport-anchored social column — independent of copy length */}
+        <div
+          className="pointer-events-auto absolute right-2 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-3"
+          data-testid="smart-feed-social-dock"
+        >
+          <SocialActionRail
+            articleId={item.articleId}
+            slug={item.slug}
+            title={item.headline}
+            summary={item.summary ?? undefined}
+            liked={liked}
+            saved={saved}
+            likeCount={resolvedLikeCount}
+            commentCount={resolvedCommentCount}
+            saveCount={resolvedSaveCount}
+            reaction={reaction}
+            onToggleLike={onToggleLike}
+            onReact={onReact}
+            onToggleSave={onToggleSave}
+            onCommentClick={onCommentClick}
+            likeLoading={likeLoading}
+            saveLoading={saveLoading}
+            orientation="vertical"
+            className="text-white"
+            data-testid="smart-feed-social-rail"
+          />
+          {progressLabel ? (
+            <div
+              className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
+              data-testid="smart-feed-card-progress"
+              aria-label={`Kart ${progressLabel}`}
+            >
+              <span>{progressLabel}</span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
+            </div>
+          ) : null}
         </div>
       </div>
     </article>

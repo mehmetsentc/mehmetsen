@@ -26,7 +26,9 @@ async function handleLike(request: Request, like: boolean) {
 
   try {
     if (like) {
-      await socialGraphRepository.likeArticle(auth.uid, articleId, auth.email)
+      const reaction =
+        typeof body.reaction === 'string' ? body.reaction.trim().toUpperCase() : 'LIKE'
+      await socialGraphRepository.likeArticle(auth.uid, articleId, auth.email, reaction || 'LIKE')
     } else {
       await socialGraphRepository.unlikeArticle(auth.uid, articleId)
     }
