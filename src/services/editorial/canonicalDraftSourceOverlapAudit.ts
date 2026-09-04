@@ -15,6 +15,7 @@ import { fetchDocument } from '@/services/crawler/http/fetchDocument'
 import { extractArticle } from '@/services/crawler/extract/pipeline'
 import {
   checkTextSimilarity,
+  explainOverlapClassificationFromWeightedScore,
   type OverlapCategory,
 } from '@/services/editorial/editorialSimilarityGate'
 
@@ -54,6 +55,11 @@ export type CanonicalSourceOverlapAudit = {
   gateOverlapCategory: OverlapCategory | null
   /** Human-review risk class — never implies CLEARED. */
   risk: SourceOverlapRiskClass
+  /**
+   * Exact reason from final weighted score only.
+   * maxSharedContiguousRun is EVIDENCE_ONLY and never appears here as an override.
+   */
+  classificationReason: string
   /** Explicit: LOW_OVERLAP is NOT copyright clearance. */
   clearanceImplied: false
   note: string
@@ -101,6 +107,7 @@ function unevaluable(
     maxSharedContiguousRun: null,
     gateOverlapCategory: null,
     risk: 'SOURCE_NOT_EVALUABLE',
+    classificationReason: `SOURCE_NOT_EVALUABLE:${opts.sourceFetchStatus}`,
     clearanceImplied: false,
     note: opts.note,
   }
@@ -229,13 +236,14 @@ export async function auditCanonicalDraftSourceOverlap(opts: {
     maxSharedContiguousRun: sim.maxSharedContiguousRun,
     gateOverlapCategory: sim.overlapCategory,
     risk,
+    classificationReason: explainOverlapClassificationFromWeightedScore(sim.similarity),
     clearanceImplied: false,
     note:
       risk === 'LOW_OVERLAP'
         ? 'LOW_OVERLAP is evidence only — NOT copyright clearance. Human rights decision still required.'
         : risk === 'HIGH_SOURCE_OVERLAP'
-          ? 'HIGH_SOURCE_OVERLAP evidence for human review — rights fields not auto-mutated; existing editorial_blocker policy unchanged.'
-          : 'MEDIUM_OVERLAP evidence for human review — not an automatic rejection.',
+          ? 'HIGH_SOURCE_OVERLAP evidence for human review — rights fields not auto-mutated; existing editorial_blocker policy unchanged. Classification uses final weighted score only (not 3-gram alone; max shared run is EVIDENCE_ONLY).'
+          : 'MEDIUM_OVERLAP evidence for human review — not an automatic rejection. Classification uses final weighted score only.',
   }
 }
 
@@ -249,8 +257,11 @@ export function classifyOverlapFromTexts(
   | 'risk'
   | 'gateOverlapCategory'
   | 'similarity'
+  | 'jaccard'
   | 'ngram3'
+  | 'tokenMatchRatio'
   | 'maxSharedContiguousRun'
+  | 'classificationReason'
   | 'clearanceImplied'
   | 'aiInvolved'
 > {
@@ -261,8 +272,11 @@ export function classifyOverlapFromTexts(
     risk: mapRisk(sim.overlapCategory),
     gateOverlapCategory: sim.overlapCategory,
     similarity: sim.similarity,
+    jaccard: sim.jaccard,
     ngram3: sim.ngram3,
+    tokenMatchRatio: sim.tokenMatchRatio,
     maxSharedContiguousRun: sim.maxSharedContiguousRun,
+    classificationReason: explainOverlapClassificationFromWeightedScore(sim.similarity),
     clearanceImplied: false,
   }
 }

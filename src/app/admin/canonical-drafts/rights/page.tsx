@@ -47,10 +47,13 @@ type SourceOverlapAudit = {
   canonicalBodyChars: number
   sourceBodyChars: number
   similarity: number | null
+  jaccard: number | null
   ngram3: number | null
+  tokenMatchRatio: number | null
   maxSharedContiguousRun: number | null
   gateOverlapCategory: string | null
   risk: string
+  classificationReason: string
   clearanceImplied: false
   note: string
 }
@@ -286,29 +289,55 @@ function PilotCard({
         }`}
       >
         <p className="font-semibold">Source-overlap audit (non-AI, evidence only)</p>
+        <p className="mt-1 text-xs opacity-80">
+          Similarity risk ≠ DB editorial blocker. Classification uses final weighted score only
+          (Jaccard×0.4 + 3-gram×0.3 + tokenMatch×0.3). Max shared run is EVIDENCE_ONLY.
+        </p>
         {overlapLoading && <p className="mt-1 text-xs">Kaynak karşılaştırılıyor…</p>}
         {overlapError && <p className="mt-1 text-xs text-red-700">{overlapError}</p>}
         {overlap && (
           <dl className="mt-2 grid gap-1 md:grid-cols-2">
             <div>
-              <dt className="text-xs opacity-70">Risk</dt>
+              <dt className="text-xs opacity-70">Similarity risk</dt>
               <dd className="font-mono font-semibold">{overlap.risk}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">DB editorial blocker</dt>
+              <dd className="font-mono font-semibold">
+                {review.editorialBlocker || 'None'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Final weighted score</dt>
+              <dd className="font-mono font-semibold">{pct(overlap.similarity)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Classification reason</dt>
+              <dd className="font-mono text-xs">{overlap.classificationReason || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Jaccard (component)</dt>
+              <dd className="font-mono">{pct(overlap.jaccard)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">3-gram overlap (component)</dt>
+              <dd className="font-mono">{pct(overlap.ngram3)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Token match (component)</dt>
+              <dd className="font-mono">{pct(overlap.tokenMatchRatio)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Max shared run (EVIDENCE_ONLY)</dt>
+              <dd className="font-mono">
+                {overlap.maxSharedContiguousRun != null
+                  ? `${overlap.maxSharedContiguousRun} tokens`
+                  : '—'}
+              </dd>
             </div>
             <div>
               <dt className="text-xs opacity-70">Source fetch</dt>
               <dd className="font-mono text-xs">{overlap.sourceFetchStatus}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Deep 3-gram overlap</dt>
-              <dd className="font-mono">{pct(overlap.ngram3)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Overall similarity</dt>
-              <dd className="font-mono">{pct(overlap.similarity)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Max shared token run</dt>
-              <dd className="font-mono">{overlap.maxSharedContiguousRun ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-xs opacity-70">Bodies (canonical / source)</dt>
@@ -317,11 +346,17 @@ function PilotCard({
               </dd>
             </div>
             <div className="md:col-span-2">
+              <dt className="text-xs opacity-70">Rights (unchanged by audit)</dt>
+              <dd className="font-mono text-xs">
+                {review.rightsStatus || 'PENDING'} / {review.rightsBasis || 'UNKNOWN'}
+              </dd>
+            </div>
+            <div className="md:col-span-2">
               <dt className="text-xs opacity-70">Note</dt>
               <dd className="text-xs">{overlap.note}</dd>
             </div>
             <div className="md:col-span-2 text-xs font-medium">
-              clearanceImplied=false · AI=0 · rights auto-change=NO · LOW≠CLEARED
+              clearanceImplied=false · AI=0 · rights auto-change=NO · LOW≠CLEARED · risk≠blocker
             </div>
           </dl>
         )}

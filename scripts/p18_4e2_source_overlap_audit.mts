@@ -85,10 +85,15 @@ async function main() {
       bodyLength: row.body_len,
       sourceFetch: audit.sourceFetchStatus,
       sourceBodyAvailable: audit.sourceBodyAvailable,
+      jaccard: audit.jaccard,
+      ngram3: audit.ngram3,
+      tokenMatch: audit.tokenMatchRatio,
       deepOverlap: audit.ngram3,
       similarity: audit.similarity,
+      finalWeighted: audit.similarity,
       maxSharedRun: audit.maxSharedContiguousRun,
       risk: audit.risk,
+      classificationReason: audit.classificationReason,
       existingBlocker: row.editorial_blocker,
       rights: row.rights_status,
       basis: row.rights_basis,
@@ -96,7 +101,17 @@ async function main() {
       gateBlockers: gate.blockers,
       auditNote: audit.note,
     })
-    console.error(JSON.stringify({ id: row.id, risk: audit.risk, fetch: audit.sourceFetchStatus }))
+    console.error(
+      JSON.stringify({
+        id: row.id,
+        risk: audit.risk,
+        final: audit.similarity,
+        jaccard: audit.jaccard,
+        ngram3: audit.ngram3,
+        tokenMatch: audit.tokenMatchRatio,
+        reason: audit.classificationReason,
+      })
+    )
   }
 
   const pilots = await sql`

@@ -144,14 +144,9 @@ export function checkTextSimilarity(
   const tokenMatchRatio = computeTokenMatchRatio(canTokens, rawTokens)
   const maxSharedContiguousRun = computeMaxSharedContiguousTokenRun(canTokens, rawTokens)
 
+  // Final weighted score — sole input to overlapCategory. maxSharedContiguousRun is evidence-only.
   const similarity = jaccard * 0.4 + ngram3 * 0.3 + tokenMatchRatio * 0.3
-
-  let overlapCategory: OverlapCategory = 'LOW_OVERLAP'
-  if (similarity >= 0.7) {
-    overlapCategory = 'HIGH_OVERLAP'
-  } else if (similarity >= 0.3) {
-    overlapCategory = 'MEDIUM_OVERLAP'
-  }
+  const overlapCategory = classifyOverlapCategoryFromWeightedScore(similarity)
 
   return {
     similarity,
@@ -162,6 +157,35 @@ export function checkTextSimilarity(
     overlapCategory,
     flaggedForReview: overlapCategory === 'HIGH_OVERLAP',
   }
+}
+
+/**
+ * Thresholds (inclusive lower bounds):
+ * - HIGH:  similarity >= 0.7
+ * - MEDIUM: similarity >= 0.3 && similarity < 0.7
+ * - LOW:    similarity < 0.3
+ *
+ * maxSharedContiguousRun does NOT affect this classification (EVIDENCE_ONLY).
+ */
+export function classifyOverlapCategoryFromWeightedScore(
+  similarity: number
+): OverlapCategory {
+  if (similarity >= 0.7) return 'HIGH_OVERLAP'
+  if (similarity >= 0.3) return 'MEDIUM_OVERLAP'
+  return 'LOW_OVERLAP'
+}
+
+/** Human-readable reason tied to the final weighted score only. */
+export function explainOverlapClassificationFromWeightedScore(similarity: number): string {
+  const cat = classifyOverlapCategoryFromWeightedScore(similarity)
+  const s = Number.isFinite(similarity) ? similarity.toFixed(3) : String(similarity)
+  if (cat === 'HIGH_OVERLAP') {
+    return `finalWeightedScore=${s} threshold>=0.700 → HIGH`
+  }
+  if (cat === 'MEDIUM_OVERLAP') {
+    return `finalWeightedScore=${s} threshold>=0.300 && <0.700 → MEDIUM`
+  }
+  return `finalWeightedScore=${s} threshold<0.300 → LOW`
 }
 
 /**
