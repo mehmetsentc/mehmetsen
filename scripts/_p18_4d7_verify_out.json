@@ -1,0 +1,97 @@
+{
+  "counts": {
+    "total": 33,
+    "draft": 29,
+    "published": 3
+  },
+  "publishApiExists": false,
+  "note": "PG news status→published has no authenticated CMS route; only rights decision API exists and executePublish=false",
+  "candidates": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "status": "draft",
+      "rights_status": "CLEARED",
+      "rights_basis": "EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION",
+      "editorial_blocker": null,
+      "has_actor": true,
+      "actor_fp": "9f0fc4a85a6e",
+      "actorClass": "VERIFIED_HUMAN_EDITOR",
+      "role": "super_admin",
+      "rights_decided_at": "2026-09-04T09:28:09.084Z",
+      "tsOk": true,
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "has_source": true,
+      "gate": {
+        "publishable": true,
+        "blockers": [],
+        "rightsStatus": "CLEARED",
+        "rightsBasis": "EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION",
+        "editorialBlocker": null,
+        "executePublish": false
+      },
+      "readiness": "READY_FOR_HUMAN_PUBLISH",
+      "published_by_present": true,
+      "published_at": "2026-09-02T20:10:47.194Z",
+      "legacy_firestore_id": "0ALMkrRCE3LQqubviNZh"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "status": "draft",
+      "rights_status": "REWRITE_REQUIRED",
+      "rights_basis": "UNKNOWN",
+      "editorial_blocker": "HIGH_SOURCE_OVERLAP",
+      "has_actor": false,
+      "actor_fp": null,
+      "actorClass": "MISSING_ACTOR",
+      "role": null,
+      "rights_decided_at": null,
+      "tsOk": false,
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "has_source": true,
+      "gate": {
+        "publishable": false,
+        "blockers": [
+          "rights_rewrite_required",
+          "editorial_blocker:HIGH_SOURCE_OVERLAP"
+        ],
+        "rightsStatus": "REWRITE_REQUIRED",
+        "rightsBasis": "UNKNOWN",
+        "editorialBlocker": "HIGH_SOURCE_OVERLAP",
+        "executePublish": false
+      },
+      "readiness": "NEEDS_EDITORIAL_REWRITE",
+      "published_by_present": true,
+      "published_at": "2026-09-03T14:03:27.162Z",
+      "legacy_firestore_id": "0SdmPVCnO8pVAbMENA9f"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "status": "draft",
+      "rights_status": "PENDING",
+      "rights_basis": "UNKNOWN",
+      "editorial_blocker": null,
+      "has_actor": false,
+      "actor_fp": null,
+      "actorClass": "NO_DECISION",
+      "role": null,
+      "rights_decided_at": null,
+      "tsOk": true,
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "has_source": true,
+      "gate": {
+        "publishable": false,
+        "blockers": [
+          "rights_pending"
+        ],
+        "rightsStatus": "PENDING",
+        "rightsBasis": "UNKNOWN",
+        "editorialBlocker": null,
+        "executePublish": false
+      },
+      "readiness": "KEEP_DRAFT_PENDING",
+      "published_by_present": true,
+      "published_at": "2026-09-02T14:05:15.283Z",
+      "legacy_firestore_id": "0XYEJVwyi7oILuYKf91R"
+    }
+  ]
+}

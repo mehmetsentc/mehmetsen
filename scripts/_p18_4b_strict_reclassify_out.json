@@ -1,0 +1,162 @@
+{
+  "generatedAt": "2026-09-04T00:19:36.712Z",
+  "scanned": 40729,
+  "strictCounts": {
+    "MIRROR_ALREADY_CANONICAL": 29,
+    "PROVEN_HUMAN": 583,
+    "LEGACY_REVIEW_REQUIRED": 27442,
+    "QUARANTINED": 12675,
+    "INSUFFICIENT_EVIDENCE": 0
+  },
+  "humanEditorAuthority": 583,
+  "provenHumanWithBody": 583,
+  "provenHumanPublisherHint": 583,
+  "provenHumanSlugOk": 583,
+  "provenHumanFullyEligible": 583,
+  "provenHumanBlockReasons": {},
+  "strongCandidates": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "migrationClass": "PROVEN_HUMAN",
+      "bodyChars": 1898,
+      "approvedBy": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "sourceUrl": "https://www.cumhuriyet.com.tr/bilim-teknoloji/derin-uyku-alzheimer-i-yavaslatiyor-2534422",
+      "publisherHint": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1"
+    },
+    {
+      "id": "0ATE6jLlGTbzGU9zbvt2",
+      "slug": "anymanin-istanbul-konseri-valilik-karariyla-iptal-edildi",
+      "migrationClass": "PROVEN_HUMAN",
+      "bodyChars": 2612,
+      "approvedBy": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "sourceUrl": "https://www.cumhuriyet.com.tr/yasam/anyma-kimdir-dj-anyma-nin-gercek-adi-ne-anyma-istanbul-konseri-neden-iptal-edildi-2534460",
+      "publisherHint": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "migrationClass": "PROVEN_HUMAN",
+      "bodyChars": 2677,
+      "approvedBy": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "sourceUrl": "https://www.bogazgazetesi.com.tr/canakkalede-tarih-icin-dalip-yelkenler-fora-dediler-video",
+      "publisherHint": "src_337d59cb-52db-4680-a1ce-70525efa4c95"
+    },
+    {
+      "id": "0Ttz0k0ShnxqpJFzcEjN",
+      "slug": "ukraynada-guvenlik-kurumlari-arasinda-silahli-catisma-suikast-sorusturmasi-geril",
+      "migrationClass": "PROVEN_HUMAN",
+      "bodyChars": 2659,
+      "approvedBy": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "sourceUrl": "https://www.cumhuriyet.com.tr/dunya/ukrayna-nin-iki-guvenlik-kurumu-arasinda-gerilim-suikast-sorusturmasi-silahli-catismaya-donustu-2534327",
+      "publisherHint": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1"
+    },
+    {
+      "id": "0X3PRfUrpTNadcLkobLC",
+      "slug": "bangladese-mekke-pakti-daveti-dakka-yonetimi-olumlu-bakiyor",
+      "migrationClass": "PROVEN_HUMAN",
+      "bodyChars": 3279,
+      "approvedBy": "wG8WTNIW38TILLvpDLsFmt6lMIg1",
+      "sourceUrl": "https://www.cumhuriyet.com.tr/dunya/banglades-e-mekke-pakti-daveti-dakka-yonetimi-olumlu-bakiyor-2534614",
+      "publisherHint": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1"
+    }
+  ],
+  "proposedP184aRecheck": {
+    "00RHkMeZPHr8wO9FTDmH": {
+      "firestoreId": "00RHkMeZPHr8wO9FTDmH",
+      "currentReadClass": "LEGACY_ALLOWED",
+      "migrationClass": "LEGACY_REVIEW_REQUIRED",
+      "human": {
+        "proven": false,
+        "authority": null,
+        "approvedBy": null,
+        "publishedBy": null,
+        "reason": "publicationAuthority is not HUMAN_EDITOR"
+      },
+      "body": {
+        "bodyExists": true,
+        "bodyChars": 583,
+        "meetsMinimum": true,
+        "sourceUrlExists": true,
+        "rightsStatus": null,
+        "rightsBasis": null,
+        "similarityEvaluated": false
+      },
+      "proposedAuthority": "LEGACY",
+      "targetPgId": "00RHkMeZPHr8wO9FTDmH",
+      "targetSlug": "afyonkarahisardaki-fabrika-yangininda-kilolarca-et-zarar-gordu",
+      "blockers": [
+        "authorId_alone_insufficient"
+      ],
+      "executable": false
+    },
+    "00iN4SAvWlSWjllEN6HA": {
+      "firestoreId": "00iN4SAvWlSWjllEN6HA",
+      "currentReadClass": "LEGACY_ALLOWED",
+      "migrationClass": "LEGACY_REVIEW_REQUIRED",
+      "human": {
+        "proven": false,
+        "authority": null,
+        "approvedBy": null,
+        "publishedBy": null,
+        "reason": "publicationAuthority is not HUMAN_EDITOR"
+      },
+      "body": {
+        "bodyExists": true,
+        "bodyChars": 837,
+        "meetsMinimum": true,
+        "sourceUrlExists": true,
+        "rightsStatus": null,
+        "rightsBasis": null,
+        "similarityEvaluated": false
+      },
+      "proposedAuthority": "LEGACY",
+      "targetPgId": "00iN4SAvWlSWjllEN6HA",
+      "targetSlug": "donor-vazgecti-20-yasindaki-oglunu-kaybetti",
+      "blockers": [
+        "authorId_alone_insufficient"
+      ],
+      "executable": false
+    },
+    "00pGDFGDQCyoVcwB1JIs": {
+      "firestoreId": "00pGDFGDQCyoVcwB1JIs",
+      "currentReadClass": "LEGACY_ALLOWED",
+      "migrationClass": "LEGACY_REVIEW_REQUIRED",
+      "human": {
+        "proven": false,
+        "authority": null,
+        "approvedBy": null,
+        "publishedBy": null,
+        "reason": "publicationAuthority is not HUMAN_EDITOR"
+      },
+      "body": {
+        "bodyExists": true,
+        "bodyChars": 2728,
+        "meetsMinimum": true,
+        "sourceUrlExists": true,
+        "rightsStatus": null,
+        "rightsBasis": null,
+        "similarityEvaluated": false
+      },
+      "proposedAuthority": "LEGACY",
+      "targetPgId": "00pGDFGDQCyoVcwB1JIs",
+      "targetSlug": "turkiye-uyari-alarminda-saganak-yagislar-kirli-plajlar-ve-ilac-listesi-degisikli",
+      "blockers": [
+        "authorId_alone_insufficient"
+      ],
+      "executable": false
+    }
+  },
+  "orphans": {
+    "total": 89,
+    "sampled": 89,
+    "sampledFsDocExists": 73,
+    "sampledUnknown": 16,
+    "note": "Sampled first 200 orphan published_news_id values against Firestore news docs"
+  },
+  "pg": {
+    "total": 30,
+    "published": 3,
+    "legacyMap": 30
+  }
+}

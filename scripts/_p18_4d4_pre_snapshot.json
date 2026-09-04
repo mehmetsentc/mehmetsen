@@ -1,0 +1,49 @@
+{
+  "counts": {
+    "total": 33,
+    "draft": 29,
+    "published": 3
+  },
+  "rows": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "status": "draft",
+      "rights_status": "CLEARED",
+      "rights_basis": "EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION",
+      "has_actor": true,
+      "rights_decided_at": "2026-09-04T09:28:09.084Z",
+      "editorial_blocker": null,
+      "body_len": 1904,
+      "has_source": true,
+      "publication_authority": "HUMAN_EDITOR",
+      "source": "cumhuriyet"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "status": "draft",
+      "rights_status": "REWRITE_REQUIRED",
+      "rights_basis": "UNKNOWN",
+      "has_actor": false,
+      "rights_decided_at": null,
+      "editorial_blocker": "HIGH_SOURCE_OVERLAP",
+      "body_len": 2645,
+      "has_source": true,
+      "publication_authority": "HUMAN_EDITOR",
+      "source": "bogazgazetesi-com-tr"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "status": "draft",
+      "rights_status": "PENDING",
+      "rights_basis": "UNKNOWN",
+      "has_actor": false,
+      "rights_decided_at": null,
+      "editorial_blocker": null,
+      "body_len": 1801,
+      "has_source": true,
+      "publication_authority": "HUMAN_EDITOR",
+      "source": "dunya"
+    }
+  ],
+  "pilotPublished": 0
+}

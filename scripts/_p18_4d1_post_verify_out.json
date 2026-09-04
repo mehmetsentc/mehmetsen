@@ -1,0 +1,86 @@
+{
+  "counts": {
+    "total": 33,
+    "draft": 29,
+    "published": 3
+  },
+  "pilotPublished": 0,
+  "pilots": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "status": "draft",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "title": "Derin uyku Alzheimer'ı yavaşlatıyor",
+      "bodyLen": 1904,
+      "source": "cumhuriyet",
+      "legacy": "0ALMkrRCE3LQqubviNZh",
+      "batch": "P18_4C_20260904T074059Z"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "status": "draft",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "title": "Çanakkale'de Tarihe Saygı Dalışı ve Yelken Etkinliği",
+      "bodyLen": 2645,
+      "source": "bogazgazetesi-com-tr",
+      "legacy": "0SdmPVCnO8pVAbMENA9f",
+      "batch": "P18_4C_20260904T074729Z"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "status": "draft",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "title": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "bodyLen": 1801,
+      "source": "dunya",
+      "legacy": "0XYEJVwyi7oILuYKf91R",
+      "batch": "P18_4C_20260904T074733Z"
+    }
+  ],
+  "c2Similarity": {
+    "beforeGate": "MEDIUM_OVERLAP",
+    "beforeDeep": 0.503,
+    "beforeMaxRun": 67,
+    "afterGate": "MEDIUM_OVERLAP",
+    "afterDeep": 0.483,
+    "afterMaxRun": 43,
+    "afterRightsAllowed": true,
+    "afterRightsReason": "Medium source overlap; editorial confirmation noted.",
+    "decision": "NEEDS_EDITORIAL_REWRITE"
+  },
+  "fidelity": {
+    "beforeAnchorCount": 7,
+    "afterAnchorCount": 7,
+    "missingCriticalHints": [],
+    "stillMentionsCanakkale": true,
+    "stillMentionsGelibolu": true,
+    "stillMentionsDalis": true,
+    "stillMentionsYelken": true
+  },
+  "social": {
+    "likes": 62,
+    "saves": 6,
+    "comments": 1,
+    "seen": 713
+  },
+  "c2Seen": 2,
+  "http": {
+    "derin-uyku-alzheimeri-yavaslatiyor": 200,
+    "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi": 200,
+    "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi": 200
+  },
+  "sitemapHits": 0,
+  "feed": 200,
+  "newsRightsColumns": [],
+  "rightsDecisionNote": {
+    "candidate1": "NO human click performed; PG news has no rights columns; RIGHTS_CLEARED_BY_HUMAN not recorded",
+    "candidate3": "NO human click performed; PG news has no rights columns; RIGHTS_CLEARED_BY_HUMAN not recorded",
+    "requiredHumanAction": "Human must explicitly clear rights in an editorial UI that can persist rightsStatus/rightsBasis for these PG drafts (schema currently lacks columns) OR approve publish later with documented basis. Do not invent CLEARED."
+  },
+  "unchanged": {
+    "c1BodyLen": 1904,
+    "c3BodyLen": 1801,
+    "expectedC1": 1904,
+    "expectedC3": 1801
+  }
+}

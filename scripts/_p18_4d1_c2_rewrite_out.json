@@ -1,0 +1,41 @@
+{
+  "id": "0SdmPVCnO8pVAbMENA9f",
+  "manualAction": "EXECUTED",
+  "ai": {
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "calls": 1,
+    "elapsedMs": 7854,
+    "rawChars": 3173,
+    "ingestionLane": "manual_editor"
+  },
+  "originalPreservedPath": "/Users/user/nahaber/scripts/_p18_4d1_c2_original_snapshot.json",
+  "originalFp": "76610878e6bc4746",
+  "originalBodyLen": 2684,
+  "afterFp": "bff2c369a445e48f",
+  "afterBodyLen": 2645,
+  "titleBefore": "Çanakkale'de Tarihe Saygı Anı Dalışı ve Yelken Sürüşü Deneyimi",
+  "titleAfter": "Çanakkale'de Tarihe Saygı Dalışı ve Yelken Etkinliği",
+  "rowAfter": {
+    "id": "0SdmPVCnO8pVAbMENA9f",
+    "status": "draft",
+    "title": "Çanakkale'de Tarihe Saygı Dalışı ve Yelken Etkinliği",
+    "body_len": 2645,
+    "legacy": "0SdmPVCnO8pVAbMENA9f",
+    "batch": "P18_4C_20260904T074729Z",
+    "authority": "HUMAN_EDITOR"
+  },
+  "otherPilots": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "body_len": 1904,
+      "content_md5": "cdd4f9f9ec23aa2ee1d061ec589fd1ed"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "body_len": 1801,
+      "content_md5": "7a51f6c4167be8470782a55dc03761bb"
+    }
+  ],
+  "status": "DRAFT_UPDATED"
+}

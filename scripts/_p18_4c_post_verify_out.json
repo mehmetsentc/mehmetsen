@@ -1,0 +1,79 @@
+{
+  "health": {
+    "status": "ok",
+    "service": "nahaber",
+    "time": "2026-09-04T07:48:13.589Z",
+    "version": "1f8962b",
+    "env": "production",
+    "region": "fra1"
+  },
+  "counts": {
+    "pgTotal": 33,
+    "pgDraft": 29,
+    "pgPublished": 3,
+    "pgArchived": 1
+  },
+  "social": {
+    "likes": 60,
+    "saves": 6,
+    "comments": 1,
+    "seen": 695
+  },
+  "raw": 30552,
+  "pilots": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "legacy": "0ALMkrRCE3LQqubviNZh",
+      "status": "draft",
+      "authority": "HUMAN_EDITOR",
+      "batch": "P18_4C_20260904T074059Z",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "source": "cumhuriyet",
+      "has_published_at": true
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "legacy": "0SdmPVCnO8pVAbMENA9f",
+      "status": "draft",
+      "authority": "HUMAN_EDITOR",
+      "batch": "P18_4C_20260904T074729Z",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "source": "bogazgazetesi-com-tr",
+      "has_published_at": true
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "legacy": "0XYEJVwyi7oILuYKf91R",
+      "status": "draft",
+      "authority": "HUMAN_EDITOR",
+      "batch": "P18_4C_20260904T074733Z",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "source": "dunya",
+      "has_published_at": true
+    }
+  ],
+  "publishedWithSameSlug": [],
+  "orphanTouches": [],
+  "seenPer": [
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "c": 2
+    }
+  ],
+  "idempotency": {
+    "insertedCount": 0,
+    "alreadyMigratedCount": 3,
+    "outcomes": [
+      "ALREADY_MIGRATED",
+      "ALREADY_MIGRATED",
+      "ALREADY_MIGRATED"
+    ]
+  },
+  "http": {
+    "derin-uyku-alzheimeri-yavaslatiyor": 200,
+    "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi": 200,
+    "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi": 200
+  },
+  "sitemapSlugOrIdHits": 0,
+  "aiEnvNote": "verified via prior policy tests; not mutated this phase"
+}

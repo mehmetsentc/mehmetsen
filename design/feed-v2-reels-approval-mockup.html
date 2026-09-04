@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NaHaber Feed-v2 — Onay Mockup</title>
+  <style>
+    :root {
+      --brand: #e11d2e;
+      --white: #ffffff;
+      --muted: rgba(255,255,255,.78);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.25rem 1rem 2rem;
+    }
+    h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+    .note {
+      max-width: 24rem;
+      font-size: .8rem;
+      line-height: 1.45;
+      color: rgba(255,255,255,.65);
+      text-align: center;
+    }
+    .phone {
+      position: relative;
+      width: min(390px, 100%);
+      aspect-ratio: 390 / 844;
+      border-radius: 2rem;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      background: #000;
+    }
+    .media {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 28%, rgba(0,0,0,.15) 52%, rgba(0,0,0,.25) 100%),
+        url("https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=80") center / cover no-repeat;
+    }
+    .top {
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: calc(var(--safe-top) + 2.6rem) .75rem .5rem;
+    }
+    .icon-btn {
+      flex: 0 0 auto;
+      width: 2.25rem; height: 2.25rem;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(0,0,0,.42);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(8px);
+    }
+    .modes {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      gap: .25rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: .2rem;
+      border-radius: 999px;
+      background: rgba(0,0,0,.45);
+      border: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(12px);
+    }
+    .modes::-webkit-scrollbar { display: none; }
+    .mode {
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 999px;
+      padding: .45rem .7rem;
+      font-size: .72rem;
+      font-weight: 650;
+      color: rgba(255,255,255,.72);
+      background: transparent;
+      white-space: nowrap;
+    }
+    .mode.active { background: #fff; color: #111; }
+    .bottom {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 5;
+      display: flex;
+      align-items: flex-end;
+      gap: .75rem;
+      padding: 0 0.85rem calc(var(--safe-bottom) + 1rem);
+    }
+    .copy {
+      flex: 1;
+      min-width: 0;
+      padding-right: .25rem;
+    }
+    .cat {
+      color: var(--brand);
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      margin-bottom: .45rem;
+    }
+    .headline {
+      font-size: 1.22rem;
+      line-height: 1.22;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      margin-bottom: .45rem;
+    }
+    .summary {
+      font-size: .88rem;
+      line-height: 1.35;
+      color: var(--muted);
+      margin-bottom: .7rem;
+    }
+    .publisher {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      margin-bottom: .85rem;
+      min-width: 0;
+    }
+    .avatar {
+      width: 1.55rem; height: 1.55rem;
+      border-radius: 999px;
+      background: var(--brand);
+      display: grid;
+      place-items: center;
+      font-size: .7rem;
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+    .pname {
+      font-size: .82rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .check {
+      width: .85rem; height: .85rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      color: #111;
+      display: grid;
+      place-items: center;
+      font-size: .55rem;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+    .time { color: rgba(255,255,255,.65); font-size: .78rem; white-space: nowrap; }
+    .follow {
+      margin-left: .15rem;
+      border: 1.5px solid var(--brand);
+      color: #fff;
+      background: transparent;
+      border-radius: 999px;
+      padding: .28rem .65rem;
+      font-size: .72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 999px;
+      background: #fff;
+      color: #111;
+      font-weight: 800;
+      font-size: .9rem;
+      padding: .72rem 1.2rem;
+    }
+    .rail {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding-bottom: .15rem;
+    }
+    .rail-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .2rem;
+      color: #fff;
+      text-shadow: 0 1px 8px rgba(0,0,0,.45);
+    }
+    .rail-item svg { width: 1.7rem; height: 1.7rem; stroke-width: 1.8; }
+    .rail-item span { font-size: .68rem; font-weight: 700; }
+    .progress {
+      margin-top: .15rem;
+      display: flex;
+      align-items: center;
+      gap: .15rem;
+      font-size: .72rem;
+      font-weight: 650;
+      color: rgba(255,255,255,.9);
+    }
+    .approvals {
+      width: min(390px, 100%);
+      display: grid;
+      gap: .6rem;
+    }
+    .approvals details {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: .85rem;
+      padding: .85rem 1rem;
+    }
+    .approvals summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+    .approvals ul { margin-top: .55rem; padding-left: 1.1rem; color: rgba(255,255,255,.7); font-size: .8rem; line-height: 1.45; }
+    .diff {
+      width: min(390px, 100%);
+      font-size: .78rem;
+      line-height: 1.45;
+      color: rgba(255,255,255,.7);
+      background: rgba(225,29,46,.08);
+      border: 1px solid rgba(225,29,46,.28);
+      border-radius: .85rem;
+      padding: .9rem 1rem;
+    }
+    .diff strong { color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>Feed-v2 Reels — Onay Mockup</h1>
+  <p class="note">Referans görsele göre önerilen kompozisyon. Canlı kod henüz değişmedi. Onay verirsen P18.3K olarak uygularım.</p>
+
+  <div class="phone" aria-label="Feed-v2 tasarım önizlemesi">
+    <div class="media" aria-hidden="true"></div>
+
+    <div class="top">
+      <button class="icon-btn" aria-label="Geri" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><path d="M15 18l-6-6 6-6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="modes" role="tablist" aria-label="Feed modları">
+        <button class="mode active" type="button">Sana Özel</button>
+        <button class="mode" type="button">Takip</button>
+        <button class="mode" type="button">Son Dakika</button>
+        <button class="mode" type="button">Yerel</button>
+      </div>
+      <button class="icon-btn" aria-label="Daha fazla" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      </button>
+    </div>
+
+    <div class="bottom">
+      <div class="copy">
+        <div class="cat">GASTRONOMİ</div>
+        <h2 class="headline">Mısırın En Lezzetli Hali: Evde Kaburga Mısır Nasıl Yapılır?</h2>
+        <p class="summary">Son dönemde popülerleşen kaburga mısır, fırında çıtır çıtır hazırlanıyor. İşte pratik tarifi ve püf noktaları.</p>
+        <div class="publisher">
+          <div class="avatar">C</div>
+          <span class="pname">Cumhuriyet</span>
+          <span class="check" title="Doğrulanmış">✓</span>
+          <span class="time">· 1s önce</span>
+          <button class="follow" type="button">+ Takip et</button>
+        </div>
+        <button class="cta" type="button">Haberi Oku</button>
+      </div>
+
+      <div class="rail" aria-label="Sosyal eylemler">
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0112 6a5.5 5.5 0 019.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+          <span>1,2B</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a8.5 8.5 0 01-12.5 7.5L3 21l1.7-4.2A8.5 8.5 0 1121 12z"/></svg>
+          <span>156</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h10v17l-5-3-5 3V4z"/></svg>
+          <span>342</span>
+        </div>
+        <div class="rail-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8l7.5-4.3M8.2 13.2l7.5 4.3"/></svg>
+          <span>Paylaş</span>
+        </div>
+        <div class="progress">1 / 50
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="diff">
+    <strong>Mevcut Production’dan farklar (onay maddeleri)</strong><br/>
+    1) Yayıncı satırı üstteki mod barın altına değil, <strong>alt metin bölgesine</strong> iner.<br/>
+    2) Üst sağda <strong>⋯ more</strong> (mod bar ile aynı satır).<br/>
+    3) Takip: kırmızı kenarlı <strong>+ Takip et</strong>.<br/>
+    4) Sosyal sayaçlar görünür (gerçek sayı; sahte üretim yok).<br/>
+    5) Sağ altta <strong>1 / 50</strong> ilerleme ipucu.<br/>
+    6) Medya full-bleed; alt gradient; kısa özet + Haberi Oku.
+  </div>
+
+  <div class="approvals">
+    <details open>
+      <summary>Onay checklist</summary>
+      <ul>
+        <li>Üst: Geri + modlar + more</li>
+        <li>Medya baskın, body metni yok</li>
+        <li>Kategori → başlık → kısa özet</li>
+        <li>Yayıncı + takip alt bölgede</li>
+        <li>Sağ rail: like / comment / save / share</li>
+        <li>Haberi Oku + kart sayacı</li>
+      </ul>
+    </details>
+  </div>
+</body>
+</html>

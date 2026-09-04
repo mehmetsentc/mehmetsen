@@ -1,0 +1,60 @@
+{
+  "scanned": 40751,
+  "trustedEditorialUidCount": 108,
+  "migrationClassCounts": {
+    "MIRROR_ALREADY_CANONICAL": 29,
+    "HUMAN_ACTOR_VERIFIED": 605,
+    "HUMAN_AUTHORITY_UNVERIFIED_ACTOR": 0,
+    "LEGACY_REVIEW_REQUIRED": 27442,
+    "QUARANTINED": 12675,
+    "INSUFFICIENT_EVIDENCE": 0,
+    "PROVEN_HUMAN": 0
+  },
+  "humanEditor": {
+    "total": 605,
+    "positiveVerified": 605,
+    "nonAutomationOnly": 0,
+    "unknownActor": 0,
+    "automationActor": 0,
+    "missingActor": 0
+  },
+  "verifiedCandidateCount": 605,
+  "selectedPilotIds": [
+    "0ALMkrRCE3LQqubviNZh",
+    "0SdmPVCnO8pVAbMENA9f",
+    "0XYEJVwyi7oILuYKf91R"
+  ],
+  "selected": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "publisherHint": "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1",
+      "bodyChars": 1898,
+      "isOrphanPublishedRef": false,
+      "rightsStatus": null,
+      "similarityState": "SIMILARITY_NOT_EVALUATED",
+      "sourceUrlHost": "www.cumhuriyet.com.tr"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "publisherHint": "src_337d59cb-52db-4680-a1ce-70525efa4c95",
+      "bodyChars": 2677,
+      "isOrphanPublishedRef": false,
+      "rightsStatus": null,
+      "similarityState": "SIMILARITY_NOT_EVALUATED",
+      "sourceUrlHost": "www.bogazgazetesi.com.tr"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "publisherHint": "src_5938ff26-15b2-48a2-8055-f3c71f29a10e",
+      "bodyChars": 1795,
+      "isOrphanPublishedRef": false,
+      "rightsStatus": null,
+      "similarityState": "SIMILARITY_NOT_EVALUATED",
+      "sourceUrlHost": "www.dunya.com"
+    }
+  ],
+  "orphanPublishedCount": 89
+}

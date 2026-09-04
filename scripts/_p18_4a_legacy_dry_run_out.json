@@ -1,0 +1,530 @@
+{
+  "generatedAt": "2026-09-04T00:04:09.119Z",
+  "coverage": {
+    "firestoreDocsScanned": 40706,
+    "truncated": false,
+    "maxDocsCap": 60000,
+    "confidence": "FULL_ENUMERATION"
+  },
+  "pg": {
+    "byStatus": [
+      {
+        "status": "archived",
+        "c": 1
+      },
+      {
+        "status": "draft",
+        "c": 26
+      },
+      {
+        "status": "published",
+        "c": 3
+      }
+    ],
+    "summary": {
+      "total": 30,
+      "with_legacy_fs": 30,
+      "with_published_at": 30,
+      "with_author": 30,
+      "published": 3,
+      "published_with_legacy": 3
+    },
+    "clusters": {
+      "clusters": 26293,
+      "with_published_news": 118,
+      "distinct_published_news": 118
+    },
+    "authorityColumns": {
+      "publicationAuthority": "N/A — not a PG news column (Firestore/Post meta only)",
+      "approvedBy": "N/A — not a PG news column",
+      "approvedAt": "N/A — not a PG news column",
+      "publishedBy": "N/A — not a PG news column"
+    },
+    "publishedWithLegacyFirestoreId": 3
+  },
+  "rawArticles": {
+    "total": 30088,
+    "editorial_published": 2463,
+    "with_cluster": 27224
+  },
+  "firestore": {
+    "classCounts": {
+      "CANONICAL_MIRROR": 589,
+      "SYSTEM_ALERT": 0,
+      "LEGACY_ALLOWED": 27442,
+      "LEGACY_QUARANTINED": 12675,
+      "NOT_PUBLIC": 0,
+      "UNKNOWN": 0
+    },
+    "readClassCounts": {
+      "CANONICAL": 560,
+      "SYSTEM_ALERT": 0,
+      "LEGACY_ALLOWED": 27444,
+      "LEGACY_QUARANTINED": 12702,
+      "NOT_PUBLIC": 0
+    },
+    "percentages": {
+      "CANONICAL_MIRROR": 1.45,
+      "SYSTEM_ALERT": 0,
+      "LEGACY_ALLOWED": 67.42,
+      "LEGACY_QUARANTINED": 31.14,
+      "NOT_PUBLIC": 0,
+      "UNKNOWN": 0
+    },
+    "publishedStatus": 40706,
+    "withSlug": 40703,
+    "withSourceUrl": 40532,
+    "withClusterId": 29,
+    "withEditorialNewsId": 0,
+    "withApprovedBy": 560,
+    "withPublishedBy": 560,
+    "withAuthorId": 36130,
+    "authorityField": {
+      "humanEditorAuth": 560,
+      "systemAlertAuth": 0,
+      "legacyAuth": 0,
+      "noAuth": 40146
+    },
+    "feedEligible": 28004,
+    "indexable": 28004,
+    "detailResolvable": 40706,
+    "legacyAllowedFsOnly": 27442,
+    "legacyAllowedWithMirrorNote": "CANONICAL_MIRROR includes FS docs with PG legacyFirestoreId link"
+  },
+  "relationships": {
+    "FS_ONLY": 40677,
+    "FS_WITH_PG_MIRROR": 29,
+    "PG_CANONICAL_WITH_FS_LEGACY_COPY": 3,
+    "AMBIGUOUS": 0,
+    "uniqueFsPublicDocsApprox": 40706,
+    "uniqueClustersOnFs": 29,
+    "duplicateClusterGroups": 0,
+    "duplicateClusterDocs": 0,
+    "uniqueEditorialNewsIds": 0,
+    "duplicateEditorialGroups": 0,
+    "fsIdsWithPgMirror": 29,
+    "pgLegacyMapSize": 30
+  },
+  "provenance": {
+    "A": 589,
+    "B": 22867,
+    "C": 4575,
+    "D": 0,
+    "E": 12675,
+    "UNKNOWN": 0
+  },
+  "socialSeen": {
+    "likes_fs_only": 44,
+    "saves_fs_only": 5,
+    "comments_fs_only": 1,
+    "impressions_fs_only": 400,
+    "impressions_fs_only_distinct": 305
+  },
+  "publishers": [
+    {
+      "id": "pub_99d53526-325c-498f-9eaa-539f2a2654bb",
+      "slug": "bbc-world-rss",
+      "name": "BBC World RSS",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_45cd7eee-b4d2-4c87-a8de-d92568a8beff"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 0,
+      "legacyAllowedFsOnlyApprox": 4,
+      "quarantinedApprox": 14,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 100
+    },
+    {
+      "id": "pub_da4918d1-b5f8-4330-ac33-a411aed0ea92",
+      "slug": "cumhuriyet",
+      "name": "Cumhuriyet",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1"
+      ],
+      "pgPublished": 1,
+      "fsCanonicalMirrorApprox": 106,
+      "legacyAllowedFsOnlyApprox": 1519,
+      "quarantinedApprox": 1569,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 99.9
+    },
+    {
+      "id": "pub_1a56da32-d30b-48a9-b1a9-6933729f1afa",
+      "slug": "deutsche-welle-rss",
+      "name": "Deutsche Welle RSS",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_68248665-be52-4bce-ab2d-5d58c788068d"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 0,
+      "legacyAllowedFsOnlyApprox": 0,
+      "quarantinedApprox": 0,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": null
+    },
+    {
+      "id": "pub_bd523786-88a7-45be-97da-70fb4f5282bf",
+      "slug": "evrensel",
+      "name": "Evrensel",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_506a0e4d-aa6e-48bf-90a4-76728143e71c"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 84,
+      "legacyAllowedFsOnlyApprox": 110,
+      "quarantinedApprox": 180,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 100
+    },
+    {
+      "id": "pub_e44a1cd8-2be8-4cc2-a07b-d17442d3856a",
+      "slug": "hurriyet",
+      "name": "Hürriyet",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_930bf46a-a425-4888-890b-d8e8359a06c4"
+      ],
+      "pgPublished": 1,
+      "fsCanonicalMirrorApprox": 23,
+      "legacyAllowedFsOnlyApprox": 532,
+      "quarantinedApprox": 94,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 99.8
+    },
+    {
+      "id": "pub_442e9bfa-855a-443e-95d0-3b68d5ddc8e7",
+      "slug": "le-monde-rss",
+      "name": "Le Monde RSS",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_1dccb1a8-e46a-4b4c-9c06-bc74b31e8a2e"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 0,
+      "legacyAllowedFsOnlyApprox": 0,
+      "quarantinedApprox": 0,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": null
+    },
+    {
+      "id": "pub_526e2b68-fa86-44c9-992b-49f3fb2cb77a",
+      "slug": "sozcu",
+      "name": "Sözcü",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_8f784e8d-bd18-4642-bce9-7139318fa40b"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 51,
+      "legacyAllowedFsOnlyApprox": 815,
+      "quarantinedApprox": 449,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 100
+    },
+    {
+      "id": "pub_0ccb9a1b-88dc-4682-b7f6-d9c51aa88e55",
+      "slug": "the-guardian-world-rss",
+      "name": "The Guardian World RSS",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_3b383dd1-195d-477c-ad5f-87bab3f8dc54"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 0,
+      "legacyAllowedFsOnlyApprox": 1,
+      "quarantinedApprox": 1,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 100
+    },
+    {
+      "id": "pub_9cc584bf-34c6-495a-b056-dd19c2fc732b",
+      "slug": "trt-haber-rss",
+      "name": "TRT Haber RSS",
+      "state": "UNCLAIMED",
+      "sourceIds": [
+        "src_c4186a9b-ab70-40d4-b62b-65bbed1863ad"
+      ],
+      "pgPublished": 0,
+      "fsCanonicalMirrorApprox": 0,
+      "legacyAllowedFsOnlyApprox": 3,
+      "quarantinedApprox": 0,
+      "unknownApprox": 0,
+      "profileDependencyPctFsOnly": 100
+    }
+  ],
+  "bodySamples": [
+    {
+      "id": "004p16rbojr7nTJww3pM",
+      "fsClass": "LEGACY_QUARANTINED",
+      "titleLen": 49,
+      "contentLen": 1573,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "005zBVGEXtJuM78CmZuC",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 39,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "009fExTEgHjpJNZImot7",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 62,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00RHkMeZPHr8wO9FTDmH",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 63,
+      "contentLen": 585,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00SZUEXQoMVKgtCMjX5b",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 58,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00YlXIS3jxc8x5ONnlkP",
+      "fsClass": "LEGACY_QUARANTINED",
+      "titleLen": 52,
+      "contentLen": 2063,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00gQGWJkwn5a4n7Mgbrh",
+      "fsClass": "LEGACY_QUARANTINED",
+      "titleLen": 54,
+      "contentLen": 3406,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00iN4SAvWlSWjllEN6HA",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 44,
+      "contentLen": 839,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00nRSzh7vNsB6UosNUCR",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 29,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00pGDFGDQCyoVcwB1JIs",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 98,
+      "contentLen": 2733,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00srdfp12MyUA7RBJavy",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 37,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    },
+    {
+      "id": "00ydoSIw8Ipix6ikwdHG",
+      "fsClass": "LEGACY_ALLOWED",
+      "titleLen": 46,
+      "contentLen": 0,
+      "hasSourceUrl": true,
+      "hasApprovedBy": false,
+      "contentStartsLikeHtml": false
+    }
+  ],
+  "pilotCandidates": [
+    {
+      "id": "005zBVGEXtJuM78CmZuC",
+      "slug": "istanbul-bogazi-gemi-gecisine-kapatildi",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "cumhuriyet"
+    },
+    {
+      "id": "009fExTEgHjpJNZImot7",
+      "slug": "medinede-1700-yillik-tarihi-kesif-kuran-ayetleri-ve-hazreti",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "milliyet-magazin"
+    },
+    {
+      "id": "00RHkMeZPHr8wO9FTDmH",
+      "slug": "afyonkarahisardaki-fabrika-yangininda-kilolarca-et-zarar-gordu",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "ensonhaber"
+    },
+    {
+      "id": "00SZUEXQoMVKgtCMjX5b",
+      "slug": "tarim-ve-orman-sektorune-yonelik-yeni-duzenlemeler-tbmmde",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "hurriyet"
+    },
+    {
+      "id": "00iN4SAvWlSWjllEN6HA",
+      "slug": "donor-vazgecti-20-yasindaki-oglunu-kaybetti",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "portal-izmir-izgazete"
+    },
+    {
+      "id": "00nRSzh7vNsB6UosNUCR",
+      "slug": "onurcan-piri-kocaelisporda",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "sabah-spor"
+    },
+    {
+      "id": "00pGDFGDQCyoVcwB1JIs",
+      "slug": "turkiye-uyari-alarminda-saganak-yagislar-kirli-plajlar-ve-ilac-listesi-degisikli",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "google-trends"
+    },
+    {
+      "id": "00ydoSIw8Ipix6ikwdHG",
+      "slug": "besiktas-alexander-nubel-transferini-acikladi",
+      "fsClass": "LEGACY_ALLOWED",
+      "bucket": "B",
+      "publisherHint": "portal-bursa-hakimiyet"
+    }
+  ],
+  "topFsOnlyPublisherHints": [
+    [
+      "anka-haber",
+      3752
+    ],
+    [
+      "google-trends",
+      1572
+    ],
+    [
+      "anka-breaking",
+      1454
+    ],
+    [
+      "aa",
+      1296
+    ],
+    [
+      "cnn",
+      958
+    ],
+    [
+      "cumhuriyet",
+      811
+    ],
+    [
+      "dunya-ekonomi",
+      723
+    ],
+    [
+      "milliyet-magazin",
+      659
+    ],
+    [
+      "sozcu",
+      613
+    ],
+    [
+      "cumhuriyet-gundem",
+      497
+    ],
+    [
+      "karar",
+      443
+    ],
+    [
+      "ekonomim",
+      419
+    ],
+    [
+      "hurriyet",
+      369
+    ],
+    [
+      "sporx",
+      362
+    ],
+    [
+      "aljazeera",
+      273
+    ],
+    [
+      "portal-bursa-hakimiyet",
+      271
+    ],
+    [
+      "ntv",
+      264
+    ],
+    [
+      "haberler",
+      245
+    ],
+    [
+      "portal-antalya-ekspres",
+      238
+    ],
+    [
+      "bloomberght",
+      218
+    ],
+    [
+      "src_19c71d72-1664-4f37-9ab1-f90847a6f4e1",
+      204
+    ],
+    [
+      "trt-politika",
+      199
+    ],
+    [
+      "haberturk",
+      190
+    ],
+    [
+      "src_8f784e8d-bd18-4642-bce9-7139318fa40b",
+      188
+    ],
+    [
+      "portal-izmir-egedesonsoz",
+      174
+    ]
+  ]
+}

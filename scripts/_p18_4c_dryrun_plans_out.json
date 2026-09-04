@@ -1,0 +1,123 @@
+{
+  "pre": {
+    "pg": {
+      "total": 30,
+      "draft": 26,
+      "published": 3
+    },
+    "social": {
+      "likes": 60,
+      "saves": 6,
+      "comments": 1,
+      "seen": 695
+    }
+  },
+  "orphanPilotRefs": [],
+  "plans": [
+    {
+      "firestoreId": "0ALMkrRCE3LQqubviNZh",
+      "migrationClass": "HUMAN_ACTOR_VERIFIED",
+      "targetPgId": "0ALMkrRCE3LQqubviNZh",
+      "blockers": [],
+      "publisherStatus": "resolved",
+      "publisherSlug": "cumhuriyet",
+      "cluster": {
+        "status": "missing",
+        "clusterId": null,
+        "publishedNewsId": null
+      },
+      "slugImpact": {
+        "status": "available",
+        "collidingPgId": null
+      },
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "strategy": "prefer_fs_id_as_pg_id_alias"
+      },
+      "seen": {
+        "impressionRows": 0,
+        "strategy": "expandArticleIdentities_alias"
+      },
+      "bodyChars": 1898,
+      "sourceUrlExists": true,
+      "rightsStatus": null,
+      "humanProven": true,
+      "actorTrusted": true,
+      "writeCapability": "NONE",
+      "executable": false,
+      "similarityState": "SIMILARITY_NOT_EVALUATED"
+    },
+    {
+      "firestoreId": "0SdmPVCnO8pVAbMENA9f",
+      "migrationClass": "HUMAN_ACTOR_VERIFIED",
+      "targetPgId": "0SdmPVCnO8pVAbMENA9f",
+      "blockers": [],
+      "publisherStatus": "resolved",
+      "publisherSlug": "bogazgazetesi-com-tr",
+      "cluster": {
+        "status": "missing",
+        "clusterId": null,
+        "publishedNewsId": null
+      },
+      "slugImpact": {
+        "status": "available",
+        "collidingPgId": null
+      },
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "strategy": "prefer_fs_id_as_pg_id_alias"
+      },
+      "seen": {
+        "impressionRows": 2,
+        "strategy": "expandArticleIdentities_alias"
+      },
+      "bodyChars": 2677,
+      "sourceUrlExists": true,
+      "rightsStatus": null,
+      "humanProven": true,
+      "actorTrusted": true,
+      "writeCapability": "NONE",
+      "executable": false,
+      "similarityState": "SIMILARITY_NOT_EVALUATED"
+    },
+    {
+      "firestoreId": "0XYEJVwyi7oILuYKf91R",
+      "migrationClass": "HUMAN_ACTOR_VERIFIED",
+      "targetPgId": "0XYEJVwyi7oILuYKf91R",
+      "blockers": [],
+      "publisherStatus": "resolved",
+      "publisherSlug": "dunya",
+      "cluster": {
+        "status": "missing",
+        "clusterId": null,
+        "publishedNewsId": null
+      },
+      "slugImpact": {
+        "status": "available",
+        "collidingPgId": null
+      },
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "strategy": "prefer_fs_id_as_pg_id_alias"
+      },
+      "seen": {
+        "impressionRows": 0,
+        "strategy": "expandArticleIdentities_alias"
+      },
+      "bodyChars": 1795,
+      "sourceUrlExists": true,
+      "rightsStatus": null,
+      "humanProven": true,
+      "actorTrusted": true,
+      "writeCapability": "NONE",
+      "executable": false,
+      "similarityState": "SIMILARITY_NOT_EVALUATED"
+    }
+  ]
+}

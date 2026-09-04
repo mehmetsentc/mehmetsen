@@ -1,0 +1,237 @@
+{
+  "phase": "P18.4D.3",
+  "readOnly": true,
+  "mutated": false,
+  "trustedActorCount": 108,
+  "counts": {
+    "total": 33,
+    "draft": 29,
+    "published": 3
+  },
+  "pilotPublished": 0,
+  "publishedSlugClash": [],
+  "sitemapEligiblePilots": [],
+  "socialTotals": {
+    "likes": 62,
+    "saves": 6,
+    "comments": 1,
+    "seen": 713
+  },
+  "remapTablesPresent": 0,
+  "auditTables": [],
+  "rightsAuditHistory": "NONE — latest-state fields only on news (rights_status/basis/decided_by/at)",
+  "candidates": [
+    {
+      "label": "C1_Cumhuriyet",
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "status": "draft",
+      "publication_authority": "HUMAN_EDITOR",
+      "rights_status": "PENDING",
+      "rights_basis": "UNKNOWN",
+      "rights_decided_by_fp": null,
+      "rights_decided_at": null,
+      "editorial_blocker": null,
+      "approved_by_present": true,
+      "approved_at": "2026-09-02T20:10:47.194Z",
+      "published_by_present": true,
+      "legacy_firestore_id": "0ALMkrRCE3LQqubviNZh",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "source": "cumhuriyet",
+      "source_url_present": true,
+      "body_len": 1904,
+      "migration_batch_id": "P18_4C_20260904T074059Z",
+      "actor": {
+        "class": "NO_DECISION",
+        "role": null,
+        "exactTrusted": false,
+        "automationRejected": false,
+        "fp": null
+      },
+      "timestamp": {
+        "required": false,
+        "valid": true,
+        "reason": "pending_or_absent_ok"
+      },
+      "basisValid": "n/a",
+      "basisNote": "",
+      "basisEvidence": {
+        "sourceUrlPresent": true,
+        "sourceHost": "www.cumhuriyet.com.tr",
+        "publisherIdPresent": null,
+        "sourceField": "cumhuriyet",
+        "bodyLen": 1904,
+        "priorSimilarity": {
+          "source": "p18_4d_review_out",
+          "fidelity": {
+            "evaluated": true,
+            "limitation": null,
+            "overlapCategory": "MEDIUM_OVERLAP",
+            "scoreBucket": "MEDIUM",
+            "flaggedForReview": false,
+            "rightsAllowed": true,
+            "rightsReason": "Medium source overlap; editorial confirmation noted."
+          },
+          "transformClass": "B",
+          "transformNote": "MEDIUM_OVERLAP"
+        }
+      },
+      "gate": {
+        "publishable": false,
+        "executePublish": false,
+        "blockers": [
+          "rights_pending"
+        ]
+      },
+      "c2Safety": null,
+      "readiness": "KEEP_DRAFT_PENDING",
+      "social": {
+        "id": "0ALMkrRCE3LQqubviNZh",
+        "likes": 0,
+        "seen": 0
+      }
+    },
+    {
+      "label": "C2_Bogaz",
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "status": "draft",
+      "publication_authority": "HUMAN_EDITOR",
+      "rights_status": "REWRITE_REQUIRED",
+      "rights_basis": "UNKNOWN",
+      "rights_decided_by_fp": null,
+      "rights_decided_at": null,
+      "editorial_blocker": "HIGH_SOURCE_OVERLAP",
+      "approved_by_present": true,
+      "approved_at": "2026-09-03T14:03:27.161Z",
+      "published_by_present": true,
+      "legacy_firestore_id": "0SdmPVCnO8pVAbMENA9f",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "source": "bogazgazetesi-com-tr",
+      "source_url_present": true,
+      "body_len": 2645,
+      "migration_batch_id": "P18_4C_20260904T074729Z",
+      "actor": {
+        "class": "MISSING_ACTOR",
+        "role": null,
+        "exactTrusted": false,
+        "automationRejected": false,
+        "fp": null
+      },
+      "timestamp": {
+        "required": true,
+        "valid": false,
+        "reason": "missing_timestamp"
+      },
+      "basisValid": "n/a",
+      "basisNote": "",
+      "basisEvidence": {
+        "sourceUrlPresent": true,
+        "sourceHost": "www.bogazgazetesi.com.tr",
+        "publisherIdPresent": null,
+        "sourceField": "bogazgazetesi-com-tr",
+        "bodyLen": 2645,
+        "priorSimilarity": {
+          "source": "p18_4d_review_out",
+          "fidelity": {
+            "evaluated": true,
+            "limitation": null,
+            "overlapCategory": "MEDIUM_OVERLAP",
+            "scoreBucket": "MEDIUM",
+            "flaggedForReview": false,
+            "rightsAllowed": true,
+            "rightsReason": "Medium source overlap; editorial confirmation noted."
+          },
+          "transformClass": "B",
+          "transformNote": "MEDIUM_OVERLAP"
+        }
+      },
+      "gate": {
+        "publishable": false,
+        "executePublish": false,
+        "blockers": [
+          "rights_rewrite_required",
+          "editorial_blocker:HIGH_SOURCE_OVERLAP"
+        ]
+      },
+      "c2Safety": {
+        "expectedRewrite": true,
+        "expectedBlocker": true,
+        "wronglyCleared": false
+      },
+      "readiness": "NEEDS_EDITORIAL_REWRITE",
+      "social": {
+        "id": "0SdmPVCnO8pVAbMENA9f",
+        "likes": 0,
+        "seen": 2
+      }
+    },
+    {
+      "label": "C3_Dunya",
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "status": "draft",
+      "publication_authority": "HUMAN_EDITOR",
+      "rights_status": "PENDING",
+      "rights_basis": "UNKNOWN",
+      "rights_decided_by_fp": null,
+      "rights_decided_at": null,
+      "editorial_blocker": null,
+      "approved_by_present": true,
+      "approved_at": "2026-09-02T14:05:15.283Z",
+      "published_by_present": true,
+      "legacy_firestore_id": "0XYEJVwyi7oILuYKf91R",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "source": "dunya",
+      "source_url_present": true,
+      "body_len": 1801,
+      "migration_batch_id": "P18_4C_20260904T074733Z",
+      "actor": {
+        "class": "NO_DECISION",
+        "role": null,
+        "exactTrusted": false,
+        "automationRejected": false,
+        "fp": null
+      },
+      "timestamp": {
+        "required": false,
+        "valid": true,
+        "reason": "pending_or_absent_ok"
+      },
+      "basisValid": "n/a",
+      "basisNote": "",
+      "basisEvidence": {
+        "sourceUrlPresent": true,
+        "sourceHost": "www.dunya.com",
+        "publisherIdPresent": null,
+        "sourceField": "dunya",
+        "bodyLen": 1801,
+        "priorSimilarity": {
+          "source": "p18_4d_review_out",
+          "fidelity": {
+            "evaluated": true,
+            "limitation": null,
+            "overlapCategory": "LOW_OVERLAP",
+            "scoreBucket": "LOW",
+            "flaggedForReview": false,
+            "rightsAllowed": true,
+            "rightsReason": "Low source overlap; safe for standard editorial publication."
+          },
+          "transformClass": "B",
+          "transformNote": "LOW_OVERLAP; needs_human_judgment_page_noise_possible"
+        }
+      },
+      "gate": {
+        "publishable": false,
+        "executePublish": false,
+        "blockers": [
+          "rights_pending"
+        ]
+      },
+      "c2Safety": null,
+      "readiness": "KEEP_DRAFT_PENDING",
+      "social": {
+        "id": "0XYEJVwyi7oILuYKf91R",
+        "likes": 0,
+        "seen": 0
+      }
+    }
+  ]
+}

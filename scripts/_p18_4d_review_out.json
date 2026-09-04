@@ -1,0 +1,223 @@
+{
+  "authority": {
+    "local": "1f8962b",
+    "production": "see health"
+  },
+  "counts": {
+    "total": 33,
+    "draft": 29,
+    "published": 3
+  },
+  "pilotCount": 3,
+  "pilotPublished": 0,
+  "socialTotals": {
+    "likes": 60,
+    "saves": 6,
+    "comments": 1,
+    "seen": 695
+  },
+  "sitemapHits": 0,
+  "reviews": [
+    {
+      "id": "0ALMkrRCE3LQqubviNZh",
+      "headline": "Derin uyku Alzheimer'ı yavaşlatıyor",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "publisherSlug": "cumhuriyet",
+      "publisherRow": {
+        "exists": true,
+        "slug": "cumhuriyet",
+        "name": "Cumhuriyet",
+        "status": "UNCLAIMED",
+        "verificationStatus": "UNCLAIMED"
+      },
+      "sourceLinksCount": 1,
+      "sourceUrlPresent": true,
+      "sourceUrlHost": "www.cumhuriyet.com.tr",
+      "sourceFetch": {
+        "ok": true,
+        "status": 200
+      },
+      "actorStatus": "VERIFIED",
+      "actorProven": true,
+      "authority": "HUMAN_EDITOR",
+      "hasApprovedAt": true,
+      "bodyLength": 1898,
+      "qualityFlags": [],
+      "fidelity": {
+        "titleExact": true,
+        "bodyExact": true,
+        "bodyLenPg": 1898,
+        "bodyLenFs": 1898,
+        "bodyLenDelta": 0,
+        "contentFpPg": "419af3536f4378b6",
+        "contentFpFs": "419af3536f4378b6",
+        "slugExact": true,
+        "sourceUrlExact": true,
+        "statusPg": "draft",
+        "statusFs": "published"
+      },
+      "similarity": {
+        "evaluated": true,
+        "limitation": null,
+        "overlapCategory": "MEDIUM_OVERLAP",
+        "scoreBucket": "MEDIUM",
+        "flaggedForReview": false,
+        "rightsAllowed": true,
+        "rightsReason": "Medium source overlap; editorial confirmation noted."
+      },
+      "rightsStatus": null,
+      "rightsBasis": null,
+      "transformClass": "B",
+      "transformNote": "MEDIUM_OVERLAP",
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "seen": 0
+      },
+      "clusters": [],
+      "httpStatus": 200,
+      "batch": "P18_4C_20260904T074059Z",
+      "image": {
+        "hasThumb": false,
+        "hasCover": true
+      },
+      "bodyPreview": "Uluslararası bir araştırma ekibi, derin uykunun Alzheimer hastalığının ilerleyişini yavaşlattığını ortaya koydu. Hafif ve orta evre Alzheimer teşhisi konmuş 60 yaş üzeri 60 katılımcının gece boyunca beyin dalgalarını ve uyku döngülerini izleyen bilim insanları, ertesi sabah alına",
+      "fsBodyPreview": "Uluslararası bir araştırma ekibi, derin uykunun Alzheimer hastalığının ilerleyişini yavaşlattığını ortaya koydu. Hafif ve orta evre Alzheimer teşhisi konmuş 60 yaş üzeri 60 katılımcının gece boyunca beyin dalgalarını ve uyku döngülerini izleyen bilim insanları, ertesi sabah alına"
+    },
+    {
+      "id": "0SdmPVCnO8pVAbMENA9f",
+      "headline": "Çanakkale'de Tarihe Saygı Anı Dalışı ve Yelken Sürüşü Deneyimi",
+      "slug": "canakkalede-tarihe-saygi-ani-dalisi-ve-yelken-surusu-deneyimi",
+      "publisherSlug": "bogazgazetesi-com-tr",
+      "publisherRow": {
+        "exists": true,
+        "slug": "bogazgazetesi-com-tr",
+        "name": "bogazgazetesi.com.tr",
+        "status": "UNCLAIMED",
+        "verificationStatus": "UNCLAIMED"
+      },
+      "sourceLinksCount": 3,
+      "sourceUrlPresent": true,
+      "sourceUrlHost": "www.bogazgazetesi.com.tr",
+      "sourceFetch": {
+        "ok": true,
+        "status": 200
+      },
+      "actorStatus": "VERIFIED",
+      "actorProven": true,
+      "authority": "HUMAN_EDITOR",
+      "hasApprovedAt": true,
+      "bodyLength": 2677,
+      "qualityFlags": [],
+      "fidelity": {
+        "titleExact": true,
+        "bodyExact": true,
+        "bodyLenPg": 2677,
+        "bodyLenFs": 2677,
+        "bodyLenDelta": 0,
+        "contentFpPg": "d75ee81e2bb952b5",
+        "contentFpFs": "d75ee81e2bb952b5",
+        "slugExact": true,
+        "sourceUrlExact": true,
+        "statusPg": "draft",
+        "statusFs": "published"
+      },
+      "similarity": {
+        "evaluated": true,
+        "limitation": null,
+        "overlapCategory": "MEDIUM_OVERLAP",
+        "scoreBucket": "MEDIUM",
+        "flaggedForReview": false,
+        "rightsAllowed": true,
+        "rightsReason": "Medium source overlap; editorial confirmation noted."
+      },
+      "rightsStatus": null,
+      "rightsBasis": null,
+      "transformClass": "B",
+      "transformNote": "MEDIUM_OVERLAP",
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "seen": 2
+      },
+      "clusters": [],
+      "httpStatus": 200,
+      "batch": "P18_4C_20260904T074729Z",
+      "image": {
+        "hasThumb": false,
+        "hasCover": true
+      },
+      "bodyPreview": "Çanakkale Savaşları Gelibolu Tarihi Alan Başkanlığı tarafından düzenlenen 'Tarihe Saygı Anı Dalışı' ve 'Yelken Sürüşü' etkinliği, çocuk ve gençleri tarihi atmosferde deniz sporlarıyla buluşturdu. Etkinlik kapsamında katılımcılar, Gelibolu Sualtı Parkı'nda dalış yapma ve yelkenliy",
+      "fsBodyPreview": "Çanakkale Savaşları Gelibolu Tarihi Alan Başkanlığı tarafından düzenlenen 'Tarihe Saygı Anı Dalışı' ve 'Yelken Sürüşü' etkinliği, çocuk ve gençleri tarihi atmosferde deniz sporlarıyla buluşturdu. Etkinlik kapsamında katılımcılar, Gelibolu Sualtı Parkı'nda dalış yapma ve yelkenliy"
+    },
+    {
+      "id": "0XYEJVwyi7oILuYKf91R",
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "publisherSlug": "dunya",
+      "publisherRow": {
+        "exists": true,
+        "slug": "dunya",
+        "name": "Dünya",
+        "status": "UNCLAIMED",
+        "verificationStatus": "UNCLAIMED"
+      },
+      "sourceLinksCount": 1,
+      "sourceUrlPresent": true,
+      "sourceUrlHost": "www.dunya.com",
+      "sourceFetch": {
+        "ok": true,
+        "status": 200
+      },
+      "actorStatus": "VERIFIED",
+      "actorProven": true,
+      "authority": "HUMAN_EDITOR",
+      "hasApprovedAt": true,
+      "bodyLength": 1795,
+      "qualityFlags": [],
+      "fidelity": {
+        "titleExact": true,
+        "bodyExact": true,
+        "bodyLenPg": 1795,
+        "bodyLenFs": 1795,
+        "bodyLenDelta": 0,
+        "contentFpPg": "bea2f0af368c3307",
+        "contentFpFs": "bea2f0af368c3307",
+        "slugExact": true,
+        "sourceUrlExact": true,
+        "statusPg": "draft",
+        "statusFs": "published"
+      },
+      "similarity": {
+        "evaluated": true,
+        "limitation": null,
+        "overlapCategory": "LOW_OVERLAP",
+        "scoreBucket": "LOW",
+        "flaggedForReview": false,
+        "rightsAllowed": true,
+        "rightsReason": "Low source overlap; safe for standard editorial publication."
+      },
+      "rightsStatus": null,
+      "rightsBasis": null,
+      "transformClass": "B",
+      "transformNote": "LOW_OVERLAP; needs_human_judgment_page_noise_possible",
+      "social": {
+        "likes": 0,
+        "saves": 0,
+        "comments": 0,
+        "seen": 0
+      },
+      "clusters": [],
+      "httpStatus": 200,
+      "batch": "P18_4C_20260904T074733Z",
+      "image": {
+        "hasThumb": false,
+        "hasCover": true
+      },
+      "bodyPreview": "NOW ekranlarının dikkat çeken yapımlarından Yeraltı, sezon finalinin ardından yeniden izleyici karşısına çıkmaya hazırlanıyor. Yeni sezonda bambaşka hikayelerle ekrana gelmesi beklenen dizinin yayın tarihi ise henüz netleşmiş değil. Kanaldan ve yapımcıdan konuya ilişkin resmi bir",
+      "fsBodyPreview": "NOW ekranlarının dikkat çeken yapımlarından Yeraltı, sezon finalinin ardından yeniden izleyici karşısına çıkmaya hazırlanıyor. Yeni sezonda bambaşka hikayelerle ekrana gelmesi beklenen dizinin yayın tarihi ise henüz netleşmiş değil. Kanaldan ve yapımcıdan konuya ilişkin resmi bir"
+    }
+  ]
+}
