@@ -141,6 +141,6 @@ describe('P18.4E.2 / P18.4E.2A source-overlap audit contracts', () => {
     expect(page).toContain('DB editorial blocker')
     expect(page).toContain('Similarity risk')
     expect(page).toContain('EVIDENCE_ONLY')
-    expect(page).toContain('risk≠blocker')
+    expect(page).toContain('Similarity risk ≠ DB editorial blocker')
   })
 })

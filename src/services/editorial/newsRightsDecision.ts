@@ -95,6 +95,11 @@ export async function recordNewsRightsDecision(input: {
   basis: NewsRightsBasis
   /** If true, refuse CLEARED while editorial_blocker is set. */
   refuseClearWhenBlocked?: boolean
+  /**
+   * Human-only optional blocker write when status=REWRITE_REQUIRED.
+   * Existing vocabulary only (e.g. HIGH_SOURCE_OVERLAP). Never auto-derived from similarity.
+   */
+  editorialBlocker?: string | null
 }): Promise<{ id: string; rightsStatus: NewsRightsStatus; rightsBasis: NewsRightsBasis }> {
   await assertTrustedEditorialHumanActor(input.actorUid)
 
@@ -125,6 +130,19 @@ export async function recordNewsRightsDecision(input: {
     throw new Error(`rights_clear_blocked_by_editorial_blocker:${row.editorialBlocker}`)
   }
 
+  const allowedBlockers = new Set(['HIGH_SOURCE_OVERLAP'])
+  let nextBlocker: string | null | undefined = undefined
+  if (input.status === 'REWRITE_REQUIRED' && input.editorialBlocker !== undefined) {
+    const raw = input.editorialBlocker
+    if (raw === null || raw === '') {
+      nextBlocker = null
+    } else if (allowedBlockers.has(raw)) {
+      nextBlocker = raw
+    } else {
+      throw new Error(`editorial_blocker_not_allowed:${raw}`)
+    }
+  }
+
   const now = new Date()
   await db
     .update(news)
@@ -134,6 +152,7 @@ export async function recordNewsRightsDecision(input: {
       rightsDecidedBy: input.actorUid.trim(),
       rightsDecidedAt: now,
       updatedAt: now,
+      ...(nextBlocker !== undefined ? { editorialBlocker: nextBlocker } : {}),
     })
     .where(eq(news.id, row.id))
 

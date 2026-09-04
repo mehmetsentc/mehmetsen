@@ -1,14 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
+import {
+  P18_4E_COHORT1_BATCH_ID,
+  sortRightsReviewQueueByRisk,
+  type BatchRightsProgress,
+} from '@/services/editorial/canonicalRightsReviewQueue'
 
 const PILOT_IDS = [
   '0ALMkrRCE3LQqubviNZh',
   '0SdmPVCnO8pVAbMENA9f',
   '0XYEJVwyi7oILuYKf91R',
 ] as const
+
+type QueueFilter = 'all' | 'cohort1'
 
 type Review = {
   id: string
@@ -66,7 +73,7 @@ function pct(n: number | null | undefined): string {
 function riskTone(risk: string): string {
   if (risk === 'HIGH_SOURCE_OVERLAP') return 'border-amber-300 bg-amber-50 text-amber-950'
   if (risk === 'MEDIUM_OVERLAP') return 'border-yellow-200 bg-yellow-50 text-yellow-950'
-  if (risk === 'SOURCE_NOT_EVALUABLE') return 'border-zinc-200 bg-zinc-50 text-zinc-800'
+  if (risk === 'SOURCE_NOT_EVALUABLE') return 'border-zinc-200 bg-zinc-50 text-zinc-700'
   return 'border-emerald-200 bg-emerald-50 text-emerald-950'
 }
 
@@ -78,12 +85,79 @@ async function authHeaders(): Promise<HeadersInit> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
 
+function confirmRightsSave(opts: {
+  status: string
+  risk: string | null
+  title: string
+  id: string
+}): boolean {
+  if (opts.status === 'CLEARED') {
+    const high = opts.risk === 'HIGH_SOURCE_OVERLAP'
+    const msg = high
+      ? [
+          'HIGH similarity uyarısı',
+          '',
+          'Similarity evidence is NOT copyright clearance.',
+          'Final weighted score is HIGH — you are making an explicit human CLEARED decision.',
+          '',
+          opts.id,
+          opts.title,
+          '',
+          'Bu işlem yayınlamaz. Devam?',
+        ].join('\n')
+      : [
+          'CLEARED onayı',
+          '',
+          'Similarity evidence is NOT copyright clearance.',
+          'Human reviewer is making this decision.',
+          '',
+          opts.id,
+          opts.title,
+          '',
+          'Bu işlem yayınlamaz. Devam?',
+        ].join('\n')
+    return window.confirm(msg)
+  }
+  if (opts.status === 'DO_NOT_PUBLISH') {
+    return window.confirm(
+      [
+        'DO_NOT_PUBLISH onayı',
+        '',
+        'Article will remain auditable (not deleted).',
+        'Status stays draft; publish remains blocked.',
+        '',
+        opts.id,
+        opts.title,
+        '',
+        'Devam?',
+      ].join('\n')
+    )
+  }
+  if (opts.status === 'REWRITE_REQUIRED') {
+    return window.confirm(
+      [
+        'REWRITE_REQUIRED onayı',
+        '',
+        'Human decision only — similarity HIGH does not auto-write blockers.',
+        opts.id,
+        opts.title,
+        '',
+        'Devam?',
+      ].join('\n')
+    )
+  }
+  return true
+}
+
 function PilotCard({
   id,
   onSaved,
+  deferPublish,
 }: {
   id: string
   onSaved: () => void
+  /** P18.4E.3: cohort publish deferred — keep button disabled. */
+  deferPublish: boolean
 }) {
   const [review, setReview] = useState<Review | null>(null)
   const [overlap, setOverlap] = useState<SourceOverlapAudit | null>(null)
@@ -95,6 +169,7 @@ function PilotCard({
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('PENDING')
   const [basis, setBasis] = useState('EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION')
+  const [setHighOverlapBlocker, setSetHighOverlapBlocker] = useState(false)
   const [publishMsg, setPublishMsg] = useState<string | null>(null)
 
   const loadOverlap = useCallback(async () => {
@@ -130,6 +205,7 @@ function PilotCard({
           ? r.rightsBasis
           : 'EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION'
       )
+      setSetHighOverlapBlocker(r.editorialBlocker === 'HIGH_SOURCE_OVERLAP')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata')
     } finally {
@@ -147,19 +223,38 @@ function PilotCard({
   }, [review, loadOverlap])
 
   async function save() {
+    if (
+      !confirmRightsSave({
+        status,
+        risk: overlap?.risk || null,
+        title: review?.title || id,
+        id,
+      })
+    ) {
+      return
+    }
     setSaving(true)
     setError(null)
     setPublishMsg(null)
     try {
       const headers = await authHeaders()
+      const payload: {
+        status: string
+        basis: string
+        editorialBlocker?: string | null
+      } = { status, basis }
+      if (status === 'REWRITE_REQUIRED') {
+        payload.editorialBlocker = setHighOverlapBlocker ? 'HIGH_SOURCE_OVERLAP' : null
+      }
       const res = await fetch(`/api/admin/canonical-news/${id}/rights`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ status, basis }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Kayıt başarısız')
       setReview(data.review)
+      setPublishMsg('Hak kararı kaydedildi — yayınlanmadı (status draft).')
       onSaved()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata')
@@ -169,6 +264,7 @@ function PilotCard({
   }
 
   async function publish() {
+    if (deferPublish) return
     if (!review?.publishEligible) return
     const ok = window.confirm(
       `Bu taslağı yayınlamak istediğinize emin misiniz?\n\n${review.id}\n${review.title}\n\nBu işlem geri alınamaz (status → published).`
@@ -221,6 +317,7 @@ function PilotCard({
 
   const clearDisabled = Boolean(review.editorialBlocker) || !review.availableActions.includes('CLEARED')
   const canPublish =
+    !deferPublish &&
     Boolean(review.publishEligible) &&
     review.status === 'draft' &&
     review.rightsStatus === 'CLEARED' &&
@@ -233,6 +330,7 @@ function PilotCard({
         <h2 className="text-lg font-semibold text-zinc-900">{review.title}</h2>
         <p className="text-sm text-zinc-600">
           {review.source} · {review.bodyLen} karakter · status={review.status}
+          {review.migrationBatchId ? ` · batch=${review.migrationBatchId}` : ''}
         </p>
       </header>
 
@@ -290,8 +388,8 @@ function PilotCard({
       >
         <p className="font-semibold">Source-overlap audit (non-AI, evidence only)</p>
         <p className="mt-1 text-xs opacity-80">
-          Similarity risk ≠ DB editorial blocker. Classification uses final weighted score only
-          (Jaccard×0.4 + 3-gram×0.3 + tokenMatch×0.3). Max shared run is EVIDENCE_ONLY.
+          Similarity risk ≠ DB editorial blocker. Final weighted score drives risk; max shared run is
+          EVIDENCE_ONLY.
         </p>
         {overlapLoading && <p className="mt-1 text-xs">Kaynak karşılaştırılıyor…</p>}
         {overlapError && <p className="mt-1 text-xs text-red-700">{overlapError}</p>}
@@ -303,9 +401,7 @@ function PilotCard({
             </div>
             <div>
               <dt className="text-xs opacity-70">DB editorial blocker</dt>
-              <dd className="font-mono font-semibold">
-                {review.editorialBlocker || 'None'}
-              </dd>
+              <dd className="font-mono font-semibold">{review.editorialBlocker || 'None'}</dd>
             </div>
             <div>
               <dt className="text-xs opacity-70">Final weighted score</dt>
@@ -334,29 +430,6 @@ function PilotCard({
                   ? `${overlap.maxSharedContiguousRun} tokens`
                   : '—'}
               </dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Source fetch</dt>
-              <dd className="font-mono text-xs">{overlap.sourceFetchStatus}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-70">Bodies (canonical / source)</dt>
-              <dd className="font-mono text-xs">
-                {overlap.canonicalBodyChars} / {overlap.sourceBodyChars} chars
-              </dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="text-xs opacity-70">Rights (unchanged by audit)</dt>
-              <dd className="font-mono text-xs">
-                {review.rightsStatus || 'PENDING'} / {review.rightsBasis || 'UNKNOWN'}
-              </dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="text-xs opacity-70">Note</dt>
-              <dd className="text-xs">{overlap.note}</dd>
-            </div>
-            <div className="md:col-span-2 text-xs font-medium">
-              clearanceImplied=false · AI=0 · rights auto-change=NO · LOW≠CLEARED · risk≠blocker
             </div>
           </dl>
         )}
@@ -411,30 +484,53 @@ function PilotCard({
           onClick={() => void publish()}
           className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           title={
-            canPublish
-              ? 'Sunucu gate PASS — açık insan yayın komutu'
-              : 'Yayın kapalı: hak/gate blocker'
+            deferPublish
+              ? 'P18.4E.3: cohort publish deferred — rights only'
+              : canPublish
+                ? 'Sunucu gate PASS — açık insan yayın komutu'
+                : 'Yayın kapalı: hak/gate blocker'
           }
         >
           {publishing ? 'Yayınlanıyor…' : review.status === 'published' ? 'Yayında' : 'Yayınla'}
         </button>
       </div>
 
+      {status === 'REWRITE_REQUIRED' && (
+        <label className="mt-3 flex items-start gap-2 text-sm text-zinc-800">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={setHighOverlapBlocker}
+            onChange={(e) => setSetHighOverlapBlocker(e.target.checked)}
+          />
+          <span>
+            Human set editorial blocker: <span className="font-mono">HIGH_SOURCE_OVERLAP</span>
+            <span className="block text-xs text-zinc-500">
+              Not auto-written from similarity=HIGH — only if you check this box.
+            </span>
+          </span>
+        </label>
+      )}
+
+      {deferPublish && (
+        <p className="mt-2 text-xs text-amber-800">
+          P18.4E.3: Cohort publish deferred. Save rights only; do not publish in this phase.
+        </p>
+      )}
       {clearDisabled && (
         <p className="mt-2 text-xs text-amber-800">
           Editorial blocker aktif — CLEAR ile yayın kapısı açılamaz. Yeniden yazım gerekir.
         </p>
       )}
-      {!canPublish && review.status === 'draft' && (
+      {!canPublish && review.status === 'draft' && !deferPublish && (
         <p className="mt-2 text-xs text-zinc-600">
-          Yayınla kapalı — sunucu `publishEligible=false`. Hak kaydı ve gate PASS gerekir; C2/C3
-          blocker’ları bypass edilemez.
+          Yayınla kapalı — sunucu `publishEligible=false`. Hak kaydı ve gate PASS gerekir.
         </p>
       )}
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
       {publishMsg && <p className="mt-2 text-sm text-emerald-800">{publishMsg}</p>}
       <p className="mt-3 text-xs text-zinc-500">
-        Hak kaydı otomatik yayınlamaz. Yayın yalnızca ayrı «Yayınla» + `news:publish` ile yapılır.
+        Hak kaydı otomatik yayınlamaz. Actor yalnızca CMS oturumundan gelir (client UID yok sayılır).
       </p>
     </article>
   )
@@ -443,9 +539,12 @@ function PilotCard({
 export default function CanonicalDraftRightsPage() {
   const { user, loading } = useAuth()
   const [tick, setTick] = useState(0)
-  const [queueIds, setQueueIds] = useState<string[]>([...PILOT_IDS])
-  const [cohortCount, setCohortCount] = useState(0)
+  const [filter, setFilter] = useState<QueueFilter>('cohort1')
+  const [queueIds, setQueueIds] = useState<string[]>([])
+  const [progress, setProgress] = useState<BatchRightsProgress | null>(null)
+  const [sortStatus, setSortStatus] = useState<string | null>(null)
   const [queueError, setQueueError] = useState<string | null>(null)
+  const [firstTwo, setFirstTwo] = useState<string[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -453,27 +552,71 @@ export default function CanonicalDraftRightsPage() {
     ;(async () => {
       try {
         const headers = await authHeaders()
-        const res = await fetch('/api/admin/canonical-news/rights-queue', { headers })
+        const qs =
+          filter === 'cohort1' ? `?batch=${encodeURIComponent(P18_4E_COHORT1_BATCH_ID)}` : ''
+        const res = await fetch(`/api/admin/canonical-news/rights-queue${qs}`, { headers })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Kuyruk yüklenemedi')
         if (cancelled) return
-        const ids = Array.isArray(data.queue)
+
+        const rawIds = Array.isArray(data.queue)
           ? (data.queue as Array<{ id: string }>).map((q) => q.id).filter(Boolean)
           : [...PILOT_IDS]
-        setQueueIds(ids.length ? ids : [...PILOT_IDS])
-        setCohortCount(typeof data.cohortCount === 'number' ? data.cohortCount : 0)
+
+        if (data.progress) setProgress(data.progress as BatchRightsProgress)
+        else setProgress(null)
+
+        if (filter !== 'cohort1') {
+          setQueueIds(rawIds.length ? rawIds : [...PILOT_IDS])
+          setSortStatus(null)
+          setFirstTwo([])
+          setQueueError(null)
+          return
+        }
+
+        setSortStatus('Similarity risk sıralanıyor (MEDIUM → HIGH ascending)…')
+        const audits = await Promise.all(
+          rawIds.map(async (id) => {
+            try {
+              const r = await fetch(`/api/admin/canonical-news/${id}/source-overlap`, { headers })
+              const j = await r.json()
+              if (!r.ok) throw new Error(j.error || 'overlap_failed')
+              return {
+                id,
+                risk: (j.audit?.risk as string) || 'SOURCE_NOT_EVALUABLE',
+                finalWeightedScore:
+                  typeof j.audit?.similarity === 'number' ? j.audit.similarity : null,
+              }
+            } catch {
+              return { id, risk: 'SOURCE_NOT_EVALUABLE', finalWeightedScore: null }
+            }
+          })
+        )
+        if (cancelled) return
+        const ordered = sortRightsReviewQueueByRisk(audits)
+        setQueueIds(ordered)
+        setFirstTwo(ordered.slice(0, 2))
+        setSortStatus(
+          `Sıra hazır: MEDIUM first, HIGH ascending · ${ordered.length} cards`
+        )
         setQueueError(null)
       } catch (e) {
         if (!cancelled) {
-          setQueueIds([...PILOT_IDS])
+          setQueueIds(filter === 'cohort1' ? [] : [...PILOT_IDS])
           setQueueError(e instanceof Error ? e.message : 'Kuyruk hatası')
+          setSortStatus(null)
         }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [user, tick])
+  }, [user, tick, filter])
+
+  const progressLine = useMemo(() => {
+    if (!progress) return null
+    return `Total: ${progress.total} · Pending: ${progress.pending} · Cleared: ${progress.cleared} · Rewrite required: ${progress.rewriteRequired} · Do not publish: ${progress.doNotPublish} · Published: ${progress.published}`
+  }, [progress])
 
   if (loading) {
     return (
@@ -492,21 +635,54 @@ export default function CanonicalDraftRightsPage() {
       <header>
         <h1 className="text-2xl font-semibold text-zinc-900">Canonical draft rights review</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          P18.4D/E — hak kararı + açık «Yayınla». Otomatik yayın yok. Cohort #1 draft’ları
-          PENDING/UNKNOWN ile listelenir; insan incelemesi zorunlu.
+          P18.4E.3 — human rights decision session. Auto-clear / auto-publish / AI yok. Cohort #1
+          yayın bu fazda kapalı.
         </p>
-        <p className="mt-1 font-mono text-xs text-zinc-500">
-          /admin/canonical-drafts/rights · pilots {PILOT_IDS.length} · cohort {cohortCount}
-        </p>
-        {queueError && (
-          <p className="mt-2 text-xs text-amber-800">
-            Kuyruk API: {queueError} — pilot ID’ler gösteriliyor.
+        <p className="mt-1 font-mono text-xs text-zinc-500">/admin/canonical-drafts/rights</p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-zinc-600">Filter</span>
+            <select
+              className="rounded border border-zinc-300 px-2 py-1"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as QueueFilter)}
+            >
+              <option value="cohort1">Cohort #1 · {P18_4E_COHORT1_BATCH_ID}</option>
+              <option value="all">All (pilots + cohort)</option>
+            </select>
+          </label>
+        </div>
+
+        {progressLine && (
+          <p className="mt-3 rounded border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-800">
+            {progressLine}
           </p>
+        )}
+        {sortStatus && <p className="mt-2 text-xs text-zinc-600">{sortStatus}</p>}
+        {firstTwo.length === 2 && (
+          <p className="mt-1 font-mono text-xs text-zinc-500">
+            First two (MEDIUM ascending): {firstTwo[0]} → {firstTwo[1]}
+          </p>
+        )}
+        {queueError && (
+          <p className="mt-2 text-xs text-amber-800">Kuyruk API: {queueError}</p>
         )}
       </header>
 
+      {queueIds.length === 0 && !queueError && (
+        <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <Loader2 className="h-4 w-4 animate-spin" /> Kuyruk yükleniyor…
+        </div>
+      )}
+
       {queueIds.map((id) => (
-        <PilotCard key={`${id}-${tick}`} id={id} onSaved={() => setTick((t) => t + 1)} />
+        <PilotCard
+          key={`${id}-${tick}-${filter}`}
+          id={id}
+          deferPublish={filter === 'cohort1'}
+          onSaved={() => setTick((t) => t + 1)}
+        />
       ))}
     </div>
   )

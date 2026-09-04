@@ -41,6 +41,9 @@ export async function POST(request: Request, context: RouteContext) {
   const body = (await request.json().catch(() => null)) as {
     status?: string
     basis?: string
+    editorialBlocker?: string | null
+    actorUid?: string
+    uid?: string
   } | null
 
   if (!body || !isNewsRightsStatus(body.status) || !isNewsRightsBasis(body.basis)) {
@@ -50,6 +53,10 @@ export async function POST(request: Request, context: RouteContext) {
     )
   }
 
+  // Client-supplied actor UID is ignored — session auth.uid is sole actor.
+  void body.actorUid
+  void body.uid
+
   try {
     const result = await recordNewsRightsDecision({
       newsId: id,
@@ -57,6 +64,10 @@ export async function POST(request: Request, context: RouteContext) {
       status: body.status,
       basis: body.basis,
       refuseClearWhenBlocked: true,
+      editorialBlocker:
+        body.status === 'REWRITE_REQUIRED' && body.editorialBlocker !== undefined
+          ? body.editorialBlocker
+          : undefined,
     })
     const review = await getCanonicalNewsRightsReview(id)
     return NextResponse.json({
@@ -65,6 +76,8 @@ export async function POST(request: Request, context: RouteContext) {
       review,
       published: false,
       executePublish: false,
+      actorFromSession: true,
+      clientActorIgnored: true,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'rights_decision_failed'
