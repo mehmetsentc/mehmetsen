@@ -229,6 +229,15 @@ export async function getCanonicalNewsRightsReview(newsId: string) {
     sourceUrl: row.sourceUrl,
   })
 
+  const publishEligible =
+    gate.publishable &&
+    row.status === 'draft' &&
+    (row.publicationAuthority || '').toUpperCase() === 'HUMAN_EDITOR' &&
+    Boolean(row.rightsDecidedBy?.trim()) &&
+    Boolean(row.rightsDecidedAt) &&
+    Boolean(row.source?.trim()) &&
+    !row.editorialBlocker
+
   return {
     id: row.id,
     slug: row.slug,
@@ -253,6 +262,7 @@ export async function getCanonicalNewsRightsReview(newsId: string) {
     hasRightsDecidedBy: Boolean(row.rightsDecidedBy),
     bodyLen: (row.content || '').length,
     gate,
+    publishEligible,
     availableActions: row.editorialBlocker
       ? (['PENDING', 'REWRITE_REQUIRED', 'DO_NOT_PUBLISH'] as NewsRightsStatus[])
       : (['PENDING', 'CLEARED', 'REWRITE_REQUIRED', 'DO_NOT_PUBLISH'] as NewsRightsStatus[]),

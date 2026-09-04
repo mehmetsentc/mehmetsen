@@ -29,6 +29,7 @@ type Review = {
   hasPublishedBy: boolean
   hasRightsDecidedBy: boolean
   migrationBatchId: string | null
+  publishEligible?: boolean
   gate: {
     publishable: boolean
     blockers: string[]
@@ -56,9 +57,11 @@ function PilotCard({
   const [review, setReview] = useState<Review | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('PENDING')
   const [basis, setBasis] = useState('EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION')
+  const [publishMsg, setPublishMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,6 +93,7 @@ function PilotCard({
   async function save() {
     setSaving(true)
     setError(null)
+    setPublishMsg(null)
     try {
       const headers = await authHeaders()
       const res = await fetch(`/api/admin/canonical-news/${id}/rights`, {
@@ -105,6 +109,41 @@ function PilotCard({
       setError(e instanceof Error ? e.message : 'Hata')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function publish() {
+    if (!review?.publishEligible) return
+    const ok = window.confirm(
+      `Bu taslağı yayınlamak istediğinize emin misiniz?\n\n${review.id}\n${review.title}\n\nBu işlem geri alınamaz (status → published).`
+    )
+    if (!ok) return
+    setPublishing(true)
+    setError(null)
+    setPublishMsg(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/canonical-news/${id}/publish`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const blockers = Array.isArray(data.blockers) ? data.blockers.join(', ') : ''
+        throw new Error([data.error || 'Yayın başarısız', blockers].filter(Boolean).join(' — '))
+      }
+      setReview(data.review)
+      setPublishMsg(
+        data.alreadyPublished
+          ? 'Zaten yayında (idempotent).'
+          : 'Yayınlandı. Hak alanları korundu; otomatik cohort yok.'
+      )
+      onSaved()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Hata')
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -125,6 +164,11 @@ function PilotCard({
   }
 
   const clearDisabled = Boolean(review.editorialBlocker) || !review.availableActions.includes('CLEARED')
+  const canPublish =
+    Boolean(review.publishEligible) &&
+    review.status === 'draft' &&
+    review.rightsStatus === 'CLEARED' &&
+    !review.editorialBlocker
 
   return (
     <article className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
@@ -220,11 +264,24 @@ function PilotCard({
         </label>
         <button
           type="button"
-          disabled={saving || (status === 'CLEARED' && clearDisabled)}
+          disabled={saving || publishing || (status === 'CLEARED' && clearDisabled)}
           onClick={() => void save()}
           className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {saving ? 'Kaydediliyor…' : 'Kararı kaydet'}
+        </button>
+        <button
+          type="button"
+          disabled={!canPublish || saving || publishing || review.status === 'published'}
+          onClick={() => void publish()}
+          className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          title={
+            canPublish
+              ? 'Sunucu gate PASS — açık insan yayın komutu'
+              : 'Yayın kapalı: hak/gate blocker'
+          }
+        >
+          {publishing ? 'Yayınlanıyor…' : review.status === 'published' ? 'Yayında' : 'Yayınla'}
         </button>
       </div>
 
@@ -233,9 +290,16 @@ function PilotCard({
           Editorial blocker aktif — CLEAR ile yayın kapısı açılamaz. Yeniden yazım gerekir.
         </p>
       )}
+      {!canPublish && review.status === 'draft' && (
+        <p className="mt-2 text-xs text-zinc-600">
+          Yayınla kapalı — sunucu `publishEligible=false`. Hak kaydı ve gate PASS gerekir; C2/C3
+          blocker’ları bypass edilemez.
+        </p>
+      )}
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      {publishMsg && <p className="mt-2 text-sm text-emerald-800">{publishMsg}</p>}
       <p className="mt-3 text-xs text-zinc-500">
-        Bu ekran yayınlamaz. Gate yeşil olsa bile P18.4D.2 otomatik publish etmez.
+        Hak kaydı otomatik yayınlamaz. Yayın yalnızca ayrı «Yayınla» + `news:publish` ile yapılır.
       </p>
     </article>
   )
@@ -262,8 +326,8 @@ export default function CanonicalDraftRightsPage() {
       <header>
         <h1 className="text-2xl font-semibold text-zinc-900">Canonical draft rights review</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          P18.4D.2 — yalnızca insan editör hak kararı. Otomatik yayın yok. Candidate 2 rewrite
-          blocker ile CLEAR edilemez.
+          P18.4D.8 — hak kararı + açık «Yayınla». Otomatik yayın yok. Candidate 2 rewrite
+          blocker ile CLEAR/Yayın edilemez. C3 rights PENDING iken yayın kapalı.
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500">/admin/canonical-drafts/rights</p>
       </header>
