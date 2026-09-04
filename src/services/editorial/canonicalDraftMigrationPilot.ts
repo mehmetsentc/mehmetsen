@@ -16,6 +16,7 @@ import { and, count, eq, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
 import { users } from '@/db/schema/users'
+import { categories } from '@/db/schema/categories'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { loadTrustedEditorialActorUids } from '@/services/editorial/trustedEditorialActors'
@@ -235,7 +236,7 @@ export async function migrateOneCanonicalDraftPilot(opts: {
     return base
   }
 
-  // authorId only if FK-safe
+  // authorId / categoryId only if FK-safe
   const authorCandidate = asString(data.authorId)
   let authorId: string | null = null
   if (authorCandidate) {
@@ -245,6 +246,17 @@ export async function migrateOneCanonicalDraftPilot(opts: {
       .where(eq(users.firebaseUid, authorCandidate))
       .limit(1)
     authorId = u[0]?.uid ?? null
+  }
+
+  const categoryCandidate = asString(data.categoryId)
+  let categoryId: string | null = null
+  if (categoryCandidate) {
+    const c = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.id, categoryCandidate))
+      .limit(1)
+    categoryId = c[0]?.id ?? null
   }
 
   const title = asString(data.title)
@@ -278,7 +290,6 @@ export async function migrateOneCanonicalDraftPilot(opts: {
   const tags = Array.isArray(data.tags)
     ? (data.tags.filter((t) => typeof t === 'string') as string[])
     : null
-  const categoryId = asString(data.categoryId)
   const cityName = asString(data.cityName)
   const citySlug = asString(data.citySlug)
   const districtName = asString(data.districtName)
