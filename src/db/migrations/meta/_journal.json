@@ -267,6 +267,20 @@
       "when": 1788380000000,
       "tag": "0037_phase_p18_3k_social_legacy_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788450000000,
+      "tag": "0038_phase_p18_3o_persistent_seen",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788500000000,
+      "tag": "0039_phase_p18_4b_canonical_migration_foundation",
+      "breakpoints": true
     }
   ]
 }

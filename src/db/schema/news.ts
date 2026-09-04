@@ -36,6 +36,13 @@ export const articleFormatEnum = pgEnum('article_format', [
   'analysis',
 ])
 
+/** P18.1 / P18.4B — durable publication authority on canonical PG news. */
+export const publicationAuthorityEnum = pgEnum('publication_authority', [
+  'HUMAN_EDITOR',
+  'SYSTEM_ALERT',
+  'LEGACY',
+])
+
 export const news = pgTable(
   'news',
   {
@@ -103,6 +110,16 @@ export const news = pgTable(
     seoTitle: varchar('seo_title', { length: 200 }),
     seoDescription: varchar('seo_description', { length: 300 }),
 
+    // P18.4B — publication provenance (nullable; LEGACY may leave actors null)
+    publicationAuthority: publicationAuthorityEnum('publication_authority'),
+    approvedBy: varchar('approved_by', { length: 128 }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    publishedBy: varchar('published_by', { length: 128 }),
+
+    // P18.4B — migration provenance (null for native PG rows)
+    migratedAt: timestamp('migrated_at', { withTimezone: true }),
+    migrationBatchId: varchar('migration_batch_id', { length: 64 }),
+
     // Timestamps
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -119,5 +136,7 @@ export const news = pgTable(
     index('news_city_site_idx').on(t.citySiteId),
     index('news_author_idx').on(t.authorId),
     index('news_created_at_idx').on(t.createdAt),
+    index('news_publication_authority_idx').on(t.publicationAuthority),
+    index('news_migration_batch_idx').on(t.migrationBatchId),
   ]
 )

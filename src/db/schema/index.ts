@@ -10,6 +10,7 @@ export {
   newsStatusEnum,
   editorTypeEnum,
   articleFormatEnum,
+  publicationAuthorityEnum,
 } from './news'
 export { newsLocations } from './newsLocations'
 export { newsCategories } from './newsCategories'
