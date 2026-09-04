@@ -428,8 +428,11 @@ export function SmartFeedClient({
       setMode(nextMode)
       setCategory(nextCategory)
       // Keep current cards painted while the next category loads — avoids full black wait.
+      // loadPage(false, …) still replaces items when the new page arrives.
       setCursor(null)
+      cursorRef.current = null
       setActiveIndex(0)
+      activeIndexRef.current = 0
       setErrorState(null)
       if (scrollRef.current) {
         scrollRef.current.scrollTop = 0
@@ -450,6 +453,9 @@ export function SmartFeedClient({
     [activeTabId, items.length, loadPage, router, searchParams]
   )
 
+  // Boot / auth only — must NOT depend on mode/category.
+  // Tab chips call loadPage directly; including mode/category here previously
+  // re-ran this effect and aborted the in-flight category fetch.
   useEffect(() => {
     // Article detail → back: hydrate snapshot instead of re-ranking from card 0.
     if (!restoreAppliedRef.current) {
@@ -491,12 +497,10 @@ export function SmartFeedClient({
       authUser?.uid &&
       hasCards &&
       !personalizedOnceRef.current &&
-      activeIndexRef.current === 0 &&
-      mode === 'personal' &&
-      !category
+      activeIndexRef.current === 0
     ) {
       personalizedOnceRef.current = true
-      void loadPage(false, null, 'personal', true)
+      void loadPage(false, null, 'personal', true, null)
       return
     }
 
@@ -504,13 +508,7 @@ export function SmartFeedClient({
     if (!hasCards) {
       void loadPage(false)
     }
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [authLoading, authUser?.uid, loadPage, mode, category])
+  }, [authLoading, authUser?.uid, loadPage])
 
   // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
   useLayoutEffect(() => {

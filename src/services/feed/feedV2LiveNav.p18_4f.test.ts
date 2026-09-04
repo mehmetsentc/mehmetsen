@@ -45,6 +45,8 @@ describe('P18 feed-v2 live nav + card chrome', () => {
     expect(client).not.toContain('loading || authLoading')
     expect(client).toContain('smart-feed-tab-loading')
     expect(client).not.toMatch(/setItems\(\[\]\)\s*\n\s*setCursor/)
+    expect(client).toContain('must NOT depend on mode/category')
+    expect(client).not.toMatch(/\}, \[authLoading, authUser\?\.uid, loadPage, mode, category\]/)
 
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
