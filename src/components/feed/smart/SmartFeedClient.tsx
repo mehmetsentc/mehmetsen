@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react'
+import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
+import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
   getOrCreateFeedSessionId,
@@ -24,6 +25,14 @@ import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 import { getClientAuthToken, ensureAuthReady, auth } from '@/lib/firebase/auth'
 import { useAuthContext } from '@/components/auth/AuthProvider'
+import { useUserLocation } from '@/hooks/useUserLocation'
+import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
+import { getCurrentPosition } from '@/lib/location'
+import {
+  readLocalNewsCitySlug,
+  writeLocalNewsCitySlug,
+  writeStoredUserLocation,
+} from '@/lib/userLocationStorage'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
@@ -152,6 +161,7 @@ export function SmartFeedClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user: authUser, loading: authLoading } = useAuthContext()
+  const userLocation = useUserLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeIndexRef = useRef(0)
   const dwellStartRef = useRef<number | null>(null)
@@ -183,6 +193,25 @@ export function SmartFeedClient({
       category: searchParams.get('category'),
     }).tabId
   )
+  const [localCitySlug, setLocalCitySlug] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return readLocalNewsCitySlug() || initialCitySlug || null
+    }
+    return initialCitySlug ?? null
+  })
+  const [localCityName, setLocalCityName] = useState<string | null>(() => {
+    const slug =
+      typeof window !== 'undefined'
+        ? readLocalNewsCitySlug() || initialCitySlug || null
+        : initialCitySlug ?? null
+    return slug ? getCityCategoryName(slug) : null
+  })
+  const [locationSetupOpen, setLocationSetupOpen] = useState(false)
+  const [requestingGps, setRequestingGps] = useState(false)
+  const [gpsDenied, setGpsDenied] = useState(false)
+  const localCitySlugRef = useRef<string | null>(localCitySlug)
+  localCitySlugRef.current = localCitySlug
+
   const [items, setItems] = useState<FeedItemDto[]>(() => initialPage?.items ?? [])
   const itemsRef = useRef<FeedItemDto[]>([])
   itemsRef.current = items
@@ -205,6 +234,32 @@ export function SmartFeedClient({
   const socialEnabled = isSocialGraphEnabledClient()
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
+  const resolveFeedCity = useCallback(
+    (activeMode: FeedMode): string | null => {
+      if (activeMode === 'local') {
+        if (localCitySlugRef.current) return localCitySlugRef.current
+        const persisted = readLocalNewsCitySlug()
+        if (persisted) return persisted
+        if (
+          userLocation.ready &&
+          userLocation.citySlug &&
+          userLocation.source !== 'fallback'
+        ) {
+          return userLocation.citySlug
+        }
+        return null
+      }
+      return (
+        localCitySlugRef.current ||
+        (userLocation.ready && userLocation.source !== 'fallback' ? userLocation.citySlug : null) ||
+        initialCitySlug ||
+        null
+      )
+    },
+    [userLocation.ready, userLocation.citySlug, userLocation.source, initialCitySlug]
+  )
 
   const windowStart = Math.max(0, activeIndex - WINDOW_BEFORE)
   const windowEnd = Math.min(items.length, windowStart + WINDOW_MAX)
@@ -269,7 +324,7 @@ export function SmartFeedClient({
             mode: activeMode,
             category: activeCategory,
             cursor: pageCursor,
-            city: initialCitySlug,
+            city: resolveFeedCity(activeMode),
             district: initialDistrictSlug,
             refresh: !append && emptyRefills === 0,
             signal,
@@ -416,8 +471,98 @@ export function SmartFeedClient({
         }
       }
     },
-    [mode, category, initialCitySlug, initialDistrictSlug, searchParams, authUser]
+    [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity]
   )
+
+  const applyLocalCity = useCallback(
+    (slug: string, name: string, source: 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie') => {
+      const normalized = slug.trim().toLowerCase()
+      if (!normalized) return
+      setLocalCitySlug(normalized)
+      setLocalCityName(name || getCityCategoryName(normalized))
+      localCitySlugRef.current = normalized
+      writeLocalNewsCitySlug(normalized)
+      writeStoredUserLocation({
+        citySlug: normalized,
+        cityName: name || getCityCategoryName(normalized),
+        source,
+        updatedAt: Date.now(),
+      })
+      setLocationSetupOpen(false)
+      setGpsDenied(false)
+    },
+    []
+  )
+
+  const startAutoLocation = useCallback(async () => {
+    setRequestingGps(true)
+    setGpsDenied(false)
+    try {
+      const position = await getCurrentPosition()
+      const slug = nearestProvinceSlug(position.coords.latitude, position.coords.longitude)
+      applyLocalCity(slug, getCityCategoryName(slug), 'geolocation')
+      void loadPage(false, null, 'local', false, null)
+    } catch {
+      setGpsDenied(true)
+    } finally {
+      setRequestingGps(false)
+    }
+  }, [applyLocalCity, loadPage])
+
+  const handleSelectLocalCity = useCallback(
+    (city: LocalCityOption) => {
+      applyLocalCity(city.slug, city.name, 'manual')
+      void loadPage(false, null, 'local', false, null)
+    },
+    [applyLocalCity, loadPage]
+  )
+
+  // Resolve city when Yerel tab is active
+  useEffect(() => {
+    if (mode !== 'local') {
+      setLocationSetupOpen(false)
+      return
+    }
+
+    const persisted = readLocalNewsCitySlug()
+    if (persisted) {
+      if (localCitySlug !== persisted) {
+        setLocalCitySlug(persisted)
+        setLocalCityName(getCityCategoryName(persisted))
+        localCitySlugRef.current = persisted
+      }
+      setLocationSetupOpen(false)
+      return
+    }
+
+    if (localCitySlug) {
+      setLocationSetupOpen(false)
+      return
+    }
+
+    if (!userLocation.ready) return
+
+    if (userLocation.citySlug && userLocation.source !== 'fallback') {
+      applyLocalCity(userLocation.citySlug, userLocation.cityName, userLocation.source as 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie')
+      void loadPage(false, null, 'local', false, null)
+      return
+    }
+
+    setLocationSetupOpen(true)
+    setLoading(false)
+    setItems([])
+    itemsRef.current = []
+    setHasMore(false)
+  }, [
+    mode,
+    localCitySlug,
+    userLocation.ready,
+    userLocation.citySlug,
+    userLocation.cityName,
+    userLocation.source,
+    applyLocalCity,
+    loadPage,
+  ])
 
   const handleTabChange = useCallback(
     (tab: FeedV2Tab) => {
@@ -451,9 +596,29 @@ export function SmartFeedClient({
       }
       const q = params.toString()
       router.replace(q ? `/feed-v2?${q}` : '/feed-v2', { scroll: false })
+
+      if (nextMode === 'local' && !nextCategory) {
+        const city = resolveFeedCity('local')
+        if (!city) {
+          setLocationSetupOpen(true)
+          setLoading(false)
+          setItems([])
+          itemsRef.current = []
+          setHasMore(false)
+          return
+        }
+        if (!localCitySlugRef.current) {
+          localCitySlugRef.current = city
+          setLocalCitySlug(city)
+          setLocalCityName(getCityCategoryName(city))
+        }
+      } else {
+        setLocationSetupOpen(false)
+      }
+
       void loadPage(false, null, nextMode, false, nextCategory)
     },
-    [activeTabId, items.length, loadPage, router, searchParams]
+    [activeTabId, items.length, loadPage, resolveFeedCity, router, searchParams]
   )
 
   // Boot / auth only — must NOT depend on mode/category.
@@ -1027,9 +1192,15 @@ export function SmartFeedClient({
       }
     }
     if (mode === 'local') {
+      if (locationSetupOpen || !localCitySlug) {
+        return {
+          title: 'Konumunu Belirle',
+          description: 'Yalnızca kendi şehrindeki yerel haberleri görmek için konumunu paylaş veya şehrini seç.',
+        }
+      }
       return {
-        title: 'Yerel Haber Yok',
-        description: 'Bu konumda henüz haber bulunmuyor.',
+        title: `${localCityName || 'Şehrin'} için Yerel Haber Yok`,
+        description: `${localCityName || 'Bu konum'}da şu an gösterilecek yerel haber bulunmuyor.`,
       }
     }
     if (mode === 'breaking') {
@@ -1048,7 +1219,7 @@ export function SmartFeedClient({
       title: 'Haber Akışı Boş',
       description: 'Şu an gösterilecek haber bulunamadı.',
     }
-  }, [loading, mode, category])
+  }, [loading, mode, category, locationSetupOpen, localCitySlug, localCityName])
 
   const isLoadingFirstTime = items.length === 0 && loading
   const isTabSwitching = loading && items.length > 0
@@ -1073,6 +1244,17 @@ export function SmartFeedClient({
                 item={items[activeIndex]!}
                 onFeedback={() => handleFeedback(items[activeIndex]!.articleId)}
               />
+            ) : mode === 'local' && localCitySlug ? (
+              <button
+                type="button"
+                onClick={() => setLocationSetupOpen(true)}
+                className="flex max-w-[7.5rem] items-center gap-1 rounded-full bg-white/15 px-2.5 py-1.5 text-[11px] font-semibold text-white ring-1 ring-white/20"
+                aria-label="Yerel konumunu değiştir"
+                data-testid="smart-feed-local-city-chip"
+              >
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{localCityName || localCitySlug}</span>
+              </button>
             ) : null
           }
         />
@@ -1164,21 +1346,46 @@ export function SmartFeedClient({
             data-testid="smart-feed-empty-view"
           >
             <div className="mb-4 rounded-full bg-white/10 p-4">
-              <Inbox className="h-8 w-8 text-white/70" />
+              {mode === 'local' ? (
+                <MapPin className="h-8 w-8 text-white/70" />
+              ) : (
+                <Inbox className="h-8 w-8 text-white/70" />
+              )}
             </div>
             <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
             <p className="max-w-xs text-sm text-white/60 mb-4">{emptyState?.description}</p>
-            <button
-              type="button"
-              onClick={() => void loadPage(false)}
-              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Yenile
-            </button>
+            {mode === 'local' && (locationSetupOpen || !localCitySlug) ? (
+              <button
+                type="button"
+                onClick={() => setLocationSetupOpen(true)}
+                className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-xs font-bold text-black transition hover:bg-white/90"
+                data-testid="smart-feed-local-setup-cta"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Konumumu Belirle
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void loadPage(false)}
+                className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Yenile
+              </button>
+            )}
+            {mode === 'local' && localCitySlug ? (
+              <button
+                type="button"
+                onClick={() => setLocationSetupOpen(true)}
+                className="mt-3 text-xs font-medium text-white/55 underline-offset-2 hover:underline"
+              >
+                Konumu değiştir ({localCityName || localCitySlug})
+              </button>
+            ) : null}
             {isDebug ? (
               <div className="mt-4 rounded bg-white/5 px-3 py-1.5 text-xs text-green-300">
-                [DIAGNOSTIC] status: EMPTY_INVENTORY | user: {authUser?.uid ?? 'guest'} | items: 0 | mode: {mode}
+                [DIAGNOSTIC] status: EMPTY_INVENTORY | user: {authUser?.uid ?? 'guest'} | items: 0 | mode: {mode} | city: {localCitySlug ?? 'none'}
               </div>
             ) : null}
           </div>
@@ -1309,6 +1516,14 @@ export function SmartFeedClient({
           onCommentAdded={(nextCount) => {
             if (commentArticleId) handleCommentAdded(commentArticleId, nextCount)
           }}
+        />
+
+        <LocalLocationSetupSheet
+          open={mode === 'local' && locationSetupOpen}
+          requestingGps={requestingGps}
+          gpsDenied={gpsDenied}
+          onAutoLocation={() => void startAutoLocation()}
+          onSelectCity={handleSelectLocalCity}
         />
       </div>
     </div>

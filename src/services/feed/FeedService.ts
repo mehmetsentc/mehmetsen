@@ -184,6 +184,24 @@ export class FeedService {
       return { items: [], nextCursor: null, hasMore: false, mode: ctx.mode, emptyReason: 'auth_required' }
     }
 
+    // Yerel: city/district zorunlu — konum yoksa ulusal/fallback karışım dönme.
+    if (
+      ctx.mode === 'local' &&
+      !ctx.category &&
+      !ctx.citySlug?.trim() &&
+      !ctx.districtSlug?.trim() &&
+      !ctx.region?.trim()
+    ) {
+      return {
+        items: [],
+        nextCursor: null,
+        hasMore: false,
+        mode: ctx.mode,
+        emptyReason: 'location_required',
+        rankingVersion: 'local_geo_v1',
+      }
+    }
+
     await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
       {
         eventType: 'feed_request',
