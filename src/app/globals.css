@@ -82,16 +82,16 @@
     --mobile-nav-clearance: calc(
       var(--mobile-nav-pill-h) + var(--mobile-nav-float-gap) + var(--safe-bottom, 0px) + 0.75rem
     );
-    /* Article "Dinle" / reader-tools FAB — sit clearly above the nav pill */
+    /* Article reader-tools FAB — sit clearly above the nav pill (single control) */
     --article-reader-fab-h: 2.75rem;
-    --article-reader-fab-gap: 1.25rem;
+    --article-reader-fab-gap: 1.75rem;
     --article-reader-fab-bottom: calc(
       var(--mobile-nav-pill-h) + var(--mobile-nav-float-gap) + var(--safe-bottom, 0px) +
         var(--article-reader-fab-gap)
     );
     /* Page end padding so last lines can scroll clear of FAB + nav */
     --article-reader-clearance: calc(
-      var(--article-reader-fab-bottom) + var(--article-reader-fab-h) + 1.25rem
+      var(--article-reader-fab-bottom) + var(--article-reader-fab-h) + 1.5rem
     );
   }
 

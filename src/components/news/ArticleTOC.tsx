@@ -26,9 +26,8 @@ interface ArticleTOCProps {
  *
  * Davranış:
  *   - 2+ heading varsa görünür, yoksa gizli
- *   - Mobilde collapsed (FAB benzeri tek tuş açar)
- *   - Masaüstünde sticky panel olarak yan sütunda görünebilir
- *     (şimdilik sade — masaüstü-mobil aynı toggle paneli)
+ *   - Mobilde ayrı FAB yok — Okuma Araçları sheet'inden açılır
+ *   - Masaüstünde sticky panel
  */
 export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTOCProps) {
   const [entries, setEntries] = useState<TOCEntry[]>([])
@@ -87,23 +86,20 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
     return () => observer.disconnect()
   }, [entries])
 
+  // Mobile TOC lives inside ArticleReaderTools sheet (single FAB cluster).
+  // Listen for open requests from that panel.
+  useEffect(() => {
+    const onOpen = () => {
+      if (entries.length >= 2) setOpen(true)
+    }
+    window.addEventListener('nahaber:article-toc-open', onOpen)
+    return () => window.removeEventListener('nahaber:article-toc-open', onOpen)
+  }, [entries.length])
+
   if (entries.length < 2) return null
 
   return (
     <>
-      {/* ── Trigger — masaüstünde sticky kart, mobilde FAB ──────── */}
-      <button
-        type="button"
-        aria-label="İçindekiler"
-        onClick={() => setOpen(true)}
-        className={cn(
-          'fixed bottom-24 right-4 z-overlay flex h-12 w-12 items-center justify-center rounded-full bg-text-primary text-bg-base shadow-lg transition-transform hover:scale-105 active:scale-95',
-          'lg:hidden'
-        )}
-      >
-        <ListTree className="h-5 w-5" />
-      </button>
-
       {/* Masaüstü panel — sayfa sağında sticky (1280px+) */}
       <aside
         aria-label="İçindekiler"
@@ -134,7 +130,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
         </div>
       </aside>
 
-      {/* Mobil sheet ── */}
+      {/* Mobil sheet — okuma araçlarından açılır (ayrı FAB yok) */}
       <AnimatePresence>
         {open && (
           <div className="fixed inset-0 z-sheet flex items-end lg:hidden">

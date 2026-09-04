@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   ALargeSmall,
   Headphones,
+  ListTree,
   Moon,
   Pause,
   Play,
@@ -36,8 +37,8 @@ interface ArticleReaderToolsProps {
 /**
  * ArticleReaderTools
  *
- * Mobil  → FAB (bottom nav üstünde) + bottom sheet (tam genişlik)
- * Masaüstü → FAB (sağ-alt) + floating kart (mevcut tasarım)
+ * Mobil  → tek FAB (okuma araçları) + bottom sheet; dinle sheet içinde
+ * Masaüstü → FAB satırı (dinle + ayarlar) + floating kart
  */
 export function ArticleReaderTools({
   post,
@@ -52,6 +53,7 @@ export function ArticleReaderTools({
   // Hide the floating tools near the page foot so they don't cover the
   // like/share/save actions and related rails at the end of the article.
   const [nearBottom, setNearBottom] = useState(false)
+  const [hasToc, setHasToc] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null)
 
@@ -161,6 +163,17 @@ export function ArticleReaderTools({
     }
   }, [])
 
+  // TOC availability (mobile sheet entry; no separate FAB)
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>(contentSelector)
+    if (!root) {
+      setHasToc(false)
+      return
+    }
+    const count = root.querySelectorAll('h1, h2, h3, h4').length
+    setHasToc(count >= 2)
+  }, [contentSelector, post.id])
+
   // ── Paylaşılan panel içeriği ──────────────────────────────────────
   const PanelContent = (
     <>
@@ -214,7 +227,7 @@ export function ArticleReaderTools({
       </section>
 
       {/* Tema */}
-      <section className="px-4 py-3">
+      <section className={cn('px-4 py-3', hasToc && 'border-b border-[rgb(var(--color-border))]')}>
         <p className="mb-2 text-xs font-semibold text-[rgb(var(--color-text-secondary))]">Tema</p>
         <div className="grid grid-cols-3 gap-1.5">
           {(
@@ -242,6 +255,23 @@ export function ArticleReaderTools({
           ))}
         </div>
       </section>
+
+      {hasToc ? (
+        <section className="px-4 py-3 lg:hidden">
+          <Button
+            size="md"
+            variant="soft"
+            fullWidth
+            leftIcon={<ListTree className="h-4 w-4" />}
+            onClick={() => {
+              setOpen(false)
+              window.dispatchEvent(new Event('nahaber:article-toc-open'))
+            }}
+          >
+            İçindekiler
+          </Button>
+        </section>
+      ) : null}
     </>
   )
 
@@ -253,10 +283,10 @@ export function ArticleReaderTools({
           Panel → bottom sheet
       ═══════════════════════════════════════════════════════════ */}
       <div className={cn('lg:hidden', nearBottom && !open && 'pointer-events-none')}>
-        {/* FAB — bottom nav'ın tam üstünde; sayfa sonunda gizlenir */}
+        {/* Tek FAB kümesi — idle: yalnızca okuma araçları; çalarken pause chip */}
         <div
           className={cn(
-            'fixed right-4 z-[110] flex items-center gap-2 transition-opacity duration-200',
+            'fixed right-4 z-[110] flex flex-col-reverse items-end gap-2 transition-opacity duration-200',
             nearBottom && !open ? 'opacity-0' : 'opacity-100'
           )}
           style={{
@@ -264,33 +294,6 @@ export function ArticleReaderTools({
           }}
           aria-hidden={nearBottom && !open}
         >
-          {/* Dinle FAB — panel kapalıyken göster (mobil: ikon-only, metni örtmesin) */}
-          <AnimatePresence>
-            {!open && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-                type="button"
-                onClick={togglePlay}
-                aria-label={playing ? 'Duraklat' : 'Haberi dinle'}
-                className={cn(
-                  'flex h-11 items-center justify-center rounded-full shadow-lg shadow-black/30 transition-colors',
-                  playing
-                    ? 'gap-2 bg-brand-500 px-3.5 text-white'
-                    : 'w-11 bg-zinc-900 text-white'
-                )}
-              >
-                {playing ? <Pause className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
-                {playing ? (
-                  <span className="text-sm font-semibold">Dinleniyor</span>
-                ) : null}
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* Ayarlar FAB */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             type="button"
@@ -303,6 +306,24 @@ export function ArticleReaderTools({
           >
             {open ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
           </motion.button>
+
+          <AnimatePresence>
+            {!open && playing ? (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8, y: 6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 6 }}
+                transition={{ duration: 0.15 }}
+                type="button"
+                onClick={togglePlay}
+                aria-label="Duraklat"
+                className="flex h-11 items-center gap-2 rounded-full bg-brand-500 px-3.5 text-white shadow-lg shadow-black/30"
+              >
+                <Pause className="h-4 w-4" />
+                <span className="text-sm font-semibold">Dinleniyor</span>
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
         </div>
 
         {/* Bottom Sheet */}
