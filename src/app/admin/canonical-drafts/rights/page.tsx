@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 import {
@@ -168,9 +168,10 @@ function PilotCard({
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState('PENDING')
-  const [basis, setBasis] = useState('EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION')
+  const [basis, setBasis] = useState('UNKNOWN')
   const [setHighOverlapBlocker, setSetHighOverlapBlocker] = useState(false)
   const [publishMsg, setPublishMsg] = useState<string | null>(null)
+  const saveInFlight = useRef(false)
 
   const loadOverlap = useCallback(async () => {
     setOverlapLoading(true)
@@ -200,11 +201,15 @@ function PilotCard({
       const r = data.review as Review
       setReview(r)
       setStatus(r.rightsStatus || 'PENDING')
-      setBasis(
-        r.rightsBasis && r.rightsBasis !== 'UNKNOWN'
-          ? r.rightsBasis
-          : 'EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION'
-      )
+      if ((r.rightsStatus || 'PENDING') === 'PENDING') {
+        setBasis('UNKNOWN')
+      } else {
+        setBasis(
+          r.rightsBasis && r.rightsBasis !== 'UNKNOWN'
+            ? r.rightsBasis
+            : 'EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION'
+        )
+      }
       setSetHighOverlapBlocker(r.editorialBlocker === 'HIGH_SOURCE_OVERLAP')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata')
@@ -223,6 +228,7 @@ function PilotCard({
   }, [review, loadOverlap])
 
   async function save() {
+    if (saveInFlight.current || saving) return
     if (
       !confirmRightsSave({
         status,
@@ -233,17 +239,20 @@ function PilotCard({
     ) {
       return
     }
+    saveInFlight.current = true
     setSaving(true)
     setError(null)
     setPublishMsg(null)
     try {
       const headers = await authHeaders()
+      const effectiveStatus = status
+      const effectiveBasis = effectiveStatus === 'PENDING' ? 'UNKNOWN' : basis
       const payload: {
         status: string
         basis: string
         editorialBlocker?: string | null
-      } = { status, basis }
-      if (status === 'REWRITE_REQUIRED') {
+      } = { status: effectiveStatus, basis: effectiveBasis }
+      if (effectiveStatus === 'REWRITE_REQUIRED') {
         payload.editorialBlocker = setHighOverlapBlocker ? 'HIGH_SOURCE_OVERLAP' : null
       }
       const res = await fetch(`/api/admin/canonical-news/${id}/rights`, {
@@ -251,14 +260,24 @@ function PilotCard({
         headers,
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Kayıt başarısız')
-      setReview(data.review)
+      const r = data.review as Review
+      setReview(r)
+      setStatus(r.rightsStatus || 'PENDING')
+      setBasis(
+        (r.rightsStatus || 'PENDING') === 'PENDING'
+          ? 'UNKNOWN'
+          : r.rightsBasis || 'UNKNOWN'
+      )
+      setSetHighOverlapBlocker(r.editorialBlocker === 'HIGH_SOURCE_OVERLAP')
       setPublishMsg('Hak kararı kaydedildi — yayınlanmadı (status draft).')
       onSaved()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hata')
+      setPublishMsg(null)
     } finally {
+      saveInFlight.current = false
       setSaving(false)
     }
   }
@@ -446,7 +465,14 @@ function PilotCard({
           <select
             className="rounded border border-zinc-300 px-3 py-2"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value
+              setStatus(next)
+              if (next === 'PENDING') setBasis('UNKNOWN')
+              else if (basis === 'UNKNOWN') {
+                setBasis('EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION')
+              }
+            }}
           >
             {review.availableActions.map((a) => (
               <option key={a} value={a} disabled={a === 'CLEARED' && clearDisabled}>
@@ -460,7 +486,8 @@ function PilotCard({
           <span className="text-zinc-600">Rights basis</span>
           <select
             className="rounded border border-zinc-300 px-3 py-2"
-            value={basis}
+            value={status === 'PENDING' ? 'UNKNOWN' : basis}
+            disabled={status === 'PENDING'}
             onChange={(e) => setBasis(e.target.value)}
           >
             {review.availableBases.map((b) => (

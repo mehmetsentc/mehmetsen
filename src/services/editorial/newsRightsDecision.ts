@@ -87,6 +87,10 @@ export async function assertTrustedEditorialHumanActor(uid: string): Promise<voi
 /**
  * Record a reversible human rights decision on a PG news row.
  * Does NOT publish. Does NOT clear editorial_blocker automatically.
+ *
+ * PENDING invariant (P18.4E.3A):
+ * - rights_basis forced to UNKNOWN
+ * - rights_decided_by / rights_decided_at cleared (no completed decision)
  */
 export async function recordNewsRightsDecision(input: {
   newsId: string
@@ -106,6 +110,9 @@ export async function recordNewsRightsDecision(input: {
   if (input.status === 'CLEARED' && (input.basis === 'UNKNOWN' || !input.basis)) {
     throw new Error('rights_basis_required_for_cleared')
   }
+
+  const persistedBasis: NewsRightsBasis =
+    input.status === 'PENDING' ? 'UNKNOWN' : input.basis
 
   const db = requireDb()
   const rows = await db
@@ -148,15 +155,102 @@ export async function recordNewsRightsDecision(input: {
     .update(news)
     .set({
       rightsStatus: input.status,
-      rightsBasis: input.basis,
-      rightsDecidedBy: input.actorUid.trim(),
-      rightsDecidedAt: now,
+      rightsBasis: persistedBasis,
+      rightsDecidedBy: input.status === 'PENDING' ? null : input.actorUid.trim(),
+      rightsDecidedAt: input.status === 'PENDING' ? null : now,
       updatedAt: now,
       ...(nextBlocker !== undefined ? { editorialBlocker: nextBlocker } : {}),
     })
     .where(eq(news.id, row.id))
 
-  return { id: row.id, rightsStatus: input.status, rightsBasis: input.basis }
+  return { id: row.id, rightsStatus: input.status, rightsBasis: persistedBasis }
+}
+
+/**
+ * Pure helper for tests / UI: normalize a submitted PENDING pair.
+ */
+export function normalizePendingRightsSubmission(input: {
+  status: NewsRightsStatus
+  basis: NewsRightsBasis
+}): { status: NewsRightsStatus; basis: NewsRightsBasis; clearsDecisionMetadata: boolean } {
+  if (input.status !== 'PENDING') {
+    return {
+      status: input.status,
+      basis: input.basis,
+      clearsDecisionMetadata: false,
+    }
+  }
+  return {
+    status: 'PENDING',
+    basis: 'UNKNOWN',
+    clearsDecisionMetadata: true,
+  }
+}
+
+/**
+ * P18.4E.3A — Repair accidental PENDING + non-UNKNOWN / false decision metadata.
+ * Only mutates rows that are currently PENDING with inconsistent basis or decision fields.
+ * Does NOT publish. Does NOT touch CLEARED / REWRITE_REQUIRED / DO_NOT_PUBLISH rows.
+ */
+export async function repairPendingRightsConsistency(newsId: string): Promise<{
+  repaired: boolean
+  id: string
+  before: { rightsStatus: string | null; rightsBasis: string | null; hadDecisionActor: boolean }
+  after: { rightsStatus: 'PENDING'; rightsBasis: 'UNKNOWN' } | null
+}> {
+  const db = requireDb()
+  const rows = await db
+    .select({
+      id: news.id,
+      status: news.status,
+      rightsStatus: news.rightsStatus,
+      rightsBasis: news.rightsBasis,
+      rightsDecidedBy: news.rightsDecidedBy,
+    })
+    .from(news)
+    .where(eq(news.id, newsId.trim()))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) throw new Error('news_not_found')
+
+  const before = {
+    rightsStatus: row.rightsStatus,
+    rightsBasis: row.rightsBasis,
+    hadDecisionActor: Boolean(row.rightsDecidedBy?.trim()),
+  }
+
+  if (row.status !== 'draft') {
+    return { repaired: false, id: row.id, before, after: null }
+  }
+  if ((row.rightsStatus || '').toUpperCase() !== 'PENDING') {
+    return { repaired: false, id: row.id, before, after: null }
+  }
+
+  const basis = (row.rightsBasis || 'UNKNOWN').toUpperCase()
+  const needsRepair = basis !== 'UNKNOWN' || Boolean(row.rightsDecidedBy?.trim())
+  if (!needsRepair) {
+    return { repaired: false, id: row.id, before, after: null }
+  }
+
+  const now = new Date()
+  await db
+    .update(news)
+    .set({
+      rightsStatus: 'PENDING',
+      rightsBasis: 'UNKNOWN',
+      rightsDecidedBy: null,
+      rightsDecidedAt: null,
+      updatedAt: now,
+    })
+    .where(eq(news.id, row.id))
+
+  return {
+    repaired: true,
+    id: row.id,
+    before,
+    after: { rightsStatus: 'PENDING', rightsBasis: 'UNKNOWN' },
+  }
 }
 
 /**
