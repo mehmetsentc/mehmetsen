@@ -10,6 +10,8 @@ export interface SimilarityResult {
   jaccard: number
   ngram3: number
   tokenMatchRatio: number
+  /** Longest contiguous shared token run (deterministic; not an LLM metric). */
+  maxSharedContiguousRun: number
   overlapCategory: OverlapCategory
   flaggedForReview: boolean
 }
@@ -89,6 +91,35 @@ export function computeTokenMatchRatio(tokensA: string[], tokensB: string[]): nu
   return matched / Math.max(tokensA.length, 1)
 }
 
+/**
+ * Longest contiguous shared token run (token-level LCS of consecutive matches).
+ * Complements n-gram overlap for human review evidence.
+ */
+export function computeMaxSharedContiguousTokenRun(
+  tokensA: string[],
+  tokensB: string[]
+): number {
+  if (!tokensA.length || !tokensB.length) return 0
+  let max = 0
+  let prev = new Array(tokensB.length + 1).fill(0)
+  let curr = new Array(tokensB.length + 1).fill(0)
+  for (let i = 1; i <= tokensA.length; i++) {
+    for (let j = 1; j <= tokensB.length; j++) {
+      if (tokensA[i - 1] === tokensB[j - 1]) {
+        curr[j] = prev[j - 1] + 1
+        if (curr[j] > max) max = curr[j]
+      } else {
+        curr[j] = 0
+      }
+    }
+    const swap = prev
+    prev = curr
+    curr = swap
+    curr.fill(0)
+  }
+  return max
+}
+
 export function checkTextSimilarity(
   canonicalText: string | null | undefined,
   rawSourceText: string | null | undefined
@@ -102,6 +133,7 @@ export function checkTextSimilarity(
       jaccard: 0,
       ngram3: 0,
       tokenMatchRatio: 0,
+      maxSharedContiguousRun: 0,
       overlapCategory: 'LOW_OVERLAP',
       flaggedForReview: false,
     }
@@ -110,6 +142,7 @@ export function checkTextSimilarity(
   const jaccard = computeJaccard(canTokens, rawTokens)
   const ngram3 = compute3GramOverlap(canTokens, rawTokens)
   const tokenMatchRatio = computeTokenMatchRatio(canTokens, rawTokens)
+  const maxSharedContiguousRun = computeMaxSharedContiguousTokenRun(canTokens, rawTokens)
 
   const similarity = jaccard * 0.4 + ngram3 * 0.3 + tokenMatchRatio * 0.3
 
@@ -125,6 +158,7 @@ export function checkTextSimilarity(
     jaccard,
     ngram3,
     tokenMatchRatio,
+    maxSharedContiguousRun,
     overlapCategory,
     flaggedForReview: overlapCategory === 'HIGH_OVERLAP',
   }

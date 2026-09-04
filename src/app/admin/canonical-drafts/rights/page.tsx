@@ -39,6 +39,34 @@ type Review = {
   availableBases: string[]
 }
 
+type SourceOverlapAudit = {
+  evaluated: boolean
+  aiInvolved: false
+  sourceFetchStatus: string
+  sourceBodyAvailable: boolean
+  canonicalBodyChars: number
+  sourceBodyChars: number
+  similarity: number | null
+  ngram3: number | null
+  maxSharedContiguousRun: number | null
+  gateOverlapCategory: string | null
+  risk: string
+  clearanceImplied: false
+  note: string
+}
+
+function pct(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return `${(n * 100).toFixed(1)}%`
+}
+
+function riskTone(risk: string): string {
+  if (risk === 'HIGH_SOURCE_OVERLAP') return 'border-amber-300 bg-amber-50 text-amber-950'
+  if (risk === 'MEDIUM_OVERLAP') return 'border-yellow-200 bg-yellow-50 text-yellow-950'
+  if (risk === 'SOURCE_NOT_EVALUABLE') return 'border-zinc-200 bg-zinc-50 text-zinc-800'
+  return 'border-emerald-200 bg-emerald-50 text-emerald-950'
+}
+
 async function authHeaders(): Promise<HeadersInit> {
   const { getAuth } = await import('firebase/auth')
   const user = getAuth().currentUser
@@ -55,6 +83,9 @@ function PilotCard({
   onSaved: () => void
 }) {
   const [review, setReview] = useState<Review | null>(null)
+  const [overlap, setOverlap] = useState<SourceOverlapAudit | null>(null)
+  const [overlapLoading, setOverlapLoading] = useState(false)
+  const [overlapError, setOverlapError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -62,6 +93,23 @@ function PilotCard({
   const [status, setStatus] = useState('PENDING')
   const [basis, setBasis] = useState('EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION')
   const [publishMsg, setPublishMsg] = useState<string | null>(null)
+
+  const loadOverlap = useCallback(async () => {
+    setOverlapLoading(true)
+    setOverlapError(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/canonical-news/${id}/source-overlap`, { headers })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Overlap yüklenemedi')
+      setOverlap(data.audit as SourceOverlapAudit)
+    } catch (e) {
+      setOverlap(null)
+      setOverlapError(e instanceof Error ? e.message : 'Overlap hatası')
+    } finally {
+      setOverlapLoading(false)
+    }
+  }, [id])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,6 +137,11 @@ function PilotCard({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!review) return
+    void loadOverlap()
+  }, [review, loadOverlap])
 
   async function save() {
     setSaving(true)
@@ -226,6 +279,53 @@ function PilotCard({
           </dd>
         </div>
       </dl>
+
+      <div
+        className={`mb-4 rounded border p-3 text-sm ${
+          overlap ? riskTone(overlap.risk) : 'border-zinc-200 bg-zinc-50 text-zinc-700'
+        }`}
+      >
+        <p className="font-semibold">Source-overlap audit (non-AI, evidence only)</p>
+        {overlapLoading && <p className="mt-1 text-xs">Kaynak karşılaştırılıyor…</p>}
+        {overlapError && <p className="mt-1 text-xs text-red-700">{overlapError}</p>}
+        {overlap && (
+          <dl className="mt-2 grid gap-1 md:grid-cols-2">
+            <div>
+              <dt className="text-xs opacity-70">Risk</dt>
+              <dd className="font-mono font-semibold">{overlap.risk}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Source fetch</dt>
+              <dd className="font-mono text-xs">{overlap.sourceFetchStatus}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Deep 3-gram overlap</dt>
+              <dd className="font-mono">{pct(overlap.ngram3)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Overall similarity</dt>
+              <dd className="font-mono">{pct(overlap.similarity)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Max shared token run</dt>
+              <dd className="font-mono">{overlap.maxSharedContiguousRun ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs opacity-70">Bodies (canonical / source)</dt>
+              <dd className="font-mono text-xs">
+                {overlap.canonicalBodyChars} / {overlap.sourceBodyChars} chars
+              </dd>
+            </div>
+            <div className="md:col-span-2">
+              <dt className="text-xs opacity-70">Note</dt>
+              <dd className="text-xs">{overlap.note}</dd>
+            </div>
+            <div className="md:col-span-2 text-xs font-medium">
+              clearanceImplied=false · AI=0 · rights auto-change=NO · LOW≠CLEARED
+            </div>
+          </dl>
+        )}
+      </div>
 
       <div className="mb-4 max-h-48 overflow-auto rounded border border-zinc-100 bg-zinc-50 p-3 text-sm whitespace-pre-wrap text-zinc-800">
         {(review.content || '').slice(0, 1200)}
