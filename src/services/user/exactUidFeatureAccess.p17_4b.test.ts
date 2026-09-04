@@ -46,8 +46,10 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     process.env.COLD_START_V2_ENABLED = 'false'
     process.env.SMART_FEED_VIDEO_ENABLED = 'false'
     process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
+    process.env.FEED_V2_NFRANK_ENABLED = 'false'
 
     // Mock repo: ONLY canonical pilot UID has active grants in DB (single pilot invariant)
+    // NFRANK_V1 intentionally NOT granted — shadow-first; no cohort expansion.
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
       // Strict exact opaque string equality check
       if (userId === CANONICAL_PILOT_UID) {
@@ -79,7 +81,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
   })
 
   describe('2. Exact UID Matching & Single Pilot Containment', () => {
-    it('resolves all 7 features to true strictly for the exact canonical pilot UID', async () => {
+    it('resolves pilot bundle features for exact canonical UID; NFRANK_V1 stays off until live grant', async () => {
       expect(await isSmartFeedEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSmartFeedRankingEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSocialGraphEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
@@ -88,9 +90,12 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       expect(await isSmartFeedVideoEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSmartFeedTelemetryEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
 
-      for (const feat of USER_ALLOWLISTABLE_FEATURES) {
+      const pilotBundle = USER_ALLOWLISTABLE_FEATURES.filter((f) => f !== 'NFRANK_V1')
+      for (const feat of pilotBundle) {
         expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)).toBe(true)
       }
+      // Pilot cohort unchanged: no silent NFRANK live grant
+      expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, 'NFRANK_V1')).toBe(false)
     })
 
     it('ensures historical pilot user UID has 0 override grants and falls back to global flag state', async () => {

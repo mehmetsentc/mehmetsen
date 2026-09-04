@@ -5,8 +5,10 @@ import { getDb, hasDatabaseUrl } from '@/db'
 import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
 import { publisherSources, publishers } from '@/db/schema/publishers'
 import { FEED_PAGINATION } from '@/lib/feed/config'
-import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { isSmartFeedRankingEffectiveForUser, isNfRankLiveEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
+import { NFRANK_VERSION } from '@/lib/feed/nfRankConfig'
+import { isNfRankShadowEnabled } from '@/lib/feed/featureFlag'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
@@ -16,11 +18,12 @@ import type {
   FeedMode,
   FeedPageDto,
   FeedSocialState,
+  FeedSurface,
   ScoredFeedCandidate,
 } from '@/types/smartFeed'
 import { decodeFeedCursor, encodeFeedCursor } from './feedUtils'
 import { feedCandidateService } from './FeedCandidateService'
-import { feedRankingPipeline } from './FeedRankingPipeline'
+import { feedRankingPipeline, type NfRankPipelineMode } from './FeedRankingPipeline'
 import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
 import { feedTelemetryService } from './FeedTelemetryService'
@@ -37,11 +40,22 @@ export interface FeedRequestContext {
   refresh?: boolean
   /** When set, restrict corpus to this category (+ children). */
   category?: string | null
+  /** Isolation: NFRank only when surface === 'feed-v2'. */
+  surface?: FeedSurface
 }
 
 function clampLimit(limit?: number): number {
   const n = limit ?? FEED_PAGINATION.defaultLimit
   return Math.min(Math.max(n, FEED_PAGINATION.minLimit), FEED_PAGINATION.maxLimit)
+}
+
+async function resolveNfRankMode(ctx: FeedRequestContext): Promise<NfRankPipelineMode> {
+  // Hard isolation: never activate outside /feed-v2
+  if (ctx.surface !== 'feed-v2') return 'off'
+  const live = await isNfRankLiveEffectiveForUser(ctx.userId)
+  if (live) return 'live'
+  if (isNfRankShadowEnabled()) return 'shadow'
+  return 'off'
 }
 
 function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
@@ -177,6 +191,7 @@ export class FeedService {
     const limit = clampLimit(ctx.limit)
     const feedType = ctx.mode
     const rankingEnabled = await isSmartFeedRankingEffectiveForUser(ctx.userId)
+    const nfRankMode = rankingEnabled ? await resolveNfRankMode(ctx) : 'off'
     const cursorPayload = decodeFeedCursor(ctx.cursor)
     const sessionToken = cursorPayload?.session ?? null
 
@@ -202,12 +217,17 @@ export class FeedService {
       }
     }
 
+    const telemetryRankingVersion =
+      nfRankMode === 'live' ? NFRANK_VERSION : rankingEnabled ? FEED_RANKING_VERSION : 'mix_v1'
+
     await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [
       {
         eventType: 'feed_request',
         feedType: ctx.mode,
         metadata: {
-          ranking_version: rankingEnabled ? FEED_RANKING_VERSION : 'mix_v1',
+          ranking_version: telemetryRankingVersion,
+          nf_rank_mode: nfRankMode,
+          feed_surface: ctx.surface ?? 'other',
           feedSessionId: sessionToken ? 'present' : 'new',
         },
       },
@@ -394,6 +414,7 @@ export class FeedService {
           region: ctx.region,
           seenArticles,
           seenClusters,
+          nfRankMode,
         })
 
         const ranked = pipelineResult.ranked

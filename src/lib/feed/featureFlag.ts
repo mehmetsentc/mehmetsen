@@ -37,3 +37,25 @@ export function isColdStartV2Enabled(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return true
 }
+
+/**
+ * FEED_V2_NFRANK_SHADOW_ENABLED — default true.
+ * Runs NFRank in shadow for /feed-v2 without changing visible order.
+ */
+export function isNfRankShadowEnabled(): boolean {
+  const v = process.env.FEED_V2_NFRANK_SHADOW_ENABLED?.trim().toLowerCase()
+  if (v === '0' || v === 'false' || v === 'no') return false
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  return true
+}
+
+/**
+ * FEED_V2_NFRANK_ENABLED — default false.
+ * Live NFRank ordering for /feed-v2 only (requires user allowlist/global + SMART_FEED_RANKING).
+ */
+export function isNfRankLiveEnabled(): boolean {
+  const v = process.env.FEED_V2_NFRANK_ENABLED?.trim().toLowerCase()
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  if (v === '0' || v === 'false' || v === 'no') return false
+  return false
+}

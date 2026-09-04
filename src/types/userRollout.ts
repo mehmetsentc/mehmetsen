@@ -8,6 +8,7 @@ export const USER_ROLLOUT_FEATURE_KEYS = [
   'COLD_START_V2',
   'SMART_FEED_VIDEO',
   'SMART_FEED_TELEMETRY',
+  'NFRANK_V1',
 ] as const
 
 export type UserRolloutFeatureKey = (typeof USER_ROLLOUT_FEATURE_KEYS)[number]

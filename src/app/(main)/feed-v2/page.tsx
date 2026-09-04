@@ -30,6 +30,7 @@ export default async function FeedV2Page() {
         sessionId: null,
         mode: 'personal',
         limit: FEED_PAGINATION.defaultLimit,
+        surface: 'feed-v2',
       })
     }
   } catch (err) {

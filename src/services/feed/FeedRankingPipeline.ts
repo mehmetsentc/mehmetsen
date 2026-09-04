@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { FeedCandidateRow, FeedCandidateSource, FeedMode, FeedUserContext, ScoredFeedCandidate } from '@/types/smartFeed'
 import { FEED_RANKING_CONFIG_V1, FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
+import { NFRANK_VERSION } from '@/lib/feed/nfRankConfig'
 import { feedCandidateService } from './FeedCandidateService'
 import { feedDiversityEngine } from './FeedDiversityEngine'
 import { feedInterestAggregator } from './FeedInterestAggregator'
@@ -12,6 +13,10 @@ import { feedUserContextService } from './FeedUserContextService'
 import { feedColdStartService } from './FeedColdStartService'
 import { isColdStartEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedSeenService } from './FeedSeenService'
+import { emptySessionIntent, nfRankEngine, type NfSessionIntent } from './nfRank/NFRankEngine'
+import { compareShadowRankings } from './nfRank/nfRankShadowCompare'
+
+export type NfRankPipelineMode = 'off' | 'shadow' | 'live'
 
 export interface RankingPipelineInput {
   userId: string | null
@@ -25,6 +30,9 @@ export interface RankingPipelineInput {
   region?: string | null
   seenArticles: Set<string>
   seenClusters: Set<string>
+  /** Feed V2 NFRank: off | shadow (eval only) | live (visible order). */
+  nfRankMode?: NfRankPipelineMode
+  sessionIntent?: NfSessionIntent
 }
 
 export interface RankingPipelineResult {
@@ -33,6 +41,7 @@ export interface RankingPipelineResult {
   sessionToken: string
   rankingVersion: string
   candidateCounts: Record<string, number>
+  nfShadowComparison?: ReturnType<typeof compareShadowRankings>
 }
 
 async function fetchPools(
@@ -90,16 +99,26 @@ async function fetchPools(
 }
 
 function flattenPools(pools: Partial<Record<FeedCandidateSource, FeedCandidateRow[]>>): FeedCandidateRow[] {
-  const out: FeedCandidateRow[] = []
-  const seen = new Set<string>()
-  for (const pool of Object.values(pools)) {
+  const byId = new Map<string, FeedCandidateRow>()
+  for (const [sourceKey, pool] of Object.entries(pools) as Array<[FeedCandidateSource, FeedCandidateRow[] | undefined]>) {
     for (const row of pool ?? []) {
-      if (seen.has(row.articleId)) continue
-      seen.add(row.articleId)
-      out.push(row)
+      const existing = byId.get(row.articleId)
+      if (existing) {
+        const sources = new Set<FeedCandidateSource>([
+          ...(existing.candidateSources ?? [existing.source]),
+          sourceKey,
+          row.source,
+        ])
+        existing.candidateSources = [...sources]
+        continue
+      }
+      byId.set(row.articleId, {
+        ...row,
+        candidateSources: [...new Set<FeedCandidateSource>([row.source, sourceKey])],
+      })
     }
   }
-  return out
+  return [...byId.values()]
 }
 
 function countPools(pools: Partial<Record<FeedCandidateSource, FeedCandidateRow[]>>): Record<string, number> {
@@ -124,11 +143,53 @@ function rankWindow(
   mode: FeedMode,
   seenArticles: Set<string>,
   seenClusters: Set<string>,
-  limit: number
-): ScoredFeedCandidate[] {
+  limit: number,
+  nfRankMode: NfRankPipelineMode = 'off',
+  sessionIntent: NfSessionIntent = emptySessionIntent(),
+  coldStart = false
+): { ranked: ScoredFeedCandidate[]; shadowComparison?: ReturnType<typeof compareShadowRankings> } {
   const reps = feedRepresentativeSelector.select(flat)
+  const windowLimit = Math.max(limit * 3, limit)
+
+  if (nfRankMode === 'live') {
+    const ranked = nfRankEngine.compose(reps, ctx, mode, windowLimit, sessionIntent, {
+      seenArticles,
+      seenClusters,
+      coldStart,
+    })
+    return { ranked }
+  }
+
   const scored = feedScoringService.scoreAll(reps, ctx, mode, seenArticles, seenClusters)
-  return feedDiversityEngine.rerank(scored, mode, Math.max(limit * 3, limit))
+  const ranked = feedDiversityEngine.rerank(scored, mode, windowLimit)
+
+  if (nfRankMode === 'shadow') {
+    const shadow = nfRankEngine.compose(reps, ctx, mode, windowLimit, sessionIntent, {
+      seenArticles,
+      seenClusters,
+      coldStart,
+    })
+    const shadowComparison = compareShadowRankings({
+      baseline: ranked,
+      shadow,
+      baselineVersion: FEED_RANKING_VERSION,
+      seenArticles,
+      seenClusters,
+    })
+    // Shadow must not affect visible order or profiles — log only.
+    if (process.env.NODE_ENV !== 'test') {
+      console.info('[nfrank-shadow]', JSON.stringify({
+        verdict: shadowComparison.verdict,
+        topOverlap: shadowComparison.topOverlap,
+        baselineClusterDupes: shadowComparison.baselineClusterDupes,
+        shadowClusterDupes: shadowComparison.shadowClusterDupes,
+        seenViolationsShadow: shadowComparison.seenViolationsShadow,
+      }))
+    }
+    return { ranked, shadowComparison }
+  }
+
+  return { ranked }
 }
 
 export class FeedRankingPipeline {
@@ -137,8 +198,14 @@ export class FeedRankingPipeline {
     input: RankingPipelineInput,
     ctx: FeedUserContext,
     excludeArticleIds: Set<string>,
-    publishedBefore: string | null | undefined
-  ): Promise<{ ranked: ScoredFeedCandidate[]; candidateCounts: Record<string, number>; olderThan: string | null }> {
+    publishedBefore: string | null | undefined,
+    coldStart = false
+  ): Promise<{
+    ranked: ScoredFeedCandidate[]
+    candidateCounts: Record<string, number>
+    olderThan: string | null
+    shadowComparison?: ReturnType<typeof compareShadowRankings>
+  }> {
     // Exclude served IDs in SQL (see fetchRecent) — do not time-gate first, so
     // remaining unseen recent inventory is consumed before older fallback.
     let pools = await fetchPools(input.mode, {
@@ -197,9 +264,19 @@ export class FeedRankingPipeline {
       }
     }
 
-    const ranked = rankWindow(flat, ctx, input.mode, input.seenArticles, input.seenClusters, input.limit)
+    const { ranked, shadowComparison } = rankWindow(
+      flat,
+      ctx,
+      input.mode,
+      input.seenArticles,
+      input.seenClusters,
+      input.limit,
+      input.nfRankMode ?? 'off',
+      input.sessionIntent ?? emptySessionIntent(),
+      coldStart
+    )
     const olderThan = oldestPublishedIso(ranked) ?? publishedBefore ?? null
-    return { ranked, candidateCounts, olderThan }
+    return { ranked, candidateCounts, olderThan, shadowComparison }
   }
 
   private async pageFromSession(
@@ -287,42 +364,53 @@ export class FeedRankingPipeline {
 
   /** 9-step ranking pipeline ensuring all published news flow through algorithm. */
   async run(input: RankingPipelineInput): Promise<RankingPipelineResult> {
+    const nfMode = input.nfRankMode ?? 'off'
+    const rankingVersion =
+      nfMode === 'live' ? NFRANK_VERSION : FEED_RANKING_VERSION
+
     // 1. Load user context (exclude SYNTHETIC_TEST)
     let ctx: FeedUserContext = await feedUserContextService.load(input.userId)
     if (ctx.isSynthetic) ctx = { ...ctx, explicitInterests: [], behavioralInterests: new Map(), followedPublisherIds: new Set() }
 
     // 2. On-demand behavioral aggregation (bounded, authed only)
+    // Shadow NFRank must not mutate interests from hypothetical results — only real aggregator on real events.
     if (input.userId && !ctx.isSynthetic && !input.sessionToken) {
       await feedInterestAggregator.aggregateForUser(input.userId).catch(() => {})
       ctx = await feedUserContextService.load(input.userId)
     }
 
-    // Session stability — continue / refill existing ranked snapshot
+    // Session stability — continue / refill existing ranked snapshot (current + near cards frozen via rankedIds)
     if (input.sessionToken && !input.refresh) {
       const existing = feedSessionService.decode(input.sessionToken)
       if (existing && existing.mode === input.mode) {
-        return this.pageFromSession(existing, input, ctx, FEED_RANKING_VERSION, {
+        return this.pageFromSession(existing, input, ctx, rankingVersion, {
           session_continue: 1,
         })
       }
     }
 
-    // 2b. Cold Start V2 — fallback mix when no/low signals (P6)
+    // 2b. Cold Start V2 — when NFRank live, reuse cold-start detection but score via NFRank (no fake personalization)
     const coldStartAllowed = await isColdStartEffectiveForUser(input.userId)
+    let coldStart = false
     if (coldStartAllowed && input.mode === 'personal' && !input.sessionToken) {
       const coldProfile = feedColdStartService.resolveProfile(ctx)
       if (coldProfile) {
-        return feedColdStartService.buildFeed(input, ctx, coldProfile)
+        if (nfMode === 'live') {
+          coldStart = true
+        } else {
+          return feedColdStartService.buildFeed(input, ctx, coldProfile)
+        }
       }
     }
 
     // 3–6. First window
     const exclude = await feedSeenService.expandArticleIdentities(new Set(input.seenArticles))
-    const { ranked: diversified, candidateCounts, olderThan } = await this.buildNextWindow(
+    const { ranked: diversified, candidateCounts, olderThan, shadowComparison } = await this.buildNextWindow(
       input,
       ctx,
       exclude,
-      null
+      null,
+      coldStart
     )
 
     const rankedIds = diversified.map((r) => r.articleId)
@@ -332,7 +420,8 @@ export class FeedRankingPipeline {
       corpusExhausted: rankedIds.length === 0,
     })
 
-    return this.pageFromSession(session, input, ctx, FEED_RANKING_VERSION, candidateCounts)
+    const page = await this.pageFromSession(session, input, ctx, rankingVersion, candidateCounts)
+    return { ...page, nfShadowComparison: shadowComparison }
   }
 }
 

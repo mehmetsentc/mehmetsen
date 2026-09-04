@@ -64,6 +64,7 @@ export async function GET(request: Request) {
       region,
       refresh,
       category,
+      surface: 'feed-v2',
     }, { debug })
     return NextResponse.json(page)
   } catch (err) {

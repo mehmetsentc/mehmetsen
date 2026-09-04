@@ -153,6 +153,8 @@ export interface FeedCandidateRow {
   viewsCount?: number
   slug: string
   source: FeedCandidateSource
+  /** Multi-pool provenance (deduped). Debug/telemetry — not user-facing. */
+  candidateSources?: FeedCandidateSource[]
   sortScore: number
 }
 
@@ -178,3 +180,6 @@ export interface ScoredFeedCandidate extends FeedCandidateRow {
   reason: FeedRankReason
   breakdown: FeedScoreBreakdown
 }
+
+/** Feed V2 surface gate — NFRank must not activate elsewhere. */
+export type FeedSurface = 'feed-v2' | 'other'
