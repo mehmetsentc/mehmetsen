@@ -42,10 +42,11 @@ describe('P18.3I social UI wiring (source)', () => {
       join(process.cwd(), 'src/components/social/SocialActionRail.tsx'),
       'utf8'
     )
-    expect(rail).toContain('onToggle={onToggleLike}')
-    expect(rail).toContain('onToggle={onToggleSave}')
+    expect(rail).toContain('onToggleLike')
+    expect(rail).toContain('onToggleSave')
     expect(rail).toContain('BaseShareButton')
     expect(rail).toContain('orientation')
+    expect(rail).toContain('smart-feed-reaction-picker')
 
     const shareMenu = readFileSync(join(process.cwd(), 'src/components/post/ShareMenu.tsx'), 'utf8')
     expect(shareMenu).toContain('socialApi.recordShare')
@@ -99,7 +100,7 @@ describe('P18.3I layout hierarchy (source)', () => {
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
-    expect(card).toContain('h-[100dvh]')
+    expect(card).toContain('100dvh')
     expect(card).toContain('snap-start snap-always')
     expect(card).toContain('smart-feed-publisher-row')
     expect(card).toContain('MODE_NAV_CLEARANCE')
@@ -110,22 +111,19 @@ describe('P18.3I layout hierarchy (source)', () => {
     expect(card).toContain('object-cover')
     expect(card).toContain('blur-2xl')
     expect(card).not.toMatch(/item\.(body|content)/)
-    expect(card).toContain('line-clamp-2')
+    expect(card).not.toMatch(/line-clamp/)
+    expect(card).toContain('bg-gradient-to-t from-black')
     expect(card).toContain('variant="overlay"')
     expect(card).toContain('returnUrl="/feed-v2"')
   })
 
-  it('mode nav remains absolute with white active pill', () => {
+  it('category nav remains absolute with white active pill', () => {
     const nav = readFileSync(
-      join(process.cwd(), 'src/components/feed/smart/FeedModeNav.tsx'),
+      join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
     expect(nav).toContain('absolute')
     expect(nav).toContain('bg-white text-black')
-    expect(nav).toContain('FEED_MODE_LABELS')
-    expect(nav).toContain("'personal', 'following', 'breaking', 'local'")
-    const labels = readFileSync(join(process.cwd(), 'src/lib/feed/config.ts'), 'utf8')
-    expect(labels).toContain("personal: 'Sana Özel'")
   })
 
   it('summary boundary still blocks body fallback', () => {

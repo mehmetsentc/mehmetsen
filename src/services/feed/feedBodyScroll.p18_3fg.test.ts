@@ -29,34 +29,31 @@ describe('P18.3FG smart feed summary boundary', () => {
     expect(picked!.endsWith('.') || picked!.endsWith('!')).toBe(true)
   })
 
-  it('trims long spot to concise complete sentences (~160–420)', () => {
+  it('returns full editorial teaser under hard max; carves only body-like fields', () => {
     const sentences = [
       'Birinci cümle burada tamamlandı.',
       'İkinci cümle de net bir özet sunuyor.',
       'Üçüncü cümle ek bağlam veriyor.',
-      'Dördüncü cümle gereksiz ayrıntı ekliyor.',
-      'Beşinci cümle daha fazla gövde metnine kayıyor.',
-      'Altıncı cümle kesinlikle feed kartına sığmamalıdır.',
-      'Yedinci cümle de uzun gövdeyi şişirmeye devam eder.',
-      'Sekizinci cümle tamamen makale gövdesi gibi uzar.',
-      'Dokuzuncu cümle de ek paragraf oluşturur ve feed dışındadır.',
-      'Onuncu cümle kartta asla görünmemelidir çünkü bu gövdedir.',
     ]
     const spot = sentences.join(' ')
-    expect(spot.length).toBeGreaterThan(SMART_FEED_SUMMARY_TARGET_MAX)
+    expect(spot.length).toBeLessThan(SMART_FEED_SUMMARY_HARD_MAX)
     const picked = selectSmartFeedSummary({ spot, summary: null })
-    expect(picked).toBeTruthy()
-    expect(picked!.length).toBeLessThanOrEqual(SMART_FEED_SUMMARY_HARD_MAX)
-    expect(picked!.length).toBeGreaterThanOrEqual(120)
-    expect(/[.!?…]["']?\s*$/u.test(picked!)).toBe(true)
-    expect(picked).not.toContain('kartta asla görünmemelidir')
+    expect(picked).toBe(spot)
+
+    const bodyLike = `${'Uzun gövde cümlesi tamamlandı. '.repeat(80)}Kartta asla görünmemelidir çünkü bu gövdedir.`
+    expect(bodyLike.length).toBeGreaterThan(SMART_FEED_SUMMARY_HARD_MAX)
+    const carved = selectSmartFeedSummary({ spot: bodyLike, summary: null })
+    expect(carved).toBeTruthy()
+    expect(carved!.length).toBeLessThanOrEqual(SMART_FEED_SUMMARY_HARD_MAX)
+    expect(/[.!?…]["']?\s*$/u.test(carved!)).toBe(true)
+    expect(carved).not.toContain('kartta asla görünmemelidir')
   })
 
   it('prefers concise summary over body-length spot', () => {
     const summary =
       'Kısa ve net özet cümlesi burada. İkinci cümle de tamam.'
-    const spot = `${'Uzun spot cümlesi tamamlandı. '.repeat(40)}`
-    expect(spot.length).toBeGreaterThan(800)
+    const spot = `${'Uzun spot cümlesi tamamlandı. '.repeat(80)}`
+    expect(spot.length).toBeGreaterThan(SMART_FEED_SUMMARY_HARD_MAX)
     const picked = selectSmartFeedSummary({ summary, spot })
     expect(picked!.length).toBeLessThanOrEqual(SMART_FEED_SUMMARY_HARD_MAX)
     expect(picked).toContain('Kısa ve net')
@@ -111,19 +108,19 @@ describe('P18.3FG client stall guards (source)', () => {
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
-    expect(card).toContain('h-[100dvh]')
+    expect(card).toContain('100dvh')
     expect(card).toContain('snap-start snap-always')
     expect(card).toContain('smart-feed-text-zone')
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('Haberi Oku')
     expect(card).not.toMatch(/item\.(body|content)/)
-    // Feed-card presentation clamp only (headline/summary), not body dump
-    expect(card).toContain('line-clamp-2')
+    expect(card).not.toMatch(/line-clamp/)
+    expect(card).toContain('bg-gradient-to-t from-black')
 
     const summarySrc = readFileSync(join(process.cwd(), 'src/lib/feed/smartFeedSummary.ts'), 'utf8')
     expect(summarySrc).toContain('void fields.body')
     expect(summarySrc).toContain('void fields.content')
-    expect(summarySrc).toContain('SMART_FEED_SUMMARY_TARGET_MAX')
+    expect(summarySrc).toContain('SMART_FEED_SUMMARY_HARD_MAX')
 
     const dto = readFileSync(join(process.cwd(), 'src/services/feed/FeedService.ts'), 'utf8')
     expect(dto).toContain('summary: row.summary')

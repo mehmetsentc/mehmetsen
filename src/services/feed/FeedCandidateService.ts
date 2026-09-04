@@ -120,6 +120,7 @@ function mapRows(
     publisherVerified?: boolean
     headline: string
     summary: string | null
+    description?: string | null
     category: string | null
     image: string | null
     video: string | null
@@ -173,7 +174,10 @@ function mapRows(
       publisherLogoUrl: row.publisherLogoUrl,
       publisherVerified: Boolean(row.publisherVerified),
       headline: row.headline,
-      summary: selectSmartFeedSummary({ summary: row.summary }),
+      summary: selectSmartFeedSummary({
+        summary: row.summary,
+        description: row.description ?? null,
+      }),
       category: row.category,
       image: row.image,
       video: row.video,
@@ -216,6 +220,7 @@ function baseSelect() {
     publisherVerified: sql<boolean>`coalesce(${publishers.verificationStatus} = 'VERIFIED', false)`,
     headline: news.title,
     summary: news.summary,
+    description: news.description,
     category: news.categoryId,
     image: sql<string | null>`coalesce(${news.coverImageUrl}, ${news.thumbnailUrl}, ${newsClusters.primaryImageUrl})`,
     video: news.videoUrl,

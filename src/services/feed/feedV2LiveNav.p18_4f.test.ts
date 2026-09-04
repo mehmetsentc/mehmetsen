@@ -54,6 +54,13 @@ describe('P18 feed-v2 live nav + card chrome', () => {
     expect(card).not.toContain('smart-feed-mid-copy')
     expect(card).toContain('FeedDiscoveryRail')
     expect(card).toContain('--feed-publisher-accent')
+    expect(card).toContain('bg-gradient-to-t from-black')
+    expect(card).not.toContain('FEED_INK_PANEL')
+
+    const skins = readFileSync(join(process.cwd(), 'src/lib/feed/feedCardSkins.ts'), 'utf8')
+    expect(skins).toContain('FEED_GLOBAL_HEADLINE_CLASS')
+    expect(skins).toContain('FEED_GLOBAL_SUMMARY_CLASS')
+    expect(skins).not.toMatch(/layout:\s*'center'/)
 
     const rail = readFileSync(
       join(process.cwd(), 'src/components/social/SocialActionRail.tsx'),

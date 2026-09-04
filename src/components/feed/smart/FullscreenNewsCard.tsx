@@ -52,10 +52,6 @@ function categoryLabel(raw: string | null | undefined): string | null {
   return map[key] ?? raw.replace(/-/g, ' ').toUpperCase()
 }
 
-/** Solid ink under copy — frosted/translucent washes out on bright photos. */
-const FEED_INK_PANEL =
-  'rounded-2xl border border-white/10 bg-[rgba(5,5,5,0.94)] p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.7)] sm:p-4'
-
 /** Prefer real profile slug; fall back to id when it is a routable slug. */
 function publisherProfileHref(publisher: {
   slug?: string | null
@@ -162,7 +158,8 @@ export function FullscreenNewsCard({
   const publisherHref = item.publisher ? publisherProfileHref(item.publisher) : null
   const publisherAccent = publisherAccentFromId(item.publisher?.id ?? item.publisher?.slug)
   const skin = resolveFeedCardSkin(item.category, { breaking: item.breaking })
-  const isCenter = skin.layout === 'center'
+  void skin.layout
+  const isCenter = false
 
   // Typewriter: only when card becomes active (skip if reduced motion)
   useEffect(() => {
@@ -303,7 +300,7 @@ export function FullscreenNewsCard({
         </span>
       ) : null}
       {timeLabel ? (
-        <span className="max-w-[4.5rem] shrink truncate text-xs font-medium text-white/70">
+        <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
           · {timeLabel}
         </span>
       ) : null}
@@ -478,17 +475,14 @@ export function FullscreenNewsCard({
           ) : null}
         </div>
 
-        {/* Bottom copy stack — full summary, CTA, publisher; social mid-right */}
+        {/* Bottom lower-third — no mid floating card; full summary; global type */}
         <div
-          className="relative z-[2] flex max-h-[62vh] min-h-0 flex-col justify-end gap-2.5 pr-[3.75rem]"
+          className="relative z-[2] mt-auto flex w-full min-h-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-20 pr-[3.75rem]"
           data-testid="smart-feed-bottom-chrome"
         >
-          <div className="min-w-0 space-y-2" data-testid="smart-feed-text-zone">
+          <div className="min-w-0 space-y-2.5 pb-1" data-testid="smart-feed-text-zone">
             <div
-              className={cn(
-                'max-h-[48vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]',
-                FEED_INK_PANEL
-              )}
+              className="max-h-[46vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
               data-testid="smart-feed-copy-scroll"
               onTouchStart={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
@@ -521,7 +515,7 @@ export function FullscreenNewsCard({
                 ) : null}
               </div>
               <h2
-                className={cn('break-words text-white', skin.headlineClass)}
+                className={cn('break-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]', skin.headlineClass)}
                 data-testid="smart-feed-headline"
               >
                 {typedHeadline}
@@ -536,7 +530,7 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'break-words transition-opacity duration-300',
+                    'break-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
                     skin.summaryClass,
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
@@ -564,7 +558,7 @@ export function FullscreenNewsCard({
                 {publisherHref ? (
                   <Link
                     href={publisherHref}
-                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1"
+                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
                     style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
                     data-testid="smart-feed-publisher-link"
                   >
