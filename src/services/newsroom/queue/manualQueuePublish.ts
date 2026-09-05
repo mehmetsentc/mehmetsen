@@ -45,6 +45,13 @@ export function mergeQueueEditFields(
   if (edits.city !== undefined) next.forcedCity = edits.city.trim()
   if (edits.citySlug !== undefined) next.forcedCitySlug = edits.citySlug.trim()
   if (edits.district !== undefined) next.forcedDistrict = edits.district.trim()
+  if (
+    edits.city !== undefined ||
+    edits.citySlug !== undefined ||
+    edits.district !== undefined
+  ) {
+    next.lockForcedGeo = true
+  }
   if (edits.source !== undefined) next.sourceLabel = edits.source.trim()
   if (edits.tags !== undefined) next.extraTags = edits.tags
   if (edits.isBreaking !== undefined) next.isBreaking = edits.isBreaking

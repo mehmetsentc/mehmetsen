@@ -28,6 +28,14 @@ export interface NewsIngestMeta {
 export interface NewsLocationFields {
   city: string
   district: string
+  /** Canonical ASCII district slug (compound with citySlug). */
+  districtSlug?: string
+  /** Belde/locality display when distinct from district (e.g. Side). */
+  locality?: string
+  /** Compound identity TR:<province>:<district> when resolved. */
+  canonicalGeoId?: string
+  geoResolutionLevel?: string
+  geoResolutionSource?: string
   citySlug: string
   country: string
   location: { city: string; district?: string; country: string; lat: number; lng: number } | null

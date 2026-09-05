@@ -102,6 +102,11 @@ export interface NewsroomDraftFields {
   categoryId: string
   city: string
   district?: string
+  districtSlug?: string
+  locality?: string
+  canonicalGeoId?: string
+  geoResolutionLevel?: string
+  geoResolutionSource?: string
   citySlug: string
   country?: string
   location: { city: string; district?: string; country: string; lat: number; lng: number } | null
@@ -218,7 +223,16 @@ function draftToPublishedNews(
     categoryId: draft.categoryId,
     city: draft.city ?? '',
     district: draft.district ?? '',
+    districtSlug: draft.districtSlug ?? '',
     citySlug: draft.citySlug ?? '',
+    ...(draft.locality ? { locality: draft.locality } : {}),
+    ...(draft.canonicalGeoId ? { canonicalGeoId: draft.canonicalGeoId } : {}),
+    ...('geoResolutionLevel' in draft && draft.geoResolutionLevel
+      ? { geoResolutionLevel: draft.geoResolutionLevel }
+      : {}),
+    ...('geoResolutionSource' in draft && draft.geoResolutionSource
+      ? { geoResolutionSource: draft.geoResolutionSource }
+      : {}),
     country: draft.country ?? 'Türkiye',
     location,
     tags: Array.isArray(draft.tags) ? draft.tags : [],
@@ -456,7 +470,16 @@ export const newsDraftService = {
       categoryId: doc.categoryId,
       city: doc.city,
       district: doc.district ?? '',
+      districtSlug: doc.districtSlug ?? '',
       citySlug: doc.citySlug,
+      ...(doc.locality ? { locality: doc.locality } : {}),
+      ...(doc.canonicalGeoId ? { canonicalGeoId: doc.canonicalGeoId } : {}),
+      ...('geoResolutionLevel' in doc && doc.geoResolutionLevel
+        ? { geoResolutionLevel: doc.geoResolutionLevel }
+        : {}),
+      ...('geoResolutionSource' in doc && doc.geoResolutionSource
+        ? { geoResolutionSource: doc.geoResolutionSource }
+        : {}),
       country: doc.country ?? 'Türkiye',
       location: doc.location,
       tags: doc.tags,
