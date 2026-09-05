@@ -6,7 +6,6 @@ import {
   buildFallbackFeedV2Tabs,
   type FeedV2Tab,
 } from '@/lib/feed/feedV2Tabs'
-import { getClientAuthToken } from '@/lib/firebase/auth'
 
 interface FeedV2CategoryNavProps {
   activeTabId: string
@@ -18,6 +17,10 @@ interface FeedV2CategoryNavProps {
 /**
  * Live category bar: Sana Özel first, then categories by freshest public publish.
  * Freezes order while the user holds an active non-personal tab (no jump under finger).
+ *
+ * Tab order is NOT personalized — do not await Firebase auth before fetching.
+ * Auth gating previously left mobile on buildFallbackFeedV2Tabs() (Takip #2)
+ * while SSR feed content already painted.
  */
 export function FeedV2CategoryNav({
   activeTabId,
@@ -26,6 +29,7 @@ export function FeedV2CategoryNav({
   trailing,
 }: FeedV2CategoryNavProps) {
   const [tabs, setTabs] = useState<FeedV2Tab[]>(() => buildFallbackFeedV2Tabs())
+  const [tabsSource, setTabsSource] = useState<'fallback' | 'live'>('fallback')
   const frozenRef = useRef<FeedV2Tab[] | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -38,21 +42,29 @@ export function FeedV2CategoryNav({
         if (!opts?.force && frozenRef.current && activeTabId !== 'personal') {
           return
         }
-        const headers: Record<string, string> = {}
-        const token = await getClientAuthToken()
-        if (token) headers.Authorization = `Bearer ${token}`
+        // Public activity order — no Authorization. Waiting on Firebase auth
+        // delayed/blocked mobile reconcile and left Takip #2 fallback visible.
         const res = await fetch('/api/feed/v2/tabs', {
-          headers,
           credentials: 'include',
+          cache: 'no-store',
         })
-        if (!res.ok) return
+        if (!res.ok) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[FeedV2CategoryNav] tabs fetch not ok', res.status)
+          }
+          return
+        }
         const data = (await res.json()) as { tabs?: FeedV2Tab[] }
         if (cancelled || !data.tabs?.length) return
         if (frozenRef.current && activeTabId !== 'personal') {
           return
         }
         setTabs(data.tabs)
-      } catch {
+        setTabsSource('live')
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[FeedV2CategoryNav] tabs fetch failed', err)
+        }
         /* keep fallback */
       }
     }
@@ -100,6 +112,7 @@ export function FeedV2CategoryNav({
       aria-label="Feed kategorileri"
       data-testid="smart-feed-category-nav"
       data-region="category-nav"
+      data-tabs-source={tabsSource}
     >
       <div
         ref={scrollRef}

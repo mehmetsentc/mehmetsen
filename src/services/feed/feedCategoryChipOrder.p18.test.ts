@@ -15,9 +15,10 @@ describe('Feed V2 dynamic category chip ordering', () => {
     expect(tabs[0]?.label).toMatch(/Sana/i)
   })
 
-  it('Magazin is NOT statically pinned after Sana Özel', () => {
+  it('Magazin is NOT statically pinned after Sana Özel; Takip is not #2 either', () => {
     const fallback = buildFallbackFeedV2Tabs()
     expect(fallback[1]?.id).not.toBe('magazin')
+    expect(fallback[1]?.id).not.toBe('following')
 
     const dynamic = buildFeedV2Tabs(['spor', 'turizm', 'magazin'])
     expect(dynamic[1]?.id).toBe('spor')

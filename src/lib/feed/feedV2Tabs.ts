@@ -19,11 +19,18 @@ export const FEED_V2_LEAD_TABS: FeedV2Tab[] = [
   { id: 'personal', kind: 'mode', label: FEED_MODE_LABELS.personal, mode: 'personal' },
 ]
 
+/**
+ * Resilience-only order when `/api/feed/v2/tabs` is unavailable.
+ * Must NOT lead with legacy mode "Takip" — that fingerprint (Sana Özel → Takip →
+ * Son Dakika → Yerel) was the human mobile regression while dynamic activity
+ * already ranked Spor/Yerel/…. Keep Follow as a mode tab, but append last so a
+ * transient/failed fetch cannot look like "activity order".
+ */
 const FALLBACK_CATEGORY_IDS = [
-  'following',
   'son-dakika',
   'yerel',
   ...TOP_NAV_CATEGORY_IDS.filter((id) => id !== 'asayis'),
+  'following',
 ] as const
 
 export function categoryTabFromId(id: string): FeedV2Tab | null {

@@ -6,11 +6,12 @@ import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
 import { FEED_IMPRESSION_CONFIG } from '@/lib/feed/config'
 
 describe('P18 feed-v2 live nav + card chrome', () => {
-  it('lead tab is Sana Özel only; following is in fallback categories', () => {
+  it('lead tab is Sana Özel only; following is appended in fallback (not #2)', () => {
     const tabs = buildFallbackFeedV2Tabs()
     expect(tabs[0]?.id).toBe('personal')
     expect(tabs.filter((t) => t.id === 'personal')).toHaveLength(1)
     expect(tabs.some((t) => t.id === 'following')).toBe(true)
+    expect(tabs[1]?.id).not.toBe('following')
     const freshness = buildFeedV2Tabs(['spor', 'ekonomi'])
     expect(freshness[0]?.id).toBe('personal')
     expect(freshness.findIndex((t) => t.id === 'spor')).toBeGreaterThan(0)
