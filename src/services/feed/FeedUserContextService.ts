@@ -40,6 +40,9 @@ export class FeedUserContextService {
       .select({
         interests: userProfiles.interests,
         city: userProfiles.city,
+        citySlug: userProfiles.citySlug,
+        districtSlug: userProfiles.districtSlug,
+        localNewsClearedAt: userProfiles.localNewsClearedAt,
         actorType: userProfiles.actorType,
       })
       .from(userProfiles)
@@ -88,8 +91,13 @@ export class FeedUserContextService {
       publisherAffinities,
       followedPublisherIds: new Set(followRows.map((r) => r.publisherId)),
       negativePreferences: prefRows,
-      city: profile?.city ?? null,
-      districtSlug: null,
+      // Explicit Yerel preference (slug). Cleared → null (do not resurrect free-text city).
+      city: profile?.localNewsClearedAt
+        ? null
+        : (profile?.citySlug || profile?.city || null)?.trim().toLowerCase() || null,
+      districtSlug: profile?.localNewsClearedAt
+        ? null
+        : (profile?.districtSlug || null)?.trim().toLowerCase() || null,
     }
   }
 
@@ -129,7 +137,13 @@ export class FeedUserContextService {
       const key = interest.trim().toLowerCase()
       if (key && (cat.includes(key) || key.includes(cat))) score = Math.max(score, 0.85)
     }
-    const behavioral = ctx.behavioralInterests.get(cat) ?? 0
+    // Namespaced keys (cat:/tag:/ent:) + legacy flat keys — exact match only for behavioral.
+    const behavioral = Math.max(
+      ctx.behavioralInterests.get(cat) ?? 0,
+      ctx.behavioralInterests.get(`cat:${cat}`) ?? 0,
+      ctx.behavioralInterests.get(`tag:${cat}`) ?? 0,
+      ctx.behavioralInterests.get(`ent:${cat}`) ?? 0
+    )
     return Math.min(1, Math.max(score, behavioral))
   }
 

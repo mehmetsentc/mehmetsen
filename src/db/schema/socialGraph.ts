@@ -23,6 +23,12 @@ export const userProfiles = pgTable(
     avatarUrl: varchar('avatar_url', { length: 500 }),
     bio: varchar('bio', { length: 500 }),
     city: varchar('city', { length: 100 }),
+    /** Explicit Yerel province slug (e.g. antalya) — account authority for mode=local. */
+    citySlug: varchar('city_slug', { length: 64 }),
+    /** Explicit district slug; always interpret with citySlug (compound identity). */
+    districtSlug: varchar('district_slug', { length: 64 }),
+    /** Explicit clear — blocks resurrection from device/profile fallbacks until new pick. */
+    localNewsClearedAt: timestamp('local_news_cleared_at', { withTimezone: true }),
     country: varchar('country', { length: 2 }),
     profileVisibility: varchar('profile_visibility', { length: 16 }).default('PUBLIC').notNull(),
     actorType: varchar('actor_type', { length: 16 }).default('HUMAN').notNull(),
@@ -33,7 +39,11 @@ export const userProfiles = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [uniqueIndex('user_profiles_username_uidx').on(t.username), index('user_profiles_city_idx').on(t.city)]
+  (t) => [
+    uniqueIndex('user_profiles_username_uidx').on(t.username),
+    index('user_profiles_city_idx').on(t.city),
+    index('user_profiles_city_slug_idx').on(t.citySlug),
+  ]
 )
 
 export const userPublisherFollows = pgTable(

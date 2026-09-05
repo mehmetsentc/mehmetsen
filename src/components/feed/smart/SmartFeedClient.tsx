@@ -31,8 +31,15 @@ import { getCurrentPosition } from '@/lib/location'
 import {
   readLocalNewsCitySlug,
   writeLocalNewsCitySlug,
+  clearLocalNewsCitySlug,
   writeStoredUserLocation,
 } from '@/lib/userLocationStorage'
+import {
+  fetchAccountLocalLocation,
+  persistAccountLocalLocation,
+  readLocalClearedSentinel,
+  writeLocalClearedSentinel,
+} from '@/lib/feed/accountLocalLocation'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
@@ -478,10 +485,13 @@ export function SmartFeedClient({
     (slug: string, name: string, source: 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie') => {
       const normalized = slug.trim().toLowerCase()
       if (!normalized) return
+      // IP must never silently become Yerel authority.
+      if (source === 'ip') return
       setLocalCitySlug(normalized)
       setLocalCityName(name || getCityCategoryName(normalized))
       localCitySlugRef.current = normalized
       writeLocalNewsCitySlug(normalized)
+      writeLocalClearedSentinel(false)
       writeStoredUserLocation({
         citySlug: normalized,
         cityName: name || getCityCategoryName(normalized),
@@ -490,9 +500,24 @@ export function SmartFeedClient({
       })
       setLocationSetupOpen(false)
       setGpsDenied(false)
+      if (authUser?.uid) {
+        void persistAccountLocalLocation({ citySlug: normalized, districtSlug: null })
+      }
     },
-    []
+    [authUser?.uid]
   )
+
+  const clearLocalCity = useCallback(() => {
+    setLocalCitySlug(null)
+    setLocalCityName(null)
+    localCitySlugRef.current = null
+    clearLocalNewsCitySlug()
+    writeLocalClearedSentinel(true)
+    setLocationSetupOpen(true)
+    if (authUser?.uid) {
+      void persistAccountLocalLocation({ citySlug: null, clear: true })
+    }
+  }, [authUser?.uid])
 
   const startAutoLocation = useCallback(async () => {
     setRequestingGps(true)
@@ -517,44 +542,89 @@ export function SmartFeedClient({
     [applyLocalCity, loadPage]
   )
 
-  // Resolve city when Yerel tab is active
+  // Resolve city when Yerel tab is active (account > device; explicit clear wins).
   useEffect(() => {
     if (mode !== 'local') {
       setLocationSetupOpen(false)
       return
     }
 
-    const persisted = readLocalNewsCitySlug()
-    if (persisted) {
-      if (localCitySlug !== persisted) {
-        setLocalCitySlug(persisted)
-        setLocalCityName(getCityCategoryName(persisted))
-        localCitySlugRef.current = persisted
+    let cancelled = false
+
+    async function hydrate() {
+      if (readLocalClearedSentinel()) {
+        setLocalCitySlug(null)
+        localCitySlugRef.current = null
+        setLocationSetupOpen(true)
+        return
       }
-      setLocationSetupOpen(false)
-      return
+
+      if (authUser?.uid) {
+        const account = await fetchAccountLocalLocation()
+        if (cancelled) return
+        if (account?.cleared) {
+          writeLocalClearedSentinel(true)
+          clearLocalNewsCitySlug()
+          setLocalCitySlug(null)
+          localCitySlugRef.current = null
+          setLocationSetupOpen(true)
+          return
+        }
+        if (account?.citySlug) {
+          const slug = account.citySlug
+          setLocalCitySlug(slug)
+          setLocalCityName(getCityCategoryName(slug))
+          localCitySlugRef.current = slug
+          writeLocalNewsCitySlug(slug)
+          writeLocalClearedSentinel(false)
+          setLocationSetupOpen(false)
+          return
+        }
+      }
+
+      const persisted = readLocalNewsCitySlug()
+      if (persisted) {
+        if (localCitySlug !== persisted) {
+          setLocalCitySlug(persisted)
+          setLocalCityName(getCityCategoryName(persisted))
+          localCitySlugRef.current = persisted
+        }
+        setLocationSetupOpen(false)
+        return
+      }
+
+      if (localCitySlug) {
+        setLocationSetupOpen(false)
+        return
+      }
+
+      if (!userLocation.ready) return
+
+      // Never use IP/fallback as Yerel authority.
+      if (
+        userLocation.citySlug &&
+        userLocation.source !== 'fallback' &&
+        userLocation.source !== 'ip'
+      ) {
+        applyLocalCity(
+          userLocation.citySlug,
+          userLocation.cityName,
+          userLocation.source as 'geolocation' | 'manual' | 'profile' | 'cookie'
+        )
+        void loadPage(false, null, 'local', false, null)
+        return
+      }
+
+      setLocationSetupOpen(true)
     }
 
-    if (localCitySlug) {
-      setLocationSetupOpen(false)
-      return
+    void hydrate()
+    return () => {
+      cancelled = true
     }
-
-    if (!userLocation.ready) return
-
-    if (userLocation.citySlug && userLocation.source !== 'fallback') {
-      applyLocalCity(userLocation.citySlug, userLocation.cityName, userLocation.source as 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie')
-      void loadPage(false, null, 'local', false, null)
-      return
-    }
-
-    setLocationSetupOpen(true)
-    setLoading(false)
-    setItems([])
-    itemsRef.current = []
-    setHasMore(false)
   }, [
     mode,
+    authUser?.uid,
     localCitySlug,
     userLocation.ready,
     userLocation.citySlug,
@@ -843,7 +913,19 @@ export function SmartFeedClient({
       const dwell = dwellStartRef.current ? Date.now() - dwellStartRef.current : 0
       if (prev && dwell < 1500) {
         void postTelemetry({
-          events: [{ eventType: 'quick_skip', articleId: prev.articleId, feedType: mode, dwellMs: dwell }],
+          events: [
+            {
+              eventType: 'quick_skip',
+              articleId: prev.articleId,
+              feedType: mode,
+              dwellMs: dwell,
+              metadata: {
+                category: prev.category ?? null,
+                tags: prev.tags ?? [],
+                publisherId: prev.publisher?.id ?? null,
+              },
+            },
+          ],
         })
       }
       setActiveIndex(idx)
@@ -1176,7 +1258,11 @@ export function SmartFeedClient({
           articleId: item.articleId,
           clusterId: item.clusterId,
           feedType: mode,
-          metadata: { publisherId: item.publisher?.id ?? null },
+          metadata: {
+            publisherId: item.publisher?.id ?? null,
+            category: item.category ?? null,
+            tags: item.tags ?? [],
+          },
         },
       ],
     })
@@ -1377,7 +1463,7 @@ export function SmartFeedClient({
             {mode === 'local' && localCitySlug ? (
               <button
                 type="button"
-                onClick={() => setLocationSetupOpen(true)}
+                onClick={() => clearLocalCity()}
                 className="mt-3 text-xs font-medium text-white/55 underline-offset-2 hover:underline"
               >
                 Konumu değiştir ({localCityName || localCitySlug})

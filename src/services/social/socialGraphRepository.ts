@@ -536,6 +536,95 @@ export class SocialGraphRepository {
     return { items, nextCursor, hasMore }
   }
 
+  async getLocalNewsLocation(firebaseUid: string): Promise<{
+    citySlug: string | null
+    districtSlug: string | null
+    cleared: boolean
+    country: string | null
+  }> {
+    const db = requireDb()
+    const [row] = await db
+      .select({
+        citySlug: userProfiles.citySlug,
+        districtSlug: userProfiles.districtSlug,
+        localNewsClearedAt: userProfiles.localNewsClearedAt,
+        country: userProfiles.country,
+        city: userProfiles.city,
+      })
+      .from(userProfiles)
+      .where(eq(userProfiles.firebaseUid, firebaseUid))
+      .limit(1)
+    if (!row) {
+      return { citySlug: null, districtSlug: null, cleared: false, country: null }
+    }
+    if (row.localNewsClearedAt) {
+      return { citySlug: null, districtSlug: null, cleared: true, country: row.country }
+    }
+    const slug =
+      (row.citySlug || '').trim().toLowerCase() ||
+      (row.city || '').trim().toLowerCase() ||
+      null
+    return {
+      citySlug: slug,
+      districtSlug: (row.districtSlug || '').trim().toLowerCase() || null,
+      cleared: false,
+      country: row.country,
+    }
+  }
+
+  async setLocalNewsLocation(input: {
+    firebaseUid: string
+    citySlug: string | null
+    districtSlug: string | null
+    clear: boolean
+    email?: string | null
+  }): Promise<void> {
+    await ensureUser(input.firebaseUid, input.email)
+    const db = requireDb()
+    const now = new Date()
+    if (input.clear) {
+      await db
+        .insert(userProfiles)
+        .values({
+          firebaseUid: input.firebaseUid,
+          citySlug: null,
+          districtSlug: null,
+          localNewsClearedAt: now,
+          interests: [],
+        })
+        .onConflictDoUpdate({
+          target: userProfiles.firebaseUid,
+          set: {
+            citySlug: null,
+            districtSlug: null,
+            localNewsClearedAt: now,
+            updatedAt: now,
+          },
+        })
+      return
+    }
+    await db
+      .insert(userProfiles)
+      .values({
+        firebaseUid: input.firebaseUid,
+        citySlug: input.citySlug,
+        districtSlug: input.districtSlug,
+        city: input.citySlug,
+        localNewsClearedAt: null,
+        interests: [],
+      })
+      .onConflictDoUpdate({
+        target: userProfiles.firebaseUid,
+        set: {
+          citySlug: input.citySlug,
+          districtSlug: input.districtSlug,
+          city: input.citySlug,
+          localNewsClearedAt: null,
+          updatedAt: now,
+        },
+      })
+  }
+
   async upsertProfile(input: {
     firebaseUid: string
     username?: string
