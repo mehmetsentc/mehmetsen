@@ -817,11 +817,50 @@ export class FeedCandidateService {
     }
   }
 
+  /**
+   * User-local geography candidates — NOT nationwide `category=yerel`.
+   * Feed V2 corpus is Firestore-primary (PG is often thin for citySlug).
+   * Indexed FS path: status + citySlug + publishedAt.
+   * District preference is applied as an ordered partition (no Haversine).
+   */
   async fetchLocal(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     if (!opts.citySlug && !opts.districtSlug && !opts.region) return []
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
-    if (!hasDatabaseUrl()) return []
+    const districtSlug = opts.districtSlug?.trim().toLowerCase() || null
+    let citySlug = opts.citySlug?.trim().toLowerCase() || null
+    if (!citySlug && districtSlug) {
+      // Resolve province for FS indexed citySlug query (no district composite index).
+      const { DISTRICT_TO_PROVINCE_SLUG } = await import('@/constants/cities')
+      citySlug = DISTRICT_TO_PROVINCE_SLUG[districtSlug] ?? null
+    }
 
+    const [fsRows, pgRows] = await Promise.all([
+      citySlug
+        ? this.fetchFirestoreLocalByCity({
+            ...opts,
+            citySlug,
+            districtSlug,
+            needed: poolLimit,
+          })
+        : Promise.resolve([] as FeedCandidateRow[]),
+      this.fetchPostgresLocal(opts, poolLimit),
+    ])
+
+    const merged = this.mergeLocalGeoRows({
+      primary: fsRows,
+      secondary: pgRows,
+      districtSlug,
+      limit: opts.limit,
+    })
+    return merged
+  }
+
+  /** PG city/district filter — may be empty while Firestore has the live local corpus. */
+  private async fetchPostgresLocal(
+    opts: BaseQueryOpts,
+    poolLimit: number
+  ): Promise<FeedCandidateRow[]> {
+    if (!hasDatabaseUrl()) return []
     try {
       const db = requireDb()
       const geo = opts.districtSlug
@@ -848,10 +887,120 @@ export class FeedCandidateService {
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
 
-      return mapRows(rows, 'LOCAL', opts.excludeArticleIds, opts.excludeClusterIds).slice(0, opts.limit)
+      return mapRows(rows, 'LOCAL', opts.excludeArticleIds, opts.excludeClusterIds)
     } catch {
       return []
     }
+  }
+
+  /**
+   * Native Firestore local pool by citySlug (Feed V2 authority).
+   * Does not scan nationwide then filter — uses indexed city query.
+   */
+  private async fetchFirestoreLocalByCity(
+    opts: BaseQueryOpts & { citySlug: string; needed: number }
+  ): Promise<FeedCandidateRow[]> {
+    const needed = Math.min(Math.max(opts.needed, 1), FS_SUPPLEMENT_HARD_CAP)
+    const citySlug = opts.citySlug.trim().toLowerCase()
+    const districtSlug = opts.districtSlug?.trim().toLowerCase() || null
+    const publishedBefore = opts.publishedBefore
+      ? opts.publishedBefore instanceof Date
+        ? opts.publishedBefore
+        : new Date(opts.publishedBefore)
+      : null
+    const beforeOk = Boolean(publishedBefore && !Number.isNaN(publishedBefore.getTime()))
+    const cursorTs = opts.cursor?.publishedAt ? new Date(opts.cursor.publishedAt) : null
+    const cursorOk = Boolean(cursorTs && !Number.isNaN(cursorTs.getTime()))
+    const cursorId = opts.cursor?.id?.trim() || null
+
+    try {
+      const db = getAdminFirestore()
+      const expandedExclude = await feedSeenService.expandArticleIdentities(
+        new Set(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
+      )
+      const seen = new Set<string>(expandedExclude)
+      const districtHits: FeedCandidateRow[] = []
+      const cityHits: FeedCandidateRow[] = []
+      let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
+      let attempts = 0
+
+      while (districtHits.length + cityHits.length < needed && attempts < FS_CATEGORY_MAX_ATTEMPTS) {
+        attempts += 1
+        const batchSize = Math.min(
+          FS_SUPPLEMENT_BATCH,
+          Math.max(needed - districtHits.length - cityHits.length, 20) * 2
+        )
+        let q: FirebaseFirestore.Query = db
+          .collection(Collections.NEWS)
+          .where('status', '==', 'published')
+          .where('citySlug', '==', citySlug)
+          .orderBy('publishedAt', 'desc')
+          .limit(batchSize)
+        if (lastDoc) q = q.startAfter(lastDoc)
+        else if (beforeOk) q = q.startAfter(publishedBefore)
+        else if (cursorOk && cursorTs) q = q.startAfter(cursorTs)
+
+        const snap = await q.get()
+        if (snap.empty) break
+        lastDoc = snap.docs[snap.docs.length - 1]
+
+        for (const doc of snap.docs) {
+          if (seen.has(doc.id)) continue
+          const data = doc.data()
+          if (opts.excludeClusterIds?.size) {
+            const clusterId = typeof data.clusterId === 'string' ? data.clusterId : null
+            if (clusterId && opts.excludeClusterIds.has(clusterId)) continue
+          }
+          const row = this.mapFirestoreDocToRow(doc.id, data, 'LOCAL')
+          if (!row) continue
+          if (beforeOk && row.publishedAt.getTime() >= publishedBefore!.getTime()) continue
+          if (cursorOk && cursorTs) {
+            const t = row.publishedAt.getTime()
+            const c = cursorTs.getTime()
+            if (t > c) continue
+            if (t === c && cursorId && row.articleId >= cursorId) continue
+          }
+          // Defense: never accept another province from a mis-indexed doc.
+          if ((row.citySlug || '').toLowerCase() !== citySlug) continue
+          seen.add(doc.id)
+          const rowDistrict = (row.districtSlug || '').toLowerCase()
+          if (districtSlug && rowDistrict === districtSlug) districtHits.push(row)
+          else cityHits.push(row)
+          if (districtHits.length + cityHits.length >= needed) break
+        }
+        if (snap.docs.length < batchSize) break
+      }
+
+      return [...districtHits, ...cityHits].slice(0, needed)
+    } catch (err) {
+      console.warn('[feed] FS local citySlug query failed', { citySlug, err })
+      return []
+    }
+  }
+
+  /** Dedupe + district-first order for local pools (no cross-province fill). */
+  private mergeLocalGeoRows(opts: {
+    primary: FeedCandidateRow[]
+    secondary: FeedCandidateRow[]
+    districtSlug: string | null
+    limit: number
+  }): FeedCandidateRow[] {
+    const districtSlug = opts.districtSlug
+    const district: FeedCandidateRow[] = []
+    const city: FeedCandidateRow[] = []
+    const seen = new Set<string>()
+
+    const push = (row: FeedCandidateRow) => {
+      if (seen.has(row.articleId)) return
+      seen.add(row.articleId)
+      const d = (row.districtSlug || '').toLowerCase()
+      if (districtSlug && d === districtSlug) district.push(row)
+      else city.push(row)
+    }
+
+    for (const row of opts.primary) push(row)
+    for (const row of opts.secondary) push(row)
+    return [...district, ...city].slice(0, opts.limit)
   }
 
   async fetchFollowing(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {

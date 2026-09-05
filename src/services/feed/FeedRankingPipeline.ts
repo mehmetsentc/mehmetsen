@@ -242,8 +242,9 @@ export class FeedRankingPipeline {
       }
     }
 
-    // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions
-    if (flat.length < input.limit) {
+    // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions.
+    // LOCAL mode must NEVER nationwide-fill — that made Eskişehir appear in Antalya Yerel.
+    if (flat.length < input.limit && input.mode !== 'local') {
       const before =
         publishedBefore ??
         (flat.length ? oldestPublishedIso(flat) : new Date().toISOString())
@@ -262,6 +263,8 @@ export class FeedRankingPipeline {
         seen.add(row.articleId)
         flat.push(row)
       }
+    } else if (flat.length < input.limit && input.mode === 'local') {
+      candidateCounts.LOCAL_NO_NATIONWIDE_FILL = 1
     }
 
     const { ranked, shadowComparison } = rankWindow(
