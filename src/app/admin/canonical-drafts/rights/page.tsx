@@ -8,6 +8,14 @@ import {
   sortRightsReviewQueueByRisk,
   type BatchRightsProgress,
 } from '@/services/editorial/canonicalRightsReviewQueue'
+import {
+  RIGHTS_PAGE,
+  RIGHTS_STATUS_TR,
+  RISK_TR,
+  publicationStateTr,
+  riskRecommendationTr,
+} from '@/lib/editorial/rightsUiTr'
+
 
 const PILOT_IDS = [
   '0ALMkrRCE3LQqubviNZh',
@@ -15,7 +23,7 @@ const PILOT_IDS = [
   '0XYEJVwyi7oILuYKf91R',
 ] as const
 
-type QueueFilter = 'all' | 'cohort1'
+type QueueFiltre = 'all' | 'cohort1'
 
 type Review = {
   id: string
@@ -95,38 +103,35 @@ function confirmRightsSave(opts: {
     const high = opts.risk === 'HIGH_SOURCE_OVERLAP'
     const msg = high
       ? [
-          'HIGH similarity uyarısı',
+          'Yüksek benzerlik uyarısı',
           '',
-          'Similarity evidence is NOT copyright clearance.',
-          'Final weighted score is HIGH — you are making an explicit human CLEARED decision.',
+          'Benzerlik oranı telif onayı değildir.',
+          'Yüksek benzerlik skoruyla “İncelendi” kararı veriyorsunuz.',
           '',
-          opts.id,
           opts.title,
           '',
-          'Bu işlem yayınlamaz. Devam?',
+          'Bu işlem haberi yayınlamaz. Devam?',
         ].join('\n')
       : [
-          'CLEARED onayı',
+          'İncelendi onayı',
           '',
-          'Similarity evidence is NOT copyright clearance.',
-          'Human reviewer is making this decision.',
+          'Benzerlik kanıtı telif onayı değildir.',
+          'Karar insan editöre aittir.',
           '',
-          opts.id,
           opts.title,
           '',
-          'Bu işlem yayınlamaz. Devam?',
+          'Bu işlem haberi yayınlamaz. Devam?',
         ].join('\n')
     return window.confirm(msg)
   }
   if (opts.status === 'DO_NOT_PUBLISH') {
     return window.confirm(
       [
-        'DO_NOT_PUBLISH onayı',
+        'Yayınlanmayacak onayı',
         '',
-        'Article will remain auditable (not deleted).',
-        'Status stays draft; publish remains blocked.',
+        'Haber silinmez; denetlenebilir kalır.',
+        'Durum taslakta kalır; yayın engellenir.',
         '',
-        opts.id,
         opts.title,
         '',
         'Devam?',
@@ -136,10 +141,9 @@ function confirmRightsSave(opts: {
   if (opts.status === 'REWRITE_REQUIRED') {
     return window.confirm(
       [
-        'REWRITE_REQUIRED onayı',
+        'Yeniden yazılacak onayı',
         '',
-        'Human decision only — similarity HIGH does not auto-write blockers.',
-        opts.id,
+        'Yalnızca insan kararı — benzerlik skoru engeli otomatik yazmaz.',
         opts.title,
         '',
         'Devam?',
@@ -153,11 +157,15 @@ function PilotCard({
   id,
   onSaved,
   deferPublish,
+  selected,
+  onToggleSelect,
 }: {
   id: string
   onSaved: () => void
   /** P18.4E.3: cohort publish deferred — keep button disabled. */
   deferPublish: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }) {
   const [review, setReview] = useState<Review | null>(null)
   const [overlap, setOverlap] = useState<SourceOverlapAudit | null>(null)
@@ -355,24 +363,24 @@ function PilotCard({
 
       <dl className="mb-4 grid gap-2 text-sm md:grid-cols-2">
         <div>
-          <dt className="text-zinc-500">Publication authority</dt>
+          <dt className="text-zinc-500">Yayın yetkisi (iç)</dt>
           <dd className="font-medium">{review.publicationAuthority || '—'}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Actor provenance</dt>
+          <dt className="text-zinc-500">Aktör / köken</dt>
           <dd className="font-medium">
             approved={review.hasApprovedBy ? 'yes' : 'no'} · published=
             {review.hasPublishedBy ? 'yes' : 'no'}
           </dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Rights</dt>
+          <dt className="text-zinc-500">Hak durumu</dt>
           <dd className="font-medium">
             {review.rightsStatus || 'PENDING'} / {review.rightsBasis || 'UNKNOWN'}
           </dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Editorial blocker</dt>
+          <dt className="text-zinc-500">Editöryel engel</dt>
           <dd className="font-medium text-amber-800">{review.editorialBlocker || 'none'}</dd>
         </div>
         <div className="md:col-span-2">
@@ -393,7 +401,7 @@ function PilotCard({
           </dd>
         </div>
         <div className="md:col-span-2">
-          <dt className="text-zinc-500">Publish gate blockers</dt>
+          <dt className="text-zinc-500">Yayın kapısı engelleri</dt>
           <dd className="font-mono text-xs text-zinc-700">
             {review.gate.blockers.length ? review.gate.blockers.join(', ') : 'none (still no auto-publish)'}
           </dd>
@@ -405,17 +413,16 @@ function PilotCard({
           overlap ? riskTone(overlap.risk) : 'border-zinc-200 bg-zinc-50 text-zinc-700'
         }`}
       >
-        <p className="font-semibold">Source-overlap audit (non-AI, evidence only)</p>
+        <p className="font-semibold">Neden inceleme gerekiyor? (AI yok — kanıt)</p>
         <p className="mt-1 text-xs opacity-80">
-          Similarity risk ≠ DB editorial blocker. Final weighted score drives risk; max shared run is
-          EVIDENCE_ONLY.
+          Benzerlik skoru kanıttır; kesin telif ihlali değildir. DB engeli ayrıdır.
         </p>
         {overlapLoading && <p className="mt-1 text-xs">Kaynak karşılaştırılıyor…</p>}
         {overlapError && <p className="mt-1 text-xs text-red-700">{overlapError}</p>}
         {overlap && (
           <dl className="mt-2 grid gap-1 md:grid-cols-2">
             <div>
-              <dt className="text-xs opacity-70">SOURCE SIMILARITY · Risk</dt>
+              <dt className="text-xs opacity-70">Risk</dt>
               <dd className="font-mono font-semibold">
                 {overlap.risk === 'HIGH_SOURCE_OVERLAP'
                   ? 'HIGH'
@@ -427,11 +434,11 @@ function PilotCard({
               </dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">Final similarity</dt>
+              <dt className="text-xs opacity-70">Kaynak metinle benzerlik</dt>
               <dd className="font-mono font-semibold">{pct(overlap.similarity)}</dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">Longest matching section</dt>
+              <dt className="text-xs opacity-70">En uzun eşleşen bölüm</dt>
               <dd className="font-mono">
                 {overlap.maxSharedContiguousRun != null
                   ? `${overlap.maxSharedContiguousRun} tokens`
@@ -439,23 +446,23 @@ function PilotCard({
               </dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">Recommendation</dt>
+              <dt className="text-xs opacity-70">Öneri</dt>
               <dd className="font-semibold">
                 {overlap.risk === 'HIGH_SOURCE_OVERLAP'
-                  ? 'REWRITE REQUIRED'
+                  ? 'Yeniden yazılması önerilir'
                   : overlap.risk === 'MEDIUM_OVERLAP'
-                    ? 'REVIEW CAREFULLY'
-                    : 'HUMAN REVIEW'}
+                    ? 'Dikkatli inceleyin'
+                    : 'İnsan incelemesi'}
               </dd>
             </div>
             <div>
-              <dt className="text-xs opacity-70">DB editorial blocker</dt>
+              <dt className="text-xs opacity-70">DB editöryel engel</dt>
               <dd className="font-mono font-semibold">{review.editorialBlocker || 'None'}</dd>
             </div>
             <div className="md:col-span-2">
               <details className="mt-1">
                 <summary className="cursor-pointer text-xs font-medium underline">
-                  Teknik detayları göster
+                  Teknik Ayrıntılar
                 </summary>
                 <dl className="mt-2 grid gap-1 md:grid-cols-2">
                   <div>
@@ -488,7 +495,7 @@ function PilotCard({
 
       <div className="flex flex-col gap-3 md:flex-row md:items-end">
         <label className="flex flex-1 flex-col gap-1 text-sm">
-          <span className="text-zinc-600">Rights status</span>
+          <span className="text-zinc-600">Hak durumu</span>
           <select
             className="rounded border border-zinc-300 px-3 py-2"
             value={status}
@@ -503,14 +510,14 @@ function PilotCard({
           >
             {review.availableActions.map((a) => (
               <option key={a} value={a} disabled={a === 'CLEARED' && clearDisabled}>
-                {a}
-                {a === 'CLEARED' && clearDisabled ? ' (blocked)' : ''}
+                {RIGHTS_STATUS_TR[a] || a}
+                {a === 'CLEARED' && clearDisabled ? ' (engel var)' : ''}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1 text-sm">
-          <span className="text-zinc-600">Rights basis</span>
+          <span className="text-zinc-600">Hak dayanağı</span>
           <select
             className="rounded border border-zinc-300 px-3 py-2"
             value={status === 'PENDING' ? 'UNKNOWN' : basis}
@@ -573,7 +580,7 @@ function PilotCard({
       )}
       {clearDisabled && (
         <p className="mt-2 text-xs text-amber-800">
-          Editorial blocker aktif — CLEAR ile yayın kapısı açılamaz. Yeniden yazım gerekir.
+          Editöryel engel aktif — CLEAR ile yayın kapısı açılamaz. Yeniden yazım gerekir.
         </p>
       )}
       {!canPublish && review.status === 'draft' && !deferPublish && (
@@ -593,7 +600,7 @@ function PilotCard({
 export default function CanonicalDraftRightsPage() {
   const { user, loading } = useAuth()
   const [tick, setTick] = useState(0)
-  const [filter, setFilter] = useState<QueueFilter>('cohort1')
+  const [filter, setFiltre] = useState<QueueFiltre>('cohort1')
   const [queueIds, setQueueIds] = useState<string[]>([])
   const [progress, setProgress] = useState<BatchRightsProgress | null>(null)
   const [sortStatus, setSortStatus] = useState<string | null>(null)
@@ -602,6 +609,72 @@ export default function CanonicalDraftRightsPage() {
   const [finalizeBusy, setFinalizeBusy] = useState(false)
   const [finalizeMsg, setFinalizeMsg] = useState<string | null>(null)
   const [finalizeErr, setFinalizeErr] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null)
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function runBulk(status: 'REWRITE_REQUIRED' | 'DO_NOT_PUBLISH' | 'PENDING') {
+    const ids = [...selected]
+    if (!ids.length || bulkBusy) return
+    const label =
+      status === 'REWRITE_REQUIRED'
+        ? 'Yeniden Yazılacak'
+        : status === 'DO_NOT_PUBLISH'
+          ? 'Yayınlanmayacak'
+          : 'İnceleme Bekleyen'
+    const ok = window.confirm(
+      [
+        RIGHTS_PAGE.bulkConfirmTitle,
+        '',
+        `${ids.length} haber seçildi.`,
+        `Bu işlem ${ids.length} haberi “${label}” olarak işaretleyecek.`,
+        'Hiçbir haber yayınlanmayacak.',
+        RIGHTS_PAGE.noBulkPublish,
+        '',
+        'Devam?',
+      ].join('\n')
+    )
+    if (!ok) return
+    setBulkBusy(true)
+    setBulkMsg(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/canonical-news/rights-bulk', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ids,
+          status,
+          basis:
+            status === 'PENDING'
+              ? 'UNKNOWN'
+              : 'EDITORIALLY_TRANSFORMED_WITH_ATTRIBUTION',
+          editorialBlocker: status === 'REWRITE_REQUIRED' ? 'HIGH_SOURCE_OVERLAP' : undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Toplu işlem başarısız')
+      const s = data.summary || {}
+      setBulkMsg(
+        `Başarılı: ${s.success ?? 0} · Atlandı: ${s.skipped ?? 0} · Başarısız: ${s.failed ?? 0} · Yayın: 0`
+      )
+      setSelected(new Set())
+      setTick((t) => t + 1)
+    } catch (e) {
+      setBulkMsg(e instanceof Error ? e.message : 'Toplu işlem hatası')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!user) return
@@ -720,7 +793,7 @@ export default function CanonicalDraftRightsPage() {
 
   const progressLine = useMemo(() => {
     if (!progress) return null
-    return `Total: ${progress.total} · Pending: ${progress.pending} · Cleared: ${progress.cleared} · Rewrite required: ${progress.rewriteRequired} · Do not publish: ${progress.doNotPublish} · Published: ${progress.published}`
+    return `Toplam: ${progress.total} · İnceleme bekleyen: ${progress.pending} · İncelendi: ${progress.cleared} · Yeniden yazılacak: ${progress.rewriteRequired} · Yayınlanmayacak: ${progress.doNotPublish} · Yayında: ${progress.published}`
   }, [progress])
 
   if (loading) {
@@ -747,23 +820,22 @@ export default function CanonicalDraftRightsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
       <header>
-        <h1 className="text-2xl font-semibold text-zinc-900">Canonical draft rights review</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">Yayın Hakları</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          P18.4E.4 — human rights decision session. Auto-clear / auto-publish / AI yok. Cohort #1
-          yayın kapalı.
+          Bu alan, kaynaklardan alınan içeriklerin NaHaber'de yayınlanmadan önce kaynak kullanımı ve metin benzerliği açısından kontrol edilmesini sağlar. Otomatik yayın / AI yok.
         </p>
         <p className="mt-1 font-mono text-xs text-zinc-500">/admin/canonical-drafts/rights</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
-            <span className="text-zinc-600">Filter</span>
+            <span className="text-zinc-600">Filtre</span>
             <select
               className="rounded border border-zinc-300 px-2 py-1"
               value={filter}
-              onChange={(e) => setFilter(e.target.value as QueueFilter)}
+              onChange={(e) => setFiltre(e.target.value as QueueFiltre)}
             >
               <option value="cohort1">Cohort #1 · {P18_4E_COHORT1_BATCH_ID}</option>
-              <option value="all">All (pilots + cohort)</option>
+              <option value="all">Tümü</option>
             </select>
           </label>
           {filter === 'cohort1' && (
@@ -775,7 +847,7 @@ export default function CanonicalDraftRightsPage() {
             >
               {finalizeBusy
                 ? 'Finalize çalışıyor…'
-                : 'Finalize Cohort #1 → REWRITE_REQUIRED (no publish)'}
+                : 'Kohort #1 → Yeniden Yazılacak (yayın yok)'}
             </button>
           )}
         </div>
@@ -798,9 +870,54 @@ export default function CanonicalDraftRightsPage() {
         )}
       </header>
 
+      {queueIds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded border border-zinc-200 bg-white p-3 text-sm">
+          <button
+            type="button"
+            className="rounded border px-2 py-1"
+            onClick={() => setSelected(new Set(queueIds))}
+          >
+            Sayfadakileri seç ({queueIds.length})
+          </button>
+          <button
+            type="button"
+            className="rounded border px-2 py-1"
+            onClick={() => setSelected(new Set())}
+          >
+            Seçimi temizle
+          </button>
+          <span className="text-zinc-600">{selected.size} seçili</span>
+          <button
+            type="button"
+            disabled={!selected.size || bulkBusy}
+            className="rounded bg-amber-700 px-2 py-1 text-white disabled:opacity-50"
+            onClick={() => void runBulk('REWRITE_REQUIRED')}
+          >
+            Seçilenleri Yeniden Yazılacak
+          </button>
+          <button
+            type="button"
+            disabled={!selected.size || bulkBusy}
+            className="rounded bg-red-800 px-2 py-1 text-white disabled:opacity-50"
+            onClick={() => void runBulk('DO_NOT_PUBLISH')}
+          >
+            Seçilenleri Yayınlanmayacak
+          </button>
+          <button
+            type="button"
+            disabled={!selected.size || bulkBusy}
+            className="rounded bg-zinc-700 px-2 py-1 text-white disabled:opacity-50"
+            onClick={() => void runBulk('PENDING')}
+          >
+            Seçilenleri İnceleme Bekleyen
+          </button>
+          {bulkMsg && <p className="w-full text-xs text-zinc-700">{bulkMsg}</p>}
+        </div>
+      )}
+
       {queueIds.length === 0 && !queueError && (
         <div className="flex items-center gap-2 text-sm text-zinc-600">
-          <Loader2 className="h-4 w-4 animate-spin" /> Kuyruk yükleniyor…
+          <Loader2 className="h-4 w-4 animate-spin" /> {RIGHTS_PAGE.loading}
         </div>
       )}
 
@@ -809,6 +926,8 @@ export default function CanonicalDraftRightsPage() {
           key={`${id}-${tick}-${filter}`}
           id={id}
           deferPublish={filter === 'cohort1'}
+          selected={selected.has(id)}
+          onToggleSelect={toggleSelect}
           onSaved={() => setTick((t) => t + 1)}
         />
       ))}
