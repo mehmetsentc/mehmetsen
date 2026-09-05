@@ -36,8 +36,19 @@ describe('EULA consent hang repair', () => {
     expect(src).toContain('verifyFirebaseIdToken')
     expect(src).toContain('accepted:')
     expect(src).toContain('termsAcceptedAt')
+    expect(src).toContain('alreadyAccepted')
+    expect(src).toContain('Preserve original legitimate acceptance')
     expect(src).not.toMatch(/idToken|password|Authorization|email/)
     expect(src).toContain("merge: true")
+  })
+
+  it('preserves existing termsAcceptedAt and skips client mirror when alreadyAccepted', () => {
+    const api = readFileSync(join(process.cwd(), 'src/app/api/user/accept-terms/route.ts'), 'utf8')
+    const auth = readFileSync(join(process.cwd(), 'src/components/auth/AuthProvider.tsx'), 'utf8')
+    expect(api).toContain('if (existing)')
+    expect(api).toContain('alreadyAccepted: true')
+    expect(auth).toContain('if (!body.alreadyAccepted)')
+    expect(auth).toContain('body.termsAcceptedAt')
   })
 
   it('does not change Feed Reader files', () => {

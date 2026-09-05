@@ -375,19 +375,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(`accept-terms failed (${res.status})`)
     }
 
-    // Optimistic local close — needsEula becomes false and modal unmounts.
-    setUser((prev) => (prev ? { ...prev, termsAcceptedAt: now } : null))
+    const body = (await res.json().catch(() => ({}))) as {
+      alreadyAccepted?: boolean
+      termsAcceptedAt?: string | null
+    }
+    const acceptedAt =
+      typeof body.termsAcceptedAt === 'string' && body.termsAcceptedAt
+        ? body.termsAcceptedAt
+        : now
 
-    // Best-effort client mirror (non-blocking; must not gate UI).
-    void withTimeout(
-      updateDoc(doc(db, Collections.USERS, current.uid), {
-        termsAcceptedAt: serverTimestamp(),
-      }),
-      8_000,
-      'client-acceptTerms'
-    ).catch(() => {
-      // Non-fatal — server already recorded acceptance.
-    })
+    // Optimistic local close — needsEula becomes false and modal unmounts.
+    // Prefer server timestamp (preserves original acceptance when alreadyAccepted).
+    setUser((prev) => (prev ? { ...prev, termsAcceptedAt: acceptedAt } : null))
+
+    // Best-effort client mirror only for first-time acceptance (non-blocking).
+    if (!body.alreadyAccepted) {
+      void withTimeout(
+        updateDoc(doc(db, Collections.USERS, current.uid), {
+          termsAcceptedAt: serverTimestamp(),
+        }),
+        8_000,
+        'client-acceptTerms'
+      ).catch(() => {
+        // Non-fatal — server already recorded acceptance.
+      })
+    }
   }
 
   return (

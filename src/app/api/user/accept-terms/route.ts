@@ -43,10 +43,28 @@ export async function POST(request: Request) {
   const auth = await verifyFirebaseIdToken(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await getAdminFirestore().collection(Collections.USERS).doc(auth.uid).set(
-    { termsAcceptedAt: FieldValue.serverTimestamp() },
-    { merge: true }
-  )
+  const ref = getAdminFirestore().collection(Collections.USERS).doc(auth.uid)
+  const snap = await ref.get()
+  const existing = termsToIso(snap.exists ? snap.data()?.termsAcceptedAt : null)
 
-  return NextResponse.json({ ok: true })
+  // Preserve original legitimate acceptance evidence — do not refresh timestamp.
+  if (existing) {
+    return NextResponse.json({
+      ok: true,
+      alreadyAccepted: true,
+      termsAcceptedAt: existing,
+    })
+  }
+
+  await ref.set({ termsAcceptedAt: FieldValue.serverTimestamp() }, { merge: true })
+
+  const after = await ref.get()
+  const termsAcceptedAt =
+    termsToIso(after.exists ? after.data()?.termsAcceptedAt : null) ?? new Date().toISOString()
+
+  return NextResponse.json({
+    ok: true,
+    alreadyAccepted: false,
+    termsAcceptedAt,
+  })
 }
