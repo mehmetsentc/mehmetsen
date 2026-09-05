@@ -72,13 +72,36 @@ export class FeedInterestAggregator {
         const key = ev.targetId.toLowerCase()
         interestScores.set(key, (interestScores.get(key) ?? 0) + delta)
       } else if (ev.targetType === 'article' && ev.targetId) {
-        const meta = ev.metadata as { category?: string; publisherId?: string } | null
+        const meta = ev.metadata as {
+          category?: string
+          publisherId?: string
+          tags?: string[] | string
+        } | null
         if (meta?.category) {
           const key = meta.category.toLowerCase()
           interestScores.set(key, (interestScores.get(key) ?? 0) + delta * 0.6)
         }
         if (meta?.publisherId) {
           publisherScores.set(meta.publisherId, (publisherScores.get(meta.publisherId) ?? 0) + delta * 0.8)
+        }
+        // Always-on tag affinity: credit existing article tags with bounded multi-tag share.
+        const rawTags = Array.isArray(meta?.tags)
+          ? meta!.tags!
+          : typeof meta?.tags === 'string'
+            ? meta.tags.split(/[,;]+/)
+            : []
+        const tags = [
+          ...new Set(
+            rawTags
+              .map((t) => (typeof t === 'string' ? t.trim().toLocaleLowerCase('tr-TR') : ''))
+              .filter(Boolean)
+          ),
+        ].slice(0, 8)
+        if (tags.length) {
+          const perTag = (delta * 0.7) / Math.sqrt(tags.length)
+          for (const tag of tags) {
+            interestScores.set(tag, (interestScores.get(tag) ?? 0) + perTag)
+          }
         }
       } else if (ev.targetType === 'publisher' && ev.targetId) {
         publisherScores.set(ev.targetId, (publisherScores.get(ev.targetId) ?? 0) + delta)

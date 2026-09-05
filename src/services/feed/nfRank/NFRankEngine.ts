@@ -17,14 +17,19 @@ import {
   nfRankArchiveRediscoveryScore,
   nfRankFreshnessScore,
 } from '@/lib/feed/nfRankConfig'
+import { normalizeTag } from '@/lib/tags'
 import { feedUserContextService } from '../FeedUserContextService'
 
 /** Bounded session intent — does NOT permanently mutate long-term profile. */
 export interface NfSessionIntent {
   categoryBoosts: Map<string, number>
   publisherBoosts: Map<string, number>
+  /** Decayed session tag boosts (normalized tag keys). */
+  tagBoosts: Map<string, number>
   /** Count of quick skips per category in recent session window. */
   categoryQuickSkips: Map<string, number>
+  /** Bounded quick-skip counts per tag (not permanent). */
+  tagQuickSkips: Map<string, number>
   /** Explicit negative targets (article/publisher/category) from session. */
   explicitNegatives: Array<{ targetType: string; targetId: string }>
 }
@@ -52,6 +57,11 @@ export interface NfRankComponents {
   clusterRepeatPenalty: number
   publisherSaturationPenalty: number
   categorySaturationPenalty: number
+  /** Tag affinity contribution used in topicAffinity (0..1). */
+  tagAffinityContribution: number
+  matchedTagCount: number
+  sessionTagContribution: number
+  longTermTagContribution: number
   baseScore: number
   finalScore: number
 }
@@ -73,8 +83,78 @@ export function emptySessionIntent(): NfSessionIntent {
   return {
     categoryBoosts: new Map(),
     publisherBoosts: new Map(),
+    tagBoosts: new Map(),
     categoryQuickSkips: new Map(),
+    tagQuickSkips: new Map(),
     explicitNegatives: [],
+  }
+}
+
+/** Normalize existing article tags — never invent. Multi-tag credit is bounded later. */
+export function normalizeCandidateTags(raw: string[] | null | undefined): string[] {
+  if (!raw?.length) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const t of raw) {
+    const stripped = typeof t === 'string' ? t.trim().replace(/^#+\s*/, '') : ''
+    if (!stripped) continue
+    // ASCII acronyms (AI, iPhone) must not fragment via tr-TR İ/I folding.
+    const n =
+      /^[A-Za-z0-9 _-]+$/.test(stripped)
+        ? stripped.toLowerCase().replace(/\s+/g, '-')
+        : normalizeTag(stripped)
+    if (!n || seen.has(n)) continue
+    seen.add(n)
+    out.push(n)
+    if (out.length >= 8) break
+  }
+  return out
+}
+
+/**
+ * Tag affinity from long-term interests + faster-decaying session tag intent.
+ * Multi-tag articles: mean of matched scores (bounded) — cannot multiply without bounds.
+ */
+export function computeTagAffinityFeatures(
+  tags: string[],
+  ctx: FeedUserContext,
+  session: NfSessionIntent
+): {
+  tagAffinityContribution: number
+  matchedTagCount: number
+  sessionTagContribution: number
+  longTermTagContribution: number
+} {
+  if (!tags.length) {
+    return {
+      tagAffinityContribution: 0,
+      matchedTagCount: 0,
+      sessionTagContribution: 0,
+      longTermTagContribution: 0,
+    }
+  }
+  let longSum = 0
+  let sessionSum = 0
+  let matched = 0
+  for (const tag of tags) {
+    const long = feedUserContextService.interestScore(ctx, tag)
+    const sess = session.tagBoosts.get(tag) ?? 0
+    const skip = session.tagQuickSkips.get(tag) ?? 0
+    // One skip must not permanently destroy — tiny temporary dampen only.
+    const skipDamp = skip <= 0 ? 1 : skip === 1 ? 0.92 : Math.max(0.55, 1 - skip * 0.12)
+    if (long > 0 || sess > 0) matched += 1
+    longSum += long
+    sessionSum += sess * skipDamp
+  }
+  // Bound multi-tag inflation: average, not sum.
+  const longTermTagContribution = clamp01(longSum / tags.length)
+  const sessionTagContribution = clamp01(sessionSum / tags.length)
+  const tagAffinityContribution = clamp01(longTermTagContribution * 0.65 + sessionTagContribution * 0.35)
+  return {
+    tagAffinityContribution,
+    matchedTagCount: matched,
+    sessionTagContribution,
+    longTermTagContribution,
   }
 }
 
@@ -88,19 +168,24 @@ export function buildSessionIntentFromEvents(
     category?: string | null
     publisherId?: string | null
     articleId?: string | null
+    tags?: string[] | null
     dwellMs?: number
     ageMinutes?: number
   }>
 ): NfSessionIntent {
   const intent = emptySessionIntent()
   for (const ev of events) {
-    const decay = Math.pow(0.5, (ev.ageMinutes ?? 0) / 20) // ~20 min half-life
+    const decay = Math.pow(0.5, (ev.ageMinutes ?? 0) / 20) // ~20 min half-life (session faster than long-term)
     const cat = ev.category?.trim().toLowerCase()
     const pub = ev.publisherId?.trim()
+    const tags = normalizeCandidateTags(ev.tags)
 
     if (ev.eventType === 'quick_skip' || ev.eventType === 'VERY_FAST_SWIPE') {
       if (cat) {
         intent.categoryQuickSkips.set(cat, (intent.categoryQuickSkips.get(cat) ?? 0) + 1)
+      }
+      for (const tag of tags) {
+        intent.tagQuickSkips.set(tag, (intent.tagQuickSkips.get(tag) ?? 0) + 1)
       }
       continue
     }
@@ -121,7 +206,7 @@ export function buildSessionIntentFromEvents(
       continue
     }
 
-    // Emotional reactions must NOT boost topic affinity (Task 11).
+    // Emotional reactions must NOT boost topic/tag affinity.
     if (
       ev.eventType === 'reaction_sad' ||
       ev.eventType === 'reaction_angry' ||
@@ -161,6 +246,13 @@ export function buildSessionIntentFromEvents(
     if (delta <= 0) continue
     if (cat) intent.categoryBoosts.set(cat, Math.min(1, (intent.categoryBoosts.get(cat) ?? 0) + delta))
     if (pub) intent.publisherBoosts.set(pub, Math.min(1, (intent.publisherBoosts.get(pub) ?? 0) + delta))
+    // Multi-tag: share credit across tags (bounded).
+    if (tags.length) {
+      const perTag = delta / Math.sqrt(tags.length)
+      for (const tag of tags) {
+        intent.tagBoosts.set(tag, Math.min(1, (intent.tagBoosts.get(tag) ?? 0) + perTag))
+      }
+    }
   }
   return intent
 }
@@ -238,12 +330,16 @@ export class NFRankEngine {
       ? clamp01(feedUserContextService.publisherAffinity(ctx, row.publisherId))
       : 0
     const categoryAffinity = clamp01(feedUserContextService.interestScore(ctx, row.category))
-    const topicAffinity = categoryAffinity // topic taxonomy not separately available — reuse category
+    const tags = normalizeCandidateTags(row.tags)
+    const tagFeat = computeTagAffinityFeatures(tags, ctx, session)
+    // topicAffinity = tag affinity only (never invent tags; empty tags → 0).
+    const topicAffinity = tagFeat.tagAffinityContribution
 
     // Intent proxies from long-term + session (not emotion reactions).
     const sessionCat = cat ? session.categoryBoosts.get(cat) ?? 0 : 0
     const sessionPub = row.publisherId ? session.publisherBoosts.get(row.publisherId) ?? 0 : 0
-    const sessionIntent = clamp01(sessionCat * 0.6 + sessionPub * 0.4)
+    const sessionTag = tagFeat.sessionTagContribution
+    const sessionIntent = clamp01(sessionCat * 0.5 + sessionPub * 0.3 + sessionTag * 0.2)
 
     const dwellIntent = clamp01(sessionCat * 0.5 + (row.source === 'RECENT' ? 0.05 : 0))
     const readIntent = clamp01(sessionCat * 0.4 + categoryAffinity * 0.3)
@@ -259,11 +355,12 @@ export class NFRankEngine {
         10
     )
     const discovery = sources.includes('DISCOVERY') ? 0.85 : 0.12
+    const archiveAffinity = Math.max(categoryAffinity, topicAffinity)
     const archiveRediscovery = nfRankArchiveRediscoveryScore({
       publishedAt: row.publishedAt,
       category: row.category,
       breaking: row.breaking,
-      categoryAffinity,
+      categoryAffinity: archiveAffinity,
       publisherAffinity,
       quality,
       nowMs,
@@ -339,6 +436,10 @@ export class NFRankEngine {
       clusterRepeatPenalty: 0,
       publisherSaturationPenalty: 0,
       categorySaturationPenalty: 0,
+      tagAffinityContribution: tagFeat.tagAffinityContribution,
+      matchedTagCount: tagFeat.matchedTagCount,
+      sessionTagContribution: tagFeat.sessionTagContribution,
+      longTermTagContribution: tagFeat.longTermTagContribution,
       baseScore,
       finalScore: baseScore,
     }
@@ -347,7 +448,7 @@ export class NFRankEngine {
     const breakdown: FeedScoreBreakdown = {
       following: followIntent,
       freshness,
-      interest: clamp01(categoryAffinity * 0.7 + sessionIntent * 0.3),
+      interest: clamp01(categoryAffinity * 0.5 + topicAffinity * 0.3 + sessionIntent * 0.2),
       local: localRelevance,
       editorial: editorialImportance,
       quality,
@@ -365,7 +466,7 @@ export class NFRankEngine {
     else if (row.breaking && editorialImportance > 0.5) reason = 'BREAKING_URGENT'
     else if (followIntent > 0.5) reason = 'FOLLOWING_FRESH'
     else if (localRelevance > 0.5) reason = 'LOCAL_RELEVANT'
-    else if (categoryAffinity > 0.45) reason = 'INTEREST_MATCH'
+    else if (categoryAffinity > 0.45 || topicAffinity > 0.45) reason = 'INTEREST_MATCH'
     else if (sources.includes('DISCOVERY')) reason = 'DISCOVERY'
     else if (sources.includes('POPULAR')) reason = 'POPULAR'
     else if (editorialImportance > 0.55) reason = 'EDITORIAL_PRIORITY'

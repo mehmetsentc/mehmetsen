@@ -152,6 +152,7 @@ function mapRows(
     isFeatured?: boolean
     isEditorPick?: boolean
     slug: string
+    tags?: string[] | null
     sortScore?: number
   }>,
   source: FeedCandidateSource,
@@ -209,6 +210,9 @@ function mapRows(
       sharesCount: row.sharesCount ?? 0,
       viewsCount: row.viewsCount ?? 0,
       slug: row.slug || row.articleId,
+      tags: Array.isArray(row.tags)
+        ? row.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+        : undefined,
       source,
       sortScore: row.sortScore ?? row.publishedAt.getTime(),
     })
@@ -252,6 +256,7 @@ function baseSelect() {
     isFeatured: news.isFeatured,
     isEditorPick: news.isEditorPick,
     slug: news.slug,
+    tags: news.tags,
   }
 }
 
@@ -335,6 +340,11 @@ export class FeedCandidateService {
       slug: data.slug || docId,
       source,
       sortScore: pubDate.getTime(),
+      tags: Array.isArray(data.tags)
+        ? data.tags.filter((t: unknown): t is string => typeof t === 'string' && t.trim().length > 0)
+        : typeof data.tags === 'string' && data.tags.trim()
+          ? data.tags.split(/[,;]+/).map((t: string) => t.trim()).filter(Boolean)
+          : undefined,
     }
   }
 

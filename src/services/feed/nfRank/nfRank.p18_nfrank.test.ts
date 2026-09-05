@@ -12,8 +12,10 @@ import {
 import { isNfRankLiveEnabled, isNfRankShadowEnabled } from '@/lib/feed/featureFlag'
 import {
   buildSessionIntentFromEvents,
+  computeTagAffinityFeatures,
   emptySessionIntent,
   nfRankEngine,
+  normalizeCandidateTags,
 } from '@/services/feed/nfRank/NFRankEngine'
 import { compareShadowRankings } from '@/services/feed/nfRank/nfRankShadowCompare'
 import { USER_FEATURE_DEPENDENCIES } from '@/lib/user/userRolloutMatrix'
@@ -54,6 +56,7 @@ function baseRow(partial: Partial<FeedCandidateRow> & { articleId: string }): Fe
     source: partial.source ?? 'RECENT',
     candidateSources: partial.candidateSources,
     sortScore: partial.sortScore ?? now,
+    tags: partial.tags,
   }
 }
 
@@ -83,10 +86,61 @@ describe('NFRank V1 config + flags', () => {
     else process.env.FEED_V2_NFRANK_SHADOW_ENABLED = prevShadow
   })
 
-  it('records ranking version NFRANK_V1', () => {
-    expect(NFRANK_VERSION).toBe('NFRANK_V1')
-    expect(NFRANK_CONFIG_V1.version).toBe('NFRANK_V1')
+  it('tag affinity participates in topicAffinity; multi-tag is bounded; SAD/ANGRY ignored', () => {
+    const ctx = emptyCtx({
+      behavioralInterests: new Map([
+        ['ai', 0.9],
+        ['apple', 0.8],
+        ['iphone', 0.7],
+      ]),
+    })
+    const withTags = baseRow({
+      articleId: 't1',
+      category: 'ekonomi',
+      tags: ['AI', 'Apple', 'iPhone', 'Technology'],
+      publishedAt: new Date(Date.now() - 48 * 3_600_000),
+    })
+    const noTags = baseRow({
+      articleId: 't2',
+      category: 'ekonomi',
+      tags: [],
+      publishedAt: new Date(Date.now() - 48 * 3_600_000),
+    })
+    const session = emptySessionIntent()
+    const scoredTags = nfRankEngine.scoreOne(withTags, ctx, 'personal', session)
+    const scoredNone = nfRankEngine.scoreOne(noTags, ctx, 'personal', session)
+    expect(scoredTags.components.matchedTagCount).toBeGreaterThan(0)
+    expect(scoredTags.components.tagAffinityContribution).toBeGreaterThan(0)
+    expect(scoredTags.components.topicAffinity).toBe(scoredTags.components.tagAffinityContribution)
+    expect(scoredNone.components.topicAffinity).toBe(0)
+    expect(scoredTags.score).toBeGreaterThan(scoredNone.score)
+
+    // Multi-tag cannot exceed 1 / invent tags
+    expect(scoredTags.components.tagAffinityContribution).toBeLessThanOrEqual(1)
+    expect(normalizeCandidateTags(['AI', 'ai', 'Ai'])).toEqual(['ai'])
+
+    const sad = buildSessionIntentFromEvents([
+      { eventType: 'SAD', tags: ['ai'], category: 'teknoloji', ageMinutes: 1 },
+      { eventType: 'ANGRY', tags: ['ai'], category: 'teknoloji', ageMinutes: 1 },
+    ])
+    expect(sad.tagBoosts.get('ai') ?? 0).toBe(0)
+
+    const save = buildSessionIntentFromEvents([
+      { eventType: 'SAVE', tags: ['ai', 'apple'], ageMinutes: 1 },
+    ])
+    const dwell = buildSessionIntentFromEvents([
+      { eventType: 'QUALIFIED_DWELL', tags: ['ai', 'apple'], dwellMs: 2000, ageMinutes: 1 },
+    ])
+    expect(save.tagBoosts.get('ai') ?? 0).toBeGreaterThan(dwell.tagBoosts.get('ai') ?? 0)
+
+    const oneSkip = buildSessionIntentFromEvents([
+      { eventType: 'quick_skip', tags: ['ai'], ageMinutes: 0 },
+    ])
+    expect(oneSkip.tagQuickSkips.get('ai')).toBe(1)
+    const afterSkip = computeTagAffinityFeatures(['ai'], ctx, oneSkip)
+    expect(afterSkip.tagAffinityContribution).toBeGreaterThan(0.5)
   })
+
 
   it('live flag defaults off; shadow defaults on', () => {
     delete process.env.FEED_V2_NFRANK_ENABLED

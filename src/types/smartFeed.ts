@@ -156,6 +156,11 @@ export interface FeedCandidateRow {
   /** Multi-pool provenance (deduped). Debug/telemetry — not user-facing. */
   candidateSources?: FeedCandidateSource[]
   sortScore: number
+  /**
+   * Existing canonical article tags (normalized later in NFRank).
+   * Never invent tags — omit/empty when source has none.
+   */
+  tags?: string[]
 }
 
 export interface FeedUserContext {

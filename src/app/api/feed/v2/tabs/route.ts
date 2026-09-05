@@ -3,7 +3,7 @@ import { hasDatabaseUrl } from '@/db'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { buildFallbackFeedV2Tabs, buildFeedV2Tabs } from '@/lib/feed/feedV2Tabs'
-import { getCategoryFreshnessOrder } from '@/services/feed/feedCategoryFreshness'
+import { getFeedCategoryActivity } from '@/services/feed/feedCategoryFreshness'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,9 +20,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const ordered = await getCategoryFreshnessOrder()
+    const { order, activity } = await getFeedCategoryActivity()
     return NextResponse.json(
-      { tabs: buildFeedV2Tabs(ordered) },
+      {
+        tabs: buildFeedV2Tabs(order),
+        activity,
+        /** Cache TTL aligned with in-process freshness cache (~90s). */
+        cacheTtlSeconds: 90,
+      },
       {
         headers: {
           'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
