@@ -56,6 +56,12 @@ type Props = {
   onClose: (reason: FeedReaderCloseReason) => void
   onOpenTelemetry?: () => void
   onCloseTelemetry?: (payload: FeedReaderTelemetryPayload) => void
+  /** Optional non-telemetry body fetch debug (pilot ?readerDebug=1 only). */
+  onBodyDebug?: (state: {
+    started: boolean
+    httpStatus: number | null
+    errorCode: string | null
+  }) => void
   liked?: boolean
   saved?: boolean
   likeCount?: number
@@ -78,6 +84,7 @@ export function FeedArticleReader({
   onClose,
   onOpenTelemetry,
   onCloseTelemetry,
+  onBodyDebug,
   liked,
   saved,
   likeCount,
@@ -161,6 +168,7 @@ export function FeedArticleReader({
     const ac = new AbortController()
     abortRef.current = ac
     setFetchState('loading')
+    onBodyDebug?.({ started: true, httpStatus: null, errorCode: null })
     try {
       const token = await getClientAuthToken()
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
@@ -172,22 +180,38 @@ export function FeedArticleReader({
       if (gen !== fetchGenRef.current) return
       if (!res.ok) {
         setFetchState('error')
+        onBodyDebug?.({
+          started: true,
+          httpStatus: res.status,
+          errorCode: `http_${res.status}`,
+        })
         return
       }
       const data = (await res.json()) as { article?: FeedReaderArticleDto }
       if (gen !== fetchGenRef.current) return
       if (!data.article) {
         setFetchState('error')
+        onBodyDebug?.({
+          started: true,
+          httpStatus: res.status,
+          errorCode: 'missing_article',
+        })
         return
       }
       setDetail(data.article)
       setFetchState('ok')
+      onBodyDebug?.({ started: true, httpStatus: res.status, errorCode: null })
     } catch (e) {
       if ((e as { name?: string })?.name === 'AbortError') return
       if (gen !== fetchGenRef.current) return
       setFetchState('error')
+      onBodyDebug?.({
+        started: true,
+        httpStatus: null,
+        errorCode: 'fetch_error',
+      })
     }
-  }, [item.slug])
+  }, [item.slug, onBodyDebug])
 
   // Open / close lifecycle
   useEffect(() => {

@@ -17,5 +17,7 @@ export async function GET(request: Request) {
     enabled,
     feature: 'FEED_READER_V1',
     globalDefault: false,
+    /** Non-sensitive: whether an authenticated identity was verified (no uid). */
+    authenticated: Boolean(auth?.uid),
   })
 }

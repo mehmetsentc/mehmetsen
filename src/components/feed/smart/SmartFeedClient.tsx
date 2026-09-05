@@ -36,6 +36,13 @@ import {
   fetchFeedReaderCapability,
   isCapabilityGenerationCurrent,
 } from '@/lib/feed/reader/capabilityClient'
+import {
+  EMPTY_FEED_READER_DEBUG,
+  decideFeedReadAction,
+  isFeedReaderDebugPilot,
+  shouldShowFeedReaderDebugPanel,
+  type FeedReaderDebugSnapshot,
+} from '@/lib/feed/reader/readerDebug'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
@@ -256,27 +263,73 @@ export function SmartFeedClient({
   const readerCapabilityReadyRef = useRef(false)
   const readerCapabilityGenerationRef = useRef(0)
   const readerCapabilityAbortRef = useRef<AbortController | null>(null)
+  const capabilityErrorRef = useRef(false)
+  const [readerDebug, setReaderDebug] = useState<FeedReaderDebugSnapshot>(EMPTY_FEED_READER_DEBUG)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
+  const readerDebugQuery = searchParams.get('readerDebug') === '1'
+  const showReaderDebug = shouldShowFeedReaderDebugPanel({
+    readerDebugQuery,
+    uid: authUser?.uid,
+  })
   const socialEnabled = isSocialGraphEnabledClient()
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  const applyFeedReaderCapability = useCallback((enabled: boolean) => {
-    feedReaderEnabledRef.current = enabled
-    setFeedReaderEnabled(enabled)
-    readerCapabilityReadyRef.current = true
-    setReaderCapabilityReady(true)
+  const patchReaderDebug = useCallback((patch: Partial<FeedReaderDebugSnapshot>) => {
+    setReaderDebug((prev) => ({ ...prev, ...patch }))
   }, [])
+
+  const applyFeedReaderCapability = useCallback(
+    (
+      enabled: boolean,
+      meta?: {
+        httpStatus?: number | null
+        errorCode?: string | null
+        globalDefault?: boolean | null
+        serverAuthenticated?: boolean | null
+        clientAuthenticated?: boolean
+        error?: boolean
+      }
+    ) => {
+      feedReaderEnabledRef.current = enabled
+      setFeedReaderEnabled(enabled)
+      readerCapabilityReadyRef.current = true
+      setReaderCapabilityReady(true)
+      capabilityErrorRef.current = Boolean(meta?.error)
+      patchReaderDebug({
+        capabilityRequestFinished: true,
+        capabilityEnabled: enabled,
+        capabilityReady: true,
+        capabilityHTTPStatus: meta?.httpStatus ?? null,
+        capabilityErrorCode: meta?.errorCode ?? null,
+        globalDefault: meta?.globalDefault ?? null,
+        capabilityAuthenticated:
+          typeof meta?.serverAuthenticated === 'boolean'
+            ? meta.serverAuthenticated
+            : typeof meta?.clientAuthenticated === 'boolean'
+              ? meta.clientAuthenticated
+              : null,
+      })
+    },
+    [patchReaderDebug]
+  )
 
   /**
    * Wait for AuthProvider (incl. deferred /feed-v2 bootstrap) before settling capability.
    * Unauthenticated `enabled=false` must not stick across later Firebase hydration.
    */
   useEffect(() => {
+    patchReaderDebug({
+      authLoading,
+      authenticated: Boolean(authUser?.uid),
+      uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+    })
+
     if (authLoading) {
       readerCapabilityReadyRef.current = false
       setReaderCapabilityReady(false)
+      patchReaderDebug({ capabilityReady: false })
       return
     }
 
@@ -284,6 +337,12 @@ export function SmartFeedClient({
     const ac = new AbortController()
     readerCapabilityAbortRef.current = ac
     const generation = ++readerCapabilityGenerationRef.current
+
+    patchReaderDebug({
+      capabilityRequestStarted: true,
+      capabilityRequestFinished: false,
+      capabilityErrorCode: null,
+    })
 
     ;(async () => {
       try {
@@ -297,19 +356,36 @@ export function SmartFeedClient({
         }
         if (ac.signal.aborted) return
         if (!isCapabilityGenerationCurrent(generation, readerCapabilityGenerationRef.current)) return
-        applyFeedReaderCapability(result.enabled)
+        applyFeedReaderCapability(result.enabled, {
+          httpStatus: result.httpStatus,
+          errorCode: result.errorCode,
+          globalDefault: result.globalDefault,
+          serverAuthenticated: result.serverAuthenticated,
+          clientAuthenticated: result.authenticated,
+        })
       } catch (err) {
         if (ac.signal.aborted) return
         if (!isCapabilityGenerationCurrent(generation, readerCapabilityGenerationRef.current)) return
         if (err instanceof DOMException && err.name === 'AbortError') return
-        applyFeedReaderCapability(false)
+        applyFeedReaderCapability(false, {
+          httpStatus: null,
+          errorCode: 'fetch_error',
+          error: true,
+        })
       }
     })()
 
     return () => {
       ac.abort()
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
+
+  useEffect(() => {
+    patchReaderDebug({
+      readerItemSet: Boolean(readerItem),
+      readerOverlayMounted: Boolean(readerItem),
+    })
+  }, [readerItem, patchReaderDebug])
 
   const resolveFeedReaderEnabledForOpen = useCallback(async (): Promise<boolean> => {
     if (readerCapabilityReadyRef.current) return feedReaderEnabledRef.current
@@ -318,22 +394,29 @@ export function SmartFeedClient({
       return false
     }
     try {
+      patchReaderDebug({ capabilityRequestStarted: true })
       let result = await fetchFeedReaderCapability()
       if (authUser?.uid && !result.authenticated) {
         result = await fetchFeedReaderCapability({ forceAuthRefresh: true })
       }
       // Do not clobber a newer effect settle; only fill if still pending.
       if (!readerCapabilityReadyRef.current) {
-        applyFeedReaderCapability(result.enabled)
+        applyFeedReaderCapability(result.enabled, {
+          httpStatus: result.httpStatus,
+          errorCode: result.errorCode,
+          globalDefault: result.globalDefault,
+          serverAuthenticated: result.serverAuthenticated,
+          clientAuthenticated: result.authenticated,
+        })
       }
       return feedReaderEnabledRef.current
     } catch {
       if (!readerCapabilityReadyRef.current) {
-        applyFeedReaderCapability(false)
+        applyFeedReaderCapability(false, { errorCode: 'fetch_error', error: true })
       }
       return feedReaderEnabledRef.current
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
@@ -1331,9 +1414,13 @@ export function SmartFeedClient({
   const openReader = useCallback((item: FeedItemDto, index: number) => {
     // Keep Feed mounted — no restore snapshot needed for overlay path.
     setReaderItem({ item, index })
-  }, [])
+    patchReaderDebug({
+      readerItemSet: true,
+      readerOverlayMounted: true,
+    })
+  }, [patchReaderDebug])
 
-  const onRead = (item: FeedItemDto, index: number) => {
+  const onRead = (item: FeedItemDto, index: number, action: 'button' | 'gesture' = 'button') => {
     void (async () => {
       // Durable consumed: guest localStorage + server article_opened (not qualified impression).
       const guestSeen = readGuestSeen()
@@ -1341,6 +1428,25 @@ export function SmartFeedClient({
       writeGuestSeen(guestSeen)
 
       const enabled = await resolveFeedReaderEnabledForOpen()
+      const decided = decideFeedReadAction({
+        authLoading,
+        capabilityReady: readerCapabilityReadyRef.current,
+        capabilityEnabled: enabled,
+        capabilityError: capabilityErrorRef.current,
+      })
+
+      patchReaderDebug({
+        lastReadAction: action,
+        lastReadArticleSlug: item.slug,
+        lastReadDecision: decided.decision,
+        lastFallbackReason: decided.fallbackReason,
+        capabilityEnabled: enabled,
+        capabilityReady: readerCapabilityReadyRef.current,
+        authLoading,
+        authenticated: Boolean(authUser?.uid),
+        uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+      })
+
       void postTelemetry({
         events: [
           {
@@ -1358,15 +1464,15 @@ export function SmartFeedClient({
         ],
       })
 
-      if (enabled) {
+      if (decided.decision === 'OPEN_READER') {
         openReader(item, index)
         return
       }
 
       // Capability still pending (auth hydrating) — do not fall back to /haber yet.
-      if (authLoading || !readerCapabilityReadyRef.current) return
+      if (decided.decision === 'PENDING') return
 
-      // Legacy path: navigate to canonical article page (non-pilot / guest).
+      // Legacy path: navigate to canonical article page (non-pilot / guest / settled disabled).
       saveFeedRestore({
         mode,
         articleId: item.articleId,
@@ -1676,14 +1782,14 @@ export function SmartFeedClient({
                   onReact={(r) => void applyReaction(item, r)}
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
-                  onReadClick={() => onRead(item, index)}
+                  onReadClick={() => onRead(item, index, 'button')}
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
                     feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
                       ? (g) => {
                           dispatchFeedOpenGesture({
                             ...g,
-                            onOpen: () => onRead(item, index),
+                            onOpen: () => onRead(item, index, 'gesture'),
                           })
                         }
                       : undefined
@@ -1759,10 +1865,28 @@ export function SmartFeedClient({
             onClose={() => {
               const idx = readerItem.index
               setReaderItem(null)
+              patchReaderDebug({
+                readerItemSet: false,
+                readerOverlayMounted: false,
+                readerBodyRequestStarted: false,
+                readerBodyHTTPStatus: null,
+                readerBodyErrorCode: null,
+              })
               // Stay on same card index — Feed never unmounted.
               requestAnimationFrame(() => scrollToIndex(idx))
             }}
             onCloseTelemetry={onReaderCloseTelemetry}
+            onBodyDebug={
+              showReaderDebug
+                ? (body) => {
+                    patchReaderDebug({
+                      readerBodyRequestStarted: body.started,
+                      readerBodyHTTPStatus: body.httpStatus,
+                      readerBodyErrorCode: body.errorCode,
+                    })
+                  }
+                : undefined
+            }
             liked={social[readerItem.item.articleId]?.liked ?? readerItem.item.socialState?.liked ?? false}
             saved={social[readerItem.item.articleId]?.saved ?? readerItem.item.socialState?.saved ?? false}
             likeCount={
@@ -1781,6 +1905,16 @@ export function SmartFeedClient({
             onCommentClick={() => setCommentArticleId(readerItem.item.articleId)}
             onLockFeedScroll={setFeedScrollLocked}
           />
+        ) : null}
+
+        {showReaderDebug ? (
+          <aside
+            data-testid="feed-reader-debug-panel"
+            className="pointer-events-none fixed bottom-3 left-3 z-[80] max-h-[42vh] max-w-[min(92vw,22rem)] overflow-auto rounded-md border border-emerald-500/40 bg-black/85 p-2 font-mono text-[10px] leading-snug text-emerald-200 shadow-lg"
+          >
+            <div className="mb-1 font-bold text-emerald-300">readerDebug (pilot-only · no secrets)</div>
+            <pre className="whitespace-pre-wrap break-all">{JSON.stringify(readerDebug, null, 0)}</pre>
+          </aside>
         ) : null}
 
         <LocalLocationSetupSheet

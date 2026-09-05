@@ -52,7 +52,9 @@ describe('Feed Reader capability hydration', () => {
     }) as unknown as typeof fetch
 
     const result = await fetchFeedReaderCapability()
-    expect(result).toEqual({ enabled: true, authenticated: true })
+    expect(result.enabled).toBe(true)
+    expect(result.authenticated).toBe(true)
+    expect(result.httpStatus).toBe(200)
   })
 
   it('unauthenticated request returns API enabled=false without inventing true', async () => {
@@ -65,7 +67,9 @@ describe('Feed Reader capability hydration', () => {
     }) as unknown as typeof fetch
 
     const result = await fetchFeedReaderCapability()
-    expect(result).toEqual({ enabled: false, authenticated: false })
+    expect(result.enabled).toBe(false)
+    expect(result.authenticated).toBe(false)
+    expect(result.httpStatus).toBe(200)
   })
 
   it('SmartFeedClient waits for authLoading before settling capability', () => {
@@ -80,9 +84,9 @@ describe('Feed Reader capability hydration', () => {
     expect(client).toContain('openReader')
     expect(client).toContain('readerCapabilityReady')
     expect(client).toContain('isCapabilityGenerationCurrent')
-    expect(client).toContain('if (authLoading || !readerCapabilityReadyRef.current) return')
+    expect(client).toContain("if (decided.decision === 'PENDING') return")
     expect(client).toMatch(/dispatchFeedOpenGesture\(/)
-    expect(client).toContain('onOpen: () => onRead(item, index)')
+    expect(client).toContain("onOpen: () => onRead(item, index, 'gesture')")
     expect(client).toContain('openReader(item, index)')
   })
 
