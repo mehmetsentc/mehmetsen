@@ -90,6 +90,13 @@ export interface NewsroomArticleInput {
   forcedCity?: string
   forcedCitySlug?: string
   forcedDistrict?: string
+  /** Optional belde/locality display (e.g. Side) — not a district. */
+  forcedLocality?: string
+  /**
+   * When true, forcedCity/forcedDistrict/forcedLocality outrank geoEngine results
+   * (human queue/admin editorial selection).
+   */
+  lockForcedGeo?: boolean
   extraTags?: string[]
   isBreaking?: boolean
   priorityScore?: number

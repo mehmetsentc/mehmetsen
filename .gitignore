@@ -56,3 +56,10 @@ tmp-*.json
 tmp-*.txt
 tmp-*.jsonl
 tmp-*.log
+
+# Geo build/audit inputs — never ship to runtime/client
+scripts/_wikidata_districts_raw.json
+scripts/_p18_geo_quality_closure.json
+scripts/_p18_district_centroid_report.json
+scripts/_p18_geo_inventory_sim_out.json
+scripts/_p18_geo_persist_future_sim_out.json

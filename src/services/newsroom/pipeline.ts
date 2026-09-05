@@ -11,6 +11,10 @@
 import type { Firestore } from 'firebase-admin/firestore'
 import { cityCategoryId, slugifyCity, type PostLocation } from '@/lib/location'
 import { getCityCategoryName, normalizeCitySlug, extractProvinceDistrictPairFromText, DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
+import {
+  applyForcedDistrictDisplay,
+  finalizeCanonicalArticleGeo,
+} from '@/lib/geo/finalizeCanonicalArticleGeo'
 import { Collections } from '@/lib/firebase/admin'
 import { aiNewsEditor, type AiRewriteResult } from '@/services/aiNewsEditor'
 import { geminiEditArticle, isGeminiConfigured } from '@/lib/ai/gemini'
@@ -1315,11 +1319,15 @@ export async function processNewsroomArticle(
     let districtSlug = geo.districtSlug
     let country = geo.country
     let countrySlug = geo.countrySlug
+    let locality: string | null = workingInput.forcedLocality?.trim() || null
 
-    // forcedDistrict uygula (her zaman)
-    if (workingInput.forcedDistrict?.trim()) {
-      district = workingInput.forcedDistrict.trim()
-    }
+    // forcedDistrict: display only when geoEngine has no district, OR editorial lock.
+    // Never paste publisher home district over a different content-derived district.
+    district = applyForcedDistrictDisplay({
+      editorialGeoLocked: Boolean(workingInput.lockForcedGeo),
+      geoDistrict: geo.district,
+      forcedDistrict: workingInput.forcedDistrict,
+    })
 
     // ── forcedCitySlug override — SADECE yerel-haber + içerikten şehir bulunamadıysa ──
     // Kural: geo engine haber metninden bir şehir çıkardıysa (geo.city) → onu koru.
@@ -1329,6 +1337,7 @@ export async function processNewsroomArticle(
     //   - VE içerikten şehir bulunamadıysa
     // Örnek sorun (önceki davranış): Muğla gazetesinden alınan Hakkari haberi → geo.city = "Hakkari"
     // ama forcedCitySlug = "mugla" eziyordu. Artık içerik şehri korunur.
+    // Editorial lock: human queue geo outranks geoEngine city when lockForcedGeo is set.
     const finalCategoryIsLocal =
       isYerelCategoryTree(classification.categoryId) || Boolean(geo.citySlug || geo.city)
     const articleIsAbroad =
@@ -1342,6 +1351,7 @@ export async function processNewsroomArticle(
       citySlug = ''
       district = null
       districtSlug = ''
+      locality = null
       if (!country || country === 'Türkiye') {
         const retry = resolveCountryFromText(
           `${rewritten.title} ${rewritten.description} ${(rewritten.tags || []).join(' ')}`
@@ -1350,6 +1360,17 @@ export async function processNewsroomArticle(
           country = retry.name
           countrySlug = retry.slug
         }
+      }
+    } else if (workingInput.lockForcedGeo && workingInput.forcedCitySlug?.trim()) {
+      const forcedSlug = normalizeCitySlug(workingInput.forcedCitySlug)
+      citySlug = forcedSlug
+      city = workingInput.forcedCity?.trim() || getCityCategoryName(citySlug)
+      if (workingInput.forcedDistrict?.trim()) {
+        district = workingInput.forcedDistrict.trim()
+        districtSlug = '' // finalizeCanonicalArticleGeo will derive slug
+      }
+      if (workingInput.forcedLocality?.trim()) {
+        locality = workingInput.forcedLocality.trim()
       }
     } else if (
       workingInput.forcedCitySlug?.trim() &&
@@ -1714,6 +1735,7 @@ export async function processNewsroomArticle(
       citySlug = ''
       district = null
       districtSlug = ''
+      locality = null
       resolvedCitySlug = ''
       if (location) {
         location.city = ''
@@ -1724,6 +1746,41 @@ export async function processNewsroomArticle(
         classification.isBreaking = false
         classification.overrides.push('isBreaking cleared for gastronomi')
       }
+    }
+
+    // ── Canonical geo persistence (resolveArticleGeo) ─────────────────────────
+    // AFTER geoEngine + forced overlays + abroad/gastronomi clears.
+    // BEFORE Firestore / PG mirror write. Does not mutate raw_articles.
+    const canonicalGeo = finalizeCanonicalArticleGeo({
+      articleIsAbroad,
+      editorialGeoLocked: Boolean(workingInput.lockForcedGeo),
+      city,
+      citySlug: resolvedCitySlug || citySlug,
+      district,
+      districtSlug,
+      locality,
+      forcedCity: workingInput.forcedCity,
+      forcedCitySlug: workingInput.forcedCitySlug,
+      forcedDistrict: workingInput.forcedDistrict,
+      forcedLocality: workingInput.forcedLocality,
+    })
+    if (!articleIsAbroad && !shouldStripCityForGastronomy(resolvedCategory)) {
+      city = canonicalGeo.city || null
+      citySlug = canonicalGeo.citySlug
+      district = canonicalGeo.district || null
+      districtSlug = canonicalGeo.districtSlug
+      locality = canonicalGeo.locality || null
+      resolvedCitySlug = canonicalGeo.citySlug
+      if (location) {
+        location.city = canonicalGeo.city || location.city
+        if (canonicalGeo.district) location.district = canonicalGeo.district
+        else if ('district' in location) location.district = ''
+      }
+      console.log(
+        `[newsroom/geo] ${canonicalGeo.metric} source=${canonicalGeo.geoResolutionSource} geoId=${canonicalGeo.canonicalGeoId ?? 'null'} city=${canonicalGeo.citySlug || '-'} district=${canonicalGeo.districtSlug || '-'}`
+      )
+    } else {
+      console.log(`[newsroom/geo] NONE reason=${articleIsAbroad ? 'abroad' : 'gastronomi_or_strip'}`)
     }
 
     // ── Ulusal birincil + citySlug: yerel etiket (categoryId ulusal kalır) ─────
@@ -1946,6 +2003,16 @@ export async function processNewsroomArticle(
       district: articleIsAbroad ? '' : location?.district ?? district ?? '',
       districtSlug: articleIsAbroad ? '' : districtSlug || '',
       citySlug: resolvedCitySlug,
+      ...(locality && !articleIsAbroad ? { locality } : {}),
+      ...(canonicalGeo.canonicalGeoId && !articleIsAbroad
+        ? { canonicalGeoId: canonicalGeo.canonicalGeoId }
+        : {}),
+      ...(!articleIsAbroad
+        ? {
+            geoResolutionLevel: canonicalGeo.geoResolutionLevel,
+            geoResolutionSource: canonicalGeo.geoResolutionSource,
+          }
+        : {}),
       country: articleIsAbroad
         ? country || location?.country || 'Türkiye'
         : location?.country ?? country ?? 'Türkiye',
