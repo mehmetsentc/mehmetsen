@@ -248,10 +248,10 @@ describe('finalizeCanonicalArticleGeo persistence', () => {
 
   it('9–10. draftToPublished / updatePublishedNews preserve districtSlug (source contract)', () => {
     const draftSrc = readFileSync(join(process.cwd(), 'src/services/newsDraftService.ts'), 'utf8')
-    // draft → published mapping must copy districtSlug
-    expect(draftSrc).toMatch(/districtSlug:\s*draft\.districtSlug/)
-    // updatePublishedNews must copy districtSlug from doc
-    expect(draftSrc).toMatch(/districtSlug:\s*doc\.districtSlug/)
+    // Shared normalizeDraftGeoFields → atomic geo write boundary
+    expect(draftSrc).toContain('normalizeDraftGeoFields')
+    expect(draftSrc).toContain('applyCanonicalArticleGeoWrite')
+    expect(draftSrc).toMatch(/districtSlug:\s*\(geoFields\.districtSlug/)
     expect(draftSrc).toContain('canonicalGeoId')
   })
 

@@ -23,6 +23,10 @@ import type {
   EditorialCandidateArticle,
   EditorialPublicationResult,
 } from './editorialTypes'
+import {
+  applyCanonicalArticleGeoWrite,
+  canonicalArticleGeoToPersistFields,
+} from '@/lib/geo/canonicalArticleGeoWrite'
 
 export interface PublishClusterOptions {
   clusterId: string
@@ -249,6 +253,26 @@ export class EditorialSupplyService {
       primaryArticle.sourceName ||
       'NaHaber Editör Masası'
 
+    const geoResult = applyCanonicalArticleGeoWrite(
+      {},
+      {
+        city: cluster.city || primaryArticle.city || '',
+        citySlug: qualityResult.citySlug || '',
+        district: cluster.district || primaryArticle.district || '',
+        districtSlug: qualityResult.districtSlug || '',
+        country: 'Türkiye',
+      },
+      { editorialGeoLocked: true, rejectInvalidCompound: false }
+    )
+    const geoFields = geoResult.ok
+      ? canonicalArticleGeoToPersistFields(geoResult.state)
+      : {
+          city: cluster.city || primaryArticle.city || '',
+          citySlug: qualityResult.citySlug || '',
+          district: cluster.district || primaryArticle.district || '',
+          districtSlug: qualityResult.districtSlug || '',
+        }
+
     // 5. Firestore Canonical News Write
     const firestorePayload: Record<string, unknown> = {
       id: newsId,
@@ -261,10 +285,21 @@ export class EditorialSupplyService {
       htmlContent: `<p>${qualityResult.sanitizedBody.replace(/\n\n+/g, '</p><p>')}</p>`,
       category: qualityResult.resolvedCategory,
       categoryId: qualityResult.resolvedCategory,
-      city: cluster.city || primaryArticle.city || '',
-      citySlug: qualityResult.citySlug || '',
-      district: cluster.district || primaryArticle.district || '',
-      districtSlug: qualityResult.districtSlug || '',
+      city: geoFields.city ?? '',
+      citySlug: geoFields.citySlug ?? '',
+      district: geoFields.district ?? '',
+      districtSlug: geoFields.districtSlug ?? '',
+      ...(geoFields.locality ? { locality: geoFields.locality } : {}),
+      ...(geoFields.canonicalGeoId !== undefined
+        ? { canonicalGeoId: geoFields.canonicalGeoId }
+        : {}),
+      ...(geoFields.geoResolutionLevel
+        ? { geoResolutionLevel: geoFields.geoResolutionLevel }
+        : {}),
+      ...(geoFields.geoResolutionSource
+        ? { geoResolutionSource: geoFields.geoResolutionSource }
+        : {}),
+      ...(geoFields.location ? { location: geoFields.location } : {}),
       countryCode: cluster.countryCode || primaryArticle.countryCode || 'TR',
       thumbnail: heroImageUrl || '',
       coverImageUrl: heroImageUrl || '',
@@ -309,10 +344,10 @@ export class EditorialSupplyService {
       content: qualityResult.sanitizedBody,
       htmlContent: `<p>${qualityResult.sanitizedBody.replace(/\n\n+/g, '</p><p>')}</p>`,
       categoryId: qualityResult.resolvedCategory,
-      cityName: cluster.city || primaryArticle.city || null,
-      citySlug: qualityResult.citySlug,
-      districtName: cluster.district || primaryArticle.district || null,
-      districtSlug: qualityResult.districtSlug,
+      cityName: (geoFields.city as string) || cluster.city || primaryArticle.city || null,
+      citySlug: (geoFields.citySlug as string) || qualityResult.citySlug,
+      districtName: (geoFields.district as string) || cluster.district || primaryArticle.district || null,
+      districtSlug: (geoFields.districtSlug as string) || qualityResult.districtSlug,
       authorId: authz.approvedBy || actorId,
       authorDisplayName: actorName,
       source: primaryArticle.sourceName,

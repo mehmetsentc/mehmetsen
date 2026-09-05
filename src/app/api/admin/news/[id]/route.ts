@@ -28,9 +28,34 @@ import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import { ROUTES } from '@/constants/routes'
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { allocateUniqueSlug } from '@/services/newsDraftService'
+import {
+  applyCanonicalArticleGeoWrite,
+  canonicalArticleGeoToPersistFields,
+  geoPatchTouchesIdentity,
+  type CanonicalArticleGeoPatch,
+} from '@/lib/geo/canonicalArticleGeoWrite'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/** Build geo PATCH from body — only keys that were actually sent. */
+function extractGeoPatch(body: UpdatePayload): CanonicalArticleGeoPatch {
+  const patch: CanonicalArticleGeoPatch = {}
+  if (Object.prototype.hasOwnProperty.call(body, 'city')) patch.city = body.city ?? ''
+  if (Object.prototype.hasOwnProperty.call(body, 'citySlug')) patch.citySlug = body.citySlug ?? ''
+  if (Object.prototype.hasOwnProperty.call(body, 'district')) patch.district = body.district ?? ''
+  if (Object.prototype.hasOwnProperty.call(body, 'districtSlug')) {
+    patch.districtSlug = body.districtSlug ?? ''
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'location')) {
+    patch.location = body.location ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'country')) patch.country = body.country ?? ''
+  if (Object.prototype.hasOwnProperty.call(body, 'countrySlug')) {
+    patch.countrySlug = body.countrySlug ?? ''
+  }
+  return patch
+}
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -180,13 +205,8 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     }
   }
   if (Array.isArray(body.tags)) update.tags = body.tags
-  if (body.citySlug != null) update.citySlug = String(body.citySlug).trim()
-  if (body.city != null) update.city = String(body.city).trim()
-  if (body.districtSlug != null) update.districtSlug = String(body.districtSlug).trim()
-  if (body.district != null) update.district = String(body.district).trim()
-  if (body.countrySlug != null) update.countrySlug = String(body.countrySlug).trim()
-  if (body.country != null) update.country = String(body.country).trim()
-  if (body.location != null) update.location = body.location
+  // Geo identity fields are applied atomically via applyCanonicalArticleGeoWrite
+  // in PUT after loading the existing document (omit vs clear + no stale geoId).
   if (body.thumbnail?.trim()) {
     const thumb = body.thumbnail.trim()
     update.thumbnail = thumb
@@ -359,6 +379,43 @@ export async function PUT(request: Request, context: RouteContext) {
     const newsSnap = await newsRef.get()
     if (newsSnap.exists) {
       const prevData = newsSnap.data()
+
+      // Atomic canonical geo: if any geo identity field is in the PATCH,
+      // recompute/validate the complete state. Headline-only saves omit geo keys
+      // and leave geography untouched.
+      const geoPatch = extractGeoPatch(body)
+      if (geoPatchTouchesIdentity(geoPatch)) {
+        const geoResult = applyCanonicalArticleGeoWrite(
+          {
+            city: (prevData?.city as string) ?? '',
+            citySlug: (prevData?.citySlug as string) ?? '',
+            district: (prevData?.district as string) ?? '',
+            districtSlug: (prevData?.districtSlug as string) ?? '',
+            locality: (prevData?.locality as string) ?? '',
+            canonicalGeoId: (prevData?.canonicalGeoId as string) ?? null,
+            geoResolutionLevel: (prevData?.geoResolutionLevel as string) ?? null,
+            geoResolutionSource: (prevData?.geoResolutionSource as string) ?? null,
+            location: (prevData?.location as {
+              city?: string
+              district?: string
+              country: string
+              lat: number
+              lng: number
+            }) ?? null,
+            country: (prevData?.country as string) ?? 'Türkiye',
+            countrySlug: (prevData?.countrySlug as string) ?? '',
+          },
+          geoPatch,
+          { rejectInvalidCompound: true, editorialGeoLocked: true }
+        )
+        if (!geoResult.ok) {
+          return NextResponse.json({ error: geoResult.error }, { status: 400 })
+        }
+        if (geoResult.changed) {
+          Object.assign(update, canonicalArticleGeoToPersistFields(geoResult.state))
+        }
+      }
+
       applyBreakingToggle(update, body, prevData)
 
       // Guarantee published articles always carry a numeric `publishedAt`. Category

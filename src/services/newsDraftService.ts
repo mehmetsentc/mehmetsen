@@ -12,8 +12,102 @@ import {
   publicationProvenanceFields,
   type HumanPublicationActor,
 } from '@/services/editorial/publicationAuthority'
+import {
+  applyCanonicalArticleGeoWrite,
+  canonicalArticleGeoToPersistFields,
+} from '@/lib/geo/canonicalArticleGeoWrite'
 
 export type { HumanPublicationActor }
+
+/** Normalize draft/doc geo through the shared write boundary (no invent). */
+function normalizeDraftGeoFields(draft: {
+  city?: string
+  citySlug?: string
+  district?: string
+  districtSlug?: string
+  locality?: string
+  canonicalGeoId?: string
+  geoResolutionLevel?: string
+  geoResolutionSource?: string
+  country?: string
+  location?: {
+    city: string
+    district?: string
+    country: string
+    lat: number
+    lng: number
+  } | null
+}): Record<string, unknown> {
+  const hasAny =
+    Boolean(draft.citySlug?.trim()) ||
+    Boolean(draft.city?.trim()) ||
+    Boolean(draft.districtSlug?.trim()) ||
+    Boolean(draft.district?.trim()) ||
+    Boolean(draft.locality?.trim()) ||
+    Boolean(draft.canonicalGeoId?.trim())
+  if (!hasAny) {
+    return {
+      city: draft.city ?? '',
+      citySlug: draft.citySlug ?? '',
+      district: draft.district ?? '',
+      districtSlug: draft.districtSlug ?? '',
+      country: draft.country ?? 'Türkiye',
+      location: draft.location ?? null,
+    }
+  }
+  const result = applyCanonicalArticleGeoWrite(
+    {
+      city: draft.city,
+      citySlug: draft.citySlug,
+      district: draft.district,
+      districtSlug: draft.districtSlug,
+      locality: draft.locality,
+      canonicalGeoId: draft.canonicalGeoId,
+      geoResolutionLevel: draft.geoResolutionLevel,
+      geoResolutionSource: draft.geoResolutionSource,
+      country: draft.country,
+      location: draft.location,
+    },
+    {
+      city: draft.city ?? '',
+      citySlug: draft.citySlug ?? '',
+      district: draft.district ?? '',
+      districtSlug: draft.districtSlug ?? '',
+      locality: draft.locality ?? '',
+      country: draft.country ?? 'Türkiye',
+      location: draft.location ?? null,
+    },
+    { editorialGeoLocked: true, rejectInvalidCompound: false }
+  )
+  if (!result.ok) {
+    // Soft-normalize: province-only via finalize without reject
+    const soft = applyCanonicalArticleGeoWrite(
+      {},
+      {
+        city: draft.city ?? '',
+        citySlug: draft.citySlug ?? '',
+        district: '',
+        districtSlug: '',
+        locality: draft.locality ?? '',
+        country: draft.country ?? 'Türkiye',
+      },
+      { editorialGeoLocked: true }
+    )
+    if (soft.ok) return canonicalArticleGeoToPersistFields(soft.state)
+    return {
+      city: draft.city ?? '',
+      citySlug: draft.citySlug ?? '',
+      district: '',
+      districtSlug: '',
+      canonicalGeoId: null,
+      geoResolutionLevel: 'PROVINCE_ONLY',
+      geoResolutionSource: 'compound_slugs',
+      country: draft.country ?? 'Türkiye',
+      location: null,
+    }
+  }
+  return canonicalArticleGeoToPersistFields(result.state)
+}
 
 /** Spot + gövde birlikte boşsa onaylanamaz (CMS'te “içerik yok” yayın engeli). */
 export function draftHasPublishableBody(draft: {
@@ -204,6 +298,8 @@ function draftToPublishedNews(
         })
       : null
 
+  const geoFields = normalizeDraftGeoFields(draft)
+
   return omitUndefinedFields({
     title: draft.title,
     summary: draft.summary ?? '',
@@ -221,20 +317,22 @@ function draftToPublishedNews(
     videoUrl: draft.videoUrl ?? '',
     category: draft.category,
     categoryId: draft.categoryId,
-    city: draft.city ?? '',
-    district: draft.district ?? '',
-    districtSlug: draft.districtSlug ?? '',
-    citySlug: draft.citySlug ?? '',
-    ...(draft.locality ? { locality: draft.locality } : {}),
-    ...(draft.canonicalGeoId ? { canonicalGeoId: draft.canonicalGeoId } : {}),
-    ...('geoResolutionLevel' in draft && draft.geoResolutionLevel
-      ? { geoResolutionLevel: draft.geoResolutionLevel }
+    city: (geoFields.city as string) ?? '',
+    district: (geoFields.district as string) ?? '',
+    districtSlug: (geoFields.districtSlug as string) ?? '',
+    citySlug: (geoFields.citySlug as string) ?? '',
+    ...((geoFields.locality as string) ? { locality: geoFields.locality } : {}),
+    ...(geoFields.canonicalGeoId
+      ? { canonicalGeoId: geoFields.canonicalGeoId }
+      : { canonicalGeoId: null }),
+    ...('geoResolutionLevel' in geoFields && geoFields.geoResolutionLevel
+      ? { geoResolutionLevel: geoFields.geoResolutionLevel }
       : {}),
-    ...('geoResolutionSource' in draft && draft.geoResolutionSource
-      ? { geoResolutionSource: draft.geoResolutionSource }
+    ...('geoResolutionSource' in geoFields && geoFields.geoResolutionSource
+      ? { geoResolutionSource: geoFields.geoResolutionSource }
       : {}),
-    country: draft.country ?? 'Türkiye',
-    location,
+    country: (geoFields.country as string) ?? draft.country ?? 'Türkiye',
+    location: (geoFields.location as typeof location) ?? location,
     tags: Array.isArray(draft.tags) ? draft.tags : [],
     type: draft.type ?? 'news',
     source: resolveSourceLabel(draft),
@@ -440,6 +538,8 @@ export const newsDraftService = {
     const snap = await ref.get()
     if (!snap.exists) throw new Error(`News not found: ${newsId}`)
 
+    const geoFields = normalizeDraftGeoFields(doc)
+
     await ref.update({
       title: doc.title,
       spot: doc.spot ?? snap.data()?.spot ?? '',
@@ -468,20 +568,16 @@ export const newsDraftService = {
       coverImageUrl: doc.coverImageUrl || doc.thumbnail || snap.data()?.coverImageUrl || '',
       category: doc.category,
       categoryId: doc.categoryId,
-      city: doc.city,
-      district: doc.district ?? '',
-      districtSlug: doc.districtSlug ?? '',
-      citySlug: doc.citySlug,
-      ...(doc.locality ? { locality: doc.locality } : {}),
-      ...(doc.canonicalGeoId ? { canonicalGeoId: doc.canonicalGeoId } : {}),
-      ...('geoResolutionLevel' in doc && doc.geoResolutionLevel
-        ? { geoResolutionLevel: doc.geoResolutionLevel }
-        : {}),
-      ...('geoResolutionSource' in doc && doc.geoResolutionSource
-        ? { geoResolutionSource: doc.geoResolutionSource }
-        : {}),
-      country: doc.country ?? 'Türkiye',
-      location: doc.location,
+      city: (geoFields.city as string) ?? '',
+      district: (geoFields.district as string) ?? '',
+      districtSlug: (geoFields.districtSlug as string) ?? '',
+      citySlug: (geoFields.citySlug as string) ?? '',
+      locality: (geoFields.locality as string) || '',
+      canonicalGeoId: (geoFields.canonicalGeoId as string | null) ?? null,
+      geoResolutionLevel: (geoFields.geoResolutionLevel as string) || 'NONE',
+      geoResolutionSource: (geoFields.geoResolutionSource as string) || 'none',
+      country: (geoFields.country as string) ?? doc.country ?? 'Türkiye',
+      location: (geoFields.location as typeof doc.location) ?? doc.location,
       tags: doc.tags,
       source: doc.source?.trim() || doc.sourceLabel?.trim() || 'NaHaber',
       sourceUrl: doc.sourceUrl ?? '',

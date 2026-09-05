@@ -19,6 +19,10 @@ import {
 } from '@/lib/articleBlocks'
 import { getAiEditorById } from '@/lib/ai/editorial/aiEditorService'
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
+import {
+  applyCanonicalArticleGeoWrite,
+  canonicalArticleGeoToPersistFields,
+} from '@/lib/geo/canonicalArticleGeoWrite'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -226,38 +230,27 @@ export async function POST(request: Request) {
 
     // Check citySlug first — domestic city articles also send country:'Türkiye',
     // so the citySlug branch must win over the generic country branch.
-    if (body.citySlug?.trim()) {
-      payload.citySlug = body.citySlug.trim()
-      payload.city = body.city?.trim() ?? body.citySlug.trim()
-      payload.country = 'Türkiye'
-      payload.countrySlug = ''
-      payload.location = {
-        city: payload.city as string,
-        country: 'Türkiye',
-        lat: 0,
-        lng: 0,
-        ...(body.districtSlug?.trim()
-          ? { district: body.district?.trim() || body.districtSlug.trim() }
-          : {}),
+    const hasDomesticGeo = Boolean(body.citySlug?.trim() || body.districtSlug?.trim() || body.city?.trim())
+    const hasAbroadGeo = Boolean(body.countrySlug?.trim() || (body.country?.trim() && !body.citySlug?.trim()))
+    if (hasDomesticGeo || hasAbroadGeo) {
+      const geoResult = applyCanonicalArticleGeoWrite(
+        {},
+        {
+          city: body.city ?? '',
+          citySlug: body.citySlug ?? '',
+          district: body.district ?? '',
+          districtSlug: body.districtSlug ?? '',
+          location: body.location ?? null,
+          country: body.country ?? (hasDomesticGeo ? 'Türkiye' : ''),
+          countrySlug: body.countrySlug ?? '',
+          articleIsAbroad: hasAbroadGeo && !hasDomesticGeo,
+        },
+        { rejectInvalidCompound: true, editorialGeoLocked: true }
+      )
+      if (!geoResult.ok) {
+        return NextResponse.json({ error: geoResult.error }, { status: 400 })
       }
-      if (body.districtSlug?.trim()) {
-        payload.districtSlug = body.districtSlug.trim()
-        payload.district = body.district?.trim() || body.districtSlug.trim()
-      }
-    } else if (body.countrySlug?.trim() || body.country?.trim()) {
-      const countryName = body.country?.trim()
-        || body.countrySlug?.trim()
-        || ''
-      payload.country = countryName
-      payload.countrySlug = body.countrySlug?.trim() || countryName.toLowerCase().replace(/\s+/g, '-')
-      payload.location = body.location ?? {
-        city: body.city?.trim() ?? '',
-        country: countryName,
-        lat: 0,
-        lng: 0,
-      }
-      payload.citySlug = ''
-      payload.city = body.city?.trim() ?? ''
+      Object.assign(payload, canonicalArticleGeoToPersistFields(geoResult.state))
     }
 
     const additionalImages = sanitizeAdditionalImages(body.additionalImages)
