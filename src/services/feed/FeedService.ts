@@ -1,8 +1,8 @@
 import 'server-only'
 
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
-import { articleLikes, savedArticles } from '@/db/schema/socialGraph'
+import { articleLikes, savedArticles, socialEvents } from '@/db/schema/socialGraph'
 import { publisherSources, publishers } from '@/db/schema/publishers'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import { isSmartFeedRankingEffectiveForUser, isNfRankLiveEffectiveForUser } from '@/lib/user/effectiveUserFlags'
@@ -28,6 +28,48 @@ import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
 import { feedSessionService } from './FeedSessionService'
 import { feedTelemetryService } from './FeedTelemetryService'
+import { buildSessionIntentFromEvents, emptySessionIntent } from './nfRank/NFRankEngine'
+
+async function loadSessionIntent(userId: string | null) {
+  if (!userId || !hasDatabaseUrl()) return emptySessionIntent()
+  try {
+    const db = getDb()
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    const rows = await db
+      .select({
+        eventType: socialEvents.eventType,
+        targetId: socialEvents.targetId,
+        metadata: socialEvents.metadata,
+        createdAt: socialEvents.createdAt,
+      })
+      .from(socialEvents)
+      .where(and(eq(socialEvents.userId, userId), gte(socialEvents.createdAt, since)))
+      .orderBy(desc(socialEvents.createdAt))
+      .limit(80)
+    const now = Date.now()
+    return buildSessionIntentFromEvents(
+      rows.map((r) => {
+        const meta = (r.metadata || {}) as {
+          category?: string
+          publisherId?: string
+          tags?: string[]
+          dwellMs?: number
+        }
+        return {
+          eventType: r.eventType,
+          category: meta.category ?? null,
+          publisherId: meta.publisherId ?? null,
+          articleId: r.targetId,
+          tags: meta.tags ?? null,
+          dwellMs: meta.dwellMs,
+          ageMinutes: Math.max(0, (now - r.createdAt.getTime()) / 60_000),
+        }
+      })
+    )
+  } catch {
+    return emptySessionIntent()
+  }
+}
 
 export interface FeedRequestContext {
   userId: string | null
@@ -105,6 +147,7 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     reason: scored?.reason ?? row.source,
     scoreBreakdown: debug && scored ? scored.breakdown : undefined,
     slug: row.slug,
+    tags: row.tags?.length ? row.tags.slice(0, 8) : undefined,
   }
 }
 
@@ -427,6 +470,7 @@ export class FeedService {
       }
 
       if (rankingEnabled) {
+        const sessionIntent = await loadSessionIntent(ctx.userId)
         const pipelineResult = await feedRankingPipeline.run({
           userId: ctx.userId,
           mode: ctx.mode,
@@ -440,6 +484,7 @@ export class FeedService {
           seenArticles,
           seenClusters,
           nfRankMode,
+          sessionIntent,
         })
 
         const ranked = pipelineResult.ranked

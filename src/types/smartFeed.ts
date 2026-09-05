@@ -80,6 +80,8 @@ export interface FeedItemDto {
   reason: FeedRankReason
   scoreBreakdown?: FeedScoreBreakdown
   slug: string
+  /** Canonical tags for client telemetry → interest learning (optional). */
+  tags?: string[]
 }
 
 export interface FeedPageDto {

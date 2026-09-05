@@ -9,13 +9,24 @@ import type { BehavioralSignal } from '@/lib/feed/rankingConfig'
 
 const EVENT_TO_SIGNAL: Record<string, BehavioralSignal | null> = {
   publisher_follow: 'FOLLOW',
+  publisher_followed: 'FOLLOW',
   article_save: 'SAVE',
+  article_saved: 'SAVE',
   article_share: 'SHARE',
+  article_shared: 'SHARE',
   article_open: 'ARTICLE_OPEN',
+  article_opened: 'ARTICLE_OPEN',
   article_dwell: 'LONG_DWELL',
   article_comment: 'COMMENT',
+  comment_created: 'COMMENT',
   article_like: 'LIKE',
+  article_liked: 'LIKE',
   quick_skip: 'QUICK_SKIP',
+}
+
+function interestKey(kind: 'cat' | 'tag' | 'ent', raw: string): string {
+  const n = raw.trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')
+  return `${kind}:${n}`.slice(0, 64)
 }
 
 function decayFactor(createdAt: Date, now = new Date()): number {
@@ -69,17 +80,23 @@ export class FeedInterestAggregator {
       const delta = weight * decay
 
       if (ev.targetType === 'category' && ev.targetId) {
-        const key = ev.targetId.toLowerCase()
+        const key = interestKey('cat', ev.targetId)
         interestScores.set(key, (interestScores.get(key) ?? 0) + delta)
+        // Legacy flat key for backward-compatible reads
+        const flat = ev.targetId.toLowerCase()
+        interestScores.set(flat, (interestScores.get(flat) ?? 0) + delta * 0.5)
       } else if (ev.targetType === 'article' && ev.targetId) {
         const meta = ev.metadata as {
           category?: string
           publisherId?: string
           tags?: string[] | string
+          entities?: string[] | string
         } | null
         if (meta?.category) {
-          const key = meta.category.toLowerCase()
+          const key = interestKey('cat', meta.category)
           interestScores.set(key, (interestScores.get(key) ?? 0) + delta * 0.6)
+          const flat = meta.category.toLowerCase()
+          interestScores.set(flat, (interestScores.get(flat) ?? 0) + delta * 0.3)
         }
         if (meta?.publisherId) {
           publisherScores.set(meta.publisherId, (publisherScores.get(meta.publisherId) ?? 0) + delta * 0.8)
@@ -100,7 +117,29 @@ export class FeedInterestAggregator {
         if (tags.length) {
           const perTag = (delta * 0.7) / Math.sqrt(tags.length)
           for (const tag of tags) {
-            interestScores.set(tag, (interestScores.get(tag) ?? 0) + perTag)
+            const key = interestKey('tag', tag)
+            interestScores.set(key, (interestScores.get(key) ?? 0) + perTag)
+            interestScores.set(tag, (interestScores.get(tag) ?? 0) + perTag * 0.5)
+          }
+        }
+        // Entity affinity from explicit entities metadata (deterministic; no AI).
+        const rawEnt = Array.isArray(meta?.entities)
+          ? meta!.entities!
+          : typeof meta?.entities === 'string'
+            ? meta.entities.split(/[,;]+/)
+            : []
+        const entities = [
+          ...new Set(
+            rawEnt
+              .map((t) => (typeof t === 'string' ? t.trim().toLocaleLowerCase('tr-TR') : ''))
+              .filter(Boolean)
+          ),
+        ].slice(0, 6)
+        if (entities.length) {
+          const perEnt = (delta * 0.75) / Math.sqrt(entities.length)
+          for (const ent of entities) {
+            const key = interestKey('ent', ent)
+            interestScores.set(key, (interestScores.get(key) ?? 0) + perEnt)
           }
         }
       } else if (ev.targetType === 'publisher' && ev.targetId) {

@@ -227,16 +227,30 @@ export function buildSessionIntentFromEvents(
       if (dwell >= 750 && dwell < 5000) boost = 0.15
       else if (dwell >= 5000 && dwell < 20000) boost = 0.35
       else if (dwell >= 20000) boost = 0.55
-    } else if (ev.eventType === 'article_open' || ev.eventType === 'HABERI_OKU') {
+    } else if (
+      ev.eventType === 'article_open' ||
+      ev.eventType === 'article_opened' ||
+      ev.eventType === 'HABERI_OKU'
+    ) {
       boost = 0.55
-    } else if (ev.eventType === 'article_save' || ev.eventType === 'SAVE') {
+    } else if (ev.eventType === 'article_save' || ev.eventType === 'article_saved' || ev.eventType === 'SAVE') {
       boost = 0.65
-    } else if (ev.eventType === 'article_share' || ev.eventType === 'SHARE') {
+    } else if (ev.eventType === 'article_share' || ev.eventType === 'article_shared' || ev.eventType === 'SHARE') {
       boost = 0.65
-    } else if (ev.eventType === 'article_comment' || ev.eventType === 'COMMENT') {
+    } else if (
+      ev.eventType === 'article_comment' ||
+      ev.eventType === 'comment_created' ||
+      ev.eventType === 'COMMENT'
+    ) {
       boost = 0.6
-    } else if (ev.eventType === 'publisher_follow' || ev.eventType === 'FOLLOW') {
+    } else if (
+      ev.eventType === 'publisher_follow' ||
+      ev.eventType === 'publisher_followed' ||
+      ev.eventType === 'FOLLOW'
+    ) {
       boost = 0.85
+    } else if (ev.eventType === 'article_like' || ev.eventType === 'article_liked' || ev.eventType === 'LIKE') {
+      boost = 0.4
     } else if (ev.eventType === 'article_like' || ev.eventType === 'LIKE' || ev.eventType === 'APPLAUSE') {
       // Weak supporting only when combined with consumption — alone = tiny.
       boost = 0.08
