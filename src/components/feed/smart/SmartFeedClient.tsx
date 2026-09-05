@@ -12,9 +12,12 @@ import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import {
   FeedArticleReader,
-  evaluateFeedOpenGesture,
   type FeedReaderTelemetryPayload,
 } from '@/components/feed/smart/FeedArticleReader'
+import {
+  dispatchFeedOpenGesture,
+  shouldIgnoreFeedOpenGestureTarget,
+} from '@/lib/feed/reader/feedOpenGesture'
 import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
@@ -29,6 +32,10 @@ import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
 import { getClientAuthToken, ensureAuthReady, auth } from '@/lib/firebase/auth'
+import {
+  fetchFeedReaderCapability,
+  isCapabilityGenerationCurrent,
+} from '@/lib/feed/reader/capabilityClient'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
@@ -236,6 +243,7 @@ export function SmartFeedClient({
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
   const [readerItem, setReaderItem] = useState<{ item: FeedItemDto; index: number } | null>(null)
   const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
+  const [readerCapabilityReady, setReaderCapabilityReady] = useState(false)
   const [feedScrollLocked, setFeedScrollLocked] = useState(false)
   const [social, setSocial] = useState<Record<string, SocialItemState>>({})
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
@@ -244,30 +252,78 @@ export function SmartFeedClient({
   const cardHeightRef = useRef(0)
   const programmaticScrollRef = useRef(false)
   const [cardHeightPx, setCardHeightPx] = useState(0)
+  const feedReaderEnabledRef = useRef(false)
+  const readerCapabilityReadyRef = useRef(false)
+  const readerCapabilityGenerationRef = useRef(0)
+  const readerCapabilityAbortRef = useRef<AbortController | null>(null)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const socialEnabled = isSocialGraphEnabledClient()
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+  const applyFeedReaderCapability = useCallback((enabled: boolean) => {
+    feedReaderEnabledRef.current = enabled
+    setFeedReaderEnabled(enabled)
+    readerCapabilityReadyRef.current = true
+    setReaderCapabilityReady(true)
+  }, [])
+
+  /**
+   * Wait for AuthProvider (incl. deferred /feed-v2 bootstrap) before settling capability.
+   * Unauthenticated `enabled=false` must not stick across later Firebase hydration.
+   */
   useEffect(() => {
-    let cancelled = false
+    if (authLoading) {
+      readerCapabilityReadyRef.current = false
+      setReaderCapabilityReady(false)
+      return
+    }
+
+    readerCapabilityAbortRef.current?.abort()
+    const ac = new AbortController()
+    readerCapabilityAbortRef.current = ac
+    const generation = ++readerCapabilityGenerationRef.current
+
     ;(async () => {
       try {
-        await ensureAuthReady()
-        const token = await getClientAuthToken()
-        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await fetch('/api/feed/v2/reader/capability', { headers, cache: 'no-store' })
-        const data = (await res.json().catch(() => ({}))) as { enabled?: boolean }
-        if (!cancelled) setFeedReaderEnabled(Boolean(data.enabled))
-      } catch {
-        if (!cancelled) setFeedReaderEnabled(false)
+        const result = await fetchFeedReaderCapability({ signal: ac.signal })
+        if (ac.signal.aborted) return
+        if (!isCapabilityGenerationCurrent(generation, readerCapabilityGenerationRef.current)) return
+        applyFeedReaderCapability(result.enabled)
+      } catch (err) {
+        if (ac.signal.aborted) return
+        if (!isCapabilityGenerationCurrent(generation, readerCapabilityGenerationRef.current)) return
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        applyFeedReaderCapability(false)
       }
     })()
+
     return () => {
-      cancelled = true
+      ac.abort()
     }
-  }, [authUser?.uid])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability])
+
+  const resolveFeedReaderEnabledForOpen = useCallback(async (): Promise<boolean> => {
+    if (readerCapabilityReadyRef.current) return feedReaderEnabledRef.current
+    if (authLoading) {
+      toast.error('Oturum hazırlanıyor, tekrar deneyin')
+      return false
+    }
+    try {
+      const result = await fetchFeedReaderCapability()
+      // Do not clobber a newer effect settle; only fill if still pending.
+      if (!readerCapabilityReadyRef.current) {
+        applyFeedReaderCapability(result.enabled)
+      }
+      return feedReaderEnabledRef.current
+    } catch {
+      if (!readerCapabilityReadyRef.current) {
+        applyFeedReaderCapability(false)
+      }
+      return feedReaderEnabledRef.current
+    }
+  }, [authLoading, applyFeedReaderCapability])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
@@ -1262,46 +1318,57 @@ export function SmartFeedClient({
     })
   }, [])
 
+  const openReader = useCallback((item: FeedItemDto, index: number) => {
+    // Keep Feed mounted — no restore snapshot needed for overlay path.
+    setReaderItem({ item, index })
+  }, [])
+
   const onRead = (item: FeedItemDto, index: number) => {
-    // Durable consumed: guest localStorage + server article_opened (not qualified impression).
-    const guestSeen = readGuestSeen()
-    for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
-    writeGuestSeen(guestSeen)
-    void postTelemetry({
-      events: [
-        {
-          eventType: 'article_opened',
-          articleId: item.articleId,
-          clusterId: item.clusterId,
-          feedType: mode,
-          metadata: {
-            publisherId: item.publisher?.id ?? null,
-            category: item.category ?? null,
-            tags: item.tags ?? [],
-            source: feedReaderEnabled ? 'feed_reader' : 'news_detail',
+    void (async () => {
+      // Durable consumed: guest localStorage + server article_opened (not qualified impression).
+      const guestSeen = readGuestSeen()
+      for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
+      writeGuestSeen(guestSeen)
+
+      const enabled = await resolveFeedReaderEnabledForOpen()
+      void postTelemetry({
+        events: [
+          {
+            eventType: 'article_opened',
+            articleId: item.articleId,
+            clusterId: item.clusterId,
+            feedType: mode,
+            metadata: {
+              publisherId: item.publisher?.id ?? null,
+              category: item.category ?? null,
+              tags: item.tags ?? [],
+              source: enabled ? 'feed_reader' : 'news_detail',
+            },
           },
-        },
-      ],
-    })
+        ],
+      })
 
-    if (feedReaderEnabled) {
-      // Keep Feed mounted — no restore snapshot needed for overlay path.
-      setReaderItem({ item, index })
-      return
-    }
+      if (enabled) {
+        openReader(item, index)
+        return
+      }
 
-    // Legacy path: navigate to canonical article page.
-    saveFeedRestore({
-      mode,
-      articleId: item.articleId,
-      cursor,
-      hasMore,
-      scrollIndex: index,
-      items,
-      timestamp: Date.now(),
-      pending: true,
-    })
-    router.push(ROUTES.NEWS_DETAIL(item.slug))
+      // Capability still pending (auth hydrating) — do not fall back to /haber yet.
+      if (authLoading || !readerCapabilityReadyRef.current) return
+
+      // Legacy path: navigate to canonical article page (non-pilot / guest).
+      saveFeedRestore({
+        mode,
+        articleId: item.articleId,
+        cursor,
+        hasMore,
+        scrollIndex: index,
+        items,
+        timestamp: Date.now(),
+        pending: true,
+      })
+      router.push(ROUTES.NEWS_DETAIL(item.slug))
+    })()
   }
 
   const onReaderCloseTelemetry = useCallback(
@@ -1602,10 +1669,12 @@ export function SmartFeedClient({
                   onReadClick={() => onRead(item, index)}
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    feedReaderEnabled && isActive && !readerItem
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
                       ? (g) => {
-                          const result = evaluateFeedOpenGesture(g)
-                          if (result.open) onRead(item, index)
+                          dispatchFeedOpenGesture({
+                            ...g,
+                            onOpen: () => onRead(item, index),
+                          })
                         }
                       : undefined
                   }
@@ -1759,16 +1828,23 @@ function FeedCardWithImpression(props: {
 
   return (
     <div
-      className="relative"
+      className="relative touch-pan-y"
+      data-testid="smart-feed-card-gesture-surface"
       onPointerDown={(e) => {
         if (!onOpenReaderGesture || !props.isActive) return
         if (e.pointerType === 'mouse' && e.button !== 0) return
+        if (shouldIgnoreFeedOpenGestureTarget(e.target)) return
         drag.current = {
           x: e.clientX,
           y: e.clientY,
           t: performance.now(),
           lastX: e.clientX,
           lastT: performance.now(),
+        }
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {
+          // Non-fatal: some browsers reject capture on certain targets.
         }
       }}
       onPointerMove={(e) => {
@@ -1780,6 +1856,13 @@ function FeedCardWithImpression(props: {
         if (!onOpenReaderGesture || !drag.current) return
         const d = drag.current
         drag.current = null
+        try {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+          }
+        } catch {
+          // ignore
+        }
         const dx = e.clientX - d.x
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)

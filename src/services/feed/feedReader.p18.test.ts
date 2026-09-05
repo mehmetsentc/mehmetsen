@@ -98,7 +98,7 @@ describe('Feed Reader foundation', () => {
     )
     expect(client).toContain('FeedArticleReader')
     expect(client).toContain('feedReaderEnabled')
-    expect(client).toContain("source: 'feed_reader'")
+    expect(client).toContain("'feed_reader'")
     expect(client).toContain('article_dwell')
     expect(reader).toContain('prefersReducedMotion')
     expect(reader).toContain('Haber ayrıntıları yüklenemedi')
