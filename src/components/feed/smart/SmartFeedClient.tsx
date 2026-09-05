@@ -287,7 +287,14 @@ export function SmartFeedClient({
 
     ;(async () => {
       try {
-        const result = await fetchFeedReaderCapability({ signal: ac.signal })
+        let result = await fetchFeedReaderCapability({ signal: ac.signal })
+        // AuthProvider may already have uid while ID token is momentarily unavailable.
+        if (!ac.signal.aborted && authUser?.uid && !result.authenticated) {
+          result = await fetchFeedReaderCapability({
+            signal: ac.signal,
+            forceAuthRefresh: true,
+          })
+        }
         if (ac.signal.aborted) return
         if (!isCapabilityGenerationCurrent(generation, readerCapabilityGenerationRef.current)) return
         applyFeedReaderCapability(result.enabled)
@@ -311,7 +318,10 @@ export function SmartFeedClient({
       return false
     }
     try {
-      const result = await fetchFeedReaderCapability()
+      let result = await fetchFeedReaderCapability()
+      if (authUser?.uid && !result.authenticated) {
+        result = await fetchFeedReaderCapability({ forceAuthRefresh: true })
+      }
       // Do not clobber a newer effect settle; only fill if still pending.
       if (!readerCapabilityReadyRef.current) {
         applyFeedReaderCapability(result.enabled)
@@ -323,7 +333,7 @@ export function SmartFeedClient({
       }
       return feedReaderEnabledRef.current
     }
-  }, [authLoading, applyFeedReaderCapability])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
