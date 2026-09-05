@@ -225,6 +225,8 @@ const AMBIGUOUS_SHORT_DISTRICT_SLUGS = new Set([
   // Everyday adjectives / given names ≠ districts without "ilçe" + province cue
   'genc', // "genç kardeş" ≠ Bingöl/Genç
   'keskin', // "keskin rekabet" ≠ Kırıkkale/Keskin
+  // "köşe yazarı" / "Evrensel köşe" normalize to "kose" ≠ Gümüşhane/Köse
+  'kose',
   // Given names that are also district names — never bare match ("Fatih Yaşlı" ≠ Fatih/İstanbul)
   'fatih',
   'osman',

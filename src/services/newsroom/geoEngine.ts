@@ -148,6 +148,7 @@ export function hasExplicitPlaceEvidence(text: string, placeSlug: string): boole
     slug === 'gole' ||
     slug === 'genc' ||
     slug === 'keskin' ||
+    slug === 'kose' || // "köşe" ≠ Gümüşhane/Köse without locative/ilçe
     slug === 'osman' ||
     slug === 'mustafa' ||
     slug === 'kemal' ||
@@ -180,8 +181,9 @@ export function extractCityFromText(text: string): string | null {
   const cleaned = stripAgencyDatelines(text)
   const lower = normalizeTr(cleaned)
 
+  // "Parti Genel Başkanı" etc. must not wipe an explicit event place ("Edirne'de").
+  // National-scope keywords only suppress bare/dateline-weak city hits.
   const isNationalScope = NATIONAL_SCOPE_KEYWORDS.some((kw) => lower.includes(kw))
-  if (isNationalScope) return null
 
   type Hit = { slug: string; score: number }
   const hits: Hit[] = []
@@ -192,6 +194,8 @@ export function extractCityFromText(text: string): string | null {
       `(?<![a-z0-9])${slug}(?:${APOSTROPHE_CLASS}?(?:da|de|ta|te|dan|den|tan|ten|nin|nun|in|un)|\\s+ili|\\s+ilce)`,
     )
     const score = locative.test(normalizeTr(cleaned)) ? 3 : 1
+    // Under national-politics wording, ignore bare province tokens (AA datelines).
+    if (isNationalScope && score < 3) continue
     // Demote capitals when only bare/dateline-weak
     const capitalPenalty =
       (slug === 'ankara' || slug === 'istanbul') && score === 1 ? -2 : 0

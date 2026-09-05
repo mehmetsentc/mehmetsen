@@ -2737,6 +2737,7 @@ function AdminNewsDesktopPage() {
 
       {editingPost && user && (
         <AdminNewsEditor
+          key={editingPost.id}
           mode="edit"
           variant="drawer"
           post={editingPost}

@@ -31,8 +31,13 @@ export function FeedV2CategoryNav({
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
+
+    async function loadTabs(opts?: { force?: boolean }) {
       try {
+        // Don't reshuffle under an active category browse session.
+        if (!opts?.force && frozenRef.current && activeTabId !== 'personal') {
+          return
+        }
         const headers: Record<string, string> = {}
         const token = await getClientAuthToken()
         if (token) headers.Authorization = `Bearer ${token}`
@@ -43,7 +48,6 @@ export function FeedV2CategoryNav({
         if (!res.ok) return
         const data = (await res.json()) as { tabs?: FeedV2Tab[] }
         if (cancelled || !data.tabs?.length) return
-        // Don't reshuffle under an active category browse session.
         if (frozenRef.current && activeTabId !== 'personal') {
           return
         }
@@ -51,9 +55,20 @@ export function FeedV2CategoryNav({
       } catch {
         /* keep fallback */
       }
-    })()
+    }
+
+    void loadTabs()
+
+    // Reconcile when returning to the feed surface on Sana Özel (safe refresh point).
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      if (activeTabId !== 'personal') return
+      void loadTabs({ force: true })
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [activeTabId])
 
