@@ -21,6 +21,8 @@ import { devLog, withTimeout } from '@/lib/asyncUtils'
 
 const PROFILE_TIMEOUT_MS = 8_000
 const PUBLIC_AUTH_IDLE_TIMEOUT_MS = 2_500
+const ACCEPT_TERMS_TIMEOUT_MS = 12_000
+const TERMS_STATUS_TIMEOUT_MS = 8_000
 
 interface AuthContextValue {
   user: User | null
@@ -77,6 +79,25 @@ function buildFallbackUser(firebaseUser: FirebaseUser): User {
   }
 
   return applyAdminBootstrap(baseUser)
+}
+
+async function fetchTermsAcceptedAt(idToken: string): Promise<string | null> {
+  const res = await withTimeout(
+    fetch('/api/user/accept-terms', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${idToken}` },
+      cache: 'no-store',
+    }),
+    TERMS_STATUS_TIMEOUT_MS,
+    'terms-status'
+  )
+  if (!res.ok) return null
+  const data = (await res.json().catch(() => ({}))) as {
+    accepted?: boolean
+    termsAcceptedAt?: string | null
+  }
+  if (!data.accepted) return null
+  return typeof data.termsAcceptedAt === 'string' ? data.termsAcceptedAt : new Date().toISOString()
 }
 
 async function refreshProfileAfterCmsSync(
@@ -181,6 +202,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             )
             if (mounted && profile) {
               setUser(applyAdminBootstrap(profile))
+            } else if (mounted && !profile?.termsAcceptedAt) {
+              // Client Firestore profile missing/invalid — hydrate terms via Admin API
+              // so already-accepted users are not trapped in EULA when reads fail.
+              try {
+                const token = await firebaseUser.getIdToken()
+                const termsAt = await fetchTermsAcceptedAt(token)
+                if (mounted && termsAt) {
+                  setUser((prev) =>
+                    prev
+                      ? { ...prev, termsAcceptedAt: termsAt }
+                      : { ...buildFallbackUser(firebaseUser), termsAcceptedAt: termsAt }
+                  )
+                }
+              } catch {
+                // Non-fatal — EULA may still show; acceptTerms uses API-first write.
+              }
             }
             void refreshProfileAfterCmsSync(firebaseUser, mounted, setUser)
             devLog('AuthProvider', 'profile loaded', {
@@ -189,6 +226,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
           } catch (error) {
             console.error('[AuthProvider] Failed to load user profile:', error)
+            // Profile timed out / failed — still try Admin terms status before showing EULA.
+            try {
+              const token = await firebaseUser.getIdToken()
+              const termsAt = await fetchTermsAcceptedAt(token)
+              if (mounted && termsAt) {
+                setUser((prev) => (prev ? { ...prev, termsAcceptedAt: termsAt } : null))
+              }
+            } catch {
+              // Non-fatal
+            }
           }
         }
 
@@ -312,26 +359,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const now = new Date().toISOString()
 
-    try {
-      await updateDoc(doc(db, Collections.USERS, current.uid), {
-        termsAcceptedAt: serverTimestamp(),
-      })
-    } catch (clientErr) {
-      // Client write başarısız olursa Bearer token ile API fallback
-      console.warn('[AuthProvider] client acceptTerms failed, trying API:', clientErr)
-      const idToken = await current.getIdToken()
-      const res = await fetch('/api/user/accept-terms', {
+    // API-first (Admin SDK): client Firestore updateDoc can hang on mobile with no reject,
+    // which previously left EulaModal stuck on "Kaydediliyor…" forever.
+    const idToken = await withTimeout(current.getIdToken(), 10_000, 'getIdToken')
+    const res = await withTimeout(
+      fetch('/api/user/accept-terms', {
         method: 'POST',
         headers: { Authorization: `Bearer ${idToken}` },
-      })
-      if (!res.ok) {
-        throw new Error(`accept-terms failed (${res.status})`)
-      }
+        cache: 'no-store',
+      }),
+      ACCEPT_TERMS_TIMEOUT_MS,
+      'accept-terms'
+    )
+    if (!res.ok) {
+      throw new Error(`accept-terms failed (${res.status})`)
     }
 
-    // Firestore refresh beklemeden local state'i anında güncelle —
-    // needsEula false'a döner ve modal unmount edilir.
+    // Optimistic local close — needsEula becomes false and modal unmounts.
     setUser((prev) => (prev ? { ...prev, termsAcceptedAt: now } : null))
+
+    // Best-effort client mirror (non-blocking; must not gate UI).
+    void withTimeout(
+      updateDoc(doc(db, Collections.USERS, current.uid), {
+        termsAcceptedAt: serverTimestamp(),
+      }),
+      8_000,
+      'client-acceptTerms'
+    ).catch(() => {
+      // Non-fatal — server already recorded acceptance.
+    })
   }
 
   return (

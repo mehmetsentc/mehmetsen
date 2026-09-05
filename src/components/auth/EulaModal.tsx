@@ -52,6 +52,8 @@ export function EulaModal({ onAccept }: EulaModalProps) {
     } catch (err) {
       console.error('[EulaModal] accept failed:', err)
       setError('Kabul kaydedilemedi. Lütfen tekrar deneyin.')
+    } finally {
+      // Always clear spinner — success unmounts via needsEula; hang/error must not stick forever.
       setLoading(false)
     }
   }
