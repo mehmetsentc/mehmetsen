@@ -58,3 +58,8 @@ export async function isSmartFeedTelemetryEffectiveForUser(userId: string | null
 export async function isNfRankLiveEffectiveForUser(userId: string | null | undefined): Promise<boolean> {
   return isFeatureEnabledForUser(userId, 'NFRANK_V1')
 }
+
+/** Feed Reader V1 — in-feed Haberi Oku overlay; requires FEED_READER_V1 grant/global (default off). */
+export async function isFeedReaderEffectiveForUser(userId: string | null | undefined): Promise<boolean> {
+  return isFeatureEnabledForUser(userId, 'FEED_READER_V1')
+}

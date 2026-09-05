@@ -13,6 +13,7 @@ import {
   isSmartFeedTelemetryEnabled,
   isColdStartV2Enabled,
   isNfRankLiveEnabled,
+  isFeedReaderV1Enabled,
 } from '@/lib/feed/featureFlag'
 import {
   isSocialGraphEnabled,
@@ -28,6 +29,7 @@ export const USER_FEATURE_ENV_KEYS: Record<UserRolloutFeatureKey, string> = {
   SMART_FEED_VIDEO: 'SMART_FEED_VIDEO_ENABLED',
   SMART_FEED_TELEMETRY: 'SMART_FEED_TELEMETRY_ENABLED',
   NFRANK_V1: 'FEED_V2_NFRANK_ENABLED',
+  FEED_READER_V1: 'FEED_V2_READER_ENABLED',
 }
 
 export const USER_FEATURE_DEPENDENCIES: Record<
@@ -42,6 +44,7 @@ export const USER_FEATURE_DEPENDENCIES: Record<
   SMART_FEED_VIDEO: ['SMART_FEED'],
   SMART_FEED_TELEMETRY: ['SMART_FEED'],
   NFRANK_V1: ['SMART_FEED', 'SMART_FEED_RANKING_V1'],
+  FEED_READER_V1: ['SMART_FEED'],
 }
 
 export const USER_ALLOWLISTABLE_FEATURES: readonly UserRolloutFeatureKey[] = [
@@ -53,6 +56,7 @@ export const USER_ALLOWLISTABLE_FEATURES: readonly UserRolloutFeatureKey[] = [
   'SMART_FEED_VIDEO',
   'SMART_FEED_TELEMETRY',
   'NFRANK_V1',
+  'FEED_READER_V1',
 ] as const
 
 const GLOBAL_CHECKERS: Record<UserRolloutFeatureKey, () => boolean> = {
@@ -64,6 +68,7 @@ const GLOBAL_CHECKERS: Record<UserRolloutFeatureKey, () => boolean> = {
   SMART_FEED_VIDEO: isSmartFeedVideoEnabled,
   SMART_FEED_TELEMETRY: isSmartFeedTelemetryEnabled,
   NFRANK_V1: isNfRankLiveEnabled,
+  FEED_READER_V1: isFeedReaderV1Enabled,
 }
 
 export function isGlobalUserFeatureEnabled(feature: UserRolloutFeatureKey): boolean {

@@ -382,7 +382,9 @@
 
   /* P18.3J: CommentsBottomSheet (z-120) must not compete with MobileNav (z-105) for taps */
   html.smart-feed-comments-open .mobile-bottom-nav,
-  body.smart-feed-comments-open .mobile-bottom-nav {
+  body.smart-feed-comments-open .mobile-bottom-nav,
+  html.smart-feed-reader-open .mobile-bottom-nav,
+  body.smart-feed-reader-open .mobile-bottom-nav {
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;

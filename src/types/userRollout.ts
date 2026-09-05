@@ -9,6 +9,7 @@ export const USER_ROLLOUT_FEATURE_KEYS = [
   'SMART_FEED_VIDEO',
   'SMART_FEED_TELEMETRY',
   'NFRANK_V1',
+  'FEED_READER_V1',
 ] as const
 
 export type UserRolloutFeatureKey = (typeof USER_ROLLOUT_FEATURE_KEYS)[number]

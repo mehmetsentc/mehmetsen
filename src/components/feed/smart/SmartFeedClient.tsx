@@ -10,6 +10,11 @@ import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNe
 import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
+import {
+  FeedArticleReader,
+  evaluateFeedOpenGesture,
+  type FeedReaderTelemetryPayload,
+} from '@/components/feed/smart/FeedArticleReader'
 import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
@@ -229,6 +234,9 @@ export function SmartFeedClient({
   const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
+  const [readerItem, setReaderItem] = useState<{ item: FeedItemDto; index: number } | null>(null)
+  const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
+  const [feedScrollLocked, setFeedScrollLocked] = useState(false)
   const [social, setSocial] = useState<Record<string, SocialItemState>>({})
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
   const restoreAppliedRef = useRef(false)
@@ -241,6 +249,25 @@ export function SmartFeedClient({
   const socialEnabled = isSocialGraphEnabledClient()
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        await ensureAuthReady()
+        const token = await getClientAuthToken()
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
+        const res = await fetch('/api/feed/v2/reader/capability', { headers, cache: 'no-store' })
+        const data = (await res.json().catch(() => ({}))) as { enabled?: boolean }
+        if (!cancelled) setFeedReaderEnabled(Boolean(data.enabled))
+      } catch {
+        if (!cancelled) setFeedReaderEnabled(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.uid])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
@@ -1236,17 +1263,6 @@ export function SmartFeedClient({
   }, [])
 
   const onRead = (item: FeedItemDto, index: number) => {
-    // Immediate back restore (ephemeral) — card may stay visible this session.
-    saveFeedRestore({
-      mode,
-      articleId: item.articleId,
-      cursor,
-      hasMore,
-      scrollIndex: index,
-      items,
-      timestamp: Date.now(),
-      pending: true,
-    })
     // Durable consumed: guest localStorage + server article_opened (not qualified impression).
     const guestSeen = readGuestSeen()
     for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
@@ -1262,12 +1278,56 @@ export function SmartFeedClient({
             publisherId: item.publisher?.id ?? null,
             category: item.category ?? null,
             tags: item.tags ?? [],
+            source: feedReaderEnabled ? 'feed_reader' : 'news_detail',
           },
         },
       ],
     })
+
+    if (feedReaderEnabled) {
+      // Keep Feed mounted — no restore snapshot needed for overlay path.
+      setReaderItem({ item, index })
+      return
+    }
+
+    // Legacy path: navigate to canonical article page.
+    saveFeedRestore({
+      mode,
+      articleId: item.articleId,
+      cursor,
+      hasMore,
+      scrollIndex: index,
+      items,
+      timestamp: Date.now(),
+      pending: true,
+    })
     router.push(ROUTES.NEWS_DETAIL(item.slug))
   }
+
+  const onReaderCloseTelemetry = useCallback(
+    (payload: FeedReaderTelemetryPayload) => {
+      void postTelemetry({
+        events: [
+          {
+            eventType: 'article_dwell',
+            articleId: payload.articleId,
+            clusterId: payload.clusterId,
+            feedType: mode,
+            dwellMs: payload.dwellMs,
+            metadata: {
+              publisherId: payload.publisherId,
+              category: payload.category,
+              tags: payload.tags,
+              source: 'feed_reader',
+              readDepthMax: payload.readDepthMax,
+              readDepthThresholds: payload.thresholdsHit,
+            },
+          },
+        ],
+      })
+    },
+    [mode]
+  )
 
   const emptyState = useMemo(() => {
     if (loading) return null
@@ -1482,7 +1542,8 @@ export function SmartFeedClient({
             onScroll={onScroll}
             className={cn(
               'h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
-              isTabSwitching && 'opacity-55'
+              isTabSwitching && 'opacity-55',
+              feedScrollLocked && 'overflow-hidden touch-none'
             )}
             style={
               {
@@ -1540,6 +1601,14 @@ export function SmartFeedClient({
                   onCommentClick={() => setCommentArticleId(item.articleId)}
                   onReadClick={() => onRead(item, index)}
                   onImpression={() => recordImpression(item)}
+                  onOpenReaderGesture={
+                    feedReaderEnabled && isActive && !readerItem
+                      ? (g) => {
+                          const result = evaluateFeedOpenGesture(g)
+                          if (result.open) onRead(item, index)
+                        }
+                      : undefined
+                  }
                   showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
                   discoveryCategory={category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
@@ -1604,6 +1673,37 @@ export function SmartFeedClient({
           }}
         />
 
+        {readerItem ? (
+          <FeedArticleReader
+            item={readerItem.item}
+            open={Boolean(readerItem)}
+            onClose={() => {
+              const idx = readerItem.index
+              setReaderItem(null)
+              // Stay on same card index — Feed never unmounted.
+              requestAnimationFrame(() => scrollToIndex(idx))
+            }}
+            onCloseTelemetry={onReaderCloseTelemetry}
+            liked={social[readerItem.item.articleId]?.liked ?? readerItem.item.socialState?.liked ?? false}
+            saved={social[readerItem.item.articleId]?.saved ?? readerItem.item.socialState?.saved ?? false}
+            likeCount={
+              social[readerItem.item.articleId]?.likeCount ?? readerItem.item.socialCounts.likes ?? 0
+            }
+            commentCount={
+              social[readerItem.item.articleId]?.commentCount ??
+              readerItem.item.socialCounts.comments ??
+              0
+            }
+            saveCount={
+              social[readerItem.item.articleId]?.saveCount ?? readerItem.item.socialCounts.saves ?? 0
+            }
+            onToggleLike={() => void toggleLike(readerItem.item)}
+            onToggleSave={() => void toggleSave(readerItem.item)}
+            onCommentClick={() => setCommentArticleId(readerItem.item.articleId)}
+            onLockFeedScroll={setFeedScrollLocked}
+          />
+        ) : null}
+
         <LocalLocationSetupSheet
           open={mode === 'local' && locationSetupOpen}
           requestingGps={requestingGps}
@@ -1636,10 +1736,67 @@ function FeedCardWithImpression(props: {
   onCommentClick: () => void
   onReadClick: () => void
   onImpression: () => void
+  onOpenReaderGesture?: (g: {
+    dx: number
+    dy: number
+    startClientX: number
+    viewportWidth: number
+    velocityX: number
+  }) => void
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
 }) {
+  const { onOpenReaderGesture, ...cardProps } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
-  return <FullscreenNewsCard {...props} cardRef={impressionRef} />
+  const drag = useRef<{
+    x: number
+    y: number
+    t: number
+    lastX: number
+    lastT: number
+  } | null>(null)
+
+  return (
+    <div
+      className="relative"
+      onPointerDown={(e) => {
+        if (!onOpenReaderGesture || !props.isActive) return
+        if (e.pointerType === 'mouse' && e.button !== 0) return
+        drag.current = {
+          x: e.clientX,
+          y: e.clientY,
+          t: performance.now(),
+          lastX: e.clientX,
+          lastT: performance.now(),
+        }
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return
+        drag.current.lastX = e.clientX
+        drag.current.lastT = performance.now()
+      }}
+      onPointerUp={(e) => {
+        if (!onOpenReaderGesture || !drag.current) return
+        const d = drag.current
+        drag.current = null
+        const dx = e.clientX - d.x
+        const dy = e.clientY - d.y
+        const dt = Math.max(1, performance.now() - d.lastT)
+        const velocityX = (e.clientX - d.lastX) / dt
+        onOpenReaderGesture({
+          dx,
+          dy,
+          startClientX: d.x,
+          viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 390,
+          velocityX,
+        })
+      }}
+      onPointerCancel={() => {
+        drag.current = null
+      }}
+    >
+      <FullscreenNewsCard {...cardProps} cardRef={impressionRef} />
+    </div>
+  )
 }

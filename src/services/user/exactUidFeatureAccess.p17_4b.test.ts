@@ -92,12 +92,15 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       expect(await isSmartFeedVideoEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
       expect(await isSmartFeedTelemetryEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
 
-      const pilotBundle = USER_ALLOWLISTABLE_FEATURES.filter((f) => f !== 'NFRANK_V1')
+      const pilotBundle = USER_ALLOWLISTABLE_FEATURES.filter(
+        (f) => f !== 'NFRANK_V1' && f !== 'FEED_READER_V1'
+      )
       for (const feat of pilotBundle) {
         expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)).toBe(true)
       }
-      // Pilot cohort unchanged: no silent NFRANK live grant
+      // Pilot cohort unchanged: no silent NFRANK / Feed Reader live grant
       expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, 'NFRANK_V1')).toBe(false)
+      expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, 'FEED_READER_V1')).toBe(false)
     })
 
     it('ensures historical pilot user UID has 0 override grants and falls back to global flag state', async () => {
@@ -208,7 +211,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       expect(isGlobalUserFeatureEnabled('NFRANK_V1')).toBe(false)
     })
 
-    it('grantPilotBundle source still excludes NFRANK_V1', async () => {
+    it('grantPilotBundle source still excludes NFRANK_V1 and FEED_READER_V1', async () => {
       const fs = await import('node:fs')
       const path = await import('node:path')
       const src = fs.readFileSync(
@@ -216,6 +219,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
         'utf8'
       )
       expect(src).not.toMatch(/grantPilotBundle[\s\S]*NFRANK_V1/)
+      expect(src).not.toMatch(/grantPilotBundle[\s\S]*FEED_READER_V1/)
       void userFeatureAccessService
     })
   })

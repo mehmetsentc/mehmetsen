@@ -71,9 +71,14 @@ export class FeedInterestAggregator {
 
       let weight = FEED_RANKING_CONFIG_V1.behavioralSignalWeights[signal]
       if (signal === 'LONG_DWELL') {
-        const meta = ev.metadata as { dwellMs?: number } | null
+        const meta = ev.metadata as { dwellMs?: number; readDepthMax?: number } | null
         const bucket = dwellBucket(meta?.dwellMs)
         weight *= FEED_RANKING_CONFIG_V1.dwellBucketNormalization[bucket] ?? 0.5
+        // Bounded depth multiplier — never invents entities; only scales existing dwell.
+        const depth = typeof meta?.readDepthMax === 'number' ? meta.readDepthMax : 0
+        if (depth >= 90) weight *= 1.35
+        else if (depth >= 75) weight *= 1.2
+        else if (depth >= 50) weight *= 1.1
       }
 
       const decay = decayFactor(ev.createdAt)
