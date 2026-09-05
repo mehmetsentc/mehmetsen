@@ -42,6 +42,8 @@ export async function GET(request: Request) {
         slug: news.slug,
         title: news.title,
         status: news.status,
+        source: news.source,
+        sourceUrl: news.sourceUrl,
         rightsStatus: news.rightsStatus,
         rightsBasis: news.rightsBasis,
         migrationBatchId: news.migrationBatchId,
@@ -59,6 +61,8 @@ export async function GET(request: Request) {
         slug: row.slug,
         title: row.title,
         status: row.status,
+        source: row.source,
+        sourceUrl: row.sourceUrl,
         rightsStatus: row.rightsStatus,
         rightsBasis: row.rightsBasis,
         migrationBatchId: row.migrationBatchId,
@@ -78,6 +82,8 @@ export async function GET(request: Request) {
       slug: news.slug,
       title: news.title,
       status: news.status,
+      source: news.source,
+      sourceUrl: news.sourceUrl,
       rightsStatus: news.rightsStatus,
       rightsBasis: news.rightsBasis,
       migrationBatchId: news.migrationBatchId,
@@ -94,6 +100,8 @@ export async function GET(request: Request) {
     slug?: string | null
     title?: string | null
     status?: string | null
+    source?: string | null
+    sourceUrl?: string | null
     rightsStatus?: string | null
     rightsBasis?: string | null
     migrationBatchId?: string | null
@@ -112,6 +120,8 @@ export async function GET(request: Request) {
       slug: row.slug,
       title: row.title,
       status: row.status,
+      source: row.source,
+      sourceUrl: row.sourceUrl,
       rightsStatus: row.rightsStatus,
       rightsBasis: row.rightsBasis,
       migrationBatchId: row.migrationBatchId,

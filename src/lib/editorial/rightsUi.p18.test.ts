@@ -24,9 +24,15 @@ describe('Yayın Hakları UX + bulk', () => {
 
   it('uses Turkish product naming', () => {
     expect(RIGHTS_PAGE.title).toBe('Yayın Hakları')
-    expect(page).toContain('Yayın Hakları')
+    expect(page).toContain('RIGHTS_PAGE.title')
     expect(sidebar).toContain("label: 'Yayın Hakları'")
     expect(page).not.toContain('Canonical draft rights review')
+  })
+
+  it('explains rights ≠ publish in Turkish', () => {
+    expect(RIGHTS_PAGE.subtitle).toMatch(/telif ve yeniden kullanım/)
+    expect(RIGHTS_PAGE.rightsVsPublish).toMatch(/Hak kararı yayın kararı değildir/)
+    expect(page).toContain('RIGHTS_PAGE.rightsVsPublish')
   })
 
   it('maps published+pending to explicit Turkish state', () => {
@@ -39,6 +45,13 @@ describe('Yayın Hakları UX + bulk', () => {
     ).toContain('Hak Kontrolü Gerekli')
   })
 
+  it('uses editorial Turkish status labels', () => {
+    expect(RIGHTS_STATUS_TR.PENDING).toBe('Hak Kontrolü Bekliyor')
+    expect(RIGHTS_STATUS_TR.REWRITE_REQUIRED).toBe('Yeniden Yazılmalı')
+    expect(RIGHTS_STATUS_TR.DO_NOT_PUBLISH).toBe('Yayınlanmamalı')
+    expect(RIGHTS_STATUS_TR.CLEARED).toBe('Hakları Uygun')
+  })
+
   it('bulk API never publishes and bounds ids', () => {
     expect(bulk).toContain('publishes: 0')
     expect(bulk).toContain('slice(0, 50)')
@@ -47,16 +60,18 @@ describe('Yayın Hakları UX + bulk', () => {
     expect(bulk).not.toMatch(/executePublish:\s*true|status:\s*'published'/)
   })
 
-  it('UI supports selection + bulk confirmation + no bulk publish', () => {
+  it('UI supports search, filters, source grouping, bulk', () => {
     expect(page).toContain('runBulk')
-    expect(page).toContain('Seçilenleri Yeniden Yazılacak')
+    expect(page).toContain('groupBySource')
+    expect(page).toContain('searchPlaceholder')
+    expect(page).toContain('BULK_MAX')
+    expect(page).toContain('RIGHTS_PAGE.bulkRewrite')
     expect(page).toContain('Hiçbir haber yayınlanmayacak')
-    expect(page).toContain('publishes: 0'.length > 0 ? 'runBulk' : '')
     expect(bulk).toContain('publishes: 0')
   })
 
   it('risk recommendation is Turkish and non-legal', () => {
     expect(riskRecommendationTr('HIGH_SOURCE_OVERLAP')).toMatch(/Yeniden yaz/)
-    expect(RIGHTS_STATUS_TR.REWRITE_REQUIRED).toBe('Yeniden Yazılacak')
+    expect(RIGHTS_STATUS_TR.REWRITE_REQUIRED).toBe('Yeniden Yazılmalı')
   })
 })
