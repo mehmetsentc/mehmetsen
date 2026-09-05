@@ -79,6 +79,7 @@ describe('P18 feed-v2 live nav + card chrome', () => {
     )
     expect(discovery).toContain('discovery_module_viewed')
     expect(discovery).toContain('discovery_card_opened')
+    expect(discovery).toContain('unoptimized')
   })
 
   it('qualified impression thresholds unchanged', () => {

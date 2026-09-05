@@ -137,7 +137,18 @@ export function FeedDiscoveryRail({ category, excludeIds, onOpen }: FeedDiscover
               }}
             >
               {item.image ? (
-                <Image src={item.image} alt="" fill className="object-cover" sizes="112px" />
+                <Image
+                  src={item.image}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="112px"
+                  // Match FullscreenNewsCard: remote publisher CDNs often block
+                  // /_next/image proxy — unoptimized avoids broken thumbnails.
+                  unoptimized={
+                    item.image.startsWith('http://') || item.image.startsWith('https://')
+                  }
+                />
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
               )}

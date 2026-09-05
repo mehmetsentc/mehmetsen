@@ -13,8 +13,10 @@ import {
   isColdStartEffectiveForUser,
   isSmartFeedVideoEffectiveForUser,
   isSmartFeedTelemetryEffectiveForUser,
+  isNfRankLiveEffectiveForUser,
 } from '@/lib/user/effectiveUserFlags'
 import { userFeatureAccessRepository } from '@/services/user/userFeatureAccessRepository'
+import { userFeatureAccessService } from '@/services/user/userFeatureAccessService'
 
 describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort Containment', () => {
   const origEnv = { ...process.env }
@@ -154,6 +156,67 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       expect(await isSocialGraphEffectiveForUser(null)).toBe(false)
       expect(await isSocialGraphEffectiveForUser(undefined)).toBe(false)
       expect(await isSocialGraphEffectiveForUser('')).toBe(false)
+    })
+  })
+
+  describe('5. NFRANK_V1 single-pilot live isolation + rollback', () => {
+    const PILOT_BUNDLE = [
+      'USER_PROFILES',
+      'SOCIAL_GRAPH',
+      'SMART_FEED',
+      'SMART_FEED_RANKING_V1',
+      'COLD_START_V2',
+      'SMART_FEED_VIDEO',
+      'SMART_FEED_TELEMETRY',
+    ] as const
+
+    function mockKeys(enabled: ReadonlySet<string>) {
+      vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
+        if (userId === CANONICAL_PILOT_UID) return new Set(enabled)
+        return new Set()
+      })
+    }
+
+    it('NFRANK_V1 absent → live false for exact pilot', async () => {
+      mockKeys(new Set(PILOT_BUNDLE))
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID)).toBe(false)
+    })
+
+    it('NFRANK_V1 enabled → live true only for exact pilot UID', async () => {
+      mockKeys(new Set([...PILOT_BUNDLE, 'NFRANK_V1']))
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
+      expect(await isNfRankLiveEffectiveForUser(HISTORICAL_PILOT_UID)).toBe(false)
+      expect(await isNfRankLiveEffectiveForUser(null)).toBe(false)
+      for (const permUid of OCR_PERMUTATIONS) {
+        expect(await isNfRankLiveEffectiveForUser(permUid), `live must be false for ${permUid}`).toBe(false)
+      }
+      // Prefix / suffix must not match
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID.slice(0, 20))).toBe(false)
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID + 'x')).toBe(false)
+      expect(await isNfRankLiveEffectiveForUser('x' + CANONICAL_PILOT_UID)).toBe(false)
+    })
+
+    it('NFRANK_V1 disabled → immediate rollback to live false', async () => {
+      mockKeys(new Set([...PILOT_BUNDLE, 'NFRANK_V1']))
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID)).toBe(true)
+      mockKeys(new Set(PILOT_BUNDLE))
+      expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID)).toBe(false)
+    })
+
+    it('global FEED_V2_NFRANK_ENABLED remains off by default (no accidental cohort-wide live)', () => {
+      delete process.env.FEED_V2_NFRANK_ENABLED
+      expect(isGlobalUserFeatureEnabled('NFRANK_V1')).toBe(false)
+    })
+
+    it('grantPilotBundle source still excludes NFRANK_V1', async () => {
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      const src = fs.readFileSync(
+        path.join(process.cwd(), 'src/services/user/userFeatureAccessService.ts'),
+        'utf8'
+      )
+      expect(src).not.toMatch(/grantPilotBundle[\s\S]*NFRANK_V1/)
+      void userFeatureAccessService
     })
   })
 })

@@ -51,6 +51,8 @@ describe('P18.3I social UI wiring (source)', () => {
     const shareMenu = readFileSync(join(process.cwd(), 'src/components/post/ShareMenu.tsx'), 'utf8')
     expect(shareMenu).toContain('socialApi.recordShare')
     expect(shareMenu).toContain('buildShareText')
+    expect(shareMenu).toContain('createPortal')
+    expect(shareMenu).toContain('document.body')
 
     const shareBtn = readFileSync(join(process.cwd(), 'src/components/post/ShareButton.tsx'), 'utf8')
     expect(shareBtn).toContain('buildPostShareUrl')

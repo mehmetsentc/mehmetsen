@@ -382,4 +382,26 @@ describe('NFRank Feed V2 isolation (source contracts)', () => {
     expect(seen).toContain('>=60%')
     expect(seen).toContain('>=750ms')
   })
+
+  it('live mode requires feed-v2 surface AND NFRANK grant path; category stays category_mix_v1', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const feedService = fs.readFileSync(
+      path.join(process.cwd(), 'src/services/feed/FeedService.ts'),
+      'utf8'
+    )
+    expect(feedService).toContain("if (ctx.surface !== 'feed-v2') return 'off'")
+    expect(feedService).toContain('isNfRankLiveEffectiveForUser')
+    expect(feedService).toContain("rankingVersion: 'category_mix_v1'")
+    const pipeline = fs.readFileSync(
+      path.join(process.cwd(), 'src/services/feed/FeedRankingPipeline.ts'),
+      'utf8'
+    )
+    expect(pipeline).toMatch(/nfMode === 'live' \? NFRANK_VERSION/)
+  })
+
+  it('archive rediscovery weight is bounded; validity model not claimed present', () => {
+    expect(NFRANK_CONFIG_V1.baseWeights.archiveRediscovery).toBeLessThanOrEqual(0.1)
+    expect(NFRANK_CONFIG_V1.archiveRediscovery.maxContribution).toBeLessThanOrEqual(0.6)
+  })
 })

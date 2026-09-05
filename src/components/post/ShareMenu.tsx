@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Link2, Share2, Mail, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { postService } from '@/services/postService'
@@ -84,6 +85,12 @@ function ShareIcon({ platform }: { platform: SharePlatform }) {
 
 export function ShareMenu({ open, onClose, title, text, url, postId, onShared }: ShareMenuProps) {
   const shareText = buildShareText(title, text)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -157,15 +164,17 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
     [url, title, shareText, onClose, recordShare]
   )
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const visiblePlatforms = SHARE_PLATFORMS.filter(
     (p) => p.id !== 'native' || (typeof navigator !== 'undefined' && !!navigator.share)
   )
 
-  return (
+  // Portal to body: SocialActionRail uses transform (-translate-y-1/2), which
+  // would otherwise trap position:fixed to the narrow right rail.
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+      className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-menu-title"
@@ -222,6 +231,7 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
