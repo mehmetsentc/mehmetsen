@@ -46,6 +46,69 @@ export function urlsEquivalent(a: string | null | undefined, b: string | null | 
   }
 }
 
+export type HeroLoadFlag = 'pending' | 'ok' | 'error'
+
+export type HeroRuntimeSnapshot = {
+  articleId: string
+  url: string | null
+  epoch: number
+  imageLoad: HeroLoadFlag
+  loadTimedOut: boolean
+}
+
+export type HeroRuntimeEvent =
+  | { type: 'timeout'; articleId: string; url: string | null; epoch: number }
+  | { type: 'ok'; articleId: string; url: string; epoch: number }
+  | { type: 'error'; articleId: string; url: string; epoch: number }
+
+/**
+ * Feed card already rendered this URL — first-choice hero.
+ * Reader enrichment may fill a missing Feed image, but must not replace a
+ * known-good Feed URL with a different unverified cover.
+ */
+export function selectReaderHeroCandidate(
+  feedImage: string | null | undefined,
+  detailImage: string | null | undefined
+): string | null {
+  const feed = isLikelyHttpImageUrl(feedImage) ? feedImage!.trim() : null
+  const detail = isLikelyHttpImageUrl(detailImage) ? detailImage!.trim() : null
+  return feed || detail
+}
+
+/** Match Feed cards: remote http(s) bypasses /_next/image (unknown hosts 400). */
+export function readerHeroShouldBeUnoptimized(url: string | null | undefined): boolean {
+  const u = url?.trim() ?? ''
+  return u.startsWith('http://') || u.startsWith('https://')
+}
+
+/**
+ * Epoch + article + URL identity. LOADING → VALID is terminal for that identity.
+ * Timeout / onError / onLoad from a previous identity are ignored.
+ * Late onLoad after timeout does not resurrect VALID.
+ */
+export function applyHeroRuntimeEvent(
+  current: HeroRuntimeSnapshot,
+  event: HeroRuntimeEvent
+): Pick<HeroRuntimeSnapshot, 'imageLoad' | 'loadTimedOut'> {
+  const flags = { imageLoad: current.imageLoad, loadTimedOut: current.loadTimedOut }
+  if (event.epoch !== current.epoch) return flags
+  if (event.articleId !== current.articleId) return flags
+  if ((event.url ?? null) !== (current.url ?? null)) return flags
+
+  if (current.imageLoad === 'ok') {
+    return { imageLoad: 'ok', loadTimedOut: false }
+  }
+
+  if (event.type === 'timeout') {
+    return { imageLoad: current.imageLoad, loadTimedOut: true }
+  }
+  if (event.type === 'ok') {
+    if (current.loadTimedOut) return flags
+    return { imageLoad: 'ok', loadTimedOut: false }
+  }
+  return { imageLoad: 'error', loadTimedOut: current.loadTimedOut }
+}
+
 /**
  * Resolve initial hero intent from Feed DTO + Reader detail.
  * LOADING only when a candidate URL exists and runtime has not settled yet.
@@ -59,9 +122,7 @@ export function resolveReaderHero(input: {
   imageLoad: 'pending' | 'ok' | 'error'
   loadTimedOut: boolean
 }): ReaderHeroResolution {
-  const candidate =
-    (isLikelyHttpImageUrl(input.detailImage) ? input.detailImage!.trim() : null) ||
-    (isLikelyHttpImageUrl(input.feedImage) ? input.feedImage!.trim() : null)
+  const candidate = selectReaderHeroCandidate(input.feedImage, input.detailImage)
 
   const bodySrc = firstBodyImageSrc(input.bodyHtml)
   const suppressBodySrc =

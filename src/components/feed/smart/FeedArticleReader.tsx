@@ -45,9 +45,12 @@ import {
   FEED_READER_HERO_LOAD_TIMEOUT_MS,
 } from '@/lib/feed/reader/tokens'
 import {
-  isLikelyHttpImageUrl,
+  applyHeroRuntimeEvent,
+  readerHeroShouldBeUnoptimized,
   resolveReaderHero,
+  selectReaderHeroCandidate,
   stripDuplicateHeroFromBodyHtml,
+  type HeroRuntimeSnapshot,
 } from '@/lib/feed/reader/mediaPolicy'
 import { getClientAuthToken } from '@/lib/firebase/auth'
 
@@ -153,6 +156,13 @@ export function FeedArticleReader({
   const heroEpochRef = useRef(0)
   const activeHeroUrlRef = useRef<string | null>(null)
   const loadTimedOutRef = useRef(false)
+  const heroRuntimeRef = useRef<HeroRuntimeSnapshot>({
+    articleId: item.articleId,
+    url: null,
+    epoch: 0,
+    imageLoad: 'pending',
+    loadTimedOut: false,
+  })
 
   const progress =
     internalProgress !== null ? internalProgress : Math.min(1, Math.max(0, visualProgress))
@@ -197,43 +207,70 @@ export function FeedArticleReader({
     [detail?.bodyHtml, hero.suppressBodySrc]
   )
 
-  const heroCandidate =
-    (isLikelyHttpImageUrl(detailImage) ? detailImage!.trim() : null) ||
-    (isLikelyHttpImageUrl(feedImage) ? feedImage!.trim() : null)
+  const heroCandidate = selectReaderHeroCandidate(feedImage, detailImage)
+
+  const commitHeroFlags = useCallback(
+    (flags: Pick<HeroRuntimeSnapshot, 'imageLoad' | 'loadTimedOut'>) => {
+      heroRuntimeRef.current.imageLoad = flags.imageLoad
+      heroRuntimeRef.current.loadTimedOut = flags.loadTimedOut
+      loadTimedOutRef.current = flags.loadTimedOut
+      setImageLoad(flags.imageLoad)
+      setLoadTimedOut(flags.loadTimedOut)
+    },
+    []
+  )
 
   useEffect(() => {
     const epoch = ++heroEpochRef.current
     loadTimedOutRef.current = false
     activeHeroUrlRef.current = heroCandidate
-    if (!heroCandidate) {
-      setImageLoad('pending')
-      setLoadTimedOut(false)
-      return
+    heroRuntimeRef.current = {
+      articleId: item.articleId,
+      url: heroCandidate,
+      epoch,
+      imageLoad: 'pending',
+      loadTimedOut: false,
     }
     setImageLoad('pending')
     setLoadTimedOut(false)
+    if (!heroCandidate) return
     const t = window.setTimeout(() => {
-      if (epoch !== heroEpochRef.current) return
-      loadTimedOutRef.current = true
-      setLoadTimedOut(true)
+      commitHeroFlags(
+        applyHeroRuntimeEvent(heroRuntimeRef.current, {
+          type: 'timeout',
+          articleId: item.articleId,
+          url: heroCandidate,
+          epoch,
+        })
+      )
     }, FEED_READER_HERO_LOAD_TIMEOUT_MS)
     return () => {
       window.clearTimeout(t)
     }
-  }, [heroCandidate, item.articleId])
+  }, [commitHeroFlags, heroCandidate, item.articleId])
 
   const acceptHeroLoad = useCallback((url: string, result: ImageLoadState) => {
-    if (heroEpochRef.current === 0) return
-    if (activeHeroUrlRef.current !== url) return
-    if (result === 'ok' && loadTimedOutRef.current) return
-    setImageLoad(result)
-  }, [])
+    if (result !== 'ok' && result !== 'error') return
+    commitHeroFlags(
+      applyHeroRuntimeEvent(heroRuntimeRef.current, {
+        type: result,
+        articleId: item.articleId,
+        url,
+        epoch: heroEpochRef.current,
+      })
+    )
+  }, [commitHeroFlags, item.articleId])
 
   // Close / unmount: invalidate in-flight hero callbacks + timer epoch.
   useEffect(() => {
     return () => {
       heroEpochRef.current += 1
       activeHeroUrlRef.current = null
+      heroRuntimeRef.current = {
+        ...heroRuntimeRef.current,
+        epoch: heroEpochRef.current,
+        url: null,
+      }
     }
   }, [])
 
@@ -674,6 +711,7 @@ export function FeedArticleReader({
                 className="object-cover opacity-0"
                 sizes="(max-width: 512px) 100vw, 512px"
                 priority
+                unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
                 onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
                 onError={() => acceptHeroLoad(hero.url!, 'error')}
               />
@@ -695,6 +733,7 @@ export function FeedArticleReader({
                 className="object-cover"
                 sizes="(max-width: 512px) 100vw, 512px"
                 priority
+                unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
                 onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
                 onError={() => acceptHeroLoad(hero.url!, 'error')}
               />

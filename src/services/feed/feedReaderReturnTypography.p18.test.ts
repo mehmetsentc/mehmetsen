@@ -189,6 +189,96 @@ describe('P18 Reader history ownership + return', () => {
     expect(src).not.toContain('replaceFeedUrl')
   })
 
+  it('10 owned open/close cycles stay on Feed; HOME is never current', () => {
+    const h = mockHistory('/')
+    h.pushState(null, '', '/feed-v2')
+    const feedUrl = '/feed-v2'
+    expect(h.current().url).toBe(feedUrl)
+    expect(h.snapshot()).toEqual(['/', feedUrl])
+
+    for (let i = 0; i < 10; i++) {
+      const slug = `article-${i}`
+      expect(
+        planReaderHistoryOpen({ slug, search: '', historyState: h.state })
+      ).toBe('push_owned')
+      pushOwnedReaderHistory({
+        slug,
+        articleId: String(i),
+        history: h,
+        url: buildFeedReaderUrl(slug),
+      })
+      expect(h.current().url).toBe(`/feed-v2?reader=${slug}`)
+      expect(h.snapshot()).toContain(feedUrl)
+
+      expect(planReaderHistoryClose({ reason: 'button', ownsFeedReturn: true })).toBe(
+        'history_back'
+      )
+      h.back()
+      expect(h.current().url).toBe(feedUrl)
+      expect(h.current().url).not.toContain('reader=')
+      expect(h.current().url).not.toBe('/')
+      expect(h.snapshot()[0]).toBe('/')
+      expect(h.snapshot().filter((u) => u === feedUrl).length).toBe(1)
+    }
+
+    expect(h.snapshot()).toEqual(['/', feedUrl])
+    expect(h.current().url).toBe(feedUrl)
+  })
+
+  it('mixed swipe / Haberi Oku / browser Back close consume only Reader-owned entry', () => {
+    const h = mockHistory('/')
+    h.pushState(null, '', '/feed-v2')
+
+    // swipe-complete = owned push + gesture close
+    pushOwnedReaderHistory({
+      slug: 'swipe',
+      articleId: 's',
+      history: h,
+      url: buildFeedReaderUrl('swipe'),
+    })
+    expect(planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: true })).toBe(
+      'history_back'
+    )
+    h.back()
+    expect(h.current().url).toBe('/feed-v2')
+
+    // Haberi Oku = same owned push + button close
+    pushOwnedReaderHistory({
+      slug: 'haberi-oku',
+      articleId: 'h',
+      history: h,
+      url: buildFeedReaderUrl('haberi-oku'),
+    })
+    expect(planReaderHistoryClose({ reason: 'button', ownsFeedReturn: true })).toBe(
+      'history_back'
+    )
+    h.back()
+    expect(h.current().url).toBe('/feed-v2')
+
+    // browser Back = popstate; plan is none (already moved)
+    pushOwnedReaderHistory({
+      slug: 'browser-back',
+      articleId: 'b',
+      history: h,
+      url: buildFeedReaderUrl('browser-back'),
+    })
+    h.back()
+    expect(planReaderHistoryClose({ reason: 'history', ownsFeedReturn: true })).toBe('none')
+    expect(h.current().url).toBe('/feed-v2')
+    expect(h.snapshot()).toEqual(['/', '/feed-v2'])
+  })
+
+  it('short swipe / uncommitted preview: history delta = 0', () => {
+    const h = mockHistory('/')
+    h.pushState(null, '', '/feed-v2')
+    const before = h.snapshot()
+    // Incomplete gesture never commits — no pushOwnedReaderHistory.
+    expect(before).toEqual(['/', '/feed-v2'])
+    expect(h.length).toBe(2)
+    expect(h.current().url).toBe('/feed-v2')
+    expect(h.snapshot()).toEqual(before)
+  })
+
   it('Feed stays mounted on close', () => {
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
