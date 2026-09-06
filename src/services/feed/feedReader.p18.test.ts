@@ -78,7 +78,12 @@ describe('Feed Reader foundation', () => {
     expect(buildFeedReaderUrl('ornek-haber')).toBe('/feed-v2?reader=ornek-haber')
     expect(parseReaderSlugFromSearch('?reader=abc')).toBe('abc')
     expect(
-      isFeedReaderHistoryState({ nahaberFeedReader: true, articleId: '1', slug: 's' })
+      isFeedReaderHistoryState({
+        nahaberFeedReader: true,
+        articleId: '1',
+        slug: 's',
+        ownsFeedReturn: true,
+      })
     ).toBe(true)
     expect(isFeedReaderHistoryState({ foo: 1 })).toBe(false)
   })

@@ -29,14 +29,19 @@ import {
   computeReadDepthPercent,
 } from '@/lib/feed/reader/readDepth'
 import {
+  claimUnownedReaderHistory,
   isFeedReaderHistoryState,
-  pushReaderHistory,
-  replaceFeedUrl,
+  planReaderHistoryClose,
+  planReaderHistoryOpen,
+  popReaderHistory,
+  pushOwnedReaderHistory,
+  replaceUnownedReaderWithFeed,
+  type FeedReaderCloseReason,
 } from '@/lib/feed/reader/history'
 import { FEED_READER_CSS_VARS, FEED_READER_DURATION_MS } from '@/lib/feed/reader/tokens'
 import { getClientAuthToken } from '@/lib/firebase/auth'
 
-export type FeedReaderCloseReason = 'gesture' | 'button' | 'history' | 'escape'
+export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
 
 export type FeedReaderTelemetryPayload = {
   articleId: string
@@ -111,6 +116,10 @@ export function FeedArticleReader({
     lastT: number
     axis: 'none' | 'horizontal' | 'vertical'
   } | null>(null)
+  const closingRef = useRef(false)
+  const ownsFeedReturnRef = useRef(false)
+  const ignoreNextPopRef = useRef(false)
+  const closeReasonRef = useRef<FeedReaderCloseReason>('button')
 
   const [progress, setProgress] = useState(0) // 0 = feed, 1 = reader fully open
   const [animating, setAnimating] = useState(false)
@@ -126,13 +135,12 @@ export function FeedArticleReader({
   const sourceUrl = detail?.sourceUrl
   const canonicalPath = detail?.canonicalPath || `/haber/${item.slug}`
 
-  const finishClose = useCallback(
+  const finishCloseUi = useCallback(
     (reason: FeedReaderCloseReason) => {
       const dwellMs = dwellRef.current.close()
       onLockFeedScroll?.(false)
       document.documentElement.classList.remove('smart-feed-reader-open')
       document.body.classList.remove('smart-feed-reader-open')
-      replaceFeedUrl({})
       onCloseTelemetry?.({
         articleId: item.articleId,
         clusterId: item.clusterId,
@@ -145,22 +153,57 @@ export function FeedArticleReader({
         thresholdsHit: [...depthSeenRef.current],
       })
       openedRef.current = false
+      ownsFeedReturnRef.current = false
+      closingRef.current = false
       onClose(reason)
     },
     [item, onClose, onCloseTelemetry, onLockFeedScroll]
   )
 
-  const animateTo = useCallback(
-    (target: 0 | 1, reason: FeedReaderCloseReason) => {
+  const beginClose = useCallback(
+    (reason: FeedReaderCloseReason) => {
+      if (closingRef.current) return
+      closingRef.current = true
+      closeReasonRef.current = reason
+
+      const plan = planReaderHistoryClose({
+        reason,
+        ownsFeedReturn: ownsFeedReturnRef.current,
+      })
+      if (plan === 'history_back') {
+        // popstate will fire after back(); ignore that echo so we do not recurse.
+        ignoreNextPopRef.current = true
+        ownsFeedReturnRef.current = false
+        popReaderHistory()
+      } else if (plan === 'replace_unowned_feed') {
+        // Direct/reload entry — strip ?reader= only; never history.back() off-site.
+        ownsFeedReturnRef.current = false
+        replaceUnownedReaderWithFeed()
+      }
+
       setAnimating(true)
-      setProgress(target)
+      setProgress(0)
       window.setTimeout(() => {
         setAnimating(false)
-        if (target === 0) finishClose(reason)
+        finishCloseUi(reason)
       }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
     },
-    [finishClose, reducedMotion]
+    [finishCloseUi, reducedMotion]
   )
+
+  const beginCloseRef = useRef(beginClose)
+  beginCloseRef.current = beginClose
+  const onLockFeedScrollRef = useRef(onLockFeedScroll)
+  onLockFeedScrollRef.current = onLockFeedScroll
+  const onOpenTelemetryRef = useRef(onOpenTelemetry)
+  onOpenTelemetryRef.current = onOpenTelemetry
+
+  const snapReaderOpen = useCallback(() => {
+    if (closingRef.current) return
+    setAnimating(true)
+    setProgress(1)
+    window.setTimeout(() => setAnimating(false), reducedMotion ? 0 : FEED_READER_DURATION_MS)
+  }, [reducedMotion])
 
   const loadBody = useCallback(async () => {
     const gen = ++fetchGenRef.current
@@ -213,7 +256,10 @@ export function FeedArticleReader({
     }
   }, [item.slug, onBodyDebug])
 
-  // Open / close lifecycle
+  const loadBodyRef = useRef(loadBody)
+  loadBodyRef.current = loadBody
+
+  // Open / close lifecycle — push history exactly once; never re-push on callback churn.
   useEffect(() => {
     setReducedMotion(prefersReducedMotion())
   }, [])
@@ -224,24 +270,43 @@ export function FeedArticleReader({
       setDetail(null)
       setFetchState('idle')
       abortRef.current?.abort()
+      closingRef.current = false
       return
     }
 
     openGeneration += 1
     const gen = openGeneration
+    closingRef.current = false
+    ignoreNextPopRef.current = false
     depthSeenRef.current = new Set()
     depthMaxRef.current = 0
     dwellRef.current.open()
-    onLockFeedScroll?.(true)
+    onLockFeedScrollRef.current?.(true)
     document.documentElement.classList.add('smart-feed-reader-open')
     document.body.classList.add('smart-feed-reader-open')
-    pushReaderHistory({ slug: item.slug, articleId: item.articleId })
+
+    const openPlan = planReaderHistoryOpen({
+      slug: item.slug,
+      search: typeof window !== 'undefined' ? window.location.search : '',
+      historyState: typeof window !== 'undefined' ? window.history.state : null,
+    })
+    if (openPlan === 'push_owned') {
+      pushOwnedReaderHistory({ slug: item.slug, articleId: item.articleId })
+      ownsFeedReturnRef.current = true
+    } else if (openPlan === 'claim_unowned_direct') {
+      claimUnownedReaderHistory({ slug: item.slug, articleId: item.articleId })
+      ownsFeedReturnRef.current = false
+    } else {
+      // already_owned — remount of owned push
+      ownsFeedReturnRef.current = true
+    }
+
     setProgress(1)
     if (!openedRef.current) {
       openedRef.current = true
-      onOpenTelemetry?.()
+      onOpenTelemetryRef.current?.()
     }
-    void loadBody()
+    void loadBodyRef.current()
 
     const onVis = () => {
       if (gen !== openGeneration) return
@@ -249,11 +314,16 @@ export function FeedArticleReader({
     }
     const onPop = (ev: PopStateEvent) => {
       if (gen !== openGeneration) return
-      if (isFeedReaderHistoryState(ev.state)) return
-      animateTo(0, 'history')
+      if (ignoreNextPopRef.current) {
+        ignoreNextPopRef.current = false
+        return
+      }
+      // Browser already consumed the Reader history layer — UI close only.
+      if (isFeedReaderHistoryState(ev.state) && ev.state.ownsFeedReturn) return
+      beginCloseRef.current('history')
     }
     const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') animateTo(0, 'escape')
+      if (ev.key === 'Escape') beginCloseRef.current('escape')
     }
     document.addEventListener('visibilitychange', onVis)
     window.addEventListener('popstate', onPop)
@@ -262,8 +332,14 @@ export function FeedArticleReader({
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('popstate', onPop)
       window.removeEventListener('keydown', onKey)
+      // Slug change / forced unmount while still owning a pushed return layer.
+      if (ownsFeedReturnRef.current && !closingRef.current) {
+        ignoreNextPopRef.current = true
+        ownsFeedReturnRef.current = false
+        popReaderHistory()
+      }
     }
-  }, [open, item.slug, item.articleId, loadBody, onLockFeedScroll, onOpenTelemetry, animateTo])
+  }, [open, item.slug, item.articleId])
 
   const onScroll = () => {
     const el = scrollRef.current
@@ -279,6 +355,7 @@ export function FeedArticleReader({
   }
 
   const onPointerDown = (e: ReactPointerEvent) => {
+    if (closingRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) return
     dragRef.current = {
@@ -293,6 +370,7 @@ export function FeedArticleReader({
   }
 
   const onPointerMove = (e: ReactPointerEvent) => {
+    if (closingRef.current) return
     const d = dragRef.current
     if (!d || d.pointerId !== e.pointerId) return
     const dx = e.clientX - d.startX
@@ -316,6 +394,7 @@ export function FeedArticleReader({
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = dragRef.current
     dragRef.current = null
+    if (closingRef.current) return
     if (!d || d.pointerId !== e.pointerId || d.axis !== 'horizontal') return
     const dx = e.clientX - d.startX
     const dt = Math.max(1, performance.now() - d.lastT)
@@ -325,12 +404,14 @@ export function FeedArticleReader({
       progress: closeProgress,
       velocityX: Math.max(0, velocity),
     })
-    if (complete) animateTo(0, 'gesture')
-    else {
-      setAnimating(true)
-      setProgress(1)
-      window.setTimeout(() => setAnimating(false), FEED_READER_DURATION_MS)
-    }
+    if (complete) beginClose('gesture')
+    else snapReaderOpen()
+  }
+
+  const onPointerCancel = () => {
+    dragRef.current = null
+    if (closingRef.current) return
+    snapReaderOpen()
   }
 
   if (!open && progress === 0) return null
@@ -367,7 +448,7 @@ export function FeedArticleReader({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         <header className="flex shrink-0 items-center gap-2 border-b border-black/10 px-3 py-2.5">
           <button
@@ -375,7 +456,7 @@ export function FeedArticleReader({
             className="rounded-full p-2 hover:bg-black/5"
             aria-label="Akışa dön"
             data-testid="feed-reader-close"
-            onClick={() => animateTo(0, 'button')}
+            onClick={() => beginClose('button')}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -412,7 +493,13 @@ export function FeedArticleReader({
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4"
           data-testid="feed-reader-scroll"
         >
-          <h1 id={titleId} className="text-2xl font-semibold leading-snug tracking-tight">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
+            {[category, publisherName].filter(Boolean).join(' · ')}
+          </p>
+          <h1
+            id={titleId}
+            className="mt-2 break-words text-[1.55rem] font-bold leading-[1.25] tracking-tight sm:text-[1.75rem]"
+          >
             {headline}
           </h1>
           {item.publishedAt ? (
@@ -421,16 +508,16 @@ export function FeedArticleReader({
             </p>
           ) : null}
 
-          {image ? (
-            <div className="relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-md bg-black/5">
-              <Image src={image} alt="" fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
-            </div>
-          ) : null}
-
           {summary ? (
-            <p className="mt-4 text-base font-medium leading-relaxed text-[color:var(--reader-page-muted)]">
+            <p className="mt-4 break-words text-[1.05rem] font-semibold leading-relaxed text-[color:var(--reader-page-text)]">
               {summary}
             </p>
+          ) : null}
+
+          {image ? (
+            <figure className="relative mt-5 aspect-[16/10] w-full overflow-hidden rounded-md bg-black/5">
+              <Image src={image} alt="" fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
+            </figure>
           ) : null}
 
           {fetchState === 'loading' && !detail?.bodyHtml ? (
@@ -465,7 +552,7 @@ export function FeedArticleReader({
 
           {detail?.bodyHtml ? (
             <div
-              className="reader-body mt-6 space-y-3 text-[17px] leading-7"
+              className="reader-body mt-6"
               data-testid="feed-reader-body"
               dangerouslySetInnerHTML={{ __html: detail.bodyHtml }}
             />
@@ -475,9 +562,17 @@ export function FeedArticleReader({
             </div>
           ) : null}
 
-          <div className="mt-8 border-t border-black/10 pt-4 text-sm">
-            <p className="font-medium">Kaynak</p>
-            <p className="text-[color:var(--reader-page-muted)]">{detail?.source || publisherName}</p>
+          <aside
+            className="mt-10 border-t border-black/10 pt-4 text-sm"
+            data-testid="feed-reader-source"
+            aria-label="Kaynak"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
+              Kaynak
+            </p>
+            <p className="mt-1 font-medium text-[color:var(--reader-page-text)]">
+              {detail?.source || publisherName}
+            </p>
             {sourceUrl ? (
               <a
                 href={sourceUrl}
@@ -488,10 +583,10 @@ export function FeedArticleReader({
                 Kaynak bağlantısı <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : null}
-          </div>
+          </aside>
         </div>
 
-        <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-black/10 bg-[color:var(--reader-page-bg)]/95 px-4 py-3 backdrop-blur-sm">
+        <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-black/10 bg-[color:var(--reader-page-bg)]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
           <button
             type="button"
             className="rounded-full border border-black/10 px-3 py-1.5 text-sm"

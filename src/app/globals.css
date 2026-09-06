@@ -390,6 +390,79 @@
     visibility: hidden !important;
   }
 
+  /* Feed Reader article body — semantic hierarchy without legacy /haber chrome */
+  .reader-body {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--reader-page-text, #1a1a1a);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .reader-body > * + * {
+    margin-top: 0.95rem;
+  }
+  .reader-body p {
+    margin: 0;
+  }
+  .reader-body h2 {
+    margin-top: 1.6rem;
+    margin-bottom: 0.55rem;
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  .reader-body h3 {
+    margin-top: 1.35rem;
+    margin-bottom: 0.4rem;
+    font-size: 1.12rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .reader-body h4 {
+    margin-top: 1.15rem;
+    margin-bottom: 0.35rem;
+    font-size: 1.02rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .reader-body ul,
+  .reader-body ol {
+    margin: 0.75rem 0 0.75rem 1.15rem;
+    padding: 0;
+  }
+  .reader-body li + li {
+    margin-top: 0.35rem;
+  }
+  .reader-body blockquote {
+    margin: 1rem 0;
+    padding: 0.65rem 0 0.65rem 0.9rem;
+    border-left: 3px solid var(--reader-accent, #b45309);
+    color: var(--reader-page-muted, #5c5c5c);
+    font-style: italic;
+  }
+  .reader-body figure {
+    margin: 1.1rem 0;
+  }
+  .reader-body img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    border-radius: 0.4rem;
+  }
+  .reader-body figcaption {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--reader-page-muted, #5c5c5c);
+  }
+  .reader-body a {
+    color: var(--reader-accent, #b45309);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   /* Dark floating capsule — matches Instagram-style dock chrome */
   .mobile-bottom-nav-pill {
     display: flex;

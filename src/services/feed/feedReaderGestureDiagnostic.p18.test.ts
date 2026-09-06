@@ -148,7 +148,11 @@ describe('Feed Reader gesture diagnostic contracts', () => {
     )
     expect(reader).toContain('e.preventDefault()')
     expect(reader).toContain('readerToFeedProgress')
-    expect(reader).toContain("animateTo(0, 'gesture')")
+    expect(reader).toContain("beginClose('gesture')")
+    expect(reader).toContain('closingRef')
+    expect(reader).toContain('planReaderHistoryClose')
+    expect(reader).not.toContain('replaceFeedUrl')
+    expect(reader).not.toContain("animateTo(0, 'gesture')")
   })
 
   it('open path establishes horizontal ownership with non-passive preventDefault', () => {

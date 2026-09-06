@@ -11,56 +11,15 @@ import {
   classifyPublicRead,
   publicReadMetaFromPost,
 } from '@/services/editorial/publicReadPolicy'
-import type { Post } from '@/types/post'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
-import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
-import { articleBlocksToPlainText } from '@/lib/articleBlocks'
+import { bodyFromPost } from '@/lib/feed/reader/bodyFromPost'
 
 export type { FeedReaderArticleDto } from '@/types/feedReader'
+export { bodyFromPost } from '@/lib/feed/reader/bodyFromPost'
 
-function bodyFromPost(post: Post): { bodyHtml: string | null; bodyText: string | null } {
-  if (post.bodyBlocks && post.bodyBlocks.length > 0) {
-    const filtered = filterBodyBlocksForArticleDisplay(post.bodyBlocks, {
-      title: post.title,
-      spot: post.spot ?? undefined,
-      summary: post.summary ?? undefined,
-      coverImageUrl: post.coverImageUrl ?? undefined,
-    })
-    const text = articleBlocksToPlainText(filtered).trim()
-    const html = text
-      ? text
-          .split(/\n{2,}/)
-          .map((p) => `<p>${escapeHtml(p.trim())}</p>`)
-          .join('')
-      : null
-    return { bodyHtml: html, bodyText: text || null }
-  }
-  const raw = (post.htmlContent || post.content || '').trim()
-  if (!raw) return { bodyHtml: null, bodyText: null }
-  if (/<[a-z][\s\S]*>/i.test(raw)) {
-    return {
-      bodyHtml: raw,
-      bodyText: raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-    }
-  }
-  return {
-    bodyHtml: raw
-      .split(/\n{2,}/)
-      .map((p) => `<p>${escapeHtml(p.trim())}</p>`)
-      .join(''),
-    bodyText: raw,
-  }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-export async function loadFeedReaderArticle(slug: string): Promise<
+export async function loadFeedReaderArticle(
+  slug: string
+): Promise<
   | { ok: true; article: FeedReaderArticleDto }
   | { ok: false; reason: 'not_found' | 'not_eligible' }
 > {
