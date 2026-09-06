@@ -57,6 +57,8 @@ export function CategoryNav({
 
     const hide =
       pathname === '/reels' ||
+      pathname === '/feed-v2' ||
+      pathname.startsWith('/feed-v2/') ||
       pathname.startsWith('/messages') ||
       pathname.startsWith('/admin') ||
       pathname.startsWith('/haber/') ||

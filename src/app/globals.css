@@ -384,7 +384,9 @@
   html.smart-feed-comments-open .mobile-bottom-nav,
   body.smart-feed-comments-open .mobile-bottom-nav,
   html.smart-feed-reader-open .mobile-bottom-nav,
-  body.smart-feed-reader-open .mobile-bottom-nav {
+  body.smart-feed-reader-open .mobile-bottom-nav,
+  html.smart-feed-reader-open .mobile-top-chrome,
+  body.smart-feed-reader-open .mobile-top-chrome {
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;

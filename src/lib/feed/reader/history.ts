@@ -93,7 +93,8 @@ export function stripReaderFieldsFromHistoryState(existing: unknown): Record<str
 
 /**
  * history.back() is allowed only for this live open, on the current entry,
- * before a close transaction starts.
+ * before a close transaction starts, AND only when that entry was pushState'd
+ * over Feed (ownsFeedReturn). Claimed/unowned opens must replace, never back.
  */
 export function canHistoryBackForOpen(opts: {
   currentState: unknown
@@ -106,6 +107,7 @@ export function canHistoryBackForOpen(opts: {
   const s = readReaderHistoryState(opts.currentState)
   if (!s) return false
   if (s[READER_HISTORY_STATE_KEY] !== true) return false
+  if (!s.ownsFeedReturn) return false
   if (s.readerOpenId !== opts.readerOpenId) return false
   if (opts.feedSessionId && s.feedSessionId && s.feedSessionId !== opts.feedSessionId) {
     return false
@@ -249,7 +251,7 @@ export function claimUnownedReaderHistory(opts: {
 
 /**
  * Reason-aware history mutation for Reader close.
- * Never uses a React boolean as ownership.
+ * Ownership is current history.state: matching readerOpenId AND ownsFeedReturn.
  */
 export function planReaderHistoryClose(opts: {
   reason: FeedReaderCloseReason
@@ -257,10 +259,9 @@ export function planReaderHistoryClose(opts: {
   readerOpenId?: string | null
   feedSessionId?: string | null
   phase?: ReaderCloseTransactionPhase
-  /** @deprecated Ignored. Ownership is current history.state + readerOpenId. */
+  /** @deprecated Prefer currentState.ownsFeedReturn — still honored if state missing. */
   ownsFeedReturn?: boolean
 }): ReaderHistoryClosePlan {
-  void opts.ownsFeedReturn
   if (opts.reason === 'history') return 'none'
   if ((opts.phase ?? 'active') !== 'active') return 'none'
   if (!opts.readerOpenId) return 'replace_unowned_feed'

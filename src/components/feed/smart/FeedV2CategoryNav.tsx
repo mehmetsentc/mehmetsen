@@ -105,8 +105,8 @@ export function FeedV2CategoryNav({
     <nav
       className={cn(
         'absolute left-0 right-0 top-0 z-50 flex items-center gap-2',
-        'pl-14 pr-3 pb-2',
-        'pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
+        // Site Navbar owns exit chrome on Feed V2 — no GlobalBackNav clearance.
+        'pl-3 pr-3 pb-2 pt-2',
         className
       )}
       aria-label="Feed kategorileri"

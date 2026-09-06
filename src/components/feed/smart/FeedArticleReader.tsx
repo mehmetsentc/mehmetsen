@@ -43,6 +43,7 @@ import {
   replaceUnownedReaderWithFeed,
   type FeedReaderCloseReason,
   type ReaderCloseTransactionPhase,
+  type ReaderHistoryClosePlan,
 } from '@/lib/feed/reader/history'
 import {
   isReaderNavTraceEnabled,
@@ -165,6 +166,8 @@ export function FeedArticleReader({
   const closePhaseRef = useRef<ReaderCloseTransactionPhase>('closed')
   const ignoreNextPopRef = useRef(false)
   const closeReasonRef = useRef<FeedReaderCloseReason>('button')
+  /** History mutation deferred until close animation ends — keeps Feed as sole underlay. */
+  const pendingHistoryPlanRef = useRef<ReaderHistoryClosePlan | null>(null)
   const committedLifecycleRef = useRef(false)
 
   /** Internal progress only while closing or Reader→Feed drag. */
@@ -312,6 +315,18 @@ export function FeedArticleReader({
     (reason: FeedReaderCloseReason) => {
       const dwellMs = dwellRef.current.close()
       onLockFeedScroll?.(false)
+
+      // Apply history AFTER the interactive close so HOME/prior routes never
+      // remount under the translating Reader panel.
+      const plan = pendingHistoryPlanRef.current
+      pendingHistoryPlanRef.current = null
+      if (plan === 'history_back') {
+        ignoreNextPopRef.current = true
+        popReaderHistory()
+      } else if (plan === 'replace_unowned_feed') {
+        replaceUnownedReaderWithFeed()
+      }
+
       document.documentElement.classList.remove('smart-feed-reader-open')
       document.body.classList.remove('smart-feed-reader-open')
       onCloseTelemetry?.({
@@ -392,12 +407,9 @@ export function FeedArticleReader({
         source: 'reader',
         readDecision: closeTxId,
       })
-      if (plan === 'history_back') {
-        ignoreNextPopRef.current = true
-        popReaderHistory()
-      } else if (plan === 'replace_unowned_feed') {
-        replaceUnownedReaderWithFeed()
-      }
+      // Defer history.back / replace until finishCloseUi — interactive close must
+      // keep Feed as the only underlying page surface (never HOME mid-swipe).
+      pendingHistoryPlanRef.current = plan
 
       setAnimating(true)
       setInternalProgress(0)
@@ -789,6 +801,7 @@ export function FeedArticleReader({
       data-reader-committed={committed ? '1' : '0'}
       data-reader-open={committed ? '1' : '0'}
       data-reader-progress={progress.toFixed(2)}
+      data-reader-underlay="feed"
       role="dialog"
       aria-modal={committed}
       aria-labelledby={titleId}

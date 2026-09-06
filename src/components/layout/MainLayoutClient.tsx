@@ -18,9 +18,16 @@ import { AppStateProvider } from '@/store/appStateContext'
 import { UserLocationProvider } from '@/store/userLocationContext'
 import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
+import { useSmartFeedReaderSurfaceActive } from '@/hooks/useSmartFeedReaderSurfaceActive'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { ROUTES, isPublicRoute } from '@/constants/routes'
+import {
+  isFeedImmersiveStage,
+  isFeedV2Pathname,
+  isReelsPathname,
+  resolveSiteChromeVisible,
+} from '@/lib/feed/reader/shellChrome'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
 import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScrollHeader'
@@ -36,8 +43,7 @@ const SiteFooter = dynamic(
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string): ContentVariant {
-  if (pathname === ROUTES.REELS) return 'reels'
-  if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return 'reels'
+  if (isReelsPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/profile/')) return 'newspaper'
   if (pathname.startsWith('/publisher/')) return 'newspaper'
@@ -60,8 +66,8 @@ function getContentVariant(pathname: string): ContentVariant {
   return 'default'
 }
 
-function getStageClass(pathname: string, isReels: boolean, variant: ContentVariant): string {
-  if (isReels) return 'content-stage-reels'
+function getStageClass(pathname: string, immersiveStage: boolean, variant: ContentVariant): string {
+  if (immersiveStage) return 'content-stage-reels'
   if (variant === 'messages') return 'content-stage-messages'
   if (variant === 'wide') return 'content-stage-wide'
   if (variant === 'newspaper') return 'content-stage-newspaper'
@@ -71,7 +77,8 @@ function getStageClass(pathname: string, isReels: boolean, variant: ContentVaria
 const LayoutShell = memo(function LayoutShell({
   children,
   pathname,
-  isReels,
+  immersiveStage,
+  showSiteChrome,
   variant,
   platform,
   isMobile,
@@ -79,7 +86,8 @@ const LayoutShell = memo(function LayoutShell({
 }: {
   children: React.ReactNode
   pathname: string
-  isReels: boolean
+  immersiveStage: boolean
+  showSiteChrome: boolean
   variant: ContentVariant
   platform: string
   isMobile: boolean
@@ -92,9 +100,13 @@ const LayoutShell = memo(function LayoutShell({
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
 
   return (
-    <div className="min-h-screen bg-[rgb(var(--color-surface))]" data-platform={platform}>
+    <div
+      className="min-h-screen bg-[rgb(var(--color-surface))]"
+      data-platform={platform}
+      data-feed-shell-chrome={showSiteChrome ? 'visible' : 'hidden'}
+    >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
-      {!isReels ? <MobileSafeAreaShield /> : null}
+      {showSiteChrome ? <MobileSafeAreaShield /> : null}
       <Sidebar
         mobileOpen={drawerOpen}
         desktopOpen={desktopSidebarOpen}
@@ -111,14 +123,13 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        {/* Reels is immersive — floating GlobalBackNav replaces the top chrome. */}
-        {!isReels ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
+        {showSiteChrome ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
 
         <PullToRefresh>
           <div
             className={cn(
               'content-stage',
-              getStageClass(pathname, isReels, variant)
+              getStageClass(pathname, immersiveStage, variant)
             )}
           >
             <a
@@ -148,12 +159,11 @@ const LayoutShell = memo(function LayoutShell({
         </PullToRefresh>
       </div>
 
-      {/* Bottom navigation — mobile only, hidden on reels */}
-      {!isReels && (
+      {showSiteChrome ? (
         <Suspense fallback={null}>
           <MobileNav />
         </Suspense>
-      )}
+      ) : null}
     </div>
   )
 })
@@ -184,7 +194,12 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
-  const isReels = pathname === ROUTES.REELS || pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
+  const readerSurfaceActive = useSmartFeedReaderSurfaceActive()
+  const immersiveStage = isFeedImmersiveStage(pathname)
+  const showSiteChrome = resolveSiteChromeVisible({
+    pathname,
+    readerSurfaceActive,
+  })
   const variant = getContentVariant(pathname)
   const slim = isSlimAppShell(pathname)
 
@@ -194,7 +209,8 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
         <AppStateProvider>
           <NetworkProvider>
             <ScrollHeaderProvider>
-              <ReelsRouteTheme active={isReels} />
+              {/* Feed V2 stays dark-first; true /reels unchanged. */}
+              <ReelsRouteTheme active={isReelsPathname(pathname) || isFeedV2Pathname(pathname)} />
               <RouteEffects />
               <PageStateEffects />
               <UiEffects />
@@ -202,7 +218,8 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
               {!slim ? <CategorySwipeNavigator /> : null}
               <LayoutShell
                 pathname={pathname}
-                isReels={isReels}
+                immersiveStage={immersiveStage}
+                showSiteChrome={showSiteChrome}
                 variant={variant}
                 platform={platform}
                 isMobile={isMobile}

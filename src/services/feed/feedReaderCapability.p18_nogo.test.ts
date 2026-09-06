@@ -96,7 +96,8 @@ describe('Feed Reader capability hydration', () => {
       'utf8'
     )
     expect(client).toContain('ROUTES.NEWS_DETAIL(item.slug)')
-    expect(client).toContain('Legacy path: navigate to canonical article page')
+    expect(client).toContain('Authoritative CANONICAL_FALLBACK only (guest / denied pilot).')
+    expect(client).toContain("decided.decision === 'ERROR_RETAIN_FEED'")
   })
 })
 

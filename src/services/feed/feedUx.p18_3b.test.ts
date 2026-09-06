@@ -3,14 +3,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('P18.3B Smart Feed UX', () => {
-  it('category nav uses safe-area floor and clears exit control horizontally', () => {
+  it('category nav sits under site Navbar without GlobalBackNav clearance', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
-    expect(src).toContain('safe-area-inset-top')
-    expect(src).toContain('max(2.75rem')
-    expect(src).toContain('pl-14')
+    expect(src).toContain('pl-3')
+    expect(src).not.toContain('pl-14')
     expect(src).toContain('data-testid="smart-feed-category-nav"')
   })
 
@@ -25,11 +24,12 @@ describe('P18.3B Smart Feed UX', () => {
     expect(src).not.toContain('smart-feed-mid-copy')
   })
 
-  it('exit nav treats /feed-v2 as immersive with home fallback', () => {
+  it('exit nav is Reels-only; Feed V2 uses site Navbar (no floating HOME exit)', () => {
     const src = readFileSync(join(process.cwd(), 'src/components/layout/BackNavButton.tsx'), 'utf8')
-    expect(src).toContain('/feed-v2')
+    expect(src).toContain("pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')")
+    expect(src).toContain('return null')
     expect(src).toContain('smart-feed-exit-nav')
-    expect(src).toContain('ROUTES.HOME')
+    expect(src).not.toMatch(/fallbackHref=\{isImmersive \? ROUTES\.HOME/)
   })
 })
 

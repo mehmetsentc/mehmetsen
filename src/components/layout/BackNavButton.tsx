@@ -27,8 +27,6 @@ function resolveFallback(pathname: string): string {
   }
   if (pathname.startsWith('/haber/') || pathname.startsWith('/post/')) return ROUTES.FEED
   if (pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}?`)) return ROUTES.FEED
-  // Immersive Smart Feed — always fall back to NaHaber home (not classic /feed).
-  if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return ROUTES.HOME
   if (pathname.startsWith('/settings')) return ROUTES.SETTINGS
   return ROUTES.FEED
 }
@@ -95,14 +93,16 @@ export function BackNavButton({
   )
 }
 
-/** Fixed global back control for immersive routes (reels / feed-v2) and desktop chrome. */
+/** Fixed global back control for immersive /reels and desktop chrome.
+ * Feed V2 uses site Navbar back — not this floating exit. */
 export function GlobalBackNav() {
   const pathname = usePathname()
   const hidden = useMemo(() => shouldHideBack(pathname), [pathname])
   const isImmersive =
-    pathname === ROUTES.REELS ||
-    pathname === '/feed-v2' ||
-    pathname.startsWith('/feed-v2/')
+    pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)
+
+  // Feed V2 owns chrome via Navbar/MobileNav — do not paint a second exit control.
+  if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return null
 
   if (hidden) return null
 
@@ -117,7 +117,7 @@ export function GlobalBackNav() {
     >
       <BackNavButton
         tone={isImmersive ? 'dark' : 'auto'}
-        fallbackHref={isImmersive ? ROUTES.HOME : undefined}
+        fallbackHref={isImmersive ? ROUTES.FEED : undefined}
       />
     </div>
   )

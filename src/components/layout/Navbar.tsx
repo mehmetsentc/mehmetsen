@@ -24,7 +24,6 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const [hydrated, setHydrated] = useState(false)
   const isFeed = pathname === ROUTES.FEED
   const isArticle = pathname.startsWith('/haber/')
-  // Reels uses the floating GlobalBackNav (immersive). Elsewhere show inline back.
   const showBack =
     !isFeed &&
     pathname !== ROUTES.HOME &&
@@ -32,6 +31,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     pathname !== ROUTES.REELS
   // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
+  const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
 
   useEffect(() => {
     setHydrated(true)
@@ -43,9 +43,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   // SSR / first-paint spacer — articles hide CategoryNav (see CategoryNav hide list).
+  // Feed V2: brand bar only (Feed owns its category chips) — shorter spacer.
   const fallbackChromeHeight = isFeed
     ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 72px + 48px)'
-    : isArticle
+    : isArticle || isFeedV2
       ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem)'
       : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem + 48px)'
 
