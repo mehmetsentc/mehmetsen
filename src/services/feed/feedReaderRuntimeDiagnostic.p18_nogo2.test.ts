@@ -91,6 +91,7 @@ describe('Haberi Oku visible button integration contract', () => {
     expect(client).toContain('openReader(item, index)')
     expect(client).toContain('ROUTES.NEWS_DETAIL(item.slug)')
     expect(client).toContain("if (decided.decision === 'PENDING') return")
+    expect(client).toContain("decided.decision === 'ERROR_RETAIN_FEED'")
     expect(client).toContain('feed-reader-debug-panel')
     expect(client).toContain("readerDebug') === '1'")
     // Gesture shares same onRead

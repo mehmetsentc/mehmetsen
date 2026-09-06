@@ -70,6 +70,8 @@ export type ReaderNavTraceEvent = {
   capabilityEnabled?: boolean | null
   capabilityReady?: boolean | null
   capabilityError?: boolean | null
+  /** Feed-mount authoritative ENABLED latch (no PII). */
+  sessionConfirmedEnabled?: boolean | null
   /** Guard articleId when open was blocked (id only, not title/body) */
   guardArticleId?: string | null
   /** Navigation target path when known (e.g. /haber/slug) */

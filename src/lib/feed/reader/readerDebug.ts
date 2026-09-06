@@ -34,6 +34,7 @@ export type FeedReaderLastReadDecision =
   | 'OPEN_READER'
   | 'CANONICAL_FALLBACK'
   | 'ERROR_FALLBACK'
+  | 'ERROR_RETAIN_FEED'
 
 /** Human-facing click decision labels for the debug badge. */
 export type FeedReaderClickCapabilityState = 'PENDING' | 'ENABLED' | 'DISABLED'
@@ -43,12 +44,14 @@ export type FeedReaderClickReadDecision =
   | 'CANONICAL_FALLBACK'
   | 'WAIT_FOR_CAPABILITY'
   | 'ERROR_FALLBACK'
+  | 'ERROR_RETAIN_FEED'
   | null
 
 export type FeedReaderFallbackReason =
   | 'NON_PILOT'
   | 'CAPABILITY_DISABLED'
   | 'CAPABILITY_ERROR'
+  | 'CAPABILITY_TRANSIENT'
   | 'AUTH_UNAVAILABLE'
   | 'AUTH_LOADING'
   | 'CAPABILITY_PENDING'
@@ -213,6 +216,8 @@ export function mapClickDebugFromDecision(input: {
       return { capabilityAtClick: 'PENDING', readDecision: 'WAIT_FOR_CAPABILITY' }
     case 'OPEN_READER':
       return { capabilityAtClick: 'ENABLED', readDecision: 'OPEN_READER' }
+    case 'ERROR_RETAIN_FEED':
+      return { capabilityAtClick: 'DISABLED', readDecision: 'ERROR_RETAIN_FEED' }
     case 'ERROR_FALLBACK':
       return { capabilityAtClick: 'DISABLED', readDecision: 'ERROR_FALLBACK' }
     case 'CANONICAL_FALLBACK':
@@ -222,28 +227,44 @@ export function mapClickDebugFromDecision(input: {
 }
 
 /**
- * Pure click-time decision — shared by Haberi Oku + tests.
- * Does not navigate; caller executes OPEN_READER / CANONICAL_FALLBACK.
+ * Pure click-time decision — shared by LEFT swipe + Haberi Oku.
+ * Does not navigate; caller executes OPEN_READER / CANONICAL / retain-feed.
+ *
+ * sessionConfirmedEnabled: Feed mount previously received authoritative ENABLED.
+ * Transient errors must not escape an enabled session to /haber.
  */
 export function decideFeedReadAction(input: {
   authLoading: boolean
   capabilityReady: boolean
   capabilityEnabled: boolean
   capabilityError: boolean
+  /** Authoritative ENABLED already confirmed for this Feed session. */
+  sessionConfirmedEnabled?: boolean
 }): {
   decision: FeedReaderLastReadDecision
   fallbackReason: FeedReaderFallbackReason
 } {
-  if (input.authLoading) {
+  const sessionOk = Boolean(input.sessionConfirmedEnabled)
+
+  if (input.authLoading && !sessionOk) {
     return { decision: 'PENDING', fallbackReason: 'AUTH_LOADING' }
   }
-  if (!input.capabilityReady) {
+  // Auth flicker after confirmed enable — keep Reader open path.
+  if (input.authLoading && sessionOk) {
+    return { decision: 'OPEN_READER', fallbackReason: null }
+  }
+  if (!input.capabilityReady && !sessionOk) {
     return { decision: 'PENDING', fallbackReason: 'CAPABILITY_PENDING' }
   }
   if (input.capabilityError) {
-    return { decision: 'ERROR_FALLBACK', fallbackReason: 'CAPABILITY_ERROR' }
+    if (sessionOk || input.capabilityEnabled) {
+      // Confirmed session: open Reader; do not canonical-escape.
+      return { decision: 'OPEN_READER', fallbackReason: 'CAPABILITY_TRANSIENT' }
+    }
+    // Never confirmed — stay on Feed, no /haber escape hatch.
+    return { decision: 'ERROR_RETAIN_FEED', fallbackReason: 'CAPABILITY_ERROR' }
   }
-  if (input.capabilityEnabled) {
+  if (input.capabilityEnabled || sessionOk) {
     return { decision: 'OPEN_READER', fallbackReason: null }
   }
   return { decision: 'CANONICAL_FALLBACK', fallbackReason: 'CAPABILITY_DISABLED' }

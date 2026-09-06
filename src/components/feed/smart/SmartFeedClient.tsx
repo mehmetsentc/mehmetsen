@@ -72,6 +72,11 @@ import {
 } from '@/lib/feed/accountLocalLocation'
 import { createFeedSessionId } from '@/lib/feed/reader/history'
 import {
+  createFeedReaderCapabilitySession,
+  settleFeedReaderCapabilitySession,
+  sessionReaderOpenEligible,
+} from '@/lib/feed/reader/capabilitySession'
+import {
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
@@ -297,6 +302,8 @@ export function SmartFeedClient({
   const readerCapabilityGenerationRef = useRef(0)
   const readerCapabilityAbortRef = useRef<AbortController | null>(null)
   const capabilityErrorRef = useRef(false)
+  /** Authoritative ENABLED latch for this Feed mount — survives transient fetch errors. */
+  const capabilitySessionRef = useRef(createFeedReaderCapabilitySession())
   const [readerDebug, setReaderDebug] = useState<FeedReaderDebugSnapshot>(EMPTY_FEED_READER_DEBUG)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
@@ -362,12 +369,7 @@ export function SmartFeedClient({
         identityDebug?: import('@/lib/feed/reader/capabilityClient').FeedReaderIdentityDebug | null
       }
     ) => {
-      feedReaderEnabledRef.current = enabled
-      setFeedReaderEnabled(enabled)
-      readerCapabilityReadyRef.current = true
-      setReaderCapabilityReady(true)
-      capabilityErrorRef.current = Boolean(meta?.error)
-      const id = meta?.identityDebug
+      const transportError = Boolean(meta?.error)
       const authenticated = Boolean(
         typeof meta?.clientAuthenticated === 'boolean'
           ? meta.clientAuthenticated
@@ -375,6 +377,26 @@ export function SmartFeedClient({
             ? meta.serverAuthenticated
             : enabled
       )
+      const nextSession = settleFeedReaderCapabilitySession(capabilitySessionRef.current, {
+        authLoading: false,
+        authenticated,
+        ready: !transportError,
+        enabled: transportError ? false : enabled,
+        transportError,
+      })
+      capabilitySessionRef.current = nextSession
+
+      const effectiveEnabled = sessionReaderOpenEligible(nextSession)
+      feedReaderEnabledRef.current = effectiveEnabled
+      setFeedReaderEnabled(effectiveEnabled)
+      // Settled after any apply — latch or transport. PENDING only while authLoading before first settle.
+      const ready = nextSession.authority !== 'unknown' && nextSession.authority !== 'pending'
+      readerCapabilityReadyRef.current = ready
+      setReaderCapabilityReady(ready)
+      // capabilityError only when never confirmed — drives ERROR_RETAIN_FEED, not /haber.
+      capabilityErrorRef.current = Boolean(transportError && !nextSession.confirmedEnabled)
+
+      const id = meta?.identityDebug
       const grantMatch =
         typeof id?.currentMatchesActiveFeedReaderGrant === 'boolean'
           ? id.currentMatchesActiveFeedReaderGrant
@@ -382,13 +404,13 @@ export function SmartFeedClient({
       const uidMatch = resolveGrantBackedPilotMatch({
         currentMatchesActiveFeedReaderGrant: grantMatch,
         capabilityReady: true,
-        capabilityEnabled: enabled,
+        capabilityEnabled: effectiveEnabled,
         authenticated,
       })
       patchReaderDebug({
         capabilityRequestFinished: true,
-        capabilityEnabled: enabled,
-        capabilityReady: true,
+        capabilityEnabled: effectiveEnabled,
+        capabilityReady: Boolean(ready),
         capabilityHTTPStatus: meta?.httpStatus ?? null,
         capabilityErrorCode: meta?.errorCode ?? null,
         globalDefault: meta?.globalDefault ?? null,
@@ -399,7 +421,7 @@ export function SmartFeedClient({
               ? meta.clientAuthenticated
               : null,
         uidMatch,
-        currentMatchesActiveFeedReaderGrant: grantMatch ?? (authenticated ? enabled : null),
+        currentMatchesActiveFeedReaderGrant: grantMatch ?? (authenticated ? effectiveEnabled : null),
         ...(id
           ? {
               currentUidPresent: id.currentUidPresent,
@@ -436,6 +458,25 @@ export function SmartFeedClient({
     })
 
     if (authLoading) {
+      // Preserve authoritative ENABLED latch across auth flicker — do not detach gestures.
+      if (capabilitySessionRef.current.confirmedEnabled) {
+        const kept = settleFeedReaderCapabilitySession(capabilitySessionRef.current, {
+          authLoading: true,
+          authenticated: Boolean(authUser?.uid),
+          ready: false,
+          enabled: true,
+          transportError: false,
+        })
+        capabilitySessionRef.current = kept
+        const keepEnabled = sessionReaderOpenEligible(kept)
+        feedReaderEnabledRef.current = keepEnabled
+        setFeedReaderEnabled(keepEnabled)
+        readerCapabilityReadyRef.current = keepEnabled
+        setReaderCapabilityReady(keepEnabled)
+        capabilityErrorRef.current = false
+        patchReaderDebug({ capabilityReady: keepEnabled, capabilityEnabled: keepEnabled })
+        return
+      }
       readerCapabilityReadyRef.current = false
       setReaderCapabilityReady(false)
       patchReaderDebug({ capabilityReady: false })
@@ -502,6 +543,11 @@ export function SmartFeedClient({
   }, [readerItem, patchReaderDebug])
 
   const resolveFeedReaderEnabledForOpen = useCallback(async (): Promise<boolean> => {
+    // Session latch wins: confirmed ENABLED survives pending/transient blips.
+    if (capabilitySessionRef.current.confirmedEnabled) {
+      feedReaderEnabledRef.current = true
+      return true
+    }
     if (readerCapabilityReadyRef.current) return feedReaderEnabledRef.current
     if (authLoading) {
       toast.error('Oturum hazırlanıyor, tekrar deneyin')
@@ -517,7 +563,7 @@ export function SmartFeedClient({
         })
       }
       // Do not clobber a newer effect settle; only fill if still pending.
-      if (!readerCapabilityReadyRef.current) {
+      if (!readerCapabilityReadyRef.current && !capabilitySessionRef.current.confirmedEnabled) {
         applyFeedReaderCapability(result.enabled, {
           httpStatus: result.httpStatus,
           errorCode: result.errorCode,
@@ -527,12 +573,12 @@ export function SmartFeedClient({
           identityDebug: result.identityDebug,
         })
       }
-      return feedReaderEnabledRef.current
+      return feedReaderEnabledRef.current || capabilitySessionRef.current.confirmedEnabled
     } catch {
-      if (!readerCapabilityReadyRef.current) {
+      if (!capabilitySessionRef.current.confirmedEnabled) {
         applyFeedReaderCapability(false, { errorCode: 'fetch_error', error: true })
       }
-      return feedReaderEnabledRef.current
+      return feedReaderEnabledRef.current || capabilitySessionRef.current.confirmedEnabled
     }
   }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug, readerDebugQuery])
 
@@ -1691,11 +1737,13 @@ export function SmartFeedClient({
       writeGuestSeen(guestSeen)
 
       const enabled = await resolveFeedReaderEnabledForOpen()
+      const sessionConfirmed = capabilitySessionRef.current.confirmedEnabled
       const decided = decideFeedReadAction({
         authLoading,
-        capabilityReady: readerCapabilityReadyRef.current,
-        capabilityEnabled: enabled,
-        capabilityError: capabilityErrorRef.current,
+        capabilityReady: readerCapabilityReadyRef.current || sessionConfirmed,
+        capabilityEnabled: enabled || sessionConfirmed,
+        capabilityError: capabilityErrorRef.current && !sessionConfirmed,
+        sessionConfirmedEnabled: sessionConfirmed,
       })
       const clickDebug = mapClickDebugFromDecision({ decision: decided.decision })
 
@@ -1708,13 +1756,13 @@ export function SmartFeedClient({
         lastFallbackReason: decided.fallbackReason,
         capabilityAtClick: clickDebug.capabilityAtClick,
         readDecision: clickDebug.readDecision,
-        capabilityEnabled: enabled,
-        capabilityReady: readerCapabilityReadyRef.current,
+        capabilityEnabled: enabled || sessionConfirmed,
+        capabilityReady: readerCapabilityReadyRef.current || sessionConfirmed,
         authLoading,
         authenticated: Boolean(authUser?.uid),
         uidMatch: resolveGrantBackedPilotMatch({
-          capabilityReady: readerCapabilityReadyRef.current,
-          capabilityEnabled: enabled,
+          capabilityReady: readerCapabilityReadyRef.current || sessionConfirmed,
+          capabilityEnabled: enabled || sessionConfirmed,
           authenticated: Boolean(authUser?.uid),
         }),
         readerOpenRequested: decided.decision === 'OPEN_READER',
@@ -1741,9 +1789,10 @@ export function SmartFeedClient({
         category,
         readDecision: decided.decision,
         fallbackReason: decided.fallbackReason,
-        capabilityEnabled: enabled,
-        capabilityReady: readerCapabilityReadyRef.current,
-        capabilityError: capabilityErrorRef.current,
+        capabilityEnabled: enabled || sessionConfirmed,
+        capabilityReady: readerCapabilityReadyRef.current || sessionConfirmed,
+        capabilityError: capabilityErrorRef.current && !sessionConfirmed,
+        sessionConfirmedEnabled: sessionConfirmed,
         guardArticleId: readerOpenGuardRef.current,
         source: 'feed',
       })
@@ -1759,7 +1808,8 @@ export function SmartFeedClient({
               publisherId: item.publisher?.id ?? null,
               category: item.category ?? null,
               tags: item.tags ?? [],
-              source: enabled ? 'feed_reader' : 'news_detail',
+              source:
+                decided.decision === 'OPEN_READER' ? 'feed_reader' : 'news_detail',
             },
           },
         ],
@@ -1780,10 +1830,19 @@ export function SmartFeedClient({
         return
       }
 
-      // Capability still pending (auth hydrating) — do not fall back to /haber yet.
+      // Capability still pending (auth hydrating) — do not fall back to /haber.
       if (decided.decision === 'PENDING') return
 
-      // Legacy path: navigate to canonical article page (non-pilot / guest / settled disabled).
+      // Transient capability failure — remain on Feed; never escape to /haber.
+      if (
+        decided.decision === 'ERROR_RETAIN_FEED' ||
+        decided.decision === 'ERROR_FALLBACK'
+      ) {
+        toast.error('Okuyucu şu an hazır değil, tekrar deneyin')
+        return
+      }
+
+      // Authoritative CANONICAL_FALLBACK only (guest / denied pilot).
       const destination = ROUTES.NEWS_DETAIL(item.slug)
       recordReaderNavTrace({
         type: 'canonical_navigation',
@@ -1803,9 +1862,10 @@ export function SmartFeedClient({
         category,
         readDecision: decided.decision,
         fallbackReason: decided.fallbackReason,
-        capabilityEnabled: enabled,
-        capabilityReady: readerCapabilityReadyRef.current,
-        capabilityError: capabilityErrorRef.current,
+        capabilityEnabled: enabled || sessionConfirmed,
+        capabilityReady: readerCapabilityReadyRef.current || sessionConfirmed,
+        capabilityError: capabilityErrorRef.current && !sessionConfirmed,
+        sessionConfirmedEnabled: sessionConfirmed,
         destination,
         source: 'feed',
       })
