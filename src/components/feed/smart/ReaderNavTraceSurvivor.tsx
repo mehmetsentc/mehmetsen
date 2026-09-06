@@ -4,6 +4,9 @@
  * Pilot-only. Survives /feed-v2 → HOME so the nav trace can be copied.
  * Hidden unless this browser session enabled the trace (?readerDebug=1).
  * Does not use App Router search hooks — must not deopt the root layout.
+ *
+ * COLLAPSED (default): only a tiny TRACE button receives pointer events.
+ * No large fixed overlay over Feed. Tracing continues in the background.
  */
 
 import { useEffect, useState } from 'react'
@@ -18,15 +21,34 @@ import {
 } from '@/lib/feed/reader/navTrace'
 
 const TRACE_TICK = 'nahaber-reader-nav-trace'
+const PANEL_OPEN_KEY = 'nahaber.readerNavTrace.panelOpen'
 
 export function dispatchReaderNavTraceTick(): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new Event(TRACE_TICK))
 }
 
+function readPanelOpenPreference(): boolean {
+  try {
+    return sessionStorage.getItem(PANEL_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writePanelOpenPreference(open: boolean): void {
+  try {
+    if (open) sessionStorage.setItem(PANEL_OPEN_KEY, '1')
+    else sessionStorage.removeItem(PANEL_OPEN_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export function ReaderNavTraceSurvivor() {
   const [visible, setVisible] = useState(false)
-  const [open, setOpen] = useState(true)
+  /** Default COLLAPSED — must not intercept Feed gestures. */
+  const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [count, setCount] = useState(0)
   const [lastType, setLastType] = useState('')
@@ -42,6 +64,7 @@ export function ReaderNavTraceSurvivor() {
     setReaderNavTraceEnabled(true)
     installReaderNavTraceHooks()
     setVisible(true)
+    setOpen(readPanelOpenPreference())
     const sync = () => {
       const list = getReaderNavTrace()
       setCount(list.length)
@@ -97,29 +120,66 @@ export function ReaderNavTraceSurvivor() {
     window.setTimeout(() => setCopied(false), 2000)
   }
 
+  const toggleOpen = () => {
+    setOpen((v) => {
+      const next = !v
+      writePanelOpenPreference(next)
+      return next
+    })
+  }
+
+  // Collapsed: wrapper is pointer-events-none; only the tiny TRACE chip is interactive.
+  if (!open) {
+    return (
+      <div
+        data-testid="reader-nav-trace-survivor"
+        data-trace-collapsed="1"
+        className="pointer-events-none fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 z-[220]"
+      >
+        <button
+          type="button"
+          data-testid="reader-nav-trace-toggle"
+          className="pointer-events-auto rounded border-2 border-lime-400 bg-black/95 px-2 py-1 font-mono text-[10px] font-extrabold text-lime-300 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]"
+          onClick={toggleOpen}
+          aria-expanded={false}
+          aria-label="Open navigation trace"
+        >
+          TRACE
+        </button>
+      </div>
+    )
+  }
+
   return (
     <aside
       data-testid="reader-nav-trace-survivor"
-      className="pointer-events-auto fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 z-[220] w-[min(22rem,calc(100vw-1rem))] rounded-md border-2 border-lime-400 bg-black/95 p-2 font-mono text-[11px] leading-snug text-lime-200 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]"
+      data-trace-collapsed="0"
+      className="pointer-events-none fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 z-[220] w-[min(22rem,calc(100vw-1rem))]"
     >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <button type="button" className="font-extrabold text-lime-300" onClick={() => setOpen((v) => !v)}>
-          NAV TRACE {open ? '▾' : '▸'}
-        </button>
-        <button
-          type="button"
-          data-testid="reader-nav-trace-copy"
-          className="rounded border border-lime-400 px-2 py-0.5 text-lime-100"
-          onClick={() => void copy()}
-        >
-          {copied ? 'Copied' : 'Copy Navigation Trace'}
-        </button>
-      </div>
-      {open ? (
-        <div className="max-h-[28vh] overflow-auto whitespace-pre-wrap break-all">
-          {`path: ${path}\nevents: ${count}\nlast: ${lastType}\nCopy after HOME. No identifiers.`}
+      <div className="pointer-events-auto rounded-md border-2 border-lime-400 bg-black/95 p-2 font-mono text-[11px] leading-snug text-lime-200 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            data-testid="reader-nav-trace-toggle"
+            className="font-extrabold text-lime-300"
+            onClick={toggleOpen}
+            aria-expanded={true}
+          >
+            TRACE ▾
+          </button>
+          <button
+            type="button"
+            data-testid="reader-nav-trace-copy"
+            className="rounded border border-lime-400 px-2 py-0.5 text-lime-100"
+            onClick={() => void copy()}
+          >
+            {copied ? 'Copied' : 'Copy Navigation Trace'}
+          </button>
         </div>
-      ) : null}
+        <div className="max-h-[28vh] overflow-auto whitespace-pre-wrap break-all">
+          {`path: ${path}\nevents: ${count}\nlast: ${lastType}\nCopy after escape. No identifiers.`}
+        </div>
+      </div>
     </aside>
   )
 }

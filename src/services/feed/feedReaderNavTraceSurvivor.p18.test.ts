@@ -135,6 +135,11 @@ describe('P18 nav trace survivor', () => {
       'utf8'
     )
     expect(survivor).toContain('Copy Navigation Trace')
+    expect(survivor).toContain('data-trace-collapsed="1"')
+    expect(survivor).toContain('pointer-events-none fixed')
+    expect(survivor).toContain('reader-nav-trace-toggle')
+    // Default must be collapsed — open useState(true) would intercept Feed.
+    expect(survivor).toMatch(/useState\(false\)/)
     expect(survivor).not.toMatch(/email|Authorization/i)
     const layout = readFileSync(join(process.cwd(), 'src/app/layout.tsx'), 'utf8')
     expect(layout).toContain('ReaderNavTraceSurvivor')
@@ -185,6 +190,34 @@ describe('P18 nav trace survivor', () => {
     expect(rows[0]?.readerOpenId).toBe('rdr_a')
     expect(rows[0]?.resultRoute.startsWith('/feed-v2') || rows[0]?.resultRoute === '/feed-v2').toBe(true)
   })
+  it('collapsed TRACE contributes zero Feed gesture interception surface', () => {
+    const survivor = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
+      'utf8'
+    )
+    // Collapsed branch: wrapper pointer-events-none; only tiny TRACE chip is auto.
+    expect(survivor).toContain('data-trace-collapsed="1"')
+    expect(survivor).toContain('aria-label="Open navigation trace"')
+    expect(survivor).toMatch(/>\s*TRACE\s*</)
+    // Must not default-open a wide pointer-events-auto panel over Feed.
+    expect(survivor).not.toMatch(/const \[open, setOpen\] = useState\(true\)/)
+    const client = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
+      'utf8'
+    )
+    // Large READER DEBUG overlay removed from reproduction path.
+    expect(client).toContain('data-reader-debug-collapsed="1"')
+    expect(client).toContain('h-0 w-0 overflow-hidden')
+    expect(client).toContain('pointer-events-none fixed left-0 top-0')
+    // Gesture attachment independent of debug UI visibility.
+    expect(client).toContain(
+      'feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed'
+    )
+    expect(client).not.toContain(
+      'feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed && showReaderDebug'
+    )
+  })
+
   it('export includes canonical escape summary without PII', () => {
     recordReaderNavTrace({
       type: 'canonical_navigation',

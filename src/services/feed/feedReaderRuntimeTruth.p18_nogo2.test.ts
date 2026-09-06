@@ -152,8 +152,11 @@ describe('H — no diagnostic writes to social_events / analytics sinks', () => 
     // patchReaderDebug must remain local setState only
     expect(client).toContain('setReaderDebug((prev) => ({ ...prev, ...patch }))')
     expect(client).toContain('buildFeedReaderDebugBadgeLines')
-    expect(client).toContain('READER DEBUG')
+    expect(client).toContain('data-reader-debug-collapsed="1"')
     expect(client).toContain('z-[200]')
+    // Large interactive overlay must not cover Feed while tracing.
+    expect(client).not.toContain('READER DEBUG')
+    expect(client).not.toMatch(/feed-reader-debug-panel[\s\S]{0,200}pointer-events-auto/)
   })
 })
 

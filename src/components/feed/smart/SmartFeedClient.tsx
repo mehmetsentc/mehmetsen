@@ -72,7 +72,6 @@ import {
 } from '@/lib/feed/accountLocalLocation'
 import { createFeedSessionId } from '@/lib/feed/reader/history'
 import {
-  formatReaderNavTraceExport,
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
@@ -2386,34 +2385,17 @@ export function SmartFeedClient({
         ) : null}
 
         {showReaderDebug ? (
-          <aside
+          // Observational only: large badge panel removed — it covered Feed.
+          // Tracing continues via ?readerDebug=1 + ReaderNavTraceSurvivor TRACE chip.
+          // Keep a zero-size marker for source contracts / tests.
+          <div
             data-testid="feed-reader-debug-panel"
-            className="pointer-events-none fixed left-2 right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-[200] max-h-[min(48vh,22rem)] overflow-auto rounded-md border-2 border-lime-400 bg-black/95 p-2.5 font-mono text-[11px] leading-snug text-lime-200 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]"
+            data-reader-debug-collapsed="1"
+            className="pointer-events-none fixed left-0 top-0 z-[200] h-0 w-0 overflow-hidden opacity-0"
+            aria-hidden
           >
-            <div className="mb-1.5 flex items-center justify-between gap-2 text-sm font-extrabold tracking-wide text-lime-300">
-              <span>READER DEBUG</span>
-              <button
-                type="button"
-                className="pointer-events-auto rounded border border-lime-400 px-2 py-0.5 text-[11px] font-semibold text-lime-100"
-                onClick={() => {
-                  const text = formatReaderNavTraceExport()
-                  void navigator.clipboard?.writeText(text).catch(() => {
-                    const ta = document.createElement('textarea')
-                    ta.value = text
-                    document.body.appendChild(ta)
-                    ta.select()
-                    document.execCommand('copy')
-                    ta.remove()
-                  })
-                }}
-              >
-                Copy Navigation Trace
-              </button>
-            </div>
-            <pre className="whitespace-pre-wrap break-all">
-              {buildFeedReaderDebugBadgeLines(readerDebug).join('\n')}
-            </pre>
-          </aside>
+            {buildFeedReaderDebugBadgeLines(readerDebug).join('\n')}
+          </div>
         ) : null}
 
         <LocalLocationSetupSheet
