@@ -9,6 +9,11 @@ import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { ArrowLeft, Loader2, Save, Play, Archive } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AiEditorDocument, AiEditorPromptDocument, AiPromptType } from '@/types/aiEditor'
+import type {
+  HistoricalRetrievalResult,
+  CanonicalMemoryCoverageStats,
+} from '@/services/editorial/editorialMemoryTypes'
+import { Search } from 'lucide-react'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -25,7 +30,7 @@ const EXTRA_PROMPT_TYPES: AiPromptType[] = [
   'source',
 ]
 
-type TabId = 'style' | 'extra' | 'profile' | 'models' | 'sandbox'
+type TabId = 'style' | 'extra' | 'profile' | 'models' | 'sandbox' | 'memory'
 
 export default function AiEditorDetailPage() {
   const params = useParams<{ id: string }>()
@@ -47,6 +52,21 @@ export default function AiEditorDetailPage() {
   const [sandboxTask, setSandboxTask] = useState<'news' | 'column'>('news')
   const [sandboxOut, setSandboxOut] = useState('')
   const [sandboxRunning, setSandboxRunning] = useState(false)
+
+  // Faz A3 — Editorial Memory Manual Shadow Sandbox V1. Human-invoked only.
+  // AI CALLS: 0. PROMPT INJECTION: OFF. No mutation of any kind.
+  const [memoryHeadline, setMemoryHeadline] = useState('')
+  const [memorySummary, setMemorySummary] = useState('')
+  const [memoryCategoryId, setMemoryCategoryId] = useState('')
+  const [memoryCitySlug, setMemoryCitySlug] = useState('')
+  const [memoryDistrictSlug, setMemoryDistrictSlug] = useState('')
+  const [memoryArticleId, setMemoryArticleId] = useState('')
+  const [memorySlug, setMemorySlug] = useState('')
+  const [memoryPublishedAt, setMemoryPublishedAt] = useState('')
+  const [memoryResult, setMemoryResult] = useState<HistoricalRetrievalResult | null>(null)
+  const [memoryRunning, setMemoryRunning] = useState(false)
+  const [memoryCoverage, setMemoryCoverage] = useState<CanonicalMemoryCoverageStats | null>(null)
+  const [memoryCoverageLoading, setMemoryCoverageLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -175,6 +195,61 @@ export default function AiEditorDetailPage() {
     }
   }
 
+  // Faz A3 Task 16 — read-only coverage probe. Distinguishes BAD MATCHING
+  // from an EMPTY CANONICAL ARCHIVE. No AI call, no write.
+  const loadMemoryCoverage = async () => {
+    setMemoryCoverageLoading(true)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/editorial-memory/coverage', { headers })
+      const data = (await res.json()) as { coverage?: CanonicalMemoryCoverageStats; error?: string }
+      if (!res.ok) throw new Error(data.error || 'Kapsam sorgusu başarısız')
+      setMemoryCoverage(data.coverage ?? null)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Kapsam sorgusu hatası')
+    } finally {
+      setMemoryCoverageLoading(false)
+    }
+  }
+
+  // Faz A3 Task 12/13 — "Geçmişi Ara". Human-invoked, one explicit action.
+  // No AI call. No publication. No mutation. No analytics/social event.
+  const runMemorySearch = async () => {
+    if (!memoryHeadline.trim()) {
+      toast.error('Başlık gerekli')
+      return
+    }
+    setMemoryRunning(true)
+    setMemoryResult(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/ai-editors/${id}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'memorySearch',
+          article: {
+            headline: memoryHeadline,
+            summary: memorySummary || undefined,
+            categoryId: memoryCategoryId || undefined,
+            citySlug: memoryCitySlug || undefined,
+            districtSlug: memoryDistrictSlug || undefined,
+            articleId: memoryArticleId || undefined,
+            slug: memorySlug || undefined,
+            publishedAt: memoryPublishedAt || undefined,
+          },
+        }),
+      })
+      const data = (await res.json()) as HistoricalRetrievalResult & { error?: string }
+      if (!res.ok) throw new Error(data.error || 'Hafıza araması başarısız')
+      setMemoryResult(data)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Hafıza araması hatası')
+    } finally {
+      setMemoryRunning(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-24 text-sm text-[rgb(var(--color-muted))]">
@@ -201,6 +276,7 @@ export default function AiEditorDetailPage() {
     { id: 'profile', label: 'Profil' },
     { id: 'models', label: 'Modeller' },
     { id: 'sandbox', label: 'Önizleme' },
+    { id: 'memory', label: 'Hafıza' },
   ]
 
   return (
@@ -511,7 +587,169 @@ export default function AiEditorDetailPage() {
             )}
           </div>
         )}
+
+        {tab === 'memory' && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-xs font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+              EDITORIAL MEMORY · MANUAL SHADOW · AI CALLS: 0 · PROMPT INJECTION: OFF
+            </div>
+
+            <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Canonical Hafıza Kapsamı</h3>
+                <button
+                  type="button"
+                  onClick={() => void loadMemoryCoverage()}
+                  disabled={memoryCoverageLoading}
+                  className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-medium"
+                >
+                  {memoryCoverageLoading ? 'Yükleniyor…' : 'Kapsamı yükle'}
+                </button>
+              </div>
+              {!memoryCoverage && !memoryCoverageLoading && (
+                <p className="text-xs text-[rgb(var(--color-muted))]">
+                  Postgres canonical arşivinde ne kadar geçmiş haber olduğunu görmek için yükleyin. Bu, kötü
+                  eşleştirme ile boş arşivi ayırt etmek için gerekli.
+                </p>
+              )}
+              {memoryCoverage && (
+                <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 md:grid-cols-6">
+                  <Stat label="Toplam" value={memoryCoverage.total} />
+                  <Stat label="Son 7g" value={memoryCoverage.last7d} />
+                  <Stat label="Son 30g" value={memoryCoverage.last30d} />
+                  <Stat label="Son 90g" value={memoryCoverage.last90d} />
+                  <Stat label="Son 365g" value={memoryCoverage.last365d} />
+                  <Stat label="365g+" value={memoryCoverage.olderThan365d} />
+                  <div className="col-span-2 text-[rgb(var(--color-muted))] sm:col-span-3 md:col-span-6">
+                    Aralık: {memoryCoverage.oldestPublishedAt?.slice(0, 10) ?? '—'} →{' '}
+                    {memoryCoverage.newestPublishedAt?.slice(0, 10) ?? '—'}
+                    {memoryCoverage.queryError ? ` · HATA: ${memoryCoverage.queryError}` : ''}
+                    {!memoryCoverage.hasDatabaseUrl ? ' · DATABASE_URL yok' : ''}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+              <p className="text-xs text-[rgb(var(--color-muted))]">
+                Gerçek, mevcut bir NaHaber haberini seçin/yapıştırın. Sadece Postgres canonical arşivde deterministik
+                arama yapılır — AI çağrısı yok, prompt&apos;a eklenmez, hiçbir şey değişmez.
+              </p>
+              <input
+                value={memoryHeadline}
+                onChange={(e) => setMemoryHeadline(e.target.value)}
+                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                placeholder="Başlık (zorunlu) — gerçek haberin başlığını yapıştırın"
+              />
+              <textarea
+                value={memorySummary}
+                onChange={(e) => setMemorySummary(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                placeholder="Özet (opsiyonel)"
+              />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <input
+                  value={memoryCitySlug}
+                  onChange={(e) => setMemoryCitySlug(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="Şehir slug"
+                />
+                <input
+                  value={memoryDistrictSlug}
+                  onChange={(e) => setMemoryDistrictSlug(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="İlçe slug"
+                />
+                <input
+                  value={memoryCategoryId}
+                  onChange={(e) => setMemoryCategoryId(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="Kategori id"
+                />
+                <input
+                  value={memoryPublishedAt}
+                  onChange={(e) => setMemoryPublishedAt(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="Yayın tarihi (ISO, opsiyonel)"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={memoryArticleId}
+                  onChange={(e) => setMemoryArticleId(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="Bu haberin id'si (kendisini hariç tutmak için, opsiyonel)"
+                />
+                <input
+                  value={memorySlug}
+                  onChange={(e) => setMemorySlug(e.target.value)}
+                  className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
+                  placeholder="Bu haberin slug'ı (opsiyonel)"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={memoryRunning}
+                onClick={() => void runMemorySearch()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[rgb(var(--color-primary))] px-3 py-2 text-xs font-semibold text-white"
+              >
+                {memoryRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                Geçmişi Ara
+              </button>
+            </div>
+
+            {memoryResult && memoryResult.results.length === 0 && (
+              <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 text-sm text-[rgb(var(--color-muted))]">
+                Uygun canonical geçmiş haber bulunamadı.
+                {memoryResult.noResultReason ? ` (${memoryResult.noResultReason})` : ''}
+              </div>
+            )}
+
+            {memoryResult && memoryResult.results.length > 0 && (
+              <div className="space-y-3">
+                {memoryResult.results.map((r) => (
+                  <div
+                    key={r.articleId}
+                    className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 text-sm"
+                  >
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{r.headline}</span>
+                      <span className="rounded bg-black/[0.05] px-1.5 py-0.5 text-[10px] font-mono">
+                        {r.ageBucket}
+                      </span>
+                      <span className="rounded bg-black/[0.05] px-1.5 py-0.5 text-[10px] font-mono">
+                        {r.relationshipConfidence}
+                      </span>
+                      <span className="text-[10px] text-[rgb(var(--color-muted))]">
+                        {r.publishedAt.slice(0, 10)}
+                      </span>
+                    </div>
+                    {r.summary && (
+                      <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">{r.summary}</p>
+                    )}
+                    <p className="text-[11px] text-[rgb(var(--color-muted))]">
+                      Neden eşleşti? {r.evidence.map((e) => e.labelTr).join(' · ')}
+                    </p>
+                    <p className="mt-1 text-[10px] font-mono text-[rgb(var(--color-muted))]">
+                      score={r.retrievalScore} · {r.publicReadClass}/{r.trustTier}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-black/[0.03] p-2">
+      <div className="text-[10px] uppercase tracking-wide text-[rgb(var(--color-muted))]">{label}</div>
+      <div className="font-mono text-sm font-semibold">{value}</div>
     </div>
   )
 }
