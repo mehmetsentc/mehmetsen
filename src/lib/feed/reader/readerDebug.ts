@@ -24,6 +24,15 @@ export type FeedReaderFallbackReason =
   | 'UNKNOWN'
   | null
 
+export type FeedReaderGestureDecision =
+  | 'NONE'
+  | 'SNAP_BACK'
+  | 'OPEN_READER'
+  | 'IGNORED_INTERACTIVE'
+  | 'IGNORED_IOS_EDGE'
+  | 'CANCELLED'
+  | 'HANDLER_ABSENT'
+
 export type FeedReaderDebugSnapshot = {
   authLoading: boolean
   authenticated: boolean
@@ -45,6 +54,19 @@ export type FeedReaderDebugSnapshot = {
   readerBodyRequestStarted: boolean
   readerBodyHTTPStatus: number | null
   readerBodyErrorCode: string | null
+  /** Gesture forensic (pilot readerDebug only) — no PII / no engagement telemetry. */
+  gestureHandlerAttached: boolean
+  pointerDownReceived: boolean
+  pointerMoveReceived: boolean
+  pointerUpReceived: boolean
+  pointerCancelReceived: boolean
+  gestureDx: number | null
+  gestureDy: number | null
+  gestureAxis: 'none' | 'horizontal' | 'vertical' | null
+  gestureQualified: boolean
+  gestureDecision: FeedReaderGestureDecision | null
+  onReadCalled: boolean
+  readerOpenRequested: boolean
 }
 
 export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
@@ -68,6 +90,18 @@ export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
   readerBodyRequestStarted: false,
   readerBodyHTTPStatus: null,
   readerBodyErrorCode: null,
+  gestureHandlerAttached: false,
+  pointerDownReceived: false,
+  pointerMoveReceived: false,
+  pointerUpReceived: false,
+  pointerCancelReceived: false,
+  gestureDx: null,
+  gestureDy: null,
+  gestureAxis: null,
+  gestureQualified: false,
+  gestureDecision: null,
+  onReadCalled: false,
+  readerOpenRequested: false,
 }
 
 export function isFeedReaderDebugPilot(uid: string | null | undefined): boolean {

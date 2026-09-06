@@ -15,6 +15,7 @@ import {
   type FeedReaderTelemetryPayload,
 } from '@/components/feed/smart/FeedArticleReader'
 import {
+  classifyFeedOpenGestureDecision,
   dispatchFeedOpenGesture,
   shouldIgnoreFeedOpenGestureTarget,
 } from '@/lib/feed/reader/feedOpenGesture'
@@ -1417,8 +1418,25 @@ export function SmartFeedClient({
     patchReaderDebug({
       readerItemSet: true,
       readerOverlayMounted: true,
+      readerOpenRequested: true,
     })
   }, [patchReaderDebug])
+
+  // Pilot diagnostic only: whether open-gesture handlers are currently attachable.
+  useEffect(() => {
+    if (!showReaderDebug) return
+    patchReaderDebug({
+      gestureHandlerAttached: Boolean(
+        feedReaderEnabled && readerCapabilityReady && !readerItem
+      ),
+    })
+  }, [
+    showReaderDebug,
+    feedReaderEnabled,
+    readerCapabilityReady,
+    readerItem,
+    patchReaderDebug,
+  ])
 
   const onRead = (item: FeedItemDto, index: number, action: 'button' | 'gesture' = 'button') => {
     void (async () => {
@@ -1436,6 +1454,7 @@ export function SmartFeedClient({
       })
 
       patchReaderDebug({
+        onReadCalled: true,
         lastReadAction: action,
         lastReadArticleSlug: item.slug,
         lastReadDecision: decided.decision,
@@ -1445,6 +1464,7 @@ export function SmartFeedClient({
         authLoading,
         authenticated: Boolean(authUser?.uid),
         uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+        readerOpenRequested: decided.decision === 'OPEN_READER',
       })
 
       void postTelemetry({
@@ -1787,9 +1807,58 @@ export function SmartFeedClient({
                   onOpenReaderGesture={
                     feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
                       ? (g) => {
+                          if (showReaderDebug) {
+                            const classified = classifyFeedOpenGestureDecision(g)
+                            patchReaderDebug({
+                              gestureDx: Math.round(g.dx),
+                              gestureDy: Math.round(g.dy),
+                              gestureAxis: classified.axis,
+                              gestureQualified: classified.qualified,
+                              gestureDecision: classified.decision,
+                            })
+                          }
                           dispatchFeedOpenGesture({
                             ...g,
                             onOpen: () => onRead(item, index, 'gesture'),
+                          })
+                        }
+                      : undefined
+                  }
+                  onGesturePointerDebug={
+                    showReaderDebug
+                      ? (ev) => {
+                          if (ev.phase === 'down') {
+                            patchReaderDebug({
+                              pointerDownReceived: true,
+                              pointerMoveReceived: false,
+                              pointerUpReceived: false,
+                              pointerCancelReceived: false,
+                              gestureDecision: ev.ignoredInteractive
+                                ? 'IGNORED_INTERACTIVE'
+                                : ev.handlerAbsent
+                                  ? 'HANDLER_ABSENT'
+                                  : null,
+                              gestureDx: null,
+                              gestureDy: null,
+                              gestureAxis: null,
+                              gestureQualified: false,
+                              onReadCalled: false,
+                              readerOpenRequested: false,
+                            })
+                            return
+                          }
+                          if (ev.phase === 'move') {
+                            patchReaderDebug({ pointerMoveReceived: true })
+                            return
+                          }
+                          if (ev.phase === 'up') {
+                            patchReaderDebug({ pointerUpReceived: true })
+                            return
+                          }
+                          patchReaderDebug({
+                            pointerCancelReceived: true,
+                            gestureDecision: 'CANCELLED',
+                            gestureQualified: false,
                           })
                         }
                       : undefined
@@ -1956,11 +2025,17 @@ function FeedCardWithImpression(props: {
     viewportWidth: number
     velocityX: number
   }) => void
+  /** Pilot readerDebug only — pointer delivery forensic; no engagement writes. */
+  onGesturePointerDebug?: (ev: {
+    phase: 'down' | 'move' | 'up' | 'cancel'
+    ignoredInteractive?: boolean
+    handlerAbsent?: boolean
+  }) => void
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
 }) {
-  const { onOpenReaderGesture, ...cardProps } = props
+  const { onOpenReaderGesture, onGesturePointerDebug, ...cardProps } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
   const drag = useRef<{
     x: number
@@ -1975,9 +2050,19 @@ function FeedCardWithImpression(props: {
       className="relative touch-pan-y"
       data-testid="smart-feed-card-gesture-surface"
       onPointerDown={(e) => {
-        if (!onOpenReaderGesture || !props.isActive) return
+        if (!onOpenReaderGesture || !props.isActive) {
+          onGesturePointerDebug?.({
+            phase: 'down',
+            handlerAbsent: !onOpenReaderGesture,
+          })
+          return
+        }
         if (e.pointerType === 'mouse' && e.button !== 0) return
-        if (shouldIgnoreFeedOpenGestureTarget(e.target)) return
+        if (shouldIgnoreFeedOpenGestureTarget(e.target)) {
+          onGesturePointerDebug?.({ phase: 'down', ignoredInteractive: true })
+          return
+        }
+        onGesturePointerDebug?.({ phase: 'down' })
         drag.current = {
           x: e.clientX,
           y: e.clientY,
@@ -1993,6 +2078,7 @@ function FeedCardWithImpression(props: {
       }}
       onPointerMove={(e) => {
         if (!drag.current) return
+        onGesturePointerDebug?.({ phase: 'move' })
         drag.current.lastX = e.clientX
         drag.current.lastT = performance.now()
       }}
@@ -2007,6 +2093,7 @@ function FeedCardWithImpression(props: {
         } catch {
           // ignore
         }
+        onGesturePointerDebug?.({ phase: 'up' })
         const dx = e.clientX - d.x
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)
@@ -2020,6 +2107,7 @@ function FeedCardWithImpression(props: {
         })
       }}
       onPointerCancel={() => {
+        if (drag.current) onGesturePointerDebug?.({ phase: 'cancel' })
         drag.current = null
       }}
     >
