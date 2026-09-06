@@ -15,6 +15,7 @@ import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
+import { FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -98,6 +99,16 @@ interface FullscreenNewsCardProps {
   /** Subtle LEFT-swipe discovery hint — decorative only. */
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
+  /** When set, DiscoveryRail opens via Feed Reader authority instead of /haber Link. */
+  onDiscoveryArticleOpen?: (item: {
+    articleId: string
+    slug: string
+    headline: string
+    image: string | null
+    category: string | null
+    publishedAt: string
+    publisherName?: string | null
+  }) => void
 }
 
 /**
@@ -136,6 +147,7 @@ export function FullscreenNewsCard({
   discoveryExcludeIds,
   showSwipeDiscoveryCoach = false,
   swipeDiscoverySuppressed = false,
+  onDiscoveryArticleOpen,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -144,6 +156,7 @@ export function FullscreenNewsCard({
   const [headlineDone, setHeadlineDone] = useState(true)
   const [showCursor, setShowCursor] = useState(false)
   const [motionOk, setMotionOk] = useState(true)
+  const [swipeCoachNudgePx, setSwipeCoachNudgePx] = useState(0)
 
   const lastTapRef = useRef(0)
   const tapOriginRef = useRef<{ x: number; y: number } | null>(null)
@@ -337,10 +350,20 @@ export function FullscreenNewsCard({
       data-feed-skin={skin.id}
       data-feed-layout={skin.layout}
       data-testid="smart-feed-card"
+      data-feed-v2-nav-safe="1"
       style={
         {
           ['--feed-skin-accent']: skin.accent,
           ['--feed-publisher-accent']: publisherAccent,
+          ...FEED_V2_CHROME_CSS_VARS,
+          transform:
+            swipeCoachNudgePx !== 0
+              ? `translate3d(${swipeCoachNudgePx}px, 0, 0)`
+              : undefined,
+          transition:
+            swipeCoachNudgePx !== 0 || motionOk
+              ? 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)'
+              : undefined,
         } as CSSProperties
       }
     >
@@ -424,7 +447,11 @@ export function FullscreenNewsCard({
         />
 
         {showSwipeDiscoveryCoach ? (
-          <SwipeDiscoveryCoach active={isActive} suppressed={swipeDiscoverySuppressed} />
+          <SwipeDiscoveryCoach
+            active={isActive}
+            suppressed={swipeDiscoverySuppressed}
+            onCardNudge={setSwipeCoachNudgePx}
+          />
         ) : null}
 
         {skin.frame !== 'none' ? (
@@ -477,15 +504,17 @@ export function FullscreenNewsCard({
       <div
         className={cn(
           'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
-          /* Lift chrome off home-indicator — publisher/follow sit a few points higher */
-          'pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))]',
+          /* Mobile bottom-nav clearance — Haberi Oku / publisher stay above the pill */
+          'pb-[var(--feed-v2-bottom-clearance)]',
+          'lg:pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))]',
           MODE_NAV_CLEARANCE,
-          'md:mx-auto md:w-full md:max-w-lg'
+          'md:mx-auto md:w-full md:max-w-lg',
+          'feed-v2-card-chrome'
         )}
       >
-        {/* Double-tap zone — media only; copy always bottom (standard news) */}
+        {/* Double-tap zone — shrinks on short viewports so copy stays nav-safe */}
         <div
-          className="relative min-h-[18vh] flex-1 touch-manipulation"
+          className="relative min-h-[var(--feed-v2-hero-min,12vh)] flex-1 touch-manipulation"
           data-testid="smart-feed-double-tap-zone"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
@@ -512,9 +541,9 @@ export function FullscreenNewsCard({
           className="relative z-[2] mt-auto flex w-full min-h-0 flex-col justify-end bg-gradient-to-t from-black via-black/88 to-transparent pt-14 pr-[3.75rem]"
           data-testid="smart-feed-bottom-chrome"
         >
-          <div className="min-w-0 space-y-2.5 pb-2" data-testid="smart-feed-text-zone">
+          <div className="min-w-0 space-y-2 pb-1 sm:space-y-2.5 sm:pb-2" data-testid="smart-feed-text-zone">
             <div
-              className="max-h-[42vh] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              className="max-h-[min(38vh,22rem)] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:max-h-[42vh]"
               data-testid="smart-feed-copy-scroll"
               onTouchStart={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
@@ -588,7 +617,7 @@ export function FullscreenNewsCard({
                 type="button"
                 onClick={onReadClick}
                 data-testid="smart-feed-read-cta"
-                className="mt-5 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99] sm:mt-6"
+                className="mt-3 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99] sm:mt-5"
                 style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
               >
                 Haberi Oku →
@@ -640,6 +669,7 @@ export function FullscreenNewsCard({
               <FeedDiscoveryRail
                 category={discoveryCategory}
                 excludeIds={new Set([item.articleId, ...(discoveryExcludeIds ?? [])])}
+                onOpenArticle={onDiscoveryArticleOpen}
               />
             ) : null}
 
@@ -662,9 +692,9 @@ export function FullscreenNewsCard({
           </div>
         </div>
 
-        {/* Viewport-anchored social column — independent of copy length */}
+        {/* Viewport-anchored social column — cleared above bottom nav on short phones */}
         <div
-          className="pointer-events-auto absolute right-2 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-3"
+          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-3 top-[42%] -translate-y-1/2 max-[700px]:top-auto max-[700px]:bottom-[calc(var(--feed-v2-bottom-clearance)+6.5rem)] max-[700px]:translate-y-0"
           data-testid="smart-feed-social-dock"
         >
           <SocialActionRail

@@ -4,8 +4,18 @@
  */
 
 export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v1'
-export const SWIPE_DISCOVERY_HINT_MS = 1800
-export const SWIPE_DISCOVERY_NUDGE_PX = 10
+/** Total on-screen lifetime after settle (ms). */
+export const SWIPE_DISCOVERY_HINT_MS = 2200
+/** Wait after card settles before showing coach. */
+export const SWIPE_DISCOVERY_SETTLE_MS = 1600
+/** Finger/chip travel LEFT (px). */
+export const SWIPE_DISCOVERY_TRAVEL_PX = 36
+/** Subtle active-card nudge LEFT (px). */
+export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 10
+/** Motion duration for travel + return half-cycle. */
+export const SWIPE_DISCOVERY_ANIM_MS = 850
+/** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
+export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
 
 export type SwipeDiscoveryState = {
   learned: boolean

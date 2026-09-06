@@ -50,7 +50,8 @@ describe('P18 swipe discovery coach', () => {
       'utf8'
     )
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('← Kaydır')
+    expect(coach).toContain('Haberi aç')
+    expect(coach).toContain('data-swipe-discovery-v2="1"')
     expect(coach).not.toContain('preventDefault')
     expect(coach).not.toContain('setPointerCapture')
     expect(coach).not.toContain('addEventListener')

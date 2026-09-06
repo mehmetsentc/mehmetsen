@@ -2315,6 +2315,47 @@ export function SmartFeedClient({
                   showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
                   discoveryCategory={category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
+                  onDiscoveryArticleOpen={
+                    feedReaderEnabled && readerCapabilityReady
+                      ? (d) => {
+                          const existing = items.find((i) => i.articleId === d.articleId)
+                          if (existing) {
+                            const idx = items.findIndex((i) => i.articleId === d.articleId)
+                            onRead(existing, idx >= 0 ? idx : index, 'button')
+                            return
+                          }
+                          const synthetic: FeedItemDto = {
+                            id: d.articleId,
+                            type: 'article',
+                            articleId: d.articleId,
+                            clusterId: null,
+                            publisher: d.publisherName
+                              ? {
+                                  id: 'discovery',
+                                  slug: 'discovery',
+                                  name: d.publisherName,
+                                  logoUrl: null,
+                                }
+                              : null,
+                            headline: d.headline,
+                            summary: null,
+                            category: d.category,
+                            image: d.image,
+                            video: null,
+                            publishedAt: d.publishedAt,
+                            updatedAt: d.publishedAt,
+                            breaking: false,
+                            materialUpdate: false,
+                            clusterSourceCount: 0,
+                            socialState: null,
+                            socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+                            reason: 'DISCOVERY',
+                            slug: d.slug || d.articleId,
+                          }
+                          onRead(synthetic, index, 'button')
+                        }
+                      : undefined
+                  }
                   showSwipeDiscoveryCoach={
                     Boolean(
                       feedReaderEnabled &&
@@ -2526,6 +2567,15 @@ function FeedCardWithImpression(props: {
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
+  onDiscoveryArticleOpen?: (item: {
+    articleId: string
+    slug: string
+    headline: string
+    image: string | null
+    category: string | null
+    publishedAt: string
+    publisherName?: string | null
+  }) => void
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
 }) {

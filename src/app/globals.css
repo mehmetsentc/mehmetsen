@@ -3743,11 +3743,30 @@ video.reels-video {
 }
 
 /* Clear the floating bottom-nav pill on mobile + tablet.
-   Reels / feed-v2 hide MobileNav — do NOT reserve clearance there
-   (creates a dead band of surface color under the fullscreen card). */
+   Feed V2 cards reserve --feed-v2-bottom-clearance inside FullscreenNewsCard
+   so Haberi Oku / publisher stay above MobileNav while chrome is visible. */
 html[data-platform='mobile'] .content-main:not(.content-main-reels),
 html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);
+}
+
+/* Short-viewport hero floor for Feed V2 cards */
+@media (max-height: 700px) {
+  .feed-v2-card-chrome {
+    --feed-v2-hero-min: 8vh;
+  }
+}
+
+@media (min-height: 701px) and (max-height: 812px) {
+  .feed-v2-card-chrome {
+    --feed-v2-hero-min: 10vh;
+  }
+}
+
+@media (min-height: 813px) {
+  .feed-v2-card-chrome {
+    --feed-v2-hero-min: 14vh;
+  }
 }
 
 /* FeaturedSlider progress bar animation */

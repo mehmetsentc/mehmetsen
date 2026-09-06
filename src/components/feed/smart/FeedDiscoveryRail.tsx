@@ -21,14 +21,25 @@ export interface DiscoveryRailItem {
 interface FeedDiscoveryRailProps {
   category?: string | null
   excludeIds?: Set<string>
+  /** Legacy hook after open (telemetry). */
   onOpen?: (articleId: string) => void
+  /**
+   * When provided (Reader-enabled session), tiles open via Feed Reader authority
+   * instead of navigating to canonical /haber.
+   */
+  onOpenArticle?: (item: DiscoveryRailItem) => void
 }
 
 /**
  * Horizontal "Öne Çıkanlar" module — sandwiched as a full snap panel after N cards.
  * Does NOT emit qualified article impressions for rail cards (only module_viewed / opened).
  */
-export function FeedDiscoveryRail({ category, excludeIds, onOpen }: FeedDiscoveryRailProps) {
+export function FeedDiscoveryRail({
+  category,
+  excludeIds,
+  onOpen,
+  onOpenArticle,
+}: FeedDiscoveryRailProps) {
   const [items, setItems] = useState<DiscoveryRailItem[]>([])
   const viewedRef = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -114,28 +125,13 @@ export function FeedDiscoveryRail({ category, excludeIds, onOpen }: FeedDiscover
       >
         {items.map((item) => {
           const skin = resolveFeedCardSkin(item.category)
-          return (
-            <Link
-              key={item.articleId}
-              href={`/haber/${item.slug || item.articleId}`}
-              className={cn(
-                'relative h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900',
-                'active:scale-[0.98] transition'
-              )}
-              style={{ ['--feed-skin-accent' as string]: skin.accent }}
-              onClick={() => {
-                onOpen?.(item.articleId)
-                void postTelemetryQuiet({
-                  events: [
-                    {
-                      eventType: 'discovery_card_opened',
-                      articleId: item.articleId,
-                      metadata: { category: item.category },
-                    },
-                  ],
-                })
-              }}
-            >
+          const className = cn(
+            'relative h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900',
+            'active:scale-[0.98] transition text-left'
+          )
+          const style = { ['--feed-skin-accent' as string]: skin.accent }
+          const body = (
+            <>
               {item.image ? (
                 <Image
                   src={item.image}
@@ -158,6 +154,52 @@ export function FeedDiscoveryRail({ category, excludeIds, onOpen }: FeedDiscover
                   {item.headline}
                 </p>
               </div>
+            </>
+          )
+
+          const trackOpen = () => {
+            onOpen?.(item.articleId)
+            void postTelemetryQuiet({
+              events: [
+                {
+                  eventType: 'discovery_card_opened',
+                  articleId: item.articleId,
+                  metadata: { category: item.category },
+                },
+              ],
+            })
+          }
+
+          if (onOpenArticle) {
+            return (
+              <button
+                key={item.articleId}
+                type="button"
+                className={className}
+                style={style}
+                data-testid="smart-feed-discovery-tile"
+                data-discovery-open="reader"
+                onClick={() => {
+                  trackOpen()
+                  onOpenArticle(item)
+                }}
+              >
+                {body}
+              </button>
+            )
+          }
+
+          return (
+            <Link
+              key={item.articleId}
+              href={`/haber/${item.slug || item.articleId}`}
+              className={className}
+              style={style}
+              data-testid="smart-feed-discovery-tile"
+              data-discovery-open="canonical"
+              onClick={trackOpen}
+            >
+              {body}
             </Link>
           )
         })}
