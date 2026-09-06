@@ -4,8 +4,30 @@
  * Does not alter Reader open/fallback behavior.
  */
 
-/** Exact P18 Feed Reader pilot — used only for pilotMatch flag (never displayed as UID). */
+/**
+ * Historical programmatic operator UID — informational only.
+ * Do NOT use as active pilotMatch / authorization truth after P18 transfer.
+ */
 export const FEED_READER_DEBUG_PILOT_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
+
+/**
+ * Resolve grant-backed pilotMatch for the debug badge.
+ * Prefer server currentMatchesActiveFeedReaderGrant; else capabilityEnabled once ready.
+ */
+export function resolveGrantBackedPilotMatch(input: {
+  currentMatchesActiveFeedReaderGrant?: boolean | null
+  capabilityReady?: boolean
+  capabilityEnabled?: boolean
+  authenticated?: boolean
+}): boolean {
+  if (typeof input.currentMatchesActiveFeedReaderGrant === 'boolean') {
+    return input.currentMatchesActiveFeedReaderGrant
+  }
+  if (input.capabilityReady && input.authenticated) {
+    return Boolean(input.capabilityEnabled)
+  }
+  return false
+}
 
 export type FeedReaderLastReadDecision =
   | 'PENDING'
@@ -48,8 +70,10 @@ export type FeedReaderDebugPath = 'FEED' | 'CANONICAL_ARTICLE' | null
 export type FeedReaderDebugSnapshot = {
   authLoading: boolean
   authenticated: boolean
-  /** pilotMatch — never expose raw UID; currently vs programmatic operator constant (stale risk). */
+  /** pilotMatch — grant-backed Reader authorization (never raw UID). */
   uidMatch: boolean
+  /** Explicit grant field (same meaning as uidMatch when server identityDebug present). */
+  currentMatchesActiveFeedReaderGrant: boolean | null
   capabilityRequestStarted: boolean
   capabilityRequestFinished: boolean
   capabilityHTTPStatus: number | null
@@ -108,6 +132,7 @@ export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
   authLoading: true,
   authenticated: false,
   uidMatch: false,
+  currentMatchesActiveFeedReaderGrant: null,
   capabilityRequestStarted: false,
   capabilityRequestFinished: false,
   capabilityHTTPStatus: null,
@@ -159,6 +184,7 @@ export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
   historicalCandidateDisabled: null,
 }
 
+/** @deprecated Informational only — compares to programmatic operator, not active grant. */
 export function isFeedReaderDebugPilot(uid: string | null | undefined): boolean {
   return Boolean(uid && uid === FEED_READER_DEBUG_PILOT_UID)
 }
@@ -229,6 +255,7 @@ export function buildFeedReaderDebugBadgeLines(s: FeedReaderDebugSnapshot): stri
     `authLoading: ${s.authLoading}`,
     `authenticated: ${s.authenticated}`,
     `pilotMatch: ${s.uidMatch}`,
+    `currentMatchesActiveFeedReaderGrant: ${s.currentMatchesActiveFeedReaderGrant ?? 'null'}`,
     `capabilityRequested: ${s.capabilityRequestStarted}`,
     `capabilityHTTPStatus: ${s.capabilityHTTPStatus ?? 'null'}`,
     `capabilityAuthenticated: ${s.capabilityAuthenticated ?? 'null'}`,

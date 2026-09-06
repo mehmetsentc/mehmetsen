@@ -18,6 +18,12 @@ export type PilotIdentityDebugPayload = {
   historicalGoogleCandidateProvider: 'GOOGLE'
   currentMatchesHistoricalGooglePilot: boolean
   currentMatchesProgrammaticOperator: boolean
+  /**
+   * Grant-backed: authenticated UID currently resolves FEED_READER_V1
+   * via the same effectiveUserFlags path as capability.enabled.
+   * This is the authority for pilotMatch — not hardcoded UIDs.
+   */
+  currentMatchesActiveFeedReaderGrant: boolean | null
   currentProviderType: SafeAuthProviderKind | null
   currentFirebaseRecordValid: boolean | null
   currentDisabled: boolean | null
@@ -56,6 +62,7 @@ export async function buildPilotIdentityDebug(opts: {
     historicalGoogleCandidateProvider: 'GOOGLE',
     currentMatchesHistoricalGooglePilot: exactUidMatch(uid, HISTORICAL_GOOGLE_CONSUMER_PILOT_UID),
     currentMatchesProgrammaticOperator: exactUidMatch(uid, PROGRAMMATIC_OPERATOR_PILOT_UID),
+    currentMatchesActiveFeedReaderGrant: null,
     currentProviderType: null,
     currentFirebaseRecordValid: null,
     currentDisabled: null,
@@ -63,6 +70,13 @@ export async function buildPilotIdentityDebug(opts: {
     currentTermsAccepted: null,
     historicalProviderStillGoogleLinked: null,
     historicalCandidateDisabled: null,
+  }
+
+  try {
+    const { isFeedReaderEffectiveForUser } = await import('@/lib/user/effectiveUserFlags')
+    base.currentMatchesActiveFeedReaderGrant = await isFeedReaderEffectiveForUser(uid)
+  } catch {
+    base.currentMatchesActiveFeedReaderGrant = null
   }
 
   try {
@@ -103,7 +117,7 @@ export async function buildPilotIdentityDebug(opts: {
       base.currentTermsAccepted = null
     }
   } catch {
-    // Admin unavailable — exact match booleans above remain authoritative.
+    // Admin unavailable — grant-backed + exact match booleans above remain authoritative.
   }
 
   return base

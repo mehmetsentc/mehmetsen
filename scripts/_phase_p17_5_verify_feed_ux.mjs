@@ -1,9 +1,27 @@
+/**
+ * P18_LEGACY — LEGACY AUTOMATED VERIFICATION — NO LONGER VALID FOR HUMAN PILOT.
+ * Uses createCustomToken(OPERATOR) and expects consumer Feed/Reader grants on the
+ * programmatic operator. After the P18 1→1 human pilot transfer, those grants are
+ * intentionally revoked. Do NOT restore operator consumer grants to keep this green.
+ * Do NOT run against Production in a way that creates synthetic human engagement.
+ */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { chromium } from 'playwright-core'
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+
+if (!process.env.P18_ALLOW_LEGACY_OPERATOR_VERIFY) {
+  console.error(
+    JSON.stringify({
+      status: 'REFUSED',
+      classification: 'LEGACY AUTOMATED VERIFICATION — NO LONGER VALID FOR HUMAN PILOT',
+      hint: 'Set P18_ALLOW_LEGACY_OPERATOR_VERIFY=1 only for explicit non-Production lab runs',
+    })
+  )
+  process.exit(2)
+}
 
 function loadEnvLocal() {
   const p = resolve(process.cwd(), '.env.local')

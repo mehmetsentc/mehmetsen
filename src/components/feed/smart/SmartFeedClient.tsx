@@ -49,8 +49,8 @@ import {
   EMPTY_FEED_READER_DEBUG,
   buildFeedReaderDebugBadgeLines,
   decideFeedReadAction,
-  isFeedReaderDebugPilot,
   mapClickDebugFromDecision,
+  resolveGrantBackedPilotMatch,
   shouldShowFeedReaderDebugPanel,
   type FeedReaderDebugSnapshot,
 } from '@/lib/feed/reader/readerDebug'
@@ -310,6 +310,23 @@ export function SmartFeedClient({
       setReaderCapabilityReady(true)
       capabilityErrorRef.current = Boolean(meta?.error)
       const id = meta?.identityDebug
+      const authenticated = Boolean(
+        typeof meta?.clientAuthenticated === 'boolean'
+          ? meta.clientAuthenticated
+          : typeof meta?.serverAuthenticated === 'boolean'
+            ? meta.serverAuthenticated
+            : enabled
+      )
+      const grantMatch =
+        typeof id?.currentMatchesActiveFeedReaderGrant === 'boolean'
+          ? id.currentMatchesActiveFeedReaderGrant
+          : null
+      const uidMatch = resolveGrantBackedPilotMatch({
+        currentMatchesActiveFeedReaderGrant: grantMatch,
+        capabilityReady: true,
+        capabilityEnabled: enabled,
+        authenticated,
+      })
       patchReaderDebug({
         capabilityRequestFinished: true,
         capabilityEnabled: enabled,
@@ -323,6 +340,8 @@ export function SmartFeedClient({
             : typeof meta?.clientAuthenticated === 'boolean'
               ? meta.clientAuthenticated
               : null,
+        uidMatch,
+        currentMatchesActiveFeedReaderGrant: grantMatch ?? (authenticated ? enabled : null),
         ...(id
           ? {
               currentUidPresent: id.currentUidPresent,
@@ -352,7 +371,10 @@ export function SmartFeedClient({
     patchReaderDebug({
       authLoading,
       authenticated: Boolean(authUser?.uid),
-      uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+      // Grant-backed pilotMatch settles in applyFeedReaderCapability; clear while loading.
+      ...(authLoading
+        ? { uidMatch: false, currentMatchesActiveFeedReaderGrant: null }
+        : {}),
     })
 
     if (authLoading) {
@@ -1509,7 +1531,11 @@ export function SmartFeedClient({
         capabilityReady: readerCapabilityReadyRef.current,
         authLoading,
         authenticated: Boolean(authUser?.uid),
-        uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+        uidMatch: resolveGrantBackedPilotMatch({
+          capabilityReady: readerCapabilityReadyRef.current,
+          capabilityEnabled: enabled,
+          authenticated: Boolean(authUser?.uid),
+        }),
         readerOpenRequested: decided.decision === 'OPEN_READER',
         openReaderCalled: false,
         routerPushCanonicalCalled: false,

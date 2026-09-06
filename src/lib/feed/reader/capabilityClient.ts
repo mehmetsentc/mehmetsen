@@ -11,6 +11,8 @@ export type FeedReaderIdentityDebug = {
   historicalGoogleCandidateProvider: 'GOOGLE'
   currentMatchesHistoricalGooglePilot: boolean
   currentMatchesProgrammaticOperator: boolean
+  /** Grant-backed Reader pilot match — same authority as capability.enabled. */
+  currentMatchesActiveFeedReaderGrant: boolean | null
   currentProviderType: SafeAuthProviderKind | null
   currentFirebaseRecordValid: boolean | null
   currentDisabled: boolean | null
