@@ -30,15 +30,25 @@ import {
   computeReadDepthPercent,
 } from '@/lib/feed/reader/readDepth'
 import {
+  beginCloseTransaction,
+  canHistoryBackForOpen,
   claimUnownedReaderHistory,
-  isFeedReaderHistoryState,
+  createReaderOpenId,
+  finishCloseTransaction,
   planReaderHistoryClose,
   planReaderHistoryOpen,
   popReaderHistory,
   pushOwnedReaderHistory,
+  readReaderHistoryState,
   replaceUnownedReaderWithFeed,
   type FeedReaderCloseReason,
+  type ReaderCloseTransactionPhase,
 } from '@/lib/feed/reader/history'
+import {
+  isReaderNavTraceEnabled,
+  markReaderOpenTiming,
+  recordReaderNavTrace,
+} from '@/lib/feed/reader/navTrace'
 import {
   FEED_READER_CSS_VARS,
   FEED_READER_DURATION_MS,
@@ -101,6 +111,8 @@ type Props = {
   onToggleSave?: () => void
   onCommentClick?: () => void
   onLockFeedScroll?: (locked: boolean) => void
+  feedSessionId?: string | null
+  openSource?: 'swipe' | 'haberi_oku' | 'unknown'
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -126,6 +138,8 @@ export function FeedArticleReader({
   onToggleSave,
   onCommentClick,
   onLockFeedScroll,
+  feedSessionId = null,
+  openSource = 'unknown',
 }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -144,7 +158,8 @@ export function FeedArticleReader({
     axis: 'none' | 'horizontal' | 'vertical'
   } | null>(null)
   const closingRef = useRef(false)
-  const ownsFeedReturnRef = useRef(false)
+  const readerOpenIdRef = useRef<string | null>(null)
+  const closePhaseRef = useRef<ReaderCloseTransactionPhase>('closed')
   const ignoreNextPopRef = useRef(false)
   const closeReasonRef = useRef<FeedReaderCloseReason>('button')
   const committedLifecycleRef = useRef(false)
@@ -267,6 +282,9 @@ export function FeedArticleReader({
         epoch: heroEpochRef.current,
       })
     )
+    if (result === 'ok' && readerOpenIdRef.current) {
+      markReaderOpenTiming(readerOpenIdRef.current, 'heroResolvedAt')
+    }
   }, [commitHeroFlags, item.articleId])
 
   // Close / unmount: invalidate in-flight hero callbacks + timer epoch.
@@ -300,9 +318,10 @@ export function FeedArticleReader({
         thresholdsHit: [...depthSeenRef.current],
       })
       openedRef.current = false
-      ownsFeedReturnRef.current = false
       closingRef.current = false
       committedLifecycleRef.current = false
+      closePhaseRef.current = finishCloseTransaction()
+      readerOpenIdRef.current = null
       setInternalProgress(null)
       onClose(reason)
     },
@@ -311,20 +330,52 @@ export function FeedArticleReader({
 
   const beginClose = useCallback(
     (reason: FeedReaderCloseReason) => {
-      if (!committed || closingRef.current) return
+      if (!committed) return
+      const nextPhase = beginCloseTransaction(closePhaseRef.current)
+      if (!nextPhase) return
+      closePhaseRef.current = nextPhase
       closingRef.current = true
       closeReasonRef.current = reason
 
+      const openId = readerOpenIdRef.current
+      const currentState = typeof window !== 'undefined' ? window.history.state : null
       const plan = planReaderHistoryClose({
         reason,
-        ownsFeedReturn: ownsFeedReturnRef.current,
+        currentState,
+        readerOpenId: openId,
+        feedSessionId,
+        phase: 'active',
+      })
+      const loc =
+        typeof window !== 'undefined'
+          ? { pathname: window.location.pathname, search: window.location.search }
+          : { pathname: '/feed-v2', search: '' }
+      recordReaderNavTrace({
+        type: plan === 'history_back' ? 'history_back_request' : plan === 'none' ? 'popstate' : 'replaceState',
+        pathname: loc.pathname,
+        search: loc.search,
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: openId,
+        feedSessionId,
+        readerMounted: true,
+        feedMounted: true,
+        readerState: 'closing',
+        closeSource:
+          reason === 'history' ? 'popstate' : reason === 'gesture' ? 'swipe' : reason === 'escape' ? 'escape' : 'ui',
+        articleId: item.articleId,
+        category: item.category,
+        ownsReaderEntry: canHistoryBackForOpen({
+          currentState,
+          readerOpenId: openId ?? '',
+          feedSessionId,
+          phase: 'active',
+        }),
+        readerOpenIdInState: readReaderHistoryState(currentState)?.readerOpenId ?? null,
       })
       if (plan === 'history_back') {
         ignoreNextPopRef.current = true
-        ownsFeedReturnRef.current = false
         popReaderHistory()
       } else if (plan === 'replace_unowned_feed') {
-        ownsFeedReturnRef.current = false
         replaceUnownedReaderWithFeed()
       }
 
@@ -335,7 +386,7 @@ export function FeedArticleReader({
         finishCloseUi(reason)
       }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
     },
-    [committed, finishCloseUi, reducedMotion]
+    [committed, feedSessionId, finishCloseUi, item.articleId, reducedMotion]
   )
 
   const beginCloseRef = useRef(beginClose)
@@ -393,6 +444,9 @@ export function FeedArticleReader({
       }
       setDetail(data.article)
       setFetchState('ok')
+      if (readerOpenIdRef.current) {
+        markReaderOpenTiming(readerOpenIdRef.current, 'bodyAvailableAt')
+      }
       onBodyDebug?.({ started: true, httpStatus: res.status, errorCode: null })
     } catch (e) {
       if ((e as { name?: string })?.name === 'AbortError') return
@@ -443,6 +497,9 @@ export function FeedArticleReader({
     const gen = openGeneration
     closingRef.current = false
     ignoreNextPopRef.current = false
+    closePhaseRef.current = 'active'
+    const openId = createReaderOpenId()
+    readerOpenIdRef.current = openId
     depthSeenRef.current = new Set()
     depthMaxRef.current = 0
     dwellRef.current.open()
@@ -450,19 +507,50 @@ export function FeedArticleReader({
     document.documentElement.classList.add('smart-feed-reader-open')
     document.body.classList.add('smart-feed-reader-open')
 
+    const historyState = typeof window !== 'undefined' ? window.history.state : null
     const openPlan = planReaderHistoryOpen({
       slug: item.slug,
       search: typeof window !== 'undefined' ? window.location.search : '',
-      historyState: typeof window !== 'undefined' ? window.history.state : null,
+      historyState,
+      readerOpenId: openId,
     })
     if (openPlan === 'push_owned') {
-      pushOwnedReaderHistory({ slug: item.slug, articleId: item.articleId })
-      ownsFeedReturnRef.current = true
+      pushOwnedReaderHistory({
+        slug: item.slug,
+        articleId: item.articleId,
+        readerOpenId: openId,
+        feedSessionId,
+      })
     } else if (openPlan === 'claim_unowned_direct') {
-      claimUnownedReaderHistory({ slug: item.slug, articleId: item.articleId })
-      ownsFeedReturnRef.current = false
-    } else {
-      ownsFeedReturnRef.current = true
+      claimUnownedReaderHistory({
+        slug: item.slug,
+        articleId: item.articleId,
+        readerOpenId: openId,
+        feedSessionId,
+      })
+    }
+
+    recordReaderNavTrace({
+      type: openPlan === 'push_owned' ? 'pushState' : openPlan === 'claim_unowned_direct' ? 'replaceState' : 'reader_open',
+      pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+      search: typeof window !== 'undefined' ? window.location.search : '',
+      historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+      readerOpenId: openId,
+      feedSessionId,
+      readerMounted: true,
+      feedMounted: true,
+      readerState: 'open',
+      openSource,
+      articleId: item.articleId,
+      category: item.category,
+    })
+    if (isReaderNavTraceEnabled()) {
+      markReaderOpenTiming(openId, 'stateOpenAt')
+      requestAnimationFrame(() => {
+        if (readerOpenIdRef.current === openId) {
+          markReaderOpenTiming(openId, 'firstFrameAt')
+        }
+      })
     }
 
     setInternalProgress(null)
@@ -476,13 +564,13 @@ export function FeedArticleReader({
       if (gen !== openGeneration) return
       dwellRef.current.setDocumentVisible(document.visibilityState === 'visible')
     }
-    const onPop = (ev: PopStateEvent) => {
+    const onPop = () => {
       if (gen !== openGeneration) return
+      if (closePhaseRef.current !== 'active') return
       if (ignoreNextPopRef.current) {
         ignoreNextPopRef.current = false
         return
       }
-      if (isFeedReaderHistoryState(ev.state) && ev.state.ownsFeedReturn) return
       beginCloseRef.current('history')
     }
     const onKey = (ev: KeyboardEvent) => {
@@ -495,13 +583,22 @@ export function FeedArticleReader({
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('popstate', onPop)
       window.removeEventListener('keydown', onKey)
-      if (ownsFeedReturnRef.current && !closingRef.current) {
-        ignoreNextPopRef.current = true
-        ownsFeedReturnRef.current = false
-        popReaderHistory()
-      }
+      recordReaderNavTrace({
+        type: 'reader_cleanup',
+        pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: readerOpenIdRef.current,
+        feedSessionId,
+        readerMounted: false,
+        feedMounted: true,
+        readerState: closePhaseRef.current === 'closed' ? 'closed' : 'closing',
+        articleId: item.articleId,
+        category: item.category,
+      })
+      // Cleanup must never history.back() — only the close transaction may.
     }
-  }, [committed, item.slug, item.articleId])
+  }, [committed, feedSessionId, item.articleId, item.slug, openSource])
 
   const onScroll = () => {
     const el = scrollRef.current

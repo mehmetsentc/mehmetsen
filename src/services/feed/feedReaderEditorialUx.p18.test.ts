@@ -148,9 +148,21 @@ describe('P18 Reader editorial semantics + chrome', () => {
     expect(planReaderHistoryOpen({ slug: 'a', search: '', historyState: null })).toBe(
       'push_owned'
     )
-    expect(planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: true })).toBe(
-      'history_back'
-    )
+    expect(
+      planReaderHistoryClose({
+        reason: 'gesture',
+        currentState: {
+          nahaberFeedReader: true,
+          articleId: '1',
+          slug: 'a',
+          ownsFeedReturn: true,
+          readerOpenId: 'rdr_a',
+          feedSessionId: 'fds_1',
+        },
+        readerOpenId: 'rdr_a',
+        phase: 'active',
+      })
+    ).toBe('history_back')
     const ten = simulateReaderHistoryStack({
       initial: ['/', '/feed-v2'],
       openCloseCycles: 10,

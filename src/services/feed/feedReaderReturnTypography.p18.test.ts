@@ -68,22 +68,58 @@ describe('P18 Reader history ownership + return', () => {
     pushOwnedReaderHistory({
       slug: 'a',
       articleId: '1',
+      readerOpenId: 'rdr_a',
+      feedSessionId: 'fds_1',
       history: h,
       url: buildFeedReaderUrl('a'),
     })
     expect(h.length).toBe(2)
     expect(isFeedReaderHistoryState(h.state)).toBe(true)
     expect((h.state as { ownsFeedReturn: boolean }).ownsFeedReturn).toBe(true)
+    expect((h.state as { readerOpenId: string }).readerOpenId).toBe('rdr_a')
   })
 
-  it('normal close uses history_back; popstate uses none', () => {
-    expect(planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: true })).toBe(
-      'history_back'
-    )
-    expect(planReaderHistoryClose({ reason: 'button', ownsFeedReturn: true })).toBe(
-      'history_back'
-    )
-    expect(planReaderHistoryClose({ reason: 'history', ownsFeedReturn: true })).toBe('none')
+  it('normal close uses history_back only for matching current openId; popstate uses none', () => {
+    const owned = {
+      nahaberFeedReader: true as const,
+      articleId: '1',
+      slug: 'a',
+      ownsFeedReturn: true,
+      readerOpenId: 'rdr_a',
+      feedSessionId: 'fds_1',
+    }
+    expect(
+      planReaderHistoryClose({
+        reason: 'gesture',
+        currentState: owned,
+        readerOpenId: 'rdr_a',
+        phase: 'active',
+      })
+    ).toBe('history_back')
+    expect(
+      planReaderHistoryClose({
+        reason: 'button',
+        currentState: owned,
+        readerOpenId: 'rdr_a',
+        phase: 'active',
+      })
+    ).toBe('history_back')
+    expect(
+      planReaderHistoryClose({
+        reason: 'history',
+        currentState: owned,
+        readerOpenId: 'rdr_a',
+        phase: 'active',
+      })
+    ).toBe('none')
+    expect(
+      planReaderHistoryClose({
+        reason: 'gesture',
+        currentState: { __NA: 1, idx: 1 },
+        readerOpenId: 'rdr_a',
+        phase: 'active',
+      })
+    ).toBe('replace_unowned_feed')
   })
 
   it('5 owned open/close cycles never accumulate and never reach /', () => {
@@ -116,7 +152,7 @@ describe('P18 Reader history ownership + return', () => {
       })
     ).toBe('claim_unowned_direct')
     expect(
-      planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: false })
+      planReaderHistoryClose({ reason: 'gesture', readerOpenId: null, phase: 'active' })
     ).toBe('replace_unowned_feed')
   })
 
@@ -164,6 +200,8 @@ describe('P18 Reader history ownership + return', () => {
     claimUnownedReaderHistory({
       slug: 'a',
       articleId: '1',
+      readerOpenId: 'rdr_claim',
+      feedSessionId: 'fds_1',
       history: h,
       url: '/feed-v2?reader=a',
     })
@@ -172,7 +210,7 @@ describe('P18 Reader history ownership + return', () => {
   })
 
   it('short swipe / cancel → zero history mutation (unowned plan without owns)', () => {
-    expect(planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: false })).toBe(
+    expect(planReaderHistoryClose({ reason: 'gesture', readerOpenId: null, phase: 'active' })).toBe(
       'replace_unowned_feed'
     )
     // incomplete gesture never calls beginClose — source contract
@@ -183,7 +221,10 @@ describe('P18 Reader history ownership + return', () => {
     expect(src).toContain('onPointerCancel={onPointerCancel}')
     expect(src).toContain('snapReaderOpen')
     expect(src).toContain('closingRef')
-    expect(src).toContain('ownsFeedReturnRef')
+    expect(src).toContain('readerOpenIdRef')
+    expect(src).toContain('canHistoryBackForOpen')
+    expect(src).toContain('beginCloseTransaction')
+    expect(src).not.toContain('ownsFeedReturnRef')
     expect(src).toContain('replaceUnownedReaderWithFeed')
     expect(src).toContain('pushOwnedReaderHistory')
     expect(src).not.toContain('replaceFeedUrl')
@@ -201,18 +242,27 @@ describe('P18 Reader history ownership + return', () => {
       expect(
         planReaderHistoryOpen({ slug, search: '', historyState: h.state })
       ).toBe('push_owned')
+      const openId = `rdr_${i}`
       pushOwnedReaderHistory({
         slug,
         articleId: String(i),
+        readerOpenId: openId,
+        feedSessionId: 'fds_1',
         history: h,
         url: buildFeedReaderUrl(slug),
       })
       expect(h.current().url).toBe(`/feed-v2?reader=${slug}`)
       expect(h.snapshot()).toContain(feedUrl)
 
-      expect(planReaderHistoryClose({ reason: 'button', ownsFeedReturn: true })).toBe(
-        'history_back'
-      )
+      expect(
+        planReaderHistoryClose({
+          reason: 'button',
+          currentState: h.state,
+          readerOpenId: openId,
+          feedSessionId: 'fds_1',
+          phase: 'active',
+        })
+      ).toBe('history_back')
       h.back()
       expect(h.current().url).toBe(feedUrl)
       expect(h.current().url).not.toContain('reader=')
@@ -233,12 +283,19 @@ describe('P18 Reader history ownership + return', () => {
     pushOwnedReaderHistory({
       slug: 'swipe',
       articleId: 's',
+      readerOpenId: 'rdr_swipe',
+      feedSessionId: 'fds_1',
       history: h,
       url: buildFeedReaderUrl('swipe'),
     })
-    expect(planReaderHistoryClose({ reason: 'gesture', ownsFeedReturn: true })).toBe(
-      'history_back'
-    )
+    expect(
+      planReaderHistoryClose({
+        reason: 'gesture',
+        currentState: h.state,
+        readerOpenId: 'rdr_swipe',
+        phase: 'active',
+      })
+    ).toBe('history_back')
     h.back()
     expect(h.current().url).toBe('/feed-v2')
 
@@ -246,12 +303,19 @@ describe('P18 Reader history ownership + return', () => {
     pushOwnedReaderHistory({
       slug: 'haberi-oku',
       articleId: 'h',
+      readerOpenId: 'rdr_hoku',
+      feedSessionId: 'fds_1',
       history: h,
       url: buildFeedReaderUrl('haberi-oku'),
     })
-    expect(planReaderHistoryClose({ reason: 'button', ownsFeedReturn: true })).toBe(
-      'history_back'
-    )
+    expect(
+      planReaderHistoryClose({
+        reason: 'button',
+        currentState: h.state,
+        readerOpenId: 'rdr_hoku',
+        phase: 'active',
+      })
+    ).toBe('history_back')
     h.back()
     expect(h.current().url).toBe('/feed-v2')
 
@@ -259,11 +323,20 @@ describe('P18 Reader history ownership + return', () => {
     pushOwnedReaderHistory({
       slug: 'browser-back',
       articleId: 'b',
+      readerOpenId: 'rdr_bb',
+      feedSessionId: 'fds_1',
       history: h,
       url: buildFeedReaderUrl('browser-back'),
     })
     h.back()
-    expect(planReaderHistoryClose({ reason: 'history', ownsFeedReturn: true })).toBe('none')
+    expect(
+      planReaderHistoryClose({
+        reason: 'history',
+        currentState: h.state,
+        readerOpenId: 'rdr_bb',
+        phase: 'active',
+      })
+    ).toBe('none')
     expect(h.current().url).toBe('/feed-v2')
     expect(h.snapshot()).toEqual(['/', '/feed-v2'])
   })

@@ -83,6 +83,8 @@ describe('Feed Reader foundation', () => {
         articleId: '1',
         slug: 's',
         ownsFeedReturn: true,
+        readerOpenId: 'rdr_test',
+        feedSessionId: 'fds_test',
       })
     ).toBe(true)
     expect(isFeedReaderHistoryState({ foo: 1 })).toBe(false)

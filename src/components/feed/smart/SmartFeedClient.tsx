@@ -70,6 +70,11 @@ import {
   readLocalClearedSentinel,
   writeLocalClearedSentinel,
 } from '@/lib/feed/accountLocalLocation'
+import { createFeedSessionId } from '@/lib/feed/reader/history'
+import {
+  recordReaderNavTrace,
+  setReaderNavTraceEnabled,
+} from '@/lib/feed/reader/navTrace'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
@@ -266,7 +271,9 @@ export function SmartFeedClient({
     progress: number
     committed: boolean
     progressAnimating: boolean
+    openSource?: 'swipe' | 'haberi_oku' | 'unknown'
   } | null>(null)
+  const feedSessionIdRef = useRef(createFeedSessionId())
   const readerItem = readerSession
     ? { item: readerSession.item, index: readerSession.index }
     : null
@@ -293,6 +300,42 @@ export function SmartFeedClient({
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const readerDebugQuery = searchParams.get('readerDebug') === '1'
+  useEffect(() => {
+    setReaderNavTraceEnabled(readerDebugQuery)
+    if (readerDebugQuery) {
+      recordReaderNavTrace({
+        type: 'feed_mount',
+        pathname: '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: null,
+        feedSessionId: feedSessionIdRef.current,
+        readerMounted: false,
+        feedMounted: true,
+        readerState: 'closed',
+        mode,
+        category,
+      })
+    }
+    return () => {
+      if (readerDebugQuery) {
+        recordReaderNavTrace({
+          type: 'feed_unmount',
+          pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+          search: typeof window !== 'undefined' ? window.location.search : '',
+          historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+          readerOpenId: null,
+          feedSessionId: feedSessionIdRef.current,
+          readerMounted: false,
+          feedMounted: false,
+          readerState: 'closed',
+          mode,
+          category,
+        })
+      }
+      setReaderNavTraceEnabled(false)
+    }
+  }, [readerDebugQuery])
   const showReaderDebug = shouldShowFeedReaderDebugPanel({
     readerDebugQuery,
     uid: authUser?.uid,
@@ -1494,7 +1537,7 @@ export function SmartFeedClient({
   }, [])
 
   const openReader = useCallback(
-    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean }) => {
+    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean; openSource?: 'swipe' | 'haberi_oku' | 'unknown' }) => {
       // Exactly one commit per article open — ignore double Haberi Oku / duplicate gesture commit.
       if (readerOpenGuardRef.current === item.articleId) {
         // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
@@ -1505,16 +1548,34 @@ export function SmartFeedClient({
 
       const from = Math.min(1, Math.max(0, opts?.fromProgress ?? 0))
       const reduced = prefersReducedMotion()
+      const openSource = opts?.openSource ?? (opts?.skipRamp ? 'swipe' : 'haberi_oku')
 
       if (opts?.skipRamp || from >= 0.92 || reduced) {
         clearReaderOpenRamp()
         readerOpenGuardRef.current = item.articleId
+        recordReaderNavTrace({
+          type: 'gesture_accepted',
+          pathname: '/feed-v2',
+          search: typeof window !== 'undefined' ? window.location.search : '',
+          historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+          readerOpenId: null,
+          feedSessionId: feedSessionIdRef.current,
+          readerMounted: true,
+          feedMounted: true,
+          readerState: 'open',
+          openSource,
+          articleId: item.articleId,
+          feedIndex: index,
+          mode,
+          category,
+        })
         setReaderSession({
           item,
           index,
           progress: 1,
           committed: true,
           progressAnimating: false,
+          openSource,
         })
         patchReaderDebug({
           openReaderCalled: true,
@@ -1532,12 +1593,29 @@ export function SmartFeedClient({
       // Haberi Oku / button: same page-turn authority as swipe (progress 0 → 1, then commit).
       clearReaderOpenRamp()
       readerOpenGuardRef.current = item.articleId
+      recordReaderNavTrace({
+        type: 'gesture_accepted',
+        pathname: '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: null,
+        feedSessionId: feedSessionIdRef.current,
+        readerMounted: true,
+        feedMounted: true,
+        readerState: 'closed',
+        openSource,
+        articleId: item.articleId,
+        feedIndex: index,
+        mode,
+        category,
+      })
       setReaderSession({
         item,
         index,
         progress: from,
         committed: false,
         progressAnimating: false,
+        openSource,
       })
       requestAnimationFrame(() => {
         setReaderSession((s) =>
@@ -1648,6 +1726,7 @@ export function SmartFeedClient({
               ? readerSession.progress
               : 1,
             skipRamp: true,
+            openSource: 'swipe',
           })
         } else {
           openReader(item, index)
@@ -1754,6 +1833,8 @@ export function SmartFeedClient({
     <div
       className="relative h-[100dvh] w-full bg-black overflow-hidden flex justify-center select-none"
       data-testid="smart-feed-root"
+      data-feed-mounted="1"
+      data-feed-session-id={feedSessionIdRef.current}
     >
       {/* Canonical Viewport Shell — Never collapses, preserves exact geometry */}
       <div
@@ -2022,6 +2103,7 @@ export function SmartFeedClient({
                                 progress,
                                 committed: false,
                                 progressAnimating: false,
+                                openSource: 'swipe',
                               }
                             }
                             return { ...s, progress, progressAnimating: false }
@@ -2169,6 +2251,8 @@ export function SmartFeedClient({
             committed={readerSession.committed}
             visualProgress={readerSession.progress}
             progressAnimating={readerSession.progressAnimating}
+            feedSessionId={feedSessionIdRef.current}
+            openSource={readerSession.openSource ?? 'unknown'}
             onClose={() => {
               const idx = readerSession.index
               clearReaderOpenRamp()
