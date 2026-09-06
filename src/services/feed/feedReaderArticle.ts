@@ -13,6 +13,7 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
 import { bodyFromPost } from '@/lib/feed/reader/bodyFromPost'
+import { pickFullReaderCopy } from '@/lib/feed/reader/presentationCopy'
 import { estimateReadMinutes } from '@/lib/articleBodyUtils'
 
 export type { FeedReaderArticleDto } from '@/types/feedReader'
@@ -47,7 +48,7 @@ export async function loadFeedReaderArticle(
       id: post.id,
       slug: post.slug,
       headline: post.title,
-      summary: post.summary || post.spot || null,
+      summary: pickFullReaderCopy(post.spot, post.summary),
       category: post.categoryId || null,
       publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString() : null,
       image,

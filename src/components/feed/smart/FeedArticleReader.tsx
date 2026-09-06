@@ -52,6 +52,11 @@ import {
   stripDuplicateHeroFromBodyHtml,
   type HeroRuntimeSnapshot,
 } from '@/lib/feed/reader/mediaPolicy'
+import {
+  formatReaderCategoryLabel,
+  looksLikeUpstreamTruncation,
+  pickFullReaderCopy,
+} from '@/lib/feed/reader/presentationCopy'
 import { getClientAuthToken } from '@/lib/firebase/auth'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
@@ -167,13 +172,16 @@ export function FeedArticleReader({
   const progress =
     internalProgress !== null ? internalProgress : Math.min(1, Math.max(0, visualProgress))
 
-  const headline = detail?.headline || item.headline
-  const summary = detail?.summary ?? item.summary
+  const headline = pickFullReaderCopy(detail?.headline, item.headline) || item.headline
+  const summary = pickFullReaderCopy(detail?.summary, item.summary)
+  const headlineUpstreamCut = looksLikeUpstreamTruncation(headline)
+  const spotUpstreamCut = looksLikeUpstreamTruncation(summary)
   const feedImage = item.image
   const detailImage = detail?.image
   const imageCaption = detail?.imageCaption ?? null
   const publisherName = detail?.publisher?.name || item.publisher?.name || 'Kaynak'
   const category = detail?.category || item.category
+  const categoryLabel = formatReaderCategoryLabel(category)
   const sourceUrl = detail?.sourceUrl
   const canonicalPath = detail?.canonicalPath || `/haber/${item.slug}`
   const readingMins = detail?.readingTimeMinutes
@@ -587,7 +595,7 @@ export function FeedArticleReader({
   } as CSSProperties
 
   const metaBits = [
-    category,
+    categoryLabel,
     publisherName,
     item.publishedAt
       ? new Date(item.publishedAt).toLocaleString('tr-TR', {
@@ -615,7 +623,7 @@ export function FeedArticleReader({
       style={{ background: progress > 0.02 ? 'rgba(0,0,0,0.55)' : 'transparent' }}
     >
       <div
-        className="feed-reader-article relative flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden shadow-2xl md:my-0"
+        className="feed-reader-article relative flex h-[100dvh] w-full max-w-[44rem] flex-col overflow-hidden md:my-0"
         style={{
           ...styleVars,
           background: 'var(--reader-page-bg)',
@@ -628,12 +636,12 @@ export function FeedArticleReader({
         onPointerCancel={onPointerCancel}
       >
         <header
-          className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2.5"
+          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-1.5 pt-[max(0.4rem,env(safe-area-inset-top))]"
           style={{ background: 'var(--reader-page-bg)' }}
         >
           <button
             type="button"
-            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
+            className="rounded-full p-1.5 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Akışa dön"
             data-testid="feed-reader-close"
             onClick={() => beginClose('button')}
@@ -641,16 +649,17 @@ export function FeedArticleReader({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--reader-accent)]">
-              {category || 'Haber'}
-            </p>
-            <p className="truncate text-sm font-medium text-[color:var(--reader-page-muted)]">
+            <p className="truncate text-[11px] font-medium tracking-[0.04em] text-[color:var(--reader-page-muted)]">
+              <span className="font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-accent)]">
+                {categoryLabel || 'Haber'}
+              </span>
+              <span className="text-white/25"> · </span>
               {publisherName}
             </p>
           </div>
           <button
             type="button"
-            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
+            className="rounded-full p-1.5 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Kaydet"
             onClick={onToggleSave}
           >
@@ -660,7 +669,7 @@ export function FeedArticleReader({
           </button>
           <button
             type="button"
-            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
+            className="rounded-full p-1.5 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Yorumlar"
             onClick={onCommentClick}
           >
@@ -674,16 +683,31 @@ export function FeedArticleReader({
         <div
           ref={scrollRef}
           onScroll={onScroll}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4"
+          className="feed-reader-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 sm:px-6"
           data-testid="feed-reader-scroll"
           style={{ background: 'var(--reader-page-bg)' }}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
-            {metaBits.join(' · ')}
+          <div className="mx-auto w-full max-w-[var(--reader-prose-max)]">
+          <p
+            className="text-[12px] font-medium uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]"
+            data-testid="feed-reader-meta"
+          >
+            {metaBits.map((bit, i) => (
+              <span key={`${bit}-${i}`}>
+                {i > 0 ? <span className="text-white/25"> · </span> : null}
+                {i === 0 ? (
+                  <span className="text-[color:var(--reader-accent)]">{bit}</span>
+                ) : (
+                  bit
+                )}
+              </span>
+            ))}
           </p>
           <h1
             id={titleId}
-            className="mt-2 break-words font-serif text-[1.45rem] font-bold leading-[1.22] tracking-tight text-[color:var(--reader-page-text)] sm:text-[1.65rem]"
+            data-testid="feed-reader-headline"
+            data-reader-upstream-cut={headlineUpstreamCut ? '1' : undefined}
+            className="feed-reader-headline mt-3.5 break-words font-serif text-[clamp(1.875rem,8vw,2.625rem)] font-bold leading-[1.08] tracking-[-0.025em] text-[color:var(--reader-page-text)]"
             style={{ fontFamily: 'var(--font-serif-display, Georgia, serif)' }}
           >
             {headline}
@@ -691,16 +715,18 @@ export function FeedArticleReader({
 
           {summary ? (
             <p
-              className="mt-3 break-words border-l-[3px] border-[color:var(--reader-accent)] pl-3 text-[1.02rem] font-semibold leading-snug text-[color:var(--reader-page-text)]"
+              className="feed-reader-spot mt-6 break-words border-l-[3px] border-[color:var(--reader-accent)] pl-4 text-[1.25rem] font-semibold leading-[1.42] text-[color:var(--reader-prose-text)]"
               data-testid="feed-reader-spot"
+              data-reader-upstream-cut={spotUpstreamCut ? '1' : undefined}
             >
               {summary}
             </p>
           ) : null}
+          </div>
 
           {hero.state === 'LOADING' && hero.url ? (
             <div
-              className="relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-md bg-[color:var(--reader-page-elevated)]"
+              className="relative mx-auto mt-7 aspect-[16/9] w-full max-h-[min(62vh,28rem)] max-w-[44rem] overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]"
               data-testid="feed-reader-hero-loading"
               aria-busy="true"
             >
@@ -709,7 +735,7 @@ export function FeedArticleReader({
                 alt=""
                 fill
                 className="object-cover opacity-0"
-                sizes="(max-width: 512px) 100vw, 512px"
+                sizes="(max-width: 704px) 100vw, 704px"
                 priority
                 unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
                 onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
@@ -723,22 +749,24 @@ export function FeedArticleReader({
 
           {hero.state === 'VALID_MEDIA' && hero.url ? (
             <figure
-              className="relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-md bg-[color:var(--reader-page-elevated)]"
+              className="mx-auto mt-7 w-full max-w-[44rem]"
               data-testid="feed-reader-hero"
             >
-              <Image
-                src={hero.url}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="(max-width: 512px) 100vw, 512px"
-                priority
-                unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
-                onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
-                onError={() => acceptHeroLoad(hero.url!, 'error')}
-              />
+              <div className="relative aspect-[16/9] max-h-[min(62vh,28rem)] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">
+                <Image
+                  src={hero.url}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 704px) 100vw, 704px"
+                  priority
+                  unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
+                  onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
+                  onError={() => acceptHeroLoad(hero.url!, 'error')}
+                />
+              </div>
               {hero.caption ? (
-                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-xs text-white/90">
+                <figcaption className="mt-2 text-[12.5px] leading-[1.4] text-[color:var(--reader-page-muted)]">
                   {hero.caption}
                 </figcaption>
               ) : null}
@@ -747,7 +775,7 @@ export function FeedArticleReader({
 
           {hero.state === 'FAILED_MEDIA' ? (
             <div
-              className="mt-4 rounded-md border border-white/10 bg-[color:var(--reader-page-elevated)] px-3 py-2 text-xs text-[color:var(--reader-page-muted)]"
+              className="mx-auto mt-7 max-w-[var(--reader-prose-max)] rounded-md border border-white/10 bg-[color:var(--reader-page-elevated)] px-3 py-2 text-xs text-[color:var(--reader-page-muted)]"
               data-testid="feed-reader-hero-failed"
             >
               Görsel yüklenemedi
@@ -756,8 +784,9 @@ export function FeedArticleReader({
 
           {/* NO_MEDIA: no hero container */}
 
+          <div className="mx-auto w-full max-w-[var(--reader-prose-max)]">
           {fetchState === 'loading' && !detail?.bodyHtml ? (
-            <div className="mt-5 space-y-2.5" aria-busy="true" data-testid="feed-reader-body-skeleton">
+            <div className="mt-8 space-y-2.5" aria-busy="true" data-testid="feed-reader-body-skeleton">
               <div className="h-2.5 w-full animate-pulse rounded bg-white/10" />
               <div className="h-2.5 w-[92%] animate-pulse rounded bg-white/10" />
               <div className="h-2.5 w-[85%] animate-pulse rounded bg-white/10" />
@@ -766,7 +795,7 @@ export function FeedArticleReader({
           ) : null}
 
           {fetchState === 'error' ? (
-            <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-950/40 p-4 text-sm text-amber-100">
+            <div className="mt-8 rounded-md border border-amber-500/40 bg-amber-950/40 p-4 text-sm text-amber-100">
               <p>Haber ayrıntıları yüklenemedi.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -788,18 +817,18 @@ export function FeedArticleReader({
 
           {bodyHtmlRendered ? (
             <div
-              className="feed-reader-body reader-body mt-5"
+              className="feed-reader-body reader-body mt-8"
               data-testid="feed-reader-body"
               dangerouslySetInnerHTML={{ __html: bodyHtmlRendered }}
             />
           ) : fetchState === 'loading' && committed ? (
-            <div className="mt-6 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-[color:var(--reader-page-muted)]" />
             </div>
           ) : null}
 
           <aside
-            className="mt-8 rounded-lg border border-white/10 bg-[color:var(--reader-page-elevated)] p-4 text-sm"
+            className="mt-10 rounded-lg border border-white/10 bg-[color:var(--reader-page-elevated)] p-4 text-sm"
             data-testid="feed-reader-source"
             aria-label="Kaynak"
           >
@@ -820,11 +849,18 @@ export function FeedArticleReader({
               </a>
             ) : null}
           </aside>
+          </div>
+          <div
+            data-testid="feed-reader-footer-clearance"
+            aria-hidden
+            className="w-full shrink-0"
+            style={{ height: 'var(--reader-footer-clearance)' }}
+          />
         </div>
 
         <footer
           className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-white/10 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-          style={{ background: 'color-mix(in srgb, var(--reader-page-bg) 94%, transparent)' }}
+          style={{ background: 'var(--reader-page-bg)' }}
           data-testid="feed-reader-footer"
         >
           <button
