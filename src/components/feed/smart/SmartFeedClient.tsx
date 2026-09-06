@@ -47,8 +47,10 @@ import {
 } from '@/lib/feed/reader/capabilityClient'
 import {
   EMPTY_FEED_READER_DEBUG,
+  buildFeedReaderDebugBadgeLines,
   decideFeedReadAction,
   isFeedReaderDebugPilot,
+  mapClickDebugFromDecision,
   shouldShowFeedReaderDebugPanel,
   type FeedReaderDebugSnapshot,
 } from '@/lib/feed/reader/readerDebug'
@@ -1424,9 +1426,14 @@ export function SmartFeedClient({
     // Keep Feed mounted — no restore snapshot needed for overlay path.
     setReaderItem({ item, index })
     patchReaderDebug({
-      readerItemSet: true,
-      readerOverlayMounted: true,
+      openReaderCalled: true,
       readerOpenRequested: true,
+      readerItemSet: true,
+      readerComponentRendered: true,
+      readerOverlayMounted: true,
+      readerUnmountReason: null,
+      currentPath: 'FEED',
+      routerPushCanonicalCalled: false,
     })
   }, [patchReaderDebug])
 
@@ -1460,19 +1467,26 @@ export function SmartFeedClient({
         capabilityEnabled: enabled,
         capabilityError: capabilityErrorRef.current,
       })
+      const clickDebug = mapClickDebugFromDecision({ decision: decided.decision })
 
       patchReaderDebug({
         onReadCalled: true,
+        lastReadClick: true,
         lastReadAction: action,
         lastReadArticleSlug: item.slug,
         lastReadDecision: decided.decision,
         lastFallbackReason: decided.fallbackReason,
+        capabilityAtClick: clickDebug.capabilityAtClick,
+        readDecision: clickDebug.readDecision,
         capabilityEnabled: enabled,
         capabilityReady: readerCapabilityReadyRef.current,
         authLoading,
         authenticated: Boolean(authUser?.uid),
         uidMatch: isFeedReaderDebugPilot(authUser?.uid),
         readerOpenRequested: decided.decision === 'OPEN_READER',
+        openReaderCalled: false,
+        routerPushCanonicalCalled: false,
+        currentPath: 'FEED',
       })
 
       void postTelemetry({
@@ -1510,6 +1524,14 @@ export function SmartFeedClient({
         items,
         timestamp: Date.now(),
         pending: true,
+      })
+      patchReaderDebug({
+        routerPushCanonicalCalled: true,
+        currentPath: 'CANONICAL_ARTICLE',
+        openReaderCalled: false,
+        readerItemSet: false,
+        readerOverlayMounted: false,
+        readerComponentRendered: false,
       })
       router.push(ROUTES.NEWS_DETAIL(item.slug))
     })()
@@ -1953,9 +1975,12 @@ export function SmartFeedClient({
               patchReaderDebug({
                 readerItemSet: false,
                 readerOverlayMounted: false,
+                readerComponentRendered: false,
                 readerBodyRequestStarted: false,
                 readerBodyHTTPStatus: null,
                 readerBodyErrorCode: null,
+                readerUnmountReason: 'user_close',
+                currentPath: 'FEED',
               })
               // Stay on same card index — Feed never unmounted.
               requestAnimationFrame(() => scrollToIndex(idx))
@@ -1995,10 +2020,14 @@ export function SmartFeedClient({
         {showReaderDebug ? (
           <aside
             data-testid="feed-reader-debug-panel"
-            className="pointer-events-none fixed bottom-3 left-3 z-[80] max-h-[42vh] max-w-[min(92vw,22rem)] overflow-auto rounded-md border border-emerald-500/40 bg-black/85 p-2 font-mono text-[10px] leading-snug text-emerald-200 shadow-lg"
+            className="pointer-events-none fixed left-2 right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-[200] max-h-[min(48vh,22rem)] overflow-auto rounded-md border-2 border-lime-400 bg-black/95 p-2.5 font-mono text-[11px] leading-snug text-lime-200 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]"
           >
-            <div className="mb-1 font-bold text-emerald-300">readerDebug (pilot-only · no secrets)</div>
-            <pre className="whitespace-pre-wrap break-all">{JSON.stringify(readerDebug, null, 0)}</pre>
+            <div className="mb-1.5 text-sm font-extrabold tracking-wide text-lime-300">
+              READER DEBUG
+            </div>
+            <pre className="whitespace-pre-wrap break-all">
+              {buildFeedReaderDebugBadgeLines(readerDebug).join('\n')}
+            </pre>
           </aside>
         ) : null}
 

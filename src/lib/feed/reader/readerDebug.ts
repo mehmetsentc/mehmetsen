@@ -1,10 +1,10 @@
 /**
- * Feed Reader V1 — temporary pilot runtime diagnostic (non-telemetry).
- * Visible only with ?readerDebug=1 for the exact authenticated pilot.
+ * Feed Reader V1 — temporary runtime diagnostic (non-telemetry).
+ * Visible with ?readerDebug=1 for ANY visitor (safe fields only).
  * Does not alter Reader open/fallback behavior.
  */
 
-/** Exact P18 Feed Reader pilot — used only for debug panel gate + uidMatch flag. */
+/** Exact P18 Feed Reader pilot — used only for pilotMatch flag (never displayed as UID). */
 export const FEED_READER_DEBUG_PILOT_UID = 'wG8WTNlW38TILLvpDLsFmt8IMlg1'
 
 export type FeedReaderLastReadDecision =
@@ -12,6 +12,16 @@ export type FeedReaderLastReadDecision =
   | 'OPEN_READER'
   | 'CANONICAL_FALLBACK'
   | 'ERROR_FALLBACK'
+
+/** Human-facing click decision labels for the debug badge. */
+export type FeedReaderClickCapabilityState = 'PENDING' | 'ENABLED' | 'DISABLED'
+
+export type FeedReaderClickReadDecision =
+  | 'OPEN_READER'
+  | 'CANONICAL_FALLBACK'
+  | 'WAIT_FOR_CAPABILITY'
+  | 'ERROR_FALLBACK'
+  | null
 
 export type FeedReaderFallbackReason =
   | 'NON_PILOT'
@@ -33,9 +43,12 @@ export type FeedReaderGestureDecision =
   | 'CANCELLED'
   | 'HANDLER_ABSENT'
 
+export type FeedReaderDebugPath = 'FEED' | 'CANONICAL_ARTICLE' | null
+
 export type FeedReaderDebugSnapshot = {
   authLoading: boolean
   authenticated: boolean
+  /** pilotMatch — never expose raw UID */
   uidMatch: boolean
   capabilityRequestStarted: boolean
   capabilityRequestFinished: boolean
@@ -54,7 +67,7 @@ export type FeedReaderDebugSnapshot = {
   readerBodyRequestStarted: boolean
   readerBodyHTTPStatus: number | null
   readerBodyErrorCode: string | null
-  /** Gesture forensic (pilot readerDebug only) — no PII / no engagement telemetry. */
+  /** Gesture forensic — no PII / no engagement telemetry. */
   gestureHandlerAttached: boolean
   pointerDownReceived: boolean
   pointerMoveReceived: boolean
@@ -67,6 +80,15 @@ export type FeedReaderDebugSnapshot = {
   gestureDecision: FeedReaderGestureDecision | null
   onReadCalled: boolean
   readerOpenRequested: boolean
+  /** Click-time truth (Haberi Oku / gesture) — local only. */
+  lastReadClick: boolean
+  capabilityAtClick: FeedReaderClickCapabilityState | null
+  readDecision: FeedReaderClickReadDecision
+  openReaderCalled: boolean
+  routerPushCanonicalCalled: boolean
+  readerComponentRendered: boolean
+  readerUnmountReason: string | null
+  currentPath: FeedReaderDebugPath
 }
 
 export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
@@ -102,17 +124,50 @@ export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
   gestureDecision: null,
   onReadCalled: false,
   readerOpenRequested: false,
+  lastReadClick: false,
+  capabilityAtClick: null,
+  readDecision: null,
+  openReaderCalled: false,
+  routerPushCanonicalCalled: false,
+  readerComponentRendered: false,
+  readerUnmountReason: null,
+  currentPath: 'FEED',
 }
 
 export function isFeedReaderDebugPilot(uid: string | null | undefined): boolean {
   return Boolean(uid && uid === FEED_READER_DEBUG_PILOT_UID)
 }
 
+/**
+ * ?readerDebug=1 alone shows the SAFE public badge (no PII).
+ * Previously required exact pilot UID — that made the panel invisible when
+ * auth was missing / wrong account / still loading, hiding the root cause.
+ */
 export function shouldShowFeedReaderDebugPanel(opts: {
   readerDebugQuery: boolean
-  uid: string | null | undefined
+  uid?: string | null | undefined
 }): boolean {
-  return opts.readerDebugQuery && isFeedReaderDebugPilot(opts.uid)
+  return Boolean(opts.readerDebugQuery)
+}
+
+/** Map internal decideFeedReadAction → click-time badge labels. */
+export function mapClickDebugFromDecision(input: {
+  decision: FeedReaderLastReadDecision
+}): {
+  capabilityAtClick: FeedReaderClickCapabilityState
+  readDecision: FeedReaderClickReadDecision
+} {
+  switch (input.decision) {
+    case 'PENDING':
+      return { capabilityAtClick: 'PENDING', readDecision: 'WAIT_FOR_CAPABILITY' }
+    case 'OPEN_READER':
+      return { capabilityAtClick: 'ENABLED', readDecision: 'OPEN_READER' }
+    case 'ERROR_FALLBACK':
+      return { capabilityAtClick: 'DISABLED', readDecision: 'ERROR_FALLBACK' }
+    case 'CANONICAL_FALLBACK':
+    default:
+      return { capabilityAtClick: 'DISABLED', readDecision: 'CANONICAL_FALLBACK' }
+  }
 }
 
 /**
@@ -141,4 +196,32 @@ export function decideFeedReadAction(input: {
     return { decision: 'OPEN_READER', fallbackReason: null }
   }
   return { decision: 'CANONICAL_FALLBACK', fallbackReason: 'CAPABILITY_DISABLED' }
+}
+
+/** Compact safe badge fields — never includes UID/token/email. */
+export function buildFeedReaderDebugBadgeLines(s: FeedReaderDebugSnapshot): string[] {
+  return [
+    `authLoading: ${s.authLoading}`,
+    `authenticated: ${s.authenticated}`,
+    `pilotMatch: ${s.uidMatch}`,
+    `capabilityRequested: ${s.capabilityRequestStarted}`,
+    `capabilityHTTPStatus: ${s.capabilityHTTPStatus ?? 'null'}`,
+    `capabilityAuthenticated: ${s.capabilityAuthenticated ?? 'null'}`,
+    `capabilityReady: ${s.capabilityReady}`,
+    `capabilityEnabled: ${s.capabilityEnabled}`,
+    `gestureHandlerAttached: ${s.gestureHandlerAttached}`,
+    `lastReadClick: ${s.lastReadClick}`,
+    `capabilityAtClick: ${s.capabilityAtClick ?? 'null'}`,
+    `readDecision: ${s.readDecision ?? 'null'}`,
+    `openReaderCalled: ${s.openReaderCalled}`,
+    `readerItemSet: ${s.readerItemSet}`,
+    `readerOverlayMounted: ${s.readerOverlayMounted}`,
+    `routerPushCanonicalCalled: ${s.routerPushCanonicalCalled}`,
+    `currentPath: ${s.currentPath ?? 'null'}`,
+    `pointerDown: ${s.pointerDownReceived}`,
+    `pointerMove: ${s.pointerMoveReceived}`,
+    `pointerUp: ${s.pointerUpReceived}`,
+    `pointerCancel: ${s.pointerCancelReceived}`,
+    `gestureDecision: ${s.gestureDecision ?? 'null'}`,
+  ]
 }

@@ -121,7 +121,7 @@ describe('Haberi Oku visible button integration contract', () => {
 })
 
 describe('readerDebug panel gate', () => {
-  it('shows only for exact pilot + readerDebug=1', () => {
+  it('shows for ?readerDebug=1 regardless of uid (safe fields only)', () => {
     expect(
       shouldShowFeedReaderDebugPanel({
         readerDebugQuery: true,
@@ -133,7 +133,7 @@ describe('readerDebug panel gate', () => {
         readerDebugQuery: true,
         uid: 'other-user',
       })
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldShowFeedReaderDebugPanel({
         readerDebugQuery: false,
