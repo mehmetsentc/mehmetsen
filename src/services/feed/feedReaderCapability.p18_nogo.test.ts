@@ -110,7 +110,7 @@ describe('Feed card gesture surface integration', () => {
     expect(client).toContain('touch-pan-y')
     expect(client).toContain('setPointerCapture')
     expect(client).toContain('shouldIgnoreFeedOpenGestureTarget')
-    expect(client).toContain('feedReaderEnabled && readerCapabilityReady && isActive && !readerItem')
+    expect(client).toContain('feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed')
   })
 
   it('horizontal sufficient swipe opens; short/vertical/edge do not; interactive targets ignored', () => {

@@ -25,7 +25,8 @@ export function bodyFromPost(post: Post): { bodyHtml: string | null; bodyText: s
       coverImageUrl: post.coverImageUrl ?? undefined,
     })
     const text = articleBlocksToPlainText(filtered).trim()
-    const html = articleBlocksToSafeHtml(filtered).trim()
+    // Strip any residual presentation so Reader theme owns computed styles.
+    const html = sanitizeFeedReaderHtml(articleBlocksToSafeHtml(filtered)).trim()
     return { bodyHtml: html || null, bodyText: text || null }
   }
   const raw = (post.htmlContent || post.content || '').trim()

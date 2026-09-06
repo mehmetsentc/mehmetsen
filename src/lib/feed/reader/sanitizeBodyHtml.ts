@@ -1,5 +1,6 @@
 /**
  * Feed Reader body HTML — preserve safe semantic hierarchy; fail closed on XSS.
+ * Source markup = semantics only. Presentation is Reader-owned (dark V2).
  */
 
 const ALLOWED_TAGS = new Set([
@@ -49,8 +50,7 @@ function safeImgSrc(raw: string): string | null {
 
 /**
  * Allowlist sanitizer for Reader body.
- * Keeps h2–h4 / lists / blockquote / figure+img / safe links.
- * Strips script/iframe/object/embed/form/svg/handlers/javascript URLs/style attrs.
+ * Strips presentation (style/color/class/font) so source cannot override Reader theme.
  */
 export function sanitizeFeedReaderHtml(html: string): string {
   if (!html?.trim()) return ''
@@ -64,15 +64,18 @@ export function sanitizeFeedReaderHtml(html: string): string {
     .replace(/<embed[^>]*>/gi, '')
     .replace(/<form[\s\S]*?<\/form>/gi, '')
     .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+    .replace(/<\/?font\b[^>]*>/gi, '')
     .replace(/<h1(\s[^>]*)?>/gi, '<h2>')
     .replace(/<\/h1>/gi, '</h2>')
     .replace(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi, '')
+    .replace(/\sclass\s*=\s*("([^"]*)"|'([^']*)')/gi, '')
+    .replace(/\scolor\s*=\s*("([^"]*)"|'([^']*)'|[^\s>]+)/gi, '')
+    .replace(/\sbgcolor\s*=\s*("([^"]*)"|'([^']*)'|[^\s>]+)/gi, '')
     .replace(/\son\w+\s*=\s*("([^"]*)"|'([^']*)'|[^\s>]+)/gi, '')
     .replace(/javascript:/gi, '')
     .replace(/data:/gi, 'blocked-data:')
     .replace(/vbscript:/gi, '')
 
-  // Rebuild tags with allowlisted attributes only.
   out = out.replace(/<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g, (full, tagRaw: string, attrs = '') => {
     const closing = full.startsWith('</')
     const tag = tagRaw.toLowerCase()
@@ -100,7 +103,6 @@ export function sanitizeFeedReaderHtml(html: string): string {
     return `<${tag}>`
   })
 
-  // Unclosed <a> stripped to span open — close matching spans that replaced bad anchors.
   out = out.replace(/<span>([\s\S]*?)<\/a>/gi, '<span>$1</span>')
 
   return out.trim()

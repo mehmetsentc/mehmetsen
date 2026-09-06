@@ -194,7 +194,7 @@ describe('P18 Reader history ownership + return', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain('setReaderItem(null)')
+    expect(client).toContain('setReaderSession(null)')
     expect(client).toContain('scrollToIndex(idx)')
   })
 })
@@ -297,8 +297,16 @@ describe('P18 Reader article typography', () => {
 
   it('globals + SEO contract', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8')
-    expect(css).toContain('.reader-body h2')
-    expect(css).toContain('.reader-body blockquote')
+    expect(css).toContain('.feed-reader-article .reader-body h2')
+    expect(css).toContain('.feed-reader-article')
+    expect(css).toContain('color: var(--reader-page-text, #f4f1ea) !important')
+    expect(css).toContain('.feed-reader-article .reader-body blockquote')
+    const tokens = readFileSync(
+      join(process.cwd(), 'src/lib/feed/reader/tokens.ts'),
+      'utf8'
+    )
+    expect(tokens).toContain("'--reader-page-bg': '#0c0c0e'")
+    expect(tokens).not.toContain('#f7f4ef')
     const article = readFileSync(
       join(process.cwd(), 'src/services/feed/feedReaderArticle.ts'),
       'utf8'

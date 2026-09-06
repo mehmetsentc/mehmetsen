@@ -8,6 +8,8 @@ export type FeedReaderArticleDto = {
   category: string | null
   publishedAt: string | null
   image: string | null
+  imageCaption: string | null
+  readingTimeMinutes: number | null
   video: string | null
   publisher: {
     id: string | null

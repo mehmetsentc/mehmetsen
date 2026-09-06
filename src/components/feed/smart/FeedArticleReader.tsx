@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -38,7 +39,16 @@ import {
   replaceUnownedReaderWithFeed,
   type FeedReaderCloseReason,
 } from '@/lib/feed/reader/history'
-import { FEED_READER_CSS_VARS, FEED_READER_DURATION_MS } from '@/lib/feed/reader/tokens'
+import {
+  FEED_READER_CSS_VARS,
+  FEED_READER_DURATION_MS,
+  FEED_READER_HERO_LOAD_TIMEOUT_MS,
+} from '@/lib/feed/reader/tokens'
+import {
+  isLikelyHttpImageUrl,
+  resolveReaderHero,
+  stripDuplicateHeroFromBodyHtml,
+} from '@/lib/feed/reader/mediaPolicy'
 import { getClientAuthToken } from '@/lib/firebase/auth'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
@@ -57,11 +67,18 @@ export type FeedReaderTelemetryPayload = {
 
 type Props = {
   item: FeedItemDto
-  open: boolean
+  /**
+   * When true: history ownership, body fetch, close gestures, chrome lock.
+   * When false: visual preview only (Feed→Reader drag / Haberi Oku ramp).
+   */
+  committed: boolean
+  /** Parent-driven reveal 0..1 during interactive open. */
+  visualProgress: number
+  /** Parent animating Haberi Oku / cancel — Reader mirrors without fighting. */
+  progressAnimating?: boolean
   onClose: (reason: FeedReaderCloseReason) => void
   onOpenTelemetry?: () => void
   onCloseTelemetry?: (payload: FeedReaderTelemetryPayload) => void
-  /** Optional non-telemetry body fetch debug (pilot ?readerDebug=1 only). */
   onBodyDebug?: (state: {
     started: boolean
     httpStatus: number | null
@@ -75,17 +92,19 @@ type Props = {
   onToggleLike?: () => void
   onToggleSave?: () => void
   onCommentClick?: () => void
-  /** Pause parent feed snap while open */
   onLockFeedScroll?: (locked: boolean) => void
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
+type ImageLoadState = 'pending' | 'ok' | 'error'
 
 let openGeneration = 0
 
 export function FeedArticleReader({
   item,
-  open,
+  committed,
+  visualProgress,
+  progressAnimating = false,
   onClose,
   onOpenTelemetry,
   onCloseTelemetry,
@@ -120,20 +139,103 @@ export function FeedArticleReader({
   const ownsFeedReturnRef = useRef(false)
   const ignoreNextPopRef = useRef(false)
   const closeReasonRef = useRef<FeedReaderCloseReason>('button')
+  const committedLifecycleRef = useRef(false)
 
-  const [progress, setProgress] = useState(0) // 0 = feed, 1 = reader fully open
+  /** Internal progress only while closing or Reader→Feed drag. */
+  const [internalProgress, setInternalProgress] = useState<number | null>(null)
   const [animating, setAnimating] = useState(false)
   const [detail, setDetail] = useState<FeedReaderArticleDto | null>(null)
   const [fetchState, setFetchState] = useState<FetchState>('idle')
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [imageLoad, setImageLoad] = useState<ImageLoadState>('pending')
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
+  /** Bumps on article/candidate change + close — stale Image callbacks ignored. */
+  const heroEpochRef = useRef(0)
+  const activeHeroUrlRef = useRef<string | null>(null)
+  const loadTimedOutRef = useRef(false)
+
+  const progress =
+    internalProgress !== null ? internalProgress : Math.min(1, Math.max(0, visualProgress))
 
   const headline = detail?.headline || item.headline
   const summary = detail?.summary ?? item.summary
-  const image = detail?.image || item.image
+  const feedImage = item.image
+  const detailImage = detail?.image
+  const imageCaption = detail?.imageCaption ?? null
   const publisherName = detail?.publisher?.name || item.publisher?.name || 'Kaynak'
   const category = detail?.category || item.category
   const sourceUrl = detail?.sourceUrl
   const canonicalPath = detail?.canonicalPath || `/haber/${item.slug}`
+  const readingMins = detail?.readingTimeMinutes
+
+  const bodySettled = fetchState === 'ok' || fetchState === 'error'
+
+  const hero = useMemo(
+    () =>
+      resolveReaderHero({
+        feedImage,
+        detailImage,
+        detailCaption: imageCaption,
+        bodyHtml: detail?.bodyHtml,
+        bodySettled,
+        imageLoad,
+        loadTimedOut,
+      }),
+    [
+      feedImage,
+      detailImage,
+      imageCaption,
+      detail?.bodyHtml,
+      bodySettled,
+      imageLoad,
+      loadTimedOut,
+    ]
+  )
+
+  const bodyHtmlRendered = useMemo(
+    () => stripDuplicateHeroFromBodyHtml(detail?.bodyHtml ?? null, hero.suppressBodySrc),
+    [detail?.bodyHtml, hero.suppressBodySrc]
+  )
+
+  const heroCandidate =
+    (isLikelyHttpImageUrl(detailImage) ? detailImage!.trim() : null) ||
+    (isLikelyHttpImageUrl(feedImage) ? feedImage!.trim() : null)
+
+  useEffect(() => {
+    const epoch = ++heroEpochRef.current
+    loadTimedOutRef.current = false
+    activeHeroUrlRef.current = heroCandidate
+    if (!heroCandidate) {
+      setImageLoad('pending')
+      setLoadTimedOut(false)
+      return
+    }
+    setImageLoad('pending')
+    setLoadTimedOut(false)
+    const t = window.setTimeout(() => {
+      if (epoch !== heroEpochRef.current) return
+      loadTimedOutRef.current = true
+      setLoadTimedOut(true)
+    }, FEED_READER_HERO_LOAD_TIMEOUT_MS)
+    return () => {
+      window.clearTimeout(t)
+    }
+  }, [heroCandidate, item.articleId])
+
+  const acceptHeroLoad = useCallback((url: string, result: ImageLoadState) => {
+    if (heroEpochRef.current === 0) return
+    if (activeHeroUrlRef.current !== url) return
+    if (result === 'ok' && loadTimedOutRef.current) return
+    setImageLoad(result)
+  }, [])
+
+  // Close / unmount: invalidate in-flight hero callbacks + timer epoch.
+  useEffect(() => {
+    return () => {
+      heroEpochRef.current += 1
+      activeHeroUrlRef.current = null
+    }
+  }, [])
 
   const finishCloseUi = useCallback(
     (reason: FeedReaderCloseReason) => {
@@ -155,6 +257,8 @@ export function FeedArticleReader({
       openedRef.current = false
       ownsFeedReturnRef.current = false
       closingRef.current = false
+      committedLifecycleRef.current = false
+      setInternalProgress(null)
       onClose(reason)
     },
     [item, onClose, onCloseTelemetry, onLockFeedScroll]
@@ -162,7 +266,7 @@ export function FeedArticleReader({
 
   const beginClose = useCallback(
     (reason: FeedReaderCloseReason) => {
-      if (closingRef.current) return
+      if (!committed || closingRef.current) return
       closingRef.current = true
       closeReasonRef.current = reason
 
@@ -171,24 +275,22 @@ export function FeedArticleReader({
         ownsFeedReturn: ownsFeedReturnRef.current,
       })
       if (plan === 'history_back') {
-        // popstate will fire after back(); ignore that echo so we do not recurse.
         ignoreNextPopRef.current = true
         ownsFeedReturnRef.current = false
         popReaderHistory()
       } else if (plan === 'replace_unowned_feed') {
-        // Direct/reload entry — strip ?reader= only; never history.back() off-site.
         ownsFeedReturnRef.current = false
         replaceUnownedReaderWithFeed()
       }
 
       setAnimating(true)
-      setProgress(0)
+      setInternalProgress(0)
       window.setTimeout(() => {
         setAnimating(false)
         finishCloseUi(reason)
       }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
     },
-    [finishCloseUi, reducedMotion]
+    [committed, finishCloseUi, reducedMotion]
   )
 
   const beginCloseRef = useRef(beginClose)
@@ -201,8 +303,11 @@ export function FeedArticleReader({
   const snapReaderOpen = useCallback(() => {
     if (closingRef.current) return
     setAnimating(true)
-    setProgress(1)
-    window.setTimeout(() => setAnimating(false), reducedMotion ? 0 : FEED_READER_DURATION_MS)
+    setInternalProgress(1)
+    window.setTimeout(() => {
+      setAnimating(false)
+      setInternalProgress(null)
+    }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
   }, [reducedMotion])
 
   const loadBody = useCallback(async () => {
@@ -259,20 +364,35 @@ export function FeedArticleReader({
   const loadBodyRef = useRef(loadBody)
   loadBodyRef.current = loadBody
 
-  // Open / close lifecycle — push history exactly once; never re-push on callback churn.
   useEffect(() => {
     setReducedMotion(prefersReducedMotion())
   }, [])
 
+  // Preview reset when session item changes without commit.
   useEffect(() => {
-    if (!open) {
-      setProgress(0)
-      setDetail(null)
-      setFetchState('idle')
-      abortRef.current?.abort()
-      closingRef.current = false
+    if (committed) return
+    setDetail(null)
+    setFetchState('idle')
+    abortRef.current?.abort()
+    setInternalProgress(null)
+    closingRef.current = false
+  }, [committed, item.articleId])
+
+  // Committed lifecycle — push history exactly once; never re-push on callback churn.
+  useEffect(() => {
+    if (!committed) {
+      if (committedLifecycleRef.current) {
+        // Unexpected un-commit — soft teardown without history.back.
+        onLockFeedScrollRef.current?.(false)
+        document.documentElement.classList.remove('smart-feed-reader-open')
+        document.body.classList.remove('smart-feed-reader-open')
+        committedLifecycleRef.current = false
+      }
       return
     }
+
+    if (committedLifecycleRef.current) return
+    committedLifecycleRef.current = true
 
     openGeneration += 1
     const gen = openGeneration
@@ -297,11 +417,10 @@ export function FeedArticleReader({
       claimUnownedReaderHistory({ slug: item.slug, articleId: item.articleId })
       ownsFeedReturnRef.current = false
     } else {
-      // already_owned — remount of owned push
       ownsFeedReturnRef.current = true
     }
 
-    setProgress(1)
+    setInternalProgress(null)
     if (!openedRef.current) {
       openedRef.current = true
       onOpenTelemetryRef.current?.()
@@ -318,7 +437,6 @@ export function FeedArticleReader({
         ignoreNextPopRef.current = false
         return
       }
-      // Browser already consumed the Reader history layer — UI close only.
       if (isFeedReaderHistoryState(ev.state) && ev.state.ownsFeedReturn) return
       beginCloseRef.current('history')
     }
@@ -332,14 +450,13 @@ export function FeedArticleReader({
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('popstate', onPop)
       window.removeEventListener('keydown', onKey)
-      // Slug change / forced unmount while still owning a pushed return layer.
       if (ownsFeedReturnRef.current && !closingRef.current) {
         ignoreNextPopRef.current = true
         ownsFeedReturnRef.current = false
         popReaderHistory()
       }
     }
-  }, [open, item.slug, item.articleId])
+  }, [committed, item.slug, item.articleId])
 
   const onScroll = () => {
     const el = scrollRef.current
@@ -355,7 +472,7 @@ export function FeedArticleReader({
   }
 
   const onPointerDown = (e: ReactPointerEvent) => {
-    if (closingRef.current) return
+    if (!committed || closingRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) return
     dragRef.current = {
@@ -370,7 +487,7 @@ export function FeedArticleReader({
   }
 
   const onPointerMove = (e: ReactPointerEvent) => {
-    if (closingRef.current) return
+    if (!committed || closingRef.current) return
     const d = dragRef.current
     if (!d || d.pointerId !== e.pointerId) return
     const dx = e.clientX - d.startX
@@ -386,7 +503,7 @@ export function FeedArticleReader({
     if (d.axis !== 'horizontal') return
     e.preventDefault()
     const p = 1 - readerToFeedProgress(dx, window.innerWidth)
-    setProgress(Math.min(1, Math.max(0.05, p)))
+    setInternalProgress(Math.min(1, Math.max(0.05, p)))
     d.lastX = e.clientX
     d.lastT = performance.now()
   }
@@ -394,11 +511,11 @@ export function FeedArticleReader({
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = dragRef.current
     dragRef.current = null
-    if (closingRef.current) return
+    if (!committed || closingRef.current) return
     if (!d || d.pointerId !== e.pointerId || d.axis !== 'horizontal') return
     const dx = e.clientX - d.startX
     const dt = Math.max(1, performance.now() - d.lastT)
-    const velocity = (e.clientX - d.lastX) / dt // px/ms toward right = close
+    const velocity = (e.clientX - d.lastX) / dt
     const closeProgress = readerToFeedProgress(dx, window.innerWidth)
     const complete = shouldCompleteTransition({
       progress: closeProgress,
@@ -410,11 +527,18 @@ export function FeedArticleReader({
 
   const onPointerCancel = () => {
     dragRef.current = null
-    if (closingRef.current) return
+    if (!committed || closingRef.current) return
     snapReaderOpen()
   }
 
-  if (!open && progress === 0) return null
+  if (progress <= 0.001 && !committed) return null
+
+  const transitionOn =
+    (animating || progressAnimating) && !reducedMotion && internalProgress === null
+      ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
+      : animating && !reducedMotion
+        ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
+        : 'none'
 
   const styleVars = {
     ...FEED_READER_CSS_VARS,
@@ -422,23 +546,39 @@ export function FeedArticleReader({
       ? undefined
       : `translate3d(${(1 - progress) * 100}%, 0, 0)`,
     opacity: reducedMotion ? (progress > 0.5 ? 1 : 0) : 0.55 + progress * 0.45,
-    transition: animating && !reducedMotion ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease` : 'none',
+    transition: transitionOn,
   } as CSSProperties
+
+  const metaBits = [
+    category,
+    publisherName,
+    item.publishedAt
+      ? new Date(item.publishedAt).toLocaleString('tr-TR', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null,
+    readingMins ? `${readingMins} dk` : null,
+  ].filter(Boolean)
 
   return (
     <div
       className={cn(
         'fixed inset-0 z-[130] flex justify-center',
-        open || progress > 0 ? 'pointer-events-auto' : 'pointer-events-none'
+        committed ? 'pointer-events-auto' : 'pointer-events-none'
       )}
       data-testid="feed-article-reader"
+      data-reader-committed={committed ? '1' : '0'}
+      data-reader-progress={progress.toFixed(2)}
       role="dialog"
-      aria-modal="true"
+      aria-modal={committed}
       aria-labelledby={titleId}
-      style={{ background: progress > 0.02 ? 'rgba(0,0,0,0.35)' : 'transparent' }}
+      style={{ background: progress > 0.02 ? 'rgba(0,0,0,0.55)' : 'transparent' }}
     >
       <div
-        className="relative flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden shadow-2xl md:my-0"
+        className="feed-reader-article relative flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden shadow-2xl md:my-0"
         style={{
           ...styleVars,
           background: 'var(--reader-page-bg)',
@@ -450,10 +590,13 @@ export function FeedArticleReader({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        <header className="flex shrink-0 items-center gap-2 border-b border-black/10 px-3 py-2.5">
+        <header
+          className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2.5"
+          style={{ background: 'var(--reader-page-bg)' }}
+        >
           <button
             type="button"
-            className="rounded-full p-2 hover:bg-black/5"
+            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Akışa dön"
             data-testid="feed-reader-close"
             onClick={() => beginClose('button')}
@@ -461,22 +604,26 @@ export function FeedArticleReader({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs uppercase tracking-wide text-[color:var(--reader-page-muted)]">
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--reader-accent)]">
               {category || 'Haber'}
             </p>
-            <p className="truncate text-sm font-medium">{publisherName}</p>
+            <p className="truncate text-sm font-medium text-[color:var(--reader-page-muted)]">
+              {publisherName}
+            </p>
           </div>
           <button
             type="button"
-            className="rounded-full p-2 hover:bg-black/5"
+            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Kaydet"
             onClick={onToggleSave}
           >
-            <Bookmark className={cn('h-5 w-5', saved && 'fill-current text-[color:var(--reader-accent)]')} />
+            <Bookmark
+              className={cn('h-5 w-5', saved && 'fill-current text-[color:var(--reader-accent)]')}
+            />
           </button>
           <button
             type="button"
-            className="rounded-full p-2 hover:bg-black/5"
+            className="rounded-full p-2 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Yorumlar"
             onClick={onCommentClick}
           >
@@ -492,57 +639,107 @@ export function FeedArticleReader({
           onScroll={onScroll}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4"
           data-testid="feed-reader-scroll"
+          style={{ background: 'var(--reader-page-bg)' }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
-            {[category, publisherName].filter(Boolean).join(' · ')}
+            {metaBits.join(' · ')}
           </p>
           <h1
             id={titleId}
-            className="mt-2 break-words text-[1.55rem] font-bold leading-[1.25] tracking-tight sm:text-[1.75rem]"
+            className="mt-2 break-words font-serif text-[1.45rem] font-bold leading-[1.22] tracking-tight text-[color:var(--reader-page-text)] sm:text-[1.65rem]"
+            style={{ fontFamily: 'var(--font-serif-display, Georgia, serif)' }}
           >
             {headline}
           </h1>
-          {item.publishedAt ? (
-            <p className="mt-2 text-xs text-[color:var(--reader-page-muted)]">
-              {new Date(item.publishedAt).toLocaleString('tr-TR')}
-            </p>
-          ) : null}
 
           {summary ? (
-            <p className="mt-4 break-words text-[1.05rem] font-semibold leading-relaxed text-[color:var(--reader-page-text)]">
+            <p
+              className="mt-3 break-words border-l-[3px] border-[color:var(--reader-accent)] pl-3 text-[1.02rem] font-semibold leading-snug text-[color:var(--reader-page-text)]"
+              data-testid="feed-reader-spot"
+            >
               {summary}
             </p>
           ) : null}
 
-          {image ? (
-            <figure className="relative mt-5 aspect-[16/10] w-full overflow-hidden rounded-md bg-black/5">
-              <Image src={image} alt="" fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
+          {hero.state === 'LOADING' && hero.url ? (
+            <div
+              className="relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-md bg-[color:var(--reader-page-elevated)]"
+              data-testid="feed-reader-hero-loading"
+              aria-busy="true"
+            >
+              <Image
+                src={hero.url}
+                alt=""
+                fill
+                className="object-cover opacity-0"
+                sizes="(max-width: 512px) 100vw, 512px"
+                priority
+                onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
+                onError={() => acceptHeroLoad(hero.url!, 'error')}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-[color:var(--reader-page-muted)]" />
+              </div>
+            </div>
+          ) : null}
+
+          {hero.state === 'VALID_MEDIA' && hero.url ? (
+            <figure
+              className="relative mt-4 aspect-[16/10] w-full overflow-hidden rounded-md bg-[color:var(--reader-page-elevated)]"
+              data-testid="feed-reader-hero"
+            >
+              <Image
+                src={hero.url}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="(max-width: 512px) 100vw, 512px"
+                priority
+                onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
+                onError={() => acceptHeroLoad(hero.url!, 'error')}
+              />
+              {hero.caption ? (
+                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-xs text-white/90">
+                  {hero.caption}
+                </figcaption>
+              ) : null}
             </figure>
           ) : null}
 
+          {hero.state === 'FAILED_MEDIA' ? (
+            <div
+              className="mt-4 rounded-md border border-white/10 bg-[color:var(--reader-page-elevated)] px-3 py-2 text-xs text-[color:var(--reader-page-muted)]"
+              data-testid="feed-reader-hero-failed"
+            >
+              Görsel yüklenemedi
+            </div>
+          ) : null}
+
+          {/* NO_MEDIA: no hero container */}
+
           {fetchState === 'loading' && !detail?.bodyHtml ? (
-            <div className="mt-6 space-y-3" aria-busy="true" data-testid="feed-reader-body-skeleton">
-              <div className="h-3 w-full animate-pulse rounded bg-black/10" />
-              <div className="h-3 w-[92%] animate-pulse rounded bg-black/10" />
-              <div className="h-3 w-[85%] animate-pulse rounded bg-black/10" />
-              <div className="h-3 w-[88%] animate-pulse rounded bg-black/10" />
+            <div className="mt-5 space-y-2.5" aria-busy="true" data-testid="feed-reader-body-skeleton">
+              <div className="h-2.5 w-full animate-pulse rounded bg-white/10" />
+              <div className="h-2.5 w-[92%] animate-pulse rounded bg-white/10" />
+              <div className="h-2.5 w-[85%] animate-pulse rounded bg-white/10" />
+              <div className="h-2.5 w-[88%] animate-pulse rounded bg-white/10" />
             </div>
           ) : null}
 
           {fetchState === 'error' ? (
-            <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-950/40 p-4 text-sm text-amber-100">
               <p>Haber ayrıntıları yüklenemedi.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded bg-zinc-900 px-3 py-1.5 text-white"
+                  className="rounded bg-[color:var(--reader-accent)] px-3 py-1.5 text-white"
                   onClick={() => void loadBody()}
                 >
                   Tekrar dene
                 </button>
                 <Link
                   href={canonicalPath}
-                  className="inline-flex items-center gap-1 rounded border border-zinc-300 px-3 py-1.5"
+                  className="inline-flex items-center gap-1 rounded border border-white/20 px-3 py-1.5"
                 >
                   Tam haber sayfasını aç <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
@@ -550,20 +747,20 @@ export function FeedArticleReader({
             </div>
           ) : null}
 
-          {detail?.bodyHtml ? (
+          {bodyHtmlRendered ? (
             <div
-              className="reader-body mt-6"
+              className="feed-reader-body reader-body mt-5"
               data-testid="feed-reader-body"
-              dangerouslySetInnerHTML={{ __html: detail.bodyHtml }}
+              dangerouslySetInnerHTML={{ __html: bodyHtmlRendered }}
             />
-          ) : fetchState === 'loading' ? (
-            <div className="mt-8 flex justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+          ) : fetchState === 'loading' && committed ? (
+            <div className="mt-6 flex justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-[color:var(--reader-page-muted)]" />
             </div>
           ) : null}
 
           <aside
-            className="mt-10 border-t border-black/10 pt-4 text-sm"
+            className="mt-8 rounded-lg border border-white/10 bg-[color:var(--reader-page-elevated)] p-4 text-sm"
             data-testid="feed-reader-source"
             aria-label="Kaynak"
           >
@@ -586,10 +783,14 @@ export function FeedArticleReader({
           </aside>
         </div>
 
-        <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-black/10 bg-[color:var(--reader-page-bg)]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
+        <footer
+          className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 border-t border-white/10 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          style={{ background: 'color-mix(in srgb, var(--reader-page-bg) 94%, transparent)' }}
+          data-testid="feed-reader-footer"
+        >
           <button
             type="button"
-            className="rounded-full border border-black/10 px-3 py-1.5 text-sm"
+            className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-[color:var(--reader-page-text)]"
             onClick={onToggleLike}
           >
             {liked ? 'Beğenildi' : 'Beğen'}
@@ -597,7 +798,7 @@ export function FeedArticleReader({
           </button>
           <button
             type="button"
-            className="rounded-full border border-black/10 px-3 py-1.5 text-sm"
+            className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-[color:var(--reader-page-text)]"
             onClick={onToggleSave}
           >
             {saved ? 'Kaydedildi' : 'Kaydet'}
@@ -614,7 +815,7 @@ function ShareButton({ title, path }: { title: string; path: string }) {
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1.5 text-sm"
+      className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 text-sm text-[color:var(--reader-page-text)]"
       onClick={() => {
         const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
         if (navigator.share) {

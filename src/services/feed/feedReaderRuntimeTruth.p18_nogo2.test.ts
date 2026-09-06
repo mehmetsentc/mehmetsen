@@ -103,7 +103,7 @@ describe('E — capability true + click → OPEN_READER, no canonical push', () 
     const pushIdx = client.indexOf('router.push(ROUTES.NEWS_DETAIL(item.slug))')
     expect(openIdx).toBeGreaterThan(0)
     expect(pushIdx).toBeGreaterThan(openIdx)
-    expect(client.slice(openIdx, openIdx + 120)).toContain('openReader(item, index)')
+    expect(client.slice(openIdx, openIdx + 400)).toContain('openReader(item, index)')
   })
 })
 
@@ -129,11 +129,12 @@ describe('G — openReader → readerItemSet → overlay mounted', () => {
       'utf8'
     )
     const idx = client.indexOf('const openReader = useCallback')
-    const body = client.slice(idx, idx + 700)
+    const body = client.slice(idx, idx + 2200)
     expect(body).toContain('openReaderCalled: true')
     expect(body).toContain('readerItemSet: true')
     expect(body).toContain('readerOverlayMounted: true')
     expect(body).toContain('readerComponentRendered: true')
+    expect(body).toContain('readerOpenGuardRef')
   })
 })
 

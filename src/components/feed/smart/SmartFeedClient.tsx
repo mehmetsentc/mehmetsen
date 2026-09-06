@@ -259,7 +259,21 @@ export function SmartFeedClient({
   const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
-  const [readerItem, setReaderItem] = useState<{ item: FeedItemDto; index: number } | null>(null)
+  /** Feed↔Reader session: progress drives interactive page-turn; committed owns history. */
+  const [readerSession, setReaderSession] = useState<{
+    item: FeedItemDto
+    index: number
+    progress: number
+    committed: boolean
+    progressAnimating: boolean
+  } | null>(null)
+  const readerItem = readerSession
+    ? { item: readerSession.item, index: readerSession.index }
+    : null
+  const readerOpenRampRef = useRef<number | null>(null)
+  const readerCancelGenRef = useRef(0)
+  /** Single-open guard: articleId while ramp/open in progress. */
+  const readerOpenGuardRef = useRef<string | null>(null)
   const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
   const [readerCapabilityReady, setReaderCapabilityReady] = useState(false)
   const [feedScrollLocked, setFeedScrollLocked] = useState(false)
@@ -1471,34 +1485,102 @@ export function SmartFeedClient({
     })
   }, [])
 
-  const openReader = useCallback((item: FeedItemDto, index: number) => {
-    // Keep Feed mounted — no restore snapshot needed for overlay path.
-    setReaderItem({ item, index })
-    patchReaderDebug({
-      openReaderCalled: true,
-      readerOpenRequested: true,
-      readerItemSet: true,
-      readerComponentRendered: true,
-      readerOverlayMounted: true,
-      readerUnmountReason: null,
-      currentPath: 'FEED',
-      routerPushCanonicalCalled: false,
-    })
-  }, [patchReaderDebug])
+  const clearReaderOpenRamp = useCallback(() => {
+    if (readerOpenRampRef.current != null) {
+      window.clearTimeout(readerOpenRampRef.current)
+      readerOpenRampRef.current = null
+    }
+    readerCancelGenRef.current += 1
+  }, [])
+
+  const openReader = useCallback(
+    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean }) => {
+      // Exactly one commit per article open — ignore double Haberi Oku / duplicate gesture commit.
+      if (readerOpenGuardRef.current === item.articleId) {
+        // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
+        if (!(opts?.skipRamp && readerSession?.item.articleId === item.articleId && !readerSession.committed)) {
+          return
+        }
+      }
+
+      const from = Math.min(1, Math.max(0, opts?.fromProgress ?? 0))
+      const reduced = prefersReducedMotion()
+
+      if (opts?.skipRamp || from >= 0.92 || reduced) {
+        clearReaderOpenRamp()
+        readerOpenGuardRef.current = item.articleId
+        setReaderSession({
+          item,
+          index,
+          progress: 1,
+          committed: true,
+          progressAnimating: false,
+        })
+        patchReaderDebug({
+          openReaderCalled: true,
+          readerOpenRequested: true,
+          readerItemSet: true,
+          readerComponentRendered: true,
+          readerOverlayMounted: true,
+          readerUnmountReason: null,
+          currentPath: 'FEED',
+          routerPushCanonicalCalled: false,
+        })
+        return
+      }
+
+      // Haberi Oku / button: same page-turn authority as swipe (progress 0 → 1, then commit).
+      clearReaderOpenRamp()
+      readerOpenGuardRef.current = item.articleId
+      setReaderSession({
+        item,
+        index,
+        progress: from,
+        committed: false,
+        progressAnimating: false,
+      })
+      requestAnimationFrame(() => {
+        setReaderSession((s) =>
+          s && s.item.articleId === item.articleId
+            ? { ...s, progress: 1, progressAnimating: true }
+            : s
+        )
+        readerOpenRampRef.current = window.setTimeout(() => {
+          readerOpenRampRef.current = null
+          setReaderSession((s) => {
+            if (!s || s.item.articleId !== item.articleId) return s
+            if (s.committed) return s
+            return { ...s, progress: 1, committed: true, progressAnimating: false }
+          })
+        }, FEED_READER_DURATION_MS)
+      })
+      patchReaderDebug({
+        openReaderCalled: true,
+        readerOpenRequested: true,
+        readerItemSet: true,
+        readerComponentRendered: true,
+        readerOverlayMounted: true,
+        readerUnmountReason: null,
+        currentPath: 'FEED',
+        routerPushCanonicalCalled: false,
+      })
+    },
+    [clearReaderOpenRamp, patchReaderDebug, readerSession]
+  )
 
   // Pilot diagnostic only: whether open-gesture handlers are currently attachable.
   useEffect(() => {
     if (!showReaderDebug) return
     patchReaderDebug({
       gestureHandlerAttached: Boolean(
-        feedReaderEnabled && readerCapabilityReady && !readerItem
+        feedReaderEnabled && readerCapabilityReady && !readerSession?.committed
       ),
     })
   }, [
     showReaderDebug,
     feedReaderEnabled,
     readerCapabilityReady,
-    readerItem,
+    readerSession?.committed,
     patchReaderDebug,
   ])
 
@@ -1560,7 +1642,16 @@ export function SmartFeedClient({
       })
 
       if (decided.decision === 'OPEN_READER') {
-        openReader(item, index)
+        if (action === 'gesture') {
+          openReader(item, index, {
+            fromProgress: readerSession?.item.articleId === item.articleId
+              ? readerSession.progress
+              : 1,
+            skipRamp: true,
+          })
+        } else {
+          openReader(item, index)
+        }
         return
       }
 
@@ -1568,6 +1659,9 @@ export function SmartFeedClient({
       if (decided.decision === 'PENDING') return
 
       // Legacy path: navigate to canonical article page (non-pilot / guest / settled disabled).
+      clearReaderOpenRamp()
+      readerOpenGuardRef.current = null
+      setReaderSession(null)
       saveFeedRestore({
         mode,
         articleId: item.articleId,
@@ -1896,7 +1990,7 @@ export function SmartFeedClient({
                   }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
                       ? (g) => {
                           if (showReaderDebug) {
                             const classified = classifyFeedOpenGestureDecision(g)
@@ -1912,6 +2006,57 @@ export function SmartFeedClient({
                             ...g,
                             onOpen: () => onRead(item, index, 'gesture'),
                           })
+                        }
+                      : undefined
+                  }
+                  onOpenReaderProgress={
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                      ? (progress) => {
+                          clearReaderOpenRamp()
+                          setReaderSession((s) => {
+                            if (s?.committed) return s
+                            if (!s || s.item.articleId !== item.articleId) {
+                              return {
+                                item,
+                                index,
+                                progress,
+                                committed: false,
+                                progressAnimating: false,
+                              }
+                            }
+                            return { ...s, progress, progressAnimating: false }
+                          })
+                        }
+                      : undefined
+                  }
+                  onOpenReaderCancel={
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                      ? () => {
+                          const gen = ++readerCancelGenRef.current
+                          if (readerOpenRampRef.current != null) {
+                            window.clearTimeout(readerOpenRampRef.current)
+                            readerOpenRampRef.current = null
+                          }
+                          // Preview cancel is not a committed open — release guard for this card.
+                          if (readerOpenGuardRef.current === item.articleId) {
+                            readerOpenGuardRef.current = null
+                          }
+                          setReaderSession((s) => {
+                            if (!s || s.committed) return s
+                            if (s.item.articleId !== item.articleId) return s
+                            return { ...s, progress: 0, progressAnimating: true }
+                          })
+                          window.setTimeout(() => {
+                            if (gen !== readerCancelGenRef.current) return
+                            setReaderSession((s) =>
+                              s &&
+                              !s.committed &&
+                              s.item.articleId === item.articleId &&
+                              s.progress <= 0.02
+                                ? null
+                                : s
+                            )
+                          }, FEED_READER_DURATION_MS)
                         }
                       : undefined
                   }
@@ -2018,13 +2163,17 @@ export function SmartFeedClient({
           }}
         />
 
-        {readerItem ? (
+        {readerSession && readerSession.progress > 0.001 ? (
           <FeedArticleReader
-            item={readerItem.item}
-            open={Boolean(readerItem)}
+            item={readerSession.item}
+            committed={readerSession.committed}
+            visualProgress={readerSession.progress}
+            progressAnimating={readerSession.progressAnimating}
             onClose={() => {
-              const idx = readerItem.index
-              setReaderItem(null)
+              const idx = readerSession.index
+              clearReaderOpenRamp()
+              readerOpenGuardRef.current = null
+              setReaderSession(null)
               patchReaderDebug({
                 readerItemSet: false,
                 readerOverlayMounted: false,
@@ -2050,22 +2199,34 @@ export function SmartFeedClient({
                   }
                 : undefined
             }
-            liked={social[readerItem.item.articleId]?.liked ?? readerItem.item.socialState?.liked ?? false}
-            saved={social[readerItem.item.articleId]?.saved ?? readerItem.item.socialState?.saved ?? false}
+            liked={
+              social[readerSession.item.articleId]?.liked ??
+              readerSession.item.socialState?.liked ??
+              false
+            }
+            saved={
+              social[readerSession.item.articleId]?.saved ??
+              readerSession.item.socialState?.saved ??
+              false
+            }
             likeCount={
-              social[readerItem.item.articleId]?.likeCount ?? readerItem.item.socialCounts.likes ?? 0
+              social[readerSession.item.articleId]?.likeCount ??
+              readerSession.item.socialCounts.likes ??
+              0
             }
             commentCount={
-              social[readerItem.item.articleId]?.commentCount ??
-              readerItem.item.socialCounts.comments ??
+              social[readerSession.item.articleId]?.commentCount ??
+              readerSession.item.socialCounts.comments ??
               0
             }
             saveCount={
-              social[readerItem.item.articleId]?.saveCount ?? readerItem.item.socialCounts.saves ?? 0
+              social[readerSession.item.articleId]?.saveCount ??
+              readerSession.item.socialCounts.saves ??
+              0
             }
-            onToggleLike={() => void toggleLike(readerItem.item)}
-            onToggleSave={() => void toggleSave(readerItem.item)}
-            onCommentClick={() => setCommentArticleId(readerItem.item.articleId)}
+            onToggleLike={() => void toggleLike(readerSession.item)}
+            onToggleSave={() => void toggleSave(readerSession.item)}
+            onCommentClick={() => setCommentArticleId(readerSession.item.articleId)}
             onLockFeedScroll={setFeedScrollLocked}
           />
         ) : null}
@@ -2124,6 +2285,10 @@ function FeedCardWithImpression(props: {
     viewportWidth: number
     velocityX: number
   }) => void
+  /** Interactive page-turn: report progress during drag (before release). */
+  onOpenReaderProgress?: (progress: number) => void
+  /** Snap-back / cancel — clear uncommitted Reader preview. */
+  onOpenReaderCancel?: () => void
   /** Pilot readerDebug only — pointer delivery forensic; no engagement writes. */
   onGesturePointerDebug?: (ev: {
     phase: 'down' | 'move' | 'up' | 'cancel'
@@ -2134,7 +2299,8 @@ function FeedCardWithImpression(props: {
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
 }) {
-  const { onOpenReaderGesture, onGesturePointerDebug, ...cardProps } = props
+  const { onOpenReaderGesture, onOpenReaderProgress, onOpenReaderCancel, onGesturePointerDebug, ...cardProps } =
+    props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{
@@ -2229,6 +2395,7 @@ function FeedCardWithImpression(props: {
               drag.current = null
               setHorizontalLocked(false)
               setDragProgress(0)
+              onOpenReaderCancel?.()
               return
             }
             if (intent !== 'horizontal') return
@@ -2242,6 +2409,7 @@ function FeedCardWithImpression(props: {
           const width = window.innerWidth || 390
           const progress = feedToReaderProgress(dx, width)
           setDragProgress(progress)
+          onOpenReaderProgress?.(progress)
           d.lastX = ev.clientX
           d.lastT = performance.now()
         }
@@ -2304,6 +2472,7 @@ function FeedCardWithImpression(props: {
         if (open) {
           setSnapAnimating(true)
           setDragProgress(1)
+          onOpenReaderProgress?.(1)
           window.setTimeout(() => {
             setSnapAnimating(false)
             setDragProgress(0)
@@ -2311,20 +2480,26 @@ function FeedCardWithImpression(props: {
           return
         }
 
+        if (axis === 'horizontal' && progress > 0.02) {
+          onOpenReaderCancel?.()
+        }
         resetDragVisual(axis === 'horizontal' && progress > 0.02)
       }}
       onPointerCancel={() => {
-        if (drag.current) onGesturePointerDebug?.({ phase: 'cancel' })
+        if (drag.current) {
+          onGesturePointerDebug?.({ phase: 'cancel' })
+          onOpenReaderCancel?.()
+        }
         resetDragVisual(false)
       }}
     >
-      {/* Paper peek behind card during left page-turn */}
+      {/* Dark Reader peek behind card during left page-turn */}
       {dragProgress > 0.04 && !reducedMotion ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
-            background: 'linear-gradient(90deg, #f7f4ef 0%, #ebe6de 100%)',
+            background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
             opacity: Math.min(1, dragProgress * 1.4),
           }}
         />

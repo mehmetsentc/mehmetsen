@@ -13,6 +13,7 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
 import { bodyFromPost } from '@/lib/feed/reader/bodyFromPost'
+import { estimateReadMinutes } from '@/lib/articleBodyUtils'
 
 export type { FeedReaderArticleDto } from '@/types/feedReader'
 export { bodyFromPost } from '@/lib/feed/reader/bodyFromPost'
@@ -33,6 +34,12 @@ export async function loadFeedReaderArticle(
 
   const { bodyHtml, bodyText } = bodyFromPost(post)
   const video = post.mediaItems?.find((m) => m.type === 'video')?.url ?? null
+  const image =
+    post.coverImageUrl || post.mediaItems?.find((m) => m.type === 'image')?.url || null
+  const readingFromPost =
+    typeof post.readingTimeMinutes === 'number' && post.readingTimeMinutes > 0
+      ? post.readingTimeMinutes
+      : null
 
   return {
     ok: true,
@@ -40,10 +47,13 @@ export async function loadFeedReaderArticle(
       id: post.id,
       slug: post.slug,
       headline: post.title,
-      summary: post.summary || null,
+      summary: post.summary || post.spot || null,
       category: post.categoryId || null,
       publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString() : null,
-      image: post.coverImageUrl || post.mediaItems?.find((m) => m.type === 'image')?.url || null,
+      image,
+      imageCaption: post.imageCaption?.trim() || null,
+      readingTimeMinutes:
+        readingFromPost || (bodyText ? estimateReadMinutes(bodyText) : null),
       video,
       publisher: {
         id: post.authorId || null,
