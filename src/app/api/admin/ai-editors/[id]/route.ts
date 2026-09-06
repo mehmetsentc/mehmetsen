@@ -12,6 +12,7 @@ import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor } from '@/lib/ai/editorial/modelRouter'
 import type { AiPromptType } from '@/types/aiEditor'
 import { callDeepSeek } from '@/lib/ai/editorial/sandboxCall'
+import { retrieveHistoricalContext } from '@/services/editorial/editorialMemoryRetrieval'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -108,6 +109,49 @@ export async function PATCH(request: Request, ctx: Ctx) {
       promptVersions: built.promptVersions,
       durationMs: Date.now() - started,
       result,
+    })
+  }
+
+  if (body.action === 'memorySearch') {
+    // Faz A3 Task 12/13 — manual, human-invoked diagnostic action.
+    // READ ONLY. No AI call. No DB write. No mutation. No promptBuilder call.
+    // Independent of `memoryEnabled` and EDITORIAL_MEMORY_MODE (A3 Task 1
+    // correction #3 / Task 17) — this is an explicit admin action, not
+    // background/runtime retrieval.
+    const editor = await getAiEditorById(id)
+    if (!editor) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const article = (body.article ?? {}) as Record<string, unknown>
+    const headline = String(article.headline || article.title || '').trim()
+    if (!headline) {
+      return NextResponse.json({ error: 'article.headline (or article.title) required' }, { status: 400 })
+    }
+
+    const result = await retrieveHistoricalContext(
+      {
+        articleId: article.articleId ? String(article.articleId) : article.id ? String(article.id) : null,
+        slug: article.slug ? String(article.slug) : null,
+        headline,
+        summary: article.summary ? String(article.summary) : null,
+        categoryId: article.categoryId ? String(article.categoryId) : null,
+        citySlug: article.citySlug ? String(article.citySlug) : null,
+        districtSlug: article.districtSlug ? String(article.districtSlug) : null,
+        publishedAt: article.publishedAt ? String(article.publishedAt) : null,
+      },
+      {
+        editorId: id,
+        managedCategories: editor.managedCategories ?? editor.categoryIds ?? [],
+        citySlug: editor.citySlug ?? null,
+      }
+    )
+
+    return NextResponse.json({
+      success: true,
+      memorySearch: true,
+      aiCalls: 0,
+      dbWrites: 0,
+      promptInjection: false,
+      ...result,
     })
   }
 

@@ -310,3 +310,39 @@ export function publicReadMetaFromPost(
     fromCanonicalPg: post.fromCanonicalPg ?? null,
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * A3 — Editorial Memory eligibility (Faz A2.1 Bölüm 2 / Faz A3 Task 3).
+ *
+ * Deliberately STRICTER than article-detail readability. A URL being
+ * resolvable (canResolveArticleDetail) does not mean the content should be
+ * treated as trusted historical fact for an AI editor's context.
+ *
+ * V1 (A3) rule — CANONICAL ONLY:
+ *   CANONICAL          → eligible
+ *   LEGACY_ALLOWED      → architecture supports classification (see
+ *                         MemoryTrustTier below) but NOT retrieved in A3 V1.
+ *   SYSTEM_ALERT        → excluded (short-lived alerts, not historical context)
+ *   LEGACY_QUARANTINED  → excluded (same quarantine signals as public reads)
+ *   NOT_PUBLIC          → excluded, always
+ *
+ * This is intentionally conservative. Do not broaden it because results are
+ * sparse — sparse results are useful evidence (A3 Task 3).
+ * ────────────────────────────────────────────────────────────────────── */
+
+export type MemoryTrustTier = 'HIGH' | 'LOW'
+
+/**
+ * Whether a public-read class may be used as AI editorial-memory context.
+ * A3 V1 returns true ONLY for CANONICAL. LEGACY_ALLOWED is intentionally
+ * excluded for now (see module comment) even though it is architecturally
+ * anticipated (memoryTrustTier below already knows how to label it LOW).
+ */
+export function canBeMemoryContext(cls: PublicReadClass): boolean {
+  return cls === 'CANONICAL'
+}
+
+/** Trust tier a class WOULD carry if it were ever included as memory context. */
+export function memoryTrustTier(cls: PublicReadClass): MemoryTrustTier {
+  return cls === 'CANONICAL' ? 'HIGH' : 'LOW'
+}
