@@ -361,6 +361,7 @@ export function FeedArticleReader({
         readerMounted: true,
         feedMounted: true,
         readerState: 'closing',
+        closePhase: nextPhase,
         closeSource:
           reason === 'history' ? 'popstate' : reason === 'gesture' ? 'swipe' : reason === 'escape' ? 'escape' : 'ui',
         articleId: item.articleId,
@@ -372,6 +373,7 @@ export function FeedArticleReader({
           phase: 'active',
         }),
         readerOpenIdInState: readReaderHistoryState(currentState)?.readerOpenId ?? null,
+        source: 'reader',
       })
       if (plan === 'history_back') {
         ignoreNextPopRef.current = true
