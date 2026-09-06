@@ -12,6 +12,13 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+interface YieldSummary {
+  discoveredUrls: number
+  rawArticles: number
+  duplicateRate: number | null
+  uniqueRate: number | null
+}
+
 interface Row {
   name: string
   status: string
@@ -21,6 +28,15 @@ interface Row {
   consecutiveFailures: number
   extractionSuccessRate: number | null
   averageConfidence: number
+  yield7d?: YieldSummary
+  yield30d?: YieldSummary
+}
+
+function formatYield(y?: YieldSummary): string {
+  if (!y) return '—'
+  const unique = y.uniqueRate == null ? '—' : `%${Math.round(y.uniqueRate * 100)}`
+  const dup = y.duplicateRate == null ? '—' : `%${Math.round(y.duplicateRate * 100)}`
+  return `${y.discoveredUrls} keşif · ${unique} tekil · ${dup} dup`
 }
 
 export default function CrawlerHealthPage() {
@@ -47,10 +63,11 @@ export default function CrawlerHealthPage() {
   }, [page, pageSize])
 
   return (
-    <AdminOsPageShell title="Crawler Sağlığı" subtitle="Kaynak sağlığı, 429, çıkarım oranları">
+    <AdminOsPageShell title="Crawler Sağlığı" subtitle="Kaynak sağlığı, 429, çıkarım oranları, unique yield">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <p className="mb-3 text-sm">Bugünkü HTTP 429: {http429}</p>
+      <div className="overflow-x-auto">
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr>
@@ -62,6 +79,8 @@ export default function CrawlerHealthPage() {
             <th className="px-2 py-1">Hata</th>
             <th className="px-2 py-1">Çıkarım oranı</th>
             <th className="px-2 py-1">Ort. güven</th>
+            <th className="px-2 py-1" title="Son 7 günde keşfedilen URL sayısı · bunların kaç yüzdesi ilk/orijinal (PRIMARY) haber oldu · duplicate oranı">7g Yield</th>
+            <th className="px-2 py-1" title="Son 30 günde keşfedilen URL sayısı · bunların kaç yüzdesi ilk/orijinal (PRIMARY) haber oldu · duplicate oranı">30g Yield</th>
           </tr>
         </thead>
         <tbody>
@@ -75,10 +94,13 @@ export default function CrawlerHealthPage() {
               <td className="px-2 py-1">{r.consecutiveFailures}</td>
               <td className="px-2 py-1">{r.extractionSuccessRate == null ? '—' : `${Math.round(r.extractionSuccessRate * 100)}%`}</td>
               <td className="px-2 py-1">{r.averageConfidence}</td>
+              <td className="px-2 py-1 whitespace-nowrap">{formatYield(r.yield7d)}</td>
+              <td className="px-2 py-1 whitespace-nowrap">{formatYield(r.yield30d)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
       <CrawlerPager
         page={page}
         totalPages={totalPages}
