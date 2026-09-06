@@ -47,6 +47,7 @@ import {
 import {
   isReaderNavTraceEnabled,
   markReaderOpenTiming,
+  nearSystemBackEdge,
   recordReaderNavTrace,
 } from '@/lib/feed/reader/navTrace'
 import {
@@ -616,7 +617,25 @@ export function FeedArticleReader({
   const onPointerDown = (e: ReactPointerEvent) => {
     if (!committed || closingRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) return
+    if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
+      recordReaderNavTrace({
+        type: 'gesture_ignored_ios_edge',
+        pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: readerOpenIdRef.current,
+        feedSessionId,
+        readerMounted: true,
+        feedMounted: true,
+        readerState: 'open',
+        closeSource: 'swipe',
+        startClientX: e.clientX,
+        viewportWidth: window.innerWidth,
+        nearSystemBackEdge: true,
+        source: 'reader',
+      })
+      return
+    }
     dragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -663,8 +682,25 @@ export function FeedArticleReader({
       progress: closeProgress,
       velocityX: Math.max(0, velocity),
     })
-    if (complete) beginClose('gesture')
-    else snapReaderOpen()
+    if (complete) {
+      recordReaderNavTrace({
+        type: 'reader_close',
+        pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: readerOpenIdRef.current,
+        feedSessionId,
+        readerMounted: true,
+        feedMounted: true,
+        readerState: 'closing',
+        closeSource: 'swipe',
+        startClientX: d.startX,
+        viewportWidth: window.innerWidth,
+        nearSystemBackEdge: nearSystemBackEdge(d.startX, window.innerWidth),
+        source: 'reader',
+      })
+      beginClose('gesture')
+    } else snapReaderOpen()
   }
 
   const onPointerCancel = () => {
@@ -713,6 +749,7 @@ export function FeedArticleReader({
       )}
       data-testid="feed-article-reader"
       data-reader-committed={committed ? '1' : '0'}
+      data-reader-open={committed ? '1' : '0'}
       data-reader-progress={progress.toFixed(2)}
       role="dialog"
       aria-modal={committed}

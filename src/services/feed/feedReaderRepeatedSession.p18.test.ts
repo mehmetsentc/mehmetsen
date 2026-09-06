@@ -347,6 +347,7 @@ describe('P18 one-close + popstate + source contracts', () => {
       'utf8'
     )
     expect(client).toContain('setReaderNavTraceEnabled(readerDebugQuery)')
+    expect(client).toContain('Keep the trace enabled after Feed unmount')
   })
 
   it('opening timing summary is measurable without a new cache', () => {
