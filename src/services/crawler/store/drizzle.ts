@@ -1484,4 +1484,81 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .limit(limit)
     return rows.map((r) => mapRaw(r.article))
   }
+
+  /**
+   * Kaynak bazli "unique yield" performans metrikleri (N gunluk pencere).
+   * Amac: kaynagin getirdigi haberlerin ne kadarinin gercekten yeni/orijinal (PRIMARY)
+   * oldugunu, ne kadarinin sadece mevcut bir olaya destekleyici (SUPPORTING) geldigini
+   * ve duplicate oranini olcmek. Read-only aggregate, yeni tablo/migration gerektirmez.
+   */
+  async getSourceYield(days: number): Promise<
+    Map<
+      string,
+      {
+        discoveredUrls: number
+        rawArticles: number
+        duplicates: number
+        primaryMemberships: number
+        totalMemberships: number
+      }
+    >
+  > {
+    const [discoveredRows, rawRows, membershipRows] = await Promise.all([
+      this.db()
+        .select({
+          sourceId: discoveredArticleUrls.sourceId,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(discoveredArticleUrls)
+        .where(sql`${discoveredArticleUrls.discoveredAt} >= now() - make_interval(days => ${days})`)
+        .groupBy(discoveredArticleUrls.sourceId),
+      this.db()
+        .select({
+          sourceId: rawArticles.sourceId,
+          n: sql<number>`count(*)::int`,
+          duplicates: sql<number>`count(*) filter (where ${rawArticles.isExactDuplicate} = 1)::int`,
+        })
+        .from(rawArticles)
+        .where(sql`${rawArticles.fetchedAt} >= now() - make_interval(days => ${days})`)
+        .groupBy(rawArticles.sourceId),
+      this.db()
+        .select({
+          sourceId: clusterMemberships.sourceId,
+          primaryCount: sql<number>`count(*) filter (where ${clusterMemberships.membershipRole} = 'PRIMARY' or ${clusterMemberships.isCanonical} = 1)::int`,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(clusterMemberships)
+        .where(sql`${clusterMemberships.createdAt} >= now() - make_interval(days => ${days})`)
+        .groupBy(clusterMemberships.sourceId),
+    ])
+
+    type YieldRow = {
+      discoveredUrls: number
+      rawArticles: number
+      duplicates: number
+      primaryMemberships: number
+      totalMemberships: number
+    }
+    const out = new Map<string, YieldRow>()
+    const ensure = (id: string): YieldRow => {
+      let row = out.get(id)
+      if (!row) {
+        row = { discoveredUrls: 0, rawArticles: 0, duplicates: 0, primaryMemberships: 0, totalMemberships: 0 }
+        out.set(id, row)
+      }
+      return row
+    }
+    for (const r of discoveredRows) ensure(r.sourceId).discoveredUrls = r.n
+    for (const r of rawRows) {
+      const row = ensure(r.sourceId)
+      row.rawArticles = r.n
+      row.duplicates = r.duplicates
+    }
+    for (const r of membershipRows) {
+      const row = ensure(r.sourceId)
+      row.primaryMemberships = r.primaryCount
+      row.totalMemberships = r.total
+    }
+    return out
+  }
 }
