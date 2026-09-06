@@ -185,6 +185,30 @@ describe('P18 nav trace survivor', () => {
     expect(rows[0]?.readerOpenId).toBe('rdr_a')
     expect(rows[0]?.resultRoute.startsWith('/feed-v2') || rows[0]?.resultRoute === '/feed-v2').toBe(true)
   })
+  it('export includes canonical escape summary without PII', () => {
+    recordReaderNavTrace({
+      type: 'canonical_navigation',
+      pathname: '/feed-v2',
+      search: '?readerDebug=1',
+      historyLength: 3,
+      readerOpenId: null,
+      feedSessionId: 'fds_1',
+      readerMounted: false,
+      feedMounted: true,
+      readerState: 'closed',
+      readDecision: 'CANONICAL_FALLBACK',
+      fallbackReason: 'CAPABILITY_DISABLED',
+      destination: '/haber/example-slug',
+      articleSlug: 'example-slug',
+      capabilityEnabled: false,
+      source: 'feed',
+    })
+    const exp = formatReaderNavTraceExport()
+    expect(exp).toContain('canonicalEscapes')
+    expect(exp).toContain('/haber/example-slug')
+    expect(exp).toContain('CANONICAL_FALLBACK')
+    expect(exp).not.toMatch(/email|Authorization|Bearer /i)
+  })
 })
 
 describe('P18 instrumentation purity', () => {

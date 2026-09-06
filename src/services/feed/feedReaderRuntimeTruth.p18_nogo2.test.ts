@@ -129,7 +129,7 @@ describe('G — openReader → readerItemSet → overlay mounted', () => {
       'utf8'
     )
     const idx = client.indexOf('const openReader = useCallback')
-    const body = client.slice(idx, idx + 2200)
+    const body = client.slice(idx, idx + 4500)
     expect(body).toContain('openReaderCalled: true')
     expect(body).toContain('readerItemSet: true')
     expect(body).toContain('readerOverlayMounted: true')

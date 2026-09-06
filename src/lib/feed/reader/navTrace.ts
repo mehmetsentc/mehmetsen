@@ -28,6 +28,9 @@ export type ReaderNavTraceEventType =
   | 'reader_first_frame'
   | 'body_available'
   | 'hero_resolved'
+  | 'read_decision'
+  | 'canonical_navigation'
+  | 'open_guard_blocked'
 
 export type ReaderNavTraceEvent = {
   seq: number
@@ -61,6 +64,17 @@ export type ReaderNavTraceEvent = {
   nearSystemBackEdge?: boolean | null
   source?: 'history_hook' | 'reader' | 'feed' | 'route'
   layoutHint?: 'feed-v2' | 'home' | 'other'
+  /** decideFeedReadAction result — no PII */
+  readDecision?: string | null
+  fallbackReason?: string | null
+  capabilityEnabled?: boolean | null
+  capabilityReady?: boolean | null
+  capabilityError?: boolean | null
+  /** Guard articleId when open was blocked (id only, not title/body) */
+  guardArticleId?: string | null
+  /** Navigation target path when known (e.g. /haber/slug) */
+  destination?: string | null
+  articleSlug?: string | null
 }
 
 const MAX_EVENTS = 240
@@ -466,6 +480,18 @@ export function formatReaderNavTraceExport(): string {
       nextIdx: e.nextIdx,
       historyLength: e.historyLength,
     })),
+    canonicalEscapes: events
+      .filter((e) => e.type === 'canonical_navigation' || e.destination?.startsWith('/haber/'))
+      .map((e) => ({
+        seq: e.seq,
+        type: e.type,
+        readDecision: e.readDecision ?? null,
+        fallbackReason: e.fallbackReason ?? null,
+        destination: e.destination ?? null,
+        articleSlug: e.articleSlug ?? null,
+        capabilityEnabled: e.capabilityEnabled ?? null,
+        capabilityError: e.capabilityError ?? null,
+      })),
   }
   return JSON.stringify(payload)
 }

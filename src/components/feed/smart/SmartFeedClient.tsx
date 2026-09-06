@@ -1543,6 +1543,25 @@ export function SmartFeedClient({
       if (readerOpenGuardRef.current === item.articleId) {
         // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
         if (!(opts?.skipRamp && readerSession?.item.articleId === item.articleId && !readerSession.committed)) {
+          recordReaderNavTrace({
+            type: 'open_guard_blocked',
+            pathname: '/feed-v2',
+            search: typeof window !== 'undefined' ? window.location.search : '',
+            historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+            readerOpenId: null,
+            feedSessionId: feedSessionIdRef.current,
+            readerMounted: Boolean(readerSession?.committed),
+            feedMounted: true,
+            readerState: readerSession?.committed ? 'open' : 'closed',
+            openSource: opts?.openSource ?? (opts?.skipRamp ? 'swipe' : 'haberi_oku'),
+            articleId: item.articleId,
+            articleSlug: item.slug,
+            feedIndex: index,
+            guardArticleId: readerOpenGuardRef.current,
+            mode,
+            category,
+            source: 'feed',
+          })
           return
         }
       }
@@ -1703,6 +1722,31 @@ export function SmartFeedClient({
         currentPath: 'FEED',
       })
 
+      recordReaderNavTrace({
+        type: 'read_decision',
+        pathname: '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: null,
+        feedSessionId: feedSessionIdRef.current,
+        readerMounted: Boolean(readerSession?.committed),
+        feedMounted: true,
+        readerState: readerSession?.committed ? 'open' : 'closed',
+        openSource: action === 'gesture' ? 'swipe' : 'haberi_oku',
+        articleId: item.articleId,
+        articleSlug: item.slug,
+        feedIndex: index,
+        mode,
+        category,
+        readDecision: decided.decision,
+        fallbackReason: decided.fallbackReason,
+        capabilityEnabled: enabled,
+        capabilityReady: readerCapabilityReadyRef.current,
+        capabilityError: capabilityErrorRef.current,
+        guardArticleId: readerOpenGuardRef.current,
+        source: 'feed',
+      })
+
       void postTelemetry({
         events: [
           {
@@ -1739,6 +1783,31 @@ export function SmartFeedClient({
       if (decided.decision === 'PENDING') return
 
       // Legacy path: navigate to canonical article page (non-pilot / guest / settled disabled).
+      const destination = ROUTES.NEWS_DETAIL(item.slug)
+      recordReaderNavTrace({
+        type: 'canonical_navigation',
+        pathname: '/feed-v2',
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: null,
+        feedSessionId: feedSessionIdRef.current,
+        readerMounted: false,
+        feedMounted: true,
+        readerState: 'closed',
+        openSource: action === 'gesture' ? 'swipe' : 'haberi_oku',
+        articleId: item.articleId,
+        articleSlug: item.slug,
+        feedIndex: index,
+        mode,
+        category,
+        readDecision: decided.decision,
+        fallbackReason: decided.fallbackReason,
+        capabilityEnabled: enabled,
+        capabilityReady: readerCapabilityReadyRef.current,
+        capabilityError: capabilityErrorRef.current,
+        destination,
+        source: 'feed',
+      })
       clearReaderOpenRamp()
       readerOpenGuardRef.current = null
       setReaderSession(null)
