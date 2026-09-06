@@ -9,6 +9,7 @@ import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail, type FeedReactionId } from '@/components/social/SocialActionRail'
 import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
+import { SwipeDiscoveryCoach } from '@/components/feed/smart/SwipeDiscoveryCoach'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
@@ -94,6 +95,9 @@ interface FullscreenNewsCardProps {
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
+  /** Subtle LEFT-swipe discovery hint — decorative only. */
+  showSwipeDiscoveryCoach?: boolean
+  swipeDiscoverySuppressed?: boolean
 }
 
 /**
@@ -130,6 +134,8 @@ export function FullscreenNewsCard({
   showDiscoveryRail,
   discoveryCategory,
   discoveryExcludeIds,
+  showSwipeDiscoveryCoach = false,
+  swipeDiscoverySuppressed = false,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [logoError, setLogoError] = useState(false)
@@ -416,6 +422,10 @@ export function FullscreenNewsCard({
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/85 to-transparent"
           aria-hidden
         />
+
+        {showSwipeDiscoveryCoach ? (
+          <SwipeDiscoveryCoach active={isActive} suppressed={swipeDiscoverySuppressed} />
+        ) : null}
 
         {skin.frame !== 'none' ? (
           <div

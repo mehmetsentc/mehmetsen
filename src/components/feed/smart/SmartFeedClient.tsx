@@ -75,6 +75,7 @@ import {
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
+import { markSwipeDiscoveryLearned } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
@@ -1596,6 +1597,7 @@ export function SmartFeedClient({
           progressAnimating: false,
           openSource,
         })
+        if (openSource === 'swipe') markSwipeDiscoveryLearned()
         patchReaderDebug({
           openReaderCalled: true,
           readerOpenRequested: true,
@@ -2253,6 +2255,19 @@ export function SmartFeedClient({
                   showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
                   discoveryCategory={category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
+                  showSwipeDiscoveryCoach={
+                    Boolean(
+                      feedReaderEnabled &&
+                        readerCapabilityReady &&
+                        isActive &&
+                        !readerSession?.committed
+                    )
+                  }
+                  swipeDiscoverySuppressed={Boolean(
+                    readerSession &&
+                      readerSession.item.articleId === item.articleId &&
+                      readerSession.progress > 0.02
+                  )}
                 />
               )
             })}
@@ -2451,6 +2466,8 @@ function FeedCardWithImpression(props: {
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
+  showSwipeDiscoveryCoach?: boolean
+  swipeDiscoverySuppressed?: boolean
 }) {
   const { onOpenReaderGesture, onOpenReaderProgress, onOpenReaderCancel, onGesturePointerDebug, ...cardProps } =
     props
@@ -2673,7 +2690,11 @@ function FeedCardWithImpression(props: {
           }}
         />
       ) : null}
-      <FullscreenNewsCard {...cardProps} cardRef={impressionRef} />
+      <FullscreenNewsCard
+        {...cardProps}
+        cardRef={impressionRef}
+        swipeDiscoverySuppressed={Boolean(props.swipeDiscoverySuppressed || dragProgress > 0.02)}
+      />
     </div>
   )
 }

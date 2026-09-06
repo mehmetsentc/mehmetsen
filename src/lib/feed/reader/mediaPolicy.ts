@@ -82,6 +82,37 @@ export function readerHeroShouldBeUnoptimized(url: string | null | undefined): b
 }
 
 /**
+ * Candidate is the same URL the Feed card already rendered.
+ * Timeout must not force FAILED_MEDIA — only explicit onError may.
+ */
+export function isFeedKnownGoodHero(
+  feedImage: string | null | undefined,
+  candidateUrl: string | null | undefined
+): boolean {
+  if (!isLikelyHttpImageUrl(feedImage) || !candidateUrl) return false
+  return urlsEquivalent(feedImage, candidateUrl)
+}
+
+/** Timeout handler: Feed-known-good stays pending (keep showing), never timed-out fail. */
+export function applyHeroTimeoutEvent(
+  current: HeroRuntimeSnapshot,
+  event: Extract<HeroRuntimeEvent, { type: 'timeout' }>,
+  opts?: { feedKnownGood?: boolean }
+): Pick<HeroRuntimeSnapshot, 'imageLoad' | 'loadTimedOut'> {
+  if (opts?.feedKnownGood) {
+    if (event.epoch !== current.epoch) {
+      return { imageLoad: current.imageLoad, loadTimedOut: current.loadTimedOut }
+    }
+    if (current.imageLoad === 'ok') {
+      return { imageLoad: 'ok', loadTimedOut: false }
+    }
+    // Keep LOADING / pending — do not mark timed out.
+    return { imageLoad: current.imageLoad, loadTimedOut: false }
+  }
+  return applyHeroRuntimeEvent(current, event)
+}
+
+/**
  * Epoch + article + URL identity. LOADING → VALID is terminal for that identity.
  * Timeout / onError / onLoad from a previous identity are ignored.
  * Late onLoad after timeout does not resurrect VALID.
@@ -100,6 +131,8 @@ export function applyHeroRuntimeEvent(
   }
 
   if (event.type === 'timeout') {
+    // Feed-known-good URLs already painted on the card — do not fail on timer alone.
+    // Explicit onError still fails. Callers pass feedKnownGood via url identity check.
     return { imageLoad: current.imageLoad, loadTimedOut: true }
   }
   if (event.type === 'ok') {

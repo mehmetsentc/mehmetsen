@@ -57,6 +57,8 @@ import {
 } from '@/lib/feed/reader/tokens'
 import {
   applyHeroRuntimeEvent,
+  applyHeroTimeoutEvent,
+  isFeedKnownGoodHero,
   readerHeroShouldBeUnoptimized,
   resolveReaderHero,
   selectReaderHeroCandidate,
@@ -258,20 +260,25 @@ export function FeedArticleReader({
     setImageLoad('pending')
     setLoadTimedOut(false)
     if (!heroCandidate) return
+    const feedKnownGood = isFeedKnownGoodHero(feedImage, heroCandidate)
     const t = window.setTimeout(() => {
       commitHeroFlags(
-        applyHeroRuntimeEvent(heroRuntimeRef.current, {
-          type: 'timeout',
-          articleId: item.articleId,
-          url: heroCandidate,
-          epoch,
-        })
+        applyHeroTimeoutEvent(
+          heroRuntimeRef.current,
+          {
+            type: 'timeout',
+            articleId: item.articleId,
+            url: heroCandidate,
+            epoch,
+          },
+          { feedKnownGood }
+        )
       )
     }, FEED_READER_HERO_LOAD_TIMEOUT_MS)
     return () => {
       window.clearTimeout(t)
     }
-  }, [commitHeroFlags, heroCandidate, item.articleId])
+  }, [commitHeroFlags, feedImage, heroCandidate, item.articleId])
 
   const acceptHeroLoad = useCallback((url: string, result: ImageLoadState) => {
     if (result !== 'ok' && result !== 'error') return
@@ -339,7 +346,10 @@ export function FeedArticleReader({
       closeReasonRef.current = reason
 
       const openId = readerOpenIdRef.current
+      const closeTxId = openId ? `close_${openId}` : `close_${Date.now().toString(36)}`
       const currentState = typeof window !== 'undefined' ? window.history.state : null
+      // Ownership is evaluated against CURRENT history.state only — never React booleans.
+      // phase 'active' here means "this transaction is allowed to act once"; ref is already closing.
       const plan = planReaderHistoryClose({
         reason,
         currentState,
@@ -363,7 +373,13 @@ export function FeedArticleReader({
         readerState: 'closing',
         closePhase: nextPhase,
         closeSource:
-          reason === 'history' ? 'popstate' : reason === 'gesture' ? 'swipe' : reason === 'escape' ? 'escape' : 'ui',
+          reason === 'history'
+            ? 'popstate'
+            : reason === 'gesture'
+              ? 'swipe'
+              : reason === 'escape'
+                ? 'escape'
+                : 'ui',
         articleId: item.articleId,
         category: item.category,
         ownsReaderEntry: canHistoryBackForOpen({
@@ -374,6 +390,7 @@ export function FeedArticleReader({
         }),
         readerOpenIdInState: readReaderHistoryState(currentState)?.readerOpenId ?? null,
         source: 'reader',
+        readDecision: closeTxId,
       })
       if (plan === 'history_back') {
         ignoreNextPopRef.current = true
@@ -389,7 +406,7 @@ export function FeedArticleReader({
         finishCloseUi(reason)
       }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
     },
-    [committed, feedSessionId, finishCloseUi, item.articleId, reducedMotion]
+    [committed, feedSessionId, finishCloseUi, item.articleId, item.category, reducedMotion]
   )
 
   const beginCloseRef = useRef(beginClose)
@@ -706,8 +723,27 @@ export function FeedArticleReader({
   }
 
   const onPointerCancel = () => {
+    const hadHorizontal = dragRef.current?.axis === 'horizontal'
+    const startX = dragRef.current?.startX ?? null
     dragRef.current = null
     if (!committed || closingRef.current) return
+    recordReaderNavTrace({
+      type: 'close_blocked',
+      pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+      search: typeof window !== 'undefined' ? window.location.search : '',
+      historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+      readerOpenId: readerOpenIdRef.current,
+      feedSessionId,
+      readerMounted: true,
+      feedMounted: true,
+      readerState: 'open',
+      closeSource: 'swipe',
+      startClientX: startX,
+      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : null,
+      source: 'reader',
+      fallbackReason: hadHorizontal ? 'pointercancel_after_horizontal' : 'pointercancel',
+    })
+    // pointercancel must NEVER complete a close — snap open only.
     snapReaderOpen()
   }
 
@@ -765,7 +801,13 @@ export function FeedArticleReader({
           background: 'var(--reader-page-bg)',
           color: 'var(--reader-page-text)',
           boxShadow: progress > 0.2 ? `-12px 0 28px var(--reader-fold-shadow)` : undefined,
+          // While Reader owns the surface, keep vertical scroll but block Safari's
+          // horizontal history swipe from co-owning the same RIGHT-close gesture.
+          ...(committed
+            ? ({ touchAction: 'pan-y', overscrollBehaviorX: 'none' } as CSSProperties)
+            : null),
         }}
+        data-reader-touch-action={committed ? 'pan-y' : 'auto'}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

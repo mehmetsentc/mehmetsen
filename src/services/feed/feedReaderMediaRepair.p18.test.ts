@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   applyHeroRuntimeEvent,
+  applyHeroTimeoutEvent,
+  isFeedKnownGoodHero,
   readerHeroShouldBeUnoptimized,
   resolveReaderHero,
   selectReaderHeroCandidate,
@@ -249,6 +251,27 @@ describe('P18 media repair — VALID terminal + stale identity', () => {
         bodySettled: false,
         imageLoad: 'pending',
         loadTimedOut: false,
+      }).state
+    ).toBe('LOADING')
+  })
+
+  it('Feed-known-good timeout does not force FAILED', () => {
+    expect(isFeedKnownGoodHero(FEED_A, FEED_A)).toBe(true)
+    expect(isFeedKnownGoodHero(FEED_A, READER_B)).toBe(false)
+    const pending = snap({ imageLoad: 'pending', loadTimedOut: false })
+    const after = applyHeroTimeoutEvent(
+      pending,
+      { type: 'timeout', articleId: 'article-a', url: FEED_A, epoch: 1 },
+      { feedKnownGood: true }
+    )
+    expect(after).toEqual({ imageLoad: 'pending', loadTimedOut: false })
+    expect(
+      resolveReaderHero({
+        feedImage: FEED_A,
+        detailImage: null,
+        bodySettled: true,
+        imageLoad: after.imageLoad,
+        loadTimedOut: after.loadTimedOut,
       }).state
     ).toBe('LOADING')
   })
