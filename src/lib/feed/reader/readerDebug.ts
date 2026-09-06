@@ -48,7 +48,7 @@ export type FeedReaderDebugPath = 'FEED' | 'CANONICAL_ARTICLE' | null
 export type FeedReaderDebugSnapshot = {
   authLoading: boolean
   authenticated: boolean
-  /** pilotMatch — never expose raw UID */
+  /** pilotMatch — never expose raw UID; currently vs programmatic operator constant (stale risk). */
   uidMatch: boolean
   capabilityRequestStarted: boolean
   capabilityRequestFinished: boolean
@@ -89,6 +89,19 @@ export type FeedReaderDebugSnapshot = {
   readerComponentRendered: boolean
   readerUnmountReason: string | null
   currentPath: FeedReaderDebugPath
+  /** Server identity debug (readerDebug capability) — no UID/PII. */
+  currentUidPresent: boolean | null
+  historicalGoogleCandidateExists: boolean | null
+  historicalGoogleCandidateProvider: 'GOOGLE' | null
+  currentMatchesHistoricalGooglePilot: boolean | null
+  currentMatchesProgrammaticOperator: boolean | null
+  currentProviderType: string | null
+  currentFirebaseRecordValid: boolean | null
+  currentDisabled: boolean | null
+  currentProfileExists: boolean | null
+  currentTermsAccepted: boolean | null
+  historicalProviderStillGoogleLinked: boolean | null
+  historicalCandidateDisabled: boolean | null
 }
 
 export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
@@ -132,6 +145,18 @@ export const EMPTY_FEED_READER_DEBUG: FeedReaderDebugSnapshot = {
   readerComponentRendered: false,
   readerUnmountReason: null,
   currentPath: 'FEED',
+  currentUidPresent: null,
+  historicalGoogleCandidateExists: null,
+  historicalGoogleCandidateProvider: null,
+  currentMatchesHistoricalGooglePilot: null,
+  currentMatchesProgrammaticOperator: null,
+  currentProviderType: null,
+  currentFirebaseRecordValid: null,
+  currentDisabled: null,
+  currentProfileExists: null,
+  currentTermsAccepted: null,
+  historicalProviderStillGoogleLinked: null,
+  historicalCandidateDisabled: null,
 }
 
 export function isFeedReaderDebugPilot(uid: string | null | undefined): boolean {
@@ -210,6 +235,18 @@ export function buildFeedReaderDebugBadgeLines(s: FeedReaderDebugSnapshot): stri
     `capabilityReady: ${s.capabilityReady}`,
     `capabilityEnabled: ${s.capabilityEnabled}`,
     `gestureHandlerAttached: ${s.gestureHandlerAttached}`,
+    `currentUidPresent: ${s.currentUidPresent ?? 'null'}`,
+    `historicalGoogleCandidateExists: ${s.historicalGoogleCandidateExists ?? 'null'}`,
+    `historicalGoogleCandidateProvider: ${s.historicalGoogleCandidateProvider ?? 'null'}`,
+    `currentMatchesHistoricalGooglePilot: ${s.currentMatchesHistoricalGooglePilot ?? 'null'}`,
+    `currentMatchesProgrammaticOperator: ${s.currentMatchesProgrammaticOperator ?? 'null'}`,
+    `currentProviderType: ${s.currentProviderType ?? 'null'}`,
+    `currentFirebaseRecordValid: ${s.currentFirebaseRecordValid ?? 'null'}`,
+    `currentDisabled: ${s.currentDisabled ?? 'null'}`,
+    `currentProfileExists: ${s.currentProfileExists ?? 'null'}`,
+    `currentTermsAccepted: ${s.currentTermsAccepted ?? 'null'}`,
+    `historicalProviderStillGoogleLinked: ${s.historicalProviderStillGoogleLinked ?? 'null'}`,
+    `historicalCandidateDisabled: ${s.historicalCandidateDisabled ?? 'null'}`,
     `lastReadClick: ${s.lastReadClick}`,
     `capabilityAtClick: ${s.capabilityAtClick ?? 'null'}`,
     `readDecision: ${s.readDecision ?? 'null'}`,

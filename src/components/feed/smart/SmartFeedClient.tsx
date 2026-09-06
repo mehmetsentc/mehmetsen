@@ -301,6 +301,7 @@ export function SmartFeedClient({
         serverAuthenticated?: boolean | null
         clientAuthenticated?: boolean
         error?: boolean
+        identityDebug?: import('@/lib/feed/reader/capabilityClient').FeedReaderIdentityDebug | null
       }
     ) => {
       feedReaderEnabledRef.current = enabled
@@ -308,6 +309,7 @@ export function SmartFeedClient({
       readerCapabilityReadyRef.current = true
       setReaderCapabilityReady(true)
       capabilityErrorRef.current = Boolean(meta?.error)
+      const id = meta?.identityDebug
       patchReaderDebug({
         capabilityRequestFinished: true,
         capabilityEnabled: enabled,
@@ -321,6 +323,22 @@ export function SmartFeedClient({
             : typeof meta?.clientAuthenticated === 'boolean'
               ? meta.clientAuthenticated
               : null,
+        ...(id
+          ? {
+              currentUidPresent: id.currentUidPresent,
+              historicalGoogleCandidateExists: id.historicalGoogleCandidateExists,
+              historicalGoogleCandidateProvider: id.historicalGoogleCandidateProvider,
+              currentMatchesHistoricalGooglePilot: id.currentMatchesHistoricalGooglePilot,
+              currentMatchesProgrammaticOperator: id.currentMatchesProgrammaticOperator,
+              currentProviderType: id.currentProviderType,
+              currentFirebaseRecordValid: id.currentFirebaseRecordValid,
+              currentDisabled: id.currentDisabled,
+              currentProfileExists: id.currentProfileExists,
+              currentTermsAccepted: id.currentTermsAccepted,
+              historicalProviderStillGoogleLinked: id.historicalProviderStillGoogleLinked,
+              historicalCandidateDisabled: id.historicalCandidateDisabled,
+            }
+          : {}),
       })
     },
     [patchReaderDebug]
@@ -357,12 +375,16 @@ export function SmartFeedClient({
 
     ;(async () => {
       try {
-        let result = await fetchFeedReaderCapability({ signal: ac.signal })
+        let result = await fetchFeedReaderCapability({
+          signal: ac.signal,
+          readerDebug: readerDebugQuery,
+        })
         // AuthProvider may already have uid while ID token is momentarily unavailable.
         if (!ac.signal.aborted && authUser?.uid && !result.authenticated) {
           result = await fetchFeedReaderCapability({
             signal: ac.signal,
             forceAuthRefresh: true,
+            readerDebug: readerDebugQuery,
           })
         }
         if (ac.signal.aborted) return
@@ -373,6 +395,7 @@ export function SmartFeedClient({
           globalDefault: result.globalDefault,
           serverAuthenticated: result.serverAuthenticated,
           clientAuthenticated: result.authenticated,
+          identityDebug: result.identityDebug,
         })
       } catch (err) {
         if (ac.signal.aborted) return
@@ -389,7 +412,7 @@ export function SmartFeedClient({
     return () => {
       ac.abort()
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug, readerDebugQuery])
 
   useEffect(() => {
     patchReaderDebug({
@@ -406,9 +429,12 @@ export function SmartFeedClient({
     }
     try {
       patchReaderDebug({ capabilityRequestStarted: true })
-      let result = await fetchFeedReaderCapability()
+      let result = await fetchFeedReaderCapability({ readerDebug: readerDebugQuery })
       if (authUser?.uid && !result.authenticated) {
-        result = await fetchFeedReaderCapability({ forceAuthRefresh: true })
+        result = await fetchFeedReaderCapability({
+          forceAuthRefresh: true,
+          readerDebug: readerDebugQuery,
+        })
       }
       // Do not clobber a newer effect settle; only fill if still pending.
       if (!readerCapabilityReadyRef.current) {
@@ -418,6 +444,7 @@ export function SmartFeedClient({
           globalDefault: result.globalDefault,
           serverAuthenticated: result.serverAuthenticated,
           clientAuthenticated: result.authenticated,
+          identityDebug: result.identityDebug,
         })
       }
       return feedReaderEnabledRef.current
@@ -427,7 +454,7 @@ export function SmartFeedClient({
       }
       return feedReaderEnabledRef.current
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug, readerDebugQuery])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(

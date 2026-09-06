@@ -3,6 +3,22 @@
  * Must not permanently cache unauthenticated `enabled=false` across auth hydration.
  */
 import { ensureAuthReady, getClientAuthToken } from '@/lib/firebase/auth'
+import type { SafeAuthProviderKind } from '@/lib/feed/reader/pilotIdentityDebugTypes'
+
+export type FeedReaderIdentityDebug = {
+  currentUidPresent: boolean
+  historicalGoogleCandidateExists: boolean
+  historicalGoogleCandidateProvider: 'GOOGLE'
+  currentMatchesHistoricalGooglePilot: boolean
+  currentMatchesProgrammaticOperator: boolean
+  currentProviderType: SafeAuthProviderKind | null
+  currentFirebaseRecordValid: boolean | null
+  currentDisabled: boolean | null
+  currentProfileExists: boolean | null
+  currentTermsAccepted: boolean | null
+  historicalProviderStillGoogleLinked: boolean | null
+  historicalCandidateDisabled: boolean | null
+}
 
 export type FeedReaderCapabilityResult = {
   enabled: boolean
@@ -13,16 +29,21 @@ export type FeedReaderCapabilityResult = {
   errorCode: string | null
   /** Server-reported: whether verifyFirebaseIdToken resolved a uid (no uid value). */
   serverAuthenticated: boolean | null
+  /** Present only when fetch used readerDebug=1 — never contains UID/PII. */
+  identityDebug: FeedReaderIdentityDebug | null
 }
 
 export async function fetchFeedReaderCapability(opts?: {
   signal?: AbortSignal
   forceAuthRefresh?: boolean
+  /** When true, server may attach safe identityDebug booleans (no UID). */
+  readerDebug?: boolean
 }): Promise<FeedReaderCapabilityResult> {
   await ensureAuthReady()
   const token = await getClientAuthToken(opts?.forceAuthRefresh === true)
   const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-  const res = await fetch('/api/feed/v2/reader/capability', {
+  const qs = opts?.readerDebug ? '?readerDebug=1' : ''
+  const res = await fetch(`/api/feed/v2/reader/capability${qs}`, {
     headers,
     cache: 'no-store',
     credentials: 'same-origin',
@@ -34,6 +55,7 @@ export async function fetchFeedReaderCapability(opts?: {
     feature?: string
     reason?: string
     authenticated?: boolean
+    identityDebug?: FeedReaderIdentityDebug
   }
   return {
     enabled: Boolean(data.enabled),
@@ -44,6 +66,10 @@ export async function fetchFeedReaderCapability(opts?: {
     errorCode: typeof data.reason === 'string' ? data.reason : res.ok ? null : `http_${res.status}`,
     serverAuthenticated:
       typeof data.authenticated === 'boolean' ? data.authenticated : null,
+    identityDebug:
+      data.identityDebug && typeof data.identityDebug === 'object'
+        ? data.identityDebug
+        : null,
   }
 }
 
