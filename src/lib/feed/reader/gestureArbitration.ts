@@ -7,12 +7,17 @@ export const READER_GESTURE = {
   /** abs(dx) must exceed abs(dy) * this ratio */
   dominance: 1.35,
   /** px before interactive turn engages */
-  activatePx: 18,
-  /** px / velocity to complete open/close */
-  completePx: 96,
-  completeVelocity: 0.55,
+  activatePx: 14,
+  /** px / velocity to complete open/close (tuned for one-handed mobile) */
+  completePx: 72,
+  completeVelocity: 0.45,
   /** ignore starts from extreme left edge (iOS system back) */
   systemBackEdgePx: 22,
+  /** hard-complete progress fraction of viewport width (~0.32 ≈ 125px @390) */
+  hardCompleteProgress: 0.32,
+  /** flick: velocity × this vs completeVelocity, with min progress */
+  flickVelocityFactor: 1.6,
+  flickMinProgress: 0.14,
   /** max interactive progress mapped from drag */
   maxProgress: 1,
 } as const
@@ -66,9 +71,14 @@ export function shouldCompleteTransition(opts: {
 }): boolean {
   const completeVelocity = opts.completeVelocity ?? READER_GESTURE.completeVelocity
   const completeProgress = opts.completeProgress ?? READER_GESTURE.completePx / 320
-  if (opts.progress >= 0.42) return true
+  if (opts.progress >= READER_GESTURE.hardCompleteProgress) return true
   if (opts.progress >= completeProgress && opts.velocityX >= completeVelocity) return true
-  if (opts.velocityX >= completeVelocity * 1.6 && opts.progress >= 0.18) return true
+  if (
+    opts.velocityX >= completeVelocity * READER_GESTURE.flickVelocityFactor &&
+    opts.progress >= READER_GESTURE.flickMinProgress
+  ) {
+    return true
+  }
   return false
 }
 

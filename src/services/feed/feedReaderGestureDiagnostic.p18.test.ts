@@ -125,9 +125,9 @@ describe('Feed Reader gesture diagnostic contracts', () => {
 
   it('documents open thresholds and Feed→Reader direction (left / negative dx)', () => {
     expect(READER_GESTURE.dominance).toBe(1.35)
-    expect(READER_GESTURE.activatePx).toBe(18)
-    expect(READER_GESTURE.completePx).toBe(96)
-    expect(READER_GESTURE.completeVelocity).toBe(0.55)
+    expect(READER_GESTURE.activatePx).toBe(14)
+    expect(READER_GESTURE.completePx).toBe(72)
+    expect(READER_GESTURE.completeVelocity).toBe(0.45)
     expect(READER_GESTURE.systemBackEdgePx).toBe(22)
     // Right swipe (positive dx) must not open
     expect(
@@ -151,16 +151,17 @@ describe('Feed Reader gesture diagnostic contracts', () => {
     expect(reader).toContain("animateTo(0, 'gesture')")
   })
 
-  it('open path still has no preventDefault (Safari scroll competition risk)', () => {
+  it('open path establishes horizontal ownership with non-passive preventDefault', () => {
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
     const fnIdx = client.indexOf('function FeedCardWithImpression')
-    const surface = client.slice(fnIdx, fnIdx + 3500)
+    const surface = client.slice(fnIdx, fnIdx + 5500)
     expect(surface).toContain('touch-pan-y')
     expect(surface).toContain('data-testid="smart-feed-card-gesture-surface"')
     expect(surface).toContain('setPointerCapture')
-    expect(surface).not.toContain('preventDefault')
+    expect(surface).toContain('{ passive: false }')
+    expect(surface).toContain('ev.preventDefault()')
   })
 })

@@ -19,6 +19,14 @@ import {
   dispatchFeedOpenGesture,
   shouldIgnoreFeedOpenGestureTarget,
 } from '@/lib/feed/reader/feedOpenGesture'
+import {
+  classifyAxisIntent,
+  feedToReaderProgress,
+  prefersReducedMotion,
+  shouldCompleteTransition,
+  shouldIgnoreSystemBackEdge,
+} from '@/lib/feed/reader/gestureArbitration'
+import { FEED_READER_DURATION_MS } from '@/lib/feed/reader/tokens'
 import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
@@ -61,7 +69,7 @@ import {
   writeLocalClearedSentinel,
 } from '@/lib/feed/accountLocalLocation'
 import { ROUTES } from '@/constants/routes'
-import { parseFeedV2TabFromSearch, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
+import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
@@ -1803,6 +1811,14 @@ export function SmartFeedClient({
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
                   onReadClick={() => onRead(item, index, 'button')}
+                  onCategoryClick={
+                    resolveFeedV2TabForArticleCategory(item.category)
+                      ? () => {
+                          const tab = resolveFeedV2TabForArticleCategory(item.category)
+                          if (tab) handleTabChange(tab)
+                        }
+                      : undefined
+                  }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
                     feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
@@ -2017,6 +2033,7 @@ function FeedCardWithImpression(props: {
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
+  onCategoryClick?: () => void
   onImpression: () => void
   onOpenReaderGesture?: (g: {
     dx: number
@@ -2037,18 +2054,64 @@ function FeedCardWithImpression(props: {
 }) {
   const { onOpenReaderGesture, onGesturePointerDebug, ...cardProps } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
+  const surfaceRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{
+    pointerId: number
     x: number
     y: number
-    t: number
     lastX: number
     lastT: number
+    axis: 'none' | 'horizontal' | 'vertical'
+    moveListener: ((ev: PointerEvent) => void) | null
   } | null>(null)
+  const [dragProgress, setDragProgress] = useState(0)
+  const [snapAnimating, setSnapAnimating] = useState(false)
+  const [horizontalLocked, setHorizontalLocked] = useState(false)
+  const reducedMotion = prefersReducedMotion()
+
+  const clearNativeMove = () => {
+    const d = drag.current
+    const el = surfaceRef.current
+    if (d?.moveListener && el) {
+      el.removeEventListener('pointermove', d.moveListener)
+      d.moveListener = null
+    }
+  }
+
+  const resetDragVisual = (animate: boolean) => {
+    clearNativeMove()
+    drag.current = null
+    setHorizontalLocked(false)
+    if (animate && !reducedMotion) {
+      setSnapAnimating(true)
+      setDragProgress(0)
+      window.setTimeout(() => setSnapAnimating(false), FEED_READER_DURATION_MS)
+    } else {
+      setSnapAnimating(false)
+      setDragProgress(0)
+    }
+  }
 
   return (
     <div
-      className="relative touch-pan-y"
+      ref={surfaceRef}
+      className="relative touch-pan-y will-change-transform"
       data-testid="smart-feed-card-gesture-surface"
+      style={{
+        transform:
+          reducedMotion || dragProgress <= 0
+            ? undefined
+            : `translate3d(${-dragProgress * 100}%, 0, 0)`,
+        opacity: reducedMotion ? 1 : 1 - dragProgress * 0.12,
+        transition: snapAnimating && !reducedMotion
+          ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
+          : 'none',
+        touchAction: horizontalLocked ? 'none' : undefined,
+        boxShadow:
+          dragProgress > 0.08
+            ? `-10px 0 24px rgba(0,0,0,${0.18 + dragProgress * 0.2})`
+            : undefined,
+      }}
       onPointerDown={(e) => {
         if (!onOpenReaderGesture || !props.isActive) {
           onGesturePointerDebug?.({
@@ -2062,30 +2125,70 @@ function FeedCardWithImpression(props: {
           onGesturePointerDebug?.({ phase: 'down', ignoredInteractive: true })
           return
         }
-        onGesturePointerDebug?.({ phase: 'down' })
-        drag.current = {
-          x: e.clientX,
-          y: e.clientY,
-          t: performance.now(),
-          lastX: e.clientX,
-          lastT: performance.now(),
+        if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
+          onGesturePointerDebug?.({ phase: 'down' })
+          return
         }
+        onGesturePointerDebug?.({ phase: 'down' })
+        setSnapAnimating(false)
+        setHorizontalLocked(false)
+        const pointerId = e.pointerId
+        const startX = e.clientX
+        const startY = e.clientY
+        const moveListener = (ev: PointerEvent) => {
+          const d = drag.current
+          if (!d || d.pointerId !== ev.pointerId) return
+          const dx = ev.clientX - d.x
+          const dy = ev.clientY - d.y
+          if (d.axis === 'none') {
+            const intent = classifyAxisIntent(dx, dy)
+            if (intent === 'vertical') {
+              clearNativeMove()
+              drag.current = null
+              setHorizontalLocked(false)
+              setDragProgress(0)
+              return
+            }
+            if (intent !== 'horizontal') return
+            if (dx >= 0) return
+            d.axis = 'horizontal'
+            setHorizontalLocked(true)
+          }
+          if (d.axis !== 'horizontal') return
+          ev.preventDefault()
+          onGesturePointerDebug?.({ phase: 'move' })
+          const width = window.innerWidth || 390
+          const progress = feedToReaderProgress(dx, width)
+          setDragProgress(progress)
+          d.lastX = ev.clientX
+          d.lastT = performance.now()
+        }
+        drag.current = {
+          pointerId,
+          x: startX,
+          y: startY,
+          lastX: startX,
+          lastT: performance.now(),
+          axis: 'none',
+          moveListener,
+        }
+        e.currentTarget.addEventListener('pointermove', moveListener, { passive: false })
         try {
           e.currentTarget.setPointerCapture(e.pointerId)
         } catch {
-          // Non-fatal: some browsers reject capture on certain targets.
+          // Non-fatal
         }
       }}
-      onPointerMove={(e) => {
-        if (!drag.current) return
-        onGesturePointerDebug?.({ phase: 'move' })
-        drag.current.lastX = e.clientX
-        drag.current.lastT = performance.now()
-      }}
       onPointerUp={(e) => {
-        if (!onOpenReaderGesture || !drag.current) return
         const d = drag.current
+        if (!onOpenReaderGesture || !d || d.pointerId !== e.pointerId) {
+          if (d) resetDragVisual(false)
+          return
+        }
+        clearNativeMove()
+        const axis = d.axis
         drag.current = null
+        setHorizontalLocked(false)
         try {
           if (e.currentTarget.hasPointerCapture(e.pointerId)) {
             e.currentTarget.releasePointerCapture(e.pointerId)
@@ -2098,19 +2201,52 @@ function FeedCardWithImpression(props: {
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)
         const velocityX = (e.clientX - d.lastX) / dt
+        const width = typeof window !== 'undefined' ? window.innerWidth : 390
+        const progress = feedToReaderProgress(dx, width)
+        const open =
+          axis === 'horizontal' &&
+          shouldCompleteTransition({
+            progress,
+            velocityX: Math.max(0, -velocityX),
+          })
+
+        // Always report metrics to parent (diagnostic + shared open decision).
         onOpenReaderGesture({
           dx,
           dy,
           startClientX: d.x,
-          viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 390,
+          viewportWidth: width,
           velocityX,
         })
+
+        if (open) {
+          setSnapAnimating(true)
+          setDragProgress(1)
+          window.setTimeout(() => {
+            setSnapAnimating(false)
+            setDragProgress(0)
+          }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
+          return
+        }
+
+        resetDragVisual(axis === 'horizontal' && progress > 0.02)
       }}
       onPointerCancel={() => {
         if (drag.current) onGesturePointerDebug?.({ phase: 'cancel' })
-        drag.current = null
+        resetDragVisual(false)
       }}
     >
+      {/* Paper peek behind card during left page-turn */}
+      {dragProgress > 0.04 && !reducedMotion ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 rounded-none"
+          style={{
+            background: 'linear-gradient(90deg, #f7f4ef 0%, #ebe6de 100%)',
+            opacity: Math.min(1, dragProgress * 1.4),
+          }}
+        />
+      ) : null}
       <FullscreenNewsCard {...cardProps} cardRef={impressionRef} />
     </div>
   )

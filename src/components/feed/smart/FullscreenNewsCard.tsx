@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ChevronDown, Heart, Newspaper, Zap } from 'lucide-react'
+import { Check, ChevronDown, ExternalLink, Heart, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
@@ -86,6 +86,8 @@ interface FullscreenNewsCardProps {
   onToggleSave: () => void
   onCommentClick: () => void
   onReadClick: () => void
+  /** Navigate to this article's category in the existing Feed V2 tab bar. */
+  onCategoryClick?: () => void
   onFeedback?: (type: 'hide_article' | 'less_publisher' | 'less_topic') => void
   cardRef?: (node: HTMLElement | null) => void
   reaction?: string | null
@@ -122,6 +124,7 @@ export function FullscreenNewsCard({
   onToggleSave,
   onCommentClick,
   onReadClick,
+  onCategoryClick,
   cardRef,
   reaction,
   showDiscoveryRail,
@@ -358,6 +361,7 @@ export function FullscreenNewsCard({
               src={item.image!}
               alt=""
               fill
+              draggable={false}
               className="scale-110 object-cover opacity-60 blur-2xl brightness-[0.5]"
               sizes="100vw"
               aria-hidden
@@ -371,6 +375,7 @@ export function FullscreenNewsCard({
               src={item.image!}
               alt={item.headline || ''}
               fill
+              draggable={false}
               className={cn(
                 'object-cover object-center will-change-transform',
                 playMediaDolly
@@ -519,6 +524,19 @@ export function FullscreenNewsCard({
                     {cat}
                   </span>
                 ) : null}
+                {cat && onCategoryClick ? (
+                  <button
+                    type="button"
+                    onClick={onCategoryClick}
+                    data-testid="smart-feed-category-goto"
+                    data-no-reader-gesture="1"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm transition active:scale-[0.98]"
+                    aria-label={`${cat} kategorisine git`}
+                  >
+                    <span className="hidden min-[360px]:inline">Kategoriye Git</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                  </button>
+                ) : null}
                 {item.breaking && skin.id !== 'son-dakika' ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-bold text-white">
                     <Zap className="h-3 w-3" aria-hidden />
@@ -560,7 +578,7 @@ export function FullscreenNewsCard({
                 type="button"
                 onClick={onReadClick}
                 data-testid="smart-feed-read-cta"
-                className="mt-1 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99] sm:mt-6"
                 style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
               >
                 Haberi Oku →

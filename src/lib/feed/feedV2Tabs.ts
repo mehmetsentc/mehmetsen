@@ -53,6 +53,31 @@ export function categoryTabFromId(id: string): FeedV2Tab | null {
   }
 }
 
+/**
+ * Map an article category (incl. child yerel-* ids) onto an existing Feed V2 tab.
+ * Does not invent categories — walks parentId / yerel fallback using feedV2 tab rules.
+ */
+export function resolveFeedV2TabForArticleCategory(
+  category: string | null | undefined
+): FeedV2Tab | null {
+  if (!category?.trim()) return null
+  const key = category.trim().toLowerCase()
+  const direct = categoryTabFromId(key)
+  if (direct) return direct
+
+  const seen = new Set<string>()
+  let cur = DEFAULT_CATEGORIES.find((c) => c.id === key || c.slug === key) ?? null
+  while (cur?.parentId && !seen.has(cur.id)) {
+    seen.add(cur.id)
+    const parentTab = categoryTabFromId(cur.parentId)
+    if (parentTab) return parentTab
+    cur = DEFAULT_CATEGORIES.find((c) => c.id === cur!.parentId) ?? null
+  }
+
+  if (key.startsWith('yerel')) return categoryTabFromId('yerel')
+  return null
+}
+
 /** Static fallback order when freshness API is unavailable. */
 export function buildFallbackFeedV2Tabs(): FeedV2Tab[] {
   const cats = FALLBACK_CATEGORY_IDS.map(categoryTabFromId).filter(Boolean) as FeedV2Tab[]
