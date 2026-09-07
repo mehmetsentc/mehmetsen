@@ -125,7 +125,7 @@ describe('P18 swipe discovery V3 visibility', () => {
     )
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('right-[4.75rem]')
+    expect(coach).toContain('left-1/2')
     expect(coach).toContain('data-swipe-discovery-v3')
     expect(coach).not.toContain('preventDefault')
   })

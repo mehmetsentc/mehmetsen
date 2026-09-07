@@ -10,17 +10,25 @@
 export const FEED_V2_CHROME_CSS_VARS = {
   /**
    * Bottom pad without MobileNav reservation.
-   * Safe-area + light breath so Haberi Oku / publisher clear the home indicator.
+   * Design: 16–24px safe breath under publisher.
    */
   '--feed-v2-bottom-clearance':
-    'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.65rem))',
+    'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
   /** Top clearance for Feed category chips + floating exit (when present). */
   '--feed-v2-top-clearance':
     'max(5.25rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 4rem))',
-  /** Reserved lower interaction band: Haberi Oku + publisher/follow. */
-  '--feed-v2-action-zone': '7.25rem',
-  /** Flexible hero floor — yields before actions clip. */
-  '--feed-v2-hero-min': 'clamp(4vh, 8vh, 12vh)',
+  /**
+   * Required lower band: Haberi Oku (~56px) + publisher/follow (~48px).
+   * Design dikey alan dağılımı.
+   */
+  '--feed-v2-action-zone': '6.75rem',
+  /**
+   * Hero / media flexible region — design targets ~38–44% of card height.
+   * Floor only; flex-1 grows into remaining space after action zone.
+   */
+  '--feed-v2-hero-min': 'clamp(32dvh, 38dvh, 44dvh)',
+  /** Bounded copy preview (badge + headline + summary) before actions. */
+  '--feed-v2-copy-max': 'min(34dvh, 15.5rem)',
 } as const
 
 /** Pure helper for tests — safe-area bottom clearance (no MobileNav pill). */
@@ -28,13 +36,22 @@ export function feedV2BottomClearancePx(opts: {
   safeBottom: number
   breathPx?: number
 }): number {
-  const breath = opts.breathPx ?? 10
+  const breath = opts.breathPx ?? 12
+  // Design target ~16–24px breath when inset is 0; with inset, clear home indicator.
   return Math.max(16, opts.safeBottom + breath)
 }
 
-/** Approximate reserved action zone (CTA + publisher) in px. */
+/** Haberi Oku ~56 + publisher ~48 (design). */
 export function feedV2ActionZonePx(): number {
-  return 116
+  return 108
+}
+
+/** Hero share of card height (design 38–44%). */
+export function feedV2HeroShare(viewportHeight: number): { min: number; max: number } {
+  return {
+    min: Math.round(viewportHeight * 0.38),
+    max: Math.round(viewportHeight * 0.44),
+  }
 }
 
 /**
@@ -67,7 +84,8 @@ export function feedV2ActionsFitViewport(opts: {
 }): boolean {
   const budget = feedV2ContentBudgetPx(opts)
   const actions = opts.actionZonePx ?? feedV2ActionZonePx()
-  const heroFloor = Math.min(opts.viewportHeight * 0.08, 72)
+  // Design: hero ~38% floor; remaining must still fit copy + actions.
+  const heroFloor = Math.round(opts.viewportHeight * 0.32)
   return budget - heroFloor - opts.copyPreviewPx - actions >= 0
 }
 

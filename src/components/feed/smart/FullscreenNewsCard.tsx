@@ -543,7 +543,7 @@ export function FullscreenNewsCard({
         >
           <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-text-zone">
             <div
-              className="min-w-0 space-y-1.5 sm:space-y-2"
+              className="min-w-0 max-h-[var(--feed-v2-copy-max)] space-y-1.5 overflow-hidden sm:space-y-2"
               data-testid="smart-feed-copy-preview"
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -628,7 +628,7 @@ export function FullscreenNewsCard({
                 type="button"
                 onClick={onReadClick}
                 data-testid="smart-feed-read-cta"
-                className="inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+                className="inline-flex h-14 w-full shrink-0 items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99]"
                 style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
               >
                 Haberi Oku →
@@ -636,7 +636,7 @@ export function FullscreenNewsCard({
 
               {item.publisher ? (
                 <div
-                  className="mb-0.5 flex min-w-0 flex-nowrap items-center gap-1.5"
+                  className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5"
                   data-testid="smart-feed-publisher-row"
                 >
                   {publisherHref ? (

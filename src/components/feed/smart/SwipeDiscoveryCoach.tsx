@@ -200,9 +200,9 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       data-swipe-discovery-v3="1"
       data-swipe-discovery-phase={phase}
       aria-hidden
-      className="pointer-events-none absolute right-[4.75rem] top-[34%] z-[22] -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-[36%] z-[22] -translate-x-1/2 -translate-y-1/2"
       style={{
-        transform: `translate3d(${travel}px, -50%, 0)`,
+        transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
         transition: reduced
           ? undefined
           : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease`,
@@ -210,28 +210,27 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       }}
     >
       <div
-        className="pointer-events-none flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[12px] font-semibold tracking-wide text-white ring-1 ring-white/20 backdrop-blur-[5px]"
+        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/72 px-3.5 py-2 text-[13px] font-semibold tracking-wide text-white ring-1 ring-white/20 backdrop-blur-[5px]"
         style={{
           boxShadow: '0 10px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(225,29,46,0.4)',
         }}
       >
         <span
-          className="relative flex h-5 w-5 shrink-0 items-center justify-center"
-          aria-hidden
-          data-testid="feed-swipe-discovery-finger"
-        >
-          <span className="absolute h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_0_2px_rgba(225,29,46,0.65)]" />
-        </span>
-        <span
-          className="flex items-center gap-0.5 text-[13px] font-bold text-white"
+          className="flex items-center gap-0.5 text-[15px] font-bold leading-none text-white"
           aria-hidden
           data-testid="feed-swipe-discovery-chevrons"
         >
           <span className="text-[#e11d2e]">‹</span>
           <span>‹</span>
-          <span className="text-white/75">‹</span>
         </span>
-        <span>Haberi aç</span>
+        <span className="font-bold">Haberi aç</span>
+        <span
+          className="relative ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center"
+          aria-hidden
+          data-testid="feed-swipe-discovery-finger"
+        >
+          <span className="absolute h-3 w-3 rounded-full bg-white shadow-[0_0_0_2px_rgba(225,29,46,0.7)]" />
+        </span>
       </div>
     </div>
   )

@@ -12,16 +12,16 @@ export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v3'
 /** Prior keys — diagnostic / migration proof only. */
 export const SWIPE_DISCOVERY_STORAGE_KEY_V2 = 'nahaber.feedSwipeDiscovery.v2'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V1 = 'nahaber.feedSwipeDiscovery.v1'
-/** Total on-screen lifetime after settle (ms). */
-export const SWIPE_DISCOVERY_HINT_MS = 2400
-/** Wait after card settles before showing coach. */
-export const SWIPE_DISCOVERY_SETTLE_MS = 1600
+/** Wait after card settles before showing coach — design ~2s. */
+export const SWIPE_DISCOVERY_SETTLE_MS = 2000
 /** Finger/chip travel LEFT (px). */
 export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 /** Subtle active-card nudge LEFT (px). */
 export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 10
 /** Motion duration for travel + return half-cycle. */
-export const SWIPE_DISCOVERY_ANIM_MS = 950
+export const SWIPE_DISCOVERY_ANIM_MS = 900
+/** Total on-screen lifetime after settle (ms). */
+export const SWIPE_DISCOVERY_HINT_MS = 2300
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
 export const SWIPE_DISCOVERY_MAX_SHOWS = 3
