@@ -177,7 +177,7 @@ describe('P18 Reader return ownership — history matrix', () => {
     })
     expect(h.stack()).toEqual(['/', '/feed-v2', '/feed-v2?reader=b'])
     const { after, plan } = finishOwnedClose({ h, openId, feedSessionId })
-    expect(plan).toBe('history_back')
+    expect(plan).toBe('replace_unowned_feed')
     expect(pathOf(after.url)).toBe('/feed-v2')
     expect(pathOf(after.url)).not.toBe('/')
   })
@@ -284,7 +284,7 @@ describe('P18 Reader return ownership — history matrix', () => {
     expect(stack[stack.length - 1]).toBe('/')
   })
 
-  it('resolveFeedOwnerHistorySync never plans history_back when already off reader entry', () => {
+  it('resolveFeedOwnerHistorySync remaps legacy history_back to replace/none (never back)', () => {
     expect(
       resolveFeedOwnerHistorySync({
         planned: 'history_back',
@@ -293,6 +293,14 @@ describe('P18 Reader return ownership — history matrix', () => {
         search: '',
       })
     ).toBe('none')
+    expect(
+      resolveFeedOwnerHistorySync({
+        planned: 'history_back',
+        foreignPopDuringClose: false,
+        pathname: '/feed-v2',
+        search: '?reader=x',
+      })
+    ).toBe('replace_unowned_feed')
     expect(
       resolveFeedOwnerHistorySync({
         planned: 'history_back',
@@ -352,7 +360,7 @@ describe('P18 Reader return ownership — history matrix', () => {
     expect(layout).toContain("router.replace('/feed-v2')")
   })
 
-  it('button and gesture still plan history_back for owned opens (browser Back semantics)', () => {
+  it('button and gesture plan replace_unowned_feed (never history_back — HOME escape fix)', () => {
     const owned = {
       nahaberFeedReader: true as const,
       articleId: '1',
@@ -368,7 +376,7 @@ describe('P18 Reader return ownership — history matrix', () => {
         readerOpenId: 'rdr_1',
         phase: 'active',
       })
-    ).toBe('history_back')
+    ).toBe('replace_unowned_feed')
     expect(
       planReaderHistoryClose({
         reason: 'gesture',
@@ -376,7 +384,7 @@ describe('P18 Reader return ownership — history matrix', () => {
         readerOpenId: 'rdr_1',
         phase: 'active',
       })
-    ).toBe('history_back')
+    ).toBe('replace_unowned_feed')
     expect(
       planReaderHistoryOpen({
         slug: 'a',

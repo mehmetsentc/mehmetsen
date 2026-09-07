@@ -107,9 +107,9 @@ describe('open authority — no discovery /haber flicker', () => {
   })
 })
 
-describe('LEFT coach V5 + RIGHT coach V2', () => {
-  it('V5 key; prior V4 cannot suppress; travel + repeats', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
+describe('LEFT coach V6 + RIGHT coach V2', () => {
+  it('V6 key; prior V4 cannot suppress; travel + repeats', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V4, JSON.stringify({ learned: true, shownCount: 40 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
@@ -123,7 +123,7 @@ describe('LEFT coach V5 + RIGHT coach V2', () => {
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
-    expect(coach).toContain('data-swipe-discovery-v5')
+    expect(coach).toContain('data-swipe-discovery-v6')
     expect(coach).toContain('z-[35]')
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
@@ -131,7 +131,7 @@ describe('LEFT coach V5 + RIGHT coach V2', () => {
   })
 
   it('RIGHT coach V2; gesture-only learn; reactive coachClosing', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v2')
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v3')
     expect(shouldShowReaderReturnCoach()).toBe(true)
     expect(READER_RETURN_COACH_REPEAT_COUNT).toBeGreaterThanOrEqual(2)
     expect(READER_RETURN_COACH_HINT_MS).toBeGreaterThanOrEqual(3500)
@@ -153,7 +153,7 @@ describe('LEFT coach V5 + RIGHT coach V2', () => {
       'utf8'
     )
     expect(coach).toContain('Akışa Dön')
-    expect(coach).toContain('data-reader-return-coach-v2')
+    expect(coach).toContain('data-reader-return-coach-v3')
     expect(coach).toContain('pointer-events-none')
   })
 

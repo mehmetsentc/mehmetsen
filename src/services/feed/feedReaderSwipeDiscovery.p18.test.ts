@@ -36,7 +36,7 @@ beforeEach(() => {
   }
 })
 
-describe('P18 swipe discovery coach V5', () => {
+describe('P18 swipe discovery coach V6', () => {
   it('1-2: eligible + not learned may show across multiple cards', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
@@ -60,7 +60,7 @@ describe('P18 swipe discovery coach V5', () => {
     expect(coach).toContain('feed-swipe-discovery-chevrons')
     expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
     expect(coach).toContain('isCoachPaintedInViewport')
-    expect(coach).not.toContain('preventDefault')
+    expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(coach).not.toContain('setPointerCapture')
   })
 
@@ -72,7 +72,7 @@ describe('P18 swipe discovery coach V5', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
   })
 
   it('6-8: Haberi Oku / cancel / vertical do not call mark outside swipe openSource', () => {
@@ -80,7 +80,7 @@ describe('P18 swipe discovery coach V5', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
     expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
   })
 
@@ -90,18 +90,18 @@ describe('P18 swipe discovery coach V5', () => {
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 5 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 6 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 5,
+      version: 6,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(

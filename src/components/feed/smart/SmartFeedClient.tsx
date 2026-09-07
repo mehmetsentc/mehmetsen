@@ -27,7 +27,7 @@ import {
   shouldCompleteTransition,
   shouldIgnoreSystemBackEdge,
 } from '@/lib/feed/reader/gestureArbitration'
-import { FEED_READER_DURATION_MS } from '@/lib/feed/reader/tokens'
+import { FEED_READER_DURATION_MS, FEED_READER_EASING } from '@/lib/feed/reader/tokens'
 import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
@@ -278,7 +278,7 @@ export function SmartFeedClient({
     progress: number
     committed: boolean
     progressAnimating: boolean
-    openSource?: 'swipe' | 'haberi_oku' | 'unknown'
+    openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
   } | null>(null)
   const feedSessionIdRef = useRef(createFeedSessionId())
   const readerItem = readerSession
@@ -1585,7 +1585,7 @@ export function SmartFeedClient({
   }, [])
 
   const openReader = useCallback(
-    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean; openSource?: 'swipe' | 'haberi_oku' | 'unknown' }) => {
+    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean; openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown' }) => {
       // Exactly one commit per article open — ignore double Haberi Oku / duplicate gesture commit.
       if (readerOpenGuardRef.current === item.articleId) {
         // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
@@ -1644,7 +1644,7 @@ export function SmartFeedClient({
           progressAnimating: false,
           openSource,
         })
-        if (openSource === 'swipe') markSwipeDiscoveryLearned()
+        if (openSource === 'swipe' || openSource === 'swipe_affordance') markSwipeDiscoveryLearned()
         patchReaderDebug({
           openReaderCalled: true,
           readerOpenRequested: true,
@@ -1730,7 +1730,11 @@ export function SmartFeedClient({
     patchReaderDebug,
   ])
 
-  const onRead = (item: FeedItemDto, index: number, action: 'button' | 'gesture' = 'button') => {
+  const onRead = (
+    item: FeedItemDto,
+    index: number,
+    action: 'button' | 'gesture' | 'swipe_affordance' = 'button'
+  ) => {
     void (async () => {
       // Durable consumed: guest localStorage + server article_opened (not qualified impression).
       const guestSeen = readGuestSeen()
@@ -1782,7 +1786,8 @@ export function SmartFeedClient({
         readerMounted: Boolean(readerSession?.committed),
         feedMounted: true,
         readerState: readerSession?.committed ? 'open' : 'closed',
-        openSource: action === 'gesture' ? 'swipe' : 'haberi_oku',
+        openSource:
+          action === 'gesture' || action === 'swipe_affordance' ? 'swipe' : 'haberi_oku',
         articleId: item.articleId,
         articleSlug: item.slug,
         feedIndex: index,
@@ -1817,13 +1822,12 @@ export function SmartFeedClient({
       })
 
       if (decided.decision === 'OPEN_READER') {
-        if (action === 'gesture') {
+        if (action === 'gesture' || action === 'swipe_affordance') {
           openReader(item, index, {
-            fromProgress: readerSession?.item.articleId === item.articleId
-              ? readerSession.progress
-              : 1,
+            fromProgress:
+              readerSession?.item.articleId === item.articleId ? readerSession.progress : 1,
             skipRamp: true,
-            openSource: 'swipe',
+            openSource: action === 'swipe_affordance' ? 'swipe_affordance' : 'swipe',
           })
         } else {
           openReader(item, index)
@@ -2368,6 +2372,16 @@ export function SmartFeedClient({
                       readerSession.item.articleId === item.articleId &&
                       readerSession.progress > 0.02
                   )}
+                  onSwipeAffordanceActivate={
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                      ? () => onRead(item, index, 'swipe_affordance')
+                      : undefined
+                  }
+                  readerUnderlayProgress={
+                    readerSession && readerSession.item.articleId === item.articleId
+                      ? readerSession.progress
+                      : 0
+                  }
                 />
               )
             })}
@@ -2577,9 +2591,18 @@ function FeedCardWithImpression(props: {
   }) => void
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
+  onSwipeAffordanceActivate?: () => void
+  /** Haberi Oku / committed open progress — drives Feed underlay page-turn. */
+  readerUnderlayProgress?: number
 }) {
-  const { onOpenReaderGesture, onOpenReaderProgress, onOpenReaderCancel, onGesturePointerDebug, ...cardProps } =
-    props
+  const {
+    onOpenReaderGesture,
+    onOpenReaderProgress,
+    onOpenReaderCancel,
+    onGesturePointerDebug,
+    readerUnderlayProgress = 0,
+    ...cardProps
+  } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{
@@ -2595,6 +2618,7 @@ function FeedCardWithImpression(props: {
   const [snapAnimating, setSnapAnimating] = useState(false)
   const [horizontalLocked, setHorizontalLocked] = useState(false)
   const reducedMotion = prefersReducedMotion()
+  const pageProgress = Math.max(dragProgress, readerUnderlayProgress)
 
   const clearNativeMove = () => {
     const d = drag.current
@@ -2626,18 +2650,23 @@ function FeedCardWithImpression(props: {
       data-testid="smart-feed-card-gesture-surface"
       style={{
         transform:
-          reducedMotion || dragProgress <= 0
+          reducedMotion || pageProgress <= 0
             ? undefined
-            : `translate3d(${-dragProgress * 100}%, 0, 0)`,
-        opacity: reducedMotion ? 1 : 1 - dragProgress * 0.12,
-        transition: snapAnimating && !reducedMotion
-          ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
-          : 'none',
+            : `translate3d(${-pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
+        opacity: reducedMotion ? 1 : 1 - pageProgress * 0.18,
+        transition:
+          (snapAnimating || readerUnderlayProgress > 0) && !reducedMotion && dragProgress <= 0.02
+            ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
+            : snapAnimating && !reducedMotion
+              ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
+              : 'none',
         touchAction: horizontalLocked ? 'none' : undefined,
         boxShadow:
-          dragProgress > 0.08
-            ? `-10px 0 24px rgba(0,0,0,${0.18 + dragProgress * 0.2})`
+          pageProgress > 0.08
+            ? `-14px 0 28px rgba(0,0,0,${0.22 + pageProgress * 0.28})`
             : undefined,
+        transformOrigin: 'left center',
+        willChange: pageProgress > 0.01 ? 'transform, opacity' : undefined,
       }}
       onPointerDown={(e) => {
         if (!onOpenReaderGesture || !props.isActive) {
@@ -2798,20 +2827,20 @@ function FeedCardWithImpression(props: {
       }}
     >
       {/* Dark Reader peek behind card during left page-turn */}
-      {dragProgress > 0.04 && !reducedMotion ? (
+      {pageProgress > 0.04 && !reducedMotion ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
             background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
-            opacity: Math.min(1, dragProgress * 1.4),
+            opacity: Math.min(1, pageProgress * 1.4),
           }}
         />
       ) : null}
       <FullscreenNewsCard
         {...cardProps}
         cardRef={impressionRef}
-        swipeDiscoverySuppressed={Boolean(props.swipeDiscoverySuppressed || dragProgress > 0.02)}
+        swipeDiscoverySuppressed={Boolean(props.swipeDiscoverySuppressed || pageProgress > 0.02)}
       />
     </div>
   )

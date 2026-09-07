@@ -10,14 +10,16 @@ export const FEED_READER_CSS_VARS = {
   '--reader-fold-shadow': 'rgba(0,0,0,0.55)',
   /** Existing NaHaber brand red from feedCardSkins */
   '--reader-accent': '#e11d2e',
-  '--reader-duration': '320ms',
+  '--reader-duration': '300ms',
   '--reader-body-size': '1.125rem',
   '--reader-body-leading': '1.66',
   '--reader-prose-max': '42rem',
   '--reader-footer-clearance': 'calc(5.75rem + env(safe-area-inset-bottom, 0px))',
 } as const
 
-export const FEED_READER_DURATION_MS = 320
+export const FEED_READER_DURATION_MS = 300
+/** iOS-like deceleration for page open/close completion. */
+export const FEED_READER_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)'
 
 /** Bounded hero load before FAILED_MEDIA (ms). */
 export const FEED_READER_HERO_LOAD_TIMEOUT_MS = 4500

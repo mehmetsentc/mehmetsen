@@ -102,9 +102,9 @@ describe('P18 Feed V2 card fit matrix', () => {
   })
 })
 
-describe('P18 swipe discovery V5 visibility', () => {
-  it('uses v5 key; prior v1/v2/v3 learned cannot suppress', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
+describe('P18 swipe discovery V6 visibility', () => {
+  it('uses v6 key; prior v1/v2/v3 learned cannot suppress', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
@@ -126,8 +126,8 @@ describe('P18 swipe discovery V5 visibility', () => {
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('left-1/2')
-    expect(coach).toContain('data-swipe-discovery-v5')
-    expect(coach).not.toContain('preventDefault')
+    expect(coach).toContain('data-swipe-discovery-v6')
+    expect(coach).toContain('feed-swipe-discovery-affordance')
   })
 
   it('eligible across multiple cards before learned; Haberi Oku does not mark', () => {
@@ -141,12 +141,12 @@ describe('P18 swipe discovery V5 visibility', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
     expect(client).toContain('readerDebugQuery')
   })
 
   it('TRACE exposes coach debug + Replay', () => {
-    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 5 })
+    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 6 })
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

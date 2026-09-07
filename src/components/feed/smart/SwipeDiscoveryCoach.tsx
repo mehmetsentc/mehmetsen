@@ -1,11 +1,9 @@
 'use client'
 
 /**
- * LEFT-swipe discovery hint on Feed cards (V5).
- * pointer-events: none — must never intercept gestures.
- *
- * Stack ABOVE social rail (z-35 > z-30). Place left-of-center so the right
- * social dock cannot cover the cue on tall phones.
+ * LEFT "Haberi Aç" affordance (V6) — visual cue + tappable open authority.
+ * Only the chip button receives pointer events (min 44×44).
+ * Does NOT cover the card with a transparent overlay.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -28,9 +26,16 @@ type Props = {
   active: boolean
   suppressed?: boolean
   onCardNudge?: (px: number) => void
+  /** Same authority as successful LEFT swipe → openReader. */
+  onAffordanceActivate?: () => void
 }
 
-export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }: Props) {
+export function SwipeDiscoveryCoach({
+  active,
+  suppressed = false,
+  onCardNudge,
+  onAffordanceActivate,
+}: Props) {
   const [visible, setVisible] = useState(false)
   const [travel, setTravel] = useState(0)
   const [reduced, setReduced] = useState(false)
@@ -123,15 +128,6 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
 
       if (reduced) {
         setTravel(-Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
-        timers.push(
-          window.setTimeout(() => {
-            if (cancelled) return
-            setVisible(false)
-            setTravel(0)
-            setPhase('done')
-            onCardNudgeRef.current?.(0)
-          }, SWIPE_DISCOVERY_HINT_MS)
-        )
         return
       }
 
@@ -201,9 +197,8 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
     <div
       ref={rootRef}
       data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v5="1"
+      data-swipe-discovery-v6="1"
       data-swipe-discovery-phase={phase}
-      aria-hidden
       className="pointer-events-none absolute left-[28%] top-[40%] z-[35] -translate-x-1/2 -translate-y-1/2 max-[820px]:left-1/2"
       style={{
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
@@ -213,8 +208,17 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         opacity: 1,
       }}
     >
-      <div
-        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px]"
+      <button
+        type="button"
+        data-testid="feed-swipe-discovery-affordance"
+        data-no-reader-gesture="1"
+        aria-label="Haberi Aç — sola kaydır veya dokun"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onAffordanceActivate?.()
+        }}
+        className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation items-center justify-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98]"
         style={{
           boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
         }}
@@ -236,7 +240,7 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         >
           <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
         </span>
-      </div>
+      </button>
     </div>
   )
 }

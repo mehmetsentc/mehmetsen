@@ -96,9 +96,11 @@ interface FullscreenNewsCardProps {
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
-  /** Subtle LEFT-swipe discovery hint — decorative only. */
+  /** LEFT Haberi Aç affordance — visual + tappable open. */
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
+  /** Same openReader authority as successful LEFT swipe. */
+  onSwipeAffordanceActivate?: () => void
   /** When set, DiscoveryRail opens via Feed Reader authority instead of /haber Link. */
   onDiscoveryArticleOpen?: (item: {
     articleId: string
@@ -147,6 +149,7 @@ export function FullscreenNewsCard({
   discoveryExcludeIds,
   showSwipeDiscoveryCoach = false,
   swipeDiscoverySuppressed = false,
+  onSwipeAffordanceActivate,
   onDiscoveryArticleOpen,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
@@ -509,6 +512,7 @@ export function FullscreenNewsCard({
             active={isActive}
             suppressed={swipeDiscoverySuppressed}
             onCardNudge={setSwipeCoachNudgePx}
+            onAffordanceActivate={onSwipeAffordanceActivate}
           />
         ) : null}
 

@@ -61,6 +61,7 @@ import {
 import {
   FEED_READER_CSS_VARS,
   FEED_READER_DURATION_MS,
+  FEED_READER_EASING,
   FEED_READER_HERO_LOAD_TIMEOUT_MS,
 } from '@/lib/feed/reader/tokens'
 import {
@@ -125,7 +126,7 @@ type Props = {
   onCommentClick?: () => void
   onLockFeedScroll?: (locked: boolean) => void
   feedSessionId?: string | null
-  openSource?: 'swipe' | 'haberi_oku' | 'unknown'
+  openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -916,9 +917,9 @@ export function FeedArticleReader({
 
   const transitionOn =
     (animating || progressAnimating) && !reducedMotion && internalProgress === null
-      ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
+      ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
       : animating && !reducedMotion
-        ? `transform ${FEED_READER_DURATION_MS}ms ease, opacity ${FEED_READER_DURATION_MS}ms ease`
+        ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
         : 'none'
 
   const styleVars = {
@@ -966,7 +967,7 @@ export function FeedArticleReader({
           ...styleVars,
           background: 'var(--reader-page-bg)',
           color: 'var(--reader-page-text)',
-          boxShadow: progress > 0.2 ? `-12px 0 28px var(--reader-fold-shadow)` : undefined,
+          boxShadow: progress > 0.12 ? `-16px 0 32px var(--reader-fold-shadow)` : undefined,
           // While Reader owns the surface, keep vertical scroll but block Safari's
           // horizontal history swipe from co-owning the same RIGHT-close gesture.
           ...(committed
@@ -979,7 +980,11 @@ export function FeedArticleReader({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        <ReaderReturnCoach active={committed && !coachClosing} suppressed={!committed || coachClosing} />
+        <ReaderReturnCoach
+          active={committed && !coachClosing}
+          suppressed={!committed || coachClosing}
+          onAffordanceActivate={() => beginClose('gesture')}
+        />
 
         <header
           className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-1.5 pt-[max(0.4rem,env(safe-area-inset-top))]"

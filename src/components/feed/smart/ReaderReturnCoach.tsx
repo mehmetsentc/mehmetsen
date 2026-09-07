@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * RIGHT-swipe return hint inside FeedArticleReader.
- * pointer-events: none — never intercepts gestures or history.
+ * RIGHT "Akışa Dön" affordance — visual cue + tappable close authority.
+ * Only the chip button receives pointer events (min 44×44).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -23,9 +23,11 @@ import {
 type Props = {
   active: boolean
   suppressed?: boolean
+  /** Same authority as successful RIGHT swipe → closeReader. */
+  onAffordanceActivate?: () => void
 }
 
-export function ReaderReturnCoach({ active, suppressed = false }: Props) {
+export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActivate }: Props) {
   const [visible, setVisible] = useState(false)
   const [travel, setTravel] = useState(0)
   const [reduced, setReduced] = useState(false)
@@ -113,14 +115,6 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
 
       if (reduced) {
         setTravel(Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
-        timers.push(
-          window.setTimeout(() => {
-            if (cancelled) return
-            setVisible(false)
-            setTravel(0)
-            setPhase('done')
-          }, READER_RETURN_COACH_HINT_MS)
-        )
         return
       }
 
@@ -187,9 +181,8 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
     <div
       ref={rootRef}
       data-testid="reader-return-coach"
-      data-reader-return-coach-v2="1"
+      data-reader-return-coach-v3="1"
       data-reader-return-phase={phase}
-      aria-hidden
       className="pointer-events-none absolute left-1/2 top-[38%] z-[50] -translate-x-1/2 -translate-y-1/2"
       style={{
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
@@ -199,8 +192,16 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
         opacity: 1,
       }}
     >
-      <div
-        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px]"
+      <button
+        type="button"
+        data-testid="reader-return-affordance"
+        aria-label="Akışa Dön — sağa kaydır veya dokun"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onAffordanceActivate?.()
+        }}
+        className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation items-center justify-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98]"
         style={{
           boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
         }}
@@ -222,7 +223,7 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
           <span>›</span>
           <span className="text-[#e11d2e]">›</span>
         </span>
-      </div>
+      </button>
     </div>
   )
 }

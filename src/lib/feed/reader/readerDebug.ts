@@ -85,7 +85,7 @@ export type FeedReaderDebugSnapshot = {
   capabilityAuthenticated: boolean | null
   capabilityErrorCode: string | null
   globalDefault: boolean | null
-  lastReadAction: 'button' | 'gesture' | null
+  lastReadAction: 'button' | 'gesture' | 'swipe_affordance' | null
   lastReadArticleSlug: string | null
   lastReadDecision: FeedReaderLastReadDecision | null
   lastFallbackReason: FeedReaderFallbackReason

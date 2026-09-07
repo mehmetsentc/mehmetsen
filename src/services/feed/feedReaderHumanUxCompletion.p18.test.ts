@@ -135,8 +135,8 @@ describe('P18 header + sidebar', () => {
 })
 
 describe('P18 LEFT + RIGHT coaches', () => {
-  it('LEFT coach V5: prior keys cannot suppress; eligible until learned', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
+  it('LEFT coach V6: prior keys cannot suppress; eligible until learned', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V3, JSON.stringify({ learned: true, shownCount: 3 }))
@@ -161,18 +161,18 @@ describe('P18 LEFT + RIGHT coaches', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v5')
+    expect(coach).toContain('data-swipe-discovery-v6')
     expect(coach).toContain('isCoachPaintedInViewport')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
     expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
   })
 
   it('RIGHT coach: mounts in Reader; learn only on gesture close', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v2')
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v3')
     expect(shouldShowReaderReturnCoach()).toBe(true)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeLessThanOrEqual(48)

@@ -1,21 +1,23 @@
 /**
- * Device-local RIGHT-swipe return coach inside FeedArticleReader.
- * Presentation only — never owns history/gestures.
+ * RIGHT "Akışa Dön" return affordance — Reader → Feed.
+ * Interactive hit target. Learned only after RIGHT swipe OR affordance TAP.
+ * Back Arrow does NOT mark learned.
  */
 
-export const READER_RETURN_COACH_STORAGE_KEY = 'nahaber.readerReturnCoach.v2'
+export const READER_RETURN_COACH_STORAGE_KEY = 'nahaber.readerReturnCoach.v3'
+export const READER_RETURN_COACH_STORAGE_KEY_V2 = 'nahaber.readerReturnCoach.v2'
 export const READER_RETURN_COACH_STORAGE_KEY_V1 = 'nahaber.readerReturnCoach.v1'
-export const READER_RETURN_COACH_SETTLE_MS = 1600
+export const READER_RETURN_COACH_SETTLE_MS = 1500
 export const READER_RETURN_COACH_TRAVEL_PX = 44
 export const READER_RETURN_COACH_ANIM_MS = 900
 export const READER_RETURN_COACH_HINT_MS = 4200
 export const READER_RETURN_COACH_REPEAT_COUNT = 2
-export const READER_RETURN_COACH_MAX_SHOWS = 48
+export const READER_RETURN_COACH_MAX_SHOWS = Number.MAX_SAFE_INTEGER
 
 export type ReaderReturnCoachState = {
   learned: boolean
   shownCount: number
-  version?: 2
+  version?: 3
 }
 
 export type ReaderReturnCoachPhase =
@@ -38,18 +40,18 @@ function storage(): Storage | null {
 
 export function readReaderReturnCoachState(): ReaderReturnCoachState {
   const ss = storage()
-  if (!ss) return { learned: false, shownCount: 0, version: 2 }
+  if (!ss) return { learned: false, shownCount: 0, version: 3 }
   try {
     const raw = ss.getItem(READER_RETURN_COACH_STORAGE_KEY)
-    if (!raw) return { learned: false, shownCount: 0, version: 2 }
+    if (!raw) return { learned: false, shownCount: 0, version: 3 }
     const parsed = JSON.parse(raw) as Partial<ReaderReturnCoachState>
     return {
       learned: Boolean(parsed.learned),
       shownCount: typeof parsed.shownCount === 'number' ? parsed.shownCount : 0,
-      version: 2,
+      version: 3,
     }
   } catch {
-    return { learned: false, shownCount: 0, version: 2 }
+    return { learned: false, shownCount: 0, version: 3 }
   }
 }
 
@@ -59,36 +61,35 @@ export function writeReaderReturnCoachState(next: ReaderReturnCoachState): void 
   try {
     ss.setItem(
       READER_RETURN_COACH_STORAGE_KEY,
-      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 2 })
+      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 3 })
     )
   } catch {
     // private mode / quota
   }
 }
 
-/** Only successful RIGHT gesture → Feed may mark learned. Back arrow must not. */
 export function markReaderReturnCoachLearned(): void {
   const cur = readReaderReturnCoachState()
-  writeReaderReturnCoachState({ learned: true, shownCount: cur.shownCount, version: 2 })
+  writeReaderReturnCoachState({ learned: true, shownCount: cur.shownCount, version: 3 })
 }
 
 export function resetReaderReturnCoachPresentation(): void {
-  writeReaderReturnCoachState({ learned: false, shownCount: 0, version: 2 })
+  writeReaderReturnCoachState({ learned: false, shownCount: 0, version: 3 })
 }
 
+/** Eligible until REAL right-return learn. shown ≠ learned. */
 export function shouldShowReaderReturnCoach(opts?: {
   state?: ReaderReturnCoachState
   maxShows?: number
 }): boolean {
   const state = opts?.state ?? readReaderReturnCoachState()
-  if (state.learned) return false
-  const maxShows = opts?.maxShows ?? READER_RETURN_COACH_MAX_SHOWS
-  return state.shownCount < maxShows
+  void opts?.maxShows
+  return !state.learned
 }
 
 export function recordReaderReturnCoachShown(state?: ReaderReturnCoachState): ReaderReturnCoachState {
   const cur = state ?? readReaderReturnCoachState()
-  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 2 as const }
+  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 3 as const }
   writeReaderReturnCoachState(next)
   return next
 }

@@ -46,7 +46,7 @@ export type ReaderNavTraceEvent = {
   readerMounted: boolean
   feedMounted: boolean
   readerState: 'open' | 'closed' | 'closing'
-  openSource?: 'swipe' | 'haberi_oku' | 'unknown'
+  openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
   closeSource?: 'swipe' | 'browser_back' | 'ui' | 'popstate' | 'escape'
   articleId?: string | null
   feedIndex?: number | null

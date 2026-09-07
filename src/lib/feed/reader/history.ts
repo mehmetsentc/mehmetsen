@@ -36,6 +36,9 @@ export type ReaderHistoryClosePlan = 'history_back' | 'replace_unowned_feed' | '
  *
  * foreignPopDuringClose: Safari/system already popped while closing → never back again.
  * stillOnReaderEntry: current URL still has ?reader= (Reader history entry still current).
+ *
+ * Note: happy-path close now plans replace_unowned_feed only. history_back in
+ * `planned` is legacy/diagnostic — resolve still remaps it to replace when unsafe.
  */
 export function resolveFeedOwnerHistorySync(opts: {
   planned: ReaderHistoryClosePlan
@@ -54,11 +57,9 @@ export function resolveFeedOwnerHistorySync(opts: {
 
   if (opts.planned === 'none') return 'none'
 
+  // Legacy history_back plans are remapped: only replace/none — never back.
   if (opts.planned === 'history_back') {
-    // Only back when we are still sitting on the Reader history entry.
-    if (onFeed && readerSlug) return 'history_back'
-    // Already on Feed without reader query, or left Feed somehow — replace/repair.
-    if (onFeed) return readerSlug ? 'replace_unowned_feed' : 'none'
+    if (onFeed && !readerSlug) return 'none'
     return 'replace_unowned_feed'
   }
 
@@ -316,7 +317,15 @@ export function claimUnownedReaderHistory(opts: {
 
 /**
  * Reason-aware history mutation for Reader close.
- * Ownership is current history.state: matching readerOpenId AND ownsFeedReturn.
+ *
+ * HUMAN NO-GO (870a330): owned opens previously planned history_back().
+ * On WebKit, deferred history.back() after Safari already popped the Reader
+ * entry double-pops past /feed-v2 → HOME. Rescue was a post-flash repair.
+ *
+ * Happy path for gesture / button / affordance / escape:
+ * replace current entry → /feed-v2 (strip ?reader=). NEVER history.back().
+ *
+ * Browser Back (reason=history): UI-only — browser already popped.
  */
 export function planReaderHistoryClose(opts: {
   reason: FeedReaderCloseReason
@@ -329,17 +338,12 @@ export function planReaderHistoryClose(opts: {
 }): ReaderHistoryClosePlan {
   if (opts.reason === 'history') return 'none'
   if ((opts.phase ?? 'active') !== 'active') return 'none'
-  if (!opts.readerOpenId) return 'replace_unowned_feed'
-  if (
-    canHistoryBackForOpen({
-      currentState: opts.currentState,
-      readerOpenId: opts.readerOpenId,
-      feedSessionId: opts.feedSessionId,
-      phase: opts.phase ?? 'active',
-    })
-  ) {
-    return 'history_back'
-  }
+  // Always replace — never history.back() as the intentional close plan.
+  // canHistoryBackForOpen remains for diagnostics / TRACE only.
+  void opts.currentState
+  void opts.readerOpenId
+  void opts.feedSessionId
+  void opts.ownsFeedReturn
   return 'replace_unowned_feed'
 }
 
