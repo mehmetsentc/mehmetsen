@@ -309,8 +309,9 @@ function localFeature(row: FeedCandidateRow, ctx: FeedUserContext, mode: FeedMod
   const rowCity = row.citySlug?.trim().toLowerCase()
   if (userDistrict && rowDistrict && userDistrict === rowDistrict) return 1
   if (userCity && rowCity && userCity === rowCity) return 0.85
+  // LOCAL pool is city-scoped at fetch — keep soft affinity for that pool only.
   if (row.source === 'LOCAL') return 0.7
-  if (rowCity) return 0.35
+  // Do not soft-boost ordinary foreign-city inventory in Sana Özel / NFRank.
   return 0
 }
 

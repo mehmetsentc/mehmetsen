@@ -50,8 +50,10 @@ function localScore(row: FeedCandidateRow, ctx: FeedUserContext, mode: FeedMode)
   const userCity = ctx.city?.trim().toLowerCase()
   const rowCity = row.citySlug?.trim().toLowerCase()
   if (userCity && rowCity && userCity === rowCity) return 0.95
+  // LOCAL pool is already city-scoped at fetch — keep affinity for that pool only.
   if (row.source === 'LOCAL') return 0.75
-  if (rowCity) return 0.4
+  // Ordinary foreign-city tags must not soft-boost Sana Özel (no filler affinity).
+  // National/world rows without citySlug stay 0; personal interest / follow use other signals.
   return 0
 }
 

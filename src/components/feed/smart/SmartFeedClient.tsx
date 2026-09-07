@@ -236,18 +236,31 @@ export function SmartFeedClient({
       category: searchParams.get('category'),
     }).mode
   })
-  const [category, setCategory] = useState<string | null>(() =>
-    parseFeedV2TabFromSearch({
+  const [category, setCategory] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const restore = readFeedRestore()
+      if (restore?.pending && restore.category !== undefined) return restore.category ?? null
+    }
+    return parseFeedV2TabFromSearch({
       mode: searchParams.get('mode'),
       category: searchParams.get('category'),
     }).category
-  )
-  const [activeTabId, setActiveTabId] = useState(() =>
-    parseFeedV2TabFromSearch({
+  })
+  const [activeTabId, setActiveTabId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const restore = readFeedRestore()
+      if (restore?.pending) {
+        return parseFeedV2TabFromSearch({
+          mode: restore.mode,
+          category: restore.category ?? null,
+        }).tabId
+      }
+    }
+    return parseFeedV2TabFromSearch({
       mode: searchParams.get('mode'),
       category: searchParams.get('category'),
     }).tabId
-  )
+  })
   const [localCitySlug, setLocalCitySlug] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       return readLocalNewsCitySlug() || initialCitySlug || null
@@ -301,6 +314,14 @@ export function SmartFeedClient({
   const [actionLoading, setActionLoading] = useState<Record<string, 'like' | 'save'>>({})
   const restoreAppliedRef = useRef(false)
   const pendingRestoreScrollRef = useRef<number | null>(null)
+  /** Qualified impressions already fired this Feed session (warm restore must not re-fire). */
+  const impressedArticleIdsRef = useRef<Set<string>>(new Set())
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const categoryRef = useRef(category)
+  categoryRef.current = category
+  const authUidRef = useRef<string | null>(authUser?.uid ?? null)
+  authUidRef.current = authUser?.uid ?? null
   const cardHeightRef = useRef(0)
   const programmaticScrollRef = useRef(false)
   const [cardHeightPx, setCardHeightPx] = useState(0)
@@ -339,6 +360,26 @@ export function SmartFeedClient({
       })
     }
     return () => {
+      // Warm Feed V2 tab return: persist snapshot on route exit (Profile/Search/etc).
+      const list = itemsRef.current
+      const idx = activeIndexRef.current
+      const current = list[idx]
+      if (current && list.length > 0) {
+        saveFeedRestore({
+          mode: modeRef.current,
+          category: categoryRef.current,
+          articleId: current.articleId,
+          cursor: cursorRef.current,
+          hasMore: hasMoreRef.current,
+          scrollIndex: idx,
+          items: list,
+          timestamp: Date.now(),
+          pending: true,
+          source: 'route_exit',
+          userKey: authUidRef.current ?? 'guest',
+          impressedArticleIds: [...impressedArticleIdsRef.current],
+        })
+      }
       if (readerDebugQuery) {
         recordReaderNavTrace({
           type: 'feed_unmount',
@@ -350,8 +391,8 @@ export function SmartFeedClient({
           readerMounted: false,
           feedMounted: false,
           readerState: 'closed',
-          mode,
-          category,
+          mode: modeRef.current,
+          category: categoryRef.current,
         })
       }
       // Keep the trace enabled after Feed unmount so /feed-v2 → / remains inspectable.
@@ -637,7 +678,8 @@ export function SmartFeedClient({
       nextCursor?: string | null,
       targetMode?: FeedMode,
       forceAuthRefresh = false,
-      targetCategory?: string | null
+      targetCategory?: string | null,
+      quiet = false
     ) => {
       const activeMode = targetMode ?? mode
       const activeCategory = targetCategory !== undefined ? targetCategory : category
@@ -659,7 +701,7 @@ export function SmartFeedClient({
       const signal = !append ? abortControllerRef.current?.signal : undefined
 
       if (append) setLoadingMore(true)
-      else {
+      else if (!quiet) {
         setLoading(true)
         setErrorState(null)
       }
@@ -731,11 +773,24 @@ export function SmartFeedClient({
         if (genId !== generationIdRef.current || !lastPage) return
 
         setErrorState(null)
+        const quietKeepId =
+          !append && quiet ? itemsRef.current[activeIndexRef.current]?.articleId ?? null : null
         const base = append ? itemsRef.current : []
         const merged = [...base]
         for (const item of acceptedIncoming) {
           if (merged.some((existing) => feedItemsOverlap(existing, item))) continue
           merged.push(item)
+        }
+        const quietMiss =
+          Boolean(quiet && restoreAppliedRef.current && quietKeepId) &&
+          !merged.some((i) => i.articleId === quietKeepId)
+        // Stale-while-revalidate: if active card vanished from fresh page, keep snapshot.
+        if (quietMiss) {
+          setCursor(lastPage.nextCursor)
+          cursorRef.current = lastPage.nextCursor
+          setHasMore(Boolean(lastPage.hasMore && lastPage.nextCursor))
+          hasMoreRef.current = Boolean(lastPage.hasMore && lastPage.nextCursor)
+          return
         }
         const added = merged.length - base.length
         itemsRef.current = merged
@@ -772,22 +827,33 @@ export function SmartFeedClient({
         setHasMore(nextHasMore)
         hasMoreRef.current = nextHasMore
         if (!append) {
-          const restore = readFeedRestore()
-          const restoreId = searchParams.get('restore') ?? restore?.articleId
-          if (restoreId) {
-            let idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
-            if (idx < 0 && typeof restore?.scrollIndex === 'number') {
-              idx = Math.min(restore.scrollIndex, Math.max(0, acceptedIncoming.length - 1))
+          if (quiet && restoreAppliedRef.current) {
+            if (quietKeepId) {
+              const idx = merged.findIndex((i) => i.articleId === quietKeepId)
+              if (idx >= 0) {
+                setActiveIndex(idx)
+                activeIndexRef.current = idx
+                pendingRestoreScrollRef.current = idx
+              }
             }
-            if (idx >= 0) {
-              setActiveIndex(idx)
-              pendingRestoreScrollRef.current = idx
-              clearFeedRestore()
+          } else {
+            const restore = readFeedRestore()
+            const restoreId = searchParams.get('restore') ?? restore?.articleId
+            if (restoreId) {
+              let idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
+              if (idx < 0 && typeof restore?.scrollIndex === 'number') {
+                idx = Math.min(restore.scrollIndex, Math.max(0, acceptedIncoming.length - 1))
+              }
+              if (idx >= 0) {
+                setActiveIndex(idx)
+                pendingRestoreScrollRef.current = idx
+                clearFeedRestore()
+              } else {
+                setActiveIndex(0)
+              }
             } else {
               setActiveIndex(0)
             }
-          } else {
-            setActiveIndex(0)
           }
         }
       } catch (err: unknown) {
@@ -1050,11 +1116,20 @@ export function SmartFeedClient({
   useEffect(() => {
     // Article detail → back: hydrate snapshot instead of re-ranking from card 0.
     if (!restoreAppliedRef.current) {
-      const pending = consumePendingFeedRestore()
+      const pending = consumePendingFeedRestore(
+        authLoading ? undefined : { userKey: authUser?.uid ?? 'guest' }
+      )
       if (pending) {
         restoreAppliedRef.current = true
         personalizedOnceRef.current = true
         setMode(pending.mode)
+        if (pending.category !== undefined) setCategory(pending.category ?? null)
+        setActiveTabId(
+          parseFeedV2TabFromSearch({
+            mode: pending.mode,
+            category: pending.category ?? null,
+          }).tabId
+        )
         setItems(pending.items ?? [])
         setCursor(pending.cursor ?? null)
         cursorRef.current = pending.cursor ?? null
@@ -1063,8 +1138,13 @@ export function SmartFeedClient({
         setActiveIndex(pending.scrollIndex)
         activeIndexRef.current = pending.scrollIndex
         pendingRestoreScrollRef.current = pending.scrollIndex
+        impressedArticleIdsRef.current = new Set(pending.impressedArticleIds ?? [])
         setLoading(false)
         clearFeedRestore()
+        // Background revalidate without blocking warm first paint / yanking to card 0.
+        window.setTimeout(() => {
+          void loadPage(false, null, pending.mode, false, pending.category ?? null, true)
+        }, 0)
         return
       }
     } else {
@@ -1299,6 +1379,8 @@ export function SmartFeedClient({
 
   const recordImpression = useCallback(
     (item: FeedItemDto) => {
+      if (impressedArticleIdsRef.current.has(item.articleId)) return
+      impressedArticleIdsRef.current.add(item.articleId)
       const guestSeen = readGuestSeen()
       for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
       writeGuestSeen(guestSeen)
@@ -1903,6 +1985,7 @@ export function SmartFeedClient({
       setReaderSession(null)
       saveFeedRestore({
         mode,
+        category,
         articleId: item.articleId,
         cursor,
         hasMore,
@@ -1910,6 +1993,9 @@ export function SmartFeedClient({
         items,
         timestamp: Date.now(),
         pending: true,
+        source: 'canonical',
+        userKey: authUser?.uid ?? 'guest',
+        impressedArticleIds: [...impressedArticleIdsRef.current],
       })
       patchReaderDebug({
         routerPushCanonicalCalled: true,

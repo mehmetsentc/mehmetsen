@@ -480,21 +480,26 @@ export class FeedCandidateService {
 
       if (categoryNative) {
         // Indexed: status + categoryId + publishedAt (see firestore.indexes.json).
+        // Fair quota per categoryId: a dense parent (e.g. spor) must not fill
+        // `needed` before children (futbol, …) are queried.
         const merged: FeedCandidateRow[] = []
         const mergedSeen = new Set<string>()
         let usedGlobalFallback = false
+        const perCategoryQuota = Math.max(
+          4,
+          Math.ceil(needed / Math.max(1, categoryIds.length))
+        )
 
         for (const catId of categoryIds) {
-          if (merged.length >= needed) break
           const bucket: FeedCandidateRow[] = []
           let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
           let attempts = 0
           try {
-            while (bucket.length + merged.length < needed && attempts < maxAttempts) {
+            while (bucket.length < perCategoryQuota && attempts < maxAttempts) {
               attempts += 1
               const batchSize = Math.min(
                 FS_SUPPLEMENT_BATCH,
-                Math.max(needed - merged.length - bucket.length, 20) * 2
+                Math.max(perCategoryQuota - bucket.length, 20) * 2
               )
               let q: FirebaseFirestore.Query = db
                 .collection(Collections.NEWS)
@@ -514,7 +519,7 @@ export class FeedCandidateService {
                 if (!row) continue
                 seen.add(doc.id)
                 bucket.push(row)
-                if (bucket.length + merged.length >= needed) break
+                if (bucket.length >= perCategoryQuota) break
               }
               if (snap.docs.length < batchSize) break
             }
@@ -632,17 +637,33 @@ export class FeedCandidateService {
   ): Promise<FeedCandidateRow[]> {
     // Fill toward the SQL pool target (not just page limit) so ranking windows stay deep.
     const target = Math.max(opts.limit, poolLimitFor(opts, Math.min(opts.limit * 2, DEFAULT_POOL_SIZE)))
-    if (primary.length >= target) return primary.slice(0, target)
+    const categoryIds = resolveOptsCategoryIds(opts)
+    const primaryCats = new Set(
+      primary.map((r) => String(r.category ?? '').toLowerCase()).filter(Boolean)
+    )
+    // Parent chip expand (spor→futbol…): dense PG parent tags can fill `target`
+    // while fresher leaf inventory lives only in LEGACY_ALLOWED FS. Never skip
+    // FS when expanded ids are underrepresented in the PG primary window.
+    const categoryHierarchyUnderfilled =
+      categoryIds.length > 1 &&
+      categoryIds.some((id) => id !== categoryIds[0] && !primaryCats.has(id))
+
+    if (primary.length >= target && !categoryHierarchyUnderfilled) {
+      return primary.slice(0, target)
+    }
 
     const seed = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
     for (const row of primary) seed.add(row.articleId)
     const exclude = await feedSeenService.expandArticleIdentities(seed)
 
-    const remaining = target - primary.length
+    const remaining = categoryHierarchyUnderfilled
+      ? Math.max(target - primary.length, Math.ceil(target * 0.5))
+      : target - primary.length
     const forceOlder =
       Boolean(opts.publishedBefore) ||
       exclude.size >= 15 ||
-      primary.length === 0
+      primary.length === 0 ||
+      categoryHierarchyUnderfilled
     const fallback = await this.fetchFirestoreFallback(source, {
       ...opts,
       excludeArticleIds: exclude,
@@ -660,6 +681,7 @@ export class FeedCandidateService {
       target,
       olderWindow: forceOlder,
       exclude: exclude.size,
+      categoryHierarchyUnderfilled,
     })
 
     // Collapse PG/FS twins if canonicalize left any exact overlap.
@@ -670,6 +692,11 @@ export class FeedCandidateService {
       seen.add(row.articleId)
       merged.push(row)
     }
+    merged.sort((a, b) => {
+      const dt = b.publishedAt.getTime() - a.publishedAt.getTime()
+      if (dt !== 0) return dt
+      return a.articleId.localeCompare(b.articleId)
+    })
     return merged.slice(0, target)
   }
 
