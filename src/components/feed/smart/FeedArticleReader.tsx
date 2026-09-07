@@ -110,6 +110,11 @@ type Props = {
   /** Parent animating Haberi Oku / cancel — Reader mirrors without fighting. */
   progressAnimating?: boolean
   onClose: (reason: FeedReaderCloseReason) => void
+  /**
+   * Keep Feed underlay transform in sync during Reader→Feed drag / close ramp.
+   * Without this, parent stays at progress=1 while Reader animates internally.
+   */
+  onVisualProgress?: (progress: number, opts?: { animating?: boolean }) => void
   onOpenTelemetry?: () => void
   onCloseTelemetry?: (payload: FeedReaderTelemetryPayload) => void
   onBodyDebug?: (state: {
@@ -141,6 +146,7 @@ export function FeedArticleReader({
   visualProgress,
   progressAnimating = false,
   onClose,
+  onVisualProgress,
   onOpenTelemetry,
   onCloseTelemetry,
   onBodyDebug,
@@ -187,6 +193,23 @@ export function FeedArticleReader({
     document.documentElement.classList.remove('smart-feed-reader-open')
     document.body.classList.remove('smart-feed-reader-open')
   }
+
+  // Lock site chrome for the full open ramp (not only after commit) so Global Nav
+  // cannot leak beside a half-turned Reader page on iOS.
+  useEffect(() => {
+    document.documentElement.classList.add('smart-feed-reader-open')
+    document.body.classList.add('smart-feed-reader-open')
+    return () => {
+      clearReaderChromeLock()
+    }
+  }, [])
+
+  const onVisualProgressRef = useRef(onVisualProgress)
+  onVisualProgressRef.current = onVisualProgress
+
+  const syncVisualProgress = useCallback((next: number, animating?: boolean) => {
+    onVisualProgressRef.current?.(next, animating === undefined ? undefined : { animating })
+  }, [])
 
   /** Internal progress only while closing or Reader→Feed drag. */
   const [internalProgress, setInternalProgress] = useState<number | null>(null)
@@ -543,8 +566,10 @@ export function FeedArticleReader({
       const from = progressRef.current
       setInternalProgress(from)
       setAnimating(true)
+      syncVisualProgress(from, true)
       const runCloseAnim = () => {
         setInternalProgress(0)
+        syncVisualProgress(0, true)
         window.setTimeout(() => {
           setAnimating(false)
           finishCloseUi(reason)
@@ -553,7 +578,7 @@ export function FeedArticleReader({
       if (reducedMotion) runCloseAnim()
       else requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))
     },
-    [committed, feedSessionId, finishCloseUi, item.articleId, item.category, reducedMotion]
+    [committed, feedSessionId, finishCloseUi, item.articleId, item.category, reducedMotion, syncVisualProgress]
   )
 
   const beginCloseRef = useRef(beginClose)
@@ -567,11 +592,13 @@ export function FeedArticleReader({
     if (closingRef.current) return
     setAnimating(true)
     setInternalProgress(1)
+    syncVisualProgress(1, true)
     window.setTimeout(() => {
       setAnimating(false)
       setInternalProgress(null)
+      syncVisualProgress(1, false)
     }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
-  }, [reducedMotion])
+  }, [reducedMotion, syncVisualProgress])
 
   const loadBody = useCallback(async () => {
     const gen = ++fetchGenRef.current
@@ -867,7 +894,9 @@ export function FeedArticleReader({
     if (d.axis !== 'horizontal') return
     e.preventDefault()
     const p = 1 - readerToFeedProgress(dx, window.innerWidth)
-    setInternalProgress(Math.min(1, Math.max(0.05, p)))
+    const next = Math.min(1, Math.max(0.05, p))
+    setInternalProgress(next)
+    syncVisualProgress(next, false)
     d.lastX = e.clientX
     d.lastT = performance.now()
   }
@@ -1011,17 +1040,19 @@ export function FeedArticleReader({
         />
 
         <header
-          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-1.5 pt-[max(0.4rem,env(safe-area-inset-top))]"
+          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-2 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
           style={{ background: 'var(--reader-page-bg)' }}
+          data-testid="feed-reader-header"
         >
           <button
             type="button"
-            className="rounded-full p-1.5 text-[color:var(--reader-page-text)] hover:bg-white/10"
+            className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[color:var(--reader-page-text)] hover:bg-white/10"
             aria-label="Akışa dön"
             data-testid="feed-reader-close"
             onClick={() => beginClose('button')}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 shrink-0" />
+            <span className="text-[13px] font-semibold tracking-wide">Akışa Dön</span>
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-medium tracking-[0.04em] text-[color:var(--reader-page-muted)]">

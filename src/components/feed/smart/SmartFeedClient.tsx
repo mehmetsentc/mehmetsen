@@ -1810,11 +1810,11 @@ export function SmartFeedClient({
         progressAnimating: false,
         openSource,
       })
-      requestAnimationFrame(() => {
+      // Double-rAF: arm CSS transition at `from`, then drive to 1 — same-tick
+      // progressAnimating+progress:1 skips interpolation on WebKit/iOS.
+      const runOpenAnim = () => {
         setReaderSession((s) =>
-          s && s.item.articleId === item.articleId
-            ? { ...s, progress: 1, progressAnimating: true }
-            : s
+          s && s.item.articleId === item.articleId ? { ...s, progress: 1 } : s
         )
         readerOpenRampRef.current = window.setTimeout(() => {
           readerOpenRampRef.current = null
@@ -1824,6 +1824,14 @@ export function SmartFeedClient({
             return { ...s, progress: 1, committed: true, progressAnimating: false }
           })
         }, FEED_READER_DURATION_MS)
+      }
+      requestAnimationFrame(() => {
+        setReaderSession((s) =>
+          s && s.item.articleId === item.articleId
+            ? { ...s, progressAnimating: true }
+            : s
+        )
+        requestAnimationFrame(runOpenAnim)
       })
       patchReaderDebug({
         openReaderCalled: true,
@@ -2549,6 +2557,12 @@ export function SmartFeedClient({
                       ? readerSession.progress
                       : 0
                   }
+                  readerUnderlayAnimating={Boolean(
+                    !sheetMode &&
+                      readerSession &&
+                      readerSession.item.articleId === item.articleId &&
+                      readerSession.progressAnimating
+                  )}
                 />
               )
             })}
@@ -2630,6 +2644,16 @@ export function SmartFeedClient({
             progressAnimating={readerSession.progressAnimating}
             feedSessionId={feedSessionIdRef.current}
             openSource={readerSession.openSource ?? 'unknown'}
+            onVisualProgress={(progress, opts) => {
+              setReaderSession((s) => {
+                if (!s || s.item.articleId !== readerSession.item.articleId) return s
+                return {
+                  ...s,
+                  progress,
+                  progressAnimating: opts?.animating ?? s.progressAnimating,
+                }
+              })
+            }}
             onClose={() => {
               const idx = readerSession.index
               clearReaderOpenRamp()
@@ -2777,6 +2801,8 @@ function FeedCardWithImpression(props: {
   onSheetAffordanceActivate?: () => void
   /** Haberi Oku / committed open progress — drives Feed underlay page-turn. */
   readerUnderlayProgress?: number
+  /** Keep underlay CSS transition armed while progress animates to 0 on close. */
+  readerUnderlayAnimating?: boolean
 }) {
   const {
     onOpenReaderGesture,
@@ -2785,6 +2811,7 @@ function FeedCardWithImpression(props: {
     onOpenReaderCancel,
     onGesturePointerDebug,
     readerUnderlayProgress = 0,
+    readerUnderlayAnimating = false,
     ...cardProps
   } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
@@ -2839,7 +2866,9 @@ function FeedCardWithImpression(props: {
             : `translate3d(${pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
         opacity: reducedMotion ? 1 : 1 - pageProgress * 0.18,
         transition:
-          (snapAnimating || readerUnderlayProgress > 0) && !reducedMotion && dragProgress <= 0.02
+          (snapAnimating || readerUnderlayProgress > 0 || readerUnderlayAnimating) &&
+          !reducedMotion &&
+          dragProgress <= 0.02
             ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
             : snapAnimating && !reducedMotion
               ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`

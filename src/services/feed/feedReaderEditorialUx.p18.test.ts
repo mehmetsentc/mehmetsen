@@ -106,7 +106,7 @@ describe('P18 Reader editorial semantics + chrome', () => {
     expect(src).toContain('data-testid="feed-reader-footer"')
     expect(src).toContain('--reader-footer-clearance')
     expect(src).toContain('env(safe-area-inset-bottom)')
-    expect(src).toContain('env(safe-area-inset-top)')
+    expect(src).toContain('--mobile-sat,env(safe-area-inset-top,0px)')
     expect(src).not.toContain('pb-28')
   })
 
@@ -162,7 +162,7 @@ describe('P18 Reader editorial semantics + chrome', () => {
         readerOpenId: 'rdr_a',
         phase: 'active',
       })
-    ).toBe('history_back')
+    ).toBe('replace_unowned_feed')
     const ten = simulateReaderHistoryStack({
       initial: ['/', '/feed-v2'],
       openCloseCycles: 10,

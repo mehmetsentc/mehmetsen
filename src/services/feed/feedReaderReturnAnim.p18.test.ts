@@ -8,6 +8,10 @@ describe('P18 Feed Reader return animation + global ON', () => {
     join(process.cwd(), 'src/components/feed/smart/FeedArticleReader.tsx'),
     'utf8'
   )
+  const client = readFileSync(
+    join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
+    'utf8'
+  )
   const returnCoach = readFileSync(
     join(process.cwd(), 'src/components/feed/smart/ReaderReturnCoach.tsx'),
     'utf8'
@@ -26,6 +30,43 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(reader).toContain('requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))')
     expect(reader).toContain('progressRef.current')
     expect(reader).toContain("setInternalProgress(0)")
+  })
+
+  it('open ramp uses double-rAF: arm transition then drive progress to 1', () => {
+    expect(client).toContain('progressAnimating: true')
+    expect(client).toContain('requestAnimationFrame(runOpenAnim)')
+    const openIdx = client.indexOf('Haberi Oku / button: same page-turn authority')
+    const openBlock = client.slice(openIdx, openIdx + 1800)
+    expect(openBlock).toContain('runOpenAnim')
+    expect(openBlock).toMatch(
+      /progressAnimating:\s*true[\s\S]{0,400}requestAnimationFrame\(runOpenAnim\)/
+    )
+    expect(openBlock).toMatch(/runOpenAnim[\s\S]{0,200}progress:\s*1/)
+  })
+
+  it('close/drag syncs Feed underlay via onVisualProgress', () => {
+    expect(reader).toContain('onVisualProgress')
+    expect(reader).toContain('syncVisualProgress')
+    expect(client).toContain('onVisualProgress=')
+    expect(client).toContain('readerUnderlayAnimating')
+  })
+
+  it('Reader header keeps Akışa Dön clear of iOS status bar (--mobile-sat)', () => {
+    expect(reader).toContain('data-testid="feed-reader-header"')
+    expect(reader).toContain('data-testid="feed-reader-close"')
+    expect(reader).toContain('Akışa Dön')
+    expect(reader).toContain('--mobile-sat,env(safe-area-inset-top,0px)')
+    expect(reader).toMatch(
+      /pt-\[max\(0\.75rem,calc\(var\(--mobile-sat,env\(safe-area-inset-top,0px\)\)\+0\.35rem\)\)\]/
+    )
+    expect(reader).toMatch(/feed-reader-close[\s\S]{0,350}Akışa Dön/)
+  })
+
+  it('chrome lock applies on Reader mount (full open ramp), not only commit', () => {
+    expect(reader).toContain('smart-feed-reader-open')
+    expect(reader).toMatch(
+      /Lock site chrome for the full open ramp[\s\S]{0,220}smart-feed-reader-open/
+    )
   })
 
   it('return swipe captures pointer only after horizontal lock', () => {
