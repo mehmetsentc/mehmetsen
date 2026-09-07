@@ -2,7 +2,7 @@
 
 import { memo, useEffect, Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { AuthIntentRunner } from '@/components/social/AuthIntentRunner'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -29,6 +29,10 @@ import {
   resolveMobileNavVisible,
   resolveTopNavbarVisible,
 } from '@/lib/feed/reader/shellChrome'
+import {
+  clearFeedOwnerRescue,
+  consumeFeedOwnerRescue,
+} from '@/lib/feed/reader/feedOwnerRescue'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
 import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScrollHeader'
@@ -174,11 +178,25 @@ const LayoutShell = memo(function LayoutShell({
 
 function RouteEffects() {
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     logRouteChange(pathname)
     pauseAllPageVideos()
   }, [pathname])
+
+  // Reader close arm → if history skipped Feed onto HOME, restore owner.
+  useEffect(() => {
+    if (isFeedV2Pathname(pathname)) {
+      clearFeedOwnerRescue()
+      return
+    }
+    if (pathname !== '/' && pathname !== '') return
+    if (!consumeFeedOwnerRescue()) return
+    document.documentElement.classList.remove('smart-feed-reader-open')
+    document.body.classList.remove('smart-feed-reader-open')
+    router.replace('/feed-v2')
+  }, [pathname, router])
 
   return null
 }

@@ -19,6 +19,7 @@ import {
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
+import { resetSwipeDiscoveryPresentation } from '@/lib/feed/reader/swipeDiscoveryCoach'
 
 const TRACE_TICK = 'nahaber-reader-nav-trace'
 const PANEL_OPEN_KEY = 'nahaber.readerNavTrace.panelOpen'
@@ -50,6 +51,7 @@ export function ReaderNavTraceSurvivor() {
   /** Default COLLAPSED — must not intercept Feed gestures. */
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [coachReplay, setCoachReplay] = useState(false)
   const [count, setCount] = useState(0)
   const [lastType, setLastType] = useState('')
   const [path, setPath] = useState('')
@@ -120,6 +122,14 @@ export function ReaderNavTraceSurvivor() {
     window.setTimeout(() => setCopied(false), 2000)
   }
 
+  const replaySwipeCoach = () => {
+    resetSwipeDiscoveryPresentation()
+    setCoachReplay(true)
+    window.setTimeout(() => setCoachReplay(false), 1500)
+    // Soft remount signal for active card coach (presentation only).
+    window.dispatchEvent(new Event('nahaber-swipe-discovery-replay'))
+  }
+
   const toggleOpen = () => {
     setOpen((v) => {
       const next = !v
@@ -157,7 +167,7 @@ export function ReaderNavTraceSurvivor() {
       className="pointer-events-none fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-2 z-[220] w-[min(22rem,calc(100vw-1rem))]"
     >
       <div className="pointer-events-auto rounded-md border-2 border-lime-400 bg-black/95 p-2 font-mono text-[11px] leading-snug text-lime-200 shadow-[0_0_0_2px_rgba(0,0,0,0.85)]">
-        <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             data-testid="reader-nav-trace-toggle"
@@ -167,14 +177,24 @@ export function ReaderNavTraceSurvivor() {
           >
             TRACE ▾
           </button>
-          <button
-            type="button"
-            data-testid="reader-nav-trace-copy"
-            className="rounded border border-lime-400 px-2 py-0.5 text-lime-100"
-            onClick={() => void copy()}
-          >
-            {copied ? 'Copied' : 'Copy Navigation Trace'}
-          </button>
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              data-testid="reader-nav-trace-replay-coach"
+              className="rounded border border-lime-400 px-2 py-0.5 text-lime-100"
+              onClick={replaySwipeCoach}
+            >
+              {coachReplay ? 'Coach reset' : 'Replay Swipe Coach'}
+            </button>
+            <button
+              type="button"
+              data-testid="reader-nav-trace-copy"
+              className="rounded border border-lime-400 px-2 py-0.5 text-lime-100"
+              onClick={() => void copy()}
+            >
+              {copied ? 'Copied' : 'Copy Navigation Trace'}
+            </button>
+          </div>
         </div>
         <div className="max-h-[28vh] overflow-auto whitespace-pre-wrap break-all">
           {`path: ${path}\nevents: ${count}\nlast: ${lastType}\nCopy after escape. No identifiers.`}

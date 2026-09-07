@@ -30,6 +30,71 @@ export type FeedReaderCloseReason = 'gesture' | 'button' | 'history' | 'escape'
 
 export type ReaderHistoryClosePlan = 'history_back' | 'replace_unowned_feed' | 'none'
 
+/**
+ * After UI close finishes, decide history sync WITHOUT using browser "back"
+ * as a destination oracle. Feed owner is /feed-v2 — never HOME.
+ *
+ * foreignPopDuringClose: Safari/system already popped while closing → never back again.
+ * stillOnReaderEntry: current URL still has ?reader= (Reader history entry still current).
+ */
+export function resolveFeedOwnerHistorySync(opts: {
+  planned: ReaderHistoryClosePlan
+  foreignPopDuringClose: boolean
+  pathname: string
+  search: string
+}): ReaderHistoryClosePlan {
+  const onFeed = opts.pathname === '/feed-v2' || opts.pathname.startsWith('/feed-v2/')
+  const readerSlug = parseReaderSlugFromSearch(opts.search)
+
+  if (opts.foreignPopDuringClose) {
+    // Already left the Reader entry — never history.back() again (would skip Feed → HOME).
+    if (onFeed && !readerSlug) return 'none'
+    return 'replace_unowned_feed'
+  }
+
+  if (opts.planned === 'none') return 'none'
+
+  if (opts.planned === 'history_back') {
+    // Only back when we are still sitting on the Reader history entry.
+    if (onFeed && readerSlug) return 'history_back'
+    // Already on Feed without reader query, or left Feed somehow — replace/repair.
+    if (onFeed) return readerSlug ? 'replace_unowned_feed' : 'none'
+    return 'replace_unowned_feed'
+  }
+
+  return 'replace_unowned_feed'
+}
+
+/**
+ * Force current history entry onto a safe Feed URL (never HOME).
+ * Used when a close somehow left /feed-v2.
+ */
+export function ensureFeedOwnerUrl(opts?: {
+  history?: Pick<History, 'replaceState' | 'state'>
+  href?: string
+  feedHref?: string
+}): string {
+  const history = opts?.history ?? (typeof window !== 'undefined' ? window.history : undefined)
+  const href =
+    opts?.href ??
+    (typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : '/feed-v2')
+  const preferred = opts?.feedHref
+  const stripped = stripReaderQueryFromUrl(href)
+  const safe =
+    preferred && preferred.startsWith('/feed-v2')
+      ? preferred
+      : stripped.startsWith('/feed-v2')
+        ? stripped
+        : '/feed-v2'
+  if (history) {
+    const existing = 'state' in history ? history.state : null
+    history.replaceState(stripReaderFieldsFromHistoryState(existing) ?? {}, '', safe)
+  }
+  return safe
+}
+
 export function createReaderOpenId(): string {
   return `rdr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
 }

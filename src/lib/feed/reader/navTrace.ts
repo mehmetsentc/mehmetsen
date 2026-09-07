@@ -18,6 +18,7 @@ export type ReaderNavTraceEventType =
   | 'pushState'
   | 'replaceState'
   | 'history_back_request'
+  | 'history_action_executed'
   | 'popstate'
   | 'pageshow'
   | 'route_change'
@@ -31,6 +32,7 @@ export type ReaderNavTraceEventType =
   | 'read_decision'
   | 'canonical_navigation'
   | 'open_guard_blocked'
+  | 'HOME_ESCAPE_CAUSE'
 
 export type ReaderNavTraceEvent = {
   seq: number
@@ -77,6 +79,13 @@ export type ReaderNavTraceEvent = {
   /** Navigation target path when known (e.g. /haber/slug) */
   destination?: string | null
   articleSlug?: string | null
+  /** Planned history sync before ownership re-resolve at finish. */
+  historyPlanRequested?: string | null
+  /** Resolved history sync after foreign-pop / URL checks. */
+  historyPlanExecuted?: string | null
+  foreignPopDuringClose?: boolean | null
+  ownsFeedReturn?: boolean | null
+  pathnameAfter?: string | null
 }
 
 const MAX_EVENTS = 240

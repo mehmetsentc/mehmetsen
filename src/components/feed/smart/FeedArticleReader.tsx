@@ -34,17 +34,24 @@ import {
   canHistoryBackForOpen,
   claimUnownedReaderHistory,
   createReaderOpenId,
+  ensureFeedOwnerUrl,
   finishCloseTransaction,
   planReaderHistoryClose,
   planReaderHistoryOpen,
+  parseReaderSlugFromSearch,
   popReaderHistory,
   pushOwnedReaderHistory,
   readReaderHistoryState,
   replaceUnownedReaderWithFeed,
+  resolveFeedOwnerHistorySync,
   type FeedReaderCloseReason,
   type ReaderCloseTransactionPhase,
   type ReaderHistoryClosePlan,
 } from '@/lib/feed/reader/history'
+import {
+  armFeedOwnerRescue,
+  clearFeedOwnerRescue,
+} from '@/lib/feed/reader/feedOwnerRescue'
 import {
   isReaderNavTraceEnabled,
   markReaderOpenTiming,
@@ -168,7 +175,14 @@ export function FeedArticleReader({
   const closeReasonRef = useRef<FeedReaderCloseReason>('button')
   /** History mutation deferred until close animation ends — keeps Feed as sole underlay. */
   const pendingHistoryPlanRef = useRef<ReaderHistoryClosePlan | null>(null)
+  /** Safari/system pop during closing — must cancel deferred history.back(). */
+  const foreignPopDuringCloseRef = useRef(false)
   const committedLifecycleRef = useRef(false)
+
+  const clearReaderChromeLock = () => {
+    document.documentElement.classList.remove('smart-feed-reader-open')
+    document.body.classList.remove('smart-feed-reader-open')
+  }
 
   /** Internal progress only while closing or Reader→Feed drag. */
   const [internalProgress, setInternalProgress] = useState<number | null>(null)
@@ -316,19 +330,115 @@ export function FeedArticleReader({
       const dwellMs = dwellRef.current.close()
       onLockFeedScroll?.(false)
 
-      // Apply history AFTER the interactive close so HOME/prior routes never
-      // remount under the translating Reader panel.
-      const plan = pendingHistoryPlanRef.current
+      // Chrome lock MUST clear before any history mutation — otherwise HOME can
+      // paint while smart-feed-reader-open still hides MobileNav / top chrome.
+      clearReaderChromeLock()
+
+      const planned = pendingHistoryPlanRef.current
       pendingHistoryPlanRef.current = null
+      const foreignPop = foreignPopDuringCloseRef.current
+      foreignPopDuringCloseRef.current = false
+
+      const locBefore =
+        typeof window !== 'undefined'
+          ? { pathname: window.location.pathname, search: window.location.search }
+          : { pathname: '/feed-v2', search: '' }
+      const stateBefore = typeof window !== 'undefined' ? window.history.state : null
+      const ownsFeedReturn = readReaderHistoryState(stateBefore)?.ownsFeedReturn ?? null
+
+      const plan = resolveFeedOwnerHistorySync({
+        planned: planned ?? 'none',
+        foreignPopDuringClose: foreignPop,
+        pathname: locBefore.pathname,
+        search: locBefore.search,
+      })
+
+      recordReaderNavTrace({
+        type: 'history_action_executed',
+        pathname: locBefore.pathname,
+        search: locBefore.search,
+        historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+        readerOpenId: readerOpenIdRef.current,
+        feedSessionId,
+        readerMounted: true,
+        feedMounted: true,
+        readerState: 'closing',
+        closePhase: 'closing',
+        closeSource:
+          reason === 'history'
+            ? 'popstate'
+            : reason === 'gesture'
+              ? 'swipe'
+              : reason === 'escape'
+                ? 'escape'
+                : 'ui',
+        historyPlanRequested: planned,
+        historyPlanExecuted: plan,
+        foreignPopDuringClose: foreignPop,
+        ownsFeedReturn,
+        articleId: item.articleId,
+        category: item.category,
+        source: 'reader',
+      })
+
       if (plan === 'history_back') {
         ignoreNextPopRef.current = true
+        armFeedOwnerRescue()
         popReaderHistory()
       } else if (plan === 'replace_unowned_feed') {
         replaceUnownedReaderWithFeed()
+        clearFeedOwnerRescue()
+      } else {
+        clearFeedOwnerRescue()
       }
 
-      document.documentElement.classList.remove('smart-feed-reader-open')
-      document.body.classList.remove('smart-feed-reader-open')
+      const locAfter =
+        typeof window !== 'undefined'
+          ? { pathname: window.location.pathname, search: window.location.search }
+          : { pathname: '/feed-v2', search: '' }
+
+      if (locAfter.pathname === '/' || locAfter.pathname === '') {
+        recordReaderNavTrace({
+          type: 'HOME_ESCAPE_CAUSE',
+          pathname: locAfter.pathname,
+          search: locAfter.search,
+          historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+          readerOpenId: readerOpenIdRef.current,
+          feedSessionId,
+          readerMounted: true,
+          feedMounted: false,
+          readerState: 'closing',
+          closeSource:
+            reason === 'history'
+              ? 'popstate'
+              : reason === 'gesture'
+                ? 'swipe'
+                : reason === 'escape'
+                  ? 'escape'
+                  : 'ui',
+          historyPlanRequested: planned,
+          historyPlanExecuted: plan,
+          foreignPopDuringClose: foreignPop,
+          ownsFeedReturn,
+          pathnameAfter: locAfter.pathname,
+          prevPathname: locBefore.pathname,
+          leftFeedToHome: true,
+          articleId: item.articleId,
+          category: item.category,
+          source: 'reader',
+          destination: '/feed-v2',
+        })
+        // Soft URL repair — MainLayout FeedOwnerRescue also router.replace when armed.
+        ensureFeedOwnerUrl({ feedHref: '/feed-v2' })
+      } else if (locAfter.pathname.startsWith('/feed-v2')) {
+        clearFeedOwnerRescue()
+        if (parseReaderSlugFromSearch(locAfter.search)) {
+          replaceUnownedReaderWithFeed()
+        }
+      } else {
+        ensureFeedOwnerUrl({ feedHref: '/feed-v2' })
+      }
+
       onCloseTelemetry?.({
         articleId: item.articleId,
         clusterId: item.clusterId,
@@ -348,7 +458,7 @@ export function FeedArticleReader({
       setInternalProgress(null)
       onClose(reason)
     },
-    [item, onClose, onCloseTelemetry, onLockFeedScroll]
+    [feedSessionId, item, onClose, onCloseTelemetry, onLockFeedScroll]
   )
 
   const beginClose = useCallback(
@@ -403,13 +513,17 @@ export function FeedArticleReader({
           feedSessionId,
           phase: 'active',
         }),
+        ownsFeedReturn: readReaderHistoryState(currentState)?.ownsFeedReturn ?? null,
         readerOpenIdInState: readReaderHistoryState(currentState)?.readerOpenId ?? null,
+        historyPlanRequested: plan,
         source: 'reader',
         readDecision: closeTxId,
       })
       // Defer history.back / replace until finishCloseUi — interactive close must
       // keep Feed as the only underlying page surface (never HOME mid-swipe).
+      // Re-resolve at finish via resolveFeedOwnerHistorySync (foreign pop / URL).
       pendingHistoryPlanRef.current = plan
+      foreignPopDuringCloseRef.current = false
 
       setAnimating(true)
       setInternalProgress(0)
@@ -515,8 +629,7 @@ export function FeedArticleReader({
       if (committedLifecycleRef.current) {
         // Unexpected un-commit — soft teardown without history.back.
         onLockFeedScrollRef.current?.(false)
-        document.documentElement.classList.remove('smart-feed-reader-open')
-        document.body.classList.remove('smart-feed-reader-open')
+        clearReaderChromeLock()
         committedLifecycleRef.current = false
       }
       return
@@ -529,6 +642,8 @@ export function FeedArticleReader({
     const gen = openGeneration
     closingRef.current = false
     ignoreNextPopRef.current = false
+    foreignPopDuringCloseRef.current = false
+    pendingHistoryPlanRef.current = null
     closePhaseRef.current = 'active'
     const openId = createReaderOpenId()
     readerOpenIdRef.current = openId
@@ -598,6 +713,31 @@ export function FeedArticleReader({
     }
     const onPop = () => {
       if (gen !== openGeneration) return
+      // While closing: Safari/system may already have consumed the Reader entry.
+      // Cancel deferred history.back() so we do not skip Feed → HOME.
+      if (closePhaseRef.current === 'closing') {
+        foreignPopDuringCloseRef.current = true
+        pendingHistoryPlanRef.current = 'none'
+        recordReaderNavTrace({
+          type: 'popstate',
+          pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
+          search: typeof window !== 'undefined' ? window.location.search : '',
+          historyLength: typeof window !== 'undefined' ? window.history.length : 0,
+          readerOpenId: readerOpenIdRef.current,
+          feedSessionId,
+          readerMounted: true,
+          feedMounted: true,
+          readerState: 'closing',
+          closePhase: 'closing',
+          closeSource: 'browser_back',
+          foreignPopDuringClose: true,
+          historyPlanExecuted: 'none',
+          source: 'reader',
+          articleId: item.articleId,
+          category: item.category,
+        })
+        return
+      }
       if (closePhaseRef.current !== 'active') return
       if (ignoreNextPopRef.current) {
         ignoreNextPopRef.current = false
@@ -615,6 +755,8 @@ export function FeedArticleReader({
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('popstate', onPop)
       window.removeEventListener('keydown', onKey)
+      // Always clear chrome lock on unmount — prevent HOME navbar leak.
+      clearReaderChromeLock()
       recordReaderNavTrace({
         type: 'reader_cleanup',
         pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',

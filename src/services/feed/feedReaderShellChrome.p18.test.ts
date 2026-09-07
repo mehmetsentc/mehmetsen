@@ -135,9 +135,12 @@ describe('single-surface Reader return', () => {
     const beginBody = reader.slice(beginIdx, beginIdx + 3500)
     expect(beginBody).toContain('pendingHistoryPlanRef.current = plan')
     expect(beginBody).not.toContain('popReaderHistory()')
-    const finishBody = reader.slice(finishIdx, finishIdx + 2200)
+    const finishBody = reader.slice(finishIdx, finishIdx + 5500)
+    expect(finishBody).toContain('resolveFeedOwnerHistorySync')
+    expect(finishBody).toContain('clearReaderChromeLock()')
     expect(finishBody).toContain('popReaderHistory()')
     expect(finishBody).toContain('replaceUnownedReaderWithFeed()')
+    expect(finishBody).toContain('armFeedOwnerRescue()')
   })
 
   it('17–18 mid-close underlay is Feed — no HOME in Reader stack', () => {

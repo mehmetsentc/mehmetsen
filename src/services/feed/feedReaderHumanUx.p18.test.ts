@@ -108,9 +108,8 @@ describe('Swipe Discovery V2', () => {
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('data-swipe-discovery-v2="1"')
     expect(coach).not.toContain('preventDefault')
-    expect(coach).not.toContain('addEventListener')
-    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(30)
-    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(40)
+    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
+    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_CARD_NUDGE_PX).toBeGreaterThanOrEqual(8)
     expect(SWIPE_DISCOVERY_CARD_NUDGE_PX).toBeLessThanOrEqual(12)
     const client = readFileSync(
@@ -134,7 +133,7 @@ describe('Swipe Discovery V2', () => {
       'utf8'
     )
     expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toContain('SwipeDiscovery')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v2')
   })
 })
 

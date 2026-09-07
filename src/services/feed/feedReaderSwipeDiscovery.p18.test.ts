@@ -1,5 +1,5 @@
 /**
- * P18 — Swipe Discovery Coach: device-local, non-intercepting.
+ * P18 — Swipe Discovery Coach V2: device-local, non-intercepting, V1 migration.
  * AUTOMATED — NOT HUMAN GO.
  */
 import { describe, expect, it, beforeEach } from 'vitest'
@@ -9,8 +9,15 @@ import {
   markSwipeDiscoveryLearned,
   readSwipeDiscoveryState,
   recordSwipeDiscoveryShown,
+  resetSwipeDiscoveryPresentation,
   shouldShowSwipeDiscoveryCoach,
+  SWIPE_DISCOVERY_ANIM_MS,
+  SWIPE_DISCOVERY_MAX_SHOWS,
+  SWIPE_DISCOVERY_SETTLE_MS,
   SWIPE_DISCOVERY_STORAGE_KEY,
+  SWIPE_DISCOVERY_STORAGE_KEY_V1,
+  SWIPE_DISCOVERY_TRAVEL_PX,
+  v1WouldHaveSuppressedCoach,
   writeSwipeDiscoveryState,
 } from '@/lib/feed/reader/swipeDiscoveryCoach'
 
@@ -30,51 +37,96 @@ beforeEach(() => {
   }
 })
 
-describe('P18 swipe discovery coach', () => {
-  it('new device may show coach; learned device does not', () => {
+describe('P18 swipe discovery coach V2', () => {
+  it('1-2: eligible + not learned may show; max appearances respected', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
-    recordSwipeDiscoveryShown()
-    recordSwipeDiscoveryShown()
-    recordSwipeDiscoveryShown()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
-    writeSwipeDiscoveryState({ learned: false, shownCount: 0 })
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
-    markSwipeDiscoveryLearned()
-    expect(readSwipeDiscoveryState().learned).toBe(true)
+    for (let i = 0; i < SWIPE_DISCOVERY_MAX_SHOWS; i++) recordSwipeDiscoveryShown()
     expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
   })
 
-  it('coach is decorative: pointer-events none; Haberi Oku and TRACE unaffected', () => {
+  it('3-4: animation RIGHT→LEFT travel + pointer-events none in JSX', () => {
+    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
+    expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
+    expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
+    expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1000)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1500)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(2000)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('Haberi aç')
-    expect(coach).toContain('data-swipe-discovery-v2="1"')
+    expect(coach).toContain('feed-swipe-discovery-finger')
+    expect(coach).toContain('feed-swipe-discovery-chevrons')
+    expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
     expect(coach).not.toContain('preventDefault')
     expect(coach).not.toContain('setPointerCapture')
-    expect(coach).not.toContain('addEventListener')
+  })
+
+  it('5: successful LEFT open marks learned via swipe path only', () => {
+    markSwipeDiscoveryLearned()
+    expect(readSwipeDiscoveryState().learned).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+    const client = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
+      'utf8'
+    )
+    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+  })
+
+  it('6-8: Haberi Oku / cancel / vertical do not call mark outside swipe openSource', () => {
+    const client = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
+      'utf8'
+    )
+    // Only swipe openSource marks learned — Haberi Oku uses 'button'.
+    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
+    expect(client).not.toMatch(/markSwipeDiscoveryLearned\(\)\s*\n\s*\}/)
+  })
+
+  it('10: V1 learned/max does NOT suppress V2 (fresh key)', () => {
+    mem.set(
+      SWIPE_DISCOVERY_STORAGE_KEY_V1,
+      JSON.stringify({ learned: true, shownCount: 3 })
+    )
+    expect(v1WouldHaveSuppressedCoach()).toBe(true)
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v2')
+    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(readSwipeDiscoveryState().learned).toBe(false)
+  })
+
+  it('12: debug replay resets presentation only', () => {
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 2 })
+    resetSwipeDiscoveryPresentation()
+    expect(readSwipeDiscoveryState()).toEqual({
+      learned: false,
+      shownCount: 0,
+      version: 2,
+    })
+    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    const survivor = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
+      'utf8'
+    )
+    expect(survivor).toContain('Replay Swipe Coach')
+    expect(survivor).toContain('resetSwipeDiscoveryPresentation')
+    expect(survivor).toContain('reader-nav-trace-replay-coach')
+  })
+
+  it('coach mounts from FullscreenNewsCard; capability gated in SmartFeedClient', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(card).toContain('SwipeDiscoveryCoach')
-    expect(card).toContain('smart-feed-read-cta')
-    const survivor = readFileSync(
-      join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
-      'utf8'
-    )
-    expect(survivor).toContain('data-trace-collapsed="1"')
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toContain('SwipeDiscovery')
-  })
-
-  it('successful LEFT open marks learned via openReader swipe path', () => {
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain('markSwipeDiscoveryLearned')
-    expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
+    expect(client).toMatch(
+      /showSwipeDiscoveryCoach=\{\s*Boolean\(\s*feedReaderEnabled\s*&&\s*readerCapabilityReady/
+    )
   })
 })
