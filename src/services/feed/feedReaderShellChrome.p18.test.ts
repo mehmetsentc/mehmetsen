@@ -108,19 +108,27 @@ describe('shell chrome authority', () => {
     )
   })
 
-  it('14 Feed does not duplicate site CategoryNav; GlobalBackNav is immersive exit', () => {
+  it('14 Feed hosts Level-2 exit in category nav; GlobalBackNav stays off Feed V2 under Nav V2', () => {
     const cat = readFileSync(
       join(process.cwd(), 'src/components/layout/CategoryNav.tsx'),
       'utf8'
     )
     expect(cat).toContain("pathname === '/feed-v2'")
+    const feedCat = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
+      'utf8'
+    )
+    expect(feedCat).toContain('FeedV2ExitButton')
+    const exit = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/FeedV2ExitButton.tsx'),
+      'utf8'
+    )
+    expect(exit).toContain('smart-feed-exit-nav')
     const back = readFileSync(
       join(process.cwd(), 'src/components/layout/BackNavButton.tsx'),
       'utf8'
     )
-    expect(back).toContain('smart-feed-exit-nav')
-    expect(back).toContain('/feed-v2')
-    expect(back).toContain('ROUTES.HOME')
+    expect(back).toContain('globalNavV2 && isFeedV2')
   })
 })
 
@@ -208,8 +216,9 @@ describe('single-surface Reader return', () => {
           feedSessionId,
           phase: 'active',
         })
-      ).toBe('history_back')
-      h.back()
+      ).toBe('replace_unowned_feed')
+      // Production close: replace_unowned_feed — never intentional history.back()
+      h.replaceState({ __NA: 1, idx: 1 }, '', '/feed-v2')
       expect(h.current().url).toBe('/feed-v2')
       expect(h.current().url).not.toBe('/')
     }

@@ -64,6 +64,7 @@ import {
   FEED_READER_EASING,
   FEED_READER_HERO_LOAD_TIMEOUT_MS,
 } from '@/lib/feed/reader/tokens'
+import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
 import {
   applyHeroRuntimeEvent,
   applyHeroTimeoutEvent,
@@ -962,8 +963,12 @@ export function FeedArticleReader({
       style={{ background: progress > 0.02 ? 'rgba(0,0,0,0.55)' : 'transparent' }}
     >
       <div
-        className="feed-reader-article relative flex h-[100dvh] w-full max-w-[44rem] flex-col overflow-hidden md:my-0"
+        className={cn(
+          'feed-reader-article relative flex h-[100dvh] flex-col overflow-hidden md:my-0',
+          FEED_READER_SURFACE_CLASS
+        )}
         style={{
+          ...FEED_V2_CHROME_CSS_VARS,
           ...styleVars,
           background: 'var(--reader-page-bg)',
           color: 'var(--reader-page-text)',
@@ -975,6 +980,7 @@ export function FeedArticleReader({
             : null),
         }}
         data-reader-touch-action={committed ? 'pan-y' : 'auto'}
+        data-feed-surface="1"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1077,7 +1083,7 @@ export function FeedArticleReader({
 
           {hero.state === 'LOADING' && hero.url ? (
             <div
-              className="relative mx-auto mt-7 aspect-[16/9] w-full max-h-[min(62vh,28rem)] max-w-[44rem] overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]"
+              className="relative mx-auto mt-7 aspect-[16/9] w-full max-h-[min(62vh,28rem)] max-w-[var(--feed-reader-surface-max,44rem)] overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]"
               data-testid="feed-reader-hero-loading"
               aria-busy="true"
             >
@@ -1100,7 +1106,7 @@ export function FeedArticleReader({
 
           {hero.state === 'VALID_MEDIA' && hero.url ? (
             <figure
-              className="mx-auto mt-7 w-full max-w-[44rem]"
+              className="mx-auto mt-7 w-full max-w-[var(--feed-reader-surface-max,44rem)]"
               data-testid="feed-reader-hero"
             >
               <div className="relative aspect-[16/9] max-h-[min(62vh,28rem)] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">

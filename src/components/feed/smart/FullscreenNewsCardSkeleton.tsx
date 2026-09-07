@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { FEED_READER_SURFACE_CLASS } from '@/lib/feed/reader/feedChrome'
 
 interface FullscreenNewsCardSkeletonProps {
   className?: string
@@ -24,8 +25,12 @@ export function FullscreenNewsCardSkeleton({ className }: FullscreenNewsCardSkel
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" aria-hidden />
       </div>
 
-      <div className="relative z-10 flex flex-1 flex-col justify-end p-4 pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))] pt-[5.75rem] md:mx-auto md:w-full md:max-w-lg">
-        <div className="space-y-3 pr-14 pb-2">
+      <div
+        className={cn(
+          'relative z-10 flex flex-1 flex-col justify-end p-4 pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))] pt-[5.75rem]',
+          FEED_READER_SURFACE_CLASS
+        )}
+      >        <div className="space-y-3 pr-14 pb-2">
           <div className="h-5 w-20 rounded-md bg-white/20 animate-pulse" />
           <div className="space-y-2">
             <div className="h-7 w-full rounded-md bg-white/25 animate-pulse" />

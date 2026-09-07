@@ -7,12 +7,15 @@ import {
   type FeedV2Tab,
 } from '@/lib/feed/feedV2Tabs'
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
+import { FeedV2ExitButton } from '@/components/feed/smart/FeedV2ExitButton'
 
 interface FeedV2CategoryNavProps {
   activeTabId: string
   onChange: (tab: FeedV2Tab) => void
   className?: string
   trailing?: React.ReactNode
+  /** Hide Level-2 exit while Reader (Level 3) owns Back. */
+  exitHidden?: boolean
 }
 
 /**
@@ -28,6 +31,7 @@ export function FeedV2CategoryNav({
   onChange,
   className,
   trailing,
+  exitHidden = false,
 }: FeedV2CategoryNavProps) {
   const [tabs, setTabs] = useState<FeedV2Tab[]>(() => buildFallbackFeedV2Tabs())
   const [tabsSource, setTabsSource] = useState<'fallback' | 'live'>('fallback')
@@ -109,9 +113,9 @@ export function FeedV2CategoryNav({
         'absolute left-0 right-0 top-0 z-50 flex items-center gap-2',
         globalNavV2
           ? // Site header already owns safe-area + menu; chips sit under brand bar.
-            'px-3 pb-2 pt-2'
-          : // Legacy immersive: clear floating GlobalBackNav + status bar.
-            'pl-14 pr-3 pb-2 pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
+            'px-2 pb-2 pt-2 sm:px-3'
+          : // Legacy immersive: exit sits inline (replaces floating GlobalBackNav gap).
+            'pl-2 pr-3 pb-2 pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
         className
       )}
       aria-label="Feed kategorileri"
@@ -120,6 +124,7 @@ export function FeedV2CategoryNav({
       data-tabs-source={tabsSource}
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
     >
+      <FeedV2ExitButton hidden={exitHidden} />
       <div
         ref={scrollRef}
         className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-black/45 p-1 backdrop-blur-md border border-white/10 scrollbar-none"

@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
+import type { CSSProperties } from 'react'
 import { SmartFeedClient } from '@/components/feed/smart/SmartFeedClient'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { hasDatabaseUrl } from '@/db'
 import { FEED_PAGINATION } from '@/lib/feed/config'
+import {
+  FEED_READER_SURFACE_CLASS,
+  FEED_V2_CHROME_CSS_VARS,
+} from '@/lib/feed/reader/feedChrome'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedService } from '@/services/feed/FeedService'
 import type { FeedPageDto } from '@/types/smartFeed'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +48,14 @@ export default async function FeedV2Page() {
       className="relative h-[100dvh] w-full bg-black overflow-hidden flex justify-center select-none"
       data-testid="smart-feed-ssr-shell"
     >
-      <div className="relative h-[100dvh] w-full md:max-w-lg md:mx-auto overflow-hidden bg-black flex flex-col">
+      <div
+        className={cn(
+          'relative h-[100dvh] overflow-hidden bg-black flex flex-col',
+          FEED_READER_SURFACE_CLASS
+        )}
+        style={FEED_V2_CHROME_CSS_VARS as CSSProperties}
+        data-feed-surface="1"
+      >
         <div
           className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-14 bg-gradient-to-b from-black/50 to-transparent"
           aria-hidden

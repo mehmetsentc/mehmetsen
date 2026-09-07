@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('P18.3B Smart Feed UX', () => {
-  it('category nav clears floating exit control on immersive Feed', () => {
+  it('category nav hosts Feed exit + chips without floating GlobalBackNav gap', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
-    expect(src).toContain('pl-14')
+    expect(src).toContain('FeedV2ExitButton')
     expect(src).toContain('safe-area-inset-top')
     expect(src).toContain('data-testid="smart-feed-category-nav"')
   })
@@ -24,11 +24,16 @@ describe('P18.3B Smart Feed UX', () => {
     expect(src).not.toContain('smart-feed-mid-copy')
   })
 
-  it('exit nav treats /feed-v2 as immersive with home fallback', () => {
-    const src = readFileSync(join(process.cwd(), 'src/components/layout/BackNavButton.tsx'), 'utf8')
-    expect(src).toContain('/feed-v2')
+  it('Feed V2 exit is Level-2 control with Ana Feed fallback (not blind history.back)', () => {
+    const src = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/FeedV2ExitButton.tsx'),
+      'utf8'
+    )
     expect(src).toContain('smart-feed-exit-nav')
-    expect(src).toContain('ROUTES.HOME')
+    expect(src).toContain('resolveFeedV2ExitHref')
+    expect(src).not.toMatch(/history\.back\(|router\.back\(/)
+    const lib = readFileSync(join(process.cwd(), 'src/lib/feed/reader/feedV2Exit.ts'), 'utf8')
+    expect(lib).toContain('ROUTES.FEED')
   })
 })
 

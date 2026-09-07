@@ -12,6 +12,7 @@ import { BackNavButton } from '@/components/layout/BackNavButton'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
 import { clearFeedRestore } from '@/lib/feed/feedRestoration'
+import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -117,7 +118,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               </Link>
               <Link
                 href={ROUTES.FEED_V2}
-                onClick={() => clearFeedRestore()}
+                onClick={() => {
+                  rememberFeedV2EntryOrigin(pathname)
+                  clearFeedRestore()
+                }}
                 className={cn(iconBtn, isFeedV2 ? iconActive : iconIdle)}
                 aria-label="Feed V2"
                 aria-current={isFeedV2 ? 'page' : undefined}

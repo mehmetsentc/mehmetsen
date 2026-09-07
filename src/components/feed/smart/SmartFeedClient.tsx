@@ -9,6 +9,11 @@ import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
+import {
+  FEED_READER_SURFACE_CLASS,
+  FEED_V2_CHROME_CSS_VARS,
+} from '@/lib/feed/reader/feedChrome'
+import { captureFeedV2EntryFromReferrer } from '@/lib/feed/reader/feedV2Exit'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import {
   FeedArticleReader,
@@ -309,6 +314,9 @@ export function SmartFeedClient({
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const readerDebugQuery = searchParams.get('readerDebug') === '1'
+  useEffect(() => {
+    captureFeedV2EntryFromReferrer()
+  }, [])
   useEffect(() => {
     setReaderNavTraceEnabled(readerDebugQuery)
     if (readerDebugQuery) {
@@ -1974,13 +1982,19 @@ export function SmartFeedClient({
     >
       {/* Canonical Viewport Shell — Never collapses, preserves exact geometry */}
       <div
-        className="relative h-[100dvh] w-full md:max-w-lg md:mx-auto overflow-hidden bg-black flex flex-col"
+        className={cn(
+          'relative h-[100dvh] overflow-hidden bg-black flex flex-col',
+          FEED_READER_SURFACE_CLASS
+        )}
+        style={FEED_V2_CHROME_CSS_VARS as CSSProperties}
         data-testid="smart-feed-canonical-shell"
+        data-feed-surface="1"
       >
         {/* Top category navigation — Always mounted */}
         <FeedV2CategoryNav
           activeTabId={activeTabId}
           onChange={handleTabChange}
+          exitHidden={Boolean(readerSession && readerSession.progress > 0.15)}
           trailing={
             items[activeIndex] ? (
               <FeedCardMenu

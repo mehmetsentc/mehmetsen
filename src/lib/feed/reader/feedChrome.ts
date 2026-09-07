@@ -9,6 +9,12 @@
  */
 export const FEED_V2_CHROME_CSS_VARS = {
   /**
+   * Shared Feed V2 + FeedArticleReader outer surface width.
+   * Reader reference (max-w-[44rem]) — Feed must match to avoid open/close jump.
+   * Mobile: min(100%, 44rem) = full viewport. Do not shrink Reader.
+   */
+  '--feed-reader-surface-max': '44rem',
+  /**
    * Bottom pad without MobileNav reservation.
    * Design: 16–24px safe breath under publisher.
    */
@@ -34,6 +40,18 @@ export const FEED_V2_CHROME_CSS_VARS = {
   /** @deprecated Prefer bottom-stack nested scroll; kept for diagnostics. */
   '--feed-v2-copy-max': 'min(34dvh, 15.5rem)',
 } as const
+
+/** Shared outer surface max width in rem (Feed shell + Reader overlay). */
+export const FEED_READER_SURFACE_MAX_REM = 44
+
+/** Tailwind-friendly class for shared surface — keep in sync with CSS var. */
+export const FEED_READER_SURFACE_CLASS =
+  'w-full max-w-[var(--feed-reader-surface-max,44rem)] md:mx-auto' as const
+
+/** Expected CSS px at 16px root for desktop parity checks. */
+export function feedReaderSurfaceMaxPx(rootFontPx = 16): number {
+  return FEED_READER_SURFACE_MAX_REM * rootFontPx
+}
 
 /** Pure helper for tests — safe-area bottom clearance (no MobileNav pill). */
 export function feedV2BottomClearancePx(opts: {

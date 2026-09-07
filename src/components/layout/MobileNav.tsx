@@ -7,6 +7,7 @@ import { Home, Search, Plus, Zap, MapPin } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { clearFeedRestore } from '@/lib/feed/feedRestoration'
+import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
@@ -73,7 +74,10 @@ const MobileNavLink = memo(function MobileNavLink({
 
   const handleClick = useCallback(() => {
     // Fresh main-nav entry must not restore article→back session (CASE B).
-    if (href === ROUTES.FEED_V2) clearFeedRestore()
+    if (href === ROUTES.FEED_V2) {
+      rememberFeedV2EntryOrigin(pathname)
+      clearFeedRestore()
+    }
     logNavClick(href, pathname)
   }, [href, pathname])
 

@@ -15,7 +15,7 @@ import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
-import { FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
+import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -502,7 +502,7 @@ export function FullscreenNewsCard({
           /* Immersive Feed: no MobileNav — only safe-area / home-indicator breath */
           'pb-[var(--feed-v2-bottom-clearance)]',
           MODE_NAV_CLEARANCE,
-          'md:mx-auto md:w-full md:max-w-lg',
+          FEED_READER_SURFACE_CLASS,
           'feed-v2-card-chrome'
         )}
       >

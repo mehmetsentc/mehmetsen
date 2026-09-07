@@ -27,6 +27,7 @@ import {
   type SidebarNavItem,
 } from '@/constants/sidebarNav'
 import { clearFeedRestore } from '@/lib/feed/feedRestoration'
+import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -240,6 +241,7 @@ function SidebarInner({
             <Link
               href={ROUTES.FEED_V2}
               onClick={() => {
+                rememberFeedV2EntryOrigin(pathname)
                 clearFeedRestore()
                 closeDrawer()
               }}

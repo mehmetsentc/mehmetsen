@@ -10,6 +10,7 @@ import {
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
 import { clearFeedRestore } from '@/lib/feed/feedRestoration'
+import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
 import { cn } from '@/lib/utils'
 
 const NAV = getSiteNavItems()
@@ -88,7 +89,10 @@ function HeaderNavList({
               aria-current={active ? 'page' : undefined}
               title={`${item.label} haberleri`}
               onClick={() => {
-                if (item.id === 'feed-v2') clearFeedRestore()
+                if (item.id === 'feed-v2') {
+                  rememberFeedV2EntryOrigin(pathname)
+                  clearFeedRestore()
+                }
               }}
               className={cn(
                 'shrink-0 transition-colors',
