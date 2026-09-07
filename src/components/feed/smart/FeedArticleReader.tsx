@@ -960,7 +960,10 @@ export function FeedArticleReader({
     snapReaderOpen()
   }
 
-  if (progress <= 0.001 && !committed) return null
+  // Keep shell mounted while open/close CSS is armed — Haberi Oku starts at
+  // progress≈0; returning null here made the first paint happen at progress=1
+  // (hard cut, no page-turn) on WebKit/iOS.
+  if (progress <= 0.001 && !committed && !progressAnimating && !animating) return null
 
   const transitionOn =
     (animating || progressAnimating) && !reducedMotion && internalProgress === null
@@ -1040,7 +1043,7 @@ export function FeedArticleReader({
         />
 
         <header
-          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-2 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
+          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-2 pt-[max(0.85rem,calc(var(--reader-sat,var(--mobile-sat,env(safe-area-inset-top,0px)))+0.45rem))]"
           style={{ background: 'var(--reader-page-bg)' }}
           data-testid="feed-reader-header"
         >

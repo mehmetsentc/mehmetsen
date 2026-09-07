@@ -12,6 +12,7 @@ describe('P18 Feed Reader return animation + global ON', () => {
     join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
     'utf8'
   )
+  const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8')
   const returnCoach = readFileSync(
     join(process.cwd(), 'src/components/feed/smart/ReaderReturnCoach.tsx'),
     'utf8'
@@ -32,16 +33,23 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(reader).toContain("setInternalProgress(0)")
   })
 
-  it('open ramp uses double-rAF: arm transition then drive progress to 1', () => {
-    expect(client).toContain('progressAnimating: true')
-    expect(client).toContain('requestAnimationFrame(runOpenAnim)')
-    const openIdx = client.indexOf('Haberi Oku / button: same page-turn authority')
-    const openBlock = client.slice(openIdx, openIdx + 1800)
-    expect(openBlock).toContain('runOpenAnim')
-    expect(openBlock).toMatch(
-      /progressAnimating:\s*true[\s\S]{0,400}requestAnimationFrame\(runOpenAnim\)/
+  it('open ramp mounts at progress≈0 with transition armed (no null hard-cut)', () => {
+    // Root cause of iOS Haberi Oku jump-cut: return null at progress≈0 meant first
+    // paint was already progress=1 with nowhere to interpolate from.
+    expect(reader).toMatch(
+      /progress\s*<=\s*0\.001\s*&&\s*!committed\s*&&\s*!progressAnimating\s*&&\s*!animating/
     )
+    expect(reader).toContain('hard cut, no page-turn')
+
+    const openIdx = client.indexOf('Haberi Oku / button: same page-turn authority')
+    const openBlock = client.slice(openIdx, openIdx + 2000)
+    expect(openBlock).toContain('progressAnimating: true')
+    expect(openBlock).toContain('requestAnimationFrame(() => requestAnimationFrame(runOpenAnim))')
     expect(openBlock).toMatch(/runOpenAnim[\s\S]{0,200}progress:\s*1/)
+    // Must NOT start the ramp with progressAnimating:false (null mount window).
+    expect(openBlock).not.toMatch(
+      /setReaderSession\(\{\s*item,\s*index,\s*progress:\s*from,\s*committed:\s*false,\s*progressAnimating:\s*false/
+    )
   })
 
   it('close/drag syncs Feed underlay via onVisualProgress', () => {
@@ -51,14 +59,13 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(client).toContain('readerUnderlayAnimating')
   })
 
-  it('Reader header keeps Akışa Dön clear of iOS status bar (--mobile-sat)', () => {
+  it('Reader header uses --reader-sat floor so Safari Akışa Dön clears status bar', () => {
     expect(reader).toContain('data-testid="feed-reader-header"')
     expect(reader).toContain('data-testid="feed-reader-close"')
     expect(reader).toContain('Akışa Dön')
-    expect(reader).toContain('--mobile-sat,env(safe-area-inset-top,0px)')
-    expect(reader).toMatch(
-      /pt-\[max\(0\.75rem,calc\(var\(--mobile-sat,env\(safe-area-inset-top,0px\)\)\+0\.35rem\)\)\]/
-    )
+    expect(reader).toContain('--reader-sat')
+    expect(css).toContain('--reader-sat:')
+    expect(css).toMatch(/--reader-sat:\s*max\([\s\S]{0,220}47px/)
     expect(reader).toMatch(/feed-reader-close[\s\S]{0,350}Akışa Dön/)
   })
 

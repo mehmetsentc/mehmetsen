@@ -1802,16 +1802,17 @@ export function SmartFeedClient({
         mode,
         category,
       })
+      // Mount off-screen at `from` with transition armed, then drive to 1.
+      // progressAnimating must be true on first paint so FeedArticleReader does
+      // not return null at progress≈0 (that caused iOS Haberi Oku hard-cuts).
       setReaderSession({
         item,
         index,
         progress: from,
         committed: false,
-        progressAnimating: false,
+        progressAnimating: true,
         openSource,
       })
-      // Double-rAF: arm CSS transition at `from`, then drive to 1 — same-tick
-      // progressAnimating+progress:1 skips interpolation on WebKit/iOS.
       const runOpenAnim = () => {
         setReaderSession((s) =>
           s && s.item.articleId === item.articleId ? { ...s, progress: 1 } : s
@@ -1825,14 +1826,8 @@ export function SmartFeedClient({
           })
         }, FEED_READER_DURATION_MS)
       }
-      requestAnimationFrame(() => {
-        setReaderSession((s) =>
-          s && s.item.articleId === item.articleId
-            ? { ...s, progressAnimating: true }
-            : s
-        )
-        requestAnimationFrame(runOpenAnim)
-      })
+      // Double-rAF after mount at `from` so WebKit paints translate(-100%) before 0→1.
+      requestAnimationFrame(() => requestAnimationFrame(runOpenAnim))
       patchReaderDebug({
         openReaderCalled: true,
         readerOpenRequested: true,

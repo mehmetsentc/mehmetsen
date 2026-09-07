@@ -400,6 +400,17 @@
   .feed-reader-article {
     color: var(--reader-page-text, #f4f1ea);
     background: var(--reader-page-bg, #0c0c0e);
+    /*
+     * Mobile Safari often reports env(safe-area-inset-top)=0 inside fixed
+     * overlays even with viewport-fit=cover. Floor to notch/DI clearance so
+     * Akışa Dön never sits under the status bar (native shell already floors
+     * --mobile-sat; this covers plain Safari / PWA too).
+     */
+    --reader-sat: max(
+      var(--mobile-sat, env(safe-area-inset-top, 0px)),
+      env(safe-area-inset-top, 0px),
+      47px
+    );
   }
   .feed-reader-article .feed-reader-headline,
   .feed-reader-article .feed-reader-spot {
