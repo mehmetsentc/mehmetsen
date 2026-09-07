@@ -19,6 +19,7 @@ import {
   dispatchFeedOpenGesture,
   shouldIgnoreFeedOpenGestureTarget,
 } from '@/lib/feed/reader/feedOpenGesture'
+import { nestedFeedContentCanScroll } from '@/lib/feed/reader/nestedFeedScroll'
 import {
   classifyAxisIntent,
   feedToReaderProgress,
@@ -2315,9 +2316,10 @@ export function SmartFeedClient({
                   showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
                   discoveryCategory={category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
-                  onDiscoveryArticleOpen={
-                    feedReaderEnabled && readerCapabilityReady
-                      ? (d) => {
+                  onDiscoveryArticleOpen={(d) => {
+                          // Always route through onRead — never bare /haber Link while
+                          // capability is pending (transient flicker → newspaper surface).
+                          // Guest/deny still reaches CANONICAL_FALLBACK via decideFeedReadAction.
                           const existing = items.find((i) => i.articleId === d.articleId)
                           if (existing) {
                             const idx = items.findIndex((i) => i.articleId === d.articleId)
@@ -2353,9 +2355,7 @@ export function SmartFeedClient({
                             slug: d.slug || d.articleId,
                           }
                           onRead(synthetic, index, 'button')
-                        }
-                      : undefined
-                  }
+                        }}
                   showSwipeDiscoveryCoach={
                     Boolean(
                       isActive &&
@@ -2686,6 +2686,15 @@ function FeedCardWithImpression(props: {
           if (d.axis === 'none') {
             const intent = classifyAxisIntent(dx, dy)
             if (intent === 'vertical') {
+              // Nested copy/CTA scroll owns vertical until its edge.
+              if (nestedFeedContentCanScroll(ev.target, dy)) {
+                clearNativeMove()
+                drag.current = null
+                setHorizontalLocked(false)
+                setDragProgress(0)
+                onOpenReaderCancel?.()
+                return
+              }
               clearNativeMove()
               drag.current = null
               setHorizontalLocked(false)

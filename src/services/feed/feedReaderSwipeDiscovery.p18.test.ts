@@ -1,5 +1,5 @@
 /**
- * P18 — Swipe Discovery Coach V4: device-local, non-intercepting, key migration.
+ * P18 — Swipe Discovery Coach V5: device-local, non-intercepting, key migration.
  * AUTOMATED — NOT HUMAN GO.
  */
 import { describe, expect, it, beforeEach } from 'vitest'
@@ -36,7 +36,7 @@ beforeEach(() => {
   }
 })
 
-describe('P18 swipe discovery coach V4', () => {
+describe('P18 swipe discovery coach V5', () => {
   it('1-2: eligible + not learned may show across multiple cards', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
@@ -84,24 +84,24 @@ describe('P18 swipe discovery coach V4', () => {
     expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
   })
 
-  it('10: V1 learned/max does NOT suppress V4 (fresh key)', () => {
+  it('10: V1 learned/max does NOT suppress V5 (fresh key)', () => {
     mem.set(
       SWIPE_DISCOVERY_STORAGE_KEY_V1,
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v4')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 4 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 5 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 4,
+      version: 5,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(

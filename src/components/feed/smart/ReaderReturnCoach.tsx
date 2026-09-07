@@ -13,6 +13,7 @@ import {
   recordReaderReturnCoachShown,
   READER_RETURN_COACH_ANIM_MS,
   READER_RETURN_COACH_HINT_MS,
+  READER_RETURN_COACH_REPEAT_COUNT,
   READER_RETURN_COACH_SETTLE_MS,
   READER_RETURN_COACH_TRAVEL_PX,
   shouldShowReaderReturnCoach,
@@ -65,7 +66,7 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
         timers.push(
           window.setTimeout(() => {
             requestAnimationFrame(tryRecordVisiblePaint)
-          }, 50)
+          }, 80)
         )
         return
       }
@@ -77,6 +78,24 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
         phase: 'visible',
         rightCoachVisible: true,
       })
+    }
+
+    const scheduleTravelCycle = (cycle: number) => {
+      if (cancelled || reduced) return
+      const base = 80 + cycle * (READER_RETURN_COACH_ANIM_MS + 280)
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return
+          setPhase('animating')
+          setTravel(READER_RETURN_COACH_TRAVEL_PX)
+        }, base)
+      )
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return
+          setTravel(0)
+        }, base + READER_RETURN_COACH_ANIM_MS)
+      )
     }
 
     const runSettleShow = () => {
@@ -106,19 +125,7 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
       }
 
       setTravel(0)
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return
-          setPhase('animating')
-          setTravel(READER_RETURN_COACH_TRAVEL_PX)
-        }, 80)
-      )
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return
-          setTravel(0)
-        }, 80 + READER_RETURN_COACH_ANIM_MS)
-      )
+      for (let i = 0; i < READER_RETURN_COACH_REPEAT_COUNT; i++) scheduleTravelCycle(i)
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
@@ -171,7 +178,7 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
         data-testid="reader-return-coach-slot"
         data-reader-return-phase={phase}
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[40]"
+        className="pointer-events-none absolute inset-0 z-[50]"
       />
     )
   }
@@ -180,10 +187,10 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
     <div
       ref={rootRef}
       data-testid="reader-return-coach"
-      data-reader-return-coach-v1="1"
+      data-reader-return-coach-v2="1"
       data-reader-return-phase={phase}
       aria-hidden
-      className="pointer-events-none absolute left-1/2 top-[42%] z-[40] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-[38%] z-[50] -translate-x-1/2 -translate-y-1/2"
       style={{
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
         transition: reduced
@@ -193,24 +200,25 @@ export function ReaderReturnCoach({ active, suppressed = false }: Props) {
       }}
     >
       <div
-        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/72 px-3.5 py-2 text-[13px] font-semibold tracking-wide text-white ring-1 ring-white/20 backdrop-blur-[5px]"
+        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px]"
         style={{
-          boxShadow: '0 10px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(225,29,46,0.4)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
         }}
       >
         <span
-          className="relative mr-0.5 flex h-6 w-6 shrink-0 items-center justify-center"
+          className="relative mr-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
           aria-hidden
           data-testid="reader-return-coach-finger"
         >
-          <span className="absolute h-3 w-3 rounded-full bg-white shadow-[0_0_0_2px_rgba(225,29,46,0.7)]" />
+          <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
         </span>
-        <span className="font-bold">Akışa Dön</span>
+        <span className="font-bold tracking-[0.04em]">Akışa Dön</span>
         <span
-          className="flex items-center gap-0.5 text-[15px] font-bold leading-none text-white"
+          className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
           aria-hidden
           data-testid="reader-return-coach-chevrons"
         >
+          <span>›</span>
           <span>›</span>
           <span className="text-[#e11d2e]">›</span>
         </span>

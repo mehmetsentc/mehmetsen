@@ -68,17 +68,17 @@ describe('P18 Feed V2 card fit matrix', () => {
     }
   })
 
-  it('FullscreenNewsCard reserves action zone; CTA outside scroll; coach in chrome', () => {
+  it('FullscreenNewsCard reserves action zone inside nested scroll; coach in chrome', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(card).toContain('smart-feed-action-zone')
     expect(card).toContain('smart-feed-copy-preview')
+    expect(card).toContain('smart-feed-copy-scroll')
     expect(card).not.toMatch(/smart-feed-headline[\s\S]{0,400}line-clamp/)
     expect(card).not.toMatch(/smart-feed-summary[\s\S]{0,400}line-clamp/)
     expect(card).toContain('--feed-v2-action-zone')
-    expect(card).not.toContain('smart-feed-copy-scroll')
     // Coach must not live under media absolute layer
     const mediaIdx = card.indexOf('data-testid="smart-feed-media"')
     const coachIdx = card.indexOf('<SwipeDiscoveryCoach')
@@ -102,9 +102,9 @@ describe('P18 Feed V2 card fit matrix', () => {
   })
 })
 
-describe('P18 swipe discovery V4 visibility', () => {
-  it('uses v4 key; prior v1/v2/v3 learned cannot suppress', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v4')
+describe('P18 swipe discovery V5 visibility', () => {
+  it('uses v5 key; prior v1/v2/v3 learned cannot suppress', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v5')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
@@ -126,7 +126,7 @@ describe('P18 swipe discovery V4 visibility', () => {
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('left-1/2')
-    expect(coach).toContain('data-swipe-discovery-v4')
+    expect(coach).toContain('data-swipe-discovery-v5')
     expect(coach).not.toContain('preventDefault')
   })
 
@@ -146,7 +146,7 @@ describe('P18 swipe discovery V4 visibility', () => {
   })
 
   it('TRACE exposes coach debug + Replay', () => {
-    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 4 })
+    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 5 })
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

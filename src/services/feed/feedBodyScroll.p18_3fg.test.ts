@@ -103,14 +103,15 @@ describe('P18.3FG client stall guards (source)', () => {
     expect(src).toContain('Do NOT latch lastPrefetchCursorRef before the fetch')
   })
 
-  it('card keeps 100dvh, CTA, text zone, no body dump path', () => {
+  it('card keeps 100dvh, CTA, nested copy scroll, no body dump path', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(card).toContain('100dvh')
     expect(card).toContain('snap-start snap-always')
-    expect(card).toContain('smart-feed-text-zone')
+    expect(card).toContain('smart-feed-copy-scroll')
+    expect(card).toContain('data-feed-nested-scroll="1"')
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('Haberi Oku')
     expect(card).not.toMatch(/item\.(body|content)/)

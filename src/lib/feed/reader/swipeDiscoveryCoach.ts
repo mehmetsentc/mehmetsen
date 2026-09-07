@@ -2,39 +2,37 @@
  * Device-local Swipe Discovery Coach for Feed → Reader LEFT swipe.
  * No DB, no analytics, no profile mutation.
  *
- * V4 key: human validation requires eligibility until a REAL LEFT→OPEN_READER
- * gesture. V1–V3 may have burned shownCount / learned while never human-visible;
- * those keys must NOT suppress V4.
+ * V5: V4 could burn shownCount while painted under social rail (z-22 < z-30)
+ * or cancel settle on snap. Fresh key + higher stack + left-of-center placement.
+ * Prior V1–V4 learned/max must NOT suppress V5.
  */
 
 /** Current presentation store. */
-export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v4'
-/** Prior keys — diagnostic / migration proof only. */
+export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v5'
+export const SWIPE_DISCOVERY_STORAGE_KEY_V4 = 'nahaber.feedSwipeDiscovery.v4'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V3 = 'nahaber.feedSwipeDiscovery.v3'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V2 = 'nahaber.feedSwipeDiscovery.v2'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V1 = 'nahaber.feedSwipeDiscovery.v1'
-/** Wait after card settles before showing coach — design ~2s. */
-export const SWIPE_DISCOVERY_SETTLE_MS = 1800
+/** Wait after card settles before showing coach. */
+export const SWIPE_DISCOVERY_SETTLE_MS = 1600
 /** Finger/chip travel LEFT (px). */
 export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 /** Subtle active-card nudge LEFT (px). */
 export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 8
-/** Motion duration for travel + return half-cycle. */
+/** Motion duration for one travel half-cycle. */
 export const SWIPE_DISCOVERY_ANIM_MS = 900
-/** Total on-screen lifetime after settle (ms). */
-export const SWIPE_DISCOVERY_HINT_MS = 2300
+/** Total on-screen lifetime after settle (includes one repeat). */
+export const SWIPE_DISCOVERY_HINT_MS = 4200
+/** How many travel cycles while visible. */
+export const SWIPE_DISCOVERY_REPEAT_COUNT = 2
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
-/**
- * Soft periodic cap — V4 eligibility is primarily !learned.
- * High enough that normal cards remain eligible before gesture learning.
- */
 export const SWIPE_DISCOVERY_MAX_SHOWS = 48
 
 export type SwipeDiscoveryState = {
   learned: boolean
   shownCount: number
-  version?: 4
+  version?: 5
 }
 
 export type SwipeDiscoveryPhase =
@@ -71,35 +69,36 @@ function readLegacyState(key: string): SwipeDiscoveryState | null {
   }
 }
 
-/** Diagnostic only. */
 export function readSwipeDiscoveryV1State(): SwipeDiscoveryState | null {
   return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V1)
 }
 
-/** Diagnostic only. */
 export function readSwipeDiscoveryV2State(): SwipeDiscoveryState | null {
   return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V2)
 }
 
-/** Diagnostic only. */
 export function readSwipeDiscoveryV3State(): SwipeDiscoveryState | null {
   return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V3)
 }
 
+export function readSwipeDiscoveryV4State(): SwipeDiscoveryState | null {
+  return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V4)
+}
+
 export function readSwipeDiscoveryState(): SwipeDiscoveryState {
   const ss = storage()
-  if (!ss) return { learned: false, shownCount: 0, version: 4 }
+  if (!ss) return { learned: false, shownCount: 0, version: 5 }
   try {
     const raw = ss.getItem(SWIPE_DISCOVERY_STORAGE_KEY)
-    if (!raw) return { learned: false, shownCount: 0, version: 4 }
+    if (!raw) return { learned: false, shownCount: 0, version: 5 }
     const parsed = JSON.parse(raw) as Partial<SwipeDiscoveryState>
     return {
       learned: Boolean(parsed.learned),
       shownCount: typeof parsed.shownCount === 'number' ? parsed.shownCount : 0,
-      version: 4,
+      version: 5,
     }
   } catch {
-    return { learned: false, shownCount: 0, version: 4 }
+    return { learned: false, shownCount: 0, version: 5 }
   }
 }
 
@@ -109,7 +108,7 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
   try {
     ss.setItem(
       SWIPE_DISCOVERY_STORAGE_KEY,
-      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 4 })
+      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 5 })
     )
   } catch {
     // private mode / quota
@@ -118,18 +117,13 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
 
 export function markSwipeDiscoveryLearned(): void {
   const cur = readSwipeDiscoveryState()
-  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 4 })
+  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 5 })
 }
 
-/** Presentation-only reset for ?readerDebug=1 Replay — does not touch capability/auth. */
 export function resetSwipeDiscoveryPresentation(): void {
-  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 4 })
+  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 5 })
 }
 
-/**
- * Before learned: every normal Feed V2 card remains eligible.
- * shownCount is diagnostic / soft-cap only — do not permanently hide after a few mounts.
- */
 export function shouldShowSwipeDiscoveryCoach(opts?: {
   state?: SwipeDiscoveryState
   maxShows?: number
@@ -140,18 +134,14 @@ export function shouldShowSwipeDiscoveryCoach(opts?: {
   return state.shownCount < maxShows
 }
 
-/**
- * Count a show ONLY after the coach has a real visible painted rect in viewport.
- * Scheduling / mount / rAF alone must not burn budget.
- */
 export function recordSwipeDiscoveryShown(state?: SwipeDiscoveryState): SwipeDiscoveryState {
   const cur = state ?? readSwipeDiscoveryState()
-  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 4 as const }
+  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 5 as const }
   writeSwipeDiscoveryState(next)
   return next
 }
 
-/** True when a painted element intersects the viewport with non-zero size. */
+/** True when painted rect intersects viewport with non-zero size. */
 export function isCoachPaintedInViewport(el: Element | null): boolean {
   if (!el || typeof el.getBoundingClientRect !== 'function') return false
   const r = el.getBoundingClientRect()
@@ -159,17 +149,35 @@ export function isCoachPaintedInViewport(el: Element | null): boolean {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 0
   const vh = typeof window !== 'undefined' ? window.innerHeight : 0
   if (vw <= 0 || vh <= 0) return false
-  return r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw
+  if (!(r.bottom > 0 && r.right > 0 && r.top < vh && r.left < vw)) return false
+
+  // Reject when social dock (or other chrome) sits on top of the coach center.
+  if (typeof document !== 'undefined' && typeof document.elementsFromPoint === 'function') {
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const stack = document.elementsFromPoint(cx, cy)
+    for (const hit of stack) {
+      if (hit === el || el.contains(hit)) return true
+      if (
+        hit instanceof Element &&
+        (hit.getAttribute('data-testid') === 'smart-feed-social-dock' ||
+          hit.closest('[data-testid="smart-feed-social-dock"]'))
+      ) {
+        return false
+      }
+      // First non-coach hit that isn't transparent chrome — if it's social, already returned.
+      // If coach isn't first, keep scanning until coach or social.
+    }
+  }
+  return true
 }
 
-/**
- * Prior keys that would have suppressed older coaches — must not suppress V4.
- */
 export function priorKeysWouldHaveSuppressedCoach(): boolean {
   for (const key of [
     SWIPE_DISCOVERY_STORAGE_KEY_V1,
     SWIPE_DISCOVERY_STORAGE_KEY_V2,
     SWIPE_DISCOVERY_STORAGE_KEY_V3,
+    SWIPE_DISCOVERY_STORAGE_KEY_V4,
   ]) {
     const s = readLegacyState(key)
     if (!s) continue
@@ -178,7 +186,6 @@ export function priorKeysWouldHaveSuppressedCoach(): boolean {
   return false
 }
 
-/** @deprecated Prefer priorKeysWouldHaveSuppressedCoach */
 export function v1WouldHaveSuppressedCoach(): boolean {
   return priorKeysWouldHaveSuppressedCoach()
 }

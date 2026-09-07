@@ -194,6 +194,8 @@ export function FeedArticleReader({
   const [reducedMotion, setReducedMotion] = useState(false)
   const [imageLoad, setImageLoad] = useState<ImageLoadState>('pending')
   const [loadTimedOut, setLoadTimedOut] = useState(false)
+  /** Reactive close flag for return coach (closingRef alone does not re-render). */
+  const [coachClosing, setCoachClosing] = useState(false)
   /** Bumps on article/candidate change + close — stale Image callbacks ignored. */
   const heroEpochRef = useRef(0)
   const activeHeroUrlRef = useRef<string | null>(null)
@@ -454,6 +456,7 @@ export function FeedArticleReader({
       })
       openedRef.current = false
       closingRef.current = false
+      setCoachClosing(false)
       committedLifecycleRef.current = false
       closePhaseRef.current = finishCloseTransaction()
       readerOpenIdRef.current = null
@@ -470,6 +473,7 @@ export function FeedArticleReader({
       if (!nextPhase) return
       closePhaseRef.current = nextPhase
       closingRef.current = true
+      setCoachClosing(true)
       closeReasonRef.current = reason
 
       const openId = readerOpenIdRef.current
@@ -626,6 +630,7 @@ export function FeedArticleReader({
     abortRef.current?.abort()
     setInternalProgress(null)
     closingRef.current = false
+    setCoachClosing(false)
   }, [committed, item.articleId])
 
   // Committed lifecycle — push history exactly once; never re-push on callback churn.
@@ -646,6 +651,7 @@ export function FeedArticleReader({
     openGeneration += 1
     const gen = openGeneration
     closingRef.current = false
+    setCoachClosing(false)
     ignoreNextPopRef.current = false
     foreignPopDuringCloseRef.current = false
     pendingHistoryPlanRef.current = null
@@ -973,7 +979,7 @@ export function FeedArticleReader({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        <ReaderReturnCoach active={committed && !closingRef.current} suppressed={!committed} />
+        <ReaderReturnCoach active={committed && !coachClosing} suppressed={!committed || coachClosing} />
 
         <header
           className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-1.5 pt-[max(0.4rem,env(safe-area-inset-top))]"

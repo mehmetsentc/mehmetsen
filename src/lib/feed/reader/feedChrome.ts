@@ -25,8 +25,13 @@ export const FEED_V2_CHROME_CSS_VARS = {
    * Hero / media flexible region — design targets ~38–44% of card height.
    * Floor only; flex-1 grows into remaining space after action zone.
    */
-  '--feed-v2-hero-min': 'clamp(32dvh, 38dvh, 44dvh)',
-  /** Bounded copy preview (badge + headline + summary) before actions. */
+  '--feed-v2-hero-min': 'clamp(28dvh, 34dvh, 40dvh)',
+  /**
+   * Nested scroll stack: chips + full headline/summary + Haberi Oku + publisher.
+   * Caps height so hero retains floor; overflow scrolls to reach CTA/follow.
+   */
+  '--feed-v2-bottom-stack-max': 'min(54dvh, 26rem)',
+  /** @deprecated Prefer bottom-stack nested scroll; kept for diagnostics. */
   '--feed-v2-copy-max': 'min(34dvh, 15.5rem)',
 } as const
 

@@ -5,6 +5,8 @@ import { evaluateFeedOpenGesture } from '@/components/feed/smart/FeedArticleRead
 import { classifyAxisIntent, shouldIgnoreSystemBackEdge } from '@/lib/feed/reader/gestureArbitration'
 import type { FeedReaderGestureDecision } from '@/lib/feed/reader/readerDebug'
 
+export { nestedFeedContentCanScroll } from '@/lib/feed/reader/nestedFeedScroll'
+
 const INTERACTIVE_GESTURE_BLOCK_SELECTOR =
   'button, a, input, textarea, [data-no-reader-gesture="1"]'
 

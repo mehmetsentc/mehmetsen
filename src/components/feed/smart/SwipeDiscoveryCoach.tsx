@@ -1,11 +1,11 @@
 'use client'
 
 /**
- * LEFT-swipe discovery hint on Feed cards (V4).
+ * LEFT-swipe discovery hint on Feed cards (V5).
  * pointer-events: none — must never intercept gestures.
  *
- * Must live in the card CHROME stacking layer (not under media), clear of the
- * social rail, or it paints invisibly behind z-10 chrome / z-30 actions.
+ * Stack ABOVE social rail (z-35 > z-30). Place left-of-center so the right
+ * social dock cannot cover the cue on tall phones.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -18,6 +18,7 @@ import {
   SWIPE_DISCOVERY_ANIM_MS,
   SWIPE_DISCOVERY_CARD_NUDGE_PX,
   SWIPE_DISCOVERY_HINT_MS,
+  SWIPE_DISCOVERY_REPEAT_COUNT,
   SWIPE_DISCOVERY_SETTLE_MS,
   SWIPE_DISCOVERY_TRAVEL_PX,
   type SwipeDiscoveryPhase,
@@ -25,9 +26,7 @@ import {
 
 type Props = {
   active: boolean
-  /** Parent reports user is dragging / scrolling — hide immediately. */
   suppressed?: boolean
-  /** Subtle card translate (negative = LEFT). Parent applies transform. */
   onCardNudge?: (px: number) => void
 }
 
@@ -72,11 +71,10 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       if (cancelled || recordedRef.current) return
       const el = rootRef.current
       if (!isCoachPaintedInViewport(el)) {
-        // Retry next frames — layout/stacking may settle after first paint.
         timers.push(
           window.setTimeout(() => {
             requestAnimationFrame(tryRecordVisiblePaint)
-          }, 50)
+          }, 80)
         )
         return
       }
@@ -90,6 +88,26 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       })
     }
 
+    const scheduleTravelCycle = (cycle: number) => {
+      if (cancelled || reduced) return
+      const base = 80 + cycle * (SWIPE_DISCOVERY_ANIM_MS + 280)
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return
+          setPhase('animating')
+          setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)
+          onCardNudgeRef.current?.(-SWIPE_DISCOVERY_CARD_NUDGE_PX)
+        }, base)
+      )
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return
+          setTravel(0)
+          onCardNudgeRef.current?.(0)
+        }, base + SWIPE_DISCOVERY_ANIM_MS)
+      )
+    }
+
     const runSettleShow = () => {
       if (cancelled) return
       if (!shouldShowSwipeDiscoveryCoach()) {
@@ -99,7 +117,6 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
 
       setVisible(true)
       setPhase('visible')
-      // Count ONLY after a real painted rect intersects the viewport.
       requestAnimationFrame(() => {
         requestAnimationFrame(tryRecordVisiblePaint)
       })
@@ -120,21 +137,7 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
 
       setTravel(0)
       onCardNudgeRef.current?.(0)
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return
-          setPhase('animating')
-          setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)
-          onCardNudgeRef.current?.(-SWIPE_DISCOVERY_CARD_NUDGE_PX)
-        }, 80)
-      )
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return
-          setTravel(0)
-          onCardNudgeRef.current?.(0)
-        }, 80 + SWIPE_DISCOVERY_ANIM_MS)
-      )
+      for (let i = 0; i < SWIPE_DISCOVERY_REPEAT_COUNT; i++) scheduleTravelCycle(i)
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
@@ -182,7 +185,6 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
   }, [])
 
   if (!active) return null
-  // Keep a mounted sentinel when waiting so TRACE can prove schedule; paint only when visible.
   if (!visible) {
     return (
       <div
@@ -190,7 +192,7 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         data-testid="feed-swipe-discovery-coach-slot"
         data-swipe-discovery-phase={phase}
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[22]"
+        className="pointer-events-none absolute inset-0 z-[35]"
       />
     )
   }
@@ -199,10 +201,10 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
     <div
       ref={rootRef}
       data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v4="1"
+      data-swipe-discovery-v5="1"
       data-swipe-discovery-phase={phase}
       aria-hidden
-      className="pointer-events-none absolute left-1/2 top-[36%] z-[22] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-[28%] top-[40%] z-[35] -translate-x-1/2 -translate-y-1/2 max-[820px]:left-1/2"
       style={{
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
         transition: reduced
@@ -212,13 +214,13 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       }}
     >
       <div
-        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/72 px-3.5 py-2 text-[13px] font-semibold tracking-wide text-white ring-1 ring-white/20 backdrop-blur-[5px]"
+        className="pointer-events-none flex items-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px]"
         style={{
-          boxShadow: '0 10px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(225,29,46,0.4)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
         }}
       >
         <span
-          className="flex items-center gap-0.5 text-[15px] font-bold leading-none text-white"
+          className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
           aria-hidden
           data-testid="feed-swipe-discovery-chevrons"
         >
@@ -228,11 +230,11 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         </span>
         <span className="font-bold tracking-[0.04em]">Haberi Aç</span>
         <span
-          className="relative ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center"
+          className="relative ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
           aria-hidden
           data-testid="feed-swipe-discovery-finger"
         >
-          <span className="absolute h-3 w-3 rounded-full bg-white shadow-[0_0_0_2px_rgba(225,29,46,0.7)]" />
+          <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
         </span>
       </div>
     </div>

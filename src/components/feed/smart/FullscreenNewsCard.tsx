@@ -536,16 +536,26 @@ export function FullscreenNewsCard({
           ) : null}
         </div>
 
-        {/* Bottom stack: bounded preview → REQUIRED CTA/publisher */}
+        {/*
+          Bottom chrome: ONE nested scroll for chips + FULL headline/summary +
+          Haberi Oku + publisher/follow. Previously actions sat BELOW a max-h
+          copy box and were clipped by article.overflow-hidden — unreachable.
+        */}
         <div
-          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-8 pr-[3.5rem] sm:pt-10"
+          className="relative z-[2] mt-auto flex w-full min-h-0 shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-6 pr-[3.5rem] sm:pt-8"
           data-testid="smart-feed-bottom-chrome"
+          style={{ maxHeight: 'var(--feed-v2-bottom-stack-max)' }}
         >
-          <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-text-zone">
-            <div
-              className="min-w-0 min-h-0 max-h-[min(42dvh,18rem)] space-y-1.5 overflow-y-auto overscroll-contain sm:space-y-2"
-              data-testid="smart-feed-copy-preview"
-            >
+          <div
+            className="min-w-0 space-y-1.5 overflow-y-auto overscroll-y-contain touch-pan-y sm:space-y-2"
+            data-testid="smart-feed-copy-scroll"
+            data-feed-nested-scroll="1"
+            style={{
+              maxHeight: 'var(--feed-v2-bottom-stack-max)',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-copy-preview">
               <div className="flex flex-wrap items-center gap-1.5">
                 {cat ? (
                   <span
@@ -616,7 +626,7 @@ export function FullscreenNewsCard({
               ) : null}
             </div>
 
-            {/* REQUIRED interaction zone — never inside overflow scroll */}
+            {/* CTA + publisher INSIDE nested scroll so long copy never clips them */}
             <div
               className="flex shrink-0 flex-col gap-1.5 pt-1"
               data-testid="smart-feed-action-zone"
