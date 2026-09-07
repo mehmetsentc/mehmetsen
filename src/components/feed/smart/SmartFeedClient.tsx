@@ -14,6 +14,7 @@ import {
   FEED_V2_CHROME_CSS_VARS,
 } from '@/lib/feed/reader/feedChrome'
 import { captureFeedV2EntryFromReferrer } from '@/lib/feed/reader/feedV2Exit'
+import { tryLockFeedPortraitOrientation } from '@/lib/feed/reader/feedPortrait'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import {
   FeedArticleReader,
@@ -316,6 +317,9 @@ export function SmartFeedClient({
   const readerDebugQuery = searchParams.get('readerDebug') === '1'
   useEffect(() => {
     captureFeedV2EntryFromReferrer()
+  }, [])
+  useEffect(() => {
+    void tryLockFeedPortraitOrientation()
   }, [])
   useEffect(() => {
     setReaderNavTraceEnabled(readerDebugQuery)

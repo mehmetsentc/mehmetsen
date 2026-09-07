@@ -24,20 +24,25 @@ export const FEED_V2_CHROME_CSS_VARS = {
   '--feed-v2-top-clearance': '3.5rem',
   /**
    * Required lower band: Haberi Oku (~56px) + publisher/follow (~48px).
-   * Design dikey alan dağılımı.
+   * Protected — always first-paint visible (outside nested copy scroll).
    */
   '--feed-v2-action-zone': '6.75rem',
   /**
-   * Hero / media flexible region — design targets ~38–44% of card height.
-   * Floor only; flex-1 grows into remaining space after action zone.
+   * Hero / media floor — yields to content/actions on short phones.
+   * Content + Haberi Oku + publisher take priority over immersive image height.
    */
-  '--feed-v2-hero-min': 'clamp(28dvh, 34dvh, 40dvh)',
+  '--feed-v2-hero-min': 'clamp(14dvh, 18dvh, 24dvh)',
   /**
-   * Nested scroll stack: chips + full headline/summary + Haberi Oku + publisher.
-   * Caps height so hero retains floor; overflow scrolls to reach CTA/follow.
+   * Copy-only nested scroll cap (chips + full headline/summary).
+   * Action stack sits BELOW this region and must not require scroll.
    */
-  '--feed-v2-bottom-stack-max': 'min(54dvh, 26rem)',
-  /** @deprecated Prefer bottom-stack nested scroll; kept for diagnostics. */
+  '--feed-v2-copy-scroll-max': 'min(40dvh, 18rem)',
+  /**
+   * @deprecated Alias kept for older diagnostics; prefer copy-scroll-max.
+   * Bottom chrome total room ≈ copy + action (not a scroll that hides publisher).
+   */
+  '--feed-v2-bottom-stack-max': 'min(52dvh, 24rem)',
+  /** @deprecated Prefer bottom-stack / copy-scroll; kept for diagnostics. */
   '--feed-v2-copy-max': 'min(34dvh, 15.5rem)',
 } as const
 
@@ -68,11 +73,20 @@ export function feedV2ActionZonePx(): number {
   return 108
 }
 
-/** Hero share of card height (design 38–44%). */
+/**
+ * Adaptive hero floor by viewport height (content/actions win on short phones).
+ */
+export function feedV2HeroMinPx(viewportHeight: number): number {
+  if (viewportHeight <= 700) return Math.round(viewportHeight * 0.14)
+  if (viewportHeight <= 812) return Math.round(viewportHeight * 0.18)
+  return Math.round(viewportHeight * 0.22)
+}
+
+/** Hero share of card height (design — after first-paint repair, softer floor). */
 export function feedV2HeroShare(viewportHeight: number): { min: number; max: number } {
   return {
-    min: Math.round(viewportHeight * 0.38),
-    max: Math.round(viewportHeight * 0.44),
+    min: feedV2HeroMinPx(viewportHeight),
+    max: Math.round(viewportHeight * 0.4),
   }
 }
 
@@ -94,8 +108,27 @@ export function feedV2ContentBudgetPx(opts: {
 }
 
 /**
+ * First-paint invariant: chips + full copy + Haberi Oku + publisher fit without
+ * nested scroll, given adaptive hero floor.
+ */
+export function feedV2FirstPaintFits(opts: {
+  viewportHeight: number
+  safeTop?: number
+  safeBottom?: number
+  topChromePx?: number
+  copyPx: number
+  actionZonePx?: number
+  heroMinPx?: number
+}): boolean {
+  const budget = feedV2ContentBudgetPx(opts)
+  const actions = opts.actionZonePx ?? feedV2ActionZonePx()
+  const hero = opts.heroMinPx ?? feedV2HeroMinPx(opts.viewportHeight)
+  return budget - hero - opts.copyPx - actions >= 0
+}
+
+/**
  * Prove CTA+publisher remain above the safe bottom for a viewport height,
- * given clamped copy height and reserved action zone.
+ * given full copy height and reserved action zone (post first-paint repair).
  */
 export function feedV2ActionsFitViewport(opts: {
   viewportHeight: number
@@ -104,11 +137,29 @@ export function feedV2ActionsFitViewport(opts: {
   copyPreviewPx: number
   actionZonePx?: number
 }): boolean {
-  const budget = feedV2ContentBudgetPx(opts)
-  const actions = opts.actionZonePx ?? feedV2ActionZonePx()
-  // Design: hero ~38% floor; remaining must still fit copy + actions.
-  const heroFloor = Math.round(opts.viewportHeight * 0.32)
-  return budget - heroFloor - opts.copyPreviewPx - actions >= 0
+  return feedV2FirstPaintFits({
+    ...opts,
+    copyPx: opts.copyPreviewPx,
+  })
+}
+
+/**
+ * Whether a required element is inside the first-paint safe band (no nested scroll).
+ * top/bottom are getBoundingClientRect() values; safeBottomInset is home-indicator.
+ */
+export function feedV2ElementInFirstPaint(opts: {
+  top: number
+  bottom: number
+  viewportHeight: number
+  contentTop?: number
+  safeBottomInset?: number
+}): boolean {
+  const contentTop = opts.contentTop ?? 0
+  const safeBottom = feedV2BottomClearancePx({
+    safeBottom: opts.safeBottomInset ?? 0,
+  })
+  const visibleBottom = opts.viewportHeight - safeBottom
+  return opts.top >= contentTop - 1 && opts.bottom <= visibleBottom + 1
 }
 
 /** Viewports used in layout regression matrix (w×h). */
@@ -125,14 +176,25 @@ export const FEED_V2_LAYOUT_TEST_VIEWPORTS = [
 /** @deprecated Prefer FEED_V2_LAYOUT_TEST_VIEWPORTS */
 export const FEED_V2_LAYOUT_TEST_HEIGHTS = FEED_V2_LAYOUT_TEST_VIEWPORTS.map((v) => v.h)
 
-/** Summary line clamp by viewport height (presentation only). */
+/** Typical first-paint copy height estimate (full text, no clamp) for budget tests. */
+export function feedV2TypicalCopyPx(viewportHeight: number): number {
+  const chips = 32
+  const headlineLines = viewportHeight < 700 ? 3 : 4
+  const summaryLines = viewportHeight < 700 ? 3 : 4
+  const headline = headlineLines * 24
+  const summary = summaryLines * 20
+  const gaps = 20
+  return chips + headline + summary + gaps
+}
+
+/** Summary line clamp by viewport height (presentation only — unused on Feed V2 card). */
 export function feedV2SummaryLineClamp(viewportHeight: number): number {
   if (viewportHeight < 700) return 2
   if (viewportHeight < 820) return 3
   return 4
 }
 
-/** Headline line clamp by viewport height (presentation only). */
+/** Headline line clamp by viewport height (presentation only — unused on Feed V2 card). */
 export function feedV2HeadlineLineClamp(viewportHeight: number): number {
   if (viewportHeight < 700) return 3
   return 4

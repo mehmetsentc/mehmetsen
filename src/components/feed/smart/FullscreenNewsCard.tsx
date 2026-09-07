@@ -541,12 +541,12 @@ export function FullscreenNewsCard({
         </div>
 
         {/*
-          Bottom chrome: ONE nested scroll for chips + FULL headline/summary +
-          Haberi Oku + publisher/follow. Previously actions sat BELOW a max-h
-          copy box and were clipped by article.overflow-hidden — unreachable.
+          Bottom chrome: copy may nested-scroll only for extreme editorial length.
+          Haberi Oku + publisher/follow are a protected stack OUTSIDE that scroll
+          so first paint never requires manual nested scroll to discover them.
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full min-h-0 shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-6 pr-[3.5rem] sm:pt-8"
+          className="relative z-[2] mt-auto flex w-full min-h-0 shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-4 pr-[3.5rem] sm:pt-6"
           data-testid="smart-feed-bottom-chrome"
           style={{ maxHeight: 'var(--feed-v2-bottom-stack-max)' }}
         >
@@ -555,7 +555,7 @@ export function FullscreenNewsCard({
             data-testid="smart-feed-copy-scroll"
             data-feed-nested-scroll="1"
             style={{
-              maxHeight: 'var(--feed-v2-bottom-stack-max)',
+              maxHeight: 'var(--feed-v2-copy-scroll-max)',
               WebkitOverflowScrolling: 'touch',
             }}
           >
@@ -602,8 +602,8 @@ export function FullscreenNewsCard({
               </div>
               <h2
                 className={cn(
-                  'break-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
-                  'text-[clamp(1.2rem,4.4vw,1.45rem)] font-extrabold leading-[1.22] tracking-[-0.02em]'
+                  'wrap-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
+                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.2] tracking-[-0.02em]'
                 )}
                 data-testid="smart-feed-headline"
               >
@@ -619,72 +619,14 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'break-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
-                    'text-[clamp(0.92rem,3.5vw,1.02rem)] font-medium leading-[1.45] text-white/95',
+                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
+                    'text-[clamp(0.88rem,3.3vw,1rem)] font-medium leading-[1.4] text-white/95',
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
                 >
                   {item.summary}
                 </p>
-              ) : null}
-            </div>
-
-            {/* CTA + publisher INSIDE nested scroll so long copy never clips them */}
-            <div
-              className="flex shrink-0 flex-col gap-1.5 pt-1"
-              data-testid="smart-feed-action-zone"
-              style={{ minHeight: 'var(--feed-v2-action-zone)' }}
-            >
-              <button
-                type="button"
-                onClick={onReadClick}
-                data-testid="smart-feed-read-cta"
-                className="inline-flex h-14 w-full shrink-0 items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99]"
-                style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
-              >
-                Haberi Oku →
-              </button>
-
-              {item.publisher ? (
-                <div
-                  className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5"
-                  data-testid="smart-feed-publisher-row"
-                >
-                  {publisherHref ? (
-                    <Link
-                      href={publisherHref}
-                      className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
-                      style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
-                      data-testid="smart-feed-publisher-link"
-                    >
-                      {publisherBlock}
-                    </Link>
-                  ) : (
-                    <div
-                      className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
-                      style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
-                    >
-                      {publisherBlock}
-                    </div>
-                  )}
-                  {isFollowablePublisherId(item.publisher.id) ? (
-                    <FollowButton
-                      publisherId={item.publisher.id}
-                      publisherSlug={
-                        isPublisherProfileSlug(item.publisher.slug)
-                          ? item.publisher.slug
-                          : isPublisherProfileSlug(item.publisher.id)
-                            ? item.publisher.id
-                            : undefined
-                      }
-                      className="shrink-0"
-                      showCount={false}
-                      variant="overlay"
-                      returnUrl="/feed-v2"
-                    />
-                  ) : null}
-                </div>
               ) : null}
             </div>
 
@@ -711,6 +653,65 @@ export function FullscreenNewsCard({
                   0
                 )}
               </pre>
+            ) : null}
+          </div>
+
+          {/* Protected first-paint action stack — never behind nested copy scroll */}
+          <div
+            className="flex shrink-0 flex-col gap-1.5 pt-1.5"
+            data-testid="smart-feed-action-zone"
+            data-feed-first-paint-actions="1"
+            style={{ minHeight: 'var(--feed-v2-action-zone)' }}
+          >
+            <button
+              type="button"
+              onClick={onReadClick}
+              data-testid="smart-feed-read-cta"
+              className="inline-flex h-14 w-full shrink-0 items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+              style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
+            >
+              Haberi Oku →
+            </button>
+
+            {item.publisher ? (
+              <div
+                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5"
+                data-testid="smart-feed-publisher-row"
+              >
+                {publisherHref ? (
+                  <Link
+                    href={publisherHref}
+                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
+                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
+                    data-testid="smart-feed-publisher-link"
+                  >
+                    {publisherBlock}
+                  </Link>
+                ) : (
+                  <div
+                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
+                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
+                  >
+                    {publisherBlock}
+                  </div>
+                )}
+                {isFollowablePublisherId(item.publisher.id) ? (
+                  <FollowButton
+                    publisherId={item.publisher.id}
+                    publisherSlug={
+                      isPublisherProfileSlug(item.publisher.slug)
+                        ? item.publisher.slug
+                        : isPublisherProfileSlug(item.publisher.id)
+                          ? item.publisher.id
+                          : undefined
+                    }
+                    className="shrink-0"
+                    showCount={false}
+                    variant="overlay"
+                    returnUrl="/feed-v2"
+                  />
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>

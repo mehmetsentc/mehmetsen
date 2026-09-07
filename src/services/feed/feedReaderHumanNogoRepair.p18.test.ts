@@ -41,23 +41,22 @@ beforeEach(() => {
   }
 })
 
-describe('card nested scroll — CTA/publisher reachable', () => {
-  it('action zone lives inside smart-feed-copy-scroll (not clipped outside)', () => {
+describe('card first-paint — CTA/publisher outside nested copy scroll', () => {
+  it('action zone is protected outside smart-feed-copy-scroll', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     const scrollIdx = card.indexOf('data-testid="smart-feed-copy-scroll"')
+    const firstPaint = card.indexOf('data-feed-first-paint-actions="1"')
     const actionIdx = card.indexOf('data-testid="smart-feed-action-zone"')
     const pubIdx = card.indexOf('data-testid="smart-feed-publisher-row"')
-    const scrollClose = card.indexOf('</div>', pubIdx)
     expect(scrollIdx).toBeGreaterThan(0)
-    expect(actionIdx).toBeGreaterThan(scrollIdx)
+    expect(firstPaint).toBeGreaterThan(scrollIdx)
+    expect(actionIdx).toBeGreaterThan(0)
     expect(pubIdx).toBeGreaterThan(actionIdx)
-    // publisher still before scroll container closes (heuristic: action after scroll open)
-    expect(actionIdx).toBeLessThan(scrollClose + 5000)
     expect(card).toContain('data-feed-nested-scroll="1"')
-    expect(card).toContain('--feed-v2-bottom-stack-max')
+    expect(card).toContain('--feed-v2-copy-scroll-max')
     expect(card).not.toMatch(/max-h-\[min\(42dvh/)
     const headlineIdx = card.indexOf('data-testid="smart-feed-headline"')
     expect(card.slice(headlineIdx - 200, headlineIdx)).not.toMatch(/line-clamp/)

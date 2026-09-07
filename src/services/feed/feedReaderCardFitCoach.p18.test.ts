@@ -10,8 +10,9 @@ import {
   feedV2ActionsFitViewport,
   feedV2BottomClearancePx,
   feedV2ContentBudgetPx,
-  feedV2HeadlineLineClamp,
-  feedV2SummaryLineClamp,
+  feedV2FirstPaintFits,
+  feedV2HeroMinPx,
+  feedV2TypicalCopyPx,
 } from '@/lib/feed/reader/feedChrome'
 import {
   isCoachPaintedInViewport,
@@ -47,18 +48,24 @@ beforeEach(() => {
 })
 
 describe('P18 Feed V2 card fit matrix', () => {
-  it('CTA/publisher budget fits all target viewports with clamped copy', () => {
+  it('first-paint budget fits all target viewports with full typical copy', () => {
     for (const vp of FEED_V2_LAYOUT_TEST_VIEWPORTS) {
-      const summaryLines = feedV2SummaryLineClamp(vp.h)
-      const headlineLines = feedV2HeadlineLineClamp(vp.h)
-      // ~22px/line summary + ~28px/line headline + badges ~28
-      const copyPreviewPx = 28 + headlineLines * 28 + summaryLines * 22
+      expect(
+        feedV2FirstPaintFits({
+          viewportHeight: vp.h,
+          safeTop: 47,
+          safeBottom: 34,
+          topChromePx: 56,
+          copyPx: feedV2TypicalCopyPx(vp.h),
+          heroMinPx: feedV2HeroMinPx(vp.h),
+        })
+      ).toBe(true)
       expect(
         feedV2ActionsFitViewport({
           viewportHeight: vp.h,
           safeTop: 47,
           safeBottom: 34,
-          copyPreviewPx,
+          copyPreviewPx: feedV2TypicalCopyPx(vp.h),
         })
       ).toBe(true)
       expect(feedV2BottomClearancePx({ safeBottom: 34 })).toBeLessThan(80)
@@ -68,14 +75,16 @@ describe('P18 Feed V2 card fit matrix', () => {
     }
   })
 
-  it('FullscreenNewsCard reserves action zone inside nested scroll; coach in chrome', () => {
+  it('FullscreenNewsCard protects action zone outside nested copy scroll; coach in chrome', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(card).toContain('smart-feed-action-zone')
+    expect(card).toContain('data-feed-first-paint-actions')
     expect(card).toContain('smart-feed-copy-preview')
     expect(card).toContain('smart-feed-copy-scroll')
+    expect(card).toContain('--feed-v2-copy-scroll-max')
     expect(card).not.toMatch(/smart-feed-headline[\s\S]{0,400}line-clamp/)
     expect(card).not.toMatch(/smart-feed-summary[\s\S]{0,400}line-clamp/)
     expect(card).toContain('--feed-v2-action-zone')
