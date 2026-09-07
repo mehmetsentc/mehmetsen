@@ -2358,10 +2358,9 @@ export function SmartFeedClient({
                   }
                   showSwipeDiscoveryCoach={
                     Boolean(
-                      feedReaderEnabled &&
-                        readerCapabilityReady &&
-                        isActive &&
-                        !readerSession?.committed
+                      isActive &&
+                        !readerSession?.committed &&
+                        ((feedReaderEnabled && readerCapabilityReady) || readerDebugQuery)
                     )
                   }
                   swipeDiscoverySuppressed={Boolean(

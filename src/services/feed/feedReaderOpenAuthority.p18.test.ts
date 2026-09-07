@@ -194,14 +194,14 @@ describe('B — capability session latch', () => {
 })
 
 describe('C — coach capability gate', () => {
-  it('coach only mounts when feedReaderEnabled && readerCapabilityReady', () => {
+  it('coach mounts when capability enabled (or readerDebug) on active card', () => {
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toMatch(
-      /showSwipeDiscoveryCoach=\{\s*Boolean\(\s*feedReaderEnabled\s*&&\s*readerCapabilityReady/
-    )
+    expect(client).toContain('showSwipeDiscoveryCoach=')
+    expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
+    expect(client).toContain('readerDebugQuery')
     expect(client).toContain('settleFeedReaderCapabilitySession')
     expect(client).toContain('sessionReaderOpenEligible')
   })

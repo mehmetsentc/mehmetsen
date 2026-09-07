@@ -116,7 +116,7 @@ interface FullscreenNewsCardProps {
  * Publisher lives in the bottom text stack (reference Reels composition).
  */
 const MODE_NAV_CLEARANCE =
-  'pt-[max(5.5rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+4.25rem))]'
+  'pt-[var(--feed-v2-top-clearance,max(5.25rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+4rem)))]'
 
 const DOUBLE_TAP_MS = 280
 const TAP_MOVE_PX = 14
@@ -442,17 +442,9 @@ export function FullscreenNewsCard({
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/85 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black via-black/80 to-transparent"
           aria-hidden
         />
-
-        {showSwipeDiscoveryCoach ? (
-          <SwipeDiscoveryCoach
-            active={isActive}
-            suppressed={swipeDiscoverySuppressed}
-            onCardNudge={setSwipeCoachNudgePx}
-          />
-        ) : null}
 
         {skin.frame !== 'none' ? (
           <div
@@ -503,7 +495,7 @@ export function FullscreenNewsCard({
 
       <div
         className={cn(
-          'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
+          'relative z-10 flex min-h-0 flex-1 flex-col px-3 sm:px-4',
           /* Immersive Feed: no MobileNav — only safe-area / home-indicator breath */
           'pb-[var(--feed-v2-bottom-clearance)]',
           MODE_NAV_CLEARANCE,
@@ -511,9 +503,18 @@ export function FullscreenNewsCard({
           'feed-v2-card-chrome'
         )}
       >
-        {/* Double-tap zone — shrinks on short viewports so copy stays nav-safe */}
+        {/* Coach in CHROME layer (above media) — clear of social rail */}
+        {showSwipeDiscoveryCoach ? (
+          <SwipeDiscoveryCoach
+            active={isActive}
+            suppressed={swipeDiscoverySuppressed}
+            onCardNudge={setSwipeCoachNudgePx}
+          />
+        ) : null}
+
+        {/* Double-tap / hero flex — yields before required actions */}
         <div
-          className="relative min-h-[var(--feed-v2-hero-min,12vh)] flex-1 touch-manipulation"
+          className="relative min-h-[var(--feed-v2-hero-min)] flex-1 touch-manipulation"
           data-testid="smart-feed-double-tap-zone"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
@@ -535,19 +536,17 @@ export function FullscreenNewsCard({
           ) : null}
         </div>
 
-        {/* Bottom lower-third — text starts higher; publisher/follow lifted */}
+        {/* Bottom stack: bounded preview → REQUIRED CTA/publisher */}
         <div
-          className="relative z-[2] mt-auto flex w-full min-h-0 flex-col justify-end bg-gradient-to-t from-black via-black/88 to-transparent pt-14 pr-[3.75rem]"
+          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-8 pr-[3.5rem] sm:pt-10"
           data-testid="smart-feed-bottom-chrome"
         >
-          <div className="min-w-0 space-y-2 pb-1 sm:space-y-2.5 sm:pb-2" data-testid="smart-feed-text-zone">
+          <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-text-zone">
             <div
-              className="max-h-[min(38vh,22rem)] space-y-2 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:max-h-[42vh]"
-              data-testid="smart-feed-copy-scroll"
-              onTouchStart={(e) => e.stopPropagation()}
-              onWheel={(e) => e.stopPropagation()}
+              className="min-w-0 space-y-1.5 sm:space-y-2"
+              data-testid="smart-feed-copy-preview"
             >
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {cat ? (
                   <span
                     className={cn(
@@ -568,7 +567,7 @@ export function FullscreenNewsCard({
                     onClick={onCategoryClick}
                     data-testid="smart-feed-category-goto"
                     data-no-reader-gesture="1"
-                    className="inline-flex min-h-9 items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm transition active:scale-[0.98]"
+                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm transition active:scale-[0.98]"
                     aria-label={`${cat} kategorisine git`}
                   >
                     <span className="hidden min-[360px]:inline">Kategoriye Git</span>
@@ -588,7 +587,11 @@ export function FullscreenNewsCard({
                 ) : null}
               </div>
               <h2
-                className={cn('break-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]', skin.headlineClass)}
+                className={cn(
+                  'break-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
+                  'line-clamp-3 max-[700px]:line-clamp-3 min-[701px]:line-clamp-4',
+                  'text-[clamp(1.15rem,4.2vw,1.4rem)] font-extrabold leading-[1.2] tracking-[-0.02em]'
+                )}
                 data-testid="smart-feed-headline"
               >
                 {typedHeadline}
@@ -603,8 +606,9 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'break-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
-                    skin.summaryClass,
+                    'break-words transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
+                    'line-clamp-2 max-[699px]:line-clamp-2 min-[700px]:line-clamp-3 min-[820px]:line-clamp-4',
+                    'text-[clamp(0.88rem,3.4vw,1rem)] font-medium leading-[1.4] text-white/92',
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
@@ -612,57 +616,65 @@ export function FullscreenNewsCard({
                   {item.summary}
                 </p>
               ) : null}
+            </div>
+
+            {/* REQUIRED interaction zone — never inside overflow scroll */}
+            <div
+              className="flex shrink-0 flex-col gap-1.5 pt-1"
+              data-testid="smart-feed-action-zone"
+              style={{ minHeight: 'var(--feed-v2-action-zone)' }}
+            >
               <button
                 type="button"
                 onClick={onReadClick}
                 data-testid="smart-feed-read-cta"
-                className="mt-3 inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99] sm:mt-5"
+                className="inline-flex w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black transition active:scale-[0.99]"
                 style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
               >
                 Haberi Oku →
               </button>
-            </div>
 
-            {item.publisher ? (
-              <div
-                className="mb-1 flex min-w-0 flex-nowrap items-center gap-1.5"
-                data-testid="smart-feed-publisher-row"
-              >
-                {publisherHref ? (
-                  <Link
-                    href={publisherHref}
-                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
-                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
-                    data-testid="smart-feed-publisher-link"
-                  >
-                    {publisherBlock}
-                  </Link>
-                ) : (
-                  <div
-                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
-                    style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
-                  >
-                    {publisherBlock}
-                  </div>
-                )}
-                {isFollowablePublisherId(item.publisher.id) ? (
-                  <FollowButton
-                    publisherId={item.publisher.id}
-                    publisherSlug={
-                      isPublisherProfileSlug(item.publisher.slug)
-                        ? item.publisher.slug
-                        : isPublisherProfileSlug(item.publisher.id)
-                          ? item.publisher.id
-                          : undefined
-                    }
-                    className="shrink-0"
-                    showCount={false}
-                    variant="overlay"
-                    returnUrl="/feed-v2"
-                  />
-                ) : null}
-              </div>
-            ) : null}
+              {item.publisher ? (
+                <div
+                  className="mb-0.5 flex min-w-0 flex-nowrap items-center gap-1.5"
+                  data-testid="smart-feed-publisher-row"
+                >
+                  {publisherHref ? (
+                    <Link
+                      href={publisherHref}
+                      className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
+                      style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
+                      data-testid="smart-feed-publisher-link"
+                    >
+                      {publisherBlock}
+                    </Link>
+                  ) : (
+                    <div
+                      className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
+                      style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
+                    >
+                      {publisherBlock}
+                    </div>
+                  )}
+                  {isFollowablePublisherId(item.publisher.id) ? (
+                    <FollowButton
+                      publisherId={item.publisher.id}
+                      publisherSlug={
+                        isPublisherProfileSlug(item.publisher.slug)
+                          ? item.publisher.slug
+                          : isPublisherProfileSlug(item.publisher.id)
+                            ? item.publisher.id
+                            : undefined
+                      }
+                      className="shrink-0"
+                      showCount={false}
+                      variant="overlay"
+                      returnUrl="/feed-v2"
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
             {showDiscoveryRail && isActive ? (
               <FeedDiscoveryRail
@@ -691,9 +703,9 @@ export function FullscreenNewsCard({
           </div>
         </div>
 
-        {/* Viewport-anchored social column — above safe-area breath on short phones */}
+        {/* Social rail — bottom edge above required action zone */}
         <div
-          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-3 top-[42%] -translate-y-1/2 max-[700px]:top-auto max-[700px]:bottom-[calc(var(--feed-v2-bottom-clearance)+5.5rem)] max-[700px]:translate-y-0"
+          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-2.5 top-[38%] -translate-y-1/2 max-[820px]:top-auto max-[820px]:bottom-[calc(var(--feed-v2-bottom-clearance)+var(--feed-v2-action-zone)+0.35rem)] max-[820px]:translate-y-0"
           data-testid="smart-feed-social-dock"
         >
           <SocialActionRail

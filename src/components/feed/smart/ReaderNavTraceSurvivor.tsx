@@ -19,7 +19,10 @@ import {
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
-import { resetSwipeDiscoveryPresentation } from '@/lib/feed/reader/swipeDiscoveryCoach'
+import {
+  readSwipeCoachDebug,
+  resetSwipeDiscoveryPresentation,
+} from '@/lib/feed/reader/swipeDiscoveryCoach'
 
 const TRACE_TICK = 'nahaber-reader-nav-trace'
 const PANEL_OPEN_KEY = 'nahaber.readerNavTrace.panelOpen'
@@ -52,6 +55,7 @@ export function ReaderNavTraceSurvivor() {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [coachReplay, setCoachReplay] = useState(false)
+  const [coachDebug, setCoachDebug] = useState(() => readSwipeCoachDebug())
   const [count, setCount] = useState(0)
   const [lastType, setLastType] = useState('')
   const [path, setPath] = useState('')
@@ -96,10 +100,13 @@ export function ReaderNavTraceSurvivor() {
     }
     window.addEventListener(TRACE_TICK, sync)
     window.addEventListener('popstate', onPathMaybeChanged)
+    const onCoachDebug = () => setCoachDebug(readSwipeCoachDebug())
+    window.addEventListener('nahaber-swipe-coach-debug', onCoachDebug)
     const id = window.setInterval(onPathMaybeChanged, 500)
     return () => {
       window.removeEventListener(TRACE_TICK, sync)
       window.removeEventListener('popstate', onPathMaybeChanged)
+      window.removeEventListener('nahaber-swipe-coach-debug', onCoachDebug)
       window.clearInterval(id)
     }
   }, [])
@@ -197,7 +204,7 @@ export function ReaderNavTraceSurvivor() {
           </div>
         </div>
         <div className="max-h-[28vh] overflow-auto whitespace-pre-wrap break-all">
-          {`path: ${path}\nevents: ${count}\nlast: ${lastType}\nCopy after escape. No identifiers.`}
+          {`path: ${path}\nevents: ${count}\nlast: ${lastType}\ncoach: mounted=${coachDebug.mounted ? 1 : 0} eligible=${coachDebug.eligible ? 1 : 0} learned=${coachDebug.learned ? 1 : 0} shown=${coachDebug.shownCount} phase=${coachDebug.phase}\nCopy after escape. No identifiers.`}
         </div>
       </div>
     </aside>

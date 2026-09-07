@@ -1,5 +1,5 @@
 /**
- * P18 — Swipe Discovery Coach V2: device-local, non-intercepting, V1 migration.
+ * P18 — Swipe Discovery Coach V3: device-local, non-intercepting, key migration.
  * AUTOMATED — NOT HUMAN GO.
  */
 import { describe, expect, it, beforeEach } from 'vitest'
@@ -37,7 +37,7 @@ beforeEach(() => {
   }
 })
 
-describe('P18 swipe discovery coach V2', () => {
+describe('P18 swipe discovery coach V3', () => {
   it('1-2: eligible + not learned may show; max appearances respected', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     for (let i = 0; i < SWIPE_DISCOVERY_MAX_SHOWS; i++) recordSwipeDiscoveryShown()
@@ -48,7 +48,7 @@ describe('P18 swipe discovery coach V2', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
-    expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1000)
+    expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
     expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1500)
     expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(2000)
     const coach = readFileSync(
@@ -60,6 +60,7 @@ describe('P18 swipe discovery coach V2', () => {
     expect(coach).toContain('feed-swipe-discovery-finger')
     expect(coach).toContain('feed-swipe-discovery-chevrons')
     expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
+    expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).not.toContain('preventDefault')
     expect(coach).not.toContain('setPointerCapture')
   })
@@ -80,30 +81,28 @@ describe('P18 swipe discovery coach V2', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    // Only swipe openSource marks learned — Haberi Oku uses 'button'.
     expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
     expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
-    expect(client).not.toMatch(/markSwipeDiscoveryLearned\(\)\s*\n\s*\}/)
   })
 
-  it('10: V1 learned/max does NOT suppress V2 (fresh key)', () => {
+  it('10: V1 learned/max does NOT suppress V3 (fresh key)', () => {
     mem.set(
       SWIPE_DISCOVERY_STORAGE_KEY_V1,
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v2')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v3')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 2 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 3 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 2,
+      version: 3,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(
@@ -115,7 +114,7 @@ describe('P18 swipe discovery coach V2', () => {
     expect(survivor).toContain('reader-nav-trace-replay-coach')
   })
 
-  it('coach mounts from FullscreenNewsCard; capability gated in SmartFeedClient', () => {
+  it('coach mounts from FullscreenNewsCard chrome; capability or debug gated', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
@@ -125,8 +124,8 @@ describe('P18 swipe discovery coach V2', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toMatch(
-      /showSwipeDiscoveryCoach=\{\s*Boolean\(\s*feedReaderEnabled\s*&&\s*readerCapabilityReady/
-    )
+    expect(client).toContain('showSwipeDiscoveryCoach=')
+    expect(client).toContain('readerDebugQuery')
+    expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
   })
 })

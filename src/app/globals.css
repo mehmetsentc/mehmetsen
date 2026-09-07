@@ -3750,22 +3750,25 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);
 }
 
-/* Short-viewport hero floor for Feed V2 cards */
+/* Short-viewport hero floor for Feed V2 cards — hero yields first */
 @media (max-height: 700px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: 8vh;
+    --feed-v2-hero-min: clamp(3vh, 6vh, 9vh);
+    --feed-v2-action-zone: 6.75rem;
   }
 }
 
 @media (min-height: 701px) and (max-height: 812px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: 10vh;
+    --feed-v2-hero-min: clamp(5vh, 8vh, 11vh);
+    --feed-v2-action-zone: 7.1rem;
   }
 }
 
 @media (min-height: 813px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: 14vh;
+    --feed-v2-hero-min: clamp(7vh, 11vh, 14vh);
+    --feed-v2-action-zone: 7.25rem;
   }
 }
 
