@@ -23,21 +23,28 @@ export const FEED_V2_CHROME_CSS_VARS = {
   /** Top clearance for Feed category chips under site header (Global Nav V2). */
   '--feed-v2-top-clearance': '3.5rem',
   /**
-   * Required lower band: Haberi Oku (~56px) + publisher/follow (~48px).
+   * Required lower band: Haberi Oku (~56px) + gap + publisher/follow (~48px).
    * Protected — always first-paint visible (outside nested copy scroll).
    */
-  '--feed-v2-action-zone': '6.75rem',
+  '--feed-v2-action-zone': '7.5rem',
   /**
-   * Hero / media height — fixed budget (not flex-1 grow).
-   * Content + Haberi Oku + publisher take priority on short phones.
+   * Hero / media — flex-1 fills leftover; min/max keep first-paint + reference composition.
+   * Short phones: shorter media. Tall phones: more immersive.
    */
-  '--feed-v2-hero-min': 'clamp(12dvh, 16dvh, 20dvh)',
-  '--feed-v2-hero-max': 'clamp(12dvh, 16dvh, 20dvh)',
+  '--feed-v2-hero-min': 'clamp(14dvh, 18dvh, 22dvh)',
+  '--feed-v2-hero-max': 'clamp(28dvh, 42dvh, 52dvh)',
   /**
    * Copy-only nested scroll cap (chips + full headline/summary).
    * Action stack sits BELOW this region and must not require scroll.
    */
-  '--feed-v2-copy-scroll-max': 'min(36dvh, 16rem)',
+  '--feed-v2-copy-scroll-max': 'min(38dvh, 17rem)',
+  /**
+   * Typographic rhythm (reference visual — not line-clamp).
+   */
+  '--feed-v2-gap-cat-headline': '0.75rem',
+  '--feed-v2-gap-headline-summary': '0.875rem',
+  '--feed-v2-gap-summary-cta': '1.375rem',
+  '--feed-v2-gap-cta-publisher': '0.875rem',
   /**
    * @deprecated Alias kept for older diagnostics; prefer copy-scroll-max.
    * Bottom chrome total room ≈ copy + action (not a scroll that hides publisher).
@@ -69,26 +76,51 @@ export function feedV2BottomClearancePx(opts: {
   return Math.max(16, opts.safeBottom + breath)
 }
 
-/** Haberi Oku ~56 + publisher ~48 (design). */
+/** Haberi Oku ~56 + gap ~14 + publisher ~48 (design). */
 export function feedV2ActionZonePx(): number {
-  return 108
+  return 120
 }
 
 /**
  * Adaptive hero floor by viewport height (content/actions win on short phones).
  */
 export function feedV2HeroMinPx(viewportHeight: number): number {
-  if (viewportHeight <= 700) return Math.round(viewportHeight * 0.14)
-  if (viewportHeight <= 812) return Math.round(viewportHeight * 0.18)
-  return Math.round(viewportHeight * 0.22)
+  if (viewportHeight <= 700) return Math.round(viewportHeight * 0.16)
+  if (viewportHeight <= 812) return Math.round(viewportHeight * 0.2)
+  return Math.round(viewportHeight * 0.24)
 }
 
-/** Hero share of card height (design — after first-paint repair, softer floor). */
+/** Hero share of card height (design — flex leftover, capped). */
 export function feedV2HeroShare(viewportHeight: number): { min: number; max: number } {
   return {
     min: feedV2HeroMinPx(viewportHeight),
-    max: Math.round(viewportHeight * 0.4),
+    max: Math.round(viewportHeight * 0.48),
   }
+}
+
+/** Reference rhythm gaps (CSS px targets for tests). */
+export const FEED_V2_RHYTHM_GAPS = {
+  catHeadlineMin: 10,
+  catHeadlineMax: 14,
+  headlineSummaryMin: 12,
+  headlineSummaryMax: 16,
+  summaryCtaMin: 20,
+  summaryCtaMax: 24,
+  ctaPublisherMin: 12,
+  ctaPublisherMax: 16,
+} as const
+
+export function feedV2RhythmGapsOk(gaps: {
+  headlineToSummary: number
+  summaryToCta: number
+  ctaToPublisher: number
+}): boolean {
+  const g = FEED_V2_RHYTHM_GAPS
+  return (
+    gaps.headlineToSummary >= g.headlineSummaryMin - 1 &&
+    gaps.summaryToCta >= g.summaryCtaMin - 2 &&
+    gaps.ctaToPublisher >= g.ctaPublisherMin - 1
+  )
 }
 
 /**
@@ -177,14 +209,14 @@ export const FEED_V2_LAYOUT_TEST_VIEWPORTS = [
 /** @deprecated Prefer FEED_V2_LAYOUT_TEST_VIEWPORTS */
 export const FEED_V2_LAYOUT_TEST_HEIGHTS = FEED_V2_LAYOUT_TEST_VIEWPORTS.map((v) => v.h)
 
-/** Typical first-paint copy height estimate (full text, no clamp) for budget tests. */
+/** Typical first-paint copy height estimate (full text + rhythm gaps, no clamp). */
 export function feedV2TypicalCopyPx(viewportHeight: number): number {
   const chips = 32
   const headlineLines = viewportHeight < 700 ? 3 : 4
   const summaryLines = viewportHeight < 700 ? 3 : 4
   const headline = headlineLines * 24
   const summary = summaryLines * 20
-  const gaps = 20
+  const gaps = 12 + 14 + 8 // cat→headline, headline→summary breathing (summary→cta on action zone)
   return chips + headline + summary + gaps
 }
 

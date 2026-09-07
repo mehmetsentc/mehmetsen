@@ -48,16 +48,18 @@ describe('P18 swipe discovery coach V6', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1500)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(2000)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1200)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(1800)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('Haberi Aç')
+    expect(coach).toContain('Sola kaydır veya dokun')
     expect(coach).toContain('feed-swipe-discovery-finger')
     expect(coach).toContain('feed-swipe-discovery-chevrons')
+    expect(coach).toContain('feed-swipe-discovery-subtitle')
     expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('feed-swipe-discovery-affordance')
@@ -113,7 +115,7 @@ describe('P18 swipe discovery coach V6', () => {
     expect(survivor).toContain('reader-nav-trace-replay-coach')
   })
 
-  it('coach mounts from FullscreenNewsCard chrome; capability or debug gated', () => {
+  it('coach mounts on active cards; tap open still capability/debug gated', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
@@ -123,8 +125,9 @@ describe('P18 swipe discovery coach V6', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain('showSwipeDiscoveryCoach=')
+    expect(client).toContain('showSwipeDiscoveryCoach={Boolean(isActive && !readerSession?.committed)}')
     expect(client).toContain('readerDebugQuery')
     expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
+    expect(client).toContain("onRead(item, index, 'swipe_affordance')")
   })
 })

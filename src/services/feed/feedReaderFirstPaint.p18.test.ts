@@ -95,6 +95,21 @@ describe('P18 Feed V2 first-paint vertical budget', () => {
     expect(client).toContain('h-full min-h-0')
     expect(client).toContain('visibleBand')
   })
+
+  it('reference rhythm tokens + flex hero; gaps wired on card', () => {
+    const chrome = read('src/lib/feed/reader/feedChrome.ts')
+    expect(chrome).toContain('--feed-v2-gap-headline-summary')
+    expect(chrome).toContain('--feed-v2-gap-summary-cta')
+    expect(chrome).toContain('--feed-v2-gap-cta-publisher')
+    const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
+    expect(card).toContain('--feed-v2-gap-headline-summary')
+    expect(card).toContain('--feed-v2-gap-summary-cta')
+    expect(card).toContain('--feed-v2-gap-cta-publisher')
+    expect(card).toContain('flex-1 touch-manipulation')
+    expect(card).toContain('smart-feed-bottom-chrome')
+    expect(card).toMatch(/mt-auto flex w-full shrink-0 flex-col/)
+    expect(card).not.toMatch(/space-y-1\.5 sm:space-y-2/)
+  })
 })
 
 describe('P18 Feed V2 portrait-first', () => {

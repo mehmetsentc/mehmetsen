@@ -1,9 +1,12 @@
 'use client'
 
 /**
- * LEFT "Haberi Aç" affordance (V6) — visual cue + tappable open authority.
+ * LEFT "Haberi Aç" affordance (V6) — reference visual + tappable open authority.
  * Only the chip button receives pointer events (min 44×44).
  * Does NOT cover the card with a transparent overlay.
+ *
+ * Position: ~52–58% of usable chrome (media → copy transition), responsive.
+ * Learned ≠ shown: only successful LEFT swipe or affordance tap marks learned.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -137,8 +140,10 @@ export function SwipeDiscoveryCoach({
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
-          setVisible(false)
+          // Soft rest — stay faintly visible until card change / learned.
           setPhase('done')
+          setTravel(0)
+          onCardNudgeRef.current?.(0)
         }, SWIPE_DISCOVERY_HINT_MS)
       )
     }
@@ -188,10 +193,12 @@ export function SwipeDiscoveryCoach({
         data-testid="feed-swipe-discovery-coach-slot"
         data-swipe-discovery-phase={phase}
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[35]"
+        className="pointer-events-none absolute inset-0 z-[40]"
       />
     )
   }
+
+  const resting = phase === 'done'
 
   return (
     <div
@@ -199,13 +206,15 @@ export function SwipeDiscoveryCoach({
       data-testid="feed-swipe-discovery-coach"
       data-swipe-discovery-v6="1"
       data-swipe-discovery-phase={phase}
-      className="pointer-events-none absolute left-[28%] top-[40%] z-[35] -translate-x-1/2 -translate-y-1/2 max-[820px]:left-1/2"
+      className="pointer-events-none absolute left-1/2 z-[40] -translate-x-1/2 -translate-y-1/2 pr-10"
       style={{
+        /* Media → copy transition band (~52–58% of chrome). */
+        top: 'min(58%, max(48%, calc(var(--feed-v2-top-clearance) + var(--feed-v2-hero-min) * 0.92)))',
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
         transition: reduced
-          ? undefined
-          : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease`,
-        opacity: 1,
+          ? 'opacity 240ms ease'
+          : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease`,
+        opacity: resting ? 0.88 : 1,
       }}
     >
       <button
@@ -213,32 +222,83 @@ export function SwipeDiscoveryCoach({
         data-testid="feed-swipe-discovery-affordance"
         data-no-reader-gesture="1"
         aria-label="Haberi Aç — sola kaydır veya dokun"
+        disabled={!onAffordanceActivate}
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
           onAffordanceActivate?.()
         }}
-        className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation items-center justify-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98]"
+        className="pointer-events-auto relative flex min-h-11 min-w-[11.5rem] touch-manipulation flex-col items-center justify-center gap-1 rounded-2xl px-5 py-3 text-white active:scale-[0.98] disabled:opacity-90"
         style={{
-          boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
+          background:
+            'radial-gradient(ellipse at center, rgba(37,99,235,0.45) 0%, rgba(0,0,0,0.72) 62%, rgba(0,0,0,0.55) 100%)',
+          boxShadow:
+            '0 0 36px rgba(37,99,235,0.55), 0 12px 28px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(147,197,253,0.35)',
         }}
       >
         <span
-          className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
-          aria-hidden
-          data-testid="feed-swipe-discovery-chevrons"
+          className="flex items-center gap-2"
+          data-testid="feed-swipe-discovery-motion-row"
         >
-          <span className="text-[#e11d2e]">‹</span>
-          <span>‹</span>
-          <span>‹</span>
+          <span
+            className="flex items-center gap-0.5 text-[1.35rem] font-black leading-none tracking-[-0.12em] text-sky-300"
+            aria-hidden
+            data-testid="feed-swipe-discovery-chevrons"
+            style={{
+              transform: `translateX(${travel * 0.35}px)`,
+              transition: reduced
+                ? undefined
+                : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+            }}
+          >
+            <span>‹</span>
+            <span>‹</span>
+            <span>‹</span>
+          </span>
+          <span
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center"
+            aria-hidden
+            data-testid="feed-swipe-discovery-finger"
+            style={{
+              transform: `translateX(${travel}px)`,
+              transition: reduced
+                ? undefined
+                : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+            }}
+          >
+            {/* Finger / tap glyph */}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M8 11V7.5a1.5 1.5 0 0 1 3 0V11"
+                stroke="white"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+              <path
+                d="M11 10.5V6.75a1.5 1.5 0 0 1 3 0V11"
+                stroke="white"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+              <path
+                d="M14 11V8.5a1.5 1.5 0 0 1 3 0V14c0 2.8-1.7 5-5 5H10.5C8 19 6.5 17 6.5 14.5V12"
+                stroke="white"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="9.5" cy="5" r="1.35" fill="#93c5fd" />
+            </svg>
+          </span>
         </span>
-        <span className="font-bold tracking-[0.04em]">Haberi Aç</span>
+        <span className="text-[15px] font-extrabold tracking-[0.02em]" data-testid="feed-swipe-discovery-title">
+          Haberi Aç
+        </span>
         <span
-          className="relative ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
-          aria-hidden
-          data-testid="feed-swipe-discovery-finger"
+          className="text-[11px] font-medium tracking-wide text-white/85"
+          data-testid="feed-swipe-discovery-subtitle"
         >
-          <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
+          Sola kaydır veya dokun
         </span>
       </button>
     </div>

@@ -516,12 +516,15 @@ export function FullscreenNewsCard({
           />
         ) : null}
 
-        {/* Double-tap / hero — capped so first-paint actions keep the viewport */}
+        {/*
+          Hero flex-1 fills leftover after editorial/actions (reference: media upper,
+          copy lower-middle). min/max keep first-paint publisher visible.
+        */}
         <div
-          className="relative min-h-0 shrink-0 touch-manipulation"
+          className="relative min-h-0 flex-1 touch-manipulation"
           style={{
-            height: 'var(--feed-v2-hero-min)',
-            maxHeight: 'var(--feed-v2-hero-max, var(--feed-v2-hero-min))',
+            minHeight: 'var(--feed-v2-hero-min)',
+            maxHeight: 'var(--feed-v2-hero-max)',
           }}
           data-testid="smart-feed-double-tap-zone"
           onPointerDown={onTapZonePointerDown}
@@ -545,16 +548,16 @@ export function FullscreenNewsCard({
         </div>
 
         {/*
-          Bottom chrome: copy may nested-scroll only for extreme editorial length.
-          Haberi Oku + publisher/follow are a protected stack OUTSIDE that scroll
-          so first paint never requires manual nested scroll to discover them.
+          Bottom chrome: shrink-0 stack — not crushed via justify-end flex-1.
+          Copy may nested-scroll only for extreme editorial length.
+          Haberi Oku + publisher/follow stay outside nested scroll (first paint).
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full min-h-0 flex-1 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-4 pr-[3.5rem] sm:pt-6"
+          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/92 to-transparent pt-3 pr-[3.5rem] sm:pt-5"
           data-testid="smart-feed-bottom-chrome"
         >
           <div
-            className="min-w-0 space-y-1.5 overflow-y-auto overscroll-y-contain touch-pan-y sm:space-y-2"
+            className="min-w-0 overflow-y-auto overscroll-y-contain touch-pan-y"
             data-testid="smart-feed-copy-scroll"
             data-feed-nested-scroll="1"
             style={{
@@ -562,7 +565,7 @@ export function FullscreenNewsCard({
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-copy-preview">
+            <div className="min-w-0" data-testid="smart-feed-copy-preview">
               <div className="flex flex-wrap items-center gap-1.5">
                 {cat ? (
                   <span
@@ -606,9 +609,10 @@ export function FullscreenNewsCard({
               <h2
                 className={cn(
                   'wrap-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
-                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.2] tracking-[-0.02em]'
+                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]'
                 )}
                 data-testid="smart-feed-headline"
+                style={{ marginTop: 'var(--feed-v2-gap-cat-headline)' }}
               >
                 {typedHeadline}
                 {showCursor ? (
@@ -623,10 +627,11 @@ export function FullscreenNewsCard({
                 <p
                   className={cn(
                     'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
-                    'text-[clamp(0.88rem,3.3vw,1rem)] font-medium leading-[1.4] text-white/95',
+                    'text-[clamp(0.88rem,3.3vw,1rem)] font-medium leading-[1.45] text-white/90',
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
+                  style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
                   {item.summary}
                 </p>
@@ -661,10 +666,14 @@ export function FullscreenNewsCard({
 
           {/* Protected first-paint action stack — never behind nested copy scroll */}
           <div
-            className="flex shrink-0 flex-col gap-1.5 pt-1.5"
+            className="flex shrink-0 flex-col"
             data-testid="smart-feed-action-zone"
             data-feed-first-paint-actions="1"
-            style={{ minHeight: 'var(--feed-v2-action-zone)' }}
+            style={{
+              minHeight: 'var(--feed-v2-action-zone)',
+              paddingTop: 'var(--feed-v2-gap-summary-cta)',
+              gap: 'var(--feed-v2-gap-cta-publisher)',
+            }}
           >
             <button
               type="button"

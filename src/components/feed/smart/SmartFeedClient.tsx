@@ -2390,20 +2390,16 @@ export function SmartFeedClient({
                           }
                           onRead(synthetic, index, 'button')
                         }}
-                  showSwipeDiscoveryCoach={
-                    Boolean(
-                      isActive &&
-                        !readerSession?.committed &&
-                        ((feedReaderEnabled && readerCapabilityReady) || readerDebugQuery)
-                    )
-                  }
+                  showSwipeDiscoveryCoach={Boolean(isActive && !readerSession?.committed)}
                   swipeDiscoverySuppressed={Boolean(
                     readerSession &&
                       readerSession.item.articleId === item.articleId &&
                       readerSession.progress > 0.02
                   )}
                   onSwipeAffordanceActivate={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                    ((feedReaderEnabled && readerCapabilityReady) || readerDebugQuery) &&
+                    isActive &&
+                    !readerSession?.committed
                       ? () => onRead(item, index, 'swipe_affordance')
                       : undefined
                   }

@@ -123,7 +123,7 @@ describe('LEFT coach V6 + RIGHT coach V2', () => {
       'utf8'
     )
     expect(coach).toContain('data-swipe-discovery-v6')
-    expect(coach).toContain('z-[35]')
+    expect(coach).toContain('z-[40]')
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('isCoachPaintedInViewport')

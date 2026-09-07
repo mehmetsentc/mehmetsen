@@ -125,8 +125,8 @@ describe('P18 swipe discovery V6 visibility', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1500)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(2000)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1200)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(1800)
     expect(isCoachPaintedInViewport(null)).toBe(false)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),

@@ -16,11 +16,12 @@ export const SWIPE_DISCOVERY_STORAGE_KEY_V3 = 'nahaber.feedSwipeDiscovery.v3'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V2 = 'nahaber.feedSwipeDiscovery.v2'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V1 = 'nahaber.feedSwipeDiscovery.v1'
 
-export const SWIPE_DISCOVERY_SETTLE_MS = 1500
+export const SWIPE_DISCOVERY_SETTLE_MS = 1400
 export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 8
 export const SWIPE_DISCOVERY_ANIM_MS = 900
-export const SWIPE_DISCOVERY_HINT_MS = 4200
+/** Stay visible after motion cycles (soft rest) — do not vanish before user can act. */
+export const SWIPE_DISCOVERY_HINT_MS = 7200
 export const SWIPE_DISCOVERY_REPEAT_COUNT = 2
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
