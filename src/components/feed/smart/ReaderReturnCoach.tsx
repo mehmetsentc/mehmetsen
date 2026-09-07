@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * RIGHT "Akışa Dön" affordance — visual cue + tappable close authority.
+ * LEFT "Akışa Dön" affordance — visual cue + tappable close authority.
  * Only the chip button receives pointer events (min 44×44).
  */
 
@@ -23,7 +23,7 @@ import {
 type Props = {
   active: boolean
   suppressed?: boolean
-  /** Same authority as successful RIGHT swipe → closeReader. */
+  /** Same authority as successful LEFT swipe → closeReader. */
   onAffordanceActivate?: () => void
 }
 
@@ -89,7 +89,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
         window.setTimeout(() => {
           if (cancelled) return
           setPhase('animating')
-          setTravel(READER_RETURN_COACH_TRAVEL_PX)
+          setTravel(-READER_RETURN_COACH_TRAVEL_PX)
         }, base)
       )
       timers.push(
@@ -114,7 +114,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
       })
 
       if (reduced) {
-        setTravel(Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
+        setTravel(-Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
         return
       }
 
@@ -181,7 +181,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
     <div
       ref={rootRef}
       data-testid="reader-return-coach"
-      data-reader-return-coach-v3="1"
+      data-reader-return-coach-v4="1"
       data-reader-return-phase={phase}
       className="pointer-events-none absolute left-1/2 top-[38%] z-[50] -translate-x-1/2 -translate-y-1/2"
       style={{
@@ -195,7 +195,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
       <button
         type="button"
         data-testid="reader-return-affordance"
-        aria-label="Akışa Dön — sağa kaydır veya dokun"
+        aria-label="Akışa Dön — sola kaydır veya dokun"
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -207,21 +207,21 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
         }}
       >
         <span
-          className="relative mr-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
-          aria-hidden
-          data-testid="reader-return-coach-finger"
-        >
-          <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
-        </span>
-        <span className="font-bold tracking-[0.04em]">Akışa Dön</span>
-        <span
           className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
           aria-hidden
           data-testid="reader-return-coach-chevrons"
         >
-          <span>›</span>
-          <span>›</span>
-          <span className="text-[#e11d2e]">›</span>
+          <span className="text-[#e11d2e]">‹</span>
+          <span>‹</span>
+          <span>‹</span>
+        </span>
+        <span className="font-bold tracking-[0.04em]">Akışa Dön</span>
+        <span
+          className="relative ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
+          aria-hidden
+          data-testid="reader-return-coach-finger"
+        >
+          <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
         </span>
       </button>
     </div>

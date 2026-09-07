@@ -134,9 +134,9 @@ describe('P18 header + sidebar', () => {
   })
 })
 
-describe('P18 LEFT + RIGHT coaches', () => {
-  it('LEFT coach V6: prior keys cannot suppress; eligible until learned', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
+describe('P18 RIGHT open + LEFT return coaches', () => {
+  it('RIGHT Haberi Aç V7: prior keys cannot suppress; eligible until learned', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V3, JSON.stringify({ learned: true, shownCount: 3 }))
@@ -148,7 +148,7 @@ describe('P18 LEFT + RIGHT coaches', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
   })
 
-  it('LEFT coach travel/duration; Haberi Oku does not mark learned', () => {
+  it('RIGHT Haberi Aç travel/duration; Haberi Oku does not mark learned', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
@@ -161,7 +161,7 @@ describe('P18 LEFT + RIGHT coaches', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v6')
+    expect(coach).toContain('data-swipe-discovery-v7')
     expect(coach).toContain('isCoachPaintedInViewport')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
@@ -171,8 +171,8 @@ describe('P18 LEFT + RIGHT coaches', () => {
     expect(client).not.toMatch(/openSource === 'button'\) markSwipeDiscoveryLearned/)
   })
 
-  it('RIGHT coach: mounts in Reader; learn only on gesture close', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v3')
+  it('LEFT return coach: mounts in Reader; learn only on gesture close', () => {
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v4')
     expect(shouldShowReaderReturnCoach()).toBe(true)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeLessThanOrEqual(48)
@@ -202,7 +202,7 @@ describe('P18 LEFT + RIGHT coaches', () => {
     )
     expect(coach).toContain('Akışa Dön')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('READER_RETURN_COACH_TRAVEL_PX')
+    expect(coach).toContain('-READER_RETURN_COACH_TRAVEL_PX')
   })
 
   it('Reader ownership helpers remain intact', () => {

@@ -2678,7 +2678,7 @@ function FeedCardWithImpression(props: {
         transform:
           reducedMotion || pageProgress <= 0
             ? undefined
-            : `translate3d(${-pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
+            : `translate3d(${pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
         opacity: reducedMotion ? 1 : 1 - pageProgress * 0.18,
         transition:
           (snapAnimating || readerUnderlayProgress > 0) && !reducedMotion && dragProgress <= 0.02
@@ -2689,9 +2689,9 @@ function FeedCardWithImpression(props: {
         touchAction: horizontalLocked ? 'none' : undefined,
         boxShadow:
           pageProgress > 0.08
-            ? `-14px 0 28px rgba(0,0,0,${0.22 + pageProgress * 0.28})`
+            ? `14px 0 28px rgba(0,0,0,${0.22 + pageProgress * 0.28})`
             : undefined,
-        transformOrigin: 'left center',
+        transformOrigin: 'right center',
         willChange: pageProgress > 0.01 ? 'transform, opacity' : undefined,
       }}
       onPointerDown={(e) => {
@@ -2758,7 +2758,8 @@ function FeedCardWithImpression(props: {
               return
             }
             if (intent !== 'horizontal') return
-            if (dx >= 0) return
+            // Haberi Aç: finger RIGHT only (positive dx).
+            if (dx <= 0) return
             d.axis = 'horizontal'
             setHorizontalLocked(true)
           }
@@ -2816,7 +2817,7 @@ function FeedCardWithImpression(props: {
           axis === 'horizontal' &&
           shouldCompleteTransition({
             progress,
-            velocityX: Math.max(0, -velocityX),
+            velocityX: Math.max(0, velocityX),
           })
 
         // Always report metrics to parent (diagnostic + shared open decision).
@@ -2852,13 +2853,13 @@ function FeedCardWithImpression(props: {
         resetDragVisual(false)
       }}
     >
-      {/* Dark Reader peek behind card during left page-turn */}
+      {/* Dark Reader peek during right page-turn (Reader enters from left) */}
       {pageProgress > 0.04 && !reducedMotion ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
-            background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
+            background: 'linear-gradient(270deg, #0c0c0e 0%, #141417 100%)',
             opacity: Math.min(1, pageProgress * 1.4),
           }}
         />

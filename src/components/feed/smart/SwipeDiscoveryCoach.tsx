@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * LEFT "Haberi Aç" affordance (V6) — reference visual + tappable open authority.
+ * RIGHT "Haberi Aç" affordance (V7) — reference visual + tappable open authority.
  * Only the chip button receives pointer events (min 44×44).
  * Does NOT cover the card with a transparent overlay.
  *
  * Position: ~52–58% of usable chrome (media → copy transition), responsive.
- * Learned ≠ shown: only successful LEFT swipe or affordance tap marks learned.
+ * Learned ≠ shown: only successful RIGHT swipe or affordance tap marks learned.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -29,7 +29,7 @@ type Props = {
   active: boolean
   suppressed?: boolean
   onCardNudge?: (px: number) => void
-  /** Same authority as successful LEFT swipe → openReader. */
+  /** Same authority as successful RIGHT swipe → openReader. */
   onAffordanceActivate?: () => void
 }
 
@@ -103,8 +103,8 @@ export function SwipeDiscoveryCoach({
         window.setTimeout(() => {
           if (cancelled) return
           setPhase('animating')
-          setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)
-          onCardNudgeRef.current?.(-SWIPE_DISCOVERY_CARD_NUDGE_PX)
+          setTravel(SWIPE_DISCOVERY_TRAVEL_PX)
+          onCardNudgeRef.current?.(SWIPE_DISCOVERY_CARD_NUDGE_PX)
         }, base)
       )
       timers.push(
@@ -130,7 +130,7 @@ export function SwipeDiscoveryCoach({
       })
 
       if (reduced) {
-        setTravel(-Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
+        setTravel(Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
         return
       }
 
@@ -204,9 +204,9 @@ export function SwipeDiscoveryCoach({
     <div
       ref={rootRef}
       data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v6="1"
+      data-swipe-discovery-v7="1"
       data-swipe-discovery-phase={phase}
-      className="pointer-events-none absolute left-1/2 z-[40] -translate-x-1/2 -translate-y-1/2 pr-10"
+      className="pointer-events-none absolute left-1/2 z-[40] -translate-x-1/2 -translate-y-1/2 pl-10"
       style={{
         /* Media → copy transition band (~52–58% of chrome). */
         top: 'min(58%, max(48%, calc(var(--feed-v2-top-clearance) + var(--feed-v2-hero-min) * 0.92)))',
@@ -221,7 +221,7 @@ export function SwipeDiscoveryCoach({
         type="button"
         data-testid="feed-swipe-discovery-affordance"
         data-no-reader-gesture="1"
-        aria-label="Haberi Aç — sola kaydır veya dokun"
+        aria-label="Haberi Aç — sağa kaydır veya dokun"
         disabled={!onAffordanceActivate}
         onClick={(e) => {
           e.preventDefault()
@@ -240,21 +240,6 @@ export function SwipeDiscoveryCoach({
           className="flex items-center gap-2"
           data-testid="feed-swipe-discovery-motion-row"
         >
-          <span
-            className="flex items-center gap-0.5 text-[1.35rem] font-black leading-none tracking-[-0.12em] text-sky-300"
-            aria-hidden
-            data-testid="feed-swipe-discovery-chevrons"
-            style={{
-              transform: `translateX(${travel * 0.35}px)`,
-              transition: reduced
-                ? undefined
-                : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-            }}
-          >
-            <span>‹</span>
-            <span>‹</span>
-            <span>‹</span>
-          </span>
           <span
             className="relative flex h-9 w-9 shrink-0 items-center justify-center"
             aria-hidden
@@ -290,6 +275,21 @@ export function SwipeDiscoveryCoach({
               <circle cx="9.5" cy="5" r="1.35" fill="#93c5fd" />
             </svg>
           </span>
+          <span
+            className="flex items-center gap-0.5 text-[1.35rem] font-black leading-none tracking-[-0.12em] text-sky-300"
+            aria-hidden
+            data-testid="feed-swipe-discovery-chevrons"
+            style={{
+              transform: `translateX(${travel * 0.35}px)`,
+              transition: reduced
+                ? undefined
+                : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+            }}
+          >
+            <span>›</span>
+            <span>›</span>
+            <span>›</span>
+          </span>
         </span>
         <span className="text-[15px] font-extrabold tracking-[0.02em]" data-testid="feed-swipe-discovery-title">
           Haberi Aç
@@ -298,7 +298,7 @@ export function SwipeDiscoveryCoach({
           className="text-[11px] font-medium tracking-wide text-white/85"
           data-testid="feed-swipe-discovery-subtitle"
         >
-          Sola kaydır veya dokun
+          Sağa kaydır veya dokun
         </span>
       </button>
     </div>

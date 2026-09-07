@@ -36,14 +36,14 @@ beforeEach(() => {
   }
 })
 
-describe('P18 swipe discovery coach V6', () => {
+describe('P18 swipe discovery coach V7', () => {
   it('1-2: eligible + not learned may show across multiple cards', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
   })
 
-  it('3-4: animation RIGHT→LEFT travel + pointer-events none in JSX', () => {
+  it('3-4: animation LEFT→RIGHT travel + pointer-events none in JSX', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
@@ -56,17 +56,17 @@ describe('P18 swipe discovery coach V6', () => {
     )
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('Haberi Aç')
-    expect(coach).toContain('Sola kaydır veya dokun')
+    expect(coach).toContain('Sağa kaydır veya dokun')
     expect(coach).toContain('feed-swipe-discovery-finger')
     expect(coach).toContain('feed-swipe-discovery-chevrons')
     expect(coach).toContain('feed-swipe-discovery-subtitle')
-    expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
+    expect(coach).toContain('SWIPE_DISCOVERY_TRAVEL_PX')
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(coach).not.toContain('setPointerCapture')
   })
 
-  it('5: successful LEFT open marks learned via swipe path only', () => {
+  it('5: successful RIGHT open marks learned via swipe path only', () => {
     markSwipeDiscoveryLearned()
     expect(readSwipeDiscoveryState().learned).toBe(true)
     expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
@@ -92,18 +92,18 @@ describe('P18 swipe discovery coach V6', () => {
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 6 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 7 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 6,
+      version: 7,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(

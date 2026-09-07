@@ -533,7 +533,7 @@ export function FeedArticleReader({
       pendingHistoryPlanRef.current = plan
       foreignPopDuringCloseRef.current = false
 
-      // RIGHT gesture learning only — back arrow / popstate must not mark learned.
+      // LEFT gesture learning only — back arrow / popstate must not mark learned.
       if (reason === 'gesture') markReaderReturnCoachLearned()
 
       setAnimating(true)
@@ -845,6 +845,8 @@ export function FeedArticleReader({
         if (intent === 'vertical') dragRef.current = null
         return
       }
+      // Akışa Dön: finger LEFT only (negative dx).
+      if (dx >= 0) return
       d.axis = 'horizontal'
     }
     if (d.axis !== 'horizontal') return
@@ -866,7 +868,7 @@ export function FeedArticleReader({
     const closeProgress = readerToFeedProgress(dx, window.innerWidth)
     const complete = shouldCompleteTransition({
       progress: closeProgress,
-      velocityX: Math.max(0, velocity),
+      velocityX: Math.max(0, -velocity),
     })
     if (complete) {
       recordReaderNavTrace({
@@ -925,9 +927,10 @@ export function FeedArticleReader({
 
   const styleVars = {
     ...FEED_READER_CSS_VARS,
+    // Reader enters from the LEFT as finger swipes RIGHT (progress 0→1).
     transform: reducedMotion
       ? undefined
-      : `translate3d(${(1 - progress) * 100}%, 0, 0)`,
+      : `translate3d(${(progress - 1) * 100}%, 0, 0)`,
     opacity: reducedMotion ? (progress > 0.5 ? 1 : 0) : 0.55 + progress * 0.45,
     transition: transitionOn,
   } as CSSProperties
@@ -972,9 +975,9 @@ export function FeedArticleReader({
           ...styleVars,
           background: 'var(--reader-page-bg)',
           color: 'var(--reader-page-text)',
-          boxShadow: progress > 0.12 ? `-16px 0 32px var(--reader-fold-shadow)` : undefined,
+          boxShadow: progress > 0.12 ? `16px 0 32px var(--reader-fold-shadow)` : undefined,
           // While Reader owns the surface, keep vertical scroll but block Safari's
-          // horizontal history swipe from co-owning the same RIGHT-close gesture.
+          // horizontal history swipe from co-owning the same LEFT-close gesture.
           ...(committed
             ? ({ touchAction: 'pan-y', overscrollBehaviorX: 'none' } as CSSProperties)
             : null),
@@ -1279,7 +1282,7 @@ export function evaluateFeedOpenGesture(opts: {
   const progress = feedToReaderProgress(opts.dx, opts.viewportWidth)
   const open = shouldCompleteTransition({
     progress,
-    velocityX: Math.max(0, -opts.velocityX),
+    velocityX: Math.max(0, opts.velocityX),
   })
   return { open, progress }
 }

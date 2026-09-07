@@ -161,7 +161,7 @@ describe('single-surface Reader return', () => {
       'utf8'
     )
     expect(reader).toContain('data-reader-underlay="feed"')
-    expect(reader).toMatch(/translate3d\(\$\{\(1 - progress\) \* 100\}%, 0, 0\)/)
+    expect(reader).toMatch(/translate3d\(\$\{\(progress - 1\) \* 100\}%, 0, 0\)/)
     // Simulated 50% close: progress 0.5 → panel at 50%, underlay attr still feed
     expect(isFeedV2Pathname('/feed-v2')).toBe(true)
   })

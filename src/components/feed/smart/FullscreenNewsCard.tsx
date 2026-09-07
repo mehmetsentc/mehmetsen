@@ -96,10 +96,10 @@ interface FullscreenNewsCardProps {
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
-  /** LEFT Haberi Aç affordance — visual + tappable open. */
+  /** RIGHT Haberi Aç affordance — visual + tappable open. */
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
-  /** Same openReader authority as successful LEFT swipe. */
+  /** Same openReader authority as successful RIGHT swipe. */
   onSwipeAffordanceActivate?: () => void
   /** When set, DiscoveryRail opens via Feed Reader authority instead of /haber Link. */
   onDiscoveryArticleOpen?: (item: {

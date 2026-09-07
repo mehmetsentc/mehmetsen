@@ -98,15 +98,15 @@ describe('DiscoveryRail Reader authority when enabled', () => {
   })
 })
 
-describe('Swipe Discovery V6', () => {
-  it('copy Haberi Aç, LEFT travel, pointer-events none, capability gated', () => {
+describe('Swipe Discovery V7', () => {
+  it('copy Haberi Aç, RIGHT travel, pointer-events none, capability gated', () => {
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v6="1"')
+    expect(coach).toContain('data-swipe-discovery-v7="1"')
     expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
@@ -120,7 +120,7 @@ describe('Swipe Discovery V6', () => {
     expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
   })
 
-  it('LEFT open marks learned; Haberi Oku path does not call mark on button alone in openReader', () => {
+  it('RIGHT open marks learned; Haberi Oku path does not call mark on button alone in openReader', () => {
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     recordSwipeDiscoveryShown()
     markSwipeDiscoveryLearned()
@@ -132,7 +132,7 @@ describe('Swipe Discovery V6', () => {
       'utf8'
     )
     expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v6')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
   })
 })
 
