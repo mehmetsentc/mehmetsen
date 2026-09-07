@@ -3,7 +3,7 @@
 import { useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, Menu, User } from 'lucide-react'
+import { Search, Menu, User, Home, Zap } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
@@ -11,6 +11,7 @@ import { CategoryNav } from './CategoryNav'
 import { BackNavButton } from '@/components/layout/BackNavButton'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
+import { clearFeedRestore } from '@/lib/feed/feedRestoration'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -22,13 +23,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const [hydrated, setHydrated] = useState(false)
+  const isHomeFeed =
+    pathname === ROUTES.FEED || pathname === ROUTES.HOME || pathname === '/'
   const isFeed = pathname === ROUTES.FEED
   const isArticle = pathname.startsWith('/haber/')
   const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
   const showBack =
-    !isFeed &&
-    pathname !== ROUTES.HOME &&
-    pathname !== '/' &&
+    !isHomeFeed &&
     pathname !== ROUTES.REELS &&
     !isFeedV2
   // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
@@ -51,6 +52,11 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem)'
       : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem + 48px)'
 
+  const iconBtn =
+    'flex h-11 w-11 shrink-0 items-center justify-center touch-manipulation transition-colors'
+  const iconActive = 'rounded-full bg-white/20 text-white'
+  const iconIdle = 'text-white/85 hover:text-white'
+
   return (
     <>
       <div
@@ -70,8 +76,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         >
           <div
             className={cn(
-              'flex h-full items-center',
-              isFeed ? 'gap-1 px-4' : 'gap-1.5 px-2 sm:px-3'
+              'flex h-full items-center gap-0.5 px-1.5 sm:gap-1 sm:px-2',
+              isFeed && 'sm:px-3'
             )}
           >
             {showBack ? (
@@ -80,40 +86,60 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             <button
               type="button"
               onClick={onMenuClick}
-              className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+              className={iconBtn}
               aria-label="Menüyü aç"
             >
               <Menu className="h-6 w-6" strokeWidth={2} />
             </button>
 
             {/* Logo — Theme D: Na beyaz + Haber brand kırmızı (kömür bar) */}
-            <Link href={ROUTES.FEED} className="min-w-0 flex-1 px-1" aria-label="NaHaber">
+            <Link
+              href={ROUTES.FEED}
+              className="min-w-0 shrink px-0.5 sm:px-1"
+              aria-label="NaHaber"
+            >
               <BrandWordmark
                 variant="onBrand"
-                size={isFeed ? 'md' : 'sm'}
-                className={cn('font-black', !isFeed && 'text-[1.45rem]')}
+                size="sm"
+                className={cn('font-black text-[1.25rem] sm:text-[1.4rem]', isFeed && 'sm:text-[1.5rem]')}
               />
             </Link>
 
-            <div className="flex shrink-0 items-center">
+            <div className="ml-auto flex shrink-0 items-center">
+              <Link
+                href={ROUTES.FEED}
+                className={cn(iconBtn, isHomeFeed ? iconActive : iconIdle)}
+                aria-label="Ana Feed"
+                aria-current={isHomeFeed ? 'page' : undefined}
+                data-testid="header-nav-ana-feed"
+              >
+                <Home className="h-5 w-5" strokeWidth={isHomeFeed ? 2.35 : 2} />
+              </Link>
+              <Link
+                href={ROUTES.FEED_V2}
+                onClick={() => clearFeedRestore()}
+                className={cn(iconBtn, isFeedV2 ? iconActive : iconIdle)}
+                aria-label="Feed V2"
+                aria-current={isFeedV2 ? 'page' : undefined}
+                data-testid="header-nav-feed-v2"
+              >
+                <Zap className="h-5 w-5" strokeWidth={isFeedV2 ? 2.35 : 2} />
+              </Link>
               <button
                 type="button"
                 onClick={() => router.push(ROUTES.SEARCH)}
-                className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
+                className={cn(iconBtn, iconIdle)}
                 aria-label="Ara"
               >
-                <Search className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
+                <Search className="h-5 w-5" strokeWidth={2} />
               </button>
-              <NotificationBell
-                variant="onBrand"
-                iconClassName={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')}
-              />
+              <NotificationBell variant="onBrand" iconClassName="h-5 w-5" />
               <Link
                 href={profileHref}
-                className="flex h-11 w-11 items-center justify-center text-white touch-manipulation"
+                className={cn(iconBtn, iconIdle)}
                 aria-label="Profil"
               >
-                <User className={cn(isFeed ? 'h-[22px] w-[22px]' : 'h-5 w-5')} strokeWidth={2} />
+                <User className="h-5 w-5" strokeWidth={2} />
               </Link>
             </div>
           </div>

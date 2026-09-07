@@ -79,6 +79,8 @@ import {
   pickFullReaderCopy,
 } from '@/lib/feed/reader/presentationCopy'
 import { getClientAuthToken } from '@/lib/firebase/auth'
+import { markReaderReturnCoachLearned } from '@/lib/feed/reader/readerReturnCoach'
+import { ReaderReturnCoach } from '@/components/feed/smart/ReaderReturnCoach'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
 
@@ -525,6 +527,9 @@ export function FeedArticleReader({
       pendingHistoryPlanRef.current = plan
       foreignPopDuringCloseRef.current = false
 
+      // RIGHT gesture learning only — back arrow / popstate must not mark learned.
+      if (reason === 'gesture') markReaderReturnCoachLearned()
+
       setAnimating(true)
       setInternalProgress(0)
       window.setTimeout(() => {
@@ -968,6 +973,8 @@ export function FeedArticleReader({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
+        <ReaderReturnCoach active={committed && !closingRef.current} suppressed={!committed} />
+
         <header
           className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-1.5 pt-[max(0.4rem,env(safe-area-inset-top))]"
           style={{ background: 'var(--reader-page-bg)' }}

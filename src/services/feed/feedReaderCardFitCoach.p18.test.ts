@@ -22,7 +22,6 @@ import {
   resetSwipeDiscoveryPresentation,
   shouldShowSwipeDiscoveryCoach,
   SWIPE_DISCOVERY_ANIM_MS,
-  SWIPE_DISCOVERY_MAX_SHOWS,
   SWIPE_DISCOVERY_SETTLE_MS,
   SWIPE_DISCOVERY_STORAGE_KEY,
   SWIPE_DISCOVERY_STORAGE_KEY_V1,
@@ -76,7 +75,8 @@ describe('P18 Feed V2 card fit matrix', () => {
     )
     expect(card).toContain('smart-feed-action-zone')
     expect(card).toContain('smart-feed-copy-preview')
-    expect(card).toContain('line-clamp-2')
+    expect(card).not.toMatch(/smart-feed-headline[\s\S]{0,400}line-clamp/)
+    expect(card).not.toMatch(/smart-feed-summary[\s\S]{0,400}line-clamp/)
     expect(card).toContain('--feed-v2-action-zone')
     expect(card).not.toContain('smart-feed-copy-scroll')
     // Coach must not live under media absolute layer
@@ -102,9 +102,9 @@ describe('P18 Feed V2 card fit matrix', () => {
   })
 })
 
-describe('P18 swipe discovery V3 visibility', () => {
-  it('uses v3 key; prior v1/v2 learned cannot suppress', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v3')
+describe('P18 swipe discovery V4 visibility', () => {
+  it('uses v4 key; prior v1/v2/v3 learned cannot suppress', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v4')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
@@ -126,13 +126,13 @@ describe('P18 swipe discovery V3 visibility', () => {
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('left-1/2')
-    expect(coach).toContain('data-swipe-discovery-v3')
+    expect(coach).toContain('data-swipe-discovery-v4')
     expect(coach).not.toContain('preventDefault')
   })
 
-  it('max shows + learn only via swipe path; Haberi Oku does not mark', () => {
-    for (let i = 0; i < SWIPE_DISCOVERY_MAX_SHOWS; i++) recordSwipeDiscoveryShown()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+  it('eligible across multiple cards before learned; Haberi Oku does not mark', () => {
+    for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
+    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     resetSwipeDiscoveryPresentation()
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     markSwipeDiscoveryLearned()
@@ -146,7 +146,7 @@ describe('P18 swipe discovery V3 visibility', () => {
   })
 
   it('TRACE exposes coach debug + Replay', () => {
-    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 3 })
+    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 4 })
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

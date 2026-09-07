@@ -58,7 +58,8 @@ describe('Global Nav V2', () => {
     expect(sidebar).toContain('<Zap ')
     expect(sidebar).toContain('<Home ')
     expect(sidebar).toContain('aria-label="Ana Feed"')
-    expect(sidebar).toContain('aria-label="Feed V2"')
+    expect(sidebar).toContain('Akıllı Akış')
+    expect(sidebar).not.toMatch(/>\s*Feed 2\s*</)
     expect(sidebar).toContain('aria-label="Arama"')
     expect(sidebar).toContain('aria-label="Bildirimler"')
     expect(sidebar).toContain('aria-label="Profil"')
@@ -75,6 +76,11 @@ describe('Global Nav V2', () => {
       'utf8'
     )
     expect(navbar).toContain('Menüyü aç')
+    expect(navbar).toContain('header-nav-ana-feed')
+    expect(navbar).toContain('header-nav-feed-v2')
+    expect(navbar).toContain('<Home ')
+    expect(navbar).toContain('<Zap ')
+    expect(navbar).not.toMatch(/>\s*Feed 2\s*</)
     const back = readFileSync(
       join(process.cwd(), 'src/components/layout/BackNavButton.tsx'),
       'utf8'

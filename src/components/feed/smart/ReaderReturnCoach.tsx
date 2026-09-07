@@ -1,63 +1,53 @@
 'use client'
 
 /**
- * LEFT-swipe discovery hint on Feed cards (V4).
- * pointer-events: none — must never intercept gestures.
- *
- * Must live in the card CHROME stacking layer (not under media), clear of the
- * social rail, or it paints invisibly behind z-10 chrome / z-30 actions.
+ * RIGHT-swipe return hint inside FeedArticleReader.
+ * pointer-events: none — never intercepts gestures or history.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { prefersReducedMotion } from '@/lib/feed/reader/gestureArbitration'
+import { isCoachPaintedInViewport } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import {
-  isCoachPaintedInViewport,
-  publishSwipeCoachDebug,
-  recordSwipeDiscoveryShown,
-  shouldShowSwipeDiscoveryCoach,
-  SWIPE_DISCOVERY_ANIM_MS,
-  SWIPE_DISCOVERY_CARD_NUDGE_PX,
-  SWIPE_DISCOVERY_HINT_MS,
-  SWIPE_DISCOVERY_SETTLE_MS,
-  SWIPE_DISCOVERY_TRAVEL_PX,
-  type SwipeDiscoveryPhase,
-} from '@/lib/feed/reader/swipeDiscoveryCoach'
+  publishReaderReturnCoachDebug,
+  recordReaderReturnCoachShown,
+  READER_RETURN_COACH_ANIM_MS,
+  READER_RETURN_COACH_HINT_MS,
+  READER_RETURN_COACH_SETTLE_MS,
+  READER_RETURN_COACH_TRAVEL_PX,
+  shouldShowReaderReturnCoach,
+  type ReaderReturnCoachPhase,
+} from '@/lib/feed/reader/readerReturnCoach'
 
 type Props = {
   active: boolean
-  /** Parent reports user is dragging / scrolling — hide immediately. */
   suppressed?: boolean
-  /** Subtle card translate (negative = LEFT). Parent applies transform. */
-  onCardNudge?: (px: number) => void
 }
 
-export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }: Props) {
+export function ReaderReturnCoach({ active, suppressed = false }: Props) {
   const [visible, setVisible] = useState(false)
   const [travel, setTravel] = useState(0)
   const [reduced, setReduced] = useState(false)
-  const [phase, setPhase] = useState<SwipeDiscoveryPhase>('idle')
+  const [phase, setPhase] = useState<ReaderReturnCoachPhase>('idle')
   const rootRef = useRef<HTMLDivElement>(null)
   const recordedRef = useRef(false)
-  const onCardNudgeRef = useRef(onCardNudge)
-  onCardNudgeRef.current = onCardNudge
 
   useEffect(() => {
     setReduced(prefersReducedMotion())
   }, [])
 
   useEffect(() => {
-    publishSwipeCoachDebug({
+    publishReaderReturnCoachDebug({
       mounted: true,
-      eligible: shouldShowSwipeDiscoveryCoach(),
+      eligible: shouldShowReaderReturnCoach(),
       phase,
-      leftCoachVisible: visible,
+      rightCoachVisible: visible,
     })
   }, [phase, visible, active])
 
   useEffect(() => {
-    onCardNudgeRef.current?.(0)
     recordedRef.current = false
-    if (!active || suppressed || !shouldShowSwipeDiscoveryCoach()) {
+    if (!active || suppressed || !shouldShowReaderReturnCoach()) {
       setVisible(false)
       setTravel(0)
       setPhase(suppressed ? 'suppressed' : !active ? 'idle' : 'ineligible')
@@ -72,7 +62,6 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       if (cancelled || recordedRef.current) return
       const el = rootRef.current
       if (!isCoachPaintedInViewport(el)) {
-        // Retry next frames — layout/stacking may settle after first paint.
         timers.push(
           window.setTimeout(() => {
             requestAnimationFrame(tryRecordVisiblePaint)
@@ -81,70 +70,65 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         return
       }
       recordedRef.current = true
-      recordSwipeDiscoveryShown()
-      publishSwipeCoachDebug({
+      recordReaderReturnCoachShown()
+      publishReaderReturnCoachDebug({
         mounted: true,
         eligible: true,
         phase: 'visible',
-        leftCoachVisible: true,
+        rightCoachVisible: true,
       })
     }
 
     const runSettleShow = () => {
       if (cancelled) return
-      if (!shouldShowSwipeDiscoveryCoach()) {
+      if (!shouldShowReaderReturnCoach()) {
         setPhase('ineligible')
         return
       }
 
       setVisible(true)
       setPhase('visible')
-      // Count ONLY after a real painted rect intersects the viewport.
       requestAnimationFrame(() => {
         requestAnimationFrame(tryRecordVisiblePaint)
       })
 
       if (reduced) {
-        setTravel(-Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
+        setTravel(Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
         timers.push(
           window.setTimeout(() => {
             if (cancelled) return
             setVisible(false)
             setTravel(0)
             setPhase('done')
-            onCardNudgeRef.current?.(0)
-          }, SWIPE_DISCOVERY_HINT_MS)
+          }, READER_RETURN_COACH_HINT_MS)
         )
         return
       }
 
       setTravel(0)
-      onCardNudgeRef.current?.(0)
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
           setPhase('animating')
-          setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)
-          onCardNudgeRef.current?.(-SWIPE_DISCOVERY_CARD_NUDGE_PX)
+          setTravel(READER_RETURN_COACH_TRAVEL_PX)
         }, 80)
       )
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
           setTravel(0)
-          onCardNudgeRef.current?.(0)
-        }, 80 + SWIPE_DISCOVERY_ANIM_MS)
+        }, 80 + READER_RETURN_COACH_ANIM_MS)
       )
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
           setVisible(false)
           setPhase('done')
-        }, SWIPE_DISCOVERY_HINT_MS)
+        }, READER_RETURN_COACH_HINT_MS)
       )
     }
 
-    const settle = window.setTimeout(runSettleShow, SWIPE_DISCOVERY_SETTLE_MS)
+    const settle = window.setTimeout(runSettleShow, READER_RETURN_COACH_SETTLE_MS)
 
     const onReplay = () => {
       if (!active || suppressed) return
@@ -155,14 +139,13 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       setPhase('waiting')
       runSettleShow()
     }
-    window.addEventListener('nahaber-swipe-discovery-replay', onReplay)
+    window.addEventListener('nahaber-reader-return-coach-replay', onReplay)
 
     return () => {
       cancelled = true
       window.clearTimeout(settle)
       for (const t of timers) window.clearTimeout(t)
-      window.removeEventListener('nahaber-swipe-discovery-replay', onReplay)
-      onCardNudgeRef.current?.(0)
+      window.removeEventListener('nahaber-reader-return-coach-replay', onReplay)
     }
   }, [active, suppressed, reduced])
 
@@ -171,26 +154,24 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
       setVisible(false)
       setTravel(0)
       setPhase('suppressed')
-      onCardNudgeRef.current?.(0)
     }
   }, [suppressed])
 
   useEffect(() => {
     return () => {
-      publishSwipeCoachDebug({ mounted: false, phase: 'idle', leftCoachVisible: false })
+      publishReaderReturnCoachDebug({ mounted: false, phase: 'idle', rightCoachVisible: false })
     }
   }, [])
 
   if (!active) return null
-  // Keep a mounted sentinel when waiting so TRACE can prove schedule; paint only when visible.
   if (!visible) {
     return (
       <div
         ref={rootRef}
-        data-testid="feed-swipe-discovery-coach-slot"
-        data-swipe-discovery-phase={phase}
+        data-testid="reader-return-coach-slot"
+        data-reader-return-phase={phase}
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[22]"
+        className="pointer-events-none absolute inset-0 z-[40]"
       />
     )
   }
@@ -198,16 +179,16 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
   return (
     <div
       ref={rootRef}
-      data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v4="1"
-      data-swipe-discovery-phase={phase}
+      data-testid="reader-return-coach"
+      data-reader-return-coach-v1="1"
+      data-reader-return-phase={phase}
       aria-hidden
-      className="pointer-events-none absolute left-1/2 top-[36%] z-[22] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-[42%] z-[40] -translate-x-1/2 -translate-y-1/2"
       style={{
         transform: `translate3d(calc(-50% + ${travel}px), -50%, 0)`,
         transition: reduced
           ? undefined
-          : `transform ${SWIPE_DISCOVERY_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease`,
+          : `transform ${READER_RETURN_COACH_ANIM_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease`,
         opacity: 1,
       }}
     >
@@ -218,21 +199,20 @@ export function SwipeDiscoveryCoach({ active, suppressed = false, onCardNudge }:
         }}
       >
         <span
-          className="flex items-center gap-0.5 text-[15px] font-bold leading-none text-white"
+          className="relative mr-0.5 flex h-6 w-6 shrink-0 items-center justify-center"
           aria-hidden
-          data-testid="feed-swipe-discovery-chevrons"
-        >
-          <span className="text-[#e11d2e]">‹</span>
-          <span>‹</span>
-          <span>‹</span>
-        </span>
-        <span className="font-bold tracking-[0.04em]">Haberi Aç</span>
-        <span
-          className="relative ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center"
-          aria-hidden
-          data-testid="feed-swipe-discovery-finger"
+          data-testid="reader-return-coach-finger"
         >
           <span className="absolute h-3 w-3 rounded-full bg-white shadow-[0_0_0_2px_rgba(225,29,46,0.7)]" />
+        </span>
+        <span className="font-bold">Akışa Dön</span>
+        <span
+          className="flex items-center gap-0.5 text-[15px] font-bold leading-none text-white"
+          aria-hidden
+          data-testid="reader-return-coach-chevrons"
+        >
+          <span>›</span>
+          <span className="text-[#e11d2e]">›</span>
         </span>
       </div>
     </div>

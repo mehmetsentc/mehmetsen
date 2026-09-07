@@ -543,7 +543,7 @@ export function FullscreenNewsCard({
         >
           <div className="min-w-0 space-y-1.5 sm:space-y-2" data-testid="smart-feed-text-zone">
             <div
-              className="min-w-0 max-h-[var(--feed-v2-copy-max)] space-y-1.5 overflow-hidden sm:space-y-2"
+              className="min-w-0 min-h-0 max-h-[min(42dvh,18rem)] space-y-1.5 overflow-y-auto overscroll-contain sm:space-y-2"
               data-testid="smart-feed-copy-preview"
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -589,8 +589,7 @@ export function FullscreenNewsCard({
               <h2
                 className={cn(
                   'break-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
-                  'line-clamp-3 max-[700px]:line-clamp-3 min-[701px]:line-clamp-4',
-                  'text-[clamp(1.15rem,4.2vw,1.4rem)] font-extrabold leading-[1.2] tracking-[-0.02em]'
+                  'text-[clamp(1.2rem,4.4vw,1.45rem)] font-extrabold leading-[1.22] tracking-[-0.02em]'
                 )}
                 data-testid="smart-feed-headline"
               >
@@ -606,9 +605,8 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'break-words transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
-                    'line-clamp-2 max-[699px]:line-clamp-2 min-[700px]:line-clamp-3 min-[820px]:line-clamp-4',
-                    'text-[clamp(0.88rem,3.4vw,1rem)] font-medium leading-[1.4] text-white/92',
+                    'break-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
+                    'text-[clamp(0.92rem,3.5vw,1.02rem)] font-medium leading-[1.45] text-white/95',
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"

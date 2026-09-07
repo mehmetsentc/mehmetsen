@@ -98,19 +98,19 @@ describe('DiscoveryRail Reader authority when enabled', () => {
   })
 })
 
-describe('Swipe Discovery V3', () => {
-  it('copy Haberi aç, LEFT travel, pointer-events none, capability gated', () => {
+describe('Swipe Discovery V4', () => {
+  it('copy Haberi Aç, LEFT travel, pointer-events none, capability gated', () => {
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
-    expect(coach).toContain('Haberi aç')
+    expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v3="1"')
+    expect(coach).toContain('data-swipe-discovery-v4="1"')
     expect(coach).not.toContain('preventDefault')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
-    expect(SWIPE_DISCOVERY_CARD_NUDGE_PX).toBeGreaterThanOrEqual(8)
+    expect(SWIPE_DISCOVERY_CARD_NUDGE_PX).toBeGreaterThanOrEqual(6)
     expect(SWIPE_DISCOVERY_CARD_NUDGE_PX).toBeLessThanOrEqual(12)
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
@@ -132,7 +132,7 @@ describe('Swipe Discovery V3', () => {
       'utf8'
     )
     expect(client).toContain("if (openSource === 'swipe') markSwipeDiscoveryLearned()")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v3')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v4')
   })
 })
 

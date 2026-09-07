@@ -2,34 +2,39 @@
  * Device-local Swipe Discovery Coach for Feed → Reader LEFT swipe.
  * No DB, no analytics, no profile mutation.
  *
- * V3 key: V2 may have burned shownCount while the coach was painted under the
- * card chrome/social stack (invisible). Fresh presentation budget required.
- * V1/V2 learned/max intentionally do NOT suppress V3.
+ * V4 key: human validation requires eligibility until a REAL LEFT→OPEN_READER
+ * gesture. V1–V3 may have burned shownCount / learned while never human-visible;
+ * those keys must NOT suppress V4.
  */
 
 /** Current presentation store. */
-export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v3'
+export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v4'
 /** Prior keys — diagnostic / migration proof only. */
+export const SWIPE_DISCOVERY_STORAGE_KEY_V3 = 'nahaber.feedSwipeDiscovery.v3'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V2 = 'nahaber.feedSwipeDiscovery.v2'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V1 = 'nahaber.feedSwipeDiscovery.v1'
 /** Wait after card settles before showing coach — design ~2s. */
-export const SWIPE_DISCOVERY_SETTLE_MS = 2000
+export const SWIPE_DISCOVERY_SETTLE_MS = 1800
 /** Finger/chip travel LEFT (px). */
 export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 /** Subtle active-card nudge LEFT (px). */
-export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 10
+export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 8
 /** Motion duration for travel + return half-cycle. */
 export const SWIPE_DISCOVERY_ANIM_MS = 900
 /** Total on-screen lifetime after settle (ms). */
 export const SWIPE_DISCOVERY_HINT_MS = 2300
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
-export const SWIPE_DISCOVERY_MAX_SHOWS = 3
+/**
+ * Soft periodic cap — V4 eligibility is primarily !learned.
+ * High enough that normal cards remain eligible before gesture learning.
+ */
+export const SWIPE_DISCOVERY_MAX_SHOWS = 48
 
 export type SwipeDiscoveryState = {
   learned: boolean
   shownCount: number
-  version?: 3
+  version?: 4
 }
 
 export type SwipeDiscoveryPhase =
@@ -76,20 +81,25 @@ export function readSwipeDiscoveryV2State(): SwipeDiscoveryState | null {
   return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V2)
 }
 
+/** Diagnostic only. */
+export function readSwipeDiscoveryV3State(): SwipeDiscoveryState | null {
+  return readLegacyState(SWIPE_DISCOVERY_STORAGE_KEY_V3)
+}
+
 export function readSwipeDiscoveryState(): SwipeDiscoveryState {
   const ss = storage()
-  if (!ss) return { learned: false, shownCount: 0, version: 3 }
+  if (!ss) return { learned: false, shownCount: 0, version: 4 }
   try {
     const raw = ss.getItem(SWIPE_DISCOVERY_STORAGE_KEY)
-    if (!raw) return { learned: false, shownCount: 0, version: 3 }
+    if (!raw) return { learned: false, shownCount: 0, version: 4 }
     const parsed = JSON.parse(raw) as Partial<SwipeDiscoveryState>
     return {
       learned: Boolean(parsed.learned),
       shownCount: typeof parsed.shownCount === 'number' ? parsed.shownCount : 0,
-      version: 3,
+      version: 4,
     }
   } catch {
-    return { learned: false, shownCount: 0, version: 3 }
+    return { learned: false, shownCount: 0, version: 4 }
   }
 }
 
@@ -99,7 +109,7 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
   try {
     ss.setItem(
       SWIPE_DISCOVERY_STORAGE_KEY,
-      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 3 })
+      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 4 })
     )
   } catch {
     // private mode / quota
@@ -108,22 +118,25 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
 
 export function markSwipeDiscoveryLearned(): void {
   const cur = readSwipeDiscoveryState()
-  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 3 })
+  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 4 })
 }
 
 /** Presentation-only reset for ?readerDebug=1 Replay — does not touch capability/auth. */
 export function resetSwipeDiscoveryPresentation(): void {
-  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 3 })
+  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 4 })
 }
 
-/** Show at most a few times before the user learns via LEFT open. */
+/**
+ * Before learned: every normal Feed V2 card remains eligible.
+ * shownCount is diagnostic / soft-cap only — do not permanently hide after a few mounts.
+ */
 export function shouldShowSwipeDiscoveryCoach(opts?: {
   state?: SwipeDiscoveryState
   maxShows?: number
 }): boolean {
   const state = opts?.state ?? readSwipeDiscoveryState()
-  const maxShows = opts?.maxShows ?? SWIPE_DISCOVERY_MAX_SHOWS
   if (state.learned) return false
+  const maxShows = opts?.maxShows ?? SWIPE_DISCOVERY_MAX_SHOWS
   return state.shownCount < maxShows
 }
 
@@ -133,7 +146,7 @@ export function shouldShowSwipeDiscoveryCoach(opts?: {
  */
 export function recordSwipeDiscoveryShown(state?: SwipeDiscoveryState): SwipeDiscoveryState {
   const cur = state ?? readSwipeDiscoveryState()
-  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 3 as const }
+  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 4 as const }
   writeSwipeDiscoveryState(next)
   return next
 }
@@ -150,13 +163,17 @@ export function isCoachPaintedInViewport(el: Element | null): boolean {
 }
 
 /**
- * Prior keys that would have suppressed older coaches — must not suppress V3.
+ * Prior keys that would have suppressed older coaches — must not suppress V4.
  */
 export function priorKeysWouldHaveSuppressedCoach(): boolean {
-  for (const key of [SWIPE_DISCOVERY_STORAGE_KEY_V1, SWIPE_DISCOVERY_STORAGE_KEY_V2]) {
+  for (const key of [
+    SWIPE_DISCOVERY_STORAGE_KEY_V1,
+    SWIPE_DISCOVERY_STORAGE_KEY_V2,
+    SWIPE_DISCOVERY_STORAGE_KEY_V3,
+  ]) {
     const s = readLegacyState(key)
     if (!s) continue
-    if (s.learned || s.shownCount >= SWIPE_DISCOVERY_MAX_SHOWS) return true
+    if (s.learned || s.shownCount >= 3) return true
   }
   return false
 }
@@ -172,6 +189,7 @@ export type SwipeCoachDebugSnapshot = {
   learned: boolean
   shownCount: number
   phase: SwipeDiscoveryPhase
+  leftCoachVisible?: boolean
 }
 
 let lastCoachDebug: SwipeCoachDebugSnapshot = {
@@ -180,6 +198,7 @@ let lastCoachDebug: SwipeCoachDebugSnapshot = {
   learned: false,
   shownCount: 0,
   phase: 'idle',
+  leftCoachVisible: false,
 }
 
 export function publishSwipeCoachDebug(next: Partial<SwipeCoachDebugSnapshot>): void {

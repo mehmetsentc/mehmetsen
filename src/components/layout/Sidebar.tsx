@@ -247,14 +247,14 @@ function SidebarInner({
                 'app-sidebar__item',
                 isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') && 'is-active'
               )}
-              aria-label="Feed V2"
+              aria-label="Akıllı Akış"
               aria-current={
                 isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') ? 'page' : undefined
               }
               data-testid="global-nav-feed-v2"
             >
               <Zap className="app-sidebar__icon" aria-hidden />
-              <span>Feed 2</span>
+              <span>Akıllı Akış</span>
             </Link>
             <Link
               href={ROUTES.SEARCH}
