@@ -81,6 +81,20 @@ describe('P18 Feed V2 first-paint vertical budget', () => {
     expect(card).not.toMatch(/smart-feed-summary[\s\S]{0,400}line-clamp/)
     expect(card).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
   })
+
+  it('reels main height accounts for mobile top chrome offset (no 100dvh under spacer)', () => {
+    const css = read('src/app/globals.css')
+    expect(css).toContain('--mobile-top-chrome-offset')
+    expect(css).toContain('content-main-reels')
+    expect(css).toMatch(
+      /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100dvh - var\(--mobile-top-chrome-offset/
+    )
+    const nav = read('src/components/layout/Navbar.tsx')
+    expect(nav).toContain('--mobile-top-chrome-offset')
+    const client = read('src/components/feed/smart/SmartFeedClient.tsx')
+    expect(client).toContain('h-full min-h-0')
+    expect(client).toContain('visibleBand')
+  })
 })
 
 describe('P18 Feed V2 portrait-first', () => {

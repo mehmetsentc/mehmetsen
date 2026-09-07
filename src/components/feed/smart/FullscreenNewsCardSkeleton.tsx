@@ -12,7 +12,7 @@ export function FullscreenNewsCardSkeleton({ className }: FullscreenNewsCardSkel
   return (
     <article
       className={cn(
-        'relative flex h-[100dvh] w-full snap-start snap-always flex-col overflow-hidden bg-black select-none',
+        'relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-black select-none',
         className
       )}
       aria-label="Yükleniyor..."

@@ -1122,9 +1122,21 @@ export function SmartFeedClient({
   const syncCardHeight = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
+    const client = Math.round(el.clientHeight)
+    // Never size cards taller than the visible band under fixed mobile chrome.
+    // Raw 100dvh inside a spacer-pushed main overflows and clips publisher/follow.
+    const top = el.getBoundingClientRect().top
+    const visibleBand =
+      typeof window !== 'undefined'
+        ? Math.max(0, Math.round(window.innerHeight - top))
+        : 0
+    const vv =
+      typeof window !== 'undefined'
+        ? Math.round(window.visualViewport?.height ?? window.innerHeight)
+        : 0
     const measured =
-      Math.round(el.clientHeight) ||
-      Math.round(typeof window !== 'undefined' ? window.visualViewport?.height ?? window.innerHeight : 0)
+      (visibleBand > 0 ? Math.min(client || visibleBand, visibleBand) : client) ||
+      vv
     if (measured <= 0) return
     const prev = cardHeightRef.current
     cardHeightRef.current = measured
@@ -1979,15 +1991,15 @@ export function SmartFeedClient({
 
   return (
     <div
-      className="relative h-[100dvh] w-full bg-black overflow-hidden flex justify-center select-none"
+      className="relative h-full min-h-0 w-full bg-black overflow-hidden flex justify-center select-none"
       data-testid="smart-feed-root"
       data-feed-mounted="1"
       data-feed-session-id={feedSessionIdRef.current}
     >
-      {/* Canonical Viewport Shell — Never collapses, preserves exact geometry */}
+      {/* Canonical Viewport Shell — fills .content-main-reels (remaining band under chrome) */}
       <div
         className={cn(
-          'relative h-[100dvh] overflow-hidden bg-black flex flex-col',
+          'relative h-full min-h-0 overflow-hidden bg-black flex flex-col',
           FEED_READER_SURFACE_CLASS
         )}
         style={FEED_V2_CHROME_CSS_VARS as CSSProperties}
@@ -2036,13 +2048,13 @@ export function SmartFeedClient({
         {/* Viewport Content States */}
         {isLoadingFirstTime ? (
           /* Seamless Skeleton Loader matching FullscreenNewsCard geometry */
-          <div className="h-[100dvh] w-full overflow-hidden" data-testid="smart-feed-skeleton-view">
+          <div className="h-full min-h-0 w-full overflow-hidden" data-testid="smart-feed-skeleton-view">
             <FullscreenNewsCardSkeleton />
           </div>
         ) : errorState ? (
           /* Error / Auth Required / Pilot Preview State */
           <div
-            className="flex h-[100dvh] w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-white/80"
             data-testid="smart-feed-error-view"
           >
             <div className="mb-4 rounded-full bg-white/10 p-4">
@@ -2103,7 +2115,7 @@ export function SmartFeedClient({
         ) : !items.length ? (
           /* Empty Feed State */
           <div
-            className="flex h-[100dvh] w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-white/80"
             data-testid="smart-feed-empty-view"
           >
             <div className="mb-4 rounded-full bg-white/10 p-4">
@@ -2156,7 +2168,7 @@ export function SmartFeedClient({
             ref={scrollRef}
             onScroll={onScroll}
             className={cn(
-              'h-[100dvh] w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
+              'h-full min-h-0 w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
               isTabSwitching && 'opacity-55',
               feedScrollLocked && 'overflow-hidden touch-none'
             )}

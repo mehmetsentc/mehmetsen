@@ -36,15 +36,6 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
 
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
-
-  const profileHref =
-    hydrated && !loading && user
-      ? ROUTES.PROFILE(user.username || user.uid)
-      : ROUTES.LOGIN
-
   // SSR / first-paint spacer — articles hide CategoryNav (see CategoryNav hide list).
   // Feed V2: brand bar only (Feed owns its category chips) — shorter spacer.
   const fallbackChromeHeight = isFeed
@@ -52,6 +43,42 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     : isArticle || isFeedV2
       ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem)'
       : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem + 48px)'
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  /**
+   * Feed/reels shells use 100dvh-sized cards. When mobile top chrome is fixed +
+   * spacer-pushed, raw 100dvh overflows the visible viewport and clips the
+   * publisher/follow first-paint stack. Publish the spacer height as a CSS var
+   * so `.content-main-reels` can size to the remaining band.
+   */
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const apply = () => {
+      if (!mq.matches) {
+        root.style.setProperty('--mobile-top-chrome-offset', '0px')
+        return
+      }
+      const value =
+        chromeHeight > 0 ? `${chromeHeight}px` : fallbackChromeHeight
+      root.style.setProperty('--mobile-top-chrome-offset', value)
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => {
+      mq.removeEventListener('change', apply)
+      root.style.removeProperty('--mobile-top-chrome-offset')
+    }
+  }, [chromeHeight, fallbackChromeHeight])
+
+  const profileHref =
+    hydrated && !loading && user
+      ? ROUTES.PROFILE(user.username || user.uid)
+      : ROUTES.LOGIN
 
   const iconBtn =
     'flex h-11 w-11 shrink-0 items-center justify-center touch-manipulation transition-colors'

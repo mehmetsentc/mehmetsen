@@ -2599,10 +2599,25 @@
   .content-main-reels {
     width: 100%;
     max-width: none;
-    /* Immersive: fill the stage edge-to-edge; no nav clearance band */
+    /* Immersive: fill the stage edge-to-edge; no nav clearance band.
+       Height must be the REMAINING viewport under fixed mobile top chrome —
+       raw min-height:100dvh here + navbar spacer pushes publisher past first paint. */
     padding-bottom: 0 !important;
-    min-height: 100dvh;
+    --feed-card-h: calc(100dvh - var(--mobile-top-chrome-offset, 0px));
+    height: var(--feed-card-h);
+    min-height: var(--feed-card-h);
+    max-height: var(--feed-card-h);
+    overflow: hidden;
     @apply mx-auto;
+  }
+
+  /* SSR/first paint before Navbar measures — assume brand bar (h-14) + safe-area. */
+  @media (max-width: 1023px) {
+    :root {
+      --mobile-top-chrome-offset: calc(
+        var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem
+      );
+    }
   }
 
   .content-main-messages {

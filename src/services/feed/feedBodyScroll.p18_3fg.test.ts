@@ -92,7 +92,7 @@ describe('P18.3FG client stall guards (source)', () => {
     expect(src).toContain('lastPrefetchCursorRef')
     expect(src).toContain('scrollTo({')
     expect(src).not.toContain('el.children[index]')
-    expect(src).toContain('h-[100dvh]')
+    expect(src).toContain('h-full min-h-0')
     expect(src).toContain('smart-feed-loading-more')
     // Do not hard-end because local window emptied
     expect(src).toMatch(/setHasMore\(nextHasMore\)/)
