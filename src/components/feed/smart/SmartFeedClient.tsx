@@ -16,6 +16,7 @@ import {
 import { captureFeedV2EntryFromReferrer } from '@/lib/feed/reader/feedV2Exit'
 import { tryLockFeedPortraitOrientation } from '@/lib/feed/reader/feedPortrait'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
+import { FeedArticleBottomSheet } from '@/components/feed/smart/FeedArticleBottomSheet'
 import {
   FeedArticleReader,
   type FeedReaderTelemetryPayload,
@@ -205,6 +206,11 @@ interface SmartFeedClientProps {
   /** SSR-prefetched first page — paints cards before auth/profile finishes. */
   initialPage?: FeedPageDto | null
   debug?: boolean
+  /**
+   * overlay (default) = Feed V2 page-turn Reader.
+   * sheet = Feed V3 bottom-sheet article (local experiment).
+   */
+  presentation?: 'overlay' | 'sheet'
 }
 
 export function SmartFeedClient({
@@ -212,7 +218,9 @@ export function SmartFeedClient({
   initialDistrictSlug,
   initialPage = null,
   debug,
+  presentation = 'overlay',
 }: SmartFeedClientProps) {
+  const sheetMode = presentation === 'sheet'
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user: authUser, loading: authLoading } = useAuthContext()
@@ -298,6 +306,11 @@ export function SmartFeedClient({
     committed: boolean
     progressAnimating: boolean
     openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
+  } | null>(null)
+  /** Feed V3 bottom-sheet article session (presentation === 'sheet'). */
+  const [sheetArticle, setSheetArticle] = useState<{
+    item: FeedItemDto
+    index: number
   } | null>(null)
   const feedSessionIdRef = useRef(createFeedSessionId())
   const readerItem = readerSession
@@ -1840,6 +1853,34 @@ export function SmartFeedClient({
     action: 'button' | 'gesture' | 'swipe_affordance' = 'button'
   ) => {
     void (async () => {
+      // Feed V3: Haberi Oku / up affordance / up swipe → bottom sheet (stay on feed).
+      if (sheetMode) {
+        const guestSeen = readGuestSeen()
+        for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
+        writeGuestSeen(guestSeen)
+        clearReaderOpenRamp()
+        setReaderSession(null)
+        setSheetArticle({ item, index })
+        void postTelemetry({
+          events: [
+            {
+              eventType: 'article_opened',
+              articleId: item.articleId,
+              clusterId: item.clusterId,
+              feedType: mode,
+              metadata: {
+                publisherId: item.publisher?.id ?? null,
+                category: item.category ?? null,
+                tags: item.tags ?? [],
+                source: 'feed_v3_sheet',
+                openAction: action,
+              },
+            },
+          ],
+        })
+        return
+      }
+
       // Durable consumed: guest localStorage + server article_opened (not qualified impression).
       const guestSeen = readGuestSeen()
       for (const key of feedItemIdentityKeys(item)) guestSeen.add(key)
@@ -2324,7 +2365,7 @@ export function SmartFeedClient({
                   }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed
                       ? (g) => {
                           if (showReaderDebug) {
                             const classified = classifyFeedOpenGestureDecision(g)
@@ -2343,8 +2384,13 @@ export function SmartFeedClient({
                         }
                       : undefined
                   }
+                  onOpenSheetGesture={
+                    sheetMode && isActive && !sheetArticle
+                      ? () => onRead(item, index, 'gesture')
+                      : undefined
+                  }
                   onOpenReaderProgress={
-                    isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed
                       ? (progress) => {
                           clearReaderOpenRamp()
                           setReaderSession((s) => {
@@ -2365,7 +2411,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onOpenReaderCancel={
-                    isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed
                       ? () => {
                           const gen = ++readerCancelGenRef.current
                           if (readerOpenRampRef.current != null) {
@@ -2477,19 +2523,29 @@ export function SmartFeedClient({
                           }
                           onRead(synthetic, index, 'button')
                         }}
-                  showSwipeDiscoveryCoach={Boolean(isActive && !readerSession?.committed)}
+                  showSwipeDiscoveryCoach={Boolean(
+                    !sheetMode && isActive && !readerSession?.committed
+                  )}
                   swipeDiscoverySuppressed={Boolean(
                     readerSession &&
                       readerSession.item.articleId === item.articleId &&
                       readerSession.progress > 0.02
                   )}
                   onSwipeAffordanceActivate={
-                    isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed
+                      ? () => onRead(item, index, 'swipe_affordance')
+                      : undefined
+                  }
+                  showSheetOpenCoach={Boolean(sheetMode && isActive && !sheetArticle)}
+                  onSheetAffordanceActivate={
+                    sheetMode && isActive && !sheetArticle
                       ? () => onRead(item, index, 'swipe_affordance')
                       : undefined
                   }
                   readerUnderlayProgress={
-                    readerSession && readerSession.item.articleId === item.articleId
+                    !sheetMode &&
+                    readerSession &&
+                    readerSession.item.articleId === item.articleId
                       ? readerSession.progress
                       : 0
                   }
@@ -2536,6 +2592,18 @@ export function SmartFeedClient({
             ) : null}
           </div>
         )}
+
+        {sheetMode && sheetArticle ? (
+          <FeedArticleBottomSheet
+            item={sheetArticle.item}
+            open
+            onClose={() => {
+              const idx = sheetArticle.index
+              setSheetArticle(null)
+              requestAnimationFrame(() => scrollToIndex(idx))
+            }}
+          />
+        ) : null}
 
         {/* 3-Region Bottom Sheet for Comments */}
         <CommentsBottomSheet
@@ -2678,6 +2746,8 @@ function FeedCardWithImpression(props: {
     viewportWidth: number
     velocityX: number
   }) => void
+  /** Feed V3: upward swipe completes → open article sheet. */
+  onOpenSheetGesture?: () => void
   /** Interactive page-turn: report progress during drag (before release). */
   onOpenReaderProgress?: (progress: number) => void
   /** Snap-back / cancel — clear uncommitted Reader preview. */
@@ -2703,11 +2773,14 @@ function FeedCardWithImpression(props: {
   showSwipeDiscoveryCoach?: boolean
   swipeDiscoverySuppressed?: boolean
   onSwipeAffordanceActivate?: () => void
+  showSheetOpenCoach?: boolean
+  onSheetAffordanceActivate?: () => void
   /** Haberi Oku / committed open progress — drives Feed underlay page-turn. */
   readerUnderlayProgress?: number
 }) {
   const {
     onOpenReaderGesture,
+    onOpenSheetGesture,
     onOpenReaderProgress,
     onOpenReaderCancel,
     onGesturePointerDebug,
@@ -2780,10 +2853,12 @@ function FeedCardWithImpression(props: {
         willChange: pageProgress > 0.01 ? 'transform, opacity' : undefined,
       }}
       onPointerDown={(e) => {
-        if (!onOpenReaderGesture || !props.isActive) {
+        const sheetOpen = Boolean(onOpenSheetGesture)
+        const pageTurnOpen = Boolean(onOpenReaderGesture)
+        if ((!sheetOpen && !pageTurnOpen) || !props.isActive) {
           onGesturePointerDebug?.({
             phase: 'down',
-            handlerAbsent: !onOpenReaderGesture,
+            handlerAbsent: !pageTurnOpen && !sheetOpen,
           })
           return
         }
@@ -2792,7 +2867,7 @@ function FeedCardWithImpression(props: {
           onGesturePointerDebug?.({ phase: 'down', ignoredInteractive: true })
           return
         }
-        if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
+        if (!sheetOpen && shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
           onGesturePointerDebug?.({ phase: 'down' })
           recordReaderNavTrace({
             type: 'gesture_ignored_ios_edge',
@@ -2825,9 +2900,33 @@ function FeedCardWithImpression(props: {
           const dy = ev.clientY - d.y
           if (d.axis === 'none') {
             const intent = classifyAxisIntent(dx, dy)
-            if (intent === 'vertical') {
-              // Nested copy/CTA scroll owns vertical until its edge.
+            if (sheetOpen) {
+              // Feed V3: upward swipe opens sheet; downward/vertical feed scroll stays free.
+              if (intent === 'horizontal') return
+              if (intent !== 'vertical') return
+              if (dy >= 0) return
               if (nestedFeedContentCanScroll(ev.target, dy)) {
+                clearNativeMove()
+                drag.current = null
+                return
+              }
+              d.axis = 'vertical'
+              try {
+                surfaceRef.current?.setPointerCapture(ev.pointerId)
+              } catch {
+                // Non-fatal
+              }
+            } else {
+              if (intent === 'vertical') {
+                // Nested copy/CTA scroll owns vertical until its edge.
+                if (nestedFeedContentCanScroll(ev.target, dy)) {
+                  clearNativeMove()
+                  drag.current = null
+                  setHorizontalLocked(false)
+                  setDragProgress(0)
+                  onOpenReaderCancel?.()
+                  return
+                }
                 clearNativeMove()
                 drag.current = null
                 setHorizontalLocked(false)
@@ -2835,24 +2934,26 @@ function FeedCardWithImpression(props: {
                 onOpenReaderCancel?.()
                 return
               }
-              clearNativeMove()
-              drag.current = null
-              setHorizontalLocked(false)
-              setDragProgress(0)
-              onOpenReaderCancel?.()
-              return
+              if (intent !== 'horizontal') return
+              // Haberi Aç: finger RIGHT only (positive dx).
+              if (dx <= 0) return
+              d.axis = 'horizontal'
+              setHorizontalLocked(true)
+              // Capture only after horizontal lock — early capture steals Haberi Oku taps on iOS.
+              try {
+                surfaceRef.current?.setPointerCapture(ev.pointerId)
+              } catch {
+                // Non-fatal
+              }
             }
-            if (intent !== 'horizontal') return
-            // Haberi Aç: finger RIGHT only (positive dx).
-            if (dx <= 0) return
-            d.axis = 'horizontal'
-            setHorizontalLocked(true)
-            // Capture only after horizontal lock — early capture steals Haberi Oku taps on iOS.
-            try {
-              surfaceRef.current?.setPointerCapture(ev.pointerId)
-            } catch {
-              // Non-fatal
-            }
+          }
+          if (sheetOpen) {
+            if (d.axis !== 'vertical') return
+            ev.preventDefault()
+            onGesturePointerDebug?.({ phase: 'move' })
+            d.lastX = ev.clientX
+            d.lastT = performance.now()
+            return
           }
           if (d.axis !== 'horizontal') return
           ev.preventDefault()
@@ -2877,7 +2978,8 @@ function FeedCardWithImpression(props: {
       }}
       onPointerUp={(e) => {
         const d = drag.current
-        if (!onOpenReaderGesture || !d || d.pointerId !== e.pointerId) {
+        const sheetOpen = Boolean(onOpenSheetGesture)
+        if ((!onOpenReaderGesture && !onOpenSheetGesture) || !d || d.pointerId !== e.pointerId) {
           if (d) resetDragVisual(false)
           return
         }
@@ -2896,6 +2998,18 @@ function FeedCardWithImpression(props: {
         const dx = e.clientX - d.x
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)
+        if (sheetOpen) {
+          if (axis !== 'vertical') {
+            resetDragVisual(false)
+            return
+          }
+          const upPx = -dy
+          const velocityUp = -dy / dt
+          const complete = upPx >= 72 || (upPx >= 36 && velocityUp >= 0.45)
+          if (complete) onOpenSheetGesture?.()
+          resetDragVisual(false)
+          return
+        }
         const velocityX = (e.clientX - d.lastX) / dt
         const width = typeof window !== 'undefined' ? window.innerWidth : 390
         const progress = feedToReaderProgress(dx, width)
@@ -2907,7 +3021,7 @@ function FeedCardWithImpression(props: {
           })
 
         // Always report metrics to parent (diagnostic + shared open decision).
-        onOpenReaderGesture({
+        onOpenReaderGesture?.({
           dx,
           dy,
           startClientX: d.x,

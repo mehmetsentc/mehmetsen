@@ -212,6 +212,8 @@ export function FeedArticleReader({
 
   const progress =
     internalProgress !== null ? internalProgress : Math.min(1, Math.max(0, visualProgress))
+  const progressRef = useRef(progress)
+  progressRef.current = progress
 
   const headline = pickFullReaderCopy(detail?.headline, item.headline) || item.headline
   const summary = pickFullReaderCopy(detail?.summary, item.summary)
@@ -536,12 +538,20 @@ export function FeedArticleReader({
       // LEFT gesture learning only — back arrow / popstate must not mark learned.
       if (reason === 'gesture') markReaderReturnCoachLearned()
 
+      // Match open ramp: enable transition, then drop progress on next frame
+      // so WebKit actually interpolates (same-tick 1→0 skips the close animation).
+      const from = progressRef.current
+      setInternalProgress(from)
       setAnimating(true)
-      setInternalProgress(0)
-      window.setTimeout(() => {
-        setAnimating(false)
-        finishCloseUi(reason)
-      }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
+      const runCloseAnim = () => {
+        setInternalProgress(0)
+        window.setTimeout(() => {
+          setAnimating(false)
+          finishCloseUi(reason)
+        }, reducedMotion ? 0 : FEED_READER_DURATION_MS)
+      }
+      if (reducedMotion) runCloseAnim()
+      else requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))
     },
     [committed, feedSessionId, finishCloseUi, item.articleId, item.category, reducedMotion]
   )
@@ -830,7 +840,7 @@ export function FeedArticleReader({
       lastT: performance.now(),
       axis: 'none',
     }
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    // Capture only after horizontal lock — early capture steals Akışa Dön / chrome taps on iOS.
   }
 
   const onPointerMove = (e: ReactPointerEvent) => {
@@ -848,6 +858,11 @@ export function FeedArticleReader({
       // Akışa Dön: finger LEFT only (negative dx).
       if (dx >= 0) return
       d.axis = 'horizontal'
+      try {
+        ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+      } catch {
+        // Non-fatal
+      }
     }
     if (d.axis !== 'horizontal') return
     e.preventDefault()

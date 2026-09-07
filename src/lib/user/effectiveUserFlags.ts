@@ -59,7 +59,7 @@ export async function isNfRankLiveEffectiveForUser(userId: string | null | undef
   return isFeatureEnabledForUser(userId, 'NFRANK_V1')
 }
 
-/** Feed Reader V1 — in-feed Haberi Oku overlay; requires FEED_READER_V1 grant/global (default off). */
+/** Feed Reader V1 — in-feed Haberi Oku overlay; requires FEED_READER_V1 grant/global (default on). */
 export async function isFeedReaderEffectiveForUser(userId: string | null | undefined): Promise<boolean> {
   return isFeatureEnabledForUser(userId, 'FEED_READER_V1')
 }

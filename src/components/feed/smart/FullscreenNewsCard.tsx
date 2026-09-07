@@ -10,6 +10,7 @@ import { FollowButton } from '@/components/social/FollowButton'
 import { SocialActionRail, type FeedReactionId } from '@/components/social/SocialActionRail'
 import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 import { SwipeDiscoveryCoach } from '@/components/feed/smart/SwipeDiscoveryCoach'
+import { SheetOpenCoach } from '@/components/feed/smart/SheetOpenCoach'
 import { isSmartFeedVideoEnabledClient } from '@/lib/feed/featureFlagClient'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
@@ -101,6 +102,9 @@ interface FullscreenNewsCardProps {
   swipeDiscoverySuppressed?: boolean
   /** Same openReader authority as successful RIGHT swipe. */
   onSwipeAffordanceActivate?: () => void
+  /** Feed V3 — upward sheet open affordance. */
+  showSheetOpenCoach?: boolean
+  onSheetAffordanceActivate?: () => void
   /** When set, DiscoveryRail opens via Feed Reader authority instead of /haber Link. */
   onDiscoveryArticleOpen?: (item: {
     articleId: string
@@ -150,6 +154,8 @@ export function FullscreenNewsCard({
   showSwipeDiscoveryCoach = false,
   swipeDiscoverySuppressed = false,
   onSwipeAffordanceActivate,
+  showSheetOpenCoach = false,
+  onSheetAffordanceActivate,
   onDiscoveryArticleOpen,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
@@ -514,6 +520,9 @@ export function FullscreenNewsCard({
             onCardNudge={setSwipeCoachNudgePx}
             onAffordanceActivate={onSwipeAffordanceActivate}
           />
+        ) : null}
+        {showSheetOpenCoach ? (
+          <SheetOpenCoach active={isActive} onActivate={onSheetAffordanceActivate} />
         ) : null}
 
         {/*

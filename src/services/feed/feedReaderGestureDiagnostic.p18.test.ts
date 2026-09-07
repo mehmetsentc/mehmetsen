@@ -51,17 +51,17 @@ describe('Feed Reader gesture diagnostic contracts', () => {
     expect(client).toContain('HANDLER_ABSENT')
   })
 
-  it('realistic mobile left swipe sequence opens via shared onOpen path', () => {
+  it('realistic mobile RIGHT swipe sequence opens via shared onOpen path', () => {
     let opened = 0
-    // 300,400 → 210,405 → 170,406  (dx≈-130, dy≈6) on 390vw
-    const dx = 170 - 300
+    // 80,400 → 210,405 → 250,406  (dx≈+170, dy≈6) on 390vw
+    const dx = 250 - 80
     const dy = 406 - 400
     const classified = classifyFeedOpenGestureDecision({
       dx,
       dy,
-      startClientX: 300,
+      startClientX: 80,
       viewportWidth: 390,
-      velocityX: -0.7,
+      velocityX: 0.7,
     })
     expect(classified.axis).toBe('horizontal')
     expect(classified.decision).toBe('OPEN_READER')
@@ -69,9 +69,9 @@ describe('Feed Reader gesture diagnostic contracts', () => {
       dispatchFeedOpenGesture({
         dx,
         dy,
-        startClientX: 300,
+        startClientX: 80,
         viewportWidth: 390,
-        velocityX: -0.7,
+        velocityX: 0.7,
         onOpen: () => {
           opened += 1
         },
@@ -123,13 +123,23 @@ describe('Feed Reader gesture diagnostic contracts', () => {
     expect(shouldIgnoreFeedOpenGestureTarget(button as unknown as EventTarget)).toBe(true)
   })
 
-  it('documents open thresholds and Feed→Reader direction (left / negative dx)', () => {
+  it('documents open thresholds and Feed→Reader direction (RIGHT / positive dx)', () => {
     expect(READER_GESTURE.dominance).toBe(1.35)
     expect(READER_GESTURE.activatePx).toBe(14)
     expect(READER_GESTURE.completePx).toBe(72)
     expect(READER_GESTURE.completeVelocity).toBe(0.45)
     expect(READER_GESTURE.systemBackEdgePx).toBe(22)
-    // Right swipe (positive dx) must not open
+    // LEFT swipe (negative dx) must not open
+    expect(
+      classifyFeedOpenGestureDecision({
+        dx: -180,
+        dy: 0,
+        startClientX: 300,
+        viewportWidth: 390,
+        velocityX: -0.8,
+      }).open
+    ).toBe(false)
+    // RIGHT swipe opens
     expect(
       classifyFeedOpenGestureDecision({
         dx: 180,
@@ -138,7 +148,7 @@ describe('Feed Reader gesture diagnostic contracts', () => {
         viewportWidth: 390,
         velocityX: 0.8,
       }).open
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('FeedArticleReader reverse gesture uses preventDefault after horizontal lock', () => {

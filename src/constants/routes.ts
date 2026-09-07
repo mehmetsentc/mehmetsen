@@ -7,6 +7,7 @@ export const ROUTES = {
   ONBOARDING: '/onboarding',
   FEED: '/feed',
   FEED_V2: '/feed-v2',
+  FEED_V3: '/feed-v3',
   EVENTS: '/events',
   REELS: '/reels',
   REELS_VIDEO: (id: string) => `/reels?v=${encodeURIComponent(id)}`,
@@ -163,6 +164,7 @@ export const ROUTES = {
 export const PUBLIC_ROUTES: Set<string> = new Set([
   ROUTES.FEED,
   ROUTES.FEED_V2,
+  ROUTES.FEED_V3,
   ROUTES.EVENTS,
   ROUTES.REELS,
   ROUTES.LOCAL,
@@ -179,6 +181,7 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   if (pathname.startsWith('/feed-v2')) return true
+  if (pathname.startsWith('/feed-v3')) return true
   if (pathname.startsWith('/profile/')) return true
   if (pathname.startsWith('/publisher/')) return true
   if (pathname.startsWith('/u/')) return true

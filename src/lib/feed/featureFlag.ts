@@ -71,12 +71,13 @@ export function isGlobalNavV2Enabled(): boolean {
 }
 
 /**
- * FEED_V2_READER_ENABLED — default false.
- * In-feed Feed Reader (Haberi Oku overlay). Global OFF; pilot via FEED_READER_V1 grant.
+ * FEED_V2_READER_ENABLED — default true (Reader V2 production).
+ * In-feed Feed Reader (Haberi Oku overlay + animated return).
+ * Kill with FEED_V2_READER_ENABLED=0. Per-user deny still via rollout grants when global off.
  */
 export function isFeedReaderV1Enabled(): boolean {
   const v = process.env.FEED_V2_READER_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return false
+  return true
 }

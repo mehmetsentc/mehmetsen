@@ -23,21 +23,21 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('Feed Reader foundation', () => {
-  it('registers FEED_READER_V1 with SMART_FEED dependency and global default off', () => {
+  it('registers FEED_READER_V1 with SMART_FEED dependency and global default on', () => {
     expect(USER_ROLLOUT_FEATURE_KEYS).toContain('FEED_READER_V1')
     expect(USER_FEATURE_DEPENDENCIES.FEED_READER_V1).toEqual(['SMART_FEED'])
-    expect(isFeedReaderV1Enabled()).toBe(false)
-    const off = resolveFeatureForUser({
+    expect(isFeedReaderV1Enabled()).toBe(true)
+    const on = resolveFeatureForUser({
       featureKey: 'FEED_READER_V1',
       allowlistedKeys: new Set(),
     })
-    expect(off.enabled).toBe(false)
+    expect(on.enabled).toBe(true)
+    expect(on.source).toBe('global')
     const grant = resolveFeatureForUser({
       featureKey: 'FEED_READER_V1',
       allowlistedKeys: new Set(['FEED_READER_V1', 'SMART_FEED', 'SOCIAL_GRAPH']),
     })
     expect(grant.enabled).toBe(true)
-    expect(grant.source).toBe('allowlist')
   })
 
   it('arbitrates horizontal vs vertical intent and ignores iOS back edge', () => {

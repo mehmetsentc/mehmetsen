@@ -49,6 +49,8 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
     process.env.SMART_FEED_VIDEO_ENABLED = 'false'
     process.env.SMART_FEED_TELEMETRY_ENABLED = 'false'
     process.env.FEED_V2_NFRANK_ENABLED = 'false'
+    // Isolate grant resolution — Reader global ON is covered by feedReader.p18 tests.
+    process.env.FEED_V2_READER_ENABLED = 'false'
 
     // Mock repo: ONLY canonical pilot UID has active grants in DB (single pilot invariant)
     // NFRANK_V1 intentionally NOT granted — shadow-first; no cohort expansion.
@@ -98,7 +100,7 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       for (const feat of pilotBundle) {
         expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, feat)).toBe(true)
       }
-      // Pilot cohort unchanged: no silent NFRANK / Feed Reader live grant
+      // Pilot cohort unchanged: no silent NFRANK / Feed Reader live grant (globals forced off here)
       expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, 'NFRANK_V1')).toBe(false)
       expect(await isFeatureEnabledForUser(CANONICAL_PILOT_UID, 'FEED_READER_V1')).toBe(false)
     })

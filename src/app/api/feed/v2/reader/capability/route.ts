@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
+import { isFeedReaderV1Enabled } from '@/lib/feed/featureFlag'
 import { isFeedReaderEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { buildPilotIdentityDebug } from '@/lib/feed/reader/pilotIdentityAuthority.server'
 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
   const body: Record<string, unknown> = {
     enabled,
     feature: 'FEED_READER_V1',
-    globalDefault: false,
+    globalDefault: isFeedReaderV1Enabled(),
     /** Non-sensitive: whether an authenticated identity was verified (no uid). */
     authenticated: Boolean(auth?.uid),
   }

@@ -11,7 +11,16 @@ import { ROUTES } from '@/constants/routes'
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 
 export function isFeedV2Pathname(pathname: string): boolean {
-  return pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
+  return (
+    pathname === '/feed-v2' ||
+    pathname.startsWith('/feed-v2/') ||
+    pathname === '/feed-v3' ||
+    pathname.startsWith('/feed-v3/')
+  )
+}
+
+export function isFeedV3Pathname(pathname: string): boolean {
+  return pathname === '/feed-v3' || pathname.startsWith('/feed-v3/')
 }
 
 export function isReelsPathname(pathname: string): boolean {
