@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 
 const HIDDEN_PREFIXES = [
   ROUTES.LOGIN,
@@ -97,19 +98,21 @@ export function BackNavButton({
 export function GlobalBackNav() {
   const pathname = usePathname()
   const hidden = useMemo(() => shouldHideBack(pathname), [pathname])
-  const isImmersive =
-    pathname === ROUTES.REELS ||
-    pathname.startsWith(`${ROUTES.REELS}/`) ||
-    pathname === '/feed-v2' ||
-    pathname.startsWith('/feed-v2/')
+  const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
+  const isReels =
+    pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)
+  const globalNavV2 = isGlobalNavV2EnabledClient()
 
+  // Global Nav V2: Feed V2 uses site header menu — no floating exit control.
   if (hidden) return null
+  if (globalNavV2 && isFeedV2) return null
+
+  const isImmersive = isReels || isFeedV2
 
   return (
     <div
       className={cn(
         'back-nav-global',
-        // Mobile non-immersive: Navbar already has back. Desktop + immersive: floating.
         isImmersive ? 'back-nav-global--reels' : 'back-nav-global--desktop'
       )}
       data-testid={isImmersive ? 'smart-feed-exit-nav' : undefined}
@@ -117,11 +120,7 @@ export function GlobalBackNav() {
       <BackNavButton
         tone={isImmersive ? 'dark' : 'auto'}
         fallbackHref={
-          pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
-            ? ROUTES.HOME
-            : isImmersive
-              ? ROUTES.FEED
-              : undefined
+          isFeedV2 ? ROUTES.HOME : isImmersive ? ROUTES.FEED : undefined
         }
       />
     </div>

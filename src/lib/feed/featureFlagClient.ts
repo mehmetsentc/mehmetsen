@@ -14,3 +14,15 @@ export function isSmartFeedVideoEnabledClient(): boolean {
   if (v === '0' || v === 'false' || v === 'no') return false
   return true
 }
+
+/**
+ * GLOBAL_NAV_V2 — default ON.
+ * Removes global bottom MobileNav; header + side drawer are the authority.
+ * Kill-switch: NEXT_PUBLIC_GLOBAL_NAV_V2=0
+ */
+export function isGlobalNavV2EnabledClient(): boolean {
+  const v = process.env.NEXT_PUBLIC_GLOBAL_NAV_V2?.trim().toLowerCase()
+  if (v === '0' || v === 'false' || v === 'no') return false
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  return true
+}

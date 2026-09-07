@@ -14,9 +14,8 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-v2-bottom-clearance':
     'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
-  /** Top clearance for Feed category chips + floating exit (when present). */
-  '--feed-v2-top-clearance':
-    'max(5.25rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 4rem))',
+  /** Top clearance for Feed category chips under site header (Global Nav V2). */
+  '--feed-v2-top-clearance': '3.5rem',
   /**
    * Required lower band: Haberi Oku (~56px) + publisher/follow (~48px).
    * Design dikey alan dağılımı.

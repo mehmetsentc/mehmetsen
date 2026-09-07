@@ -24,14 +24,15 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const [hydrated, setHydrated] = useState(false)
   const isFeed = pathname === ROUTES.FEED
   const isArticle = pathname.startsWith('/haber/')
+  const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
   const showBack =
     !isFeed &&
     pathname !== ROUTES.HOME &&
     pathname !== '/' &&
-    pathname !== ROUTES.REELS
+    pathname !== ROUTES.REELS &&
+    !isFeedV2
   // Fixed chrome does not rubber-band with WKWebView overscroll (sticky does).
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
-  const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
 
   useEffect(() => {
     setHydrated(true)
@@ -80,7 +81,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               type="button"
               onClick={onMenuClick}
               className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
-              aria-label="Menü"
+              aria-label="Menüyü aç"
             >
               <Menu className="h-6 w-6" strokeWidth={2} />
             </button>

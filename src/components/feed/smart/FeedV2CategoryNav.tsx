@@ -6,6 +6,7 @@ import {
   buildFallbackFeedV2Tabs,
   type FeedV2Tab,
 } from '@/lib/feed/feedV2Tabs'
+import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 
 interface FeedV2CategoryNavProps {
   activeTabId: string
@@ -100,20 +101,24 @@ export function FeedV2CategoryNav({
   }, [activeTabId])
 
   const display = frozenRef.current && activeTabId !== 'personal' ? frozenRef.current : tabs
+  const globalNavV2 = isGlobalNavV2EnabledClient()
 
   return (
     <nav
       className={cn(
         'absolute left-0 right-0 top-0 z-50 flex items-center gap-2',
-        // Clear floating GlobalBackNav on immersive Feed.
-        'pl-14 pr-3 pb-2',
-        'pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
+        globalNavV2
+          ? // Site header already owns safe-area + menu; chips sit under brand bar.
+            'px-3 pb-2 pt-2'
+          : // Legacy immersive: clear floating GlobalBackNav + status bar.
+            'pl-14 pr-3 pb-2 pt-[max(2.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.85rem))]',
         className
       )}
       aria-label="Feed kategorileri"
       data-testid="smart-feed-category-nav"
       data-region="category-nav"
       data-tabs-source={tabsSource}
+      data-global-nav-v2={globalNavV2 ? '1' : '0'}
     >
       <div
         ref={scrollRef}

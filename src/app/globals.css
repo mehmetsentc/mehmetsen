@@ -3744,10 +3744,15 @@ video.reels-video {
 
 /* Clear the floating bottom-nav pill on mobile + tablet.
    Feed V2 / reels are immersive — MobileNav does not mount; cards use
-   --feed-v2-bottom-clearance (safe-area only) inside FullscreenNewsCard. */
+   --feed-v2-bottom-clearance (safe-area only) inside FullscreenNewsCard.
+   Global Nav V2: no bottom nav footprint anywhere — keep device safe-area only. */
 html[data-platform='mobile'] .content-main:not(.content-main-reels),
 html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);
+}
+
+[data-global-nav-v2='1'] .content-main:not(.content-main-reels) {
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
 }
 
 /* Feed V2 hero share — design ~38–44%; short phones yield slightly */

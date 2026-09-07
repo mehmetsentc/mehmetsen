@@ -60,6 +60,16 @@ export function isNfRankLiveEnabled(): boolean {
   return false
 }
 
+/** GLOBAL_NAV_V2 — default ON. Kill with GLOBAL_NAV_V2=0 / NEXT_PUBLIC_GLOBAL_NAV_V2=0 */
+export function isGlobalNavV2Enabled(): boolean {
+  const v =
+    process.env.NEXT_PUBLIC_GLOBAL_NAV_V2?.trim().toLowerCase() ||
+    process.env.GLOBAL_NAV_V2?.trim().toLowerCase()
+  if (v === '0' || v === 'false' || v === 'no') return false
+  if (v === '1' || v === 'true' || v === 'yes') return true
+  return true
+}
+
 /**
  * FEED_V2_READER_ENABLED — default false.
  * In-feed Feed Reader (Haberi Oku overlay). Global OFF; pilot via FEED_READER_V1 grant.

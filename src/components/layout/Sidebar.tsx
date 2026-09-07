@@ -10,6 +10,9 @@ import {
   Shield,
   User,
   PanelLeftClose,
+  Home,
+  Zap,
+  Bell,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
@@ -23,6 +26,7 @@ import {
   SIDEBAR_TOOLS,
   type SidebarNavItem,
 } from '@/constants/sidebarNav'
+import { clearFeedRestore } from '@/lib/feed/feedRestoration'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -35,7 +39,21 @@ interface SidebarProps {
 }
 
 function isItemActive(pathname: string, href: string, id: string): boolean {
-  if (id === 'feed') return pathname === ROUTES.FEED || pathname === ROUTES.HOME
+  if (id === 'feed' || id === 'ana-feed') {
+    return pathname === ROUTES.FEED || pathname === ROUTES.HOME || pathname === '/'
+  }
+  if (id === 'feed-v2' || href === ROUTES.FEED_V2) {
+    return pathname === ROUTES.FEED_V2 || pathname.startsWith(`${ROUTES.FEED_V2}/`)
+  }
+  if (href === ROUTES.SEARCH || id === 'search') {
+    return pathname.startsWith(ROUTES.SEARCH) || pathname.startsWith(ROUTES.SEARCH_TR)
+  }
+  if (href === ROUTES.NOTIFICATIONS || id === 'notifications') {
+    return pathname.startsWith(ROUTES.NOTIFICATIONS)
+  }
+  if (id === 'profile') {
+    return pathname.startsWith('/profile/')
+  }
   if (href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
   if (href === ROUTES.SKOR) return pathname.startsWith(ROUTES.SKOR)
   if (href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
@@ -203,6 +221,93 @@ function SidebarInner({
         </form>
 
         <nav className="app-sidebar__nav flex-1 overflow-y-auto" aria-label="Ana menü">
+          <div className="app-sidebar__section" data-testid="global-nav-v2-primary">
+            <p className="app-sidebar__label">Gezinme</p>
+            <Link
+              href={ROUTES.FEED}
+              onClick={closeDrawer}
+              className={cn(
+                'app-sidebar__item',
+                isItemActive(pathname, ROUTES.FEED, 'ana-feed') && 'is-active'
+              )}
+              aria-label="Ana Feed"
+              aria-current={isItemActive(pathname, ROUTES.FEED, 'ana-feed') ? 'page' : undefined}
+              data-testid="global-nav-ana-feed"
+            >
+              <Home className="app-sidebar__icon" aria-hidden />
+              <span>Ana Feed</span>
+            </Link>
+            <Link
+              href={ROUTES.FEED_V2}
+              onClick={() => {
+                clearFeedRestore()
+                closeDrawer()
+              }}
+              className={cn(
+                'app-sidebar__item',
+                isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') && 'is-active'
+              )}
+              aria-label="Feed V2"
+              aria-current={
+                isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') ? 'page' : undefined
+              }
+              data-testid="global-nav-feed-v2"
+            >
+              <Zap className="app-sidebar__icon" aria-hidden />
+              <span>Feed 2</span>
+            </Link>
+            <Link
+              href={ROUTES.SEARCH}
+              onClick={closeDrawer}
+              className={cn(
+                'app-sidebar__item',
+                isItemActive(pathname, ROUTES.SEARCH, 'search') && 'is-active'
+              )}
+              aria-label="Arama"
+              aria-current={isItemActive(pathname, ROUTES.SEARCH, 'search') ? 'page' : undefined}
+              data-testid="global-nav-search"
+            >
+              <Search className="app-sidebar__icon" aria-hidden />
+              <span>Arama</span>
+            </Link>
+            <Link
+              href={ROUTES.NOTIFICATIONS}
+              onClick={closeDrawer}
+              className={cn(
+                'app-sidebar__item',
+                isItemActive(pathname, ROUTES.NOTIFICATIONS, 'notifications') && 'is-active'
+              )}
+              aria-label="Bildirimler"
+              aria-current={
+                isItemActive(pathname, ROUTES.NOTIFICATIONS, 'notifications')
+                  ? 'page'
+                  : undefined
+              }
+              data-testid="global-nav-notifications"
+            >
+              <Bell className="app-sidebar__icon" aria-hidden />
+              <span>Bildirimler</span>
+            </Link>
+            <Link
+              href={
+                hydrated && !loading && user
+                  ? ROUTES.PROFILE(user.username || user.uid)
+                  : ROUTES.LOGIN
+              }
+              onClick={closeDrawer}
+              className={cn(
+                'app-sidebar__item',
+                isItemActive(pathname, '/profile', 'profile') && 'is-active'
+              )}
+              aria-label="Profil"
+              aria-current={isItemActive(pathname, '/profile', 'profile') ? 'page' : undefined}
+              data-testid="global-nav-profile"
+            >
+              <User className="app-sidebar__icon" aria-hidden />
+              <span>Profil</span>
+            </Link>
+          </div>
+
           <div className="app-sidebar__section">
             <p className="app-sidebar__label">Kategoriler</p>
             {SIDEBAR_CATEGORIES.map((item) => (

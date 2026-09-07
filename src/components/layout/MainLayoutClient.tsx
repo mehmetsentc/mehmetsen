@@ -25,6 +25,7 @@ import { ROUTES, isPublicRoute } from '@/constants/routes'
 import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
+  isGlobalNavV2Active,
   isReelsPathname,
   resolveMobileNavVisible,
   resolveTopNavbarVisible,
@@ -105,11 +106,13 @@ const LayoutShell = memo(function LayoutShell({
   const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
   const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
+  const globalNavV2 = isGlobalNavV2Active()
 
   return (
     <div
       className="min-h-screen bg-[rgb(var(--color-surface))]"
       data-platform={platform}
+      data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}
       data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
     >

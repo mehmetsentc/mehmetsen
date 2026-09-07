@@ -61,26 +61,30 @@ describe('shell chrome authority', () => {
     expect(
       resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
     ).toBe(false)
+  })
+
+  it('Global Nav V2: Feed V2 shows top Navbar unless Reader surface active', () => {
+    expect(
+      resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
+    ).toBe(true)
+    expect(
+      resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
+    ).toBe(false)
     expect(
       resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
-    ).toBe(false)
+    ).toBe(true)
     expect(
       resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
     ).toBe(false)
   })
 
-  it('Feed V2 top site Navbar stays hidden (immersive; category bar is in-Feed)', () => {
-    expect(
-      resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
-    ).toBe(false)
-  })
-
-  it('HOME and /haber keep chrome visible', () => {
+  it('HOME and /haber keep top chrome; MobileNav off under Global Nav V2', () => {
     expect(resolveSiteChromeVisible({ pathname: '/', readerSurfaceActive: false })).toBe(true)
     expect(
       resolveSiteChromeVisible({ pathname: '/haber/ornek', readerSurfaceActive: false })
     ).toBe(true)
-    expect(resolveMobileNavVisible({ pathname: '/haber/ornek' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/haber/ornek' })).toBe(false)
+    expect(resolveTopNavbarVisible({ pathname: '/haber/ornek' })).toBe(true)
   })
 
   it('true /reels stays immersive without site chrome', () => {
