@@ -211,7 +211,7 @@ describe('P18 nav trace survivor', () => {
     expect(client).toContain('pointer-events-none fixed left-0 top-0')
     // Gesture attachment independent of debug UI visibility.
     expect(client).toContain(
-      'feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed'
+      'isActive && !readerSession?.committed'
     )
     expect(client).not.toContain(
       'feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed && showReaderDebug'

@@ -677,9 +677,20 @@ export function FullscreenNewsCard({
           >
             <button
               type="button"
-              onClick={onReadClick}
+              data-no-reader-gesture="1"
               data-testid="smart-feed-read-cta"
-              className="inline-flex h-14 w-full shrink-0 items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99]"
+              onPointerUp={(e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return
+                e.preventDefault()
+                e.stopPropagation()
+                onReadClick()
+              }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onReadClick()
+              }}
+              className="inline-flex h-14 w-full shrink-0 touch-manipulation items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-tap-highlight-color:transparent]"
               style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
             >
               Haberi Oku →

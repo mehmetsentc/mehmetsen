@@ -106,9 +106,9 @@ describe('open authority — no discovery /haber flicker', () => {
   })
 })
 
-describe('RIGHT Haberi Aç V7 + LEFT return coach V4', () => {
-  it('V7 key; prior V4 cannot suppress; travel + repeats', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
+describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
+  it('V8 key; prior V4 cannot suppress; travel + repeats', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V4, JSON.stringify({ learned: true, shownCount: 40 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
@@ -122,7 +122,7 @@ describe('RIGHT Haberi Aç V7 + LEFT return coach V4', () => {
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
-    expect(coach).toContain('data-swipe-discovery-v7')
+    expect(coach).toContain('data-swipe-discovery-v8')
     expect(coach).toContain('z-[40]')
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')

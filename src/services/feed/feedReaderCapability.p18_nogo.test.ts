@@ -84,7 +84,8 @@ describe('Feed Reader capability hydration', () => {
     expect(client).toContain('openReader')
     expect(client).toContain('readerCapabilityReady')
     expect(client).toContain('isCapabilityGenerationCurrent')
-    expect(client).toContain("if (decided.decision === 'PENDING') return")
+    expect(client).toContain("if (decided.decision === 'PENDING')")
+    expect(client).toContain('Okuyucu hazırlanıyor')
     expect(client).toMatch(/dispatchFeedOpenGesture\(/)
     expect(client).toContain("onOpen: () => onRead(item, index, 'gesture')")
     expect(client).toContain('openReader(item, index)')
@@ -111,7 +112,7 @@ describe('Feed card gesture surface integration', () => {
     expect(client).toContain('touch-pan-y')
     expect(client).toContain('setPointerCapture')
     expect(client).toContain('shouldIgnoreFeedOpenGestureTarget')
-    expect(client).toContain('feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed')
+    expect(client).toContain('isActive && !readerSession?.committed')
   })
 
   it('horizontal sufficient swipe opens; short/vertical/edge do not; interactive targets ignored', () => {
@@ -120,14 +121,14 @@ describe('Feed card gesture surface integration', () => {
       opened += 1
     }
 
-    // progress 180/390 ≈ 0.46 >= 0.42 complete threshold
+    // progress 180/390 ≈ 0.46 >= 0.42 complete threshold (RIGHT open = +dx)
     expect(
       dispatchFeedOpenGesture({
-        dx: -180,
+        dx: 180,
         dy: 8,
         startClientX: 80,
         viewportWidth: 390,
-        velocityX: -0.2,
+        velocityX: 0.2,
         onOpen,
       })
     ).toBe(true)
@@ -135,7 +136,7 @@ describe('Feed card gesture surface integration', () => {
 
     expect(
       dispatchFeedOpenGesture({
-        dx: -10,
+        dx: 10,
         dy: 0,
         startClientX: 80,
         viewportWidth: 390,

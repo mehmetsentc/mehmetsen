@@ -2603,7 +2603,7 @@
        Height must be the REMAINING viewport under fixed mobile top chrome —
        raw min-height:100dvh here + navbar spacer pushes publisher past first paint. */
     padding-bottom: 0 !important;
-    --feed-card-h: calc(100dvh - var(--mobile-top-chrome-offset, 0px));
+    --feed-card-h: calc(100svh - var(--mobile-top-chrome-offset, 0px));
     height: var(--feed-card-h);
     min-height: var(--feed-card-h);
     max-height: var(--feed-card-h);

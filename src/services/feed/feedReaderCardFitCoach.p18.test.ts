@@ -112,8 +112,8 @@ describe('P18 Feed V2 card fit matrix', () => {
 })
 
 describe('P18 swipe discovery V6 visibility', () => {
-  it('uses v7 key; prior v1/v2/v3 learned cannot suppress', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
+  it('uses v8 key; prior v1/v2/v3 learned cannot suppress', () => {
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
@@ -125,8 +125,8 @@ describe('P18 swipe discovery V6 visibility', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1200)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(1800)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(400)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(900)
     expect(isCoachPaintedInViewport(null)).toBe(false)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
@@ -134,8 +134,9 @@ describe('P18 swipe discovery V6 visibility', () => {
     )
     expect(coach).toContain('isCoachPaintedInViewport')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('left-1/2')
-    expect(coach).toContain('data-swipe-discovery-v7')
+    expect(coach).toContain('inset-x-0')
+    expect(coach).toContain('justify-center')
+    expect(coach).toContain('data-swipe-discovery-v8')
     expect(coach).toContain('feed-swipe-discovery-affordance')
   })
 
@@ -155,7 +156,7 @@ describe('P18 swipe discovery V6 visibility', () => {
   })
 
   it('TRACE exposes coach debug + Replay', () => {
-    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 7 })
+    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 8 })
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

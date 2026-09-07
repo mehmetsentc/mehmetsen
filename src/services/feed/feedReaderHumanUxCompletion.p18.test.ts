@@ -136,7 +136,7 @@ describe('P18 header + sidebar', () => {
 
 describe('P18 RIGHT open + LEFT return coaches', () => {
   it('RIGHT Haberi Aç V7: prior keys cannot suppress; eligible until learned', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V3, JSON.stringify({ learned: true, shownCount: 3 }))
@@ -153,15 +153,15 @@ describe('P18 RIGHT open + LEFT return coaches', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1200)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(1800)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(400)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(900)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v7')
+    expect(coach).toContain('data-swipe-discovery-v8')
     expect(coach).toContain('isCoachPaintedInViewport')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),

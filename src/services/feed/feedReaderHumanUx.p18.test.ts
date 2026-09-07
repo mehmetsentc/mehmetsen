@@ -93,7 +93,8 @@ describe('DiscoveryRail Reader authority when enabled', () => {
     expect(idx).toBeGreaterThan(0)
     const window = card.slice(Math.max(0, idx - 160), idx + 280)
     expect(window).toContain('<button')
-    expect(window).toContain('onClick={onReadClick}')
+    expect(window).toContain('onReadClick()')
+    expect(window).toContain('smart-feed-read-cta')
     expect(window).not.toMatch(/href=\{[^}]*haber/)
   })
 })
@@ -106,7 +107,7 @@ describe('Swipe Discovery V7', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v7="1"')
+    expect(coach).toContain('data-swipe-discovery-v8="1"')
     expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
@@ -117,7 +118,8 @@ describe('Swipe Discovery V7', () => {
       'utf8'
     )
     expect(client).toContain('showSwipeDiscoveryCoach=')
-    expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
+    expect(client).toContain("onSwipeAffordanceActivate")
+    expect(client).toContain("isActive && !readerSession?.committed")
   })
 
   it('RIGHT open marks learned; Haberi Oku path does not call mark on button alone in openReader', () => {
@@ -132,7 +134,7 @@ describe('Swipe Discovery V7', () => {
       'utf8'
     )
     expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
   })
 })
 

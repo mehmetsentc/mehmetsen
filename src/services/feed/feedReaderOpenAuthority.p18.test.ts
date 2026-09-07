@@ -200,7 +200,7 @@ describe('C — coach capability gate', () => {
       'utf8'
     )
     expect(client).toContain('showSwipeDiscoveryCoach=')
-    expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
+    expect(client).toContain("isActive && !readerSession?.committed")
     expect(client).toContain('readerDebugQuery')
     expect(client).toContain('settleFeedReaderCapabilitySession')
     expect(client).toContain('sessionReaderOpenEligible')

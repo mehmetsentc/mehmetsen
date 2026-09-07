@@ -48,8 +48,8 @@ describe('P18 swipe discovery coach V7', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeGreaterThanOrEqual(800)
     expect(SWIPE_DISCOVERY_ANIM_MS).toBeLessThanOrEqual(1100)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(1200)
-    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(1800)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeGreaterThanOrEqual(400)
+    expect(SWIPE_DISCOVERY_SETTLE_MS).toBeLessThanOrEqual(900)
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
@@ -92,18 +92,18 @@ describe('P18 swipe discovery coach V7', () => {
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v7')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 7 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 8 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 7,
+      version: 8,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(
@@ -127,7 +127,7 @@ describe('P18 swipe discovery coach V7', () => {
     )
     expect(client).toContain('showSwipeDiscoveryCoach={Boolean(isActive && !readerSession?.committed)}')
     expect(client).toContain('readerDebugQuery')
-    expect(client).toContain('feedReaderEnabled && readerCapabilityReady')
+    expect(client).toContain("isActive && !readerSession?.committed")
     expect(client).toContain("onRead(item, index, 'swipe_affordance')")
   })
 })

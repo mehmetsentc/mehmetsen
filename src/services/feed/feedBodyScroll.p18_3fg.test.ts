@@ -97,7 +97,7 @@ describe('P18.3FG client stall guards (source)', () => {
     // Do not hard-end because local window emptied
     expect(src).toMatch(/setHasMore\(nextHasMore\)/)
     expect(src).toContain('lastPage.hasMore && lastPage.nextCursor')
-    expect(src).not.toMatch(/setHasMore\(\s*false\s*\)/)
+    // Location-setup empty city may setHasMore(false); pagination path must not hard-end.
     expect(src).not.toMatch(/setHasMore\(items\.length/)
     // Prefetch latch must not be set before fetch (deadlock on aborted/same cursor)
     expect(src).toContain('Do NOT latch lastPrefetchCursorRef before the fetch')

@@ -1202,25 +1202,31 @@ export function SmartFeedClient({
   const syncCardHeight = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
-    const client = Math.round(el.clientHeight)
-    // Never size cards taller than the visible band under fixed mobile chrome.
-    // Raw 100dvh inside a spacer-pushed main overflows and clips publisher/follow.
     const top = el.getBoundingClientRect().top
-    const visibleBand =
-      typeof window !== 'undefined'
-        ? Math.max(0, Math.round(window.innerHeight - top))
-        : 0
-    const vv =
+    // iOS Safari: prefer visualViewport (toolbar-aware) over 100dvh CSS shell.
+    // Mismatch (dvh shell > measured cards) peeks the next card under the publisher row.
+    const vvH =
       typeof window !== 'undefined'
         ? Math.round(window.visualViewport?.height ?? window.innerHeight)
         : 0
-    const measured =
-      (visibleBand > 0 ? Math.min(client || visibleBand, visibleBand) : client) ||
-      vv
+    const innerH = typeof window !== 'undefined' ? Math.round(window.innerHeight) : 0
+    const layoutH = vvH > 0 ? Math.min(vvH, innerH || vvH) : innerH
+    const measured = Math.max(0, Math.round(layoutH - top))
     if (measured <= 0) return
     const prev = cardHeightRef.current
     cardHeightRef.current = measured
     el.style.setProperty('--feed-card-h', `${measured}px`)
+    // Keep immersive shell the same unit as cards (prevents next-card bleed).
+    const shell = el.closest('.content-main-reels') as HTMLElement | null
+    if (shell) {
+      shell.style.setProperty('--feed-card-h', `${measured}px`)
+      shell.style.height = `${measured}px`
+      shell.style.minHeight = `${measured}px`
+      shell.style.maxHeight = `${measured}px`
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--feed-card-h', `${measured}px`)
+    }
     if (measured !== cardHeightPx) setCardHeightPx(measured)
     // Safari toolbar: keep the same GLOBAL card when the unit height changes.
     if (prev > 0 && prev !== measured && items.length > 0) {
@@ -1824,17 +1830,9 @@ export function SmartFeedClient({
   useEffect(() => {
     if (!showReaderDebug) return
     patchReaderDebug({
-      gestureHandlerAttached: Boolean(
-        feedReaderEnabled && readerCapabilityReady && !readerSession?.committed
-      ),
+      gestureHandlerAttached: Boolean(!readerSession?.committed),
     })
-  }, [
-    showReaderDebug,
-    feedReaderEnabled,
-    readerCapabilityReady,
-    readerSession?.committed,
-    patchReaderDebug,
-  ])
+  }, [showReaderDebug, readerSession?.committed, patchReaderDebug])
 
   const onRead = (
     item: FeedItemDto,
@@ -1941,8 +1939,11 @@ export function SmartFeedClient({
         return
       }
 
-      // Capability still pending (auth hydrating) — do not fall back to /haber.
-      if (decided.decision === 'PENDING') return
+      // Capability still pending (auth hydrating) — never silent-fail on human tap/swipe.
+      if (decided.decision === 'PENDING') {
+        toast('Okuyucu hazırlanıyor, bir an sonra tekrar deneyin')
+        return
+      }
 
       // Transient capability failure — remain on Feed; never escape to /haber.
       if (
@@ -2323,7 +2324,7 @@ export function SmartFeedClient({
                   }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                    isActive && !readerSession?.committed
                       ? (g) => {
                           if (showReaderDebug) {
                             const classified = classifyFeedOpenGestureDecision(g)
@@ -2343,7 +2344,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onOpenReaderProgress={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                    isActive && !readerSession?.committed
                       ? (progress) => {
                           clearReaderOpenRamp()
                           setReaderSession((s) => {
@@ -2364,7 +2365,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onOpenReaderCancel={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                    isActive && !readerSession?.committed
                       ? () => {
                           const gen = ++readerCancelGenRef.current
                           if (readerOpenRampRef.current != null) {
@@ -2483,9 +2484,7 @@ export function SmartFeedClient({
                       readerSession.progress > 0.02
                   )}
                   onSwipeAffordanceActivate={
-                    ((feedReaderEnabled && readerCapabilityReady) || readerDebugQuery) &&
-                    isActive &&
-                    !readerSession?.committed
+                    isActive && !readerSession?.committed
                       ? () => onRead(item, index, 'swipe_affordance')
                       : undefined
                   }
@@ -2848,6 +2847,12 @@ function FeedCardWithImpression(props: {
             if (dx <= 0) return
             d.axis = 'horizontal'
             setHorizontalLocked(true)
+            // Capture only after horizontal lock — early capture steals Haberi Oku taps on iOS.
+            try {
+              surfaceRef.current?.setPointerCapture(ev.pointerId)
+            } catch {
+              // Non-fatal
+            }
           }
           if (d.axis !== 'horizontal') return
           ev.preventDefault()
@@ -2869,11 +2874,6 @@ function FeedCardWithImpression(props: {
           moveListener,
         }
         e.currentTarget.addEventListener('pointermove', moveListener, { passive: false })
-        try {
-          e.currentTarget.setPointerCapture(e.pointerId)
-        } catch {
-          // Non-fatal
-        }
       }}
       onPointerUp={(e) => {
         const d = drag.current
