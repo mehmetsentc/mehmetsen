@@ -999,7 +999,9 @@ export function FeedArticleReader({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[130] flex justify-center',
+        // Above mobile-safe-area-shield (z-160) + top chrome (z-100) so Haberi Oku
+        // never leaves NaHaber brand bar stacked over Akışa Dön in Capacitor.
+        'fixed inset-0 z-[170] flex justify-center',
         committed ? 'pointer-events-auto' : 'pointer-events-none'
       )}
       data-testid="feed-article-reader"

@@ -386,7 +386,10 @@
   html.smart-feed-reader-open .mobile-bottom-nav,
   body.smart-feed-reader-open .mobile-bottom-nav,
   html.smart-feed-reader-open .mobile-top-chrome,
-  body.smart-feed-reader-open .mobile-top-chrome {
+  body.smart-feed-reader-open .mobile-top-chrome,
+  /* Shield sits at z-160 above Reader (z-130); hide with chrome or it paints as a brand strip over Akışa Dön. */
+  html.smart-feed-reader-open .mobile-safe-area-shield,
+  body.smart-feed-reader-open .mobile-safe-area-shield {
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;

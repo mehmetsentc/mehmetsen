@@ -42,13 +42,18 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(reader).toContain('hard cut, no page-turn')
 
     const openIdx = client.indexOf('Haberi Oku / button: same page-turn authority')
-    const openBlock = client.slice(openIdx, openIdx + 2000)
+    const openBlock = client.slice(openIdx, openIdx + 3200)
     expect(openBlock).toContain('progressAnimating: true')
     expect(openBlock).toContain('requestAnimationFrame(() => requestAnimationFrame(runOpenAnim))')
     expect(openBlock).toMatch(/runOpenAnim[\s\S]{0,200}progress:\s*1/)
     // Must NOT start the ramp with progressAnimating:false (null mount window).
     expect(openBlock).not.toMatch(
       /setReaderSession\(\{\s*item,\s*index,\s*progress:\s*from,\s*committed:\s*false,\s*progressAnimating:\s*false/
+    )
+    // Parent must mount FeedArticleReader at progress≈0 (not gate on progress>0.001).
+    expect(client).toContain('Gating on progress>0.001 skipped the off-screen first paint')
+    expect(client).not.toMatch(
+      /readerSession\s*&&\s*readerSession\.progress\s*>\s*0\.001\s*\?\s*\(\s*<FeedArticleReader/
     )
   })
 
@@ -74,6 +79,11 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(reader).toMatch(
       /Lock site chrome for the full open ramp[\s\S]{0,220}smart-feed-reader-open/
     )
+    expect(css).toContain('.mobile-safe-area-shield')
+    expect(css).toMatch(
+      /smart-feed-reader-open[\s\S]{0,280}\.mobile-safe-area-shield/
+    )
+    expect(reader).toContain('z-[170]')
   })
 
   it('return swipe captures pointer only after horizontal lock', () => {

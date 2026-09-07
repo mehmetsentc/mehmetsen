@@ -1769,6 +1769,10 @@ export function SmartFeedClient({
           progressAnimating: false,
           openSource,
         })
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.add('smart-feed-reader-open')
+          document.body.classList.add('smart-feed-reader-open')
+        }
         if (openSource === 'swipe' || openSource === 'swipe_affordance') markSwipeDiscoveryLearned()
         patchReaderDebug({
           openReaderCalled: true,
@@ -1805,6 +1809,11 @@ export function SmartFeedClient({
       // Mount off-screen at `from` with transition armed, then drive to 1.
       // progressAnimating must be true on first paint so FeedArticleReader does
       // not return null at progress≈0 (that caused iOS Haberi Oku hard-cuts).
+      // Lock chrome before first paint — Reader mount effect is one frame later.
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.add('smart-feed-reader-open')
+        document.body.classList.add('smart-feed-reader-open')
+      }
       setReaderSession({
         item,
         index,
@@ -2631,7 +2640,12 @@ export function SmartFeedClient({
           }}
         />
 
-        {readerSession && readerSession.progress > 0.001 ? (
+        {/*
+          Mount while session exists — including progress≈0 with progressAnimating.
+          Gating on progress>0.001 skipped the off-screen first paint, so Haberi Oku
+          first mounted at progress=1 (hard cut, no page-turn) on WebKit/iOS.
+        */}
+        {readerSession ? (
           <FeedArticleReader
             item={readerSession.item}
             committed={readerSession.committed}
