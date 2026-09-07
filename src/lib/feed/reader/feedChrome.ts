@@ -28,20 +28,21 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-v2-action-zone': '6.75rem',
   /**
-   * Hero / media floor — yields to content/actions on short phones.
-   * Content + Haberi Oku + publisher take priority over immersive image height.
+   * Hero / media height — fixed budget (not flex-1 grow).
+   * Content + Haberi Oku + publisher take priority on short phones.
    */
-  '--feed-v2-hero-min': 'clamp(14dvh, 18dvh, 24dvh)',
+  '--feed-v2-hero-min': 'clamp(12dvh, 16dvh, 20dvh)',
+  '--feed-v2-hero-max': 'clamp(12dvh, 16dvh, 20dvh)',
   /**
    * Copy-only nested scroll cap (chips + full headline/summary).
    * Action stack sits BELOW this region and must not require scroll.
    */
-  '--feed-v2-copy-scroll-max': 'min(40dvh, 18rem)',
+  '--feed-v2-copy-scroll-max': 'min(36dvh, 16rem)',
   /**
    * @deprecated Alias kept for older diagnostics; prefer copy-scroll-max.
    * Bottom chrome total room ≈ copy + action (not a scroll that hides publisher).
    */
-  '--feed-v2-bottom-stack-max': 'min(52dvh, 24rem)',
+  '--feed-v2-bottom-stack-max': 'min(62dvh, 28rem)',
   /** @deprecated Prefer bottom-stack / copy-scroll; kept for diagnostics. */
   '--feed-v2-copy-max': 'min(34dvh, 15.5rem)',
 } as const

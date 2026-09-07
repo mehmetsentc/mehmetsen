@@ -516,9 +516,13 @@ export function FullscreenNewsCard({
           />
         ) : null}
 
-        {/* Double-tap / hero flex — yields before required actions */}
+        {/* Double-tap / hero — capped so first-paint actions keep the viewport */}
         <div
-          className="relative min-h-[var(--feed-v2-hero-min)] flex-1 touch-manipulation"
+          className="relative min-h-0 shrink-0 touch-manipulation"
+          style={{
+            height: 'var(--feed-v2-hero-min)',
+            maxHeight: 'var(--feed-v2-hero-max, var(--feed-v2-hero-min))',
+          }}
           data-testid="smart-feed-double-tap-zone"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
@@ -546,9 +550,8 @@ export function FullscreenNewsCard({
           so first paint never requires manual nested scroll to discover them.
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full min-h-0 shrink-0 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-4 pr-[3.5rem] sm:pt-6"
+          className="relative z-[2] mt-auto flex w-full min-h-0 flex-1 flex-col justify-end bg-gradient-to-t from-black via-black/90 to-transparent pt-4 pr-[3.5rem] sm:pt-6"
           data-testid="smart-feed-bottom-chrome"
-          style={{ maxHeight: 'var(--feed-v2-bottom-stack-max)' }}
         >
           <div
             className="min-w-0 space-y-1.5 overflow-y-auto overscroll-y-contain touch-pan-y sm:space-y-2"

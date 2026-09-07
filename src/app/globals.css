@@ -3758,30 +3758,33 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
 /* Feed V2 hero share — short phones yield media to first-paint actions */
 @media (max-height: 700px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(10dvh, 14dvh, 18dvh);
+    --feed-v2-hero-min: clamp(10dvh, 12dvh, 14dvh);
+    --feed-v2-hero-max: clamp(10dvh, 12dvh, 14dvh);
     --feed-v2-action-zone: 6.5rem;
-    --feed-v2-copy-scroll-max: min(38dvh, 16rem);
-    --feed-v2-bottom-stack-max: min(58dvh, 22rem);
+    --feed-v2-copy-scroll-max: min(34dvh, 14rem);
+    --feed-v2-bottom-stack-max: min(68dvh, 26rem);
     --feed-v2-copy-max: min(30dvh, 13.5rem);
   }
 }
 
 @media (min-height: 701px) and (max-height: 812px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(14dvh, 18dvh, 24dvh);
+    --feed-v2-hero-min: clamp(12dvh, 16dvh, 20dvh);
+    --feed-v2-hero-max: clamp(12dvh, 16dvh, 20dvh);
     --feed-v2-action-zone: 6.75rem;
-    --feed-v2-copy-scroll-max: min(40dvh, 18rem);
-    --feed-v2-bottom-stack-max: min(54dvh, 24rem);
+    --feed-v2-copy-scroll-max: min(36dvh, 16rem);
+    --feed-v2-bottom-stack-max: min(62dvh, 28rem);
     --feed-v2-copy-max: min(32dvh, 14.5rem);
   }
 }
 
 @media (min-height: 813px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(20dvh, 28dvh, 36dvh);
+    --feed-v2-hero-min: clamp(18dvh, 24dvh, 32dvh);
+    --feed-v2-hero-max: clamp(22dvh, 30dvh, 38dvh);
     --feed-v2-action-zone: 6.75rem;
-    --feed-v2-copy-scroll-max: min(42dvh, 20rem);
-    --feed-v2-bottom-stack-max: min(50dvh, 26rem);
+    --feed-v2-copy-scroll-max: min(40dvh, 18rem);
+    --feed-v2-bottom-stack-max: min(56dvh, 30rem);
     --feed-v2-copy-max: min(34dvh, 15.5rem);
   }
 }
@@ -3798,9 +3801,10 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   }
 
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(6dvh, 10dvh, 14dvh);
-    --feed-v2-copy-scroll-max: min(36dvh, 12rem);
-    --feed-v2-bottom-stack-max: min(72dvh, 20rem);
+    --feed-v2-hero-min: clamp(6dvh, 8dvh, 10dvh);
+    --feed-v2-hero-max: clamp(6dvh, 8dvh, 10dvh);
+    --feed-v2-copy-scroll-max: min(32dvh, 10rem);
+    --feed-v2-bottom-stack-max: min(78dvh, 22rem);
     --feed-v2-top-clearance: 2.75rem;
   }
 
