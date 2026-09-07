@@ -3743,8 +3743,8 @@ video.reels-video {
 }
 
 /* Clear the floating bottom-nav pill on mobile + tablet.
-   Feed V2 cards reserve --feed-v2-bottom-clearance inside FullscreenNewsCard
-   so Haberi Oku / publisher stay above MobileNav while chrome is visible. */
+   Feed V2 / reels are immersive — MobileNav does not mount; cards use
+   --feed-v2-bottom-clearance (safe-area only) inside FullscreenNewsCard. */
 html[data-platform='mobile'] .content-main:not(.content-main-reels),
 html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);

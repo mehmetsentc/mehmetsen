@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   resolveSiteChromeVisible,
+  resolveMobileNavVisible,
+  resolveTopNavbarVisible,
   isFeedV2Pathname,
   isReelsPathname,
 } from '@/lib/feed/reader/shellChrome'
@@ -52,15 +54,24 @@ function mockHistory(startUrl: string) {
 }
 
 describe('shell chrome authority', () => {
-  it('1 Feed closed → navbar visible', () => {
+  it('Feed V2 never shows MobileNav (closed / open / any reader state)', () => {
+    expect(
+      resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
+    ).toBe(false)
+    expect(
+      resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
+    ).toBe(false)
     expect(
       resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
-    ).toBe(true)
-  })
-
-  it('2 Reader open → navbar hidden', () => {
+    ).toBe(false)
     expect(
       resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
+    ).toBe(false)
+  })
+
+  it('Feed V2 top site Navbar stays hidden (immersive; category bar is in-Feed)', () => {
+    expect(
+      resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
     ).toBe(false)
   })
 
@@ -69,6 +80,7 @@ describe('shell chrome authority', () => {
     expect(
       resolveSiteChromeVisible({ pathname: '/haber/ornek', readerSurfaceActive: false })
     ).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/haber/ornek' })).toBe(true)
   })
 
   it('true /reels stays immersive without site chrome', () => {
@@ -78,22 +90,21 @@ describe('shell chrome authority', () => {
     )
   })
 
-  it('MainLayoutClient wires resolveSiteChromeVisible + reader surface hook', () => {
+  it('MainLayoutClient wires MobileNav + top Navbar separately', () => {
     const layout = readFileSync(
       join(process.cwd(), 'src/components/layout/MainLayoutClient.tsx'),
       'utf8'
     )
-    expect(layout).toContain('resolveSiteChromeVisible')
-    expect(layout).toContain('useSmartFeedReaderSurfaceActive')
-    expect(layout).toContain('data-feed-shell-chrome')
-    expect(layout).toContain('showSiteChrome')
-    // Feed-v2 must not be hard-coded into a permanent isReels navbar hide.
+    expect(layout).toContain('resolveMobileNavVisible')
+    expect(layout).toContain('resolveTopNavbarVisible')
+    expect(layout).toContain('showMobileNav')
+    expect(layout).toContain('data-feed-mobile-nav')
     expect(layout).not.toMatch(
       /const isReels = pathname === ROUTES\.REELS \|\| pathname === '\/feed-v2'/
     )
   })
 
-  it('14 Feed navbar not duplicated — CategoryNav + GlobalBackNav omit feed-v2', () => {
+  it('14 Feed does not duplicate site CategoryNav; GlobalBackNav is immersive exit', () => {
     const cat = readFileSync(
       join(process.cwd(), 'src/components/layout/CategoryNav.tsx'),
       'utf8'
@@ -103,9 +114,9 @@ describe('shell chrome authority', () => {
       join(process.cwd(), 'src/components/layout/BackNavButton.tsx'),
       'utf8'
     )
-    expect(back).toContain("pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')")
-    expect(back).toContain('return null')
-    expect(back).not.toContain("fallbackHref={isImmersive ? ROUTES.HOME")
+    expect(back).toContain('smart-feed-exit-nav')
+    expect(back).toContain('/feed-v2')
+    expect(back).toContain('ROUTES.HOME')
   })
 })
 

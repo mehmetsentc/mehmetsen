@@ -37,21 +37,20 @@ beforeEach(() => {
 })
 
 describe('nav-safe Feed card layout', () => {
-  it('reserves bottom clearance above MobileNav for all matrix heights', () => {
+  it('bottom clearance is safe-area only (no MobileNav pill reservation)', () => {
     for (const h of FEED_V2_LAYOUT_TEST_HEIGHTS) {
       const clearance = feedV2BottomClearancePx({
-        pillH: 56,
-        floatGap: 10,
         safeBottom: 34,
-        breathPx: 16,
+        breathPx: 14,
       })
-      // Interactive content ends ≥12px above pill after safe-area.
-      expect(clearance).toBeGreaterThanOrEqual(56 + 10 + 34 + 12)
+      expect(clearance).toBe(48)
+      // Must not reserve ~3.5rem MobileNav pill anymore.
+      expect(clearance).toBeLessThan(80)
       expect(h).toBeGreaterThan(clearance + 200)
     }
   })
 
-  it('FullscreenNewsCard uses feed-v2-bottom-clearance and nav-safe marker', () => {
+  it('FullscreenNewsCard uses feed-v2-bottom-clearance and immersive marker', () => {
     const card = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
@@ -61,6 +60,9 @@ describe('nav-safe Feed card layout', () => {
     expect(card).toContain('data-feed-v2-nav-safe="1"')
     expect(card).toContain('smart-feed-read-cta')
     expect(card).toContain('smart-feed-publisher-row')
+    const chrome = readFileSync(join(process.cwd(), 'src/lib/feed/reader/feedChrome.ts'), 'utf8')
+    expect(chrome).toContain('safe-area-inset-bottom')
+    expect(chrome).not.toContain('mobile-nav-pill-h')
   })
 })
 
@@ -137,12 +139,13 @@ describe('Swipe Discovery V2', () => {
 })
 
 describe('shell + open authority preserved', () => {
-  it('navbar authority and capability latch remain', () => {
+  it('MobileNav authority and capability latch remain', () => {
     const layout = readFileSync(
       join(process.cwd(), 'src/components/layout/MainLayoutClient.tsx'),
       'utf8'
     )
-    expect(layout).toContain('resolveSiteChromeVisible')
+    expect(layout).toContain('resolveMobileNavVisible')
+    expect(layout).toContain('showMobileNav')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'

@@ -26,7 +26,8 @@ import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
   isReelsPathname,
-  resolveSiteChromeVisible,
+  resolveMobileNavVisible,
+  resolveTopNavbarVisible,
 } from '@/lib/feed/reader/shellChrome'
 import { CategorySwipeNavigator } from '@/components/layout/CategorySwipeNavigator'
 import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
@@ -78,7 +79,8 @@ const LayoutShell = memo(function LayoutShell({
   children,
   pathname,
   immersiveStage,
-  showSiteChrome,
+  showTopNavbar,
+  showMobileNav,
   variant,
   platform,
   isMobile,
@@ -87,7 +89,8 @@ const LayoutShell = memo(function LayoutShell({
   children: React.ReactNode
   pathname: string
   immersiveStage: boolean
-  showSiteChrome: boolean
+  showTopNavbar: boolean
+  showMobileNav: boolean
   variant: ContentVariant
   platform: string
   isMobile: boolean
@@ -103,10 +106,11 @@ const LayoutShell = memo(function LayoutShell({
     <div
       className="min-h-screen bg-[rgb(var(--color-surface))]"
       data-platform={platform}
-      data-feed-shell-chrome={showSiteChrome ? 'visible' : 'hidden'}
+      data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}
+      data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
-      {showSiteChrome ? <MobileSafeAreaShield /> : null}
+      {showTopNavbar ? <MobileSafeAreaShield /> : null}
       <Sidebar
         mobileOpen={drawerOpen}
         desktopOpen={desktopSidebarOpen}
@@ -123,7 +127,7 @@ const LayoutShell = memo(function LayoutShell({
           isDesktop && 'app-shell-desktop'
         )}
       >
-        {showSiteChrome ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
+        {showTopNavbar ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
 
         <PullToRefresh>
           <div
@@ -159,7 +163,7 @@ const LayoutShell = memo(function LayoutShell({
         </PullToRefresh>
       </div>
 
-      {showSiteChrome ? (
+      {showMobileNav ? (
         <Suspense fallback={null}>
           <MobileNav />
         </Suspense>
@@ -196,7 +200,11 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const isPublic = isPublicRoute(pathname)
   const readerSurfaceActive = useSmartFeedReaderSurfaceActive()
   const immersiveStage = isFeedImmersiveStage(pathname)
-  const showSiteChrome = resolveSiteChromeVisible({
+  const showTopNavbar = resolveTopNavbarVisible({
+    pathname,
+    readerSurfaceActive,
+  })
+  const showMobileNav = resolveMobileNavVisible({
     pathname,
     readerSurfaceActive,
   })
@@ -219,7 +227,8 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
               <LayoutShell
                 pathname={pathname}
                 immersiveStage={immersiveStage}
-                showSiteChrome={showSiteChrome}
+                showTopNavbar={showTopNavbar}
+                showMobileNav={showMobileNav}
                 variant={variant}
                 platform={platform}
                 isMobile={isMobile}

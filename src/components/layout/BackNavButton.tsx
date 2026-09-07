@@ -93,16 +93,15 @@ export function BackNavButton({
   )
 }
 
-/** Fixed global back control for immersive /reels and desktop chrome.
- * Feed V2 uses site Navbar back — not this floating exit. */
+/** Fixed global back control for immersive routes (reels / feed-v2) and desktop chrome. */
 export function GlobalBackNav() {
   const pathname = usePathname()
   const hidden = useMemo(() => shouldHideBack(pathname), [pathname])
   const isImmersive =
-    pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)
-
-  // Feed V2 owns chrome via Navbar/MobileNav — do not paint a second exit control.
-  if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return null
+    pathname === ROUTES.REELS ||
+    pathname.startsWith(`${ROUTES.REELS}/`) ||
+    pathname === '/feed-v2' ||
+    pathname.startsWith('/feed-v2/')
 
   if (hidden) return null
 
@@ -117,7 +116,13 @@ export function GlobalBackNav() {
     >
       <BackNavButton
         tone={isImmersive ? 'dark' : 'auto'}
-        fallbackHref={isImmersive ? ROUTES.FEED : undefined}
+        fallbackHref={
+          pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
+            ? ROUTES.HOME
+            : isImmersive
+              ? ROUTES.FEED
+              : undefined
+        }
       />
     </div>
   )

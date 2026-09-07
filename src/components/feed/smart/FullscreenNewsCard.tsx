@@ -504,9 +504,8 @@ export function FullscreenNewsCard({
       <div
         className={cn(
           'relative z-10 flex flex-1 flex-col px-3 sm:px-4',
-          /* Mobile bottom-nav clearance — Haberi Oku / publisher stay above the pill */
+          /* Immersive Feed: no MobileNav — only safe-area / home-indicator breath */
           'pb-[var(--feed-v2-bottom-clearance)]',
-          'lg:pb-[max(1.65rem,calc(env(safe-area-inset-bottom,0px)+1.05rem))]',
           MODE_NAV_CLEARANCE,
           'md:mx-auto md:w-full md:max-w-lg',
           'feed-v2-card-chrome'
@@ -692,9 +691,9 @@ export function FullscreenNewsCard({
           </div>
         </div>
 
-        {/* Viewport-anchored social column — cleared above bottom nav on short phones */}
+        {/* Viewport-anchored social column — above safe-area breath on short phones */}
         <div
-          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-3 top-[42%] -translate-y-1/2 max-[700px]:top-auto max-[700px]:bottom-[calc(var(--feed-v2-bottom-clearance)+6.5rem)] max-[700px]:translate-y-0"
+          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-3 top-[42%] -translate-y-1/2 max-[700px]:top-auto max-[700px]:bottom-[calc(var(--feed-v2-bottom-clearance)+5.5rem)] max-[700px]:translate-y-0"
           data-testid="smart-feed-social-dock"
         >
           <SocialActionRail
