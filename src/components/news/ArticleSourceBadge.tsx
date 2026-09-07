@@ -5,22 +5,43 @@ import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BadgeCheck, ExternalLink, Info, ShieldCheck, X } from 'lucide-react'
 import type { Post } from '@/types/post'
+import type { CanonicalSourceRef } from '@/services/editorial/canonicalSourceProvenance'
 
 interface ArticleSourceBadgeProps {
   post: Post
 }
 
 /**
- * ArticleSourceBadge — F2
+ * ArticleSourceBadge — F2 (+ P16.2B multi-source bridge)
  *
  * "Kaynak doğrulama" rozeti. NaHaber editöryal sürecinde kaynak doğrulanmış,
  * AI fact-checker'dan geçmiş haberler için verifikasyon işareti gösterir.
  *
- * Açıldığında: kaynak adı + kaynak URL + AI editör notları + son güncelleme.
+ * P16.2B: `post.sources` doluysa (2+ gerçek, deduped kaynak — mevcut
+ * news_clusters/cluster_memberships lineage'ından, read-only) ANA KAYNAK +
+ * DESTEKLEYİCİ KAYNAKLAR listesi gösterilir. `post.sources` yoksa ya da
+ * tek kaynaklıysa mevcut sade tek-kaynak görünümü AYNEN korunur — bu bir
+ * fallback'tir, hata değildir (legacy/Firestore-migrated/cluster'sız haberler
+ * için beklenen davranış).
+ *
+ * Kaynağın burada görünmesi hiçbir zaman "rights cleared" anlamına gelmez;
+ * bu bileşen rightsStatus/rightsBasis/publicationAuthority'e dokunmaz.
  */
 export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
   const [open, setOpen] = useState(false)
   const publicSource = formatPublicSourceLabel(post.source)
+
+  // 2+ gerçek kaynak varsa çoklu-kaynak görünümüne geç. Tek kaynak (veya
+  // provenance bulunamadıysa) mevcut sade davranış korunur (Task 3 fallback).
+  const multiSources: CanonicalSourceRef[] | null =
+    post.sources && post.sources.length >= 2 ? post.sources : null
+
+  const primarySource = multiSources
+    ? multiSources.find((s) => s.role === 'PRIMARY') ?? multiSources[0]
+    : null
+  const supportingSources = multiSources
+    ? multiSources.filter((s) => s !== primarySource)
+    : []
 
   // Heuristik: NaHaber kendi editörleri tarafından üretilmişse "doğrulanmış"
   // sayılır. RSS-only haberlerde "kaynak: X" şeklinde nötr rozet.
@@ -38,7 +59,12 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
         aria-label="Kaynak bilgisi"
         className="inline-flex items-center gap-1.5 rounded-full bg-bg-subtle px-3 py-1 text-xs font-semibold text-text-secondary ring-1 ring-border transition-colors hover:bg-bg-muted"
       >
-        {isVerified ? (
+        {multiSources ? (
+          <>
+            <Info className="h-3.5 w-3.5" />
+            Kaynaklar ({multiSources.length})
+          </>
+        ) : isVerified ? (
           <>
             <BadgeCheck className="h-3.5 w-3.5 text-info" />
             Kaynak doğrulandı
@@ -84,23 +110,47 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
                 </button>
               </header>
               <div className="space-y-4 px-5 py-5">
-                <Row label="Yayın Kaynağı" value={publicSource || 'Belirtilmemiş'} />
-                {post.sourceUrl ? (
-                  <Row
-                    label="Orijinal Bağlantı"
-                    value={
-                      <a
-                        href={post.sourceUrl}
-                        target="_blank"
-                        rel="noopener nofollow noreferrer"
-                        className="inline-flex items-center gap-1 truncate text-info hover:underline"
-                      >
-                        {trimUrl(post.sourceUrl)}
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    }
-                  />
-                ) : null}
+                {multiSources ? (
+                  <>
+                    {primarySource ? (
+                      <Row label="Ana Kaynak" value={<SourceLine source={primarySource} />} />
+                    ) : null}
+                    {supportingSources.length > 0 ? (
+                      <div className="space-y-2">
+                        <span className="block text-2xs font-bold uppercase tracking-widest text-text-tertiary">
+                          Destekleyici Kaynaklar
+                        </span>
+                        <ul className="space-y-2">
+                          {supportingSources.map((s, i) => (
+                            <li key={`${s.name}-${i}`} className="text-sm">
+                              <SourceLine source={s} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <Row label="Yayın Kaynağı" value={publicSource || 'Belirtilmemiş'} />
+                    {post.sourceUrl ? (
+                      <Row
+                        label="Orijinal Bağlantı"
+                        value={
+                          <a
+                            href={post.sourceUrl}
+                            target="_blank"
+                            rel="noopener nofollow noreferrer"
+                            className="inline-flex items-center gap-1 truncate text-info hover:underline"
+                          >
+                            {trimUrl(post.sourceUrl)}
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        }
+                      />
+                    ) : null}
+                  </>
+                )}
                 {post.editorType ? (
                   <Row label="AI Editör" value={post.editorType} />
                 ) : null}
@@ -128,6 +178,23 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
       </AnimatePresence>
     </>
   )
+}
+
+function SourceLine({ source }: { source: CanonicalSourceRef }) {
+  if (source.url) {
+    return (
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noopener nofollow noreferrer"
+        className="inline-flex items-center gap-1 truncate font-medium text-info hover:underline"
+      >
+        {source.name}
+        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+      </a>
+    )
+  }
+  return <span className="font-medium text-text-primary">{source.name}</span>
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

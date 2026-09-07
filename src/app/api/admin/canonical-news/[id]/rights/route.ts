@@ -6,6 +6,7 @@ import {
   isNewsRightsStatus,
   recordNewsRightsDecision,
 } from '@/services/editorial/newsRightsDecision'
+import { resolveCanonicalNewsSources } from '@/services/editorial/canonicalSourceProvenance'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,8 +27,20 @@ export async function GET(request: Request, context: RouteContext) {
   const review = await getCanonicalNewsRightsReview(id)
   if (!review) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // P16.2B — read-only bridge: existing cluster_memberships PRIMARY/SUPPORTING
+  // lineage, surfaced for human review only. Never affects rights decisions
+  // (POST below never reads this field) and defaults to [] on any failure —
+  // an empty list here must never be read as "no rights" or as a blocker.
+  let sources: Awaited<ReturnType<typeof resolveCanonicalNewsSources>> = []
+  try {
+    sources = await resolveCanonicalNewsSources(id)
+  } catch (provenanceError) {
+    console.warn('[canonical-news rights GET] resolveCanonicalNewsSources failed:', provenanceError)
+  }
+
   return NextResponse.json({
     review,
+    sources,
     pilotHint: PILOT_HINT.has(id),
     note: 'P18.4D.2 rights foundation — decisions are human-only; this GET never clears rights.',
   })

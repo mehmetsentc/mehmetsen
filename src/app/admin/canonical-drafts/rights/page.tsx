@@ -15,6 +15,7 @@ import {
   publicationStateTr,
   riskRecommendationTr,
 } from '@/lib/editorial/rightsUiTr'
+import type { CanonicalSourceRef } from '@/services/editorial/canonicalSourceProvenance'
 
 const PILOT_IDS = [
   '0ALMkrRCE3LQqubviNZh',
@@ -183,6 +184,7 @@ function PilotCard({
   onToggleSelect?: (id: string) => void
 }) {
   const [review, setReview] = useState<Review | null>(null)
+  const [sources, setSources] = useState<CanonicalSourceRef[]>([])
   const [overlap, setOverlap] = useState<SourceOverlapAudit | null>(null)
   const [overlapLoading, setOverlapLoading] = useState(false)
   const [overlapError, setOverlapError] = useState<string | null>(null)
@@ -223,6 +225,9 @@ function PilotCard({
       if (!res.ok) throw new Error(data.error || 'Yüklenemedi')
       const r = data.review as Review
       setReview(r)
+      // P16.2B — read-only supporting-source list from existing cluster
+      // lineage; absent/empty is a normal fallback state, not an error.
+      setSources(Array.isArray(data.sources) ? (data.sources as CanonicalSourceRef[]) : [])
       setStatus(r.rightsStatus || 'PENDING')
       if ((r.rightsStatus || 'PENDING') === 'PENDING') {
         setBasis('UNKNOWN')
@@ -395,6 +400,47 @@ function PilotCard({
             </>
           ) : null}
         </p>
+        {sources.length >= 2 ? (
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Kaynak Provenance (salt-okunur, {sources.length} kaynak) — P16.2B
+            </p>
+            {sources
+              .filter((s) => s.role === 'PRIMARY')
+              .map((s, i) => (
+                <p key={`primary-${i}`} className="text-zinc-800">
+                  <span className="font-semibold">ANA KAYNAK:</span>{' '}
+                  {s.url ? (
+                    <a className="text-blue-700 underline" href={s.url} target="_blank" rel="noopener nofollow noreferrer">
+                      {s.name}
+                    </a>
+                  ) : (
+                    s.name
+                  )}
+                </p>
+              ))}
+            {sources.filter((s) => s.role !== 'PRIMARY').length > 0 ? (
+              <div className="mt-1">
+                <span className="font-semibold text-zinc-800">DESTEKLEYİCİ KAYNAKLAR:</span>
+                <ul className="ml-4 list-disc">
+                  {sources
+                    .filter((s) => s.role !== 'PRIMARY')
+                    .map((s, i) => (
+                      <li key={`supporting-${i}`}>
+                        {s.url ? (
+                          <a className="text-blue-700 underline" href={s.url} target="_blank" rel="noopener nofollow noreferrer">
+                            {s.name}
+                          </a>
+                        ) : (
+                          s.name
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <p className="text-sm font-medium text-zinc-800">
           Mevcut hak durumu:{' '}
           {RIGHTS_STATUS_TR[review.rightsStatus || 'PENDING'] || review.rightsStatus || 'PENDING'}

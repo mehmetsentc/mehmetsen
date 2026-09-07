@@ -4,6 +4,7 @@ import { and, desc, eq, isNotNull, lte, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
 import type { Post } from '@/types/post'
+import { resolveCanonicalNewsSources } from '@/services/editorial/canonicalSourceProvenance'
 import { unstable_cache } from 'next/cache'
 
 /**
@@ -169,7 +170,24 @@ async function fetchCanonicalNewsBySlug(slug: string): Promise<Post | null> {
       .limit(1)
 
     if (rows.length === 0) return null
-    return canonicalRowToPost(rows[0] as CanonicalNewsRow)
+    const row = rows[0] as CanonicalNewsRow
+    const post = canonicalRowToPost(row)
+
+    // P16.2B — read-only bridge to existing crawler multi-source provenance.
+    // Never blocks/alters publication; `[]` means "no cluster lineage",
+    // in which case the existing single source/sourceUrl fallback stands.
+    // Defensive double-guard: even though the resolver itself never throws,
+    // a resolver failure must NEVER null out the whole article.
+    try {
+      const sources = await resolveCanonicalNewsSources(row.id)
+      if (sources.length > 0) {
+        post.sources = sources
+      }
+    } catch (provenanceError) {
+      console.warn('[canonicalEligibility] resolveCanonicalNewsSources failed (falling back to single source):', provenanceError)
+    }
+
+    return post
   } catch (error) {
     console.warn('[canonicalEligibility] fetchCanonicalNewsBySlug error:', error)
     return null

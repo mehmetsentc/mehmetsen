@@ -1,5 +1,6 @@
 import type { PostLocation } from '@/lib/location'
 import type { ArticleBlock } from '@/lib/articleBlocks'
+import type { CanonicalSourceRef } from '@/services/editorial/canonicalSourceProvenance'
 
 // 'pending' = held for moderation/admin approval (AI flagged or uncertain).
 // Like 'draft', pending posts MUST be excluded from all public feeds.
@@ -113,6 +114,14 @@ export interface Post {
   readingTimeMinutes?: number
   /** Original source article URL */
   sourceUrl?: string
+  /**
+   * P16.2B — read-only multi-source provenance bridge (news_clusters +
+   * cluster_memberships + raw_articles + news_sources). Present only when
+   * this canonical article has a resolvable cluster lineage with 1+ real,
+   * deduped sources. Absent/undefined means: fall back to source/sourceUrl.
+   * Never implies rights clearance.
+   */
+  sources?: CanonicalSourceRef[]
   rssGuid?: string
   sourceLabel?: string
   originalTitle?: string
