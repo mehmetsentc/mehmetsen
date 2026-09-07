@@ -15,6 +15,10 @@ import {
 import { loadTrustedEditorialActorUids } from '@/services/editorial/trustedEditorialActors'
 import { isAutomationIdentity } from '@/services/editorial/humanReviewGate'
 import { isExactKnownAutomationUid } from '@/services/editorial/publicationAuthority'
+import {
+  recordCanonicalRightsAuditEventSafe,
+  type CanonicalRightsAuditAction,
+} from '@/services/editorial/canonicalRightsAudit'
 
 export const NEWS_RIGHTS_STATUSES = [
   'PENDING',
@@ -104,6 +108,18 @@ export async function recordNewsRightsDecision(input: {
    * Existing vocabulary only (e.g. HIGH_SOURCE_OVERLAP). Never auto-derived from similarity.
    */
   editorialBlocker?: string | null
+  /** P16.1 -- best-effort audit metadata (server-resolved only; never client-trusted). */
+  actorEmail?: string | null
+  actorRole?: string | null
+  /**
+   * P16.1 -- optional pre-computed source-overlap evidence (see
+   * auditCanonicalDraftSourceOverlap). Persisted into the append-only audit
+   * event's snapshot at decision time. Caller's responsibility to fetch it --
+   * this function never performs a live network fetch itself. Must never
+   * include raw source/canonical body text (already excluded by that
+   * function's return shape; also defended against inside the audit writer).
+   */
+  sourceOverlapSnapshot?: Record<string, unknown> | null
 }): Promise<{ id: string; rightsStatus: NewsRightsStatus; rightsBasis: NewsRightsBasis }> {
   await assertTrustedEditorialHumanActor(input.actorUid)
 
@@ -119,6 +135,7 @@ export async function recordNewsRightsDecision(input: {
     .select({
       id: news.id,
       status: news.status,
+      rightsStatus: news.rightsStatus,
       editorialBlocker: news.editorialBlocker,
     })
     .from(news)
@@ -162,6 +179,45 @@ export async function recordNewsRightsDecision(input: {
       ...(nextBlocker !== undefined ? { editorialBlocker: nextBlocker } : {}),
     })
     .where(eq(news.id, row.id))
+
+  // P16.1 -- append-only audit trail (best-effort; never rolls back the write above --
+  // see canonicalRightsAudit.ts for why: the neon-http driver has no transaction support).
+  const rightsAction: CanonicalRightsAuditAction =
+    input.status === 'PENDING'
+      ? 'RIGHTS_PENDING'
+      : input.status === 'CLEARED'
+        ? 'RIGHTS_CLEARED'
+        : input.status === 'REWRITE_REQUIRED'
+          ? 'RIGHTS_REWRITE_REQUIRED'
+          : 'RIGHTS_DO_NOT_PUBLISH'
+
+  await recordCanonicalRightsAuditEventSafe({
+    newsId: row.id,
+    actorUid: input.actorUid.trim(),
+    actorEmail: input.actorEmail,
+    actorRole: input.actorRole,
+    action: rightsAction,
+    previousState: row.rightsStatus,
+    newState: input.status,
+    snapshot: {
+      rightsBasis: persistedBasis,
+      ...(input.sourceOverlapSnapshot || {}),
+    },
+  })
+
+  // P16.1 Task 6 -- every blocker set/clear transition gets its own audit event.
+  if (nextBlocker !== undefined && nextBlocker !== (row.editorialBlocker ?? null)) {
+    await recordCanonicalRightsAuditEventSafe({
+      newsId: row.id,
+      actorUid: input.actorUid.trim(),
+      actorEmail: input.actorEmail,
+      actorRole: input.actorRole,
+      action: nextBlocker ? 'BLOCKER_SET' : 'BLOCKER_CLEARED',
+      previousState: row.editorialBlocker ?? null,
+      newState: nextBlocker,
+      snapshot: input.sourceOverlapSnapshot || null,
+    })
+  }
 
   return { id: row.id, rightsStatus: input.status, rightsBasis: persistedBasis }
 }

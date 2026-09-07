@@ -5,18 +5,20 @@ import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
 import {
   P18_4E_COHORT1_BATCH_ID,
+  SEED_DEMO_CANONICAL_NEWS_IDS,
   aggregateBatchRightsProgress,
+  isSeedDemoCanonicalNewsId,
 } from '@/services/editorial/canonicalRightsReviewQueue'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-/** P18.4D tiny pilot — always first in the default (all) rights queue. */
-const PILOT_IDS = [
-  '0ALMkrRCE3LQqubviNZh',
-  '0SdmPVCnO8pVAbMENA9f',
-  '0XYEJVwyi7oILuYKf91R',
-] as const
+/**
+ * P18.4D tiny pilot — always first in the default (all) rights queue.
+ * P16.1 Task 7 — backed by the shared SEED_DEMO_CANONICAL_NEWS_IDS constant
+ * (previously an independent local copy of the same 3 ids).
+ */
+const PILOT_IDS = SEED_DEMO_CANONICAL_NEWS_IDS
 
 /**
  * P18.4E / P18.4E.3 — rights review queue listing.
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
   const db = getDb()
 
   if (batch) {
-    const cohort = await db
+    const cohortRaw = await db
       .select({
         id: news.id,
         slug: news.slug,
@@ -51,6 +53,12 @@ export async function GET(request: Request) {
       })
       .from(news)
       .where(eq(news.migrationBatchId, batch))
+
+    // P16.1 Task 7 — never present a known seed/demo row as a genuine batch
+    // cohort candidate, even in the unlikely event its migrationBatchId ever
+    // collided with a real batch id.
+    const excludedSeedCount = cohortRaw.filter((row) => isSeedDemoCanonicalNewsId(row.id)).length
+    const cohort = cohortRaw.filter((row) => !isSeedDemoCanonicalNewsId(row.id))
 
     const progress = aggregateBatchRightsProgress(cohort)
 
@@ -70,8 +78,9 @@ export async function GET(request: Request) {
       batch,
       pilotCount: 0,
       cohortCount: cohort.length,
+      excludedSeedDemoCount: excludedSeedCount,
       progress,
-      note: 'Batch-filtered human review queue — never clears rights or publishes.',
+      note: 'Batch-filtered human review queue — never clears rights or publishes. Seed/demo rows are excluded.',
       knownCohort1Batch: P18_4E_COHORT1_BATCH_ID,
     })
   }

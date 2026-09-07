@@ -6,17 +6,15 @@ import {
   isNewsRightsStatus,
   recordNewsRightsDecision,
 } from '@/services/editorial/newsRightsDecision'
+import { auditCanonicalDraftSourceOverlap } from '@/services/editorial/canonicalDraftSourceOverlapAudit'
+import { isSeedDemoCanonicalNewsId } from '@/services/editorial/canonicalRightsReviewQueue'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
-const PILOT_HINT = new Set([
-  '0ALMkrRCE3LQqubviNZh',
-  '0SdmPVCnO8pVAbMENA9f',
-  '0XYEJVwyi7oILuYKf91R',
-])
+// P16.1 Task 7 — pilotHint now backed by the shared SEED_DEMO_CANONICAL_NEWS_IDS constant.
 
 export async function GET(request: Request, context: RouteContext) {
   const auth = await verifyCmsToken(request, 'news:edit')
@@ -28,7 +26,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   return NextResponse.json({
     review,
-    pilotHint: PILOT_HINT.has(id),
+    pilotHint: isSeedDemoCanonicalNewsId(id),
     note: 'P18.4D.2 rights foundation — decisions are human-only; this GET never clears rights.',
   })
 }
@@ -57,10 +55,40 @@ export async function POST(request: Request, context: RouteContext) {
   void body.actorUid
   void body.uid
 
+  // P16.1 Task 3 -- fetch a live, read-only source-overlap evidence snapshot at
+  // decision time and persist it (via the audit trail) alongside this rights
+  // decision. auditCanonicalDraftSourceOverlap never throws (safe-fail to
+  // SOURCE_NOT_EVALUABLE) and never returns raw source/canonical body text --
+  // only char counts, scores, fetch status. A failure here must never block
+  // the human's rights decision.
+  let overlapSnapshot: Record<string, unknown> | null = null
+  try {
+    const overlap = await auditCanonicalDraftSourceOverlap({ newsId: id })
+    overlapSnapshot = {
+      evaluated: overlap.evaluated,
+      sourceFetchStatus: overlap.sourceFetchStatus,
+      similarity: overlap.similarity,
+      jaccard: overlap.jaccard,
+      ngram3: overlap.ngram3,
+      tokenMatchRatio: overlap.tokenMatchRatio,
+      maxSharedContiguousRun: overlap.maxSharedContiguousRun,
+      gateOverlapCategory: overlap.gateOverlapCategory,
+      risk: overlap.risk,
+      classificationReason: overlap.classificationReason,
+      canonicalBodyChars: overlap.canonicalBodyChars,
+      sourceBodyChars: overlap.sourceBodyChars,
+      algorithm: 'editorialSimilarityGate.checkTextSimilarity.v1',
+    }
+  } catch (overlapErr) {
+    console.warn('[canonical-rights-route] overlap snapshot failed (non-blocking):', overlapErr)
+  }
+
   try {
     const result = await recordNewsRightsDecision({
       newsId: id,
       actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
       status: body.status,
       basis: body.basis,
       refuseClearWhenBlocked: true,
@@ -68,6 +96,7 @@ export async function POST(request: Request, context: RouteContext) {
         body.status === 'REWRITE_REQUIRED' && body.editorialBlocker !== undefined
           ? body.editorialBlocker
           : undefined,
+      sourceOverlapSnapshot: overlapSnapshot,
     })
     const review = await getCanonicalNewsRightsReview(id)
     return NextResponse.json({

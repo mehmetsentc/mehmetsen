@@ -13,6 +13,7 @@ import {
   evaluateCanonicalDraftPublishGate,
   type CanonicalPublishGateResult,
 } from '@/services/editorial/newsRightsDecision'
+import { recordCanonicalRightsAuditEventSafe } from '@/services/editorial/canonicalRightsAudit'
 
 export type CanonicalPublishResult =
   | {
@@ -100,6 +101,9 @@ export function evaluateCanonicalPublishEligibility(row: {
 export async function publishCanonicalNews(input: {
   newsId: string
   actorUid: string
+  /** P16.1 -- best-effort audit metadata (server-resolved only; never client-trusted). */
+  actorEmail?: string | null
+  actorRole?: string | null
 }): Promise<CanonicalPublishResult> {
   const actorUid = input.actorUid.trim()
   if (!actorUid) throw new CanonicalPublishError('publish_actor_missing')
@@ -249,6 +253,25 @@ export async function publishCanonicalNews(input: {
     actorPresent: true,
     alreadyPublished: false,
     rightsStatus: pub.rightsStatus,
+  })
+
+  // P16.1 -- append-only audit trail. Only written on a real draft->published
+  // transition (never on the idempotent alreadyPublished branches above),
+  // so the log reflects real events, not repeated no-op calls.
+  await recordCanonicalRightsAuditEventSafe({
+    newsId: pub.id,
+    actorUid: actorUid,
+    actorEmail: input.actorEmail,
+    actorRole: input.actorRole,
+    action: 'PUBLISHED',
+    previousState: 'draft',
+    newState: 'published',
+    snapshot: {
+      rightsStatus: pub.rightsStatus,
+      rightsBasis: pub.rightsBasis,
+      legacyFirestoreId: pub.legacyFirestoreId,
+      migrationBatchId: pub.migrationBatchId,
+    },
   })
 
   return {
