@@ -5,6 +5,49 @@
 
 export const P18_4E_COHORT1_BATCH_ID = 'P18_4E_20260904T172223Z' as const
 
+/**
+ * P16.1 Task 7 -- single source of truth for known dev seed / pilot canonical
+ * news ids. These are the same 3 ids already hardcoded independently in
+ * both /api/admin/canonical-news/[id]/rights/route.ts (as `PILOT_HINT`) and
+ * /api/admin/canonical-news/rights-queue/route.ts (as `PILOT_IDS`) -- kept
+ * here as one shared constant so both call sites (and any future one) stay
+ * in sync, and so cohort/batch-filtered queries can positively exclude them
+ * instead of relying only on batch-id prefixes never colliding by luck.
+ * Includes the P18.4D.2 seedCandidate2EditorialBlocker() dev-seed target
+ * ('0SdmPVCnO8pVAbMENA9f') -- see newsRightsDecision.ts.
+ * Never mutate these rows from here; this module is read-only helpers.
+ */
+export const SEED_DEMO_CANONICAL_NEWS_IDS = [
+  '0ALMkrRCE3LQqubviNZh',
+  '0SdmPVCnO8pVAbMENA9f',
+  '0XYEJVwyi7oILuYKf91R',
+] as const
+
+export type SeedDemoCanonicalNewsId = (typeof SEED_DEMO_CANONICAL_NEWS_IDS)[number]
+
+const SEED_DEMO_CANONICAL_NEWS_ID_SET: ReadonlySet<string> = new Set(
+  SEED_DEMO_CANONICAL_NEWS_IDS
+)
+
+/** True for any known dev seed / pilot canonical news id -- never a real cohort candidate. */
+export function isSeedDemoCanonicalNewsId(id: string | null | undefined): boolean {
+  if (!id) return false
+  return SEED_DEMO_CANONICAL_NEWS_ID_SET.has(id.trim())
+}
+
+/**
+ * Filter out known seed/demo rows from a batch/cohort query result set.
+ * Defense-in-depth: batch ids are timestamp-derived per migration run so a
+ * seed row's migrationBatchId realistically never collides with a real
+ * cohort batch id, but this makes the exclusion positive and explicit
+ * rather than relying on that non-collision alone.
+ */
+export function excludeSeedDemoCanonicalNewsRows<T extends { id: string }>(
+  rows: readonly T[]
+): T[] {
+  return rows.filter((row) => !isSeedDemoCanonicalNewsId(row.id))
+}
+
 export type ReviewRiskClass =
   | 'MEDIUM_OVERLAP'
   | 'HIGH_SOURCE_OVERLAP'

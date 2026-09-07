@@ -3,7 +3,10 @@ import { eq } from 'drizzle-orm'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
-import { P18_4E_COHORT1_BATCH_ID } from '@/services/editorial/canonicalRightsReviewQueue'
+import {
+  P18_4E_COHORT1_BATCH_ID,
+  isSeedDemoCanonicalNewsId,
+} from '@/services/editorial/canonicalRightsReviewQueue'
 import { auditCanonicalDraftSourceOverlap } from '@/services/editorial/canonicalDraftSourceOverlapAudit'
 import { recordNewsRightsDecision } from '@/services/editorial/newsRightsDecision'
 
@@ -63,6 +66,17 @@ export async function POST(request: Request) {
     .from(news)
     .where(eq(news.migrationBatchId, batch))
 
+  // P16.1 Task 7 — a known seed/demo row must never be swept into a bulk
+  // cohort finalize action, even defensively (batch ids realistically never
+  // collide, but this makes the guard positive rather than incidental).
+  const seedRows = rows.filter((row) => isSeedDemoCanonicalNewsId(row.id))
+  if (seedRows.length > 0) {
+    return NextResponse.json(
+      { error: 'seed_demo_rows_in_batch', ids: seedRows.map((r) => r.id) },
+      { status: 409 }
+    )
+  }
+
   if (rows.length !== 10) {
     return NextResponse.json(
       { error: 'cohort_count_mismatch', found: rows.length, expected: 10 },
@@ -104,6 +118,7 @@ export async function POST(request: Request) {
     id: string
     risk: string
     similarity: number | null
+    overlapSnapshot: Record<string, unknown>
   }> = []
   for (const row of rows) {
     const audit = await auditCanonicalDraftSourceOverlap({ newsId: row.id })
@@ -111,6 +126,23 @@ export async function POST(request: Request) {
       id: row.id,
       risk: audit.risk,
       similarity: audit.similarity,
+      // P16.1 Task 3 — reuse this already-computed overlap result as the
+      // persisted evidence snapshot instead of re-fetching per row later.
+      overlapSnapshot: {
+        evaluated: audit.evaluated,
+        sourceFetchStatus: audit.sourceFetchStatus,
+        similarity: audit.similarity,
+        jaccard: audit.jaccard,
+        ngram3: audit.ngram3,
+        tokenMatchRatio: audit.tokenMatchRatio,
+        maxSharedContiguousRun: audit.maxSharedContiguousRun,
+        gateOverlapCategory: audit.gateOverlapCategory,
+        risk: audit.risk,
+        classificationReason: audit.classificationReason,
+        canonicalBodyChars: audit.canonicalBodyChars,
+        sourceBodyChars: audit.sourceBodyChars,
+        algorithm: 'editorialSimilarityGate.checkTextSimilarity.v1',
+      },
     })
   }
 
@@ -153,10 +185,13 @@ export async function POST(request: Request) {
     await recordNewsRightsDecision({
       newsId: c.id,
       actorUid: auth.uid,
+      actorEmail: auth.email,
+      actorRole: auth.role,
       status: 'REWRITE_REQUIRED',
       basis: RIGHTS_BASIS,
       refuseClearWhenBlocked: true,
       editorialBlocker: isHigh ? 'HIGH_SOURCE_OVERLAP' : null,
+      sourceOverlapSnapshot: c.overlapSnapshot,
     })
 
     const [verify] = await db
