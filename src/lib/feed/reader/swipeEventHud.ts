@@ -116,6 +116,8 @@ export function formatSwipeEventHudLines(
     readerSession: string
     readerProgress: number
     capability: string
+    readerGeneration?: number | null
+    readerArticleId?: string | null
   }
 ): string[] {
   const num = (v: number | null | undefined, digits = 0) =>
@@ -130,7 +132,7 @@ export function formatSwipeEventHudLines(
     `last:${s.lastAction} lock:${s.commitLock ? 'Y' : 'N'} ep:${s.gestureEpoch}`,
     `life:${s.lifecycle || '—'}`,
     extras
-      ? `rs:${extras.readerSession} rp:${extras.readerProgress.toFixed(2)} cap:${extras.capability}`
+      ? `rs:${extras.readerSession} rp:${extras.readerProgress.toFixed(2)} gen:${extras.readerGeneration ?? '—'} id:${extras.readerArticleId ?? '—'} cap:${extras.capability}`
       : null,
   ].filter((line): line is string => Boolean(line))
 }

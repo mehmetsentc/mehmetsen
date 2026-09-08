@@ -69,9 +69,17 @@ export function FeedDiscoveryRail({
           if (exclude?.has(row.articleId)) continue
           seen.add(row.articleId)
           filtered.push(row)
-          if (filtered.length >= 8) break
         }
-        if (!cancelled) setItems(filtered)
+        // Prefer same-category / contextual rows first (API already filters when category set).
+        const cat = category?.trim().toLowerCase() || null
+        if (cat) {
+          filtered.sort((a, b) => {
+            const aMatch = (a.category ?? '').toLowerCase() === cat ? 0 : 1
+            const bMatch = (b.category ?? '').toLowerCase() === cat ? 0 : 1
+            return aMatch - bMatch
+          })
+        }
+        if (!cancelled) setItems(filtered.slice(0, 8))
       } catch {
         /* ignore */
       }

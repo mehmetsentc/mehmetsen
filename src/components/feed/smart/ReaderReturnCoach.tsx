@@ -92,7 +92,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
         window.setTimeout(() => {
           if (cancelled) return
           setPhase('animating')
-          setTravel(-READER_RETURN_COACH_TRAVEL_PX)
+          setTravel(READER_RETURN_COACH_TRAVEL_PX)
         }, base)
       )
       timers.push(
@@ -117,7 +117,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
       })
 
       if (reduced) {
-        setTravel(-Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
+        setTravel(Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
         return
       }
 
@@ -202,7 +202,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
           type="button"
           data-testid="reader-return-affordance"
           data-no-reader-gesture="1"
-          aria-label="Akışa Dön — sola kaydır veya dokun"
+          aria-label="Akışa Dön — sağa kaydır veya dokun"
           onPointerUp={(e) => {
             if (!onAffordanceActivate) return
             if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -225,9 +225,9 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
             aria-hidden
             data-testid="reader-return-coach-chevrons"
           >
-            <span className="text-[#e11d2e]">‹</span>
-            <span>‹</span>
-            <span>‹</span>
+            <span className="text-[#e11d2e]">›</span>
+            <span>›</span>
+            <span>›</span>
           </span>
           <span className="font-bold tracking-[0.04em]">Akışa Dön</span>
           <span

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * RIGHT "Haberi Aç" affordance (V8) — reference visual + tappable open authority.
+ * LEFT "Haberi Aç" affordance (V8) — reference visual + tappable open authority.
  * Only the chip button receives pointer events (min 44×44).
  * Does NOT cover the card with a transparent overlay.
  *
@@ -10,7 +10,7 @@
  * Travel + vertical centering live on the INNER motion shell only.
  *
  * Position: ~52–58% of usable chrome (media → copy transition), responsive.
- * Learned ≠ shown: only successful RIGHT swipe or affordance tap marks learned.
+ * Learned ≠ shown: only successful LEFT swipe or affordance tap marks learned.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -33,7 +33,7 @@ type Props = {
   active: boolean
   suppressed?: boolean
   onCardNudge?: (px: number) => void
-  /** Same authority as successful RIGHT swipe → openReader. */
+  /** Same authority as successful LEFT swipe → openReader. */
   onAffordanceActivate?: () => void
 }
 
@@ -107,7 +107,7 @@ export function SwipeDiscoveryCoach({
         window.setTimeout(() => {
           if (cancelled) return
           setPhase('animating')
-          setTravel(SWIPE_DISCOVERY_TRAVEL_PX)
+          setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)
           onCardNudgeRef.current?.(SWIPE_DISCOVERY_CARD_NUDGE_PX)
         }, base)
       )
@@ -134,7 +134,7 @@ export function SwipeDiscoveryCoach({
       })
 
       if (reduced) {
-        setTravel(Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
+        setTravel(-Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
         return
       }
 
@@ -233,7 +233,7 @@ export function SwipeDiscoveryCoach({
           type="button"
           data-testid="feed-swipe-discovery-affordance"
           data-no-reader-gesture="1"
-          aria-label="Haberi Aç — sağa kaydır veya dokun"
+          aria-label="Haberi Aç — sola kaydır veya dokun"
           disabled={!onAffordanceActivate}
           onPointerUp={(e) => {
             // iOS Safari: prefer pointerup over click when parent trees use pointer capture.
@@ -293,9 +293,9 @@ export function SwipeDiscoveryCoach({
               aria-hidden
               data-testid="feed-swipe-discovery-chevrons"
             >
-              <span>›</span>
-              <span>›</span>
-              <span>›</span>
+              <span>‹</span>
+              <span>‹</span>
+              <span>‹</span>
             </span>
           </span>
           <span className="text-[15px] font-extrabold tracking-[0.02em]" data-testid="feed-swipe-discovery-title">
@@ -305,7 +305,7 @@ export function SwipeDiscoveryCoach({
             className="text-[11px] font-medium tracking-wide text-white/85"
             data-testid="feed-swipe-discovery-subtitle"
           >
-            Sağa kaydır veya dokun
+            Sola kaydır veya dokun
           </span>
         </button>
       </div>

@@ -48,17 +48,17 @@ export function shouldIgnoreSystemBackEdge(
   return startClientX <= edgePx
 }
 
-/** Feed → Reader: drag right (positive dx) progresses open. */
+/** Feed → Reader: finger LEFT (negative dx) progresses open. Reader enters from RIGHT. */
 export function feedToReaderProgress(dx: number, width: number): number {
   if (width <= 0) return 0
-  const p = dx / width
+  const p = (-dx) / width
   return Math.min(READER_GESTURE.maxProgress, Math.max(0, p))
 }
 
-/** Reader → Feed: drag left (negative dx) progresses close. */
+/** Reader → Feed: finger RIGHT (positive dx) progresses close. Reader exits RIGHT. */
 export function readerToFeedProgress(dx: number, width: number): number {
   if (width <= 0) return 0
-  const p = (-dx) / width
+  const p = dx / width
   return Math.min(READER_GESTURE.maxProgress, Math.max(0, p))
 }
 

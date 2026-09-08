@@ -320,8 +320,11 @@ export function SmartFeedClient({
     progress: number
     committed: boolean
     progressAnimating: boolean
+    /** Stable React identity for one open attempt — never flip on commit. */
+    generation: number
     openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
   } | null>(null)
+  const readerGenerationRef = useRef(0)
   /** Feed V3 bottom-sheet article session (presentation === 'sheet'). */
   const [sheetArticle, setSheetArticle] = useState<{
     item: FeedItemDto
@@ -1804,12 +1807,20 @@ export function SmartFeedClient({
           mode,
           category,
         })
+        const prevId = readerSession?.item.articleId
+        if (prevId && prevId !== item.articleId) {
+          pushSwipeLifecycle(`UNMOUNT_READER:${prevId}`)
+        }
+        readerGenerationRef.current += 1
+        const generation = readerGenerationRef.current
+        pushSwipeLifecycle(`MOUNT_READER:${item.articleId}`)
         setReaderSession({
           item,
           index,
           progress: 1,
           committed: true,
           progressAnimating: false,
+          generation,
           openSource,
         })
         if (typeof document !== 'undefined') {
@@ -1857,14 +1868,24 @@ export function SmartFeedClient({
         document.documentElement.classList.add('smart-feed-reader-open')
         document.body.classList.add('smart-feed-reader-open')
       }
-      setReaderSession({
-        item,
-        index,
-        progress: from,
-        committed: false,
-        progressAnimating: true,
-        openSource,
-      })
+      {
+        const prevId = readerSession?.item.articleId
+        if (prevId && prevId !== item.articleId) {
+          pushSwipeLifecycle(`UNMOUNT_READER:${prevId}`)
+        }
+        readerGenerationRef.current += 1
+        const generation = readerGenerationRef.current
+        pushSwipeLifecycle(`MOUNT_READER:${item.articleId}`)
+        setReaderSession({
+          item,
+          index,
+          progress: from,
+          committed: false,
+          progressAnimating: true,
+          generation,
+          openSource,
+        })
+      }
       const runOpenAnim = () => {
         setReaderSession((s) =>
           s && s.item.articleId === item.articleId ? { ...s, progress: 1 } : s
@@ -2479,13 +2500,20 @@ export function SmartFeedClient({
                           setReaderSession((s) => {
                             if (s?.committed) return s
                             if (!s || s.item.articleId !== item.articleId) {
+                              if (s?.item.articleId) {
+                                pushSwipeLifecycle(`UNMOUNT_READER:${s.item.articleId}`)
+                              }
+                              readerGenerationRef.current += 1
+                              const generation = readerGenerationRef.current
                               pushSwipeLifecycle('READER_SESSION_CREATE')
+                              pushSwipeLifecycle(`MOUNT_READER:${item.articleId}`)
                               return {
                                 item,
                                 index,
                                 progress,
                                 committed: false,
                                 progressAnimating: false,
+                                generation,
                                 openSource: 'swipe',
                               }
                             }
@@ -2524,14 +2552,18 @@ export function SmartFeedClient({
                           })
                           window.setTimeout(() => {
                             if (gen !== readerCancelGenRef.current) return
-                            setReaderSession((s) =>
-                              s &&
-                              !s.committed &&
-                              s.item.articleId === item.articleId &&
-                              s.progress <= 0.02
-                                ? null
-                                : s
-                            )
+                            setReaderSession((s) => {
+                              if (
+                                s &&
+                                !s.committed &&
+                                s.item.articleId === item.articleId &&
+                                s.progress <= 0.02
+                              ) {
+                                pushSwipeLifecycle(`UNMOUNT_READER:${s.item.articleId}`)
+                                return null
+                              }
+                              return s
+                            })
                             setFeedGestureEpoch((e) => e + 1)
                             pushSwipeLifecycle('FEED_GESTURE_EPOCH_BUMP')
                           }, FEED_READER_DURATION_MS)
@@ -2629,7 +2661,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
-                  discoveryCategory={category}
+                  discoveryCategory={item.category ?? category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
                   onDiscoveryArticleOpen={(d) => {
                           // Always route through onRead — never bare /haber Link while
@@ -2783,6 +2815,7 @@ export function SmartFeedClient({
         */}
         {readerSession ? (
           <FeedArticleReader
+            key={`reader-${readerSession.generation}`}
             item={readerSession.item}
             committed={readerSession.committed}
             visualProgress={readerSession.progress}
@@ -2791,7 +2824,7 @@ export function SmartFeedClient({
             openSource={readerSession.openSource ?? 'unknown'}
             onVisualProgress={(progress, opts) => {
               setReaderSession((s) => {
-                if (!s || s.item.articleId !== readerSession.item.articleId) return s
+                if (!s || s.generation !== readerSession.generation) return s
                 return {
                   ...s,
                   progress,
@@ -2801,12 +2834,14 @@ export function SmartFeedClient({
             }}
             onClose={() => {
               const idx = readerSession.index
+              const closedId = readerSession.item.articleId
               clearReaderOpenRamp()
               feedGestureCommitLockRef.current = null
               readerOpenGuardRef.current = null
               setReaderSession(null)
               setFeedGestureEpoch((e) => e + 1)
               pushSwipeLifecycle('READER_CLOSE_FINISH')
+              pushSwipeLifecycle(`UNMOUNT_READER:${closedId}`)
               pushSwipeLifecycle('READER_SESSION_CLEAR')
               pushSwipeLifecycle('FEED_GESTURE_EPOCH_BUMP')
               patchReaderDebug({
@@ -2892,6 +2927,8 @@ export function SmartFeedClient({
                   : 'opening'
                 : 'none',
               readerProgress: readerSession?.progress ?? 0,
+              readerGeneration: readerSession?.generation ?? null,
+              readerArticleId: readerSession?.item.articleId ?? null,
               capability: readerDebug.capabilityReady
                 ? readerDebug.capabilityEnabled
                   ? 'READY'
@@ -3065,7 +3102,7 @@ function FeedCardWithImpression(props: {
         transform:
           reducedMotion || pageProgress <= 0
             ? undefined
-            : `translate3d(${pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
+            : `translate3d(${-pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
         opacity: reducedMotion ? 1 : 1 - pageProgress * 0.18,
         transition:
           (snapAnimating || readerUnderlayProgress > 0 || readerUnderlayAnimating) &&
@@ -3079,9 +3116,9 @@ function FeedCardWithImpression(props: {
         touchAction: horizontalLocked ? 'none' : undefined,
         boxShadow:
           pageProgress > 0.08
-            ? `14px 0 28px rgba(0,0,0,${0.22 + pageProgress * 0.28})`
+            ? `-14px 0 28px rgba(0,0,0,${0.22 + pageProgress * 0.28})`
             : undefined,
-        transformOrigin: 'right center',
+        transformOrigin: 'left center',
         willChange: pageProgress > 0.01 ? 'transform, opacity' : undefined,
       }}
       onPointerDown={(e) => {
@@ -3291,7 +3328,7 @@ function FeedCardWithImpression(props: {
                   dx,
                   dy,
                   owner: 'NONE',
-                  directionValid: dx > 0,
+                  directionValid: dx < 0,
                   activated: false,
                   captured: false,
                   progress: 0,
@@ -3303,8 +3340,8 @@ function FeedCardWithImpression(props: {
                 })
                 return
               }
-              // Haberi Aç: finger RIGHT only (positive dx).
-              if (dx <= 0) {
+              // Haberi Aç: finger LEFT only (negative dx) — Reader enters from RIGHT.
+              if (dx >= 0) {
                 onGesturePointerDebug?.({
                   phase: 'move',
                   pointerType: ev.pointerType,
@@ -3399,7 +3436,7 @@ function FeedCardWithImpression(props: {
             dx,
             dy,
             owner: 'HORIZONTAL',
-            directionValid: dx > 0,
+            directionValid: dx < 0,
             activated: true,
             captured: true,
             progress,
@@ -3463,7 +3500,8 @@ function FeedCardWithImpression(props: {
           axis === 'horizontal' &&
           shouldCompleteTransition({
             progress,
-            velocityX: Math.max(0, velocityX),
+            // Completing direction is LEFT → negative velocity; normalize to positive.
+            velocityX: Math.max(0, -velocityX),
           })
 
         onGesturePointerDebug?.({
@@ -3476,7 +3514,7 @@ function FeedCardWithImpression(props: {
           dx,
           dy,
           owner: axis === 'horizontal' ? 'HORIZONTAL' : axis === 'vertical' ? 'VERTICAL' : 'NONE',
-          directionValid: dx > 0,
+          directionValid: dx < 0,
           activated: axis === 'horizontal',
           captured: false,
           progress,
@@ -3488,7 +3526,7 @@ function FeedCardWithImpression(props: {
             ? 'COMMIT'
             : axis !== 'horizontal'
               ? 'REJECT_AXIS'
-              : dx <= 0
+              : dx >= 0
                 ? 'REJECT_DIRECTION'
                 : 'REJECT_THRESHOLD',
         })
@@ -3533,7 +3571,7 @@ function FeedCardWithImpression(props: {
             dx: dx ?? undefined,
             dy: dy ?? undefined,
             owner: d.axis === 'horizontal' ? 'HORIZONTAL' : d.axis === 'vertical' ? 'VERTICAL' : 'OTHER',
-            directionValid: typeof dx === 'number' ? dx > 0 : false,
+            directionValid: typeof dx === 'number' ? dx < 0 : false,
             activated: d.axis === 'horizontal',
             captured: false,
             progress:
@@ -3548,13 +3586,13 @@ function FeedCardWithImpression(props: {
         resetDragVisual(false)
       }}
     >
-      {/* Dark Reader peek during right page-turn (Reader enters from left) */}
+      {/* Reader peek during LEFT page-turn (Reader enters from RIGHT) */}
       {pageProgress > 0.04 && !reducedMotion ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
-            background: 'linear-gradient(270deg, #0c0c0e 0%, #141417 100%)',
+            background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
             opacity: Math.min(1, pageProgress * 1.4),
           }}
         />
@@ -3563,6 +3601,7 @@ function FeedCardWithImpression(props: {
         {...cardProps}
         cardRef={impressionRef}
         swipeDiscoverySuppressed={Boolean(props.swipeDiscoverySuppressed || pageProgress > 0.02)}
+        showDiscoveryRail={Boolean(props.showDiscoveryRail) && pageProgress <= 0.02}
       />
     </div>
   )

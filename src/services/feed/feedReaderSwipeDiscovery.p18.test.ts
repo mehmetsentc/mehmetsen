@@ -56,7 +56,7 @@ describe('P18 swipe discovery coach V7', () => {
     )
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('Haberi Aç')
-    expect(coach).toContain('Sağa kaydır veya dokun')
+    expect(coach).toContain('Sola kaydır veya dokun')
     expect(coach).toContain('feed-swipe-discovery-finger')
     expect(coach).toContain('feed-swipe-discovery-chevrons')
     expect(coach).toContain('feed-swipe-discovery-subtitle')
@@ -66,7 +66,7 @@ describe('P18 swipe discovery coach V7', () => {
     expect(coach).not.toContain('setPointerCapture')
   })
 
-  it('5: successful RIGHT open marks learned via swipe path only', () => {
+  it('5: successful LEFT open marks learned via swipe path only', () => {
     markSwipeDiscoveryLearned()
     expect(readSwipeDiscoveryState().learned).toBe(true)
     expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
@@ -125,7 +125,8 @@ describe('P18 swipe discovery coach V7', () => {
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
-    expect(client).toContain('showSwipeDiscoveryCoach={Boolean(isActive && !readerSession?.committed)}')
+    expect(client).toContain('showSwipeDiscoveryCoach={Boolean(')
+    expect(client).toContain('isActive && !readerSession?.committed')
     expect(client).toContain('readerDebugQuery')
     expect(client).toContain("isActive && !readerSession?.committed")
     expect(client).toContain("onRead(item, index, 'swipe_affordance')")

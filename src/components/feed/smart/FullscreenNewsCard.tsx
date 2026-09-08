@@ -710,7 +710,7 @@ export function FullscreenNewsCard({
               className="inline-flex h-14 w-full shrink-0 touch-manipulation items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-tap-highlight-color:transparent]"
               style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
             >
-              Haberi Oku →
+              Haberi Oku
             </button>
 
             {item.publisher ? (

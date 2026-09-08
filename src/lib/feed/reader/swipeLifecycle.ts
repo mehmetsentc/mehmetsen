@@ -22,6 +22,8 @@ export type SwipeLifecycleEvent =
   | 'READER_CLOSE_FINISH'
   | 'READER_SESSION_CLEAR'
   | 'FEED_GESTURE_EPOCH_BUMP'
+  | `MOUNT_READER:${string}`
+  | `UNMOUNT_READER:${string}`
   | `CANCEL_REASON=${string}`
 
 /** After Feed gesture decides OPEN, ignore preview cancels until open settles/fails. */

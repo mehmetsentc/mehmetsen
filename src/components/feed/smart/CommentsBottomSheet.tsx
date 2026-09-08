@@ -128,6 +128,13 @@ export function CommentsBottomSheet({
       vv?.removeEventListener('resize', sync)
       vv?.removeEventListener('scroll', sync)
       window.removeEventListener('resize', sync)
+      // Clear keyboard/visualViewport pin so iOS does not leave a magnified layout.
+      setViewportBox(null)
+      try {
+        inputRef.current?.blur()
+      } catch {
+        /* ignore */
+      }
     }
   }, [open])
 
@@ -396,11 +403,13 @@ export function CommentsBottomSheet({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Yorum ekle..."
-                  className="min-w-0 flex-1 rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] transition focus:border-brand-600 focus:outline-none"
+                  className="min-w-0 flex-1 rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base leading-normal text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] transition focus:border-brand-600 focus:outline-none"
+                  style={{ fontSize: '16px' }}
                   maxLength={500}
                   disabled={submitting}
                   enterKeyHint="send"
                   data-testid="smart-feed-comments-input"
+                  data-ios-font-min="16"
                 />
                 <button
                   type="submit"

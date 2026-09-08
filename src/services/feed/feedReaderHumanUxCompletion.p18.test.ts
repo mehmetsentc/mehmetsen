@@ -134,7 +134,7 @@ describe('P18 header + sidebar', () => {
   })
 })
 
-describe('P18 RIGHT open + LEFT return coaches', () => {
+describe('P18 LEFT open + RIGHT return coaches', () => {
   it('RIGHT Haberi Aç V7: prior keys cannot suppress; eligible until learned', () => {
     expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
@@ -202,7 +202,8 @@ describe('P18 RIGHT open + LEFT return coaches', () => {
     )
     expect(coach).toContain('Akışa Dön')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('-READER_RETURN_COACH_TRAVEL_PX')
+    expect(coach).toContain('READER_RETURN_COACH_TRAVEL_PX')
+    expect(coach).not.toContain('-READER_RETURN_COACH_TRAVEL_PX')
   })
 
   it('Reader ownership helpers remain intact', () => {

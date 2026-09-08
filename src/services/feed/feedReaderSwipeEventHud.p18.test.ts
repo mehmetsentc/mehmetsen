@@ -85,7 +85,7 @@ describe('live drag wiring (code contracts)', () => {
     expect(fn).toContain('setDragProgress(progress)')
     expect(fn).toContain('onOpenReaderProgress?.(progress)')
     expect(fn).toContain('feedToReaderProgress(dx, width)')
-    expect(fn).toContain('translate3d(${pageProgress * 28}%')
+    expect(fn).toContain('translate3d(${-pageProgress * 28}%')
   })
 
   it('parent creates readerSession on progress before commit', () => {
@@ -109,13 +109,13 @@ describe('live drag wiring (code contracts)', () => {
     expect(arb).toContain('hardCompleteProgress: 0.32')
   })
 
-  it('+dx progress is monotonic; -dx stays 0', () => {
+  it('-dx progress is monotonic; +dx stays 0', () => {
     const w = 390
-    expect(feedToReaderProgress(20, w)).toBeCloseTo(20 / 390)
-    expect(feedToReaderProgress(50, w)).toBeCloseTo(50 / 390)
-    expect(feedToReaderProgress(100, w)).toBeCloseTo(100 / 390)
-    expect(feedToReaderProgress(180, w)).toBeCloseTo(180 / 390)
-    expect(feedToReaderProgress(-180, w)).toBe(0)
-    expect(feedToReaderProgress(20, w) < feedToReaderProgress(50, w)).toBe(true)
+    expect(feedToReaderProgress(-20, w)).toBeCloseTo(20 / 390)
+    expect(feedToReaderProgress(-50, w)).toBeCloseTo(50 / 390)
+    expect(feedToReaderProgress(-100, w)).toBeCloseTo(100 / 390)
+    expect(feedToReaderProgress(-180, w)).toBeCloseTo(180 / 390)
+    expect(feedToReaderProgress(180, w)).toBe(0)
+    expect(feedToReaderProgress(-20, w) < feedToReaderProgress(-50, w)).toBe(true)
   })
 })

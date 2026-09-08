@@ -33,10 +33,7 @@ const read = (rel: string) => readFileSync(join(root, rel), 'utf8')
 describe('iOS touch-action ownership for Feed→Reader open', () => {
   const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
   const client = read('src/components/feed/smart/SmartFeedClient.tsx')
-  const surface = client.slice(
-    client.indexOf('function FeedCardWithImpression'),
-    client.indexOf('function FeedCardWithImpression') + 14000
-  )
+  const surface = client.slice(client.indexOf('function FeedCardWithImpression'))
 
   it('hero + gesture surface declare pan-y (not manipulation) for open ownership', () => {
     expect(card).toContain('data-feed-open-touch-action="pan-y"')
@@ -78,58 +75,58 @@ describe('iOS touch-action ownership for Feed→Reader open', () => {
   })
 })
 
-describe('direction + thresholds (finger RIGHT / positive dx)', () => {
+describe('direction + thresholds (finger LEFT / negative dx)', () => {
   it('documents product direction unambiguously', () => {
-    // finger: x=80 → x=260 on 390vw → dx=+180 → open
-    expect(feedToReaderProgress(180, 390)).toBeCloseTo(180 / 390, 5)
-    expect(feedToReaderProgress(-180, 390)).toBe(0)
+    // finger: x=320 → x=80 on 390vw → dx=-240 → open
+    expect(feedToReaderProgress(-180, 390)).toBeCloseTo(180 / 390, 5)
+    expect(feedToReaderProgress(180, 390)).toBe(0)
   })
 
   it('examples: activate / cancel / open', () => {
-    // dx=-20, dy=3 → horizontal axis but negative dx never progresses open
-    expect(classifyAxisIntent(-20, 3)).toBe('horizontal')
+    // dx=+20, dy=3 → horizontal axis but positive dx never progresses open
+    expect(classifyAxisIntent(20, 3)).toBe('horizontal')
     expect(
       classifyFeedOpenGestureDecision({
-        dx: -20,
+        dx: 20,
         dy: 3,
-        startClientX: 300,
+        startClientX: 80,
         viewportWidth: 390,
-        velocityX: -0.2,
+        velocityX: 0.2,
       }).open
     ).toBe(false)
 
-    // dx=-80, dy=10 → LEFT finger — must NOT open
+    // dx=+80, dy=10 → RIGHT finger — must NOT open
     expect(
       classifyFeedOpenGestureDecision({
-        dx: -80,
+        dx: 80,
         dy: 10,
-        startClientX: 300,
+        startClientX: 80,
         viewportWidth: 390,
-        velocityX: -0.6,
+        velocityX: 0.6,
       }).open
     ).toBe(false)
 
-    // dx=+80, dy=10 → RIGHT axis lock, but below completePx/hardComplete without flick
-    const rightShort = classifyFeedOpenGestureDecision({
-      dx: 80,
+    // dx=-80, dy=10 → LEFT axis lock, but below completePx/hardComplete without flick
+    const leftShort = classifyFeedOpenGestureDecision({
+      dx: -80,
       dy: 10,
-      startClientX: 80,
+      startClientX: 300,
       viewportWidth: 390,
-      velocityX: 0.6,
+      velocityX: -0.6,
     })
-    expect(rightShort.axis).toBe('horizontal')
-    expect(rightShort.open).toBe(false)
+    expect(leftShort.axis).toBe('horizontal')
+    expect(leftShort.open).toBe(false)
 
-    // dx=+160, dy=10 → completes
-    const right = classifyFeedOpenGestureDecision({
-      dx: 160,
+    // dx=-160, dy=10 → completes
+    const left = classifyFeedOpenGestureDecision({
+      dx: -160,
       dy: 10,
-      startClientX: 80,
+      startClientX: 300,
       viewportWidth: 390,
-      velocityX: 0.6,
+      velocityX: -0.6,
     })
-    expect(right.axis).toBe('horizontal')
-    expect(right.open).toBe(true)
+    expect(left.axis).toBe('horizontal')
+    expect(left.open).toBe(true)
 
     // dx=-100, dy=90 → not horizontal-dominant (100 < 90*1.35)
     expect(classifyAxisIntent(-100, 90)).toBe('none')
@@ -137,7 +134,7 @@ describe('direction + thresholds (finger RIGHT / positive dx)', () => {
 
   it('hardComplete and below-threshold', () => {
     const width = 390
-    const hardDx = READER_GESTURE.hardCompleteProgress * width
+    const hardDx = -READER_GESTURE.hardCompleteProgress * width
     expect(
       shouldCompleteTransition({
         progress: feedToReaderProgress(hardDx, width),
@@ -146,7 +143,7 @@ describe('direction + thresholds (finger RIGHT / positive dx)', () => {
     ).toBe(true)
     expect(
       shouldCompleteTransition({
-        progress: feedToReaderProgress(20, width),
+        progress: feedToReaderProgress(-20, width),
         velocityX: 0,
       })
     ).toBe(false)
@@ -159,15 +156,15 @@ describe('direction + thresholds (finger RIGHT / positive dx)', () => {
     expect(shouldIgnoreFeedOpenGestureTarget(blank as unknown as EventTarget)).toBe(false)
   })
 
-  it('dispatch opens only on completing RIGHT swipe', () => {
+  it('dispatch opens only on completing LEFT swipe', () => {
     let n = 0
     expect(
       dispatchFeedOpenGesture({
-        dx: 160,
+        dx: -160,
         dy: 4,
-        startClientX: 70,
+        startClientX: 300,
         viewportWidth: 390,
-        velocityX: 0.8,
+        velocityX: -0.8,
         onOpen: () => {
           n += 1
         },
@@ -176,11 +173,11 @@ describe('direction + thresholds (finger RIGHT / positive dx)', () => {
     expect(n).toBe(1)
     expect(
       dispatchFeedOpenGesture({
-        dx: -160,
+        dx: 160,
         dy: 4,
-        startClientX: 300,
+        startClientX: 70,
         viewportWidth: 390,
-        velocityX: -0.8,
+        velocityX: 0.8,
         onOpen: () => {
           n += 1
         },
