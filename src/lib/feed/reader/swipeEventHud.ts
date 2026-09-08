@@ -51,6 +51,10 @@ export type FeedSwipeEventHudSnapshot = {
   lastAction: SwipeHudLastAction
   sequence: string
   moveCount: number
+  /** Short lifecycle ring surviving Feed↔Reader (in-memory only). */
+  lifecycle: string
+  commitLock: boolean
+  gestureEpoch: number
 }
 
 export const EMPTY_SWIPE_EVENT_HUD: FeedSwipeEventHudSnapshot = {
@@ -75,6 +79,9 @@ export const EMPTY_SWIPE_EVENT_HUD: FeedSwipeEventHudSnapshot = {
   lastAction: 'NONE',
   sequence: '',
   moveCount: 0,
+  lifecycle: '',
+  commitLock: false,
+  gestureEpoch: 0,
 }
 
 /** Pilot grant + explicit ?readerDebug=1 — never expand cohort. */
@@ -120,7 +127,8 @@ export function formatSwipeEventHudLines(
     `own:${s.owner} dirOK:${s.directionValid ? 'Y' : 'N'} act:${s.activated ? 'Y' : 'N'} cap:${s.captured ? 'Y' : 'N'}`,
     `dom:${num(s.dominance, 2)} prog:${s.progress.toFixed(2)} rAF:${s.reducedMotion ? 'Y' : 'N'} moves:${s.moveCount}`,
     `tgt:${s.targetTag ?? '—'} int:${s.interactiveTarget ? 'Y' : 'N'} ta:${s.touchAction ?? '—'}`,
-    `last:${s.lastAction}`,
+    `last:${s.lastAction} lock:${s.commitLock ? 'Y' : 'N'} ep:${s.gestureEpoch}`,
+    `life:${s.lifecycle || '—'}`,
     extras
       ? `rs:${extras.readerSession} rp:${extras.readerProgress.toFixed(2)} cap:${extras.capability}`
       : null,

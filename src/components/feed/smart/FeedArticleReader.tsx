@@ -24,6 +24,10 @@ import {
   shouldCompleteTransition,
   shouldIgnoreSystemBackEdge,
 } from '@/lib/feed/reader/gestureArbitration'
+import {
+  FEED_READER_RETURN_GESTURE_ARM_MS,
+  isReaderReturnGestureArmed,
+} from '@/lib/feed/reader/swipeLifecycle'
 import { ReaderDwellTracker } from '@/lib/feed/reader/dwellTracker'
 import {
   crossedReadDepthThresholds,
@@ -179,6 +183,8 @@ export function FeedArticleReader({
     axis: 'none' | 'horizontal' | 'vertical'
   } | null>(null)
   const closingRef = useRef(false)
+  /** When this open became committed — Feed-opening pointer must not close Reader. */
+  const committedAtMsRef = useRef<number | null>(null)
   const readerOpenIdRef = useRef<string | null>(null)
   const closePhaseRef = useRef<ReaderCloseTransactionPhase>('closed')
   const ignoreNextPopRef = useRef(false)
@@ -487,6 +493,7 @@ export function FeedArticleReader({
       committedLifecycleRef.current = false
       closePhaseRef.current = finishCloseTransaction()
       readerOpenIdRef.current = null
+      committedAtMsRef.current = null
       setInternalProgress(null)
       onClose(reason)
     },
@@ -690,6 +697,7 @@ export function FeedArticleReader({
     openGeneration += 1
     const gen = openGeneration
     closingRef.current = false
+    committedAtMsRef.current = performance.now()
     setCoachClosing(false)
     ignoreNextPopRef.current = false
     foreignPopDuringCloseRef.current = false
@@ -839,6 +847,16 @@ export function FeedArticleReader({
 
   const onPointerDown = (e: ReactPointerEvent) => {
     if (!committed || closingRef.current) return
+    // Isolate Feed-opening pointer / settle window from Reader return gesture.
+    if (
+      !isReaderReturnGestureArmed({
+        committedAtMs: committedAtMsRef.current,
+        nowMs: performance.now(),
+        armMs: FEED_READER_RETURN_GESTURE_ARM_MS,
+      })
+    ) {
+      return
+    }
     if (e.pointerType === 'mouse' && e.button !== 0) return
     if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
       recordReaderNavTrace({

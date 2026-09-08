@@ -71,6 +71,12 @@ import {
   targetTagName,
   type FeedSwipeEventHudSnapshot,
 } from '@/lib/feed/reader/swipeEventHud'
+import {
+  appendSwipeLifecycleRing,
+  formatSwipeLifecycleRing,
+  shouldIgnoreFeedOpenCancel,
+  type SwipeLifecycleEvent,
+} from '@/lib/feed/reader/swipeLifecycle'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
@@ -329,6 +335,14 @@ export function SmartFeedClient({
   const readerCancelGenRef = useRef(0)
   /** Single-open guard: articleId while ramp/open in progress. */
   const readerOpenGuardRef = useRef<string | null>(null)
+  /**
+   * Feed gesture decided OPEN on pointerup; onRead→openReader may still be awaiting.
+   * While set, preview pointercancel must not wipe the opening session (iOS up→cancel).
+   */
+  const feedGestureCommitLockRef = useRef<string | null>(null)
+  /** Bumped on Reader close / failed open — card surfaces reset stale drag listeners. */
+  const [feedGestureEpoch, setFeedGestureEpoch] = useState(0)
+  const swipeLifecycleRef = useRef<string[]>([])
   const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
   const [readerCapabilityReady, setReaderCapabilityReady] = useState(false)
   const [feedScrollLocked, setFeedScrollLocked] = useState(false)
@@ -363,6 +377,18 @@ export function SmartFeedClient({
     readerDebugQuery,
     currentMatchesActiveFeedReaderGrant: readerDebug.currentMatchesActiveFeedReaderGrant,
   })
+  const pushSwipeLifecycle = useCallback(
+    (event: SwipeLifecycleEvent) => {
+      swipeLifecycleRef.current = appendSwipeLifecycleRing(swipeLifecycleRef.current, event)
+      setSwipeHud((prev) => ({
+        ...prev,
+        lifecycle: formatSwipeLifecycleRing(swipeLifecycleRef.current),
+        commitLock: Boolean(feedGestureCommitLockRef.current),
+        gestureEpoch: feedGestureEpoch,
+      }))
+    },
+    [feedGestureEpoch]
+  )
   useEffect(() => {
     captureFeedV2EntryFromReferrer()
   }, [])
@@ -1729,6 +1755,9 @@ export function SmartFeedClient({
       if (readerOpenGuardRef.current === item.articleId) {
         // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
         if (!(opts?.skipRamp && readerSession?.item.articleId === item.articleId && !readerSession.committed)) {
+          feedGestureCommitLockRef.current = null
+          pushSwipeLifecycle('FEED_OPEN_FAIL')
+          pushSwipeLifecycle('CANCEL_REASON=open_guard_blocked')
           recordReaderNavTrace({
             type: 'open_guard_blocked',
             pathname: '/feed-v2',
@@ -1862,7 +1891,7 @@ export function SmartFeedClient({
         routerPushCanonicalCalled: false,
       })
     },
-    [clearReaderOpenRamp, patchReaderDebug, readerSession]
+    [clearReaderOpenRamp, patchReaderDebug, pushSwipeLifecycle, readerSession]
   )
 
   // Pilot diagnostic only: whether open-gesture handlers are currently attachable.
@@ -1994,20 +2023,28 @@ export function SmartFeedClient({
 
       if (decided.decision === 'OPEN_READER') {
         if (action === 'gesture' || action === 'swipe_affordance') {
+          pushSwipeLifecycle('FEED_OPEN_PENDING')
           openReader(item, index, {
             fromProgress:
               readerSession?.item.articleId === item.articleId ? readerSession.progress : 1,
             skipRamp: true,
             openSource: action === 'swipe_affordance' ? 'swipe_affordance' : 'swipe',
           })
+          feedGestureCommitLockRef.current = null
+          pushSwipeLifecycle('READER_COMMITTED')
         } else {
           openReader(item, index)
+          feedGestureCommitLockRef.current = null
         }
         return
       }
 
       // Capability still pending (auth hydrating) — never silent-fail on human tap/swipe.
       if (decided.decision === 'PENDING') {
+        feedGestureCommitLockRef.current = null
+        pushSwipeLifecycle('FEED_OPEN_FAIL')
+        pushSwipeLifecycle('CANCEL_REASON=capability_pending')
+        setFeedGestureEpoch((e) => e + 1)
         toast('Okuyucu hazırlanıyor, bir an sonra tekrar deneyin')
         return
       }
@@ -2017,11 +2054,19 @@ export function SmartFeedClient({
         decided.decision === 'ERROR_RETAIN_FEED' ||
         decided.decision === 'ERROR_FALLBACK'
       ) {
+        feedGestureCommitLockRef.current = null
+        pushSwipeLifecycle('FEED_OPEN_FAIL')
+        pushSwipeLifecycle('CANCEL_REASON=capability_error')
+        setFeedGestureEpoch((e) => e + 1)
         toast.error('Okuyucu şu an hazır değil, tekrar deneyin')
         return
       }
 
       // Authoritative CANONICAL_FALLBACK only (guest / denied pilot).
+      feedGestureCommitLockRef.current = null
+      pushSwipeLifecycle('FEED_OPEN_FAIL')
+      pushSwipeLifecycle('CANCEL_REASON=canonical_fallback')
+      setFeedGestureEpoch((e) => e + 1)
       const destination = ROUTES.NEWS_DETAIL(item.slug)
       recordReaderNavTrace({
         type: 'canonical_navigation',
@@ -2406,10 +2451,14 @@ export function SmartFeedClient({
                           dispatchFeedOpenGesture({
                             ...g,
                             onOpen: () => {
+                              feedGestureCommitLockRef.current = item.articleId
+                              pushSwipeLifecycle('FEED_GESTURE_COMMIT')
                               if (showSwipeEventHud) {
                                 setSwipeHud((prev) => ({
                                   ...prev,
                                   lastAction: 'OPEN_READER',
+                                  commitLock: true,
+                                  lifecycle: formatSwipeLifecycleRing(swipeLifecycleRef.current),
                                 }))
                               }
                               onRead(item, index, 'gesture')
@@ -2430,6 +2479,7 @@ export function SmartFeedClient({
                           setReaderSession((s) => {
                             if (s?.committed) return s
                             if (!s || s.item.articleId !== item.articleId) {
+                              pushSwipeLifecycle('READER_SESSION_CREATE')
                               return {
                                 item,
                                 index,
@@ -2447,6 +2497,17 @@ export function SmartFeedClient({
                   onOpenReaderCancel={
                     !sheetMode && isActive && !readerSession?.committed
                       ? () => {
+                          if (
+                            shouldIgnoreFeedOpenCancel({
+                              commitLockArticleId: feedGestureCommitLockRef.current,
+                              articleId: item.articleId,
+                            })
+                          ) {
+                            pushSwipeLifecycle('FEED_GESTURE_CANCEL_IGNORED_COMMIT_LOCK')
+                            return
+                          }
+                          pushSwipeLifecycle('FEED_GESTURE_CANCEL')
+                          pushSwipeLifecycle('CANCEL_REASON=feed_pointer_cancel_or_vertical')
                           const gen = ++readerCancelGenRef.current
                           if (readerOpenRampRef.current != null) {
                             window.clearTimeout(readerOpenRampRef.current)
@@ -2471,10 +2532,13 @@ export function SmartFeedClient({
                                 ? null
                                 : s
                             )
+                            setFeedGestureEpoch((e) => e + 1)
+                            pushSwipeLifecycle('FEED_GESTURE_EPOCH_BUMP')
                           }, FEED_READER_DURATION_MS)
                         }
                       : undefined
                   }
+                  feedGestureEpoch={feedGestureEpoch}
                   onGesturePointerDebug={
                     showReaderDebug || showSwipeEventHud
                       ? (ev) => {
@@ -2556,6 +2620,9 @@ export function SmartFeedClient({
                                   : ev.phase === 'move'
                                     ? prev.moveCount + 1
                                     : prev.moveCount,
+                              lifecycle: prev.lifecycle,
+                              commitLock: Boolean(feedGestureCommitLockRef.current),
+                              gestureEpoch: feedGestureEpoch,
                             }
                           })
                         }
@@ -2735,8 +2802,13 @@ export function SmartFeedClient({
             onClose={() => {
               const idx = readerSession.index
               clearReaderOpenRamp()
+              feedGestureCommitLockRef.current = null
               readerOpenGuardRef.current = null
               setReaderSession(null)
+              setFeedGestureEpoch((e) => e + 1)
+              pushSwipeLifecycle('READER_CLOSE_FINISH')
+              pushSwipeLifecycle('READER_SESSION_CLEAR')
+              pushSwipeLifecycle('FEED_GESTURE_EPOCH_BUMP')
               patchReaderDebug({
                 readerItemSet: false,
                 readerOverlayMounted: false,
@@ -2923,6 +2995,8 @@ function FeedCardWithImpression(props: {
   readerUnderlayProgress?: number
   /** Keep underlay CSS transition armed while progress animates to 0 on close. */
   readerUnderlayAnimating?: boolean
+  /** Bumped after Reader close / failed open — reset stale drag listeners. */
+  feedGestureEpoch?: number
 }) {
   const {
     onOpenReaderGesture,
@@ -2932,6 +3006,7 @@ function FeedCardWithImpression(props: {
     onGesturePointerDebug,
     readerUnderlayProgress = 0,
     readerUnderlayAnimating = false,
+    feedGestureEpoch = 0,
     ...cardProps
   } = props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
@@ -2973,6 +3048,12 @@ function FeedCardWithImpression(props: {
       setDragProgress(0)
     }
   }
+
+  // After Reader close / failed open: always return to CLEAN IDLE (stale capture/listener).
+  useEffect(() => {
+    resetDragVisual(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- epoch is the intentional reset signal
+  }, [feedGestureEpoch])
 
   return (
     <div
@@ -3110,6 +3191,9 @@ function FeedCardWithImpression(props: {
           touchAction: readTouchActionForTarget(e.target),
           lastAction: 'NONE',
         })
+        // Always clear stale move listeners / capture before a new gesture (CLEAN IDLE).
+        clearNativeMove()
+        drag.current = null
         setSnapAnimating(false)
         setHorizontalLocked(false)
         const pointerId = e.pointerId
