@@ -67,4 +67,12 @@ describe('P18 iOS Haberi Aç / card peek human NO-GO', () => {
     expect(card).toContain('onPointerUp')
     expect(card).toContain('touch-manipulation')
   })
+
+  it('hero hit target uses touch-pan-y so iOS does not steal horizontal open', () => {
+    expect(card).toContain('data-testid="smart-feed-double-tap-zone"')
+    expect(card).toContain('data-feed-open-touch-action="pan-y"')
+    expect(card).toMatch(/smart-feed-double-tap-zone[\s\S]{0,280}touch-pan-y|touch-pan-y[\s\S]{0,280}smart-feed-double-tap-zone/)
+    expect(card).not.toMatch(/smart-feed-double-tap-zone[\s\S]{0,200}touch-manipulation/)
+    expect(card).toContain('pointer-events-none absolute inset-0 bg-black')
+  })
 })

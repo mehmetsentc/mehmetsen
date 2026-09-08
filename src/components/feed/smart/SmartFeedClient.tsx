@@ -2868,6 +2868,7 @@ function FeedCardWithImpression(props: {
       ref={surfaceRef}
       className="relative touch-pan-y will-change-transform"
       data-testid="smart-feed-card-gesture-surface"
+      data-feed-open-touch-action="pan-y"
       style={{
         transform:
           reducedMotion || pageProgress <= 0
@@ -2882,6 +2883,7 @@ function FeedCardWithImpression(props: {
             : snapAnimating && !reducedMotion
               ? `transform ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}, opacity ${FEED_READER_DURATION_MS}ms ${FEED_READER_EASING}`
               : 'none',
+        // After horizontal lock: deny browser pan so pointercancel cannot abort open.
         touchAction: horizontalLocked ? 'none' : undefined,
         boxShadow:
           pageProgress > 0.08

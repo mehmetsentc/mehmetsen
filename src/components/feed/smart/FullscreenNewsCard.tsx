@@ -376,7 +376,8 @@ export function FullscreenNewsCard({
         } as CSSProperties
       }
     >
-      <div className="absolute inset-0 bg-black" data-testid="smart-feed-media">
+      {/* pointer-events-none: hits fall through to gesture surface (pan-y) — media must not own touch-action:auto */}
+      <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
             key={`vid-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
@@ -529,13 +530,20 @@ export function FullscreenNewsCard({
           Hero flex-1 fills leftover after editorial/actions (reference: media upper,
           copy lower-middle). min/max keep first-paint publisher visible.
         */}
+        {/*
+          touch-pan-y (NOT touch-manipulation): hit-tested touch-action wins on iOS.
+          manipulation ≡ pan-x pan-y → WebKit owns horizontal pan → pointercancel
+          before FeedCardWithImpression can lock axis + setPointerCapture.
+          Vertical feed snap stays with the browser; horizontal open stays with JS.
+        */}
         <div
-          className="relative min-h-0 flex-1 touch-manipulation"
+          className="relative min-h-0 flex-1 touch-pan-y"
           style={{
             minHeight: 'var(--feed-v2-hero-min)',
             maxHeight: 'var(--feed-v2-hero-max)',
           }}
           data-testid="smart-feed-double-tap-zone"
+          data-feed-open-touch-action="pan-y"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
           onPointerUp={onTapZonePointerUp}
