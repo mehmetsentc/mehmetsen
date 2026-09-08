@@ -6,7 +6,16 @@
  * - Gerçek yetki/role kontrolü API route'larında `verifyCmsToken` (Firebase
  *   ID token) ile yapılır. Bu cookie tek başına yetki vermez.
  *
- * Secret: process.env.CMS_SESSION_SECRET (zorunlu — yoksa imza geçersiz olur)
+ * Secret: process.env.CMS_SESSION_SECRET (zorunlu).
+ *
+ * FAIL-CLOSED: Bu değişken production'da tanımlı değilse, hiçbir public/
+ * development/hardcoded fallback değere DÜŞÜLMEZ. Bunun yerine:
+ *   - signCmsSessionToken(): null döner (cookie set edilmez)
+ *   - verifyCmsSessionToken(): null döner (session geçersiz sayılır)
+ * Yani secret eksikse CMS session özelliği sessizce devre dışı kalır;
+ * middleware `/admin/*` için her zaman `/login`'e yönlendirir. Bu, bilinen/
+ * tahmin edilebilir bir secret ile sahte session üretilebilmesinden çok
+ * daha güvenlidir (SEC-001 containment + permanent fix).
  */
 import type { CmsRole } from '@/types/cms'
 
@@ -33,14 +42,21 @@ function base64UrlDecode(input: string): Uint8Array {
   return out
 }
 
-function getSecretKey(): string {
-  return process.env.CMS_SESSION_SECRET || process.env.NEXTAUTH_SECRET || 'dev-cms-session-secret-change-me'
+/**
+ * Production'da zorunlu, tek kaynak: CMS_SESSION_SECRET.
+ * Eksikse null döner — hiçbir fallback (NEXTAUTH_SECRET dahil) veya
+ * hardcoded değer KULLANILMAZ. Çağıranlar null'u "secret yok, fail closed"
+ * olarak ele almalıdır.
+ */
+function getSecretKey(): string | null {
+  const secret = process.env.CMS_SESSION_SECRET
+  return secret && secret.length > 0 ? secret : null
 }
 
-async function hmac(payload: string): Promise<Uint8Array> {
+async function hmac(payload: string, secret: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(getSecretKey()),
+    encoder.encode(secret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']
@@ -49,17 +65,27 @@ async function hmac(payload: string): Promise<Uint8Array> {
   return new Uint8Array(sig)
 }
 
-export async function signCmsSessionToken(payload: CmsSessionPayload): Promise<string> {
+/**
+ * CMS_SESSION_SECRET yoksa null döner (cookie set edilmez). Bu, açıkça
+ * catch edilmesi gereken bir hata DEĞİL, normal ve beklenen bir "secret
+ * yapılandırılmamış" durumudur — çağıran taraf (cms-sync route'u) cookie
+ * set etmeyi atlayarak devam eder.
+ */
+export async function signCmsSessionToken(payload: CmsSessionPayload): Promise<string | null> {
+  const secret = getSecretKey()
+  if (!secret) return null
   const body = base64UrlEncode(encoder.encode(JSON.stringify(payload)))
-  const sig = base64UrlEncode(await hmac(body))
+  const sig = base64UrlEncode(await hmac(body, secret))
   return `${body}.${sig}`
 }
 
 export async function verifyCmsSessionToken(token: string | undefined): Promise<CmsSessionPayload | null> {
+  const secret = getSecretKey()
+  if (!secret) return null
   if (!token || typeof token !== 'string') return null
   const [body, sig] = token.split('.')
   if (!body || !sig) return null
-  const expected = base64UrlEncode(await hmac(body))
+  const expected = base64UrlEncode(await hmac(body, secret))
   // Sabit zamanlı karşılaştırma (string eşitliği yeterince yakın; cookie değil
   // payload uzunluğu değişken değil)
   if (expected.length !== sig.length) return null

@@ -94,6 +94,13 @@ export async function POST(request: Request) {
  *
  * - CMS staff için cookie set ediliyor (1 saat).
  * - Staff olmayan kullanıcıda cookie silinir, çünkü `/admin/*`'a erişimi yok.
+ * - FAIL-CLOSED: `CMS_SESSION_SECRET` yapılandırılmamışsa `signCmsSessionToken`
+ *   null döner. Bu durumda hiçbir fallback/hardcoded secret ile İMZALAMAYIZ —
+ *   cookie set edilmez (staff olmayan kullanıcıyla aynı şekilde temizlenir).
+ *   Sonuç: `/admin/*` middleware'i her zaman `/login`'e yönlendirir; ancak
+ *   role senkronizasyonu (Firestore) ve bu endpoint'in JSON yanıtı normal
+ *   şekilde çalışmaya devam eder — sadece CMS session cookie özelliği
+ *   secret gelene kadar sessizce devre dışı kalır.
  */
 async function jsonWithCmsSession(
   body: Record<string, unknown>,
@@ -101,12 +108,15 @@ async function jsonWithCmsSession(
   role: CmsRole
 ) {
   const res = NextResponse.json(body)
-  if (CMS_STAFF_ROLES.includes(role)) {
-    const token = await signCmsSessionToken({
-      uid,
-      role,
-      exp: Math.floor(Date.now() / 1000) + CMS_SESSION_MAX_AGE,
-    })
+  const token = CMS_STAFF_ROLES.includes(role)
+    ? await signCmsSessionToken({
+        uid,
+        role,
+        exp: Math.floor(Date.now() / 1000) + CMS_SESSION_MAX_AGE,
+      })
+    : null
+
+  if (token) {
     res.cookies.set(CMS_SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

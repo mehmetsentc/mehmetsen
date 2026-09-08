@@ -16,6 +16,13 @@ describe('P17.3A Live Browser Feed Diagnostic & Session Verification', () => {
 
   beforeEach(() => {
     process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://dummy:dummy@localhost:5432/db'
+    // SEC-P1C.2: CMS_SESSION_SECRET artık zorunlu (fail-closed, no hardcoded
+    // fallback in production code). Bu test sahte/self-signed bir CMS session
+    // cookie üretip doğrulamayı test ettiği için, test ortamına AÇIKÇA bir
+    // test-only secret enjekte ediyoruz — bu, cmsSession.ts içindeki kaldırılan
+    // hardcoded fallback'in yerini TUTMAZ, sadece bu test dosyasının kendi
+    // çalışma ortamına özeldir.
+    process.env.CMS_SESSION_SECRET = process.env.CMS_SESSION_SECRET || 'test-only-cms-session-secret-funnelDiagnostic'
 
     vi.spyOn(userFeatureAccessRepository, 'listEnabledKeys').mockImplementation(async (userId: string) => {
       if (userId === operatorUid) {
