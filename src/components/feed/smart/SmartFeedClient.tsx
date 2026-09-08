@@ -62,6 +62,15 @@ import {
   shouldShowFeedReaderDebugPanel,
   type FeedReaderDebugSnapshot,
 } from '@/lib/feed/reader/readerDebug'
+import {
+  EMPTY_SWIPE_EVENT_HUD,
+  appendSwipeEventSequence,
+  formatSwipeEventHudLines,
+  readTouchActionForTarget,
+  shouldShowFeedSwipeEventHud,
+  targetTagName,
+  type FeedSwipeEventHudSnapshot,
+} from '@/lib/feed/reader/swipeEventHud'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getCityCategoryName, nearestProvinceSlug } from '@/constants/cities'
@@ -346,9 +355,14 @@ export function SmartFeedClient({
   /** Authoritative ENABLED latch for this Feed mount — survives transient fetch errors. */
   const capabilitySessionRef = useRef(createFeedReaderCapabilitySession())
   const [readerDebug, setReaderDebug] = useState<FeedReaderDebugSnapshot>(EMPTY_FEED_READER_DEBUG)
+  const [swipeHud, setSwipeHud] = useState<FeedSwipeEventHudSnapshot>(EMPTY_SWIPE_EVENT_HUD)
 
   const isDebug = Boolean(debug || searchParams.get('debug') === '1')
   const readerDebugQuery = searchParams.get('readerDebug') === '1'
+  const showSwipeEventHud = shouldShowFeedSwipeEventHud({
+    readerDebugQuery,
+    currentMatchesActiveFeedReaderGrant: readerDebug.currentMatchesActiveFeedReaderGrant,
+  })
   useEffect(() => {
     captureFeedV2EntryFromReferrer()
   }, [])
@@ -2391,7 +2405,15 @@ export function SmartFeedClient({
                           }
                           dispatchFeedOpenGesture({
                             ...g,
-                            onOpen: () => onRead(item, index, 'gesture'),
+                            onOpen: () => {
+                              if (showSwipeEventHud) {
+                                setSwipeHud((prev) => ({
+                                  ...prev,
+                                  lastAction: 'OPEN_READER',
+                                }))
+                              }
+                              onRead(item, index, 'gesture')
+                            },
                           })
                         }
                       : undefined
@@ -2454,40 +2476,87 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onGesturePointerDebug={
-                    showReaderDebug
+                    showReaderDebug || showSwipeEventHud
                       ? (ev) => {
-                          if (ev.phase === 'down') {
-                            patchReaderDebug({
-                              pointerDownReceived: true,
-                              pointerMoveReceived: false,
-                              pointerUpReceived: false,
-                              pointerCancelReceived: false,
-                              gestureDecision: ev.ignoredInteractive
-                                ? 'IGNORED_INTERACTIVE'
-                                : ev.handlerAbsent
-                                  ? 'HANDLER_ABSENT'
-                                  : null,
-                              gestureDx: null,
-                              gestureDy: null,
-                              gestureAxis: null,
-                              gestureQualified: false,
-                              onReadCalled: false,
-                              readerOpenRequested: false,
-                            })
-                            return
+                          if (showReaderDebug) {
+                            if (ev.phase === 'down') {
+                              patchReaderDebug({
+                                pointerDownReceived: true,
+                                pointerMoveReceived: false,
+                                pointerUpReceived: false,
+                                pointerCancelReceived: false,
+                                gestureDecision: ev.ignoredInteractive
+                                  ? 'IGNORED_INTERACTIVE'
+                                  : ev.handlerAbsent
+                                    ? 'HANDLER_ABSENT'
+                                    : null,
+                                gestureDx: null,
+                                gestureDy: null,
+                                gestureAxis: null,
+                                gestureQualified: false,
+                                onReadCalled: false,
+                                readerOpenRequested: false,
+                              })
+                            } else if (ev.phase === 'move') {
+                              patchReaderDebug({
+                                pointerMoveReceived: true,
+                                gestureDx:
+                                  typeof ev.dx === 'number' ? Math.round(ev.dx) : null,
+                                gestureDy:
+                                  typeof ev.dy === 'number' ? Math.round(ev.dy) : null,
+                              })
+                            } else if (ev.phase === 'up') {
+                              patchReaderDebug({ pointerUpReceived: true })
+                            } else {
+                              patchReaderDebug({
+                                pointerCancelReceived: true,
+                                gestureDecision: 'CANCELLED',
+                                gestureQualified: false,
+                              })
+                            }
                           }
-                          if (ev.phase === 'move') {
-                            patchReaderDebug({ pointerMoveReceived: true })
-                            return
-                          }
-                          if (ev.phase === 'up') {
-                            patchReaderDebug({ pointerUpReceived: true })
-                            return
-                          }
-                          patchReaderDebug({
-                            pointerCancelReceived: true,
-                            gestureDecision: 'CANCELLED',
-                            gestureQualified: false,
+                          if (!showSwipeEventHud) return
+                          const phaseUpper =
+                            ev.phase === 'down'
+                              ? 'DOWN'
+                              : ev.phase === 'move'
+                                ? 'MOVE'
+                                : ev.phase === 'up'
+                                  ? 'UP'
+                                  : 'CANCEL'
+                          setSwipeHud((prev) => {
+                            const dx = typeof ev.dx === 'number' ? ev.dx : prev.dx
+                            const dy = typeof ev.dy === 'number' ? ev.dy : prev.dy
+                            return {
+                              event: phaseUpper,
+                              pointerType: ev.pointerType ?? prev.pointerType,
+                              startX: ev.startX ?? prev.startX,
+                              currentX: ev.currentX ?? prev.currentX,
+                              dx,
+                              startY: ev.startY ?? prev.startY,
+                              currentY: ev.currentY ?? prev.currentY,
+                              dy,
+                              owner: ev.owner ?? prev.owner,
+                              directionValid: Boolean(ev.directionValid),
+                              dominance:
+                                typeof ev.dominance === 'number' ? ev.dominance : prev.dominance,
+                              activated: Boolean(ev.activated),
+                              captured: Boolean(ev.captured),
+                              progress:
+                                typeof ev.progress === 'number' ? ev.progress : prev.progress,
+                              reducedMotion: Boolean(ev.reducedMotion ?? prev.reducedMotion),
+                              targetTag: ev.targetTag ?? prev.targetTag,
+                              interactiveTarget: Boolean(ev.ignoredInteractive),
+                              touchAction: ev.touchAction ?? prev.touchAction,
+                              lastAction: ev.lastAction ?? prev.lastAction,
+                              sequence: appendSwipeEventSequence(prev.sequence, phaseUpper),
+                              moveCount:
+                                ev.phase === 'down'
+                                  ? 0
+                                  : ev.phase === 'move'
+                                    ? prev.moveCount + 1
+                                    : prev.moveCount,
+                            }
                           })
                         }
                       : undefined
@@ -2726,9 +2795,7 @@ export function SmartFeedClient({
         ) : null}
 
         {showReaderDebug ? (
-          // Observational only: large badge panel removed — it covered Feed.
-          // Tracing continues via ?readerDebug=1 + ReaderNavTraceSurvivor TRACE chip.
-          // Keep a zero-size marker for source contracts / tests.
+          // Collapsed marker for legacy source contracts / TRACE chip pairing.
           <div
             data-testid="feed-reader-debug-panel"
             data-reader-debug-collapsed="1"
@@ -2736,6 +2803,33 @@ export function SmartFeedClient({
             aria-hidden
           >
             {buildFeedReaderDebugBadgeLines(readerDebug).join('\n')}
+          </div>
+        ) : null}
+
+        {showSwipeEventHud ? (
+          <div
+            data-testid="feed-swipe-event-hud"
+            data-swipe-hud="1"
+            className="pointer-events-none fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] left-1 right-1 z-[220] max-h-[38vh] overflow-hidden rounded-lg bg-black/78 px-2 py-1.5 font-mono text-[10px] leading-[1.35] text-lime-300 shadow-lg ring-1 ring-lime-500/30"
+            aria-hidden
+          >
+            {formatSwipeEventHudLines(swipeHud, {
+              readerSession: readerSession
+                ? readerSession.committed
+                  ? 'open'
+                  : 'opening'
+                : 'none',
+              readerProgress: readerSession?.progress ?? 0,
+              capability: readerDebug.capabilityReady
+                ? readerDebug.capabilityEnabled
+                  ? 'READY'
+                  : 'OFF'
+                : readerDebug.capabilityErrorCode
+                  ? 'ERROR'
+                  : 'PENDING',
+            }).map((line) => (
+              <div key={line}>{line}</div>
+            ))}
           </div>
         ) : null}
 
@@ -2785,11 +2879,28 @@ function FeedCardWithImpression(props: {
   onOpenReaderProgress?: (progress: number) => void
   /** Snap-back / cancel — clear uncommitted Reader preview. */
   onOpenReaderCancel?: () => void
-  /** Pilot readerDebug only — pointer delivery forensic; no engagement writes. */
+  /** Pilot swipe HUD only — pointer delivery forensic; no engagement writes. */
   onGesturePointerDebug?: (ev: {
     phase: 'down' | 'move' | 'up' | 'cancel'
     ignoredInteractive?: boolean
     handlerAbsent?: boolean
+    pointerType?: string
+    startX?: number
+    currentX?: number
+    startY?: number
+    currentY?: number
+    dx?: number
+    dy?: number
+    owner?: import('@/lib/feed/reader/swipeEventHud').SwipeHudOwner
+    directionValid?: boolean
+    dominance?: number | null
+    activated?: boolean
+    captured?: boolean
+    progress?: number
+    reducedMotion?: boolean
+    targetTag?: string | null
+    touchAction?: string | null
+    lastAction?: import('@/lib/feed/reader/swipeEventHud').SwipeHudLastAction
   }) => void
   showDiscoveryRail?: boolean
   discoveryCategory?: string | null
@@ -2899,16 +3010,69 @@ function FeedCardWithImpression(props: {
           onGesturePointerDebug?.({
             phase: 'down',
             handlerAbsent: !pageTurnOpen && !sheetOpen,
+            pointerType: e.pointerType,
+            startX: e.clientX,
+            currentX: e.clientX,
+            startY: e.clientY,
+            currentY: e.clientY,
+            dx: 0,
+            dy: 0,
+            owner: 'HANDLER_ABSENT',
+            directionValid: false,
+            activated: false,
+            captured: false,
+            progress: 0,
+            reducedMotion,
+            targetTag: targetTagName(e.target),
+            touchAction: readTouchActionForTarget(e.target),
+            lastAction: 'REJECT_HANDLER',
           })
           return
         }
         if (e.pointerType === 'mouse' && e.button !== 0) return
         if (shouldIgnoreFeedOpenGestureTarget(e.target)) {
-          onGesturePointerDebug?.({ phase: 'down', ignoredInteractive: true })
+          onGesturePointerDebug?.({
+            phase: 'down',
+            ignoredInteractive: true,
+            pointerType: e.pointerType,
+            startX: e.clientX,
+            currentX: e.clientX,
+            startY: e.clientY,
+            currentY: e.clientY,
+            dx: 0,
+            dy: 0,
+            owner: 'INTERACTIVE',
+            directionValid: false,
+            activated: false,
+            captured: false,
+            progress: 0,
+            reducedMotion,
+            targetTag: targetTagName(e.target),
+            touchAction: readTouchActionForTarget(e.target),
+            lastAction: 'REJECT_INTERACTIVE',
+          })
           return
         }
         if (!sheetOpen && shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
-          onGesturePointerDebug?.({ phase: 'down' })
+          onGesturePointerDebug?.({
+            phase: 'down',
+            pointerType: e.pointerType,
+            startX: e.clientX,
+            currentX: e.clientX,
+            startY: e.clientY,
+            currentY: e.clientY,
+            dx: 0,
+            dy: 0,
+            owner: 'SYSTEM_EDGE',
+            directionValid: false,
+            activated: false,
+            captured: false,
+            progress: 0,
+            reducedMotion,
+            targetTag: targetTagName(e.target),
+            touchAction: readTouchActionForTarget(e.target),
+            lastAction: 'REJECT_EDGE',
+          })
           recordReaderNavTrace({
             type: 'gesture_ignored_ios_edge',
             pathname: '/feed-v2',
@@ -2927,7 +3091,25 @@ function FeedCardWithImpression(props: {
           })
           return
         }
-        onGesturePointerDebug?.({ phase: 'down' })
+        onGesturePointerDebug?.({
+          phase: 'down',
+          pointerType: e.pointerType,
+          startX: e.clientX,
+          currentX: e.clientX,
+          startY: e.clientY,
+          currentY: e.clientY,
+          dx: 0,
+          dy: 0,
+          owner: 'NONE',
+          directionValid: false,
+          activated: false,
+          captured: false,
+          progress: 0,
+          reducedMotion,
+          targetTag: targetTagName(e.target),
+          touchAction: readTouchActionForTarget(e.target),
+          lastAction: 'NONE',
+        })
         setSnapAnimating(false)
         setHorizontalLocked(false)
         const pointerId = e.pointerId
@@ -2965,6 +3147,26 @@ function FeedCardWithImpression(props: {
                   setHorizontalLocked(false)
                   setDragProgress(0)
                   onOpenReaderCancel?.()
+                  onGesturePointerDebug?.({
+                    phase: 'move',
+                    pointerType: ev.pointerType,
+                    startX: d.x,
+                    currentX: ev.clientX,
+                    startY: d.y,
+                    currentY: ev.clientY,
+                    dx,
+                    dy,
+                    owner: 'VERTICAL',
+                    directionValid: false,
+                    activated: false,
+                    captured: false,
+                    progress: 0,
+                    reducedMotion,
+                    dominance: Math.abs(dx) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : 0,
+                    targetTag: targetTagName(ev.target),
+                    touchAction: readTouchActionForTarget(ev.target),
+                    lastAction: 'CANCEL',
+                  })
                   return
                 }
                 clearNativeMove()
@@ -2972,11 +3174,75 @@ function FeedCardWithImpression(props: {
                 setHorizontalLocked(false)
                 setDragProgress(0)
                 onOpenReaderCancel?.()
+                onGesturePointerDebug?.({
+                  phase: 'move',
+                  pointerType: ev.pointerType,
+                  startX: d.x,
+                  currentX: ev.clientX,
+                  startY: d.y,
+                  currentY: ev.clientY,
+                  dx,
+                  dy,
+                  owner: 'VERTICAL',
+                  directionValid: false,
+                  activated: false,
+                  captured: false,
+                  progress: 0,
+                  reducedMotion,
+                  dominance: Math.abs(dx) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : 0,
+                  targetTag: targetTagName(ev.target),
+                  touchAction: readTouchActionForTarget(ev.target),
+                  lastAction: 'CANCEL',
+                })
                 return
               }
-              if (intent !== 'horizontal') return
+              if (intent !== 'horizontal') {
+                onGesturePointerDebug?.({
+                  phase: 'move',
+                  pointerType: ev.pointerType,
+                  startX: d.x,
+                  currentX: ev.clientX,
+                  startY: d.y,
+                  currentY: ev.clientY,
+                  dx,
+                  dy,
+                  owner: 'NONE',
+                  directionValid: dx > 0,
+                  activated: false,
+                  captured: false,
+                  progress: 0,
+                  reducedMotion,
+                  dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
+                  targetTag: targetTagName(ev.target),
+                  touchAction: readTouchActionForTarget(ev.target),
+                  lastAction: 'NONE',
+                })
+                return
+              }
               // Haberi Aç: finger RIGHT only (positive dx).
-              if (dx <= 0) return
+              if (dx <= 0) {
+                onGesturePointerDebug?.({
+                  phase: 'move',
+                  pointerType: ev.pointerType,
+                  startX: d.x,
+                  currentX: ev.clientX,
+                  startY: d.y,
+                  currentY: ev.clientY,
+                  dx,
+                  dy,
+                  owner: 'NONE',
+                  directionValid: false,
+                  activated: false,
+                  captured: false,
+                  progress: 0,
+                  reducedMotion,
+                  dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
+                  targetTag: targetTagName(ev.target),
+                  touchAction: readTouchActionForTarget(ev.target),
+                  lastAction: 'REJECT_DIRECTION',
+                })
+                return
+              }
               d.axis = 'horizontal'
               setHorizontalLocked(true)
               // Capture only after horizontal lock — early capture steals Haberi Oku taps on iOS.
@@ -2985,23 +3251,80 @@ function FeedCardWithImpression(props: {
               } catch {
                 // Non-fatal
               }
+              onGesturePointerDebug?.({
+                phase: 'move',
+                pointerType: ev.pointerType,
+                startX: d.x,
+                currentX: ev.clientX,
+                startY: d.y,
+                currentY: ev.clientY,
+                dx,
+                dy,
+                owner: 'HORIZONTAL',
+                directionValid: true,
+                activated: true,
+                captured: true,
+                progress: feedToReaderProgress(dx, window.innerWidth || 390),
+                reducedMotion,
+                dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
+                targetTag: targetTagName(ev.target),
+                touchAction: 'none',
+                lastAction: 'LOCK',
+              })
             }
           }
           if (sheetOpen) {
             if (d.axis !== 'vertical') return
             ev.preventDefault()
-            onGesturePointerDebug?.({ phase: 'move' })
+            onGesturePointerDebug?.({
+              phase: 'move',
+              pointerType: ev.pointerType,
+              startX: d.x,
+              currentX: ev.clientX,
+              startY: d.y,
+              currentY: ev.clientY,
+              dx,
+              dy,
+              owner: 'VERTICAL',
+              directionValid: false,
+              activated: true,
+              captured: true,
+              progress: 0,
+              reducedMotion,
+              targetTag: targetTagName(ev.target),
+              touchAction: readTouchActionForTarget(ev.target),
+              lastAction: 'LOCK',
+            })
             d.lastX = ev.clientX
             d.lastT = performance.now()
             return
           }
           if (d.axis !== 'horizontal') return
           ev.preventDefault()
-          onGesturePointerDebug?.({ phase: 'move' })
           const width = window.innerWidth || 390
           const progress = feedToReaderProgress(dx, width)
           setDragProgress(progress)
           onOpenReaderProgress?.(progress)
+          onGesturePointerDebug?.({
+            phase: 'move',
+            pointerType: ev.pointerType,
+            startX: d.x,
+            currentX: ev.clientX,
+            startY: d.y,
+            currentY: ev.clientY,
+            dx,
+            dy,
+            owner: 'HORIZONTAL',
+            directionValid: dx > 0,
+            activated: true,
+            captured: true,
+            progress,
+            reducedMotion,
+            dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
+            targetTag: targetTagName(ev.target),
+            touchAction: 'none',
+            lastAction: 'LOCK',
+          })
           d.lastX = ev.clientX
           d.lastT = performance.now()
         }
@@ -3034,7 +3357,6 @@ function FeedCardWithImpression(props: {
         } catch {
           // ignore
         }
-        onGesturePointerDebug?.({ phase: 'up' })
         const dx = e.clientX - d.x
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)
@@ -3059,6 +3381,33 @@ function FeedCardWithImpression(props: {
             progress,
             velocityX: Math.max(0, velocityX),
           })
+
+        onGesturePointerDebug?.({
+          phase: 'up',
+          pointerType: e.pointerType,
+          startX: d.x,
+          currentX: e.clientX,
+          startY: d.y,
+          currentY: e.clientY,
+          dx,
+          dy,
+          owner: axis === 'horizontal' ? 'HORIZONTAL' : axis === 'vertical' ? 'VERTICAL' : 'NONE',
+          directionValid: dx > 0,
+          activated: axis === 'horizontal',
+          captured: false,
+          progress,
+          reducedMotion,
+          dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
+          targetTag: targetTagName(e.target),
+          touchAction: readTouchActionForTarget(e.target),
+          lastAction: open
+            ? 'COMMIT'
+            : axis !== 'horizontal'
+              ? 'REJECT_AXIS'
+              : dx <= 0
+                ? 'REJECT_DIRECTION'
+                : 'REJECT_THRESHOLD',
+        })
 
         // Always report metrics to parent (diagnostic + shared open decision).
         onOpenReaderGesture?.({
@@ -3085,9 +3434,31 @@ function FeedCardWithImpression(props: {
         }
         resetDragVisual(axis === 'horizontal' && progress > 0.02)
       }}
-      onPointerCancel={() => {
-        if (drag.current) {
-          onGesturePointerDebug?.({ phase: 'cancel' })
+      onPointerCancel={(e) => {
+        const d = drag.current
+        if (d) {
+          const dx = typeof e.clientX === 'number' ? e.clientX - d.x : null
+          const dy = typeof e.clientY === 'number' ? e.clientY - d.y : null
+          onGesturePointerDebug?.({
+            phase: 'cancel',
+            pointerType: e.pointerType,
+            startX: d.x,
+            currentX: typeof e.clientX === 'number' ? e.clientX : d.lastX,
+            startY: d.y,
+            currentY: typeof e.clientY === 'number' ? e.clientY : d.y,
+            dx: dx ?? undefined,
+            dy: dy ?? undefined,
+            owner: d.axis === 'horizontal' ? 'HORIZONTAL' : d.axis === 'vertical' ? 'VERTICAL' : 'OTHER',
+            directionValid: typeof dx === 'number' ? dx > 0 : false,
+            activated: d.axis === 'horizontal',
+            captured: false,
+            progress:
+              typeof dx === 'number' ? feedToReaderProgress(dx, window.innerWidth || 390) : 0,
+            reducedMotion,
+            targetTag: targetTagName(e.target),
+            touchAction: readTouchActionForTarget(e.target),
+            lastAction: 'CANCEL',
+          })
           onOpenReaderCancel?.()
         }
         resetDragVisual(false)

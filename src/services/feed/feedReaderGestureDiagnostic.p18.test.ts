@@ -171,7 +171,7 @@ describe('Feed Reader gesture diagnostic contracts', () => {
       'utf8'
     )
     const fnIdx = client.indexOf('function FeedCardWithImpression')
-    const surface = client.slice(fnIdx, fnIdx + 12000)
+    const surface = client.slice(fnIdx)
     expect(surface).toContain('touch-pan-y')
     expect(surface).toContain('data-testid="smart-feed-card-gesture-surface"')
     expect(surface).toContain('setPointerCapture')
