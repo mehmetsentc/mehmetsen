@@ -10,6 +10,7 @@ import {
 } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
+  clusterMemberships,
   news,
   newsClusters,
   newsSources,
@@ -22,6 +23,7 @@ import {
 } from '@/db/schema'
 import { newPublisherId } from '@/lib/publisher/id'
 import { isAllowedPublisherAccent } from '@/lib/publisher/accentPalette'
+import { isPrimaryMembershipRole } from '@/lib/publisher/provenance'
 import type {
   PublisherAdminFilter,
   PublisherArticleItem,
@@ -778,7 +780,17 @@ export class PublisherRepository {
       })
     }
 
-    // 2. Also check raw_articles linked news
+    // 2. Also check raw_articles linked news — LP7R.1 provenance hardening:
+    // editorialNewsId is set on EVERY member of a published cluster (PRIMARY,
+    // SUPPORTING, DUPLICATE, LOW_QUALITY, MATERIAL_UPDATE alike — see
+    // editorialSupplyService's "Link all member raw articles" step), so it is
+    // NOT sufficient on its own to mean "this publisher originated the story."
+    // Require cluster_memberships.membershipRole = 'PRIMARY' so this fallback
+    // only ever surfaces articles this publisher's source actually originated,
+    // matching the same rule already enforced by branch 1 above via
+    // newsClusters.primarySourceId. Rows with no membership role (legacy data)
+    // are deliberately excluded — absence of role data is not evidence of
+    // origination (do not invent provenance).
     if (out.length < pageSize) {
       const rawRows = await db
         .select({
@@ -787,8 +799,16 @@ export class PublisherRepository {
           title: rawArticles.title,
           publishedAt: rawArticles.publishedAt,
           mainImageUrl: rawArticles.mainImageUrl,
+          membershipRole: clusterMemberships.membershipRole,
         })
         .from(rawArticles)
+        .innerJoin(
+          clusterMemberships,
+          and(
+            eq(clusterMemberships.articleId, rawArticles.id),
+            eq(clusterMemberships.membershipRole, 'PRIMARY')
+          )
+        )
         .where(
           and(
             inArray(rawArticles.sourceId, sourceIds),
@@ -797,9 +817,14 @@ export class PublisherRepository {
         )
         .orderBy(desc(rawArticles.publishedAt))
         .limit(pageSize * 3)
+      // Defense in depth: the SQL join above already restricts to PRIMARY,
+      // but re-check in application code with the shared, unit-tested
+      // predicate rather than trusting the join silently. See
+      // src/lib/publisher/provenance.ts.
+      const primaryRawRows = rawRows.filter((r) => isPrimaryMembershipRole(r.membershipRole))
 
       const newsIds = [
-        ...new Set(rawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
+        ...new Set(primaryRawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
       ].filter((id) => !seen.has(id))
 
       const newsRows = newsIds.length
@@ -830,7 +855,7 @@ export class PublisherRepository {
         if (row.legacyFirestoreId) newsByKey.set(row.legacyFirestoreId, row)
       }
 
-      for (const raw of rawRows) {
+      for (const raw of primaryRawRows) {
         const nid = raw.editorialNewsId
         if (!nid) continue
         const n = newsByKey.get(nid)

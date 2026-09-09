@@ -2,13 +2,14 @@ import { and, desc, inArray, isNotNull, lt, or, eq, sql } from 'drizzle-orm'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getDb, hasDatabaseUrl } from '@/db'
-import { rawArticles } from '@/db/schema/crawler'
+import { clusterMemberships, rawArticles } from '@/db/schema/crawler'
 import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
 import {
   canAppearInSmartFeed,
   classifyPublicRead,
   publicReadMetaFromFirestoreDoc,
 } from '@/services/editorial/publicReadPolicy'
+import { isPrimaryMembershipRole } from '@/lib/publisher/provenance'
 import type { PublisherArticleItem, PublisherArticlePage } from '@/types/publisher'
 
 function parsePublishedAt(value: unknown): Date | null {
@@ -143,23 +144,38 @@ export async function fetchFirestorePublisherArticles(input: {
       )
     }
 
-    const rawRows = await db
+    // LP7R.1 provenance hardening: only raw articles this source's cluster
+    // membership was PRIMARY for are eligible to hydrate as "this publisher's
+    // article" — see resolvePublishedArticles' branch 2 for the full rationale.
+    const rawRows0 = await db
       .select({
         id: rawArticles.id,
         editorialNewsId: rawArticles.editorialNewsId,
         sourceId: rawArticles.sourceId,
         publishedAt: rawArticles.publishedAt,
+        membershipRole: clusterMemberships.membershipRole,
       })
       .from(rawArticles)
+      .innerJoin(
+        clusterMemberships,
+        and(
+          eq(clusterMemberships.articleId, rawArticles.id),
+          eq(clusterMemberships.membershipRole, 'PRIMARY')
+        )
+      )
       .where(and(...whereParts))
       .orderBy(desc(rawArticles.publishedAt), desc(rawArticles.id))
       .limit(RAW_BATCH)
 
-    if (!rawRows.length) break
+    if (!rawRows0.length) break
 
-    const lastRaw = rawRows[rawRows.length - 1]!
+    const lastRaw = rawRows0[rawRows0.length - 1]!
     boundaryMs = lastRaw.publishedAt?.getTime() ?? boundaryMs
     boundaryId = lastRaw.id
+
+    // Defense in depth: re-check with the shared, unit-tested predicate
+    // rather than trusting the SQL join silently. See provenance.ts.
+    const rawRows = rawRows0.filter((r) => isPrimaryMembershipRole(r.membershipRole))
 
     const editorialIds = [
       ...new Set(
@@ -169,7 +185,7 @@ export async function fetchFirestorePublisherArticles(input: {
       ),
     ]
     if (!editorialIds.length) {
-      if (rawRows.length < RAW_BATCH) break
+      if (rawRows0.length < RAW_BATCH) break
       continue
     }
 
@@ -199,38 +215,19 @@ export async function fetchFirestorePublisherArticles(input: {
       break
     }
 
-    if (rawRows.length < RAW_BATCH) break
+    if (rawRows0.length < RAW_BATCH) break
   }
 
-  // Secondary: direct ingestionSourceId query (bounded) when provenance underfills.
-  if (collected.length < limit) {
-    for (const sourceId of sourceIds) {
-      if (collected.length >= limit + 1) break
-      try {
-        const snap = await fs
-          .collection(Collections.NEWS)
-          .where('ingestionSourceId', '==', sourceId)
-          .limit(Math.min(40, limit * 2))
-          .get()
-        for (const doc of snap.docs) {
-          if (seen.has(doc.id)) continue
-          const item = mapFirestoreDoc(doc.id, doc.data(), sourceId)
-          if (!item) continue
-          if (category && (item.categoryId || 'gundem') !== category) continue
-          if (cursorInfo) {
-            const ms = item.publishedAt?.getTime() ?? 0
-            if (ms > cursorInfo.publishedAtMs) continue
-            if (ms === cursorInfo.publishedAtMs && item.id >= cursorInfo.id) continue
-          }
-          seen.add(item.id)
-          collected.push(item)
-          if (collected.length >= limit + 1) break
-        }
-      } catch (err) {
-        console.warn('[publisher] ingestionSourceId fallback failed', { sourceId, err })
-      }
-    }
-  }
+  // LP7R.1 provenance hardening: the previous "Secondary: direct
+  // ingestionSourceId query" fallback is REMOVED, not just narrowed.
+  // It queried Firestore `news` docs by ingestionSourceId with no link back
+  // to a specific raw_articles row, so there was no cluster_memberships row
+  // to check a membership role against at all — no reliable way to tell
+  // PRIMARY from SUPPORTING for these candidates. Per the LP7 provenance
+  // invariant ("if existing data cannot reliably make this distinction: STOP
+  // that specific attribution behavior — do not invent provenance"), this
+  // fails closed rather than being narrowed to a guess. The primary raw_articles
+  // → cluster_memberships path above remains the sole source-linked fallback.
 
   collected.sort((a, b) => {
     const am = a.publishedAt?.getTime() ?? 0
@@ -263,12 +260,22 @@ export async function countEligibleFirestorePublisherArticles(input: {
 
   const db = getDb()
   const fs = getAdminFirestore()
-  const rawRows = await db
-    .select({ editorialNewsId: rawArticles.editorialNewsId })
+  // LP7R.1: same PRIMARY-only provenance constraint as the list path, so the
+  // header count never advertises more stories than can actually render.
+  const rawRows0 = await db
+    .select({ editorialNewsId: rawArticles.editorialNewsId, membershipRole: clusterMemberships.membershipRole })
     .from(rawArticles)
+    .innerJoin(
+      clusterMemberships,
+      and(
+        eq(clusterMemberships.articleId, rawArticles.id),
+        eq(clusterMemberships.membershipRole, 'PRIMARY')
+      )
+    )
     .where(and(inArray(rawArticles.sourceId, sourceIds), isNotNull(rawArticles.editorialNewsId)))
     .orderBy(desc(rawArticles.publishedAt))
     .limit(maxScan)
+  const rawRows = rawRows0.filter((r) => isPrimaryMembershipRole(r.membershipRole))
 
   const ids = [...new Set(rawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id)))]
   let eligible = 0
