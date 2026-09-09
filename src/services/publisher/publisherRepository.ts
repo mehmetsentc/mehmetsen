@@ -753,6 +753,7 @@ export class PublisherRepository {
         publishedAt: news.publishedAt,
         categoryId: news.categoryId,
         sourceId: newsClusters.primarySourceId,
+        videoUrl: news.videoUrl,
       })
       .from(news)
       .innerJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
@@ -776,6 +777,7 @@ export class PublisherRepository {
         thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
         publishedAt: n.publishedAt,
         sourceId: n.sourceId ?? sourceIds[0],
+        videoUrl: n.videoUrl,
         categoryId: n.categoryId,
       })
     }
@@ -832,6 +834,7 @@ export class PublisherRepository {
             .select({
               id: news.id,
               legacyFirestoreId: news.legacyFirestoreId,
+              videoUrl: news.videoUrl,
               slug: news.slug,
               title: news.title,
               summary: news.summary,
@@ -871,6 +874,7 @@ export class PublisherRepository {
           thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl ?? raw.mainImageUrl,
           publishedAt: n.publishedAt ?? raw.publishedAt,
           sourceId: raw.sourceId,
+          videoUrl: n.videoUrl,
           categoryId: n.categoryId,
         })
         if (out.length >= pageSize) break
@@ -974,6 +978,7 @@ export class PublisherRepository {
         thumbnailUrl: news.thumbnailUrl,
         coverImageUrl: news.coverImageUrl,
         publishedAt: news.publishedAt,
+        videoUrl: news.videoUrl,
       })
       .from(publisherContentItems)
       .innerJoin(news, eq(news.id, publisherContentItems.publishedNewsId))
@@ -996,6 +1001,7 @@ export class PublisherRepository {
       thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
       publishedAt: n.publishedAt,
       sourceId: 'publisher_studio',
+      videoUrl: n.videoUrl,
     }))
   }
 }

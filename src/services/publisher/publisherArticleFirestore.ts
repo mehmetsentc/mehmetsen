@@ -83,6 +83,13 @@ function mapFirestoreDoc(
     description: typeof data.description === 'string' ? data.description : null,
   })
 
+  // LP7R.2 Living Video: best-effort read of the same field name the
+  // Postgres `news.videoUrl` column uses (see publisherRepository.ts).
+  // Not authoritative like the Postgres path — Firestore docs vary in
+  // shape — so absence here just means the card renders image-only,
+  // never an error.
+  const videoUrl = String(data.videoUrl ?? '').trim() || null
+
   return {
     id: docId,
     slug,
@@ -92,6 +99,7 @@ function mapFirestoreDoc(
     publishedAt,
     sourceId,
     categoryId: categoryId || undefined,
+    videoUrl,
   }
 }
 

@@ -132,6 +132,15 @@ export interface PublisherArticleItem {
   publishedAt: Date | null
   sourceId: string
   categoryId?: string | null
+  /**
+   * LP7R.2 Living Video. Sourced from the existing `news.videoUrl` column
+   * (see src/db/schema/news.ts) or its Firestore mirror field of the same
+   * name — no schema change. null/undefined means this article has no
+   * video and renders as an image-only card. Optional so every existing
+   * caller that builds a PublisherArticleItem without video data (tests,
+   * older code paths) keeps compiling without changes.
+   */
+  videoUrl?: string | null
 }
 
 export interface PublisherArticlePage {
