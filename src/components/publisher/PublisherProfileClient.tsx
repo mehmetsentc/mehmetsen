@@ -12,6 +12,7 @@ import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publisher'
 import { FollowButton } from '@/components/social/FollowButton'
+import { setLiftOrigin } from '@/lib/articleLift/liftOrigin'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import toast from 'react-hot-toast'
 import {
@@ -46,6 +47,7 @@ function ArticleCard({
     <Link
       href={ROUTES.NEWS_DETAIL(article.slug)}
       data-article-lift-origin={article.id}
+      onClick={(e) => setLiftOrigin(article.id, e.currentTarget)}
       className={cn(
         'group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md',
         layout === 'masonry' ? 'mb-4 break-inside-avoid' : 'h-full'
@@ -136,6 +138,7 @@ function LeadArticleCard({
     <Link
       href={ROUTES.NEWS_DETAIL(article.slug)}
       data-article-lift-origin={article.id}
+      onClick={(e) => setLiftOrigin(article.id, e.currentTarget)}
       className="group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2">
