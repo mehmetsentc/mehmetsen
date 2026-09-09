@@ -12,6 +12,7 @@ import type {
   RawArticleRecord,
 } from '../types'
 import { shouldEnterClusterFunnel } from '../gate/quality'
+import { crawlerTickLimits } from '../enabled'
 import type {
   CrawlerStore,
   InsertClusterInput,
@@ -118,13 +119,25 @@ export class MemoryCrawlerStore implements CrawlerStore {
   }
 
   async listDueSources(now: Date, limit: number): Promise<NewsSourceRecord[]> {
+    // Mirrors the fairness fix in the Drizzle store (2026-09-08): priority DESC alone left
+    // equal-priority sources ordered by Map insertion order, which meant a source inserted
+    // "later" in the same priority band could be starved indefinitely. Sorting by
+    // nextDiscoveryAt ASC (never-checked/null first) as the secondary key, then id as a
+    // final deterministic tiebreaker, keeps this in parity with the real store.
     return [...this.sources.values()]
       .filter(
         (s) =>
           (s.status === 'ACTIVE' || s.status === 'DEGRADED') &&
           (!s.nextDiscoveryAt || s.nextDiscoveryAt.getTime() <= now.getTime())
       )
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      .sort((a, b) => {
+        const byPriority = (b.priority || 0) - (a.priority || 0)
+        if (byPriority !== 0) return byPriority
+        const aNext = a.nextDiscoveryAt ? a.nextDiscoveryAt.getTime() : -Infinity
+        const bNext = b.nextDiscoveryAt ? b.nextDiscoveryAt.getTime() : -Infinity
+        if (aNext !== bNext) return aNext - bNext
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+      })
       .slice(0, limit)
   }
 
@@ -167,6 +180,10 @@ export class MemoryCrawlerStore implements CrawlerStore {
   async getDiscoveredByHash(urlHash: string): Promise<DiscoveredUrlRecord | null> {
     const id = this.urlsByHash.get(urlHash)
     return id ? this.urls.get(id) ?? null : null
+  }
+
+  async getDiscoveredBySourceAndGuid(sourceId: string, guid: string): Promise<DiscoveredUrlRecord | null> {
+    return [...this.urls.values()].find((u) => u.sourceId === sourceId && u.guid === guid) ?? null
   }
 
   async listPendingFetch(limit: number): Promise<DiscoveredUrlRecord[]> {
@@ -234,22 +251,28 @@ export class MemoryCrawlerStore implements CrawlerStore {
       .slice(0, limit)
   }
 
-  async findRawByContentHash(hash: string): Promise<RawArticleRecord | null> {
-    return [...this.articles.values()].find((a) => a.contentHash === hash) ?? null
+  // SOURCE-DEDUP-1: mirrors the Drizzle store's source-scoped exact-hash lookups exactly, so
+  // tests against MemoryCrawlerStore validate the real production behavior.
+  async findRawByContentHash(sourceId: string, hash: string): Promise<RawArticleRecord | null> {
+    return [...this.articles.values()].find((a) => a.sourceId === sourceId && a.contentHash === hash) ?? null
   }
 
-  async findRawByTitleHash(hash: string): Promise<RawArticleRecord | null> {
-    return [...this.articles.values()].find((a) => a.titleHash === hash) ?? null
+  async findRawByTitleHash(sourceId: string, hash: string): Promise<RawArticleRecord | null> {
+    return [...this.articles.values()].find((a) => a.sourceId === sourceId && a.titleHash === hash) ?? null
   }
 
   async findRawByCanonicalUrl(url: string): Promise<RawArticleRecord | null> {
     return [...this.articles.values()].find((a) => a.canonicalUrl === url) ?? null
   }
 
-  async recentRawForNearDup(_sourceCountry: string | null, limit = 40): Promise<RawArticleRecord[]> {
+  async recentRawForNearDup(sourceId: string, limit = 40, now = new Date()): Promise<RawArticleRecord[]> {
+    const windowHours = crawlerTickLimits().nearDupWindowHours
+    const boundedLimit = Math.min(Math.max(limit, 1), crawlerTickLimits().nearDupMaxCandidates)
+    const floorMs = now.getTime() - windowHours * 60 * 60 * 1000
     return [...this.articles.values()]
+      .filter((a) => a.sourceId === sourceId && (a.fetchedAt?.getTime() || 0) >= floorMs)
       .sort((a, b) => (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0))
-      .slice(0, limit)
+      .slice(0, boundedLimit)
   }
 
   async recentClusters(countryCode: string | null, since: Date) {

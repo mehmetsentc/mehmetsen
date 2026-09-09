@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
@@ -23,6 +23,7 @@ import type {
   RawArticleRecord,
 } from '../types'
 import { ACTIVE_EDITORIAL_STATUSES, AI_QUEUED_STATUSES, clampPage, clampPageSize, queueCountsFromStatuses, type ClusterListQuery } from '../editorial/query'
+import { crawlerTickLimits } from '../enabled'
 import { crawlerEditorialStaleHours, emptyClusterFunnel } from '../editorial/controlPlane'
 import type {
   CrawlerStore,
@@ -383,6 +384,12 @@ export class DrizzleCrawlerStore implements CrawlerStore {
   }
 
   async listDueSources(now: Date, limit: number): Promise<NewsSourceRecord[]> {
+    // Fairness fix (2026-09-08): priority DESC alone left equal-priority sources ordered by
+    // arbitrary/physical row order, so sources placed "later" in that tie could be starved
+    // indefinitely once maxSourcesPerTick was smaller than the fleet size. Adding
+    // nextDiscoveryAt ASC (nulls first) as a secondary key means that within the same
+    // priority band, the source that has waited longest (or has never been checked) is
+    // always picked first, so no equal-priority source can be perpetually skipped.
     const rows = await this.db()
       .select()
       .from(newsSources)
@@ -392,7 +399,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
           or(sql`${newsSources.nextDiscoveryAt} is null`, lte(newsSources.nextDiscoveryAt, now))
         )
       )
-      .orderBy(desc(newsSources.priority))
+      .orderBy(desc(newsSources.priority), sql`${newsSources.nextDiscoveryAt} asc nulls first`, asc(newsSources.id))
       .limit(limit)
     return rows.map(mapSource)
   }
@@ -442,6 +449,15 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .select()
       .from(discoveredArticleUrls)
       .where(eq(discoveredArticleUrls.urlHash, urlHash))
+      .limit(1)
+    return rows[0] ? mapUrl(rows[0]) : null
+  }
+
+  async getDiscoveredBySourceAndGuid(sourceId: string, guid: string): Promise<DiscoveredUrlRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(discoveredArticleUrls)
+      .where(and(eq(discoveredArticleUrls.sourceId, sourceId), eq(discoveredArticleUrls.guid, guid)))
       .limit(1)
     return rows[0] ? mapUrl(rows[0]) : null
   }
@@ -567,26 +583,49 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     return rows.map(mapRaw)
   }
 
-  async findRawByContentHash(hash: string): Promise<RawArticleRecord | null> {
-    const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.contentHash, hash)).limit(1)
+  // SOURCE-DEDUP-1: source-scoped exact-hash lookups (Root Cause C fix). Content/title hash
+  // identity is meaningful only within one source's own history; two independent publishers
+  // legitimately produce identical wire-copy text and that must remain separate raw evidence,
+  // eligible for clustering and uniqueSourceCount, never suppressed as a same-source duplicate.
+  async findRawByContentHash(sourceId: string, hash: string): Promise<RawArticleRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .where(and(eq(rawArticles.sourceId, sourceId), eq(rawArticles.contentHash, hash)))
+      .limit(1)
     return rows[0] ? mapRaw(rows[0]) : null
   }
 
-  async findRawByTitleHash(hash: string): Promise<RawArticleRecord | null> {
-    const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.titleHash, hash)).limit(1)
+  async findRawByTitleHash(sourceId: string, hash: string): Promise<RawArticleRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .where(and(eq(rawArticles.sourceId, sourceId), eq(rawArticles.titleHash, hash)))
+      .limit(1)
     return rows[0] ? mapRaw(rows[0]) : null
   }
 
+  // Unchanged: canonical URL identity is a publisher-page identity, not a text identity, so it
+  // stays a global lookup (this is what lets a syndicated/mirrored URL still be recognized).
   async findRawByCanonicalUrl(url: string): Promise<RawArticleRecord | null> {
     const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.canonicalUrl, url)).limit(1)
     return rows[0] ? mapRaw(rows[0]) : null
   }
 
-  async recentRawForNearDup(sourceCountry: string | null, limit = 40): Promise<RawArticleRecord[]> {
-    const q = this.db().select().from(rawArticles)
-    const rows = sourceCountry
-      ? await q.where(eq(rawArticles.countryCode, sourceCountry)).orderBy(desc(rawArticles.fetchedAt)).limit(limit)
-      : await q.orderBy(desc(rawArticles.fetchedAt)).limit(limit)
+  // SOURCE-DEDUP-1: near-duplicate (fuzzy/simhash) candidate pool, source-scoped and time-
+  // bounded (Root Cause A fix). Reuses the existing raw_articles_source_fetched_idx
+  // (sourceId, fetchedAt) index — no migration needed. Cross-source fuzzy matching for event
+  // clustering is handled separately and independently by cluster/worker.ts.
+  async recentRawForNearDup(sourceId: string, limit = 40, now = new Date()): Promise<RawArticleRecord[]> {
+    const windowHours = crawlerTickLimits().nearDupWindowHours
+    const boundedLimit = Math.min(Math.max(limit, 1), crawlerTickLimits().nearDupMaxCandidates)
+    const floor = new Date(now.getTime() - windowHours * 60 * 60 * 1000)
+    const rows = await this.db()
+      .select()
+      .from(rawArticles)
+      .where(and(eq(rawArticles.sourceId, sourceId), gte(rawArticles.fetchedAt, floor)))
+      .orderBy(desc(rawArticles.fetchedAt))
+      .limit(boundedLimit)
     return rows.map(mapRaw)
   }
 

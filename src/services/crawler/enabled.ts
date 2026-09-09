@@ -62,7 +62,27 @@ export function crawlerTickLimits() {
     maxChildSitemaps: 3,
     degradeAfterFailures: 3,
     pauseAfterFailures: 6,
+    // SOURCE-DEDUP-1: same-source near-duplicate (fuzzy/simhash) candidate window.
+    // Bounded + time-windowed on purpose: a source's own history can only near-dup-match
+    // against its own recent output (no unbounded scan), and reuses the existing
+    // raw_articles_source_fetched_idx (sourceId, fetchedAt) index — no migration required.
+    // Real per-source hourly volume could not be measured this phase (no live DB access from
+    // this environment); 72h/40 keeps the previous global default's candidate count while
+    // scoping it to one source, which is intentionally conservative pending real measurement.
+    nearDupWindowHours: clamp(intEnv('NEWS_CRAWLER_NEAR_DUP_WINDOW_HOURS', 72), 1, 336),
+    nearDupMaxCandidates: clamp(intEnv('NEWS_CRAWLER_NEAR_DUP_MAX_CANDIDATES', 40), 5, 200),
   }
+}
+
+/**
+ * SOURCE-DEDUP-1: RSS/Atom GUID early-dedup signal (source-scoped only — a GUID is only
+ * guaranteed unique within one publisher's own feed, never globally). Default ON; explicit-off
+ * kill switch in case a misbehaving feed reuses GUIDs across genuinely different articles.
+ */
+export function isGuidEarlyDedupEnabled(): boolean {
+  const raw = process.env.NEWS_CRAWLER_GUID_DEDUP_ENABLED?.trim().toLowerCase()
+  if (raw === 'false' || raw === '0' || raw === 'off') return false
+  return true
 }
 
 export function crawlIntervalForPriority(band: 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'): number {

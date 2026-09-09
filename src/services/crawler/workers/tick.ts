@@ -317,7 +317,12 @@ export async function runCrawlerTick(opts?: {
     const hashes = hashesForArticle(extracted.title, extracted.articleBodyText)
     const simhash = extracted.articleBodyText ? simhashOf(extracted.articleBodyText) : null
     const canonical = extracted.canonicalUrl || normalizeArticleUrl(fetched.finalUrl)
-    const near = await store.recentRawForNearDup(source.countryCode)
+    // SOURCE-DEDUP-1: all same-source-identity lookups are scoped by source.id. This is the
+    // fix for the cross-source false-positive root cause (SOURCE-DEDUP-0, Root Cause C): two
+    // different publishers legitimately producing identical wire-copy text must never be
+    // collapsed into a same-source "duplicate" — only findRawByCanonicalUrl stays global,
+    // since canonical URL is a publisher-page identity, not a text identity.
+    const near = await store.recentRawForNearDup(source.id, limits.nearDupMaxCandidates, now)
     const existingNorm = await store.getDiscoveredByHash(item.urlHash)
     const dup = evaluateExactDuplicate({
       canonicalUrl: canonical,
@@ -327,9 +332,11 @@ export async function runCrawlerTick(opts?: {
       existingByNormalizedUrl: existingNorm && existingNorm.id !== item.id ? existingNorm.id : null,
       existingByCanonicalUrl: canonical ? (await store.findRawByCanonicalUrl(canonical))?.id ?? null : null,
       existingByContentHash: hashes.contentHash
-        ? (await store.findRawByContentHash(hashes.contentHash))?.id ?? null
+        ? (await store.findRawByContentHash(source.id, hashes.contentHash))?.id ?? null
         : null,
-      existingByTitleHash: hashes.titleHash ? (await store.findRawByTitleHash(hashes.titleHash))?.id ?? null : null,
+      existingByTitleHash: hashes.titleHash
+        ? (await store.findRawByTitleHash(source.id, hashes.titleHash))?.id ?? null
+        : null,
       nearCandidates: near,
     })
 
