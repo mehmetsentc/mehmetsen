@@ -21,6 +21,7 @@ import {
   pickLatest,
 } from '@/lib/publisher/editorialTiers'
 import { accentColorCssVarValue } from '@/lib/publisher/accentPalette'
+import { LivingVideoPlayer } from '@/components/publisher/LivingVideoPlayer'
 
 type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
 
@@ -44,12 +45,22 @@ function ArticleCard({
   return (
     <Link
       href={ROUTES.NEWS_DETAIL(article.slug)}
+      data-article-lift-origin={article.id}
       className={cn(
         'group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md',
         layout === 'masonry' ? 'mb-4 break-inside-avoid' : 'h-full'
       )}
     >
-      {article.thumbnailUrl ? (
+      {article.videoUrl ? (
+        <LivingVideoPlayer
+          id={article.id}
+          videoUrl={article.videoUrl}
+          posterUrl={article.thumbnailUrl}
+          alt={article.title}
+          categoryLabel={catLabel}
+          layout={layout === 'masonry' ? 'masonry' : 'fixed'}
+        />
+      ) : article.thumbnailUrl ? (
         <div className="relative w-full overflow-hidden bg-[rgb(var(--color-bg))]">
           <SafeNewsImage
             src={article.thumbnailUrl}
@@ -124,11 +135,22 @@ function LeadArticleCard({
   return (
     <Link
       href={ROUTES.NEWS_DETAIL(article.slug)}
+      data-article-lift-origin={article.id}
       className="group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2">
         <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))] lg:aspect-auto lg:min-h-[280px]">
-          {article.thumbnailUrl ? (
+          {article.videoUrl ? (
+            <LivingVideoPlayer
+              id={article.id}
+              videoUrl={article.videoUrl}
+              posterUrl={article.thumbnailUrl}
+              alt={article.title}
+              categoryLabel={catLabel}
+              layout="masonry"
+              className="absolute inset-0"
+            />
+          ) : article.thumbnailUrl ? (
             <SafeNewsImage
               src={article.thumbnailUrl}
               alt={article.title}
@@ -142,9 +164,11 @@ function LeadArticleCard({
               </span>
             </div>
           )}
-          <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
-            {catLabel}
-          </span>
+          {!article.videoUrl ? (
+            <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+              {catLabel}
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-col justify-center p-5 sm:p-7">
           <h2 className="text-xl font-black leading-snug text-[rgb(var(--color-text))] transition-colors group-hover:text-[rgb(var(--color-brand))] sm:text-2xl lg:text-3xl">

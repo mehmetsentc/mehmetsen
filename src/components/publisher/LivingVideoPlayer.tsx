@@ -58,8 +58,12 @@ export function LivingVideoPlayer({
     <div
       ref={containerRef}
       className={cn(
+        // Spacing/break-inside-avoid for masonry layout is owned by the
+        // caller's outer wrapping element (matching how the plain
+        // image-only card already works) so it's never duplicated between
+        // this container and its parent.
         'relative w-full overflow-hidden bg-[rgb(var(--color-bg))]',
-        layout === 'masonry' ? 'mb-4 break-inside-avoid' : 'aspect-video',
+        layout === 'fixed' ? 'aspect-video' : '',
         className
       )}
     >
