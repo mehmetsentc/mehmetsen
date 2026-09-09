@@ -13,8 +13,155 @@ import type { PublicPublisherRecord, PublisherArticleItem } from '@/types/publis
 import { FollowButton } from '@/components/social/FollowButton'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import toast from 'react-hot-toast'
+import {
+  buildEditorialFrontPage,
+  categoryLabelFor,
+  formatPublishedAt,
+  pickLatest,
+} from '@/lib/publisher/editorialTiers'
 
 type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
+
+/**
+ * Shared article card primitive. Used by the masonry grid (category-filtered
+ * view + the "Latest" rail) AND by the editorial front-page's Secondary/
+ * Sections grids. Kept as a single reusable component per LP7R.1 Task 9 so
+ * the Pinterest-masonry presentation stays available for a possible future
+ * "Keşfet/Archive/Discovery" mode without duplicating markup.
+ */
+function ArticleCard({
+  article,
+  categoryMap,
+  layout = 'grid',
+}: {
+  article: PublisherArticleItem
+  categoryMap: Map<string, string>
+  layout?: 'masonry' | 'grid'
+}) {
+  const catLabel = categoryLabelFor(article, categoryMap)
+  return (
+    <Link
+      href={ROUTES.NEWS_DETAIL(article.slug)}
+      className={cn(
+        'group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md',
+        layout === 'masonry' ? 'mb-4 break-inside-avoid' : 'h-full'
+      )}
+    >
+      {article.thumbnailUrl ? (
+        <div className="relative w-full overflow-hidden bg-[rgb(var(--color-bg))]">
+          <SafeNewsImage
+            src={article.thumbnailUrl}
+            alt={article.title}
+            width={640}
+            height={480}
+            className="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+            {catLabel}
+          </span>
+        </div>
+      ) : (
+        <div className="relative flex min-h-[120px] w-full items-center justify-center bg-[rgb(var(--color-bg))] p-4">
+          <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+            {catLabel}
+          </span>
+        </div>
+      )}
+      <div className="p-4">
+        <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] transition-colors group-hover:text-[rgb(var(--color-brand))]">
+          {article.title}
+        </h3>
+        {article.summary ? (
+          <p className="mt-2 hidden text-xs leading-relaxed text-[rgb(var(--color-muted))] sm:line-clamp-3 sm:block">
+            {article.summary}
+          </p>
+        ) : null}
+        <div className="mt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
+          <span>{formatPublishedAt(article.publishedAt)}</span>
+          <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
+            Oku →
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * The Pinterest-style masonry grid, extracted as a reusable primitive
+ * (LP7R.1 Task 9). Used for: (a) the category-filtered view (unchanged
+ * behavior from before this phase), and (b) the "Latest" rail on the
+ * editorial front page. Deliberately NOT wired up as a standalone
+ * "Keşfet/Archive/Discovery" mode yet — that scope is explicitly deferred
+ * per the LP7R.1 spec.
+ */
+function MasonryArticleGrid({
+  articles,
+  categoryMap,
+}: {
+  articles: PublisherArticleItem[]
+  categoryMap: Map<string, string>
+}) {
+  return (
+    <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
+      {articles.map((article) => (
+        <ArticleCard key={article.id} article={article} categoryMap={categoryMap} layout="masonry" />
+      ))}
+    </div>
+  )
+}
+
+function LeadArticleCard({
+  article,
+  categoryMap,
+}: {
+  article: PublisherArticleItem
+  categoryMap: Map<string, string>
+}) {
+  const catLabel = categoryLabelFor(article, categoryMap)
+  return (
+    <Link
+      href={ROUTES.NEWS_DETAIL(article.slug)}
+      className="group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-bg))] lg:aspect-auto lg:min-h-[280px]">
+          {article.thumbnailUrl ? (
+            <SafeNewsImage
+              src={article.thumbnailUrl}
+              alt={article.title}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
+                {catLabel}
+              </span>
+            </div>
+          )}
+          <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
+            {catLabel}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center p-5 sm:p-7">
+          <h2 className="text-xl font-black leading-snug text-[rgb(var(--color-text))] transition-colors group-hover:text-[rgb(var(--color-brand))] sm:text-2xl lg:text-3xl">
+            {article.title}
+          </h2>
+          {article.summary ? (
+            <p className="mt-3 hidden text-sm leading-relaxed text-[rgb(var(--color-muted))] sm:line-clamp-3 sm:block">
+              {article.summary}
+            </p>
+          ) : null}
+          <div className="mt-4 flex items-center gap-3 text-xs text-[rgb(var(--color-muted))]">
+            <span>{formatPublishedAt(article.publishedAt)}</span>
+            <span className="font-semibold text-[rgb(var(--color-brand))]">Oku →</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
 
 export function PublisherProfileClient({
   publisher,
@@ -77,6 +224,23 @@ export function PublisherProfileClient({
       return cat === selectedCategory
     })
   }, [articles, selectedCategory])
+
+  // Editorial front page (Lead/Secondary/Sections) computed ONLY from the
+  // stable initial SSR'd page — deliberately not the ever-growing `articles`
+  // state — so the tiers never reshuffle when "load more" is pressed.
+  // `initialArticles` is a stable prop reference for the lifetime of this
+  // mount, so this memo only recomputes if the publisher/page truly changes.
+  const editorialFrontPage = useMemo(
+    () => buildEditorialFrontPage(initialArticles, categoryMap),
+    [initialArticles, categoryMap]
+  )
+
+  // "Latest" rail: everything loaded so far that wasn't placed into a tier.
+  // This is the piece that actually grows as pagination loads more articles.
+  const latestArticles = useMemo(
+    () => pickLatest(articles, editorialFrontPage.usedIds),
+    [articles, editorialFrontPage]
+  )
 
   const selectCategory = useCallback(
     (id: string) => {
@@ -399,91 +563,85 @@ export function PublisherProfileClient({
         )}
       </section>
 
-      {/* Pinterest-style masonry news grid */}
-      <section>
-        {filteredArticles.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
-            <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
-              Bu kategoride yayınlanmış haber bulunamadı.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-              {filteredArticles.map((article) => {
-                const catLabel =
-                  categoryMap.get((article.categoryId || '').toLowerCase()) ||
-                  (article.categoryId ? article.categoryId.toUpperCase() : 'GÜNDEM')
-
-                return (
-                  <Link
-                    key={article.id}
-                    href={ROUTES.NEWS_DETAIL(article.slug)}
-                    className="group mb-4 break-inside-avoid block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
-                  >
-                    {article.thumbnailUrl ? (
-                      <div className="relative w-full overflow-hidden bg-[rgb(var(--color-bg))]">
-                        <SafeNewsImage
-                          src={article.thumbnailUrl}
-                          alt={article.title}
-                          width={640}
-                          height={480}
-                          className="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <span className="absolute left-3 top-3 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white backdrop-blur-sm">
-                          {catLabel}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="relative flex min-h-[120px] w-full items-center justify-center bg-[rgb(var(--color-bg))] p-4">
-                        <span className="rounded-md bg-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold text-[rgb(var(--color-muted))]">
-                          {catLabel}
-                        </span>
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <h3 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] transition-colors group-hover:text-[rgb(var(--color-brand))]">
-                        {article.title}
-                      </h3>
-                      {article.summary ? (
-                        <p className="mt-2 hidden text-xs leading-relaxed text-[rgb(var(--color-muted))] sm:line-clamp-3 sm:block">
-                          {article.summary}
-                        </p>
-                      ) : null}
-                      <div className="mt-3 flex items-center justify-between text-[11px] text-[rgb(var(--color-muted))]">
-                        <span>
-                          {article.publishedAt
-                            ? new Date(article.publishedAt).toLocaleDateString('tr-TR', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                            : null}
-                        </span>
-                        <span className="font-semibold text-[rgb(var(--color-brand))] opacity-0 transition-opacity group-hover:opacity-100">
-                          Oku →
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
+      {selectedCategory === 'all' ? (
+        /* Editorial front page: Lead / Secondary / Sections / Latest.
+           Preserves cursor-pagination (Latest grows via loadMore) and keeps
+           the masonry grid alive as the "Latest" rail's presentation. */
+        <section>
+          {articles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
+              <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
+                Bu yayın için henüz yayınlanmış haber bulunamadı.
+              </p>
             </div>
-            {nextCursor && selectedCategory === 'all' ? (
-              <div className="mt-8 flex justify-center">
-                <button
-                  type="button"
-                  disabled={loadingMore}
-                  onClick={() => void loadMore()}
-                  className="rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-6 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] shadow-sm transition hover:border-[rgb(var(--color-brand))]/40 disabled:opacity-60"
-                >
-                  {loadingMore ? 'Yükleniyor…' : 'Daha fazla haber'}
-                </button>
-              </div>
-            ) : null}
-          </>
-        )}
-      </section>
+          ) : (
+            <div className="space-y-10">
+              {editorialFrontPage.lead ? (
+                <LeadArticleCard article={editorialFrontPage.lead} categoryMap={categoryMap} />
+              ) : null}
+
+              {editorialFrontPage.secondary.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {editorialFrontPage.secondary.map((article) => (
+                    <ArticleCard key={article.id} article={article} categoryMap={categoryMap} layout="grid" />
+                  ))}
+                </div>
+              ) : null}
+
+              {editorialFrontPage.sections.map((section) => (
+                <section key={section.id}>
+                  <h3 className="mb-3 text-lg font-black text-[rgb(var(--color-text))] sm:text-xl">
+                    {section.label}
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {section.items.map((article) => (
+                      <ArticleCard key={article.id} article={article} categoryMap={categoryMap} layout="grid" />
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+              {latestArticles.length > 0 ? (
+                <section>
+                  <h3 className="mb-3 text-lg font-black text-[rgb(var(--color-text))] sm:text-xl">
+                    Son Haberler
+                  </h3>
+                  <MasonryArticleGrid articles={latestArticles} categoryMap={categoryMap} />
+                </section>
+              ) : null}
+
+              {nextCursor ? (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                    className="rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-6 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] shadow-sm transition hover:border-[rgb(var(--color-brand))]/40 disabled:opacity-60"
+                  >
+                    {loadingMore ? 'Yükleniyor…' : 'Daha fazla haber'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
+      ) : (
+        /* Category-filtered view: preserved Pinterest-style masonry grid,
+           unchanged from the pre-LP7R.1 behavior (no load-more here, same
+           as before — category filtering only operates over already-loaded
+           articles on the client). */
+        <section>
+          {filteredArticles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
+              <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
+                Bu kategoride yayınlanmış haber bulunamadı.
+              </p>
+            </div>
+          ) : (
+            <MasonryArticleGrid articles={filteredArticles} categoryMap={categoryMap} />
+          )}
+        </section>
+      )}
     </div>
   )
 }
