@@ -1,6 +1,7 @@
 import { normalizeArticleUrl, urlHashFor } from './url/normalize'
 import { laneFromDiscoveryType, mergeDiscoveryLanes, type DiscoveryLane } from './discovery/lanes'
 import type { CrawlerStore } from './store/types'
+import { isGuidEarlyDedupEnabled } from './enabled'
 
 export type DiscoveryType = 'RSS' | 'ATOM' | 'SITEMAP' | 'LISTING' | 'MANUAL'
 
@@ -91,6 +92,37 @@ export async function ingestDiscoveredArticle(
       urlHash,
       discoveryLanes: lanes,
       ...base,
+    }
+  }
+
+  // SOURCE-DEDUP-1: RSS/Atom GUID early-dedup fallback. The URL-hash check above found no
+  // match (the URL genuinely looks new — e.g. a tracking param changed, or the publisher
+  // reissued a slightly different link), but the SAME source's own feed already carries this
+  // exact GUID. Per spec a GUID is only guaranteed unique WITHIN one feed, so this check is
+  // strictly source-scoped (store.getDiscoveredBySourceAndGuid) — it can never suppress a
+  // different source's coverage of the same event. Conservative length guard filters out
+  // degenerate/placeholder GUID values; source-scoping already makes numeric/short GUIDs safe,
+  // this is extra defense-in-depth only. NEWS_CRAWLER_GUID_DEDUP_ENABLED=false disables it.
+  const guid = input.guid?.trim() || null
+  if (guid && guid.length >= 8 && isGuidEarlyDedupEnabled()) {
+    const byGuid = await store.getDiscoveredBySourceAndGuid(input.sourceId, guid)
+    if (byGuid) {
+      const lanes = mergeDiscoveryLanes(byGuid.discoveryLanes, discoveryLane)
+      await store.updateDiscoveredUrl(byGuid.id, {
+        discoveryLanes: lanes,
+        titleHint: byGuid.titleHint || input.titleHint || null,
+        discoveryPrimaryImageCandidate: byGuid.discoveryPrimaryImageCandidate || imageCandidate,
+        rssDescription: byGuid.rssDescription || input.rssDescription || null,
+        feedMetadata: byGuid.feedMetadata || input.feedMetadata || null,
+        publishedAtHint: byGuid.publishedAtHint || publishedAtHint,
+      })
+      return {
+        status: 'duplicate',
+        normalizedUrl: normalized,
+        urlHash,
+        discoveryLanes: lanes,
+        ...base,
+      }
     }
   }
 

@@ -291,10 +291,29 @@ export interface CrawlerStore {
   insertRawArticle(input: InsertRawArticleInput): Promise<RawArticleRecord>
   getRawArticle(id: string): Promise<RawArticleRecord | null>
   listRecentArticles(limit?: number): Promise<RawArticleRecord[]>
-  findRawByContentHash(hash: string): Promise<RawArticleRecord | null>
-  findRawByTitleHash(hash: string): Promise<RawArticleRecord | null>
+  /**
+   * SOURCE-DEDUP-1: source-scoped exact-hash lookups. Content/title hash identity is only
+   * meaningful WITHIN one source's own history — two different publishers legitimately
+   * produce identical wire-copy text (agency copy, embargoed releases, etc.) and that must
+   * remain independent raw evidence, never suppressed as a same-source duplicate. Do not
+   * remove the sourceId scoping; that is the fix for the cross-source false-positive root
+   * cause documented in SOURCE-DEDUP-0.
+   */
+  findRawByContentHash(sourceId: string, hash: string): Promise<RawArticleRecord | null>
+  findRawByTitleHash(sourceId: string, hash: string): Promise<RawArticleRecord | null>
+  /** Global by design: canonical URL identity is a publisher-page identity, not a text identity. */
   findRawByCanonicalUrl(url: string): Promise<RawArticleRecord | null>
-  recentRawForNearDup(sourceCountry: string | null, limit?: number): Promise<RawArticleRecord[]>
+  /**
+   * SOURCE-DEDUP-1: near-duplicate (fuzzy/simhash) candidate pool is source-scoped and
+   * bounded, not just country-scoped. Cross-source fuzzy matching belongs to event
+   * clustering (cluster/worker.ts), not to same-source duplicate detection.
+   */
+  recentRawForNearDup(sourceId: string, limit?: number, now?: Date): Promise<RawArticleRecord[]>
+  /**
+   * SOURCE-DEDUP-1: RSS/Atom GUID early-dedup signal, source-scoped only (never a global
+   * uniqueness constraint — GUIDs are only guaranteed unique within one feed/publisher).
+   */
+  getDiscoveredBySourceAndGuid(sourceId: string, guid: string): Promise<DiscoveredUrlRecord | null>
   recentClusters(countryCode: string | null, since: Date): Promise<
     Array<NewsClusterRecord & { representativeTitle?: string | null; representativeSimhash?: string | null }>
   >
