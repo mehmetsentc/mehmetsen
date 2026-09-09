@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BadgeCheck, ExternalLink, Globe, MapPin, Sparkles } from 'lucide-react'
@@ -19,6 +20,7 @@ import {
   formatPublishedAt,
   pickLatest,
 } from '@/lib/publisher/editorialTiers'
+import { accentColorCssVarValue } from '@/lib/publisher/accentPalette'
 
 type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
 
@@ -242,6 +244,18 @@ export function PublisherProfileClient({
     [articles, editorialFrontPage]
   )
 
+  // Publisher accent (LP7R.1 Task 11): reuses ONLY accentColorHex, scoped to
+  // this page via a `--color-brand` CSS variable override on the wrapper —
+  // every `rgb(var(--color-brand))` usage already in this file (active
+  // chip, hover borders, "Oku ->" links, Lead/Secondary/Sections/Latest
+  // cards) then picks it up automatically, with zero new color usages
+  // introduced. A missing/invalid accentColorHex falls back to the site
+  // default brand color untouched.
+  const accentStyle = useMemo(() => {
+    const triplet = accentColorCssVarValue(publisher.accentColorHex)
+    return triplet ? ({ '--color-brand': triplet } as CSSProperties) : undefined
+  }, [publisher.accentColorHex])
+
   const selectCategory = useCallback(
     (id: string) => {
       setSelectedCategory(id)
@@ -357,7 +371,7 @@ export function PublisherProfileClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8" style={accentStyle}>
       {/* Publisher Header Banner Card */}
       <header className="mb-8 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5 shadow-sm sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
