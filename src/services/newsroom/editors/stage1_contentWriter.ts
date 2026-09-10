@@ -7,6 +7,7 @@
  */
 
 import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import { NEWS_FORMAT_LOCK } from '@/lib/ai/editorial/promptBuilder'
 import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 import { runStage1Shadow } from '@/lib/ai/stage1Shadow'
@@ -69,16 +70,18 @@ const HARD_RULES = `MUTLAK KURALLAR:
 /**
  * Varsayılan haber biçimi (persona yoksa).
  * Ters piramit: özet → olgular → kısa bağlam. Ansiklopedi / okul kompozisyonu YASAK.
+ *
+ * AI STYLE P1.1 — Task 8 (prompt drift repair): ortak "HABER BİÇİMİ" kuralları artık
+ * promptBuilder.ts'teki NEWS_FORMAT_LOCK'tan reuse ediliyor (tek kaynak, drift riski yok).
+ * Bu fallback'e özgü iki kural (spot uzunluğu, nutuk/ahlak dersi yasağı) ve ALANLAR bölümü
+ * davranış değişmeden AYNEN korunuyor.
  */
 const DEFAULT_NEWS_SYSTEM = `Sen NaHaber içerik editörüsün. Kısa, net, olgu temelli GAZETE HABERİ yaz.
 
-HABER BİÇİMİ (zorunlu):
-- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman)
+${NEWS_FORMAT_LOCK}
+
+EK KURALLAR (yalnızca bu varsayılan biçimde):
 - spot: 2-4 cümle lider; content spot'u tekrarlama
-- content: 250-450 kelime hedef (asgari ~220); gereksiz nutuk/doldurma YASAK
-- Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
-- Alt başlıklar olay-özgü ve somut olsun (ör. "Ceza Tutarı", "Resmi Açıklama", "Vatandaşlar Ne Diyor"); jenerik ders kitabı / ansiklopedi başlığı YASAK: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri
-- Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
 - Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
 

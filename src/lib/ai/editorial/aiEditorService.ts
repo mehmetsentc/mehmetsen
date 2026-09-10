@@ -455,6 +455,115 @@ export async function enableAutoPublishForActiveEditors(
  * Mevcut editörlerin prompt'larını seed'den yenile (versioned).
  * Karakter + haber tarzı bir kez güncellenir; sonraki haberlerde geçerli olur.
  */
+/**
+ * AI STYLE P1.1 — Task 12: safe DRY-RUN preview for refreshStylePromptsFromSeed().
+ *
+ * READ-ONLY. Never calls setPromptVersion / updateAiEditor — no Firestore writes,
+ * no version bump, no production data touched. For each seed editor + populated
+ * promptType, compares the CURRENT active DB prompt against the seed-proposed
+ * content and flags whether an admin appears to have manually customized it
+ * (via changeReason recorded by the "Karakter & Tarz" panel or any reason other
+ * than the seeding/refresh machinery itself) — i.e. content that
+ * refreshStylePromptsFromSeed() would silently overwrite if run for real.
+ */
+export interface StyleRefreshPreviewEntry {
+  editorSlug: string
+  editorId: string | null
+  editorFound: boolean
+  promptType: AiPromptType
+  currentActiveVersion: number | null
+  changed: boolean
+  manualCustomizationRisk: boolean
+  manualCustomizationReason: string | null
+  currentContentPreview: string | null
+  proposedContentPreview: string
+}
+
+export interface StyleRefreshPreviewResult {
+  generatedAt: number
+  missingEditors: string[]
+  entries: StyleRefreshPreviewEntry[]
+  summary: {
+    totalEditorsInSeed: number
+    totalPromptsChecked: number
+    changedCount: number
+    unchangedCount: number
+    manualCustomizationRiskCount: number
+  }
+}
+
+/** changeReason values written by the seeding/refresh machinery itself (never a manual admin edit). */
+const NON_MANUAL_CHANGE_REASONS = new Set<string | null | undefined>([
+  'initial',
+  'refreshStylePromptsFromSeed',
+])
+
+function previewSnippet(content: string, max = 220): string {
+  const trimmed = content.trim()
+  return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed
+}
+
+export async function previewStyleRefreshFromSeed(): Promise<StyleRefreshPreviewResult> {
+  const missingEditors: string[] = []
+  const entries: StyleRefreshPreviewEntry[] = []
+  const promptTypes: AiPromptType[] = [
+    'core',
+    'news',
+    'breaking',
+    'column',
+    'analysis',
+    'seo',
+    'review',
+    'video',
+    'source',
+  ]
+
+  for (const spec of allSeedEditorSpecs()) {
+    const existing = await getAiEditorBySlug(spec.slug)
+    if (!existing) {
+      missingEditors.push(spec.slug)
+      continue
+    }
+    for (const promptType of promptTypes) {
+      const proposed = spec.prompts[promptType]
+      if (!proposed?.trim()) continue
+      const active = await getActivePrompt(existing.id, promptType)
+      const currentContent = active?.content?.trim() ?? null
+      const changed = currentContent !== proposed.trim()
+      const manualCustomizationRisk =
+        !!active && changed && !NON_MANUAL_CHANGE_REASONS.has(active.changeReason)
+      entries.push({
+        editorSlug: spec.slug,
+        editorId: existing.id,
+        editorFound: true,
+        promptType,
+        currentActiveVersion: active?.version ?? null,
+        changed,
+        manualCustomizationRisk,
+        manualCustomizationReason: manualCustomizationRisk ? active!.changeReason ?? null : null,
+        currentContentPreview: currentContent ? previewSnippet(currentContent) : null,
+        proposedContentPreview: previewSnippet(proposed),
+      })
+    }
+  }
+
+  const changedCount = entries.filter((e) => e.changed).length
+  const manualCustomizationRiskCount = entries.filter((e) => e.manualCustomizationRisk).length
+
+  return {
+    generatedAt: Date.now(),
+    missingEditors,
+    entries,
+    summary: {
+      totalEditorsInSeed: allSeedEditorSpecs().length,
+      totalPromptsChecked: entries.length,
+      changedCount,
+      unchangedCount: entries.length - changedCount,
+      manualCustomizationRiskCount,
+    },
+  }
+}
+
 export async function refreshStylePromptsFromSeed(changedBy: string | null): Promise<{
   updated: string[]
   missing: string[]
