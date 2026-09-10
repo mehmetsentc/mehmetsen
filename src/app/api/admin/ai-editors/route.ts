@@ -5,6 +5,7 @@ import {
   listAiEditors,
   seedDefaultAiEditors,
   refreshStylePromptsFromSeed,
+  previewStyleRefreshFromSeed,
   enableAutoPublishForActiveEditors,
 } from '@/lib/ai/editorial/aiEditorService'
 import { invalidateEditorRouterCache } from '@/lib/ai/editorial/editorRouter'
@@ -39,6 +40,11 @@ export async function POST(request: Request) {
     const result = await seedDefaultAiEditors(auth.uid)
     invalidateEditorRouterCache()
     return NextResponse.json({ success: true, ...result })
+  }
+  if (body.action === 'previewStyleRefresh') {
+    // AI STYLE P1.1 — Task 12: READ-ONLY dry-run. Never calls setPromptVersion/updateAiEditor.
+    const preview = await previewStyleRefreshFromSeed()
+    return NextResponse.json({ success: true, preview })
   }
   if (body.action === 'refreshStylePrompts') {
     const result = await refreshStylePromptsFromSeed(auth.uid)
