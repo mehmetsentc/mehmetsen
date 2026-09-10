@@ -73,7 +73,9 @@ Sayıları kaynakla birebir koru (dönüşüm gerekiyorsa matematiksel olarak do
 Kanıt yetersizse varsayımla doldurma; uyarı bayrağı kaldır.
 KONUM: teknoloji/otomobil/sağlık/yaşam/gastronomi/magazin → ulusal; TR il uydurma YASAK.
 "orta/ortada", "genç", "keskin" günlük kelime ≠ Çankırı/Orta vb. "Bingöl'ün Genç ilçesinde" → Bingöl+Genç.
-AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.`
+AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.
+KESİNLEŞTİRME YASAĞI (AI STYLE P1.1): "iddia edildi / öne sürüldü / söyleniyor" düzeyindeki bilgiyi "oldu" gibi kesin bir gerçekmiş gibi yazma.
+"Soruşturma başlatıldı" ile "suçlu bulundu" birbirine karıştırılmaz; yalnızca kaynakta belirtilen aşamayı yaz.`
 
 /** Her editörün news prompt'una eklenen ortak haber biçimi */
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).

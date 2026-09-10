@@ -87,6 +87,32 @@ const BOILERPLATE_PATTERNS = [
   /copyright\s+©/i,
 ]
 
+/**
+ * AI STYLE P1.1 — Task 7/11/15: AI-kokan şablon/dolgu ifadeler ve clickbait şablonları.
+ * BİLİNÇLİ OLARAK CONSERVATIVE: tek başına "şok"/"kriz"/"skandal" gibi genel gazetecilik
+ * kelimelerini YASAKLAMAZ (bunlar gerçek haber bağlamında meşru olabilir — "ekonomik kriz",
+ * "yolsuzluk skandalı" vb.). Yalnızca P1 auditinde tespit edilen, gerçekten jenerik/manipülatif
+ * ŞABLON kalıpları (tam ifade/kompozit kelime grubu) eşleşir.
+ */
+const AI_FILLER_PATTERNS = [
+  /gündeme\s+bomba\s+gibi\s+düştü/i,
+  /büyük\s+yankı\s+uyandırdı/i,
+  /dikkatleri?\s+üzerine\s+çekti/i,
+  /merak\s+konusu\s+oldu/i,
+  /vatandaşlar(ın)?\s+(tarafından\s+)?yakından\s+takip\s+edi/i,
+  /olayın\s+ardından\s+gözler[^.]{0,40}çevrildi/i,
+  /önemli\s+gelişmeler\s+yaşanmaya\s+devam\s+ediyor/i,
+  /son\s+günlerde\s+yaşanan\s+gelişmeler/i,
+  /türkiye\s+gündemine\s+bomba\s+gibi\s+düştü/i,
+]
+
+const CLICKBAIT_PATTERNS = [
+  /i̇?nanamayacaksınız/i,
+  /bomba\s+gelişme/i,
+  /flaş\s+gelişme/i,
+  /şok\s+(iddia|gelişme|detay|detaylar|itiraf|sözler|anlar)/i,
+]
+
 export function normalizeEditorialCategory(rawHint?: string | null, textForInference?: string): string {
   if (rawHint) {
     const cleanHint = rawHint.trim().toLowerCase().replace(/\s+/g, '-')
@@ -184,6 +210,17 @@ export function validateEditorialCandidate(input: {
   if (boilerplateHits >= 3) {
     issues.push('HIGH_BOILERPLATE_RATIO')
     score -= 20
+  }
+
+  // AI STYLE P1.1 — Task 7/11/15: AI-filler / clickbait template detection (deterministic, no AI call)
+  const combinedForFillerScan = `${sanitizedTitle} ${sanitizedBody}`
+  if (AI_FILLER_PATTERNS.some((p) => p.test(combinedForFillerScan))) {
+    issues.push('AI_FILLER_LANGUAGE')
+    score -= 25
+  }
+  if (CLICKBAIT_PATTERNS.some((p) => p.test(sanitizedTitle))) {
+    issues.push('CLICKBAIT_TEMPLATE_PHRASE')
+    score -= 25
   }
 
   const resolvedCategory = normalizeEditorialCategory(
