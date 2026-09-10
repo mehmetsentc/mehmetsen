@@ -69,6 +69,7 @@ const TOPIC_CHANNELS = [
     title: 'Reklam & İş Birliği',
     description: 'Reklam, sponsorluk ve içerik ortaklığı talepleri.',
     subject: 'Reklam ve İş Birliği',
+    id: 'reklam-is-birligi',
   },
 ] as const
 
@@ -144,9 +145,22 @@ const FAQ: FaqEntry[] = [
   },
 ]
 
-function TopicCard({ title, description, subject }: { title: string; description: string; subject: string }) {
+function TopicCard({
+  title,
+  description,
+  subject,
+  id,
+}: {
+  title: string
+  description: string
+  subject: string
+  id?: string
+}) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900/60">
+    <div
+      id={id}
+      className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm scroll-mt-24 dark:border-gray-700 dark:bg-gray-900/60"
+    >
       <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{description}</p>
       <a

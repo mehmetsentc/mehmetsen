@@ -110,9 +110,9 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Künye', href: '/kunye' },
       { label: 'Editoryal İlkeler', href: '/editoryal-ilkeler' },
       { label: 'İletişim', href: '/iletisim' },
-      { label: 'Reklam', href: '/iletisim' },
+      { label: 'Reklam', href: '/iletisim#reklam-is-birligi' },
       { label: 'RSS Beslemeleri', href: '/rss.xml', external: true },
-      { label: 'Haberler RSS', href: '/rss.xml', external: true },
+      { label: 'Haberler RSS', href: '/rss/gundem', external: true },
     ],
   },
 ] as const
