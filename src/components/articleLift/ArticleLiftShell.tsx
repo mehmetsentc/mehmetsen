@@ -73,6 +73,14 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
   const panelRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const closingRef = useRef(false)
+  const fallbackBackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Idempotent guard: router.back() must fire AT MOST ONCE per open Lift,
+  // no matter which of the two completion paths (animation-complete vs the
+  // fallback timer) reaches it first, and regardless of any timing race
+  // between them. Clearing the fallback timer alone is not sufficient
+  // insurance against every ordering, so both paths funnel through
+  // goBackOnce() below rather than calling router.back() directly.
+  const hasNavigatedBackRef = useRef(false)
   const [isClosing, setIsClosing] = useState(false)
 
   // Lazy so the very first paint already has the correct FLIP transform -
@@ -81,25 +89,39 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
     computeFlipTransform(getCurrentLiftOrigin(articleId))
   )
 
+  const goBackOnce = useCallback(() => {
+    if (hasNavigatedBackRef.current) return
+    hasNavigatedBackRef.current = true
+    if (fallbackBackTimeoutRef.current) {
+      clearTimeout(fallbackBackTimeoutRef.current)
+      fallbackBackTimeoutRef.current = null
+    }
+    router.back()
+  }, [router])
+
   const close = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
     setIsClosing(true)
 
     if (shouldReduceMotion) {
-      router.back()
+      goBackOnce()
       return
     }
 
     // Fallback safety: if onAnimationComplete somehow never fires (e.g. the
     // panel unmounts for an unrelated reason), don't leave navigation stuck.
-    const fallback = setTimeout(() => router.back(), LIFT_TRANSITION_MS + 150)
-    ;(close as unknown as { _fallback?: ReturnType<typeof setTimeout> })._fallback = fallback
-  }, [router, shouldReduceMotion])
+    // Both this and handleAnimationComplete funnel through goBackOnce(),
+    // which guarantees router.back() fires at most once regardless of which
+    // path wins the race — calling it twice would skip an extra history
+    // entry and Article Return would overshoot past the origin page.
+    fallbackBackTimeoutRef.current = setTimeout(goBackOnce, LIFT_TRANSITION_MS + 150)
+  }, [shouldReduceMotion, goBackOnce])
 
   const handleAnimationComplete = useCallback(() => {
-    if (isClosing) router.back()
-  }, [isClosing, router])
+    if (!isClosing) return
+    goBackOnce()
+  }, [isClosing, goBackOnce])
 
   useEffect(() => {
     // Task 8 - Article Lift + Video ownership: never let a background
@@ -122,6 +144,10 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', onKeyDown)
+      if (fallbackBackTimeoutRef.current) {
+        clearTimeout(fallbackBackTimeoutRef.current)
+        fallbackBackTimeoutRef.current = null
+      }
       focusLiftOrigin(articleId)
       clearLiftOrigin()
     }
