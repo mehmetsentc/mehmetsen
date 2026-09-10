@@ -4,6 +4,7 @@ import {
   eq,
   inArray,
   isNotNull,
+  lt,
   or,
   sql,
   type SQL,
@@ -116,6 +117,34 @@ function adminFilterClause(filter: PublisherAdminFilter): SQL | undefined {
   if (filter === 'pending') return eq(publishers.verificationStatus, 'PENDING')
   if (filter === 'rejected') return eq(publishers.verificationStatus, 'REJECTED')
   return undefined
+}
+
+/**
+ * LP7R.3 fix — decodes the synthetic `${publishedAtMs}:${id}` base64url
+ * cursor that resolvePublishedArticles' own final-cursor computation
+ * produces (see the `nextCursor` assignment at the end of that method).
+ * Returns null for anything else (including a Firestore-provenance cursor
+ * from branch 3, or a missing/first-page cursor) so callers can safely
+ * treat "couldn't decode" as "don't filter" rather than throwing — a
+ * cross-branch cursor-format mismatch degrades to branch 1 re-showing its
+ * newest rows, not a crash. See resolvePublishedArticles for why this is
+ * an acceptable, disclosed limitation rather than a full fix.
+ */
+function decodePublisherArticleCursor(
+  cursor: string | null | undefined
+): { publishedAt: Date; id: string } | null {
+  if (!cursor) return null
+  try {
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
+    const sep = decoded.lastIndexOf(':')
+    if (sep === -1) return null
+    const ms = Number(decoded.slice(0, sep))
+    const id = decoded.slice(sep + 1)
+    if (!Number.isFinite(ms) || !id) return null
+    return { publishedAt: new Date(ms), id }
+  } catch {
+    return null
+  }
 }
 
 export class PublisherRepository {
@@ -741,6 +770,21 @@ export class PublisherRepository {
     const seen = new Set<string>()
     const out: PublisherArticleItem[] = []
 
+    // LP7R.3 fix (Task 19 "Load More" was silently a no-op for any publisher
+    // whose own cluster-news count alone reaches `pageSize`): branch 1 below
+    // previously ignored `cursor` entirely and always queried exactly
+    // `pageSize` rows, so out.length could never exceed pageSize from this
+    // branch alone and the "is there more?" check further down (which looks
+    // for out.length > pageSize) could never fire. Fetching one extra row
+    // (`pageSize + 1`) lets that existing check detect overflow correctly,
+    // and filtering by the decoded cursor is what makes a second "load more"
+    // call actually advance instead of re-fetching page 1's rows. A cursor
+    // that doesn't decode to this branch's own format (e.g. still page 1,
+    // or a Firestore-provenance cursor from branch 3 — see
+    // decodePublisherArticleCursor) simply applies no filter, which is the
+    // same behavior this branch always had.
+    const cursorPos = decodePublisherArticleCursor(cursor)
+
     // 1. Direct news from PostgreSQL joined with clusters matching sourceIds
     const clusterNewsRows = await db
       .select({
@@ -760,11 +804,17 @@ export class PublisherRepository {
       .where(
         and(
           eq(news.status, 'published'),
-          inArray(newsClusters.primarySourceId, sourceIds)
+          inArray(newsClusters.primarySourceId, sourceIds),
+          cursorPos
+            ? or(
+                lt(news.publishedAt, cursorPos.publishedAt),
+                and(eq(news.publishedAt, cursorPos.publishedAt), lt(news.id, cursorPos.id))
+              )
+            : undefined
         )
       )
       .orderBy(desc(news.publishedAt))
-      .limit(pageSize)
+      .limit(pageSize + 1)
 
     for (const n of clusterNewsRows) {
       if (seen.has(n.id)) continue

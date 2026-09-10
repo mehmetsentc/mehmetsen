@@ -10,12 +10,14 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode
   // LP7R.2 Article Lift: Next.js parallel-route slot for `@modal`
-  // (src/app/(main)/@modal). Optional because parallel-route props are only
-  // populated once a matching `@modal` folder exists alongside this layout —
-  // this stays a no-op (`undefined`) for any (main) route tree that hasn't
-  // added one, so this change is purely additive to every existing route,
-  // including feed-v2/Smart Feed.
-  modal?: React.ReactNode
+  // (src/app/(main)/@modal). Typed as required, not optional — Next's own
+  // generated route types (.next/types/app/(main)/layout.ts) require every
+  // parallel-route slot key to be present, since Next.js always provides a
+  // value for it (falling back to @modal/default.tsx's `null` on every
+  // route that isn't the intercepted article route). It is still a no-op
+  // on every existing route, including feed-v2/Smart Feed — this change is
+  // purely additive.
+  modal: React.ReactNode
 }) {
   const citySlug = await getCitySlugFromHeaders()
 
