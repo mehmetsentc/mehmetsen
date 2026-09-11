@@ -4,6 +4,7 @@ import { DEFAULT_CATEGORIES, TOP_NAV_CATEGORY_IDS } from '@/constants/config'
 export const FEED_V2_TRACKED_CATEGORY_IDS = new Set<string>([
   'son-dakika',
   'yerel-haber',
+  'muzik',
   ...TOP_NAV_CATEGORY_IDS,
 ])
 

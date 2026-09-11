@@ -49,10 +49,19 @@ describe('Feed V2 dynamic category chip ordering', () => {
   it('category ID normalization collapses aliases into one bucket', () => {
     expect(feedV2CategoryParentBucket('yerel-haber')).toBe('yerel')
     expect(feedV2CategoryParentBucket('yerel')).toBe('yerel')
-    expect(feedV2CategoryParentBucket('konser')).toBe('kultur')
+    // CAT-1F: Konser's canonical parent is now 'muzik' (was 'kultur' pre-CAT-1B).
+    expect(feedV2CategoryParentBucket('konser')).toBe('muzik')
     expect(feedV2CategoryParentBucket('magazin')).toBe('magazin')
     expect(feedV2CategoryParentBucket('gundem', true)).toBe('son-dakika')
     expect(feedV2CategoryParentBucket('son-dakika')).toBe('son-dakika')
+  })
+
+  it('CAT-1F: Müzik taxonomy family tracks into the muzik bucket; Dizi & TV / Influencer stay on their existing parents', () => {
+    expect(feedV2CategoryParentBucket('muzik')).toBe('muzik')
+    expect(feedV2CategoryParentBucket('konser')).toBe('muzik')
+    expect(feedV2CategoryParentBucket('sanatci-haberleri')).toBe('muzik')
+    expect(feedV2CategoryParentBucket('dizi-tv')).toBe('kultur')
+    expect(feedV2CategoryParentBucket('influencer')).toBe('magazin')
   })
 
   it('no duplicate chips', () => {
