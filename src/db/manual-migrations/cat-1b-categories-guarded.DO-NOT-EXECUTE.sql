@@ -1,0 +1,34 @@
+-- CAT-1B guarded categories-only migration
+-- DO NOT EXECUTE DIRECTLY
+--
+-- This file is documentation / audit only.
+-- The single executable authority is:
+--   npx tsx scripts/apply-cat-1b-categories-guarded.mts
+-- APPLY (not authorized by the design phase):
+--   npx tsx scripts/apply-cat-1b-categories-guarded.mts --apply
+--
+-- Writes ONLY to public.categories.
+-- Compare-and-set. Fail closed on UNEXPECTED.
+-- Parent-before-child: muzik, then children, then name updates, then konser parent.
+
+-- INSERT (only if missing exact target; never ON CONFLICT DO NOTHING):
+-- INSERT INTO categories (id, name, slug, parent_id, icon_name, color, is_standalone)
+-- VALUES
+--   ('muzik', 'Müzik', 'muzik', NULL, 'music-2', '#D946EF', false),
+--   ('sanatci-haberleri', 'Sanatçı Haberleri', 'sanatci-haberleri', 'muzik', 'mic-2', '#D946EF', false),
+--   ('dizi-tv', 'Dizi & TV', 'dizi-tv', 'kultur', 'tv', '#8B5CF6', false),
+--   ('influencer', 'Influencer', 'influencer', 'magazin', 'star', '#F472B6', false);
+
+-- UPDATE compare-and-set examples (old values must still match):
+-- UPDATE categories SET name = 'Kültür & Sanat'
+--  WHERE id = 'kultur' AND name = 'Kültür' AND slug = 'kultur' AND parent_id IS NULL;
+-- UPDATE categories SET name = 'Moda & Güzellik'
+--  WHERE id = 'moda' AND name = 'Moda' AND slug = 'moda' AND parent_id = 'yasam';
+-- UPDATE categories SET name = 'Ev & Yaşam'
+--  WHERE id = 'dekorasyon' AND name = 'Dekorasyon' AND slug = 'dekorasyon' AND parent_id = 'yasam';
+-- UPDATE categories SET name = 'Aile & İlişkiler'
+--  WHERE id = 'iliskiler' AND name = 'İlişkiler' AND slug = 'iliskiler' AND parent_id = 'yasam';
+-- UPDATE categories SET parent_id = 'muzik'
+--  WHERE id = 'konser' AND name = 'Konser' AND slug = 'konser' AND parent_id = 'kultur';
+
+-- magazin: NO CHANGE (anchor for influencer).
