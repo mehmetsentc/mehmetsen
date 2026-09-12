@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  captureLiftReaderOrigin,
   clearLiftOrigin,
   focusLiftOrigin,
   getCurrentLiftOrigin,
   getLiftOrigin,
+  getLiftReaderOrigin,
   setLiftOrigin,
+  shouldCaptureLiftReaderOrigin,
 } from '@/lib/articleLift/liftOrigin'
+import { applyLiftReaderOriginScroll } from '@/lib/articleLift/liftReaderScroll'
 
 function fakeElement(rect: { top: number; left: number; width: number; height: number }) {
   return {
@@ -58,5 +62,58 @@ describe('liftOrigin', () => {
 
   it('focusLiftOrigin does not throw when document is unavailable', () => {
     expect(() => focusLiftOrigin('a1')).not.toThrow()
+  })
+
+  it('captures reader origin pathname + scrollY before lift navigation', () => {
+    expect(captureLiftReaderOrigin('/feed', 4730)).toEqual({ pathname: '/feed', scrollY: 4730 })
+    expect(getLiftReaderOrigin()).toEqual({ pathname: '/feed', scrollY: 4730 })
+  })
+
+  it('never treats /haber as a return origin and never invents "/"', () => {
+    expect(shouldCaptureLiftReaderOrigin('/haber/some-slug')).toBe(false)
+    expect(captureLiftReaderOrigin('/haber/some-slug', 900)).toBeNull()
+    expect(getLiftReaderOrigin()).toBeNull()
+    expect(shouldCaptureLiftReaderOrigin('')).toBe(false)
+    expect(captureLiftReaderOrigin('', 10)).toBeNull()
+  })
+
+  it('does not capture Feed2 / Feed3 origins (intentional Feed2 delta = 0)', () => {
+    expect(shouldCaptureLiftReaderOrigin('/feed-v2')).toBe(false)
+    expect(shouldCaptureLiftReaderOrigin('/feed-v2/x')).toBe(false)
+    expect(shouldCaptureLiftReaderOrigin('/feed-v3')).toBe(false)
+    expect(captureLiftReaderOrigin('/feed-v2', 1200)).toBeNull()
+  })
+
+  it('keeps category / local / search / publisher / living-paper as reader origins', () => {
+    expect(shouldCaptureLiftReaderOrigin('/kategori/gundem')).toBe(true)
+    expect(shouldCaptureLiftReaderOrigin('/yerel/istanbul')).toBe(true)
+    expect(shouldCaptureLiftReaderOrigin('/search')).toBe(true)
+    expect(shouldCaptureLiftReaderOrigin('/publisher/ornek')).toBe(true)
+    expect(captureLiftReaderOrigin('/kategori/gundem', 880)).toEqual({
+      pathname: '/kategori/gundem',
+      scrollY: 880,
+    })
+  })
+
+  it('clearLiftOrigin also clears captured reader scroll', () => {
+    captureLiftReaderOrigin('/feed', 200)
+    clearLiftOrigin()
+    expect(getLiftReaderOrigin()).toBeNull()
+  })
+
+  it('return restore re-pins captured origin scroll, not a mutated footer-scale window.scrollY', () => {
+    const pinned: Record<string, number> = { '/feed': 11502 }
+    let windowScrollY = 11502
+    applyLiftReaderOriginScroll(
+      { pathname: '/feed', scrollY: 4730 },
+      (path, scrollY) => {
+        pinned[path] = scrollY
+      },
+      (scrollY) => {
+        windowScrollY = scrollY
+      },
+    )
+    expect(pinned['/feed']).toBe(4730)
+    expect(windowScrollY).toBe(4730)
   })
 })

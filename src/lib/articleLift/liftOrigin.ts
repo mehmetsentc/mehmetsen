@@ -24,8 +24,31 @@ export interface LiftOriginGeometry {
   height: number
 }
 
+/** Reader-origin scroll captured BEFORE Article Lift navigation. */
+export interface LiftReaderOrigin {
+  pathname: string
+  scrollY: number
+}
+
 let originArticleId: string | null = null
 let originGeometry: LiftOriginGeometry | null = null
+let readerOrigin: LiftReaderOrigin | null = null
+
+/**
+ * Article Lift intercepts /haber/* on top of the already-mounted origin
+ * page. That URL change is not a new reader destination — never treat an
+ * article path as the return origin, and never invent "/".
+ *
+ * Feed2 / Feed3 are excluded so this primitive cannot change those
+ * surfaces' scroll or ranking behavior.
+ */
+export function shouldCaptureLiftReaderOrigin(pathname: string): boolean {
+  if (!pathname) return false
+  if (pathname === '/haber' || pathname.startsWith('/haber/')) return false
+  if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return false
+  if (pathname === '/feed-v3' || pathname.startsWith('/feed-v3/')) return false
+  return true
+}
 
 function rectToGeometry(rect: DOMRect): LiftOriginGeometry {
   return { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
@@ -54,6 +77,27 @@ export function getLiftOrigin(articleId: string): LiftOriginGeometry | null {
 export function clearLiftOrigin(): void {
   originArticleId = null
   originGeometry = null
+  readerOrigin = null
+}
+
+/**
+ * Capture the reader origin route + window scrollY BEFORE intercept
+ * navigation mutates the document (Next Link default scroll, PageStateEffects
+ * treating /haber as a new page, overflow lock). Return destination is this
+ * captured origin — never publisherSlug, never a hardcoded "/".
+ */
+export function captureLiftReaderOrigin(pathname: string, scrollY: number): LiftReaderOrigin | null {
+  if (!shouldCaptureLiftReaderOrigin(pathname)) return null
+  const next: LiftReaderOrigin = {
+    pathname,
+    scrollY: Math.max(0, scrollY),
+  }
+  readerOrigin = next
+  return next
+}
+
+export function getLiftReaderOrigin(): LiftReaderOrigin | null {
+  return readerOrigin
 }
 
 /**
