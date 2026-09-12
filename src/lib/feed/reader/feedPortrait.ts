@@ -55,3 +55,8 @@ export async function tryLockFeedPortraitOrientation(): Promise<FeedPortraitLock
 export function isFeedPortraitStandaloneContext(): boolean {
   return isStandaloneDisplay()
 }
+
+/** Installed PWA / standalone display (iOS navigator.standalone or display-mode). */
+export function isStandaloneDisplayMode(): boolean {
+  return isStandaloneDisplay()
+}

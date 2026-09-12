@@ -1,14 +1,15 @@
 /**
- * RIGHT "Haberi Aç" discovery affordance — Feed → Reader.
+ * LEFT "Haberi Aç" discovery affordance — Feed → Reader.
  * Interactive hit target (not pointer-events:none on the chip).
- * Learned only after successful RIGHT swipe OR affordance TAP.
+ * Learned only after successful LEFT swipe OR affordance TAP.
  * Haberi Oku does NOT mark learned.
  *
- * V8: iOS hit-test + PWA re-teach after dead RIGHT-open UX (v7 learned could hide coach).
+ * V9: LEFT-open product authority re-teach (v8 could remain learned after prior UX).
  * Eligibility is !learned only — shownCount is diagnostic.
  */
 
-export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v8'
+export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v9'
+export const SWIPE_DISCOVERY_STORAGE_KEY_V8 = 'nahaber.feedSwipeDiscovery.v8'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V7 = 'nahaber.feedSwipeDiscovery.v7'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V6 = 'nahaber.feedSwipeDiscovery.v6'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V5 = 'nahaber.feedSwipeDiscovery.v5'
@@ -32,7 +33,7 @@ export const SWIPE_DISCOVERY_MAX_SHOWS = Number.MAX_SAFE_INTEGER
 export type SwipeDiscoveryState = {
   learned: boolean
   shownCount: number
-  version?: 8
+  version?: 9
 }
 
 export type SwipeDiscoveryPhase =
@@ -71,18 +72,18 @@ function readLegacyState(key: string): SwipeDiscoveryState | null {
 
 export function readSwipeDiscoveryState(): SwipeDiscoveryState {
   const ss = storage()
-  if (!ss) return { learned: false, shownCount: 0, version: 8 }
+  if (!ss) return { learned: false, shownCount: 0, version: 9 }
   try {
     const raw = ss.getItem(SWIPE_DISCOVERY_STORAGE_KEY)
-    if (!raw) return { learned: false, shownCount: 0, version: 8 }
+    if (!raw) return { learned: false, shownCount: 0, version: 9 }
     const parsed = JSON.parse(raw) as Partial<SwipeDiscoveryState>
     return {
       learned: Boolean(parsed.learned),
       shownCount: typeof parsed.shownCount === 'number' ? parsed.shownCount : 0,
-      version: 8,
+      version: 9,
     }
   } catch {
-    return { learned: false, shownCount: 0, version: 8 }
+    return { learned: false, shownCount: 0, version: 9 }
   }
 }
 
@@ -92,7 +93,7 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
   try {
     ss.setItem(
       SWIPE_DISCOVERY_STORAGE_KEY,
-      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 8 })
+      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 9 })
     )
   } catch {
     // private mode / quota
@@ -101,14 +102,14 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
 
 export function markSwipeDiscoveryLearned(): void {
   const cur = readSwipeDiscoveryState()
-  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 8 })
+  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 9 })
 }
 
 export function resetSwipeDiscoveryPresentation(): void {
-  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 8 })
+  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 9 })
 }
 
-/** Eligible until REAL right-open learn (swipe or affordance tap). shown ≠ learned. */
+/** Eligible until REAL left-open learn (swipe or affordance tap). shown ≠ learned. */
 export function shouldShowSwipeDiscoveryCoach(opts?: {
   state?: SwipeDiscoveryState
   maxShows?: number
@@ -120,7 +121,7 @@ export function shouldShowSwipeDiscoveryCoach(opts?: {
 
 export function recordSwipeDiscoveryShown(state?: SwipeDiscoveryState): SwipeDiscoveryState {
   const cur = state ?? readSwipeDiscoveryState()
-  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 8 as const }
+  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 9 as const }
   writeSwipeDiscoveryState(next)
   return next
 }
@@ -161,6 +162,7 @@ export function priorKeysWouldHaveSuppressedCoach(): boolean {
     SWIPE_DISCOVERY_STORAGE_KEY_V5,
     SWIPE_DISCOVERY_STORAGE_KEY_V6,
     SWIPE_DISCOVERY_STORAGE_KEY_V7,
+    SWIPE_DISCOVERY_STORAGE_KEY_V8,
   ]) {
     const s = readLegacyState(key)
     if (!s) continue

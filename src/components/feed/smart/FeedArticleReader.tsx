@@ -24,7 +24,9 @@ import {
   readerToFeedProgress,
   shouldCompleteTransition,
   shouldIgnoreSystemBackEdge,
+  shouldIgnoreSystemBackEdgeForReaderReturn,
 } from '@/lib/feed/reader/gestureArbitration'
+import { isStandaloneDisplayMode } from '@/lib/feed/reader/feedPortrait'
 import {
   FEED_READER_RETURN_GESTURE_ARM_MS,
   isReaderReturnGestureArmed,
@@ -183,6 +185,8 @@ export function FeedArticleReader({
     lastT: number
     axis: 'none' | 'horizontal' | 'vertical'
   } | null>(null)
+  /** After horizontal return lock: deny browser pan so iOS PWA cannot cancel RIGHT return. */
+  const [returnHorizontalLocked, setReturnHorizontalLocked] = useState(false)
   const closingRef = useRef(false)
   /** When this open became committed — Feed-opening pointer must not close Reader. */
   const committedAtMsRef = useRef<number | null>(null)
@@ -859,7 +863,12 @@ export function FeedArticleReader({
       return
     }
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    if (shouldIgnoreSystemBackEdge(e.clientX, window.innerWidth)) {
+    const standalone = isStandaloneDisplayMode()
+    if (
+      shouldIgnoreSystemBackEdgeForReaderReturn(e.clientX, window.innerWidth, {
+        standalone,
+      })
+    ) {
       recordReaderNavTrace({
         type: 'gesture_ignored_ios_edge',
         pathname: typeof window !== 'undefined' ? window.location.pathname : '/feed-v2',
@@ -875,9 +884,11 @@ export function FeedArticleReader({
         viewportWidth: window.innerWidth,
         nearSystemBackEdge: true,
         source: 'reader',
+        fallbackReason: standalone ? 'edge_ignored_standalone_unexpected' : 'edge_ignored_browser',
       })
       return
     }
+    setReturnHorizontalLocked(false)
     dragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -898,12 +909,16 @@ export function FeedArticleReader({
     if (d.axis === 'none') {
       const intent = classifyAxisIntent(dx, dy)
       if (intent === 'vertical' || intent === 'none') {
-        if (intent === 'vertical') dragRef.current = null
+        if (intent === 'vertical') {
+          dragRef.current = null
+          setReturnHorizontalLocked(false)
+        }
         return
       }
       // Akışa Dön: finger RIGHT only (positive dx) — Reader exits to the RIGHT.
       if (dx <= 0) return
       d.axis = 'horizontal'
+      setReturnHorizontalLocked(true)
       try {
         ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
       } catch {
@@ -923,6 +938,7 @@ export function FeedArticleReader({
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = dragRef.current
     dragRef.current = null
+    setReturnHorizontalLocked(false)
     if (!committed || closingRef.current) return
     if (!d || d.pointerId !== e.pointerId || d.axis !== 'horizontal') return
     const dx = e.clientX - d.startX
@@ -958,6 +974,7 @@ export function FeedArticleReader({
     const hadHorizontal = dragRef.current?.axis === 'horizontal'
     const startX = dragRef.current?.startX ?? null
     dragRef.current = null
+    setReturnHorizontalLocked(false)
     if (!committed || closingRef.current) return
     recordReaderNavTrace({
       type: 'close_blocked',
@@ -1044,13 +1061,20 @@ export function FeedArticleReader({
           background: 'var(--reader-page-bg)',
           color: 'var(--reader-page-text)',
           boxShadow: progress > 0.12 ? `-16px 0 32px var(--reader-fold-shadow)` : undefined,
-          // While Reader owns the surface, keep vertical scroll but block Safari's
-          // horizontal history swipe from co-owning the same LEFT-close gesture.
+          // Default: pan-y so article scroll works. After horizontal return lock:
+          // touch-action none (same as Feed open) so iOS PWA cannot pointercancel
+          // the RIGHT return mid-gesture.
           ...(committed
-            ? ({ touchAction: 'pan-y', overscrollBehaviorX: 'none' } as CSSProperties)
+            ? ({
+                touchAction: returnHorizontalLocked ? 'none' : 'pan-y',
+                overscrollBehaviorX: 'none',
+              } as CSSProperties)
             : null),
         }}
-        data-reader-touch-action={committed ? 'pan-y' : 'auto'}
+        data-reader-touch-action={
+          committed ? (returnHorizontalLocked ? 'none' : 'pan-y') : 'auto'
+        }
+        data-reader-standalone={isStandaloneDisplayMode() ? '1' : '0'}
         data-feed-surface="1"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

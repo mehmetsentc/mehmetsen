@@ -107,7 +107,7 @@ describe('Swipe Discovery V7', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v8="1"')
+    expect(coach).toContain('data-swipe-discovery-v9="1"')
     expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
@@ -134,7 +134,7 @@ describe('Swipe Discovery V7', () => {
       'utf8'
     )
     expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
   })
 })
 
@@ -157,6 +157,6 @@ describe('shell + open authority preserved', () => {
       'utf8'
     )
     expect(reader).toContain('pendingHistoryPlanRef')
-    expect(reader).toMatch(/touchAction:\s*['"]pan-y['"]/)
+    expect(reader).toMatch(/touchAction:\s*returnHorizontalLocked\s*\?\s*['"]none['"]\s*:\s*['"]pan-y['"]/)
   })
 })

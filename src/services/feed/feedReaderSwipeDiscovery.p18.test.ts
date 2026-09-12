@@ -56,7 +56,7 @@ describe('P18 swipe discovery coach V7', () => {
     )
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('Haberi Aç')
-    expect(coach).toContain('Sola kaydır veya dokun')
+    expect(coach).toContain('Sola kaydır')
     expect(coach).toContain('feed-swipe-discovery-finger')
     expect(coach).toContain('feed-swipe-discovery-chevrons')
     expect(coach).toContain('feed-swipe-discovery-subtitle')
@@ -92,18 +92,18 @@ describe('P18 swipe discovery coach V7', () => {
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 8 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 9 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 8,
+      version: 9,
     })
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
     const survivor = readFileSync(

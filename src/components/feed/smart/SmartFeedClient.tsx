@@ -36,6 +36,7 @@ import {
   shouldCompleteTransition,
   shouldIgnoreSystemBackEdge,
 } from '@/lib/feed/reader/gestureArbitration'
+import { isStandaloneDisplayMode } from '@/lib/feed/reader/feedPortrait'
 import { FEED_READER_DURATION_MS, FEED_READER_EASING } from '@/lib/feed/reader/tokens'
 import { LocalLocationSetupSheet, type LocalCityOption } from '@/components/local/LocalLocationSetupSheet'
 import { FEED_PAGINATION } from '@/lib/feed/config'
@@ -2931,6 +2932,7 @@ export function SmartFeedClient({
               readerProgress: readerSession?.progress ?? 0,
               readerGeneration: readerSession?.generation ?? null,
               readerArticleId: readerSession?.item.articleId ?? null,
+              standalone: isStandaloneDisplayMode(),
               capability: readerDebug.capabilityReady
                 ? readerDebug.capabilityEnabled
                   ? 'READY'

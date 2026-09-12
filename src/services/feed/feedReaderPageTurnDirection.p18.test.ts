@@ -139,7 +139,7 @@ describe('wiring: transforms + coaches + single Reader key', () => {
   })
 
   it('coaches teach LEFT open / RIGHT return', () => {
-    expect(coach).toContain('Sola kaydır veya dokun')
+    expect(coach).toContain('Sola kaydır')
     expect(coach).not.toContain('Sağa kaydır veya dokun')
     expect(ret).toContain('sağa kaydır veya dokun')
   })

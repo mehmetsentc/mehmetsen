@@ -136,7 +136,7 @@ describe('P18 header + sidebar', () => {
 
 describe('P18 LEFT open + RIGHT return coaches', () => {
   it('RIGHT Haberi Aç V7: prior keys cannot suppress; eligible until learned', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V3, JSON.stringify({ learned: true, shownCount: 3 }))
@@ -161,7 +161,7 @@ describe('P18 LEFT open + RIGHT return coaches', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v8')
+    expect(coach).toContain('data-swipe-discovery-v9')
     expect(coach).toContain('isCoachPaintedInViewport')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
@@ -172,7 +172,7 @@ describe('P18 LEFT open + RIGHT return coaches', () => {
   })
 
   it('LEFT return coach: mounts in Reader; learn only on gesture close', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v4')
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v5')
     expect(shouldShowReaderReturnCoach()).toBe(true)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(READER_RETURN_COACH_TRAVEL_PX).toBeLessThanOrEqual(48)

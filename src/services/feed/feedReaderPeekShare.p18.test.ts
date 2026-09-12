@@ -75,7 +75,7 @@ describe('6567213 direction regression (do not reverse)', () => {
 
   it('coach still teaches LEFT open', () => {
     const coach = read('src/components/feed/smart/SwipeDiscoveryCoach.tsx')
-    expect(coach).toContain('Sola kaydır veya dokun')
+    expect(coach).toContain('Sola kaydır')
     expect(coach).not.toContain('Sağa kaydır veya dokun')
   })
 })

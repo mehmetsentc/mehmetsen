@@ -32,7 +32,7 @@ describe('P18 iOS Haberi Aç / card peek human NO-GO', () => {
     expect(coach).toContain('feed-swipe-discovery-motion-shell')
     expect(coach).toContain('onPointerUp')
     expect(coach).toContain('pointer-events-auto')
-    expect(coach).toContain('data-swipe-discovery-v8="1"')
+    expect(coach).toContain('data-swipe-discovery-v9="1"')
     // No Tailwind translate on the none root (WebKit hit-test).
     expect(coach).not.toMatch(
       /pointer-events-none absolute[^"\n]*-translate-[xy]/

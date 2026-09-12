@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * LEFT "Akışa Dön" affordance — visual cue + tappable close authority.
+ * RIGHT "Akışa Dön" affordance — visual cue + tappable close authority.
  * Only the chip button receives pointer events (min 44×44).
  *
  * iOS: never put CSS transform on the pointer-events:none root (incl. Tailwind
@@ -26,7 +26,7 @@ import {
 type Props = {
   active: boolean
   suppressed?: boolean
-  /** Same authority as successful LEFT swipe → closeReader. */
+  /** Same authority as successful RIGHT swipe → closeReader. */
   onAffordanceActivate?: () => void
 }
 
@@ -184,7 +184,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
     <div
       ref={rootRef}
       data-testid="reader-return-coach"
-      data-reader-return-coach-v4="1"
+      data-reader-return-coach-v5="1"
       data-reader-return-phase={phase}
       className="pointer-events-none absolute inset-x-0 top-[38%] z-[50] flex justify-center"
       style={{ opacity: 1 }}
@@ -215,27 +215,38 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
             e.stopPropagation()
             onAffordanceActivate?.()
           }}
-          className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation items-center justify-center gap-2 rounded-full bg-black/80 px-4 py-2.5 text-[14px] font-semibold tracking-wide text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
+          className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation flex-col items-center justify-center gap-1 rounded-2xl bg-black/80 px-4 py-2.5 text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
           style={{
             boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
           }}
         >
           <span
-            className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
-            aria-hidden
-            data-testid="reader-return-coach-chevrons"
+            className="flex items-center gap-2"
+            data-testid="reader-return-coach-motion-row"
           >
-            <span className="text-[#e11d2e]">›</span>
-            <span>›</span>
-            <span>›</span>
+            <span
+              className="relative flex h-7 w-7 shrink-0 items-center justify-center"
+              aria-hidden
+              data-testid="reader-return-coach-finger"
+            >
+              <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
+            </span>
+            <span
+              className="flex items-center gap-0.5 text-[16px] font-bold leading-none text-white"
+              aria-hidden
+              data-testid="reader-return-coach-chevrons"
+            >
+              <span className="text-[#e11d2e]">›</span>
+              <span>›</span>
+              <span>›</span>
+            </span>
           </span>
-          <span className="font-bold tracking-[0.04em]">Akışa Dön</span>
+          <span className="text-[14px] font-bold tracking-[0.04em]">Akışa Dön</span>
           <span
-            className="relative ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
-            aria-hidden
-            data-testid="reader-return-coach-finger"
+            className="text-[11px] font-medium tracking-wide text-white/85"
+            data-testid="reader-return-coach-subtitle"
           >
-            <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_0_3px_rgba(225,29,46,0.75)]" />
+            Akışa dönmek için sağa kaydır
           </span>
         </button>
       </div>

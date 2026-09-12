@@ -58,10 +58,33 @@ export function classifyAxisIntent(
 export function shouldIgnoreSystemBackEdge(
   startClientX: number,
   viewportWidth: number,
-  edgePx = READER_GESTURE.systemBackEdgePx
+  edgePx: number = READER_GESTURE.systemBackEdgePx
 ): boolean {
   if (!Number.isFinite(startClientX) || viewportWidth <= 0) return false
   return startClientX <= edgePx
+}
+
+/**
+ * Reader → Feed return starts LEFT→RIGHT — users naturally begin near the left edge.
+ * Safari browser: keep left-edge ignore so iOS system Back can own that strip.
+ * Installed PWA/standalone: there is no Safari Back chrome — applying the same
+ * ignore blocks the primary return gesture (CLASS F). Allow edge starts in PWA.
+ */
+export function shouldIgnoreSystemBackEdgeForReaderReturn(
+  startClientX: number,
+  viewportWidth: number,
+  opts?: {
+    edgePx?: number
+    /** When true (installed PWA), do not reject left-edge starts. */
+    standalone?: boolean
+  }
+): boolean {
+  if (opts?.standalone) return false
+  return shouldIgnoreSystemBackEdge(
+    startClientX,
+    viewportWidth,
+    opts?.edgePx ?? READER_GESTURE.systemBackEdgePx
+  )
 }
 
 /** Feed → Reader: finger LEFT (negative dx) progresses open. Reader enters from RIGHT. */

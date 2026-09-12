@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * LEFT "Haberi Aç" affordance (V8) — reference visual + tappable open authority.
+ * LEFT "Haberi Aç" affordance (V9) — reference visual + tappable open authority.
  * Only the chip button receives pointer events (min 44×44).
  * Does NOT cover the card with a transparent overlay.
  *
@@ -208,7 +208,7 @@ export function SwipeDiscoveryCoach({
     <div
       ref={rootRef}
       data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v8="1"
+      data-swipe-discovery-v9="1"
       data-swipe-discovery-phase={phase}
       className="pointer-events-none absolute inset-x-0 z-[40] flex justify-center pl-10"
       style={{
@@ -305,7 +305,7 @@ export function SwipeDiscoveryCoach({
             className="text-[11px] font-medium tracking-wide text-white/85"
             data-testid="feed-swipe-discovery-subtitle"
           >
-            Sola kaydır veya dokun
+            Sola kaydır — haberi aç
           </span>
         </button>
       </div>

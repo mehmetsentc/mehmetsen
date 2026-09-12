@@ -86,7 +86,7 @@ describe('HOME escape — replace close never backs', () => {
 
 describe('tappable RIGHT/LEFT affordances', () => {
   it('RIGHT Haberi Aç affordance is a button hit target; learns on swipe or affordance', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v8')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V5, JSON.stringify({ learned: true, shownCount: 99 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
     expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
@@ -104,7 +104,7 @@ describe('tappable RIGHT/LEFT affordances', () => {
     expect(coach).toContain('min-h-11')
     expect(coach).toContain('pointer-events-auto')
     expect(coach).toContain('onAffordanceActivate')
-    expect(coach).toContain('data-swipe-discovery-v8')
+    expect(coach).toContain('data-swipe-discovery-v9')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
 
     const client = readFileSync(
@@ -116,7 +116,7 @@ describe('tappable RIGHT/LEFT affordances', () => {
   })
 
   it('LEFT return affordance taps beginClose(gesture); Back Arrow does not mark learned alone', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v4')
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v5')
     expect(shouldShowReaderReturnCoach()).toBe(true)
     markReaderReturnCoachLearned()
     expect(shouldShowReaderReturnCoach()).toBe(false)
