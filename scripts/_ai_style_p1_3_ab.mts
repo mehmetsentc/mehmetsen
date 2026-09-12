@@ -132,9 +132,9 @@ const DESKS: Array<{
     editorSlug: 'can-tunc',
     categoryId: 'teknoloji',
     feeds: [
-      { publisher: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-bilim-teknoloji' },
       { publisher: 'Habertürk', url: 'https://www.haberturk.com/rss/kategori/teknoloji.xml' },
       { publisher: 'ShiftDelete', url: 'https://shiftdelete.net/feed' },
+      { publisher: 'Anadolu Ajansı', url: 'https://www.aa.com.tr/tr/rss/default?cat=bilim-teknoloji' },
     ],
   },
   {
