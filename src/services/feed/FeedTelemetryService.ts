@@ -4,6 +4,8 @@ import { recordSocialEvent } from '@/lib/social/events'
 import { isSmartFeedTelemetryEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import type { FeedTelemetryBatchItem, FeedTelemetryEventType } from '@/types/smartFeed'
 import type { SocialEventType } from '@/types/socialGraph'
+import type { NfShadowComparison, NfShadowShownRow } from './nfRank/nfRankShadowCompare'
+import { toNfShadowTelemetryMetadata } from './nfRank/nfRankShadowCompare'
 
 export class FeedTelemetryService {
   async recordBatch(
@@ -40,13 +42,42 @@ export class FeedTelemetryService {
       }
     }
   }
+
+  /**
+   * Persist one NFRank shadow comparison via the existing telemetry gate.
+   * Does not create impressions, likes, or any synthetic engagement.
+   * Does not bypass SMART_FEED_TELEMETRY.
+   */
+  async recordNfRankShadow(input: {
+    userId: string | null
+    sessionId: string | null
+    feedType: string
+    feedSurface: string
+    feedSessionId: string
+    comparison: NfShadowComparison
+    shown: NfShadowShownRow[]
+  }): Promise<void> {
+    await this.recordBatch(input.userId, input.sessionId, [
+      {
+        eventType: 'nfrank_shadow',
+        feedType: input.feedType,
+        metadata: toNfShadowTelemetryMetadata({
+          comparison: input.comparison,
+          shown: input.shown,
+          feedSessionId: input.feedSessionId,
+          feedSurface: input.feedSurface,
+        }),
+      },
+    ])
+  }
 }
 
 function isObservabilityEvent(type: FeedTelemetryEventType): boolean {
   return (
     type === 'feed_request' ||
     type === 'feed_empty' ||
-    type === 'feed_error'
+    type === 'feed_error' ||
+    type === 'nfrank_shadow'
   )
 }
 
