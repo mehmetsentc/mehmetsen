@@ -27,7 +27,10 @@ export async function POST(request: Request) {
     }>
   }
 
-  const events = Array.isArray(body.events) ? body.events.slice(0, 50) : []
+  const events = Array.isArray(body.events)
+    ? body.events.filter((e) => e?.eventType !== 'nfrank_shadow').slice(0, 50)
+    : []
+  // nfrank_shadow is server-only measurement; drop client forgeries.
   const impressions = Array.isArray(body.impressions) ? body.impressions.slice(0, 30) : []
 
   if (impressions.length && hasDatabaseUrl()) {

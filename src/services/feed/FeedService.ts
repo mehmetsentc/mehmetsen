@@ -24,6 +24,7 @@ import type {
 import { decodeFeedCursor, encodeFeedCursor } from './feedUtils'
 import { feedCandidateService } from './FeedCandidateService'
 import { feedRankingPipeline, type NfRankPipelineMode } from './FeedRankingPipeline'
+import type { NfShadowComparison } from './nfRank/nfRankShadowCompare'
 import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
 import { feedSessionService } from './FeedSessionService'
@@ -99,6 +100,37 @@ async function resolveNfRankMode(ctx: FeedRequestContext): Promise<NfRankPipelin
   if (live) return 'live'
   if (isNfRankShadowEnabled()) return 'shadow'
   return 'off'
+}
+
+/** Fire-and-forget: one existing telemetry write. Must not change visible ranking. */
+function persistNfRankShadowMeasurement(input: {
+  userId: string | null
+  sessionId: string | null
+  feedType: string
+  surface?: FeedSurface
+  feedSessionId: string
+  comparison: NfShadowComparison | undefined
+  shown: Array<{
+    articleId: string
+    clusterId: string | null
+    reason?: string | null
+    source?: string | null
+    breaking: boolean
+    materialUpdate: boolean
+  }>
+}): void {
+  if (!input.comparison) return
+  void feedTelemetryService
+    .recordNfRankShadow({
+      userId: input.userId,
+      sessionId: input.sessionId,
+      feedType: input.feedType,
+      feedSurface: input.surface ?? 'other',
+      feedSessionId: input.feedSessionId,
+      comparison: input.comparison,
+      shown: input.shown,
+    })
+    .catch(() => {})
 }
 
 function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
@@ -488,6 +520,15 @@ export class FeedService {
         })
 
         const ranked = pipelineResult.ranked
+        persistNfRankShadowMeasurement({
+          userId: ctx.userId,
+          sessionId: ctx.sessionId,
+          feedType: ctx.mode,
+          surface: ctx.surface,
+          feedSessionId: pipelineResult.session.sessionId,
+          comparison: pipelineResult.nfShadowComparison,
+          shown: ranked,
+        })
         if (!ranked.length) {
           const mayHaveMore = pipelineResult.session.corpusExhausted !== true
           await feedTelemetryService.recordBatch(ctx.userId, ctx.sessionId, [

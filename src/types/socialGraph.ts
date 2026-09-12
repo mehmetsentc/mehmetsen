@@ -21,6 +21,7 @@ export type SocialEventType =
   | 'article_opened'
   | 'discovery_module_viewed'
   | 'discovery_card_opened'
+  | 'nfrank_shadow'
 
 export interface PublicUserProfile {
   userId: string
