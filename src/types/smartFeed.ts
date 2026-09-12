@@ -104,6 +104,8 @@ export type FeedTelemetryEventType =
   | 'article_opened'
   | 'discovery_module_viewed'
   | 'discovery_card_opened'
+  /** Server-only NFRank shadow measurement. Clients must not emit this. */
+  | 'nfrank_shadow'
 
 export interface FeedTelemetryBatchItem {
   eventType: FeedTelemetryEventType

@@ -22,6 +22,170 @@ export interface NfShadowComparison {
   seenViolationsBaseline: number
   seenViolationsShadow: number
   verdict: 'BETTER' | 'MIXED' | 'WORSE' | 'INCONCLUSIVE'
+  /** Compact window positions (no headlines/PII). `sh` filled when the shown page is known. */
+  items: NfShadowItemMeasure[]
+}
+
+/** Bounded item list for one social_events row — not one write per candidate. */
+export const NFRANK_SHADOW_ITEM_CAP = 24
+
+/** Compact per-article positions for later join with real outcomes. */
+export interface NfShadowItemMeasure {
+  /** articleId */
+  id: string
+  /** baseline (visible V1) 1-based position in the ranked window; null if absent */
+  bp: number | null
+  /** NFRank shadow 1-based position; null if absent */
+  sp: number | null
+  /** shown 1-based position on the returned page; null until page slice is known */
+  sh: number | null
+  /** clusterId — may be null; never invented */
+  cid: string | null
+  /** existing rank reason when available */
+  r: string | null
+  /** candidate source family */
+  src: string | null
+  /** breaking flag (distinct from material update) */
+  brk: boolean
+  /** genuine material-update flag (not breaking) */
+  mu: boolean
+}
+
+export interface NfShadowShownRow {
+  articleId: string
+  clusterId: string | null
+  reason?: string | null
+  source?: string | null
+  breaking: boolean
+  materialUpdate: boolean
+}
+
+function firstPositionMap(ids: Array<string | null | undefined>): Map<string, number> {
+  const m = new Map<string, number>()
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]
+    if (!id || m.has(id)) continue
+    m.set(id, i + 1)
+  }
+  return m
+}
+
+function lookupRow(
+  rows: Array<{
+    articleId: string
+    clusterId: string | null
+    reason?: string | null
+    source?: string | null
+    breaking: boolean
+    materialUpdate: boolean
+  }>,
+  id: string
+) {
+  return rows.find((r) => r.articleId === id)
+}
+
+function buildWindowItems(
+  baseline: ScoredFeedCandidate[],
+  shadow: NfRankedCandidate[],
+  cap: number = NFRANK_SHADOW_ITEM_CAP
+): NfShadowItemMeasure[] {
+  const baselinePos = firstPositionMap(baseline.map((r) => r.articleId))
+  const shadowPos = firstPositionMap(shadow.map((r) => r.articleId))
+  const orderedIds: string[] = []
+  const seen = new Set<string>()
+  const take = Math.max(1, Math.min(cap, Math.max(baseline.length, shadow.length)))
+  for (const row of baseline.slice(0, take)) {
+    if (seen.has(row.articleId)) continue
+    seen.add(row.articleId)
+    orderedIds.push(row.articleId)
+  }
+  for (const row of shadow.slice(0, take)) {
+    if (seen.has(row.articleId)) continue
+    seen.add(row.articleId)
+    orderedIds.push(row.articleId)
+    if (orderedIds.length >= cap) break
+  }
+
+  return orderedIds.slice(0, cap).map((id) => {
+    const row = lookupRow(baseline, id) ?? lookupRow(shadow, id)
+    return {
+      id,
+      bp: baselinePos.get(id) ?? null,
+      sp: shadowPos.get(id) ?? null,
+      sh: null,
+      cid: row?.clusterId ?? null,
+      r: row && 'reason' in row ? (row.reason ?? null) : null,
+      src: row?.source ?? null,
+      brk: Boolean(row?.breaking),
+      mu: Boolean(row?.materialUpdate),
+    }
+  })
+}
+
+/**
+ * Overlay shown-page positions onto window items. Does not mutate ranking arrays.
+ * Shown-only IDs (not in the compared window) are appended with bp/sp null.
+ */
+export function withShownPositions(
+  items: NfShadowItemMeasure[],
+  shown: NfShadowShownRow[],
+  cap: number = NFRANK_SHADOW_ITEM_CAP
+): NfShadowItemMeasure[] {
+  const shownPos = firstPositionMap(shown.map((r) => r.articleId))
+  const byId = new Map(items.map((item) => [item.id, { ...item, sh: shownPos.get(item.id) ?? null }]))
+  for (const row of shown) {
+    const existing = byId.get(row.articleId)
+    if (existing) {
+      byId.set(row.articleId, {
+        ...existing,
+        sh: shownPos.get(row.articleId) ?? existing.sh,
+        cid: existing.cid ?? row.clusterId,
+        r: existing.r ?? row.reason ?? null,
+        src: existing.src ?? row.source ?? null,
+        brk: row.breaking,
+        mu: row.materialUpdate,
+      })
+      continue
+    }
+    byId.set(row.articleId, {
+      id: row.articleId,
+      bp: null,
+      sp: null,
+      sh: shownPos.get(row.articleId) ?? null,
+      cid: row.clusterId,
+      r: row.reason ?? null,
+      src: row.source ?? null,
+      brk: row.breaking,
+      mu: row.materialUpdate,
+    })
+  }
+  const shownFirst = shown.map((r) => byId.get(r.articleId)!).filter(Boolean)
+  const rest = [...byId.values()].filter((item) => !shownPos.has(item.id))
+  return [...shownFirst, ...rest].slice(0, cap)
+}
+
+export function toNfShadowTelemetryMetadata(input: {
+  comparison: NfShadowComparison
+  shown: NfShadowShownRow[]
+  feedSessionId: string
+  feedSurface: string
+}): Record<string, unknown> {
+  const items = withShownPositions(input.comparison.items, input.shown)
+  return {
+    ranking_version_baseline: input.comparison.rankingVersionBaseline,
+    ranking_version_shadow: input.comparison.rankingVersionShadow,
+    nf_rank_mode: 'shadow',
+    feed_surface: input.feedSurface,
+    feedSessionId: input.feedSessionId,
+    verdict: input.comparison.verdict,
+    top_overlap: input.comparison.topOverlap,
+    top_n: input.comparison.baselineTopIds.length,
+    baseline_cluster_dupes: input.comparison.baselineClusterDupes,
+    shadow_cluster_dupes: input.comparison.shadowClusterDupes,
+    seen_violations_baseline: input.comparison.seenViolationsBaseline,
+    seen_violations_shadow: input.comparison.seenViolationsShadow,
+    items,
+  }
 }
 
 function uniqueRatio(values: Array<string | null | undefined>): number {
@@ -126,5 +290,6 @@ export function compareShadowRankings(input: {
     seenViolationsBaseline,
     seenViolationsShadow,
     verdict,
+    items: buildWindowItems(input.baseline, input.shadow),
   }
 }
