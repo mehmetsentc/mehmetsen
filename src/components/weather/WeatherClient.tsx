@@ -61,22 +61,34 @@ export function WeatherClient() {
 
   // ── Request geolocation ──────────────────────────────────────────────
   const requestGeolocation = useCallback(() => {
-    if (!navigator.geolocation || geoRequestedRef.current) return
+    let settled = false
+    const fail = () => {
+      if (settled) return
+      settled = true
+      setLocationDenied(true)
+      const stored = localStorage.getItem('weather_city')
+      if (stored) void loadWeather(stored)
+    }
+
+    if (!navigator.geolocation) {
+      fail()
+      return
+    }
+    if (geoRequestedRef.current) return
     geoRequestedRef.current = true
+
+    // Some runtimes never resolve getCurrentPosition (ignored prompt).
+    const watchdog = window.setTimeout(fail, 8000)
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        window.clearTimeout(watchdog)
         const { latitude: lat, longitude: lng } = pos.coords
-        // Reverse geocode via WeatherAPI (lat,lng query)
         await loadWeather(`${lat},${lng}`)
       },
       () => {
-        setLocationDenied(true)
-        // Try stored city
-        const stored = localStorage.getItem('weather_city')
-        if (stored) {
-          void loadWeather(stored)
-        }
+        window.clearTimeout(watchdog)
+        fail()
       },
       { timeout: 8000 }
     )
@@ -214,12 +226,19 @@ export function WeatherClient() {
 
       {/* ── No city & no error & not loading ── */}
       {!weather && !loading && !error && !showSearch && (
-        <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
+        <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] px-4 py-12 text-center">
           <Cloud className="mx-auto mb-3 h-10 w-10 text-[rgb(var(--color-muted))]" />
-          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">Konum algılanıyor…</p>
-          <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
-            Veya yukarıdan şehir arayın
+          <p className="text-sm font-semibold text-[rgb(var(--color-text))]">
+            {locationDenied ? 'Konum alınamadı' : 'Konum algılanıyor…'}
           </p>
+          <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+            {locationDenied
+              ? 'Bir şehir seçin veya yukarıdan arayın'
+              : 'Veya bir şehir seçin'}
+          </p>
+          <div className="mx-auto mt-5 max-w-lg text-left">
+            <PopularCities onSelect={handleCitySelect} />
+          </div>
         </div>
       )}
 
