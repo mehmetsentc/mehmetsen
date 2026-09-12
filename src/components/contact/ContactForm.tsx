@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, Send } from 'lucide-react'
 import { CONTACT_FORM_SUBJECTS } from '@/constants/siteLegalLinks'
+import { hashTargetId } from '@/lib/navigation/hashTarget'
 import { cn } from '@/lib/utils'
 
 const fieldClass =
@@ -21,6 +22,22 @@ export function ContactForm({ className }: ContactFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+
+  useEffect(() => {
+    const scrollToHash = () => {
+      const id = hashTargetId(window.location.hash)
+      if (!id) return
+      document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    }
+    const raf = window.requestAnimationFrame(scrollToHash)
+    const timeout = window.setTimeout(scrollToHash, 50)
+    window.addEventListener('hashchange', scrollToHash)
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.clearTimeout(timeout)
+      window.removeEventListener('hashchange', scrollToHash)
+    }
+  }, [])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
