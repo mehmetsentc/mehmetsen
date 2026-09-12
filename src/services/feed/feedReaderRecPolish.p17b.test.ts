@@ -32,9 +32,9 @@ describe('P17b Reader recommendation editorial polish', () => {
   it('2: default Feed variant remains horizontal rail', () => {
     const rail = read('src/components/feed/smart/FeedDiscoveryRail.tsx')
     expect(rail).toContain('smart-feed-discovery-scroll')
-    expect(rail).toContain('h-36 w-28')
     expect(rail).toContain('touch-pan-x')
-    expect(rail).toContain('Öne Çıkanlar')
+    expect(rail).toContain('data-feed-highlights-visible-target="2.2"')
+    expect(rail).toContain('formatFeedHighlightsHeading')
   })
 
   it('3-4: headline clamp + image cover/fallback controlled', () => {

@@ -646,23 +646,18 @@ export function FullscreenNewsCard({
                   className={cn(
                     'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
                     'text-[clamp(0.88rem,3.3vw,1rem)] font-medium leading-[1.45] text-white/90',
+                    // With highlights: keep rail discoverable — presentation clamp only.
+                    showDiscoveryRail ? 'line-clamp-4' : null,
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
+                  data-feed-summary-clamp={showDiscoveryRail ? '4' : 'none'}
                   style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
                   {item.summary}
                 </p>
               ) : null}
             </div>
-
-            {showDiscoveryRail && isActive ? (
-              <FeedDiscoveryRail
-                category={discoveryCategory}
-                excludeIds={new Set([item.articleId, ...(discoveryExcludeIds ?? [])])}
-                onOpenArticle={onDiscoveryArticleOpen}
-              />
-            ) : null}
 
             {debug ? (
               <pre className="max-h-24 overflow-auto rounded bg-black/60 p-2 text-[10px] text-green-300">
@@ -682,6 +677,21 @@ export function FullscreenNewsCard({
             ) : null}
           </div>
 
+          {/* Highlights sit between summary and Haberi Oku — not inside nested copy scroll. */}
+          {showDiscoveryRail && isActive ? (
+            <div
+              className="mt-3 w-full min-w-0 shrink-0"
+              data-testid="smart-feed-discovery-slot"
+            >
+              <FeedDiscoveryRail
+                category={discoveryCategory}
+                excludeIds={new Set([item.articleId, ...(discoveryExcludeIds ?? [])])}
+                onOpenArticle={onDiscoveryArticleOpen}
+                onSeeAll={onCategoryClick}
+              />
+            </div>
+          ) : null}
+
           {/* Protected first-paint action stack — never behind nested copy scroll */}
           <div
             className="flex shrink-0 flex-col"
@@ -689,7 +699,9 @@ export function FullscreenNewsCard({
             data-feed-first-paint-actions="1"
             style={{
               minHeight: 'var(--feed-v2-action-zone)',
-              paddingTop: 'var(--feed-v2-gap-summary-cta)',
+              paddingTop: showDiscoveryRail
+                ? '0.75rem'
+                : 'var(--feed-v2-gap-summary-cta)',
               gap: 'var(--feed-v2-gap-cta-publisher)',
             }}
           >
