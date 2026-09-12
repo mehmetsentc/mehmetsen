@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
 
 type SafeNewsImageProps = {
   src: string
@@ -25,11 +26,11 @@ function hasObjectFitClass(className?: string): boolean {
 }
 
 /**
- * Remote RSS thumbnails must not go through next/image defaultLoader.
- * That loader throws during render (E231) for any hostname missing from
- * remotePatterns. Live feed CDNs cannot stay synced with that list, and in
- * this Next 15.5 webpack/dev runtime a native <img> is still attributed to
- * the same defaultLoader check. `unoptimized` skips the loader entirely.
+ * Remote RSS thumbnails must not mount `next/image`. defaultLoader throws
+ * during render (E231) for any hostname missing from remotePatterns, and in
+ * this Next 15.5 webpack/dev runtime `unoptimized` still reaches that check.
+ * Live feed CDNs cannot stay synced with remotePatterns, so only site-relative
+ * paths use next/image. Unknown remotes render a native <img>.
  */
 export function SafeNewsImage({
   src,
@@ -58,6 +59,51 @@ export function SafeNewsImage({
 
   const numericWidth = typeof width === 'number' ? width : undefined
   const numericHeight = typeof height === 'number' ? height : undefined
+  const useNextImage = shouldUseNextImage(resolvedSrc)
+  const lazy = !priority && loading !== 'eager'
+  const resolvedFetchPriority = fetchPriority ?? (priority ? 'high' : 'auto')
+
+  if (!useNextImage) {
+    if (fill) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolvedSrc}
+          alt={alt ?? ''}
+          loading={lazy ? 'lazy' : 'eager'}
+          fetchPriority={resolvedFetchPriority}
+          decoding={priority ? 'sync' : 'async'}
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+          className={cn(
+            'absolute inset-0 h-full w-full object-center',
+            !hasObjectFitClass(className) && 'object-cover',
+            className
+          )}
+          style={style}
+          onError={handleError}
+        />
+      )
+    }
+
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={resolvedSrc}
+        alt={alt ?? ''}
+        loading={lazy ? 'lazy' : 'eager'}
+        fetchPriority={resolvedFetchPriority}
+        decoding={priority ? 'sync' : 'async'}
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
+        className={className}
+        width={numericWidth ?? 96}
+        height={numericHeight ?? 64}
+        style={style}
+        onError={handleError}
+      />
+    )
+  }
 
   return (
     <Image
@@ -72,7 +118,6 @@ export function SafeNewsImage({
       quality={quality}
       loading={loading}
       fetchPriority={fetchPriority}
-      unoptimized
       style={style}
       onError={handleError}
       draggable={false}

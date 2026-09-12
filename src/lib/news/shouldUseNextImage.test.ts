@@ -24,6 +24,13 @@ describe('shouldUseNextImage', () => {
     expect(shouldUseNextImage('https://sozcu01.sozcu.com.tr/x.jpg')).toBe(false)
   })
 
+  it('refuses the live Discover sozcucdn host that threw E231 after category fetch', () => {
+    const src =
+      'https://sozcu01.sozcucdn.com/sozcu/production/uploads/images/2026/9/bulent-arinc-melih-gokcekjpg-4JQRYCLeqUCxO9lBMV13HQ.jpg?h=900&mode=crop&scale=both&w=1200'
+    expect(parseNewsImageHostname(src)).toBe('sozcu01.sozcucdn.com')
+    expect(shouldUseNextImage(src)).toBe(false)
+  })
+
   it('fails closed when the URL cannot be parsed instead of handing it to next/image', () => {
     expect(shouldUseNextImage('not a url')).toBe(false)
     expect(shouldUseNextImage('')).toBe(false)
