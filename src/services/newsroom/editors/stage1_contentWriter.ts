@@ -6,8 +6,9 @@
  * burada yalnızca sabit güvenlik + haber biçimi kuralları eklenir.
  */
 
-import { countPlainWords, MIN_NEWS_BODY_WORDS } from '@/lib/contentQuality'
+import { countPlainWords } from '@/lib/contentQuality'
 import { NEWS_FORMAT_LOCK } from '@/lib/ai/editorial/promptBuilder'
+import { EVIDENCE_JSON_OUTPUT_CONTRACT } from '@/lib/ai/editorial/evidenceContract'
 import { inputCharLimit, outputTokenLimit } from '@/lib/ai/usage/tokenBudget'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 import { runStage1Shadow } from '@/lib/ai/stage1Shadow'
@@ -65,7 +66,8 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma
 - Çıktı her zaman Türkçe
-- Yalnızca geçerli JSON döndür`
+- Yalnızca geçerli JSON döndür
+- Kapalı kanıt: model hafızasından / genel dünya bilgisinden pakette olmayan olgu ekleme`
 
 /**
  * Varsayılan haber biçimi (persona yoksa).
@@ -83,7 +85,7 @@ ${NEWS_FORMAT_LOCK}
 EK KURALLAR (yalnızca bu varsayılan biçimde):
 - spot: 2-4 cümle lider; content spot'u tekrarlama
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
-- Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
+- Kaynak inceyse kısa ve doğru yaz; uydurma bağlam/arka plan yok. Kanıt yoğunluğu hedef uzunluğu ezer.
 
 ALANLAR:
 - title: manşet, max 70 karakter
@@ -106,18 +108,7 @@ export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking 
   return undefined
 }
 
-const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
-content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
-content içinde EN AZ 2 olay-özgü ## markdown alt başlık ZORUNLU (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK); başlıksız düz paragraf yığını KABUL EDİLMEZ.
-JSON:
-{
-  "title": "string",
-  "spot": "string",
-  "summary": "string",
-  "content": "string",
-  "seoTitle": "string",
-  "seoDescription": "string"
-}`
+const JSON_OUTPUT_CONTRACT = EVIDENCE_JSON_OUTPUT_CONTRACT
 
 function buildRevisionBlock(input: WriterInput): string {
   if (!input.revisionHints?.length && !input.previousDraft) return ''
@@ -128,7 +119,7 @@ YENİDEN DÜZENLEME GÖREVİ:
 Önceki taslak kalite kapısından geçmedi. Aynı olay için DAHA İYİ bir gazete haberi yaz.
 ${hints ? `Düzeltilecek noktalar:\n${hints}` : ''}
 ${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 400)}\nÖnceki gövde (özet):\n${prev.content.slice(0, 2500)}` : ''}
-- Gövdeyi en az 220 kelime yap (hedef 280-450); yarım cümle bırakma
+- Yarım cümle bırakma. Kanıt yeterliyse hedef 250-450 kelime; kanıt inceyse kısa bırak, uydurma bağlam ekleme.
 - Kaynakta olmayan bilgi uydurma
 - Önceki taslağın hatalarını tekrarlama
 `
@@ -372,7 +363,7 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
         ...(input.revisionHints ?? []),
         'Önceki çıktı YARIM KESİLMİŞ — tüm alanları (title, spot, summary, content) eksiksiz tamamla',
         'Hiçbir cümleyi ortada bırakma; spot ve content nokta ile bitsin',
-        `content en az ${MIN_NEWS_BODY_WORDS} kelime olsun`,
+        'Kanıt yeterliyse gövdeyi tamamla; kanıt inceyse kısa ve doğru bırak — uydurma arka plan yok',
       ],
       previousDraft: {
         title: written.title,

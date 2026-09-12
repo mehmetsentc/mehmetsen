@@ -22,12 +22,15 @@ describe('AI STYLE P1.1 — DNA reaches every editor (Task 1-6, 9)', () => {
     expect(NEWS_FORMAT_LOCK).toContain('NAHABER SUNUŞ (AI STYLE P1.3')
     expect(NEWS_FORMAT_LOCK).toContain('MANŞET: en güçlü TEK doğrulanmış gelişme')
     expect(NEWS_FORMAT_LOCK).toContain('Merak olgunun kendisinden gelsin')
+    expect(NEWS_FORMAT_LOCK).toContain('KAPALI KANIT SÖZLEŞMESİ (AI STYLE P1.3A')
+    expect(NEWS_FORMAT_LOCK).toContain('KANIT YOĞUNLUĞU HEDEF UZUNLUĞU EZER')
   })
 
 
 
   it('GLOBAL_NEWSROOM_RULES carries the strengthened factual-integrity rule (Task 12)', () => {
     expect(GLOBAL_NEWSROOM_RULES).toContain('KESİNLEŞTİRME YASAĞI')
+    expect(GLOBAL_NEWSROOM_RULES).toContain('Model hafızasından')
   })
 
   it('every national NEWS-desk editor (has a news prompt) still starts with the (updated) GLOBAL_NEWSROOM_RULES verbatim — personas untouched', () => {

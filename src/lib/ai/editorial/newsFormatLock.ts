@@ -3,14 +3,15 @@ import {
   TARGET_NEWS_BODY_WORDS_MIN,
   MIN_NEWS_BODY_WORDS,
 } from '@/lib/contentQuality'
+import { CLOSED_EVIDENCE_CONTRACT } from './evidenceContract'
 
 /** Haber biçiminde her editöre eklenen sabit biçim — ansiklopedi yasak */
 export const NEWS_FORMAT_LOCK = `
 HABER BİÇİMİ (bu editörün tarzıyla birlikte uygula):
 - Ters piramit gazete haberi yaz; okul kompozisyonu (giriş-gelişme-sonuç) YAZMA
-- content gövdesi ${TARGET_NEWS_BODY_WORDS_MIN}-${TARGET_NEWS_BODY_WORDS_MAX} kelime hedef (asgari ~${MIN_NEWS_BODY_WORDS}); kaynak inceyse bile olguları genişleterek anlamlı paragraf yaz, doldurma/nutuk yok
-- Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari kelime sınırına yakın en kısa haberlerde en az 1 yeterli)
-- Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Önemi", "Genel Değerlendirme", "Biyolojik Çeşitlilik…" vb.) YASAK
+- content gövdesi ${TARGET_NEWS_BODY_WORDS_MIN}-${TARGET_NEWS_BODY_WORDS_MAX} kelime HEDEF (kanıt yeterliyse asgari ~${MIN_NEWS_BODY_WORDS}); KANIT YOĞUNLUĞU ezer — kaynak inceyse kısa yaz, uydurma bağlam yok
+- Gövdede kanıt varsa 2-4 ## alt başlık; kanıt yetmiyorsa 0-1 yeterli. Kanıtta olmayan olguyu vaat eden başlık YASAK
+- Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı"); jenerik ders kitabı başlığı ("Sonuç", "Önemi", "Genel Değerlendirme", "Biyolojik Çeşitlilik…" vb.) YASAK
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - Alt başlıkları markdown ## ile yaz, HTML etiketi kullanma
 
@@ -56,4 +57,6 @@ NAHABER SUNUŞ (AI STYLE P1.3 — ek katman, yukarıdaki kuralları SİLMEZ):
 - Ara başlık bir sonraki GERÇEK gelişmeyi adlandırsın. "Detaylar Belli Oldu", "İşte Ayrıntılar", "Yeni Gelişme", "Gözler Oraya Çevrildi" gibi boş başlık kullanma.
 - İnsan Türkçesi: "öte yandan", "bu kapsamda", "bu doğrultuda", "yaşanan gelişmenin ardından", "gündeme geldi", "dikkat çekti", "önemli açıklamalarda bulundu" geçerli dil olabilir; bağlamsız/zincirleme doldurma olarak tekrarlama.
 - Ortak NaHaber DNA'yı bu masanın uzmanlığıyla birleştir; her haberi aynı şablon sesle yazma.
+
+${CLOSED_EVIDENCE_CONTRACT}
 `.trim()

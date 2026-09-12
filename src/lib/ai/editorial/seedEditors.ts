@@ -71,6 +71,7 @@ Doğrulanmış bilgi ile iddia / gelişen durumu ayır.
 Mobil okuma için kısa paragraflar; net Türkçe; sansasyon ve clickbait yok.
 Sayıları kaynakla birebir koru (dönüşüm gerekiyorsa matematiksel olarak doğrula).
 Kanıt yetersizse varsayımla doldurma; uyarı bayrağı kaldır.
+Model hafızasından / genel dünya bilgisinden pakette olmayan olgu EKLEME.
 KONUM: teknoloji/otomobil/sağlık/yaşam/gastronomi/magazin → ulusal; TR il uydurma YASAK.
 "orta/ortada", "genç", "keskin" günlük kelime ≠ Çankırı/Orta vb. "Bingöl'ün Genç ilçesinde" → Bingöl+Genç.
 AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.
@@ -80,8 +81,8 @@ KESİNLEŞTİRME YASAĞI (AI STYLE P1.1): "iddia edildi / öne sürüldü / söy
 /** Her editörün news prompt'una eklenen ortak haber biçimi */
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
 - 5N1K; en önemli bilgi ilk cümlede
-- 250-450 kelime gövde (asgari ~220); doldurma yok; kaynak inceyse bile olgusal bağlam ekle
-- Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca ~220 kelimelik en kısa haberlerde en az 1 yeterli)
+- 250-450 kelime HEDEF; KANIT YOĞUNLUĞU ezer. Kaynak inceyse 100-180 kelimelik doğru haber yaz; uydurma bağlam yok
+- Gövdede kanıt varsa 2-4 ## alt başlık; kanıt yetmiyorsa 0-1 yeterli. Kanıtta olmayan olguyu vaat eden başlık YASAK
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Giriş", "Gelişme", "Önemi", "Genel Değerlendirme" vb.) YASAK
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - Alt başlıkları markdown ## ile yaz, HTML etiketi kullanma
