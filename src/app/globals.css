@@ -3787,8 +3787,8 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
 /* Feed V2 hero share — short phones yield media to first-paint actions + rhythm */
 @media (max-height: 700px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(12dvh, 14dvh, 16dvh);
-    --feed-v2-hero-max: clamp(22dvh, 28dvh, 34dvh);
+    --feed-v2-hero-min: clamp(14dvh, 18dvh, 22dvh);
+    --feed-v2-hero-max: clamp(26dvh, 32dvh, 38dvh);
     --feed-v2-action-zone: 7.25rem;
     --feed-v2-copy-scroll-max: min(36dvh, 15rem);
     --feed-v2-gap-cat-headline: 0.7rem;
@@ -3802,8 +3802,8 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
 
 @media (min-height: 701px) and (max-height: 812px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(14dvh, 18dvh, 22dvh);
-    --feed-v2-hero-max: clamp(30dvh, 40dvh, 48dvh);
+    --feed-v2-hero-min: clamp(16dvh, 22dvh, 26dvh);
+    --feed-v2-hero-max: clamp(32dvh, 42dvh, 48dvh);
     --feed-v2-action-zone: 7.5rem;
     --feed-v2-copy-scroll-max: min(38dvh, 17rem);
     --feed-v2-gap-cat-headline: 0.75rem;
@@ -3817,8 +3817,8 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
 
 @media (min-height: 813px) {
   .feed-v2-card-chrome {
-    --feed-v2-hero-min: clamp(18dvh, 22dvh, 28dvh);
-    --feed-v2-hero-max: clamp(36dvh, 48dvh, 56dvh);
+    --feed-v2-hero-min: clamp(20dvh, 26dvh, 32dvh);
+    --feed-v2-hero-max: clamp(36dvh, 46dvh, 54dvh);
     --feed-v2-action-zone: 7.5rem;
     --feed-v2-copy-scroll-max: min(40dvh, 18rem);
     --feed-v2-gap-cat-headline: 0.8rem;

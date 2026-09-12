@@ -28,11 +28,11 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-v2-action-zone': '7.5rem',
   /**
-   * Hero / media — flex-1 fills leftover; min/max keep first-paint + reference composition.
-   * Short phones: shorter media. Tall phones: more immersive.
+   * Hero / media — flex zone for sharp foreground image + tap surface.
+   * Short phones: shorter media. Tall phones: larger primary hero.
    */
-  '--feed-v2-hero-min': 'clamp(14dvh, 18dvh, 22dvh)',
-  '--feed-v2-hero-max': 'clamp(28dvh, 42dvh, 52dvh)',
+  '--feed-v2-hero-min': 'clamp(16dvh, 22dvh, 28dvh)',
+  '--feed-v2-hero-max': 'clamp(32dvh, 44dvh, 52dvh)',
   /**
    * Copy-only nested scroll cap (chips + full headline/summary).
    * Action stack sits BELOW this region and must not require scroll.

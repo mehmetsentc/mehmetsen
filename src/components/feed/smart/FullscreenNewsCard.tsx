@@ -376,7 +376,12 @@ export function FullscreenNewsCard({
         } as CSSProperties
       }
     >
-      {/* pointer-events-none: hits fall through to gesture surface (pan-y) — media must not own touch-action:auto */}
+      {/*
+        P17 Feed V2 approved visual:
+        L1 — full-bleed atmospheric blur (same URL, CSS blur — no extra asset pipeline)
+        L2 — dark readability gradients
+        L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
+      */}
       <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
         {showVideo ? (
           <video
@@ -395,41 +400,20 @@ export function FullscreenNewsCard({
             aria-hidden
           />
         ) : hasValidImage ? (
-          <>
-            <Image
-              src={item.image!}
-              alt=""
-              fill
-              draggable={false}
-              className="scale-110 object-cover opacity-60 blur-2xl brightness-[0.5]"
-              sizes="100vw"
-              aria-hidden
-              unoptimized={
-                typeof item.image === 'string' &&
-                (item.image.startsWith('http://') || item.image.startsWith('https://'))
-              }
-            />
-            <Image
-              key={`img-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
-              src={item.image!}
-              alt={item.headline || ''}
-              fill
-              draggable={false}
-              className={cn(
-                'object-cover object-center will-change-transform',
-                playMediaDolly
-                  ? 'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
-                  : 'scale-100'
-              )}
-              sizes="100vw"
-              priority={isActive}
-              onError={() => setImageError(true)}
-              unoptimized={
-                typeof item.image === 'string' &&
-                (item.image.startsWith('http://') || item.image.startsWith('https://'))
-              }
-            />
-          </>
+          <Image
+            src={item.image!}
+            alt=""
+            fill
+            draggable={false}
+            className="scale-110 object-cover opacity-70 blur-2xl brightness-[0.45] saturate-[1.05]"
+            sizes="100vw"
+            aria-hidden
+            data-testid="smart-feed-bg-blur"
+            unoptimized={
+              typeof item.image === 'string' &&
+              (item.image.startsWith('http://') || item.image.startsWith('https://'))
+            }
+          />
         ) : (
           <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-950 select-none">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
@@ -444,49 +428,25 @@ export function FullscreenNewsCard({
           </div>
         )}
 
+        {/* Readability veil — cinematic, not a hard black box */}
         <div
           className={cn(
-            'pointer-events-none absolute inset-x-0 top-0 h-[22%] bg-gradient-to-b from-black/50 via-black/15 to-transparent',
-            isCenter && 'from-black/40'
+            'pointer-events-none absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/55 via-black/20 to-transparent',
+            isCenter && 'from-black/45'
           )}
           aria-hidden
+          data-testid="smart-feed-readability-top"
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-black via-black/80 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent"
           aria-hidden
+          data-testid="smart-feed-readability-bottom"
         />
-
-        {skin.frame !== 'none' ? (
-          <div
-            className={cn(
-              'pointer-events-none absolute z-[2] rounded-md border-[1.5px]',
-              skin.frame === 'magazine'
-                ? 'inset-3 border-[color:var(--feed-skin-accent)]/75'
-                : 'inset-2.5 border-white/35',
-              isActive && 'animate-[smart-feed-frame-in_0.85s_ease-out_forwards]'
-            )}
-            aria-hidden
-            data-testid="smart-feed-skin-frame"
-          />
-        ) : null}
-
-        {skin.wipe ? (
-          <div
-            className={cn(
-              'pointer-events-none absolute inset-x-0 bottom-[36%] z-[3] h-[3px] origin-left scale-x-0 bg-gradient-to-r from-green-500 via-yellow-400 to-red-500',
-              isActive &&
-                'animate-[smart-feed-wipe_0.7s_cubic-bezier(0.16,1,0.3,1)_0.15s_forwards]'
-            )}
-            aria-hidden
-          />
-        ) : null}
-
-        {skin.ticker ? (
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-[34%] z-[3] h-px bg-gradient-to-r from-transparent via-[color:var(--feed-skin-accent)] to-transparent opacity-90"
-            aria-hidden
-          />
-        ) : null}
+        <div
+          className="pointer-events-none absolute inset-0 bg-black/25"
+          aria-hidden
+          data-testid="smart-feed-readability-veil"
+        />
       </div>
 
       {skin.liveBar ? (
@@ -528,17 +488,11 @@ export function FullscreenNewsCard({
         ) : null}
 
         {/*
-          Hero flex-1 fills leftover after editorial/actions (reference: media upper,
-          copy lower-middle). min/max keep first-paint publisher visible.
-        */}
-        {/*
-          touch-pan-y (NOT touch-manipulation): hit-tested touch-action wins on iOS.
-          manipulation ≡ pan-x pan-y → WebKit owns horizontal pan → pointercancel
-          before FeedCardWithImpression can lock axis + setPointerCapture.
-          Vertical feed snap stays with the browser; horizontal open stays with JS.
+          Foreground hero + double-tap zone.
+          Sharp primary image starts high; remaining flex space keeps open gesture.
         */}
         <div
-          className="relative min-h-0 flex-1 touch-pan-y"
+          className="relative flex min-h-0 flex-1 touch-pan-y flex-col"
           style={{
             minHeight: 'var(--feed-v2-hero-min)',
             maxHeight: 'var(--feed-v2-hero-max)',
@@ -553,6 +507,40 @@ export function FullscreenNewsCard({
             tapOriginRef.current = null
           }}
         >
+          {!showVideo && hasValidImage ? (
+            <div
+              className={cn(
+                'relative w-full shrink-0 overflow-hidden rounded-2xl',
+                'aspect-[16/9] max-h-full',
+                'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
+                'bg-neutral-950',
+                playMediaDolly &&
+                  'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
+              )}
+              data-testid="smart-feed-fg-hero"
+              style={{
+                borderColor: 'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
+              }}
+            >
+              <Image
+                key={`fg-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
+                src={item.image!}
+                alt={item.headline || ''}
+                fill
+                draggable={false}
+                className="object-cover object-center"
+                sizes="(max-width: 768px) 100vw, 44rem"
+                priority={isActive}
+                onError={() => setImageError(true)}
+                unoptimized={
+                  typeof item.image === 'string' &&
+                  (item.image.startsWith('http://') || item.image.startsWith('https://'))
+                }
+              />
+            </div>
+          ) : null}
+          {/* Flex spacer — keeps double-tap surface without pushing copy off-screen */}
+          <div className="min-h-0 flex-1" aria-hidden />
           {heartBurst ? (
             <span
               key={heartBurst.id}
@@ -571,7 +559,7 @@ export function FullscreenNewsCard({
           Haberi Oku + publisher/follow stay outside nested scroll (first paint).
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/92 to-transparent pt-3 pr-[3.5rem] sm:pt-5"
+          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pt-3 pr-[3.5rem] sm:pt-4"
           data-testid="smart-feed-bottom-chrome"
         >
           <div
@@ -626,7 +614,7 @@ export function FullscreenNewsCard({
               </div>
               <h2
                 className={cn(
-                  'wrap-words text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]',
+                  'wrap-words text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
                   'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]'
                 )}
                 data-testid="smart-feed-headline"
@@ -644,14 +632,14 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]',
-                    'text-[clamp(0.88rem,3.3vw,1rem)] font-medium leading-[1.45] text-white/90',
+                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
+                    'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-white',
                     // With highlights: keep rail discoverable — presentation clamp only.
-                    showDiscoveryRail ? 'line-clamp-4' : null,
+                    showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
-                  data-feed-summary-clamp={showDiscoveryRail ? '4' : 'none'}
+                  data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}
                   style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
                   {item.summary}

@@ -118,8 +118,10 @@ export function FeedDiscoveryRail({
         }
         if (!cancelled) {
           const next = filtered.slice(0, isReader ? 6 : 8)
-          setItems(next)
-          setLoadState(next.length === 0 ? 'empty' : 'ok')
+          // Feed quality gate: hide weak single-item rails (READABILITY / discovery value).
+          const qualityOk = isReader ? next.length > 0 : next.length >= 2
+          setItems(qualityOk ? next : [])
+          setLoadState(qualityOk ? 'ok' : 'empty')
         }
       } catch {
         if (!cancelled) setLoadState('error')

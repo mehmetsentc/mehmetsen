@@ -74,13 +74,15 @@ function skin(
 }
 
 const SKINS: Record<FeedCardSkinId, FeedCardSkin> = {
+  // P17 Feed V2 approved visual: accent/badge/liveBar only.
+  // Orphan mid-card wipe / ticker / full-card magazine frame removed.
   'son-dakika': skin('son-dakika', { liveBar: true, accent: '#e11d2e', typeMs: 20 }),
   gundem: skin('gundem', { accent: '#e11d2e' }),
   siyaset: skin('siyaset', { badge: 'ghost', accent: '#94a3b8' }),
-  magazin: skin('magazin', { frame: 'magazine', badge: 'ghost', accent: '#f4b460', typeMs: 30 }),
+  magazin: skin('magazin', { badge: 'ghost', accent: '#f4b460', typeMs: 30 }),
   kultur: skin('kultur', { badge: 'ghost', accent: '#e8c4a8' }),
-  spor: skin('spor', { wipe: true, accent: '#16a34a', typeMs: 16 }),
-  ekonomi: skin('ekonomi', { ticker: true, accent: '#2563eb' }),
+  spor: skin('spor', { accent: '#16a34a', typeMs: 16 }),
+  ekonomi: skin('ekonomi', { accent: '#2563eb' }),
   teknoloji: skin('teknoloji', { accent: '#06b6d4' }),
   dunya: skin('dunya', { badge: 'ghost', accent: '#64748b' }),
   saglik: skin('saglik', { accent: '#14b8a6' }),

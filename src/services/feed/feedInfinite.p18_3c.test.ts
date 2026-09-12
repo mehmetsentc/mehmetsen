@@ -162,13 +162,13 @@ describe('P18.3C 100-card unique pagination simulation', () => {
 })
 
 describe('P18.3C card + containment source guards', () => {
-  it('summary uses full text — no CSS line-clamp / nested scroll trap', () => {
+  it('summary uses full stored text — presentation clamp only, no string slice', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FullscreenNewsCard.tsx'),
       'utf8'
     )
     expect(src).toContain('data-testid="smart-feed-summary"')
-    expect(src).not.toMatch(/line-clamp/)
+    expect(src).toContain('data-feed-summary-clamp')
     expect(src).not.toMatch(/item\.summary\.slice|item\.summary\.substring/)
     expect(src).toContain('orientation="vertical"')
     expect(src).toContain('object-cover')

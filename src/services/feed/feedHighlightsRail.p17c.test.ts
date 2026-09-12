@@ -72,9 +72,12 @@ describe('P17c Feed rail presentation', () => {
     expect(card).toContain('pr-[3.5rem]')
   })
 
-  it('cadence preserved: every 8th card', () => {
+  it('cadence preserved via shouldShowFeedHighlights (every 8th)', () => {
     const client = read('src/components/feed/smart/SmartFeedClient.tsx')
-    expect(client).toContain('showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}')
+    expect(client).toContain('shouldShowFeedHighlights')
+    const elig = read('src/lib/feed/feedHighlightsEligibility.ts')
+    expect(elig).toContain('FEED_HIGHLIGHTS_CADENCE = 8')
+    expect(elig).toContain('(index + 1) % FEED_HIGHLIGHTS_CADENCE !== 0')
   })
 
   it('gesture / coach / single-reader / PWA contracts preserved', () => {

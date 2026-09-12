@@ -97,6 +97,7 @@ import {
   writeLocalClearedSentinel,
 } from '@/lib/feed/accountLocalLocation'
 import { createFeedSessionId } from '@/lib/feed/reader/history'
+import { shouldShowFeedHighlights } from '@/lib/feed/feedHighlightsEligibility'
 import {
   createFeedReaderCapabilitySession,
   settleFeedReaderCapabilitySession,
@@ -2666,7 +2667,14 @@ export function SmartFeedClient({
                         }
                       : undefined
                   }
-                  showDiscoveryRail={(index + 1) % 8 === 0 && index < items.length - 1}
+                  showDiscoveryRail={
+                    shouldShowFeedHighlights({
+                      index,
+                      itemsLength: items.length,
+                      category: item.category ?? category,
+                      viewportHeight: cardHeightPx > 0 ? cardHeightPx : null,
+                    }).eligible
+                  }
                   discoveryCategory={item.category ?? category}
                   discoveryExcludeIds={items.map((i) => i.articleId)}
                   onDiscoveryArticleOpen={(d) => {
