@@ -111,6 +111,10 @@ const CLICKBAIT_PATTERNS = [
   /bomba\s+gelişme/i,
   /flaş\s+gelişme/i,
   /şok\s+(iddia|gelişme|detay|detaylar|itiraf|sözler|anlar)/i,
+  /bakın\s+ne\s+oldu/i,
+  /işte\s+o\s+isim/i,
+  /herkes\s+bunu\s+konuşuyor/i,
+  /bu\s+görüntü\s+olay\s+oldu/i,
 ]
 
 export function normalizeEditorialCategory(rawHint?: string | null, textForInference?: string): string {
