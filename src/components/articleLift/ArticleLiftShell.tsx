@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { pauseAllLivingVideo } from '@/lib/livingVideo/activeVideoOwner'
 import { clearLiftOrigin, focusLiftOrigin, getCurrentLiftOrigin } from '@/lib/articleLift/liftOrigin'
+import { pinLiftReaderOriginToPageState, restoreLiftReaderScrollAfterLayout } from '@/lib/articleLift/liftReaderScroll'
 
 interface ArticleLiftShellProps {
   articleId: string
@@ -130,6 +131,10 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // Overlay mount runs after PageStateEffects' /haber effect, which can
+    // overwrite the origin scroll with a footer-scale window.scrollY.
+    // Re-pin the click-time capture so close restores the reader origin.
+    pinLiftReaderOriginToPageState()
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -148,6 +153,7 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
         clearTimeout(fallbackBackTimeoutRef.current)
         fallbackBackTimeoutRef.current = null
       }
+      restoreLiftReaderScrollAfterLayout()
       focusLiftOrigin(articleId)
       clearLiftOrigin()
     }

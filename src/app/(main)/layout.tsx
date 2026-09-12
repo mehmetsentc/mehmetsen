@@ -1,5 +1,6 @@
 import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
+import { ArticleLiftOriginCapture } from '@/components/articleLift/ArticleLiftOriginCapture'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { resolveTenant } from '@/lib/tenant'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
@@ -31,6 +32,7 @@ export default async function MainLayout({
 
     return (
       <>
+        <ArticleLiftOriginCapture />
         <CityLayoutClient
           tenantSlug={tenant?.slug ?? citySlug}
           displayName={cityName}
@@ -47,6 +49,7 @@ export default async function MainLayout({
 
   return (
     <>
+      <ArticleLiftOriginCapture />
       <MainLayoutClient>{children}</MainLayoutClient>
       {modal}
     </>

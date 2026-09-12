@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
+import { getLiftReaderOrigin } from '@/lib/articleLift/liftOrigin'
 import { usePageStateStore } from '@/store/pageStateStore'
 
 const SCROLL_SAVE_MS = 120
@@ -21,6 +22,24 @@ export function PageStateEffects() {
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
+    const liftOrigin = getLiftReaderOrigin()
+    const liftArticlePath =
+      !!liftOrigin && (pathname === '/haber' || pathname.startsWith('/haber/'))
+
+    // Article Lift intercepts /haber/* on top of the still-mounted origin
+    // page. Saving window.scrollY here (after Next/Link + overflow mutate
+    // the document) wrote document.scrollHeight onto /feed and returned
+    // readers to the footer. Re-pin the click-time origin and do not move
+    // the underlying page. Feed2 never captures a lift origin, so this
+    // branch does not run on /feed-v2.
+    if (liftArticlePath && liftOrigin) {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+      setScroll(liftOrigin.pathname, liftOrigin.scrollY)
+      return () => {
+        setScroll(liftOrigin.pathname, liftOrigin.scrollY)
+      }
+    }
+
     const saved = getScroll(pathname)
 
     // Cancel any pending restore from a previous route
@@ -41,7 +60,12 @@ export function PageStateEffects() {
     const onScroll = () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
-        setScroll(pathname, window.scrollY)
+        const origin = getLiftReaderOrigin()
+        if (origin && origin.pathname === pathname) {
+          setScroll(pathname, origin.scrollY)
+        } else {
+          setScroll(pathname, window.scrollY)
+        }
       }, SCROLL_SAVE_MS)
     }
 
@@ -50,7 +74,12 @@ export function PageStateEffects() {
       window.removeEventListener('scroll', onScroll)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
-      setScroll(pathname, window.scrollY)
+      const origin = getLiftReaderOrigin()
+      if (origin && origin.pathname === pathname) {
+        setScroll(pathname, origin.scrollY)
+      } else {
+        setScroll(pathname, window.scrollY)
+      }
     }
   }, [pathname, setScroll, getScroll])
 
