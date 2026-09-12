@@ -20,7 +20,23 @@ export const READER_GESTURE = {
   flickMinProgress: 0.14,
   /** max interactive progress mapped from drag */
   maxProgress: 1,
+  /**
+   * Touch/hold discovery peek — subtle Reader edge from RIGHT (~4%).
+   * Not a second Reader; reuses uncommitted readerSession progress.
+   */
+  peekProgress: 0.04,
+  /** Short still-down qualify so quick taps do not flash peek */
+  peekQualifyMs: 72,
 } as const
+
+/** Movement still qualifies as "hold" (below axis activation). */
+export function isStillHoldMovement(
+  dx: number,
+  dy: number,
+  activatePx = READER_GESTURE.activatePx
+): boolean {
+  return Math.abs(dx) < activatePx && Math.abs(dy) < activatePx
+}
 
 export type AxisIntent = 'none' | 'horizontal' | 'vertical'
 

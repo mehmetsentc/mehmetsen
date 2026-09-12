@@ -123,7 +123,8 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
 
       if (action.type === 'copy') {
         try {
-          await navigator.clipboard.writeText(`${shareText}\n\n${url}`)
+          // Copy-link must be the canonical article URL (not feed-v2?reader=…).
+          await navigator.clipboard.writeText(url)
           recordShare()
           toast.success('Bağlantı kopyalandı')
           onClose()
@@ -143,6 +144,7 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
           recordShare()
           onClose()
         } catch (err) {
+          // User dismissing the OS share sheet is not an application error.
           if ((err as Error).name !== 'AbortError') {
             toast.error('Paylaşım başarısız oldu')
           }
@@ -158,7 +160,20 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
       }
 
       recordShare()
-      window.open(action.href, '_blank', 'noopener,noreferrer,width=600,height=400')
+      // Open in a new tab without sized popup features — iOS Safari often blocks
+      // feature-string popups even inside a click handler.
+      const opened = window.open(action.href, '_blank', 'noopener,noreferrer')
+      if (!opened) {
+        // Last-resort same-gesture navigation via temporary anchor (preserves tab).
+        const a = document.createElement('a')
+        a.href = action.href
+        a.target = '_blank'
+        a.rel = 'noopener noreferrer'
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      }
       onClose()
     },
     [url, title, shareText, onClose, recordShare]

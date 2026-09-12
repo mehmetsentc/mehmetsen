@@ -30,7 +30,9 @@ import { nestedFeedContentCanScroll } from '@/lib/feed/reader/nestedFeedScroll'
 import {
   classifyAxisIntent,
   feedToReaderProgress,
+  isStillHoldMovement,
   prefersReducedMotion,
+  READER_GESTURE,
   shouldCompleteTransition,
   shouldIgnoreSystemBackEdge,
 } from '@/lib/feed/reader/gestureArbitration'
@@ -3057,11 +3059,20 @@ function FeedCardWithImpression(props: {
     axis: 'none' | 'horizontal' | 'vertical'
     moveListener: ((ev: PointerEvent) => void) | null
   } | null>(null)
+  const peekTimerRef = useRef<number | null>(null)
+  const peekArmedRef = useRef(false)
   const [dragProgress, setDragProgress] = useState(0)
   const [snapAnimating, setSnapAnimating] = useState(false)
   const [horizontalLocked, setHorizontalLocked] = useState(false)
   const reducedMotion = prefersReducedMotion()
   const pageProgress = Math.max(dragProgress, readerUnderlayProgress)
+
+  const clearPeekTimer = () => {
+    if (peekTimerRef.current != null) {
+      window.clearTimeout(peekTimerRef.current)
+      peekTimerRef.current = null
+    }
+  }
 
   const clearNativeMove = () => {
     const d = drag.current
@@ -3073,6 +3084,8 @@ function FeedCardWithImpression(props: {
   }
 
   const resetDragVisual = (animate: boolean) => {
+    clearPeekTimer()
+    peekArmedRef.current = false
     clearNativeMove()
     drag.current = null
     setHorizontalLocked(false)
@@ -3263,6 +3276,8 @@ function FeedCardWithImpression(props: {
               if (intent === 'vertical') {
                 // Nested copy/CTA scroll owns vertical until its edge.
                 if (nestedFeedContentCanScroll(ev.target, dy)) {
+                  clearPeekTimer()
+                  peekArmedRef.current = false
                   clearNativeMove()
                   drag.current = null
                   setHorizontalLocked(false)
@@ -3290,6 +3305,8 @@ function FeedCardWithImpression(props: {
                   })
                   return
                 }
+                clearPeekTimer()
+                peekArmedRef.current = false
                 clearNativeMove()
                 drag.current = null
                 setHorizontalLocked(false)
@@ -3318,6 +3335,10 @@ function FeedCardWithImpression(props: {
                 return
               }
               if (intent !== 'horizontal') {
+                // Still within activate band — keep peek timer unless movement escapes hold.
+                if (!isStillHoldMovement(dx, dy)) {
+                  clearPeekTimer()
+                }
                 onGesturePointerDebug?.({
                   phase: 'move',
                   pointerType: ev.pointerType,
@@ -3331,7 +3352,7 @@ function FeedCardWithImpression(props: {
                   directionValid: dx < 0,
                   activated: false,
                   captured: false,
-                  progress: 0,
+                  progress: peekArmedRef.current ? READER_GESTURE.peekProgress : 0,
                   reducedMotion,
                   dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
                   targetTag: targetTagName(ev.target),
@@ -3342,6 +3363,12 @@ function FeedCardWithImpression(props: {
               }
               // Haberi Aç: finger LEFT only (negative dx) — Reader enters from RIGHT.
               if (dx >= 0) {
+                clearPeekTimer()
+                if (peekArmedRef.current) {
+                  peekArmedRef.current = false
+                  setDragProgress(0)
+                  onOpenReaderCancel?.()
+                }
                 onGesturePointerDebug?.({
                   phase: 'move',
                   pointerType: ev.pointerType,
@@ -3364,6 +3391,7 @@ function FeedCardWithImpression(props: {
                 })
                 return
               }
+              clearPeekTimer()
               d.axis = 'horizontal'
               setHorizontalLocked(true)
               // Capture only after horizontal lock — early capture steals Haberi Oku taps on iOS.
@@ -3385,7 +3413,10 @@ function FeedCardWithImpression(props: {
                 directionValid: true,
                 activated: true,
                 captured: true,
-                progress: feedToReaderProgress(dx, window.innerWidth || 390),
+                progress: Math.max(
+                  peekArmedRef.current ? READER_GESTURE.peekProgress : 0,
+                  feedToReaderProgress(dx, window.innerWidth || 390)
+                ),
                 reducedMotion,
                 dominance: Math.abs(dy) > 0 ? Math.abs(dx) / Math.max(1, Math.abs(dy)) : null,
                 targetTag: targetTagName(ev.target),
@@ -3423,7 +3454,10 @@ function FeedCardWithImpression(props: {
           if (d.axis !== 'horizontal') return
           ev.preventDefault()
           const width = window.innerWidth || 390
-          const progress = feedToReaderProgress(dx, width)
+          const progress = Math.max(
+            peekArmedRef.current ? READER_GESTURE.peekProgress : 0,
+            feedToReaderProgress(dx, width)
+          )
           setDragProgress(progress)
           onOpenReaderProgress?.(progress)
           onGesturePointerDebug?.({
@@ -3459,16 +3493,53 @@ function FeedCardWithImpression(props: {
           moveListener,
         }
         e.currentTarget.addEventListener('pointermove', moveListener, { passive: false })
+
+        // Subtle Reader discovery peek (3–5% from RIGHT) after short still-down qualify.
+        // Reuses the same uncommitted readerSession — not a second Reader.
+        clearPeekTimer()
+        peekArmedRef.current = false
+        if (pageTurnOpen && !sheetOpen && !reducedMotion) {
+          const qualifyPointerId = pointerId
+          peekTimerRef.current = window.setTimeout(() => {
+            peekTimerRef.current = null
+            const d = drag.current
+            if (!d || d.pointerId !== qualifyPointerId || d.axis !== 'none') return
+            peekArmedRef.current = true
+            setDragProgress(READER_GESTURE.peekProgress)
+            onOpenReaderProgress?.(READER_GESTURE.peekProgress)
+            onGesturePointerDebug?.({
+              phase: 'move',
+              pointerType: e.pointerType,
+              startX,
+              currentX: startX,
+              startY,
+              currentY: startY,
+              dx: 0,
+              dy: 0,
+              owner: 'NONE',
+              directionValid: true,
+              activated: false,
+              captured: false,
+              progress: READER_GESTURE.peekProgress,
+              reducedMotion,
+              targetTag: targetTagName(e.target),
+              touchAction: readTouchActionForTarget(e.target),
+              lastAction: 'NONE',
+            })
+          }, READER_GESTURE.peekQualifyMs)
+        }
       }}
       onPointerUp={(e) => {
         const d = drag.current
         const sheetOpen = Boolean(onOpenSheetGesture)
+        clearPeekTimer()
         if ((!onOpenReaderGesture && !onOpenSheetGesture) || !d || d.pointerId !== e.pointerId) {
           if (d) resetDragVisual(false)
           return
         }
         clearNativeMove()
         const axis = d.axis
+        const hadPeek = peekArmedRef.current
         drag.current = null
         setHorizontalLocked(false)
         try {
@@ -3482,6 +3553,7 @@ function FeedCardWithImpression(props: {
         const dy = e.clientY - d.y
         const dt = Math.max(1, performance.now() - d.lastT)
         if (sheetOpen) {
+          peekArmedRef.current = false
           if (axis !== 'vertical') {
             resetDragVisual(false)
             return
@@ -3495,7 +3567,10 @@ function FeedCardWithImpression(props: {
         }
         const velocityX = (e.clientX - d.lastX) / dt
         const width = typeof window !== 'undefined' ? window.innerWidth : 390
-        const progress = feedToReaderProgress(dx, width)
+        const progress = Math.max(
+          hadPeek ? READER_GESTURE.peekProgress : 0,
+          feedToReaderProgress(dx, width)
+        )
         const open =
           axis === 'horizontal' &&
           shouldCompleteTransition({
@@ -3541,6 +3616,7 @@ function FeedCardWithImpression(props: {
         })
 
         if (open) {
+          peekArmedRef.current = false
           setSnapAnimating(true)
           setDragProgress(1)
           onOpenReaderProgress?.(1)
@@ -3551,12 +3627,18 @@ function FeedCardWithImpression(props: {
           return
         }
 
-        if (axis === 'horizontal' && progress > 0.02) {
+        if (hadPeek || (axis === 'horizontal' && progress > 0.02)) {
+          peekArmedRef.current = false
           onOpenReaderCancel?.()
+          resetDragVisual(true)
+          return
         }
-        resetDragVisual(axis === 'horizontal' && progress > 0.02)
+        peekArmedRef.current = false
+        resetDragVisual(false)
       }}
       onPointerCancel={(e) => {
+        clearPeekTimer()
+        peekArmedRef.current = false
         const d = drag.current
         if (d) {
           const dx = typeof e.clientX === 'number' ? e.clientX - d.x : null

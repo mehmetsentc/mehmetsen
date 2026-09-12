@@ -7,8 +7,20 @@ import type { FeedReaderGestureDecision } from '@/lib/feed/reader/readerDebug'
 
 export { nestedFeedContentCanScroll } from '@/lib/feed/reader/nestedFeedScroll'
 
-const INTERACTIVE_GESTURE_BLOCK_SELECTOR =
-  'button, a, input, textarea, [data-no-reader-gesture="1"]'
+const INTERACTIVE_GESTURE_BLOCK_SELECTOR = [
+  'button',
+  'a',
+  'input',
+  'textarea',
+  'select',
+  'video',
+  'audio',
+  '[role="button"]',
+  '[data-no-reader-gesture="1"]',
+  '[data-testid="smart-feed-discovery-rail"]',
+  '[data-testid="smart-feed-discovery-tile"]',
+  '[data-testid="smart-feed-discovery-scroll"]',
+].join(', ')
 
 type ClosestCapable = { closest: (selectors: string) => unknown }
 

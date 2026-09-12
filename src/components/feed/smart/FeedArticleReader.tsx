@@ -12,8 +12,9 @@ import {
 } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Share2, Bookmark, MessageCircle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, Bookmark, MessageCircle, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ShareButton as PostShareButton } from '@/components/post/ShareButton'
 import type { FeedItemDto } from '@/types/smartFeed'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
 import {
@@ -1308,29 +1309,16 @@ export function FeedArticleReader({
             {saved ? 'Kaydedildi' : 'Kaydet'}
             {typeof saveCount === 'number' ? ` · ${saveCount}` : ''}
           </button>
-          <ShareButton title={headline} path={canonicalPath} />
+          <PostShareButton
+            postId={item.articleId}
+            slug={item.slug}
+            title={headline}
+            text={item.summary ?? undefined}
+            variant="inline"
+          />
         </footer>
       </div>
     </div>
-  )
-}
-
-function ShareButton({ title, path }: { title: string; path: string }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 text-sm text-[color:var(--reader-page-text)]"
-      onClick={() => {
-        const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
-        if (navigator.share) {
-          void navigator.share({ title, url }).catch(() => {})
-        } else if (navigator.clipboard) {
-          void navigator.clipboard.writeText(url)
-        }
-      }}
-    >
-      <Share2 className="h-4 w-4" /> Paylaş
-    </button>
   )
 }
 

@@ -115,7 +115,8 @@ export function buildFacebookShareUrl(shareUrl: string, shareText?: string): str
     const params = new URLSearchParams({
       app_id: appId,
       href: shareUrl,
-      display: 'popup',
+      // Top-level / new-tab handoff — sized "popup" display is often blocked on iOS Safari.
+      display: 'page',
     })
     if (text) params.set('quote', text)
     return `https://www.facebook.com/dialog/share?${params.toString()}`

@@ -121,6 +121,7 @@ export function FeedDiscoveryRail({
       ref={rootRef}
       className="w-full shrink-0"
       data-testid="smart-feed-discovery-rail"
+      data-no-reader-gesture="1"
       aria-label="Öne çıkanlar"
       onTouchStart={(e) => e.stopPropagation()}
     >
