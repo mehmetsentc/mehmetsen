@@ -62,7 +62,10 @@ const DESKS: Array<{
     category: 'breaking',
     editorSlug: 'arda-sahin',
     categoryId: 'son-dakika',
-    feeds: [{ publisher: 'Anadolu Ajansı', url: 'https://www.aa.com.tr/tr/rss/default?cat=guncel' }],
+    feeds: [
+      { publisher: 'Anadolu Ajansı', url: 'https://www.aa.com.tr/tr/rss/default?cat=guncel' },
+      { publisher: 'Anadolu Ajansı', url: 'https://www.aa.com.tr/rss/ajansguncel.xml' },
+    ],
   },
   {
     category: 'turkiye',
@@ -92,13 +95,21 @@ const DESKS: Array<{
     category: 'magazin',
     editorSlug: 'melis-kaya',
     categoryId: 'magazin',
-    feeds: [{ publisher: 'NTV', url: 'https://www.ntv.com.tr/magazin.rss' }],
+    feeds: [
+      { publisher: 'Habertürk', url: 'https://www.haberturk.com/rss/kategori/magazin.xml' },
+      { publisher: 'Hürriyet', url: 'https://www.hurriyet.com.tr/rss/magazin' },
+      { publisher: 'Sabah', url: 'https://www.sabah.com.tr/rss/magazin.xml' },
+    ],
   },
   {
     category: 'teknoloji',
     editorSlug: 'can-tunc',
     categoryId: 'teknoloji',
-    feeds: [{ publisher: 'NTV', url: 'https://www.ntv.com.tr/teknoloji.rss' }],
+    feeds: [
+      { publisher: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-bilim-teknoloji' },
+      { publisher: 'Habertürk', url: 'https://www.haberturk.com/rss/kategori/teknoloji.xml' },
+      { publisher: 'ShiftDelete', url: 'https://shiftdelete.net/feed' },
+    ],
   },
   {
     category: 'canakkale',
@@ -108,7 +119,7 @@ const DESKS: Array<{
     mustMatch: /çanakkale|biga|gelibolu|lapseki|ezine|ayvacık|bozcaada|gökçeada/i,
     feeds: [
       { publisher: 'Çanakkale Olay', url: 'https://www.canakkaleolay.com/rss' },
-      { publisher: 'Anadolu Ajansı', url: 'https://www.aa.com.tr/tr/rss/default?cat=yerel' },
+      { publisher: 'Çanakkale Haber', url: 'https://www.canakkalehaber.com/rss' },
     ],
   },
 ]
@@ -134,13 +145,16 @@ function decode(xml: string): string {
 }
 
 function parseRssItems(xml: string): Array<{ title: string; link: string; body: string }> {
-  const blocks = xml.split(/<item[\s>]/i).slice(1)
+  const blocks = xml.split(/<(?:item|entry)[\s>]/i).slice(1)
   const items: Array<{ title: string; link: string; body: string }> = []
   for (const block of blocks) {
-    const title = decode((block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || '')
-    const link = decode((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || '')
+    const title = decode((block.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '')
+    const link =
+      decode((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || '') ||
+      decode((block.match(/<link[^>]+href=["']([^"']+)["']/i) || [])[1] || '')
     const desc = decode(
       (block.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/i) ||
+        block.match(/<content[^>]*>([\s\S]*?)<\/content>/i) ||
         block.match(/<description>([\s\S]*?)<\/description>/i) ||
         [])[1] || ''
     )
@@ -149,13 +163,17 @@ function parseRssItems(xml: string): Array<{ title: string; link: string; body: 
   return items
 }
 
-async function fetchFeed(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'NaHaberP13Preview/1.0 (local editorial A/B; no publish)' },
-    signal: AbortSignal.timeout(20_000),
-  })
-  if (!res.ok) throw new Error(`RSS HTTP ${res.status} ${url}`)
-  return res.text()
+async function fetchFeed(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'NaHaberP13Preview/1.0 (local editorial A/B; no publish)' },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) return null
+    return res.text()
+  } catch {
+    return null
+  }
 }
 
 async function collectEvidence(): Promise<Evidence[]> {
@@ -165,10 +183,11 @@ async function collectEvidence(): Promise<Evidence[]> {
     let picked: Evidence | null = null
     for (const feed of desk.feeds) {
       const xml = await fetchFeed(feed.url)
+      if (!xml) continue
       const items = parseRssItems(xml)
       const candidate = items.find((item) => {
         if (used.has(item.link)) return false
-        if ((item.body || item.title).length < 80) return false
+        if (`${item.title} ${item.body}`.trim().length < 80) return false
         if (desk.mustMatch && !desk.mustMatch.test(`${item.title} ${item.body} ${item.link}`)) {
           return false
         }
