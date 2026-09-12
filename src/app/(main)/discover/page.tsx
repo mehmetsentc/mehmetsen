@@ -15,7 +15,6 @@ import {
   BarChart3,
   Loader2,
 } from 'lucide-react'
-import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -162,6 +161,26 @@ function TrendingTopicRow({ item, rank, maxCount }: { item: TrendingTopic; rank:
   )
 }
 
+/**
+ * Discover category thumbs must not enter next/image. C.3 clean-browser
+ * reproduced E231 (sozcu01.sozcucdn.com defaultLoader) after 779fe75
+ * SafeNewsImage still imported Image in the same client module. Keep this
+ * route on a native img with no next/image import.
+ */
+function DiscoverThumb({ src }: { src: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  )
+}
+
 function NewsCardCompact({ post }: { post: Post }) {
   const { url: imageUrl, isFallback } = resolveTimelineImageUrl(post)
   const rel = formatTimelineRelative(post.publishedAt)
@@ -173,7 +192,7 @@ function NewsCardCompact({ post }: { post: Post }) {
     <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
-          <SafeNewsImage src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
+          <DiscoverThumb src={imageUrl} />
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -200,7 +219,7 @@ function VideoCardCompact({ post }: { post: Post }) {
     <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
-          <SafeNewsImage src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
+          <DiscoverThumb src={imageUrl} />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Clapperboard className="h-5 w-5 text-white drop-shadow" />
           </div>
