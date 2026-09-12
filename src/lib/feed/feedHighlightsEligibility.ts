@@ -2,6 +2,7 @@
  * Feed V2 — Highlights ("Öne Çıkanlar") placement eligibility.
  * Lightweight deterministic gate — NOT a second ranking engine.
  * Reuses existing cadence authority (every 8th card) + quality/layout gates.
+ * P17 approved visual ships with blur-bg + sharp fg hero card composition.
  */
 
 /** Existing product cadence: every 8th card (1-based positions 8, 16, …). */
