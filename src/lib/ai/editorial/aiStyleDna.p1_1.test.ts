@@ -19,6 +19,9 @@ describe('AI STYLE P1.1 — DNA reaches every editor (Task 1-6, 9)', () => {
     expect(NEWS_FORMAT_LOCK).toContain('GÖVDE RİTMİ')
     expect(NEWS_FORMAT_LOCK).toContain('GİRİŞ (ilk paragraf)')
     expect(NEWS_FORMAT_LOCK).toContain('AI-DİLİ / ŞABLON İFADE YASAĞI')
+    expect(NEWS_FORMAT_LOCK).toContain('NAHABER SUNUŞ (AI STYLE P1.3')
+    expect(NEWS_FORMAT_LOCK).toContain('MANŞET: en güçlü TEK doğrulanmış gelişme')
+    expect(NEWS_FORMAT_LOCK).toContain('Merak olgunun kendisinden gelsin')
   })
 
 

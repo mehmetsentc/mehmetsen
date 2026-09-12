@@ -55,4 +55,12 @@ describe('AI STYLE P1.1 — AI filler / clickbait template detection', () => {
     expect(res.issues).not.toContain('AI_FILLER_LANGUAGE')
     expect(res.issues).not.toContain('CLICKBAIT_TEMPLATE_PHRASE')
   })
+
+  it('flags P1.3 empty-clickbait title templates', () => {
+    const res = validateEditorialCandidate({
+      title: 'Herkes bunu konuşuyor: Belediye başkanından açıklama',
+      body: longEnoughBody('Belediye başkanı konuya ilişkin resmi açıklama yaptı.'),
+    })
+    expect(res.issues).toContain('CLICKBAIT_TEMPLATE_PHRASE')
+  })
 })
