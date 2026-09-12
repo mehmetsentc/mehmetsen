@@ -1,16 +1,6 @@
 import Image from 'next/image'
-import { isKnownNewsImageHost } from '@/constants/imageHosts'
 import { cn } from '@/lib/utils'
-
-function parseHostname(src: string): string | null {
-  try {
-    const raw = src.startsWith('//') ? `https:${src}` : src
-    if (raw.startsWith('/')) return null
-    return new URL(raw).hostname.toLowerCase()
-  } catch {
-    return null
-  }
-}
+import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
 
 interface SliderImageProps {
   src: string
@@ -33,8 +23,7 @@ export function SliderImage({
   className,
   fit = 'cover',
 }: SliderImageProps) {
-  const hostname = parseHostname(src)
-  const useNextImage = !hostname || isKnownNewsImageHost(hostname)
+  const useNextImage = shouldUseNextImage(src)
   const natural = fit === 'natural'
   const objectClass = fit === 'contain' ? 'object-contain' : fit === 'cover' ? 'object-cover' : undefined
 
@@ -78,15 +67,14 @@ export function SliderImage({
 
   if (natural) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
         alt={alt}
         width={1600}
         height={900}
+        unoptimized
         style={{ aspectRatio: 'auto' }}
         fetchPriority={priority ? 'high' : 'auto'}
-        decoding={priority ? 'sync' : 'async'}
         loading={priority ? 'eager' : 'lazy'}
         draggable={false}
         className={cn('h-auto w-full', className)}
@@ -95,14 +83,14 @@ export function SliderImage({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={src}
       alt={alt}
+      fill
+      unoptimized
       fetchPriority={priority ? 'high' : 'auto'}
-      decoding="async"
       draggable={false}
-      className={cn('absolute inset-0 h-full w-full', objectClass, className)}
+      className={cn(objectClass, className)}
     />
   )
 }

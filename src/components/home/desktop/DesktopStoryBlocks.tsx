@@ -158,7 +158,7 @@ export function HeroStory({ item, priority = false }: { item: NewsItem; priority
           <NewsTypeBadge item={item} />
           <StoryCategoryBadge item={item} />
         </div>
-        <Headline item={item} size="hero" serif />
+        <HeadlineText item={item} size="hero" serif />
         {item.description ? (
           <p className="mt-3 line-clamp-3 text-[15px] leading-relaxed text-[rgb(var(--color-muted))]">
             {item.description}
@@ -295,7 +295,7 @@ export function ImageStory({
           <NewsTypeBadge item={item} />
           <StoryCategoryBadge item={item} />
         </div>
-        <Headline item={item} size="md" />
+        <HeadlineText item={item} size="md" />
         {showSummary && item.description ? (
           <p className="mt-2 line-clamp-3 break-words text-sm leading-relaxed text-[rgb(var(--color-muted))]">
             {item.description}
@@ -395,7 +395,7 @@ export function DualImageStory({ items }: { items: NewsItem[] }) {
             </div>
           ))}
         </div>
-        <Headline item={lead} size="lg" serif />
+        <HeadlineText item={lead} size="lg" serif />
         {lead.description ? (
           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
             {lead.description}

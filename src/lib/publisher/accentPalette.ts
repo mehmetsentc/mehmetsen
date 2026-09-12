@@ -38,7 +38,7 @@ export const NAHABER_BRAND_RED_HEX = '#E50914'
 /** Minimum Euclidean RGB distance a publisher accent must keep from brand red. */
 export const PUBLISHER_ACCENT_MIN_BRAND_RED_DISTANCE = 90
 
-function hexToRgb(hex: string): [number, number, number] | null {
+export function hexToRgb(hex: string): [number, number, number] | null {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim())
   if (!m) return null
   const n = parseInt(m[1], 16)
@@ -66,4 +66,25 @@ export function distanceFromBrandRed(hex: string): number | null {
 export function isAllowedPublisherAccent(hex: string | null | undefined): boolean {
   if (hex === null || hex === undefined) return true
   return PUBLISHER_ACCENT_HEX_SET.has(hex.trim().toUpperCase())
+}
+
+/**
+ * Convert a publisher accent hex into the space-separated RGB triplet
+ * format this app's CSS custom properties use (see
+ * src/styles/tokens/colors.css, e.g. `--brand-500: 229   9  20;`), so it
+ * can be applied as a scoped `--color-brand` override on a page's wrapper
+ * element (`style={{ '--color-brand': accentColorCssVarValue(hex) } as
+ * React.CSSProperties}`) without touching the global brand token or any
+ * other publisher's page. Returns null for null/undefined/malformed input
+ * so callers can safely fall back to the default brand color — this does
+ * NOT re-validate against the curated palette (that is
+ * isAllowedPublisherAccent's job, enforced server-side before persisting);
+ * it only handles hex -> CSS-variable formatting for whatever value is
+ * already stored on the publisher record.
+ */
+export function accentColorCssVarValue(hex: string | null | undefined): string | null {
+  if (!hex) return null
+  const rgb = hexToRgb(hex)
+  if (!rgb) return null
+  return `${rgb[0]} ${rgb[1]} ${rgb[2]}`
 }

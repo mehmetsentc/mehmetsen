@@ -4,12 +4,14 @@ import {
   eq,
   inArray,
   isNotNull,
+  lt,
   or,
   sql,
   type SQL,
 } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
+  clusterMemberships,
   news,
   newsClusters,
   newsSources,
@@ -22,6 +24,7 @@ import {
 } from '@/db/schema'
 import { newPublisherId } from '@/lib/publisher/id'
 import { isAllowedPublisherAccent } from '@/lib/publisher/accentPalette'
+import { isPrimaryMembershipRole } from '@/lib/publisher/provenance'
 import type {
   PublisherAdminFilter,
   PublisherArticleItem,
@@ -114,6 +117,34 @@ function adminFilterClause(filter: PublisherAdminFilter): SQL | undefined {
   if (filter === 'pending') return eq(publishers.verificationStatus, 'PENDING')
   if (filter === 'rejected') return eq(publishers.verificationStatus, 'REJECTED')
   return undefined
+}
+
+/**
+ * LP7R.3 fix — decodes the synthetic `${publishedAtMs}:${id}` base64url
+ * cursor that resolvePublishedArticles' own final-cursor computation
+ * produces (see the `nextCursor` assignment at the end of that method).
+ * Returns null for anything else (including a Firestore-provenance cursor
+ * from branch 3, or a missing/first-page cursor) so callers can safely
+ * treat "couldn't decode" as "don't filter" rather than throwing — a
+ * cross-branch cursor-format mismatch degrades to branch 1 re-showing its
+ * newest rows, not a crash. See resolvePublishedArticles for why this is
+ * an acceptable, disclosed limitation rather than a full fix.
+ */
+function decodePublisherArticleCursor(
+  cursor: string | null | undefined
+): { publishedAt: Date; id: string } | null {
+  if (!cursor) return null
+  try {
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
+    const sep = decoded.lastIndexOf(':')
+    if (sep === -1) return null
+    const ms = Number(decoded.slice(0, sep))
+    const id = decoded.slice(sep + 1)
+    if (!Number.isFinite(ms) || !id) return null
+    return { publishedAt: new Date(ms), id }
+  } catch {
+    return null
+  }
 }
 
 export class PublisherRepository {
@@ -739,6 +770,21 @@ export class PublisherRepository {
     const seen = new Set<string>()
     const out: PublisherArticleItem[] = []
 
+    // LP7R.3 fix (Task 19 "Load More" was silently a no-op for any publisher
+    // whose own cluster-news count alone reaches `pageSize`): branch 1 below
+    // previously ignored `cursor` entirely and always queried exactly
+    // `pageSize` rows, so out.length could never exceed pageSize from this
+    // branch alone and the "is there more?" check further down (which looks
+    // for out.length > pageSize) could never fire. Fetching one extra row
+    // (`pageSize + 1`) lets that existing check detect overflow correctly,
+    // and filtering by the decoded cursor is what makes a second "load more"
+    // call actually advance instead of re-fetching page 1's rows. A cursor
+    // that doesn't decode to this branch's own format (e.g. still page 1,
+    // or a Firestore-provenance cursor from branch 3 — see
+    // decodePublisherArticleCursor) simply applies no filter, which is the
+    // same behavior this branch always had.
+    const cursorPos = decodePublisherArticleCursor(cursor)
+
     // 1. Direct news from PostgreSQL joined with clusters matching sourceIds
     const clusterNewsRows = await db
       .select({
@@ -751,17 +797,24 @@ export class PublisherRepository {
         publishedAt: news.publishedAt,
         categoryId: news.categoryId,
         sourceId: newsClusters.primarySourceId,
+        videoUrl: news.videoUrl,
       })
       .from(news)
       .innerJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
       .where(
         and(
           eq(news.status, 'published'),
-          inArray(newsClusters.primarySourceId, sourceIds)
+          inArray(newsClusters.primarySourceId, sourceIds),
+          cursorPos
+            ? or(
+                lt(news.publishedAt, cursorPos.publishedAt),
+                and(eq(news.publishedAt, cursorPos.publishedAt), lt(news.id, cursorPos.id))
+              )
+            : undefined
         )
       )
       .orderBy(desc(news.publishedAt))
-      .limit(pageSize)
+      .limit(pageSize + 1)
 
     for (const n of clusterNewsRows) {
       if (seen.has(n.id)) continue
@@ -774,11 +827,22 @@ export class PublisherRepository {
         thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
         publishedAt: n.publishedAt,
         sourceId: n.sourceId ?? sourceIds[0],
+        videoUrl: n.videoUrl,
         categoryId: n.categoryId,
       })
     }
 
-    // 2. Also check raw_articles linked news
+    // 2. Also check raw_articles linked news — LP7R.1 provenance hardening:
+    // editorialNewsId is set on EVERY member of a published cluster (PRIMARY,
+    // SUPPORTING, DUPLICATE, LOW_QUALITY, MATERIAL_UPDATE alike — see
+    // editorialSupplyService's "Link all member raw articles" step), so it is
+    // NOT sufficient on its own to mean "this publisher originated the story."
+    // Require cluster_memberships.membershipRole = 'PRIMARY' so this fallback
+    // only ever surfaces articles this publisher's source actually originated,
+    // matching the same rule already enforced by branch 1 above via
+    // newsClusters.primarySourceId. Rows with no membership role (legacy data)
+    // are deliberately excluded — absence of role data is not evidence of
+    // origination (do not invent provenance).
     if (out.length < pageSize) {
       const rawRows = await db
         .select({
@@ -787,8 +851,16 @@ export class PublisherRepository {
           title: rawArticles.title,
           publishedAt: rawArticles.publishedAt,
           mainImageUrl: rawArticles.mainImageUrl,
+          membershipRole: clusterMemberships.membershipRole,
         })
         .from(rawArticles)
+        .innerJoin(
+          clusterMemberships,
+          and(
+            eq(clusterMemberships.articleId, rawArticles.id),
+            eq(clusterMemberships.membershipRole, 'PRIMARY')
+          )
+        )
         .where(
           and(
             inArray(rawArticles.sourceId, sourceIds),
@@ -797,9 +869,14 @@ export class PublisherRepository {
         )
         .orderBy(desc(rawArticles.publishedAt))
         .limit(pageSize * 3)
+      // Defense in depth: the SQL join above already restricts to PRIMARY,
+      // but re-check in application code with the shared, unit-tested
+      // predicate rather than trusting the join silently. See
+      // src/lib/publisher/provenance.ts.
+      const primaryRawRows = rawRows.filter((r) => isPrimaryMembershipRole(r.membershipRole))
 
       const newsIds = [
-        ...new Set(rawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
+        ...new Set(primaryRawRows.map((r) => r.editorialNewsId).filter((id): id is string => Boolean(id))),
       ].filter((id) => !seen.has(id))
 
       const newsRows = newsIds.length
@@ -807,6 +884,7 @@ export class PublisherRepository {
             .select({
               id: news.id,
               legacyFirestoreId: news.legacyFirestoreId,
+              videoUrl: news.videoUrl,
               slug: news.slug,
               title: news.title,
               summary: news.summary,
@@ -830,7 +908,7 @@ export class PublisherRepository {
         if (row.legacyFirestoreId) newsByKey.set(row.legacyFirestoreId, row)
       }
 
-      for (const raw of rawRows) {
+      for (const raw of primaryRawRows) {
         const nid = raw.editorialNewsId
         if (!nid) continue
         const n = newsByKey.get(nid)
@@ -846,6 +924,7 @@ export class PublisherRepository {
           thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl ?? raw.mainImageUrl,
           publishedAt: n.publishedAt ?? raw.publishedAt,
           sourceId: raw.sourceId,
+          videoUrl: n.videoUrl,
           categoryId: n.categoryId,
         })
         if (out.length >= pageSize) break
@@ -949,6 +1028,7 @@ export class PublisherRepository {
         thumbnailUrl: news.thumbnailUrl,
         coverImageUrl: news.coverImageUrl,
         publishedAt: news.publishedAt,
+        videoUrl: news.videoUrl,
       })
       .from(publisherContentItems)
       .innerJoin(news, eq(news.id, publisherContentItems.publishedNewsId))
@@ -971,6 +1051,7 @@ export class PublisherRepository {
       thumbnailUrl: n.coverImageUrl ?? n.thumbnailUrl,
       publishedAt: n.publishedAt,
       sourceId: 'publisher_studio',
+      videoUrl: n.videoUrl,
     }))
   }
 }

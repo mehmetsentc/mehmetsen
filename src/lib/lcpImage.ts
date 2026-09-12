@@ -1,19 +1,9 @@
 import { getImageProps } from 'next/image'
-import { isKnownNewsImageHost } from '@/constants/imageHosts'
+import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
 
 /** Must match FeaturedSlider SafeNewsImage sizes + quality. */
 export const LCP_IMAGE_SIZES = '(max-width: 768px) 100vw, 860px'
 export const LCP_IMAGE_QUALITY = 55
-
-function parseHostname(src: string): string | null {
-  try {
-    const raw = src.startsWith('//') ? `https:${src}` : src
-    if (raw.startsWith('/')) return null
-    return new URL(raw).hostname.toLowerCase()
-  } catch {
-    return null
-  }
-}
 
 export type LcpPreload = {
   href: string
@@ -23,8 +13,7 @@ export type LcpPreload = {
 
 /** Preload descriptors for LCP hero — optimized WebP via next/image, not raw RSS CDN. */
 export function getLcpPreload(imageUrl: string): LcpPreload | null {
-  const hostname = parseHostname(imageUrl)
-  if (hostname && !isKnownNewsImageHost(hostname)) return null
+  if (!shouldUseNextImage(imageUrl)) return null
 
   const { props } = getImageProps({
     src: imageUrl,
