@@ -488,15 +488,11 @@ export function FullscreenNewsCard({
         ) : null}
 
         {/*
-          Foreground hero + double-tap zone.
-          Sharp primary image starts high; remaining flex space keeps open gesture.
+          Sharp foreground hero + double-tap — text stack follows immediately
+          (no flex spacer gap between image and copy).
         */}
         <div
-          className="relative flex min-h-0 flex-1 touch-pan-y flex-col"
-          style={{
-            minHeight: 'var(--feed-v2-hero-min)',
-            maxHeight: 'var(--feed-v2-hero-max)',
-          }}
+          className="relative w-full shrink-0 touch-pan-y"
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
           onPointerDown={onTapZonePointerDown}
@@ -510,8 +506,9 @@ export function FullscreenNewsCard({
           {!showVideo && hasValidImage ? (
             <div
               className={cn(
-                'relative w-full shrink-0 overflow-hidden rounded-2xl',
-                'aspect-[16/9] max-h-full',
+                'relative w-full overflow-hidden rounded-2xl',
+                /* Taller than 16:9 — primary visual; short phones cap via max-h */
+                'aspect-[4/3] max-h-[min(46dvh,100%)]',
                 'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
                 'bg-neutral-950',
                 playMediaDolly &&
@@ -519,7 +516,8 @@ export function FullscreenNewsCard({
               )}
               data-testid="smart-feed-fg-hero"
               style={{
-                borderColor: 'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
+                borderColor:
+                  'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
               }}
             >
               <Image
@@ -538,9 +536,13 @@ export function FullscreenNewsCard({
                 }
               />
             </div>
-          ) : null}
-          {/* Flex spacer — keeps double-tap surface without pushing copy off-screen */}
-          <div className="min-h-0 flex-1" aria-hidden />
+          ) : (
+            /* No image: keep a tap surface without inventing a fake hero */
+            <div
+              className="min-h-[var(--feed-v2-hero-min)] w-full"
+              aria-hidden={hasValidImage ? undefined : true}
+            />
+          )}
           {heartBurst ? (
             <span
               key={heartBurst.id}
@@ -554,13 +556,13 @@ export function FullscreenNewsCard({
         </div>
 
         {/*
-          Bottom chrome: shrink-0 stack — not crushed via justify-end flex-1.
-          Copy may nested-scroll only for extreme editorial length.
-          Haberi Oku + publisher/follow stay outside nested scroll (first paint).
+          Copy starts where the hero ends — tight top padding only.
+          Haberi Oku + publisher stay outside nested copy scroll.
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pt-3 pr-[3.5rem] sm:pt-4"
+          className="relative z-[2] mt-2 flex w-full min-h-0 flex-1 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:mt-2.5 sm:pt-3"
           data-testid="smart-feed-bottom-chrome"
+          data-feed-copy-follows-hero="1"
         >
           <div
             className="min-w-0 overflow-y-auto overscroll-y-contain touch-pan-y"

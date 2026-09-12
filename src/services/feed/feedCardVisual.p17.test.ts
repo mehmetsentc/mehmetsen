@@ -17,11 +17,13 @@ describe('P17 Feed V2 approved card visual', () => {
     expect(card).toContain('smart-feed-bg-blur')
     expect(card).toContain('blur-2xl')
     expect(card).toContain('smart-feed-fg-hero')
-    expect(card).toContain('aspect-[16/9]')
+    expect(card).toContain('aspect-[4/3]')
+    expect(card).toContain('data-feed-copy-follows-hero')
     expect(card).toContain('smart-feed-readability-bottom')
     expect(card).toContain('smart-feed-readability-veil')
-    // No full-bleed sharp competitor over blur.
-    expect(card).not.toMatch(/smart-feed-media[\s\S]*object-cover object-center will-change-transform/)
+    // No flex spacer gap between hero and copy.
+    expect(card).not.toContain('Flex spacer — keeps double-tap')
+    expect(card).not.toMatch(/aspect-\[16\/9\]/)
   })
 
   it('orphan mid-card wipe/ticker/magazine frame disabled in skins', () => {
