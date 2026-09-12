@@ -5,14 +5,16 @@
  * No Firestore prompt writes. No news publish. No crawler AI.
  *
  * Usage (from this worktree, with host network):
- *   set -a && source /Users/user/nahaber/.env.local && set +a
  *   MANUAL_EDITOR_AI_ENABLED=true \
  *   CRAWLER_AI_DISPATCH_ENABLED=false \
  *   LEGACY_DIRECT_AI_ENABLED=false \
  *   AI_USAGE_TELEMETRY_ENABLED=false \
  *   npx tsx scripts/_ai_style_p1_3_ab.mts
+ *
+ * Loads DEEPSEEK_API_KEY from .env.local if unset. Does not print secrets.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { createHash, randomInt } from 'node:crypto'
 import { SEED_AI_EDITORS } from '../src/lib/ai/editorial/seedEditors'
 import { SEED_CITY_AI_EDITORS } from '../src/lib/ai/editorial/seedCityEditors'
@@ -28,6 +30,30 @@ import { isManualEditorAiEnabled } from '../src/services/crawler/automatedAiPoli
 
 const MAX_CALLS = 16
 const OUT_DIR = '/tmp/nahaber-p1-3-ab'
+const ALLOWED_ENV_KEYS = new Set(['DEEPSEEK_API_KEY', 'DEEPSEEK_MODEL', 'DEEPSEEK_NEWS_MODEL'])
+
+function loadDeepSeekEnvSilently() {
+  const candidates = [
+    resolve(process.cwd(), '.env.local'),
+    resolve(process.cwd(), '../../.env.local'),
+  ]
+  for (const file of candidates) {
+    if (!existsSync(file)) continue
+    const text = readFileSync(file, 'utf8')
+    for (const raw of text.split('\n')) {
+      const line = raw.trim()
+      if (!line || line.startsWith('#') || !line.includes('=')) continue
+      const eq = line.indexOf('=')
+      const key = line.slice(0, eq).trim()
+      if (!ALLOWED_ENV_KEYS.has(key) || process.env[key]?.trim()) continue
+      process.env[key] = line
+        .slice(eq + 1)
+        .trim()
+        .replace(/^['"]|['"]$/g, '')
+    }
+    break
+  }
+}
 
 type CategoryId =
   | 'breaking'
@@ -282,6 +308,7 @@ async function generateOnce(
 }
 
 async function main() {
+  loadDeepSeekEnvSilently()
   if (process.env.CRAWLER_AI_DISPATCH_ENABLED === 'true') {
     throw new Error('CRAWLER_AI_DISPATCH_ENABLED must stay false')
   }

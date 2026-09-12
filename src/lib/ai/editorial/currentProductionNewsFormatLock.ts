@@ -1,5 +1,5 @@
 /**
- * Frozen snapshot of production NEWS_FORMAT_LOCK at origin target 5a952de
+ * Frozen snapshot of production NEWS_FORMAT_LOCK at origin target 95fe0a4
  * (pre–High-Engagement DNA). Preview/A-B only — never used by buildEditorPrompt().
  */
 import {
