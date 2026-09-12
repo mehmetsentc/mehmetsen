@@ -1334,7 +1334,7 @@ export function FeedArticleReader({
             fixed-height viewport). Absolute footer clearance spacer follows.
           */}
           <div
-            className="mt-10 w-full min-w-0 shrink-0"
+            className="mt-12 w-full min-w-0 shrink-0"
             data-testid="feed-reader-recommendations"
             data-recommendation-mounted="1"
           >

@@ -18,6 +18,21 @@ export interface DiscoveryRailItem {
   publisherName?: string | null
 }
 
+/** Compact Reader-meta time — never throws on bad dates. */
+function formatReaderRecMetaTime(publishedAt: string | null | undefined): string | null {
+  if (!publishedAt) return null
+  const t = Date.parse(publishedAt)
+  if (!Number.isFinite(t)) return null
+  try {
+    return new Date(t).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'short',
+    })
+  } catch {
+    return null
+  }
+}
+
 interface FeedDiscoveryRailProps {
   category?: string | null
   excludeIds?: Set<string>
@@ -155,7 +170,7 @@ export function FeedDiscoveryRail({
       <h3
         className={cn(
           isReader
-            ? 'mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]'
+            ? 'mb-5 text-[12px] font-semibold uppercase tracking-[0.1em] text-[color:var(--reader-page-muted)]'
             : 'mb-2 px-0.5 text-[11px] font-extrabold tracking-wide text-white/85'
         )}
         data-testid={isReader ? 'feed-reader-recommendations-heading' : undefined}
@@ -165,40 +180,58 @@ export function FeedDiscoveryRail({
 
       {isReader ? (
         <ul
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-6"
           data-testid="feed-reader-discovery-list"
+          data-reader-rec-layout="editorial-stack"
         >
           {items.map((item) => {
             const skin = resolveFeedCardSkin(item.category)
             const className = cn(
-              'flex w-full min-h-[5.5rem] shrink-0 gap-3 overflow-hidden rounded-xl border border-white/10',
-              'bg-[color:var(--reader-page-elevated)] text-left active:scale-[0.99] transition'
+              // Full-bleed editorial card — not a cramped Feed-rail strip.
+              'flex w-full min-h-[11rem] shrink-0 flex-col overflow-hidden rounded-[12px]',
+              'border border-[color:var(--reader-page-edge)] bg-[color:var(--reader-page-elevated)]',
+              'text-left active:scale-[0.995] transition'
             )
             const style = { ['--feed-skin-accent' as string]: skin.accent }
+            const when = formatReaderRecMetaTime(item.publishedAt)
+            const meta = [item.publisherName, item.category, when].filter(Boolean).join(' · ') || 'Haber'
             const body = (
               <>
-                <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 overflow-hidden bg-neutral-900">
+                <div
+                  className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-neutral-900"
+                  data-testid="feed-reader-discovery-media"
+                >
                   {item.image ? (
                     <Image
                       src={item.image}
                       alt=""
                       fill
                       className="object-cover"
-                      sizes="88px"
+                      sizes="(max-width: 768px) 100vw, 42rem"
                       unoptimized={
                         item.image.startsWith('http://') || item.image.startsWith('https://')
                       }
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
+                    <div
+                      className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950"
+                      data-testid="feed-reader-discovery-media-fallback"
+                      aria-hidden
+                    />
                   )}
                 </div>
-                <div className="min-w-0 flex-1 py-2.5 pr-3">
-                  <p className="line-clamp-3 text-[15px] font-semibold leading-snug text-[color:var(--reader-page-text)]">
+                <div className="flex min-w-0 flex-col gap-2 px-4 pb-4 pt-3.5">
+                  <p
+                    className="line-clamp-3 text-[1.0625rem] font-semibold leading-[1.35] tracking-[-0.01em] text-[color:var(--reader-page-text)]"
+                    data-testid="feed-reader-discovery-headline"
+                  >
                     {item.headline}
                   </p>
-                  <p className="mt-1 truncate text-[12px] text-[color:var(--reader-page-muted)]">
-                    {[item.publisherName, item.category].filter(Boolean).join(' · ') || 'Haber'}
+                  <p
+                    className="truncate text-[12.5px] leading-[1.35] text-[color:var(--reader-page-muted)]"
+                    data-testid="feed-reader-discovery-meta"
+                  >
+                    {meta}
                   </p>
                 </div>
               </>
@@ -219,7 +252,7 @@ export function FeedDiscoveryRail({
 
             if (onOpenArticle) {
               return (
-                <li key={item.articleId}>
+                <li key={item.articleId} className="w-full min-w-0">
                   <button
                     type="button"
                     className={className}
@@ -239,7 +272,7 @@ export function FeedDiscoveryRail({
             }
 
             return (
-              <li key={item.articleId}>
+              <li key={item.articleId} className="w-full min-w-0">
                 <Link
                   href={`/haber/${item.slug || item.articleId}`}
                   className={className}
