@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { Suspense, useMemo, useState, useEffect } from 'react'
 import {
   TrendingUp,
@@ -16,6 +15,7 @@ import {
   BarChart3,
   Loader2,
 } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -173,7 +173,7 @@ function NewsCardCompact({ post }: { post: Post }) {
     <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
-          <Image src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
+          <SafeNewsImage src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -200,7 +200,7 @@ function VideoCardCompact({ post }: { post: Post }) {
     <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
-          <Image src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
+          <SafeNewsImage src={imageUrl} alt="" fill className="object-cover" sizes="96px" />
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Clapperboard className="h-5 w-5 text-white drop-shadow" />
           </div>
