@@ -6,13 +6,17 @@
  *
  * iOS: never put CSS transform on the pointer-events:none root (incl. Tailwind
  * -translate-*). Travel lives on an INNER motion shell only.
+ *
+ * Ownership: once per Reader articleId+generation (not global learned).
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { prefersReducedMotion } from '@/lib/feed/reader/gestureArbitration'
 import { isCoachPaintedInViewport } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import {
+  markReaderCoachHandledForScope,
   publishReaderReturnCoachDebug,
+  readerCoachScopeKey,
   recordReaderReturnCoachShown,
   READER_RETURN_COACH_ANIM_MS,
   READER_RETURN_COACH_HINT_MS,
@@ -25,35 +29,52 @@ import {
 
 type Props = {
   active: boolean
+  articleId: string
+  generation?: number | null
   suppressed?: boolean
   /** Same authority as successful RIGHT swipe → closeReader. */
   onAffordanceActivate?: () => void
 }
 
-export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActivate }: Props) {
+export function ReaderReturnCoach({
+  active,
+  articleId,
+  generation = null,
+  suppressed = false,
+  onAffordanceActivate,
+}: Props) {
   const [visible, setVisible] = useState(false)
   const [travel, setTravel] = useState(0)
   const [reduced, setReduced] = useState(false)
   const [phase, setPhase] = useState<ReaderReturnCoachPhase>('idle')
   const rootRef = useRef<HTMLDivElement>(null)
   const recordedRef = useRef(false)
+  const scopeKey = useMemo(
+    () => readerCoachScopeKey({ articleId, generation }),
+    [articleId, generation]
+  )
 
   useEffect(() => {
     setReduced(prefersReducedMotion())
   }, [])
 
   useEffect(() => {
+    const eligible = shouldShowReaderReturnCoach({ scopeKey })
     publishReaderReturnCoachDebug({
       mounted: true,
-      eligible: shouldShowReaderReturnCoach(),
+      eligible,
       phase,
       rightCoachVisible: visible,
+      readerGeneration: generation ?? null,
+      readerCoachEligible: eligible,
+      readerCoachShown: !eligible,
+      scopeKey,
     })
-  }, [phase, visible, active])
+  }, [phase, visible, active, scopeKey, generation])
 
   useEffect(() => {
     recordedRef.current = false
-    if (!active || suppressed || !shouldShowReaderReturnCoach()) {
+    if (!active || suppressed || !shouldShowReaderReturnCoach({ scopeKey })) {
       setVisible(false)
       setTravel(0)
       setPhase(suppressed ? 'suppressed' : !active ? 'idle' : 'ineligible')
@@ -76,12 +97,17 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
         return
       }
       recordedRef.current = true
+      markReaderCoachHandledForScope(scopeKey)
       recordReaderReturnCoachShown()
       publishReaderReturnCoachDebug({
         mounted: true,
-        eligible: true,
+        eligible: false,
         phase: 'visible',
         rightCoachVisible: true,
+        readerGeneration: generation ?? null,
+        readerCoachEligible: false,
+        readerCoachShown: true,
+        scopeKey,
       })
     }
 
@@ -105,7 +131,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
 
     const runSettleShow = () => {
       if (cancelled) return
-      if (!shouldShowReaderReturnCoach()) {
+      if (!shouldShowReaderReturnCoach({ scopeKey })) {
         setPhase('ineligible')
         return
       }
@@ -118,6 +144,13 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
 
       if (reduced) {
         setTravel(Math.round(READER_RETURN_COACH_TRAVEL_PX * 0.45))
+        timers.push(
+          window.setTimeout(() => {
+            if (cancelled) return
+            setVisible(false)
+            setPhase('done')
+          }, READER_RETURN_COACH_HINT_MS)
+        )
         return
       }
 
@@ -151,7 +184,7 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
       for (const t of timers) window.clearTimeout(t)
       window.removeEventListener('nahaber-reader-return-coach-replay', onReplay)
     }
-  }, [active, suppressed, reduced])
+  }, [active, suppressed, reduced, scopeKey, generation])
 
   useEffect(() => {
     if (suppressed) {
@@ -184,8 +217,9 @@ export function ReaderReturnCoach({ active, suppressed = false, onAffordanceActi
     <div
       ref={rootRef}
       data-testid="reader-return-coach"
-      data-reader-return-coach-v5="1"
+      data-reader-return-coach-v6="1"
       data-reader-return-phase={phase}
+      data-reader-coach-scope={scopeKey}
       className="pointer-events-none absolute inset-x-0 top-[38%] z-[50] flex justify-center"
       style={{ opacity: 1 }}
     >

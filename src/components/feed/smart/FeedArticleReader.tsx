@@ -88,8 +88,9 @@ import {
   pickFullReaderCopy,
 } from '@/lib/feed/reader/presentationCopy'
 import { getClientAuthToken } from '@/lib/firebase/auth'
-import { markReaderReturnCoachLearned } from '@/lib/feed/reader/readerReturnCoach'
+import { markReaderReturnCoachLearned, readerCoachScopeKey } from '@/lib/feed/reader/readerReturnCoach'
 import { ReaderReturnCoach } from '@/components/feed/smart/ReaderReturnCoach'
+import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
 
@@ -140,6 +141,21 @@ type Props = {
   onLockFeedScroll?: (locked: boolean) => void
   feedSessionId?: string | null
   openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
+  /** Stable Reader generation from parent session (coach scope + single-reader key). */
+  generation?: number
+  /**
+   * Open a related/recommendation article via the SAME Reader authority
+   * (must not mount a second FeedArticleReader).
+   */
+  onOpenRelatedArticle?: (item: {
+    articleId: string
+    slug: string
+    headline: string
+    image: string | null
+    category: string | null
+    publishedAt: string
+    publisherName?: string | null
+  }) => void
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -168,6 +184,8 @@ export function FeedArticleReader({
   onLockFeedScroll,
   feedSessionId = null,
   openSource = 'unknown',
+  generation = 0,
+  onOpenRelatedArticle,
 }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -570,8 +588,13 @@ export function FeedArticleReader({
       pendingHistoryPlanRef.current = plan
       foreignPopDuringCloseRef.current = false
 
-      // LEFT gesture learning only — back arrow / popstate must not mark learned.
-      if (reason === 'gesture') markReaderReturnCoachLearned()
+      // RIGHT gesture learning only — back arrow / popstate must not mark handled.
+      // Scope to this generation so Reader B remains eligible independently.
+      if (reason === 'gesture') {
+        markReaderReturnCoachLearned(
+          readerCoachScopeKey({ articleId: item.articleId, generation })
+        )
+      }
 
       // Match open ramp: enable transition, then drop progress on next frame
       // so WebKit actually interpolates (same-tick 1→0 skips the close animation).
@@ -590,7 +613,7 @@ export function FeedArticleReader({
       if (reducedMotion) runCloseAnim()
       else requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))
     },
-    [committed, feedSessionId, finishCloseUi, item.articleId, item.category, reducedMotion, syncVisualProgress]
+    [committed, feedSessionId, finishCloseUi, generation, item.articleId, item.category, reducedMotion, syncVisualProgress]
   )
 
   const beginCloseRef = useRef(beginClose)
@@ -1083,6 +1106,8 @@ export function FeedArticleReader({
       >
         <ReaderReturnCoach
           active={committed && !coachClosing}
+          articleId={item.articleId}
+          generation={generation}
           suppressed={!committed || coachClosing}
           onAffordanceActivate={() => beginClose('gesture')}
         />
@@ -1303,6 +1328,23 @@ export function FeedArticleReader({
               </a>
             ) : null}
           </aside>
+
+          {/*
+            Recommendations participate in natural Reader scroll flow (not a nested
+            fixed-height viewport). Absolute footer clearance spacer follows.
+          */}
+          <div
+            className="mt-10 w-full min-w-0 shrink-0"
+            data-testid="feed-reader-recommendations"
+            data-recommendation-mounted="1"
+          >
+            <FeedDiscoveryRail
+              variant="reader"
+              category={item.category}
+              excludeIds={new Set([item.articleId])}
+              onOpenArticle={onOpenRelatedArticle}
+            />
+          </div>
           </div>
           <div
             data-testid="feed-reader-footer-clearance"

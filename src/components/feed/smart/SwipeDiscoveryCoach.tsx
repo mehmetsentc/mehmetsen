@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * LEFT "Haberi Aç" affordance (V9) — reference visual + tappable open authority.
+ * LEFT "Haberi Aç" affordance (V10) — per-article session coach.
  * Only the chip button receives pointer events (min 44×44).
  * Does NOT cover the card with a transparent overlay.
  *
@@ -10,13 +10,14 @@
  * Travel + vertical centering live on the INNER motion shell only.
  *
  * Position: ~52–58% of usable chrome (media → copy transition), responsive.
- * Learned ≠ shown: only successful LEFT swipe or affordance tap marks learned.
+ * Ownership: once per articleId in the current Feed session (not global learned).
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { prefersReducedMotion } from '@/lib/feed/reader/gestureArbitration'
 import {
   isCoachPaintedInViewport,
+  markFeedCoachHandledForArticle,
   publishSwipeCoachDebug,
   recordSwipeDiscoveryShown,
   shouldShowSwipeDiscoveryCoach,
@@ -31,6 +32,7 @@ import {
 
 type Props = {
   active: boolean
+  articleId: string
   suppressed?: boolean
   onCardNudge?: (px: number) => void
   /** Same authority as successful LEFT swipe → openReader. */
@@ -39,6 +41,7 @@ type Props = {
 
 export function SwipeDiscoveryCoach({
   active,
+  articleId,
   suppressed = false,
   onCardNudge,
   onAffordanceActivate,
@@ -57,18 +60,22 @@ export function SwipeDiscoveryCoach({
   }, [])
 
   useEffect(() => {
+    const eligible = shouldShowSwipeDiscoveryCoach({ articleId })
     publishSwipeCoachDebug({
       mounted: true,
-      eligible: shouldShowSwipeDiscoveryCoach(),
+      eligible,
       phase,
       leftCoachVisible: visible,
+      activeArticleId: articleId,
+      feedCoachEligible: eligible,
+      feedCoachShown: !eligible,
     })
-  }, [phase, visible, active])
+  }, [phase, visible, active, articleId])
 
   useEffect(() => {
     onCardNudgeRef.current?.(0)
     recordedRef.current = false
-    if (!active || suppressed || !shouldShowSwipeDiscoveryCoach()) {
+    if (!active || suppressed || !shouldShowSwipeDiscoveryCoach({ articleId })) {
       setVisible(false)
       setTravel(0)
       setPhase(suppressed ? 'suppressed' : !active ? 'idle' : 'ineligible')
@@ -91,12 +98,16 @@ export function SwipeDiscoveryCoach({
         return
       }
       recordedRef.current = true
+      markFeedCoachHandledForArticle(articleId)
       recordSwipeDiscoveryShown()
       publishSwipeCoachDebug({
         mounted: true,
-        eligible: true,
+        eligible: false,
         phase: 'visible',
         leftCoachVisible: true,
+        activeArticleId: articleId,
+        feedCoachEligible: false,
+        feedCoachShown: true,
       })
     }
 
@@ -122,7 +133,7 @@ export function SwipeDiscoveryCoach({
 
     const runSettleShow = () => {
       if (cancelled) return
-      if (!shouldShowSwipeDiscoveryCoach()) {
+      if (!shouldShowSwipeDiscoveryCoach({ articleId })) {
         setPhase('ineligible')
         return
       }
@@ -135,6 +146,14 @@ export function SwipeDiscoveryCoach({
 
       if (reduced) {
         setTravel(-Math.round(SWIPE_DISCOVERY_TRAVEL_PX * 0.45))
+        timers.push(
+          window.setTimeout(() => {
+            if (cancelled) return
+            setVisible(false)
+            setPhase('done')
+            onCardNudgeRef.current?.(0)
+          }, SWIPE_DISCOVERY_HINT_MS)
+        )
         return
       }
 
@@ -144,7 +163,7 @@ export function SwipeDiscoveryCoach({
       timers.push(
         window.setTimeout(() => {
           if (cancelled) return
-          // Soft rest — stay faintly visible until card change / learned.
+          setVisible(false)
           setPhase('done')
           setTravel(0)
           onCardNudgeRef.current?.(0)
@@ -172,7 +191,7 @@ export function SwipeDiscoveryCoach({
       window.removeEventListener('nahaber-swipe-discovery-replay', onReplay)
       onCardNudgeRef.current?.(0)
     }
-  }, [active, suppressed, reduced])
+  }, [active, suppressed, reduced, articleId])
 
   useEffect(() => {
     if (suppressed) {
@@ -208,13 +227,14 @@ export function SwipeDiscoveryCoach({
     <div
       ref={rootRef}
       data-testid="feed-swipe-discovery-coach"
-      data-swipe-discovery-v9="1"
+      data-swipe-discovery-v10="1"
       data-swipe-discovery-phase={phase}
+      data-swipe-coach-article={articleId}
       className="pointer-events-none absolute inset-x-0 z-[40] flex justify-center pl-10"
       style={{
         /* Media → copy transition band (~52–58% of chrome). No transform on this root. */
         top: 'min(58%, max(48%, calc(var(--feed-v2-top-clearance) + var(--feed-v2-hero-min) * 0.92)))',
-        opacity: resting ? 0.88 : 1,
+        opacity: resting ? 0 : 1,
         transition: 'opacity 280ms ease',
       }}
     >

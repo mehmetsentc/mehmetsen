@@ -517,6 +517,7 @@ export function FullscreenNewsCard({
         {showSwipeDiscoveryCoach ? (
           <SwipeDiscoveryCoach
             active={isActive}
+            articleId={item.articleId}
             suppressed={swipeDiscoverySuppressed}
             onCardNudge={setSwipeCoachNudgePx}
             onAffordanceActivate={onSwipeAffordanceActivate}

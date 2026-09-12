@@ -106,7 +106,8 @@ import {
   recordReaderNavTrace,
   setReaderNavTraceEnabled,
 } from '@/lib/feed/reader/navTrace'
-import { markSwipeDiscoveryLearned } from '@/lib/feed/reader/swipeDiscoveryCoach'
+import { markSwipeDiscoveryLearned, readSwipeCoachDebug } from '@/lib/feed/reader/swipeDiscoveryCoach'
+import { readReaderReturnCoachDebug } from '@/lib/feed/reader/readerReturnCoach'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 import { cn } from '@/lib/utils'
@@ -1830,7 +1831,9 @@ export function SmartFeedClient({
           document.documentElement.classList.add('smart-feed-reader-open')
           document.body.classList.add('smart-feed-reader-open')
         }
-        if (openSource === 'swipe' || openSource === 'swipe_affordance') markSwipeDiscoveryLearned()
+        if (openSource === 'swipe' || openSource === 'swipe_affordance') {
+          markSwipeDiscoveryLearned(item.articleId)
+        }
         patchReaderDebug({
           openReaderCalled: true,
           readerOpenRequested: true,
@@ -2825,6 +2828,42 @@ export function SmartFeedClient({
             progressAnimating={readerSession.progressAnimating}
             feedSessionId={feedSessionIdRef.current}
             openSource={readerSession.openSource ?? 'unknown'}
+            generation={readerSession.generation}
+            onOpenRelatedArticle={(d) => {
+              const synthetic: FeedItemDto = {
+                id: d.articleId,
+                type: 'article',
+                articleId: d.articleId,
+                clusterId: null,
+                publisher: d.publisherName
+                  ? {
+                      id: 'discovery',
+                      slug: 'discovery',
+                      name: d.publisherName,
+                      logoUrl: null,
+                    }
+                  : null,
+                headline: d.headline,
+                summary: null,
+                category: d.category,
+                image: d.image,
+                video: null,
+                publishedAt: d.publishedAt,
+                updatedAt: d.publishedAt,
+                breaking: false,
+                materialUpdate: false,
+                clusterSourceCount: 0,
+                socialState: null,
+                socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+                reason: 'DISCOVERY',
+                slug: d.slug || d.articleId,
+              }
+              // Replace current Reader session — never mount a second Reader.
+              openReader(synthetic, readerSession.index, {
+                skipRamp: true,
+                openSource: 'unknown',
+              })
+            }}
             onVisualProgress={(progress, opts) => {
               setReaderSession((s) => {
                 if (!s || s.generation !== readerSession.generation) return s
@@ -2940,6 +2979,16 @@ export function SmartFeedClient({
                 : readerDebug.capabilityErrorCode
                   ? 'ERROR'
                   : 'PENDING',
+              activeArticleId:
+                readerSession?.item.articleId ??
+                items[activeIndex]?.articleId ??
+                null,
+              feedCoachEligible: readSwipeCoachDebug().feedCoachEligible ?? null,
+              feedCoachShown: readSwipeCoachDebug().feedCoachShown ?? null,
+              readerCoachEligible: readReaderReturnCoachDebug().readerCoachEligible ?? null,
+              readerCoachShown: readReaderReturnCoachDebug().readerCoachShown ?? null,
+              recommendationMounted: Boolean(readerSession?.committed),
+              returnGestureOwner: readerSession?.committed ? 'reader' : 'feed',
             }).map((line) => (
               <div key={line}>{line}</div>
             ))}

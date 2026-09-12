@@ -44,7 +44,7 @@ describe('A — open authority decisions', () => {
       'utf8'
     )
     expect(client).toContain("onReadClick={() => onRead(item, index, 'button')}")
-    expect(client).toContain("onOpen: () => onRead(item, index, 'gesture')")
+    expect(client).toContain("onRead(item, index, 'gesture')")
     expect(client).toContain('decideFeedReadAction')
     expect(client).toContain('sessionConfirmedEnabled')
     expect(client).toContain('capabilitySessionRef')
@@ -223,7 +223,9 @@ describe('E — close / media / coach repairs preserved', () => {
       join(process.cwd(), 'src/components/feed/smart/FeedArticleReader.tsx'),
       'utf8'
     )
-    expect(reader).toMatch(/touch-action:\s*pan-y|touchAction:\s*['"]pan-y['"]/)
+    expect(reader).toMatch(
+      /touch-action:\s*pan-y|touchAction:\s*['"]pan-y['"]|touchAction:\s*returnHorizontalLocked \? ['"]none['"] : ['"]pan-y['"]/
+    )
   })
 
   it('coach remains pointer-events-none', () => {

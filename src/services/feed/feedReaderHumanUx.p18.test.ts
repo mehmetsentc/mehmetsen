@@ -10,6 +10,7 @@ import {
   feedV2BottomClearancePx,
 } from '@/lib/feed/reader/feedChrome'
 import {
+  hasFeedCoachShownForArticle,
   markSwipeDiscoveryLearned,
   readSwipeDiscoveryState,
   recordSwipeDiscoveryShown,
@@ -107,7 +108,7 @@ describe('Swipe Discovery V7', () => {
     )
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
-    expect(coach).toContain('data-swipe-discovery-v9="1"')
+    expect(coach).toContain('data-swipe-discovery-v10="1"')
     expect(coach).toContain('feed-swipe-discovery-affordance')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeLessThanOrEqual(48)
@@ -123,18 +124,18 @@ describe('Swipe Discovery V7', () => {
   })
 
   it('RIGHT open marks learned; Haberi Oku path does not call mark on button alone in openReader', () => {
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     recordSwipeDiscoveryShown()
-    markSwipeDiscoveryLearned()
-    expect(readSwipeDiscoveryState().learned).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+    markSwipeDiscoveryLearned('card-a')
+    expect(hasFeedCoachShownForArticle('card-a')).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
     writeSwipeDiscoveryState({ learned: false, shownCount: 0 })
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
     )
     expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
   })
 })
 

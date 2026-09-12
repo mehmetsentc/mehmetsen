@@ -6,6 +6,7 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  hasFeedCoachShownForArticle,
   markSwipeDiscoveryLearned,
   readSwipeDiscoveryState,
   recordSwipeDiscoveryShown,
@@ -24,6 +25,7 @@ const mem = new Map<string, string>()
 
 beforeEach(() => {
   mem.clear()
+  resetSwipeDiscoveryPresentation()
   // @ts-expect-error test stub
   globalThis.localStorage = {
     getItem: (k: string) => mem.get(k) ?? null,
@@ -38,9 +40,9 @@ beforeEach(() => {
 
 describe('P18 swipe discovery coach V7', () => {
   it('1-2: eligible + not learned may show across multiple cards', () => {
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
   })
 
   it('3-4: animation LEFT→RIGHT travel + pointer-events none in JSX', () => {
@@ -67,9 +69,9 @@ describe('P18 swipe discovery coach V7', () => {
   })
 
   it('5: successful LEFT open marks learned via swipe path only', () => {
-    markSwipeDiscoveryLearned()
-    expect(readSwipeDiscoveryState().learned).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+    markSwipeDiscoveryLearned('card-a')
+    expect(hasFeedCoachShownForArticle('card-a')).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
@@ -92,20 +94,20 @@ describe('P18 swipe discovery coach V7', () => {
       JSON.stringify({ learned: true, shownCount: 3 })
     )
     expect(v1WouldHaveSuppressedCoach()).toBe(true)
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     expect(readSwipeDiscoveryState().learned).toBe(false)
   })
 
   it('12: debug replay resets presentation only', () => {
-    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 9 })
+    writeSwipeDiscoveryState({ learned: true, shownCount: 3, version: 10 })
     resetSwipeDiscoveryPresentation()
     expect(readSwipeDiscoveryState()).toEqual({
       learned: false,
       shownCount: 0,
-      version: 9,
+      version: 10,
     })
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

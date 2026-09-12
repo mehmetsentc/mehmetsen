@@ -16,6 +16,7 @@ import {
 } from '@/lib/feed/reader/feedChrome'
 import {
   isCoachPaintedInViewport,
+  hasFeedCoachShownForArticle,
   markSwipeDiscoveryLearned,
   priorKeysWouldHaveSuppressedCoach,
   readSwipeDiscoveryState,
@@ -35,6 +36,7 @@ const mem = new Map<string, string>()
 
 beforeEach(() => {
   mem.clear()
+  resetSwipeDiscoveryPresentation()
   // @ts-expect-error test stub
   globalThis.localStorage = {
     getItem: (k: string) => mem.get(k) ?? null,
@@ -113,11 +115,11 @@ describe('P18 Feed V2 card fit matrix', () => {
 
 describe('P18 swipe discovery V6 visibility', () => {
   it('uses v9 key; prior learned keys cannot suppress', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V1, JSON.stringify({ learned: true, shownCount: 3 }))
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V2, JSON.stringify({ learned: true, shownCount: 3 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
   })
 
   it('travel/duration/settle within contract; painted-rect gate exists', () => {
@@ -136,17 +138,17 @@ describe('P18 swipe discovery V6 visibility', () => {
     expect(coach).toContain('pointer-events-none')
     expect(coach).toContain('inset-x-0')
     expect(coach).toContain('justify-center')
-    expect(coach).toContain('data-swipe-discovery-v9')
+    expect(coach).toContain('data-swipe-discovery-v10')
     expect(coach).toContain('feed-swipe-discovery-affordance')
   })
 
   it('eligible across multiple cards before learned; Haberi Oku does not mark', () => {
     for (let i = 0; i < 5; i++) recordSwipeDiscoveryShown()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     resetSwipeDiscoveryPresentation()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
-    markSwipeDiscoveryLearned()
-    expect(readSwipeDiscoveryState().learned).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
+    markSwipeDiscoveryLearned('card-a')
+    expect(hasFeedCoachShownForArticle('card-a')).toBe(true)
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'
@@ -156,7 +158,7 @@ describe('P18 swipe discovery V6 visibility', () => {
   })
 
   it('TRACE exposes coach debug + Replay', () => {
-    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 9 })
+    writeSwipeDiscoveryState({ learned: false, shownCount: 1, version: 10 })
     const survivor = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderNavTraceSurvivor.tsx'),
       'utf8'

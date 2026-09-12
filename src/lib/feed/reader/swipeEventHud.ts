@@ -119,6 +119,13 @@ export function formatSwipeEventHudLines(
     readerGeneration?: number | null
     readerArticleId?: string | null
     standalone?: boolean | null
+    activeArticleId?: string | null
+    feedCoachEligible?: boolean | null
+    feedCoachShown?: boolean | null
+    readerCoachEligible?: boolean | null
+    readerCoachShown?: boolean | null
+    recommendationMounted?: boolean | null
+    returnGestureOwner?: string | null
   }
 ): string[] {
   const num = (v: number | null | undefined, digits = 0) =>
@@ -134,6 +141,12 @@ export function formatSwipeEventHudLines(
     `life:${s.lifecycle || '—'}`,
     extras
       ? `rs:${extras.readerSession} rp:${extras.readerProgress.toFixed(2)} gen:${extras.readerGeneration ?? '—'} id:${extras.readerArticleId ?? '—'} pwa:${extras.standalone ? 'Y' : 'N'} cap:${extras.capability}`
+      : null,
+    extras
+      ? `coach feedElig:${extras.feedCoachEligible == null ? '—' : extras.feedCoachEligible ? 'Y' : 'N'} feedShown:${extras.feedCoachShown == null ? '—' : extras.feedCoachShown ? 'Y' : 'N'} readerElig:${extras.readerCoachEligible == null ? '—' : extras.readerCoachEligible ? 'Y' : 'N'} readerShown:${extras.readerCoachShown == null ? '—' : extras.readerCoachShown ? 'Y' : 'N'}`
+      : null,
+    extras
+      ? `rec:${extras.recommendationMounted == null ? '—' : extras.recommendationMounted ? 'Y' : 'N'} retOwn:${extras.returnGestureOwner ?? '—'} active:${extras.activeArticleId ?? '—'}`
       : null,
   ].filter((line): line is string => Boolean(line))
 }

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  hasFeedCoachShownForArticle,
   markSwipeDiscoveryLearned,
   priorKeysWouldHaveSuppressedCoach,
   readSwipeDiscoveryState,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import {
   markReaderReturnCoachLearned,
+  readerCoachScopeKey,
   READER_RETURN_COACH_STORAGE_KEY,
   shouldShowReaderReturnCoach,
 } from '@/lib/feed/reader/readerReturnCoach'
@@ -86,15 +88,15 @@ describe('HOME escape — replace close never backs', () => {
 
 describe('tappable RIGHT/LEFT affordances', () => {
   it('RIGHT Haberi Aç affordance is a button hit target; learns on swipe or affordance', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V5, JSON.stringify({ learned: true, shownCount: 99 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     for (let i = 0; i < 10; i++) recordSwipeDiscoveryShown()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
-    markSwipeDiscoveryLearned()
-    expect(readSwipeDiscoveryState().learned).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
+    markSwipeDiscoveryLearned('card-a')
+    expect(hasFeedCoachShownForArticle('card-a')).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
 
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
@@ -104,7 +106,7 @@ describe('tappable RIGHT/LEFT affordances', () => {
     expect(coach).toContain('min-h-11')
     expect(coach).toContain('pointer-events-auto')
     expect(coach).toContain('onAffordanceActivate')
-    expect(coach).toContain('data-swipe-discovery-v9')
+    expect(coach).toContain('data-swipe-discovery-v10')
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
 
     const client = readFileSync(
@@ -116,10 +118,10 @@ describe('tappable RIGHT/LEFT affordances', () => {
   })
 
   it('LEFT return affordance taps beginClose(gesture); Back Arrow does not mark learned alone', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v5')
-    expect(shouldShowReaderReturnCoach()).toBe(true)
-    markReaderReturnCoachLearned()
-    expect(shouldShowReaderReturnCoach()).toBe(false)
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v6')
+    expect(shouldShowReaderReturnCoach({ articleId: 'reader-a', generation: 1 })).toBe(true)
+    markReaderReturnCoachLearned(readerCoachScopeKey({ articleId: 'reader-a', generation: 1 }))
+    expect(shouldShowReaderReturnCoach({ articleId: 'reader-a', generation: 1 })).toBe(false)
 
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/ReaderReturnCoach.tsx'),
@@ -135,7 +137,9 @@ describe('tappable RIGHT/LEFT affordances', () => {
     )
     expect(reader).toContain("onAffordanceActivate={() => beginClose('gesture')}")
     expect(reader).toContain("onClick={() => beginClose('button')}")
-    expect(reader).toContain("if (reason === 'gesture') markReaderReturnCoachLearned()")
+    expect(reader).toContain("if (reason === 'gesture')")
+    expect(reader).toContain('markReaderReturnCoachLearned(')
+    expect(reader).toContain('readerCoachScopeKey')
   })
 })
 

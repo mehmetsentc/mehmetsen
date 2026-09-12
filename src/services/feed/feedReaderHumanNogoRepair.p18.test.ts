@@ -17,6 +17,7 @@ import {
 } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import {
   markReaderReturnCoachLearned,
+  readerCoachScopeKey,
   READER_RETURN_COACH_HINT_MS,
   READER_RETURN_COACH_REPEAT_COUNT,
   READER_RETURN_COACH_STORAGE_KEY,
@@ -108,21 +109,21 @@ describe('open authority — no discovery /haber flicker', () => {
 
 describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
   it('V8 key; prior V4 cannot suppress; travel + repeats', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
     mem.set(SWIPE_DISCOVERY_STORAGE_KEY_V4, JSON.stringify({ learned: true, shownCount: 40 }))
     expect(priorKeysWouldHaveSuppressedCoach()).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_REPEAT_COUNT).toBeGreaterThanOrEqual(2)
     expect(SWIPE_DISCOVERY_HINT_MS).toBeGreaterThanOrEqual(3500)
-    markSwipeDiscoveryLearned()
-    expect(shouldShowSwipeDiscoveryCoach()).toBe(false)
+    markSwipeDiscoveryLearned('card-a')
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
 
     const coach = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SwipeDiscoveryCoach.tsx'),
       'utf8'
     )
-    expect(coach).toContain('data-swipe-discovery-v9')
+    expect(coach).toContain('data-swipe-discovery-v10')
     expect(coach).toContain('z-[40]')
     expect(coach).toContain('Haberi Aç')
     expect(coach).toContain('pointer-events-none')
@@ -130,12 +131,12 @@ describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
   })
 
   it('LEFT return coach V4; gesture-only learn; reactive coachClosing', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v5')
-    expect(shouldShowReaderReturnCoach()).toBe(true)
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v6')
+    expect(shouldShowReaderReturnCoach({ articleId: 'reader-a', generation: 1 })).toBe(true)
     expect(READER_RETURN_COACH_REPEAT_COUNT).toBeGreaterThanOrEqual(2)
     expect(READER_RETURN_COACH_HINT_MS).toBeGreaterThanOrEqual(3500)
-    markReaderReturnCoachLearned()
-    expect(shouldShowReaderReturnCoach()).toBe(false)
+    markReaderReturnCoachLearned(readerCoachScopeKey({ articleId: 'reader-a', generation: 1 }))
+    expect(shouldShowReaderReturnCoach({ articleId: 'reader-a', generation: 1 })).toBe(false)
 
     const reader = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FeedArticleReader.tsx'),
@@ -143,7 +144,9 @@ describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
     )
     expect(reader).toContain('coachClosing')
     expect(reader).toContain('setCoachClosing(true)')
-    expect(reader).toContain("if (reason === 'gesture') markReaderReturnCoachLearned()")
+    expect(reader).toContain("if (reason === 'gesture')")
+    expect(reader).toContain('markReaderReturnCoachLearned(')
+    expect(reader).toContain('readerCoachScopeKey')
     expect(reader).toContain('active={committed && !coachClosing}')
     expect(reader).not.toContain('active={committed && !closingRef.current}')
 
@@ -152,7 +155,7 @@ describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
       'utf8'
     )
     expect(coach).toContain('Akışa Dön')
-    expect(coach).toContain('data-reader-return-coach-v5')
+    expect(coach).toContain('data-reader-return-coach-v6')
     expect(coach).toContain('pointer-events-none')
   })
 

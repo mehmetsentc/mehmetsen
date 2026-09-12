@@ -20,10 +20,15 @@ import {
 } from '@/lib/feed/reader/gestureArbitration'
 import {
   SWIPE_DISCOVERY_STORAGE_KEY,
+  markFeedCoachHandledForArticle,
+  resetSwipeDiscoveryPresentation,
   shouldShowSwipeDiscoveryCoach,
 } from '@/lib/feed/reader/swipeDiscoveryCoach'
 import {
   READER_RETURN_COACH_STORAGE_KEY,
+  markReaderCoachHandledForScope,
+  readerCoachScopeKey,
+  resetReaderReturnCoachPresentation,
   shouldShowReaderReturnCoach,
 } from '@/lib/feed/reader/readerReturnCoach'
 
@@ -63,26 +68,35 @@ describe('iOS PWA Reader return — system edge arbitration', () => {
 })
 
 describe('swipe coaches — LEFT open / RIGHT return + re-teach keys', () => {
-  it('Feed coach storage key is v9 and teaches LEFT', () => {
-    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v9')
-    expect(shouldShowSwipeDiscoveryCoach({ state: { learned: false, shownCount: 0 } })).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach({ state: { learned: true, shownCount: 2 } })).toBe(false)
+  it('Feed coach storage key is v10 and teaches LEFT per article', () => {
+    resetSwipeDiscoveryPresentation()
+    expect(SWIPE_DISCOVERY_STORAGE_KEY).toBe('nahaber.feedSwipeDiscovery.v10')
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
+    markFeedCoachHandledForArticle('card-a')
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-b' })).toBe(true)
 
     const coach = read('src/components/feed/smart/SwipeDiscoveryCoach.tsx')
     expect(coach).toContain('Sola kaydır')
-    expect(coach).toContain('data-swipe-discovery-v9')
+    expect(coach).toContain('data-swipe-discovery-v10')
     expect(coach).toContain('setTravel(-SWIPE_DISCOVERY_TRAVEL_PX)')
     expect(coach).not.toContain('Sağa kaydır veya dokun')
   })
 
-  it('Reader coach storage key is v5 and teaches RIGHT', () => {
-    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v5')
-    expect(shouldShowReaderReturnCoach({ state: { learned: false, shownCount: 0 } })).toBe(true)
-    expect(shouldShowReaderReturnCoach({ state: { learned: true, shownCount: 1 } })).toBe(false)
+  it('Reader coach storage key is v6 and teaches RIGHT per generation', () => {
+    resetReaderReturnCoachPresentation()
+    expect(READER_RETURN_COACH_STORAGE_KEY).toBe('nahaber.readerReturnCoach.v6')
+    const a = readerCoachScopeKey({ articleId: 'reader-a', generation: 1 })
+    expect(shouldShowReaderReturnCoach({ scopeKey: a })).toBe(true)
+    markReaderCoachHandledForScope(a)
+    expect(shouldShowReaderReturnCoach({ scopeKey: a })).toBe(false)
+    expect(
+      shouldShowReaderReturnCoach({ articleId: 'reader-b', generation: 2 })
+    ).toBe(true)
 
     const coach = read('src/components/feed/smart/ReaderReturnCoach.tsx')
     expect(coach).toContain('sağa kaydır')
-    expect(coach).toContain('data-reader-return-coach-v5')
+    expect(coach).toContain('data-reader-return-coach-v6')
     expect(coach).toContain('setTravel(READER_RETURN_COACH_TRAVEL_PX)')
     expect(coach).toContain('pointer-events-none absolute')
   })
@@ -91,7 +105,9 @@ describe('swipe coaches — LEFT open / RIGHT return + re-teach keys', () => {
     const client = read('src/components/feed/smart/SmartFeedClient.tsx')
     expect(client).toContain("openSource === 'swipe' || openSource === 'swipe_affordance'")
     const reader = read('src/components/feed/smart/FeedArticleReader.tsx')
-    expect(reader).toContain("if (reason === 'gesture') markReaderReturnCoachLearned()")
+    expect(reader).toContain("if (reason === 'gesture')")
+    expect(reader).toContain('markReaderReturnCoachLearned(')
+    expect(reader).toContain('readerCoachScopeKey')
     expect(reader).not.toContain("beginClose('button'); markReaderReturnCoachLearned")
   })
 })

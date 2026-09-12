@@ -28,10 +28,16 @@ interface FeedDiscoveryRailProps {
    * instead of navigating to canonical /haber.
    */
   onOpenArticle?: (item: DiscoveryRailItem) => void
+  /**
+   * `feed` — horizontal Feed card rail (Öne Çıkanlar).
+   * `reader` — vertical Reader end-of-article recommendations (natural scroll flow).
+   */
+  variant?: 'feed' | 'reader'
 }
 
 /**
  * Horizontal "Öne Çıkanlar" module — sandwiched as a full snap panel after N cards.
+ * Reader variant renders a vertical recommendation list in article scroll flow.
  * Does NOT emit qualified article impressions for rail cards (only module_viewed / opened).
  */
 export function FeedDiscoveryRail({
@@ -39,15 +45,19 @@ export function FeedDiscoveryRail({
   excludeIds,
   onOpen,
   onOpenArticle,
+  variant = 'feed',
 }: FeedDiscoveryRailProps) {
   const [items, setItems] = useState<DiscoveryRailItem[]>([])
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>('idle')
   const viewedRef = useRef(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const excludeRef = useRef(excludeIds)
   excludeRef.current = excludeIds
+  const isReader = variant === 'reader'
 
   useEffect(() => {
     let cancelled = false
+    setLoadState('loading')
     ;(async () => {
       try {
         const headers: Record<string, string> = {}
@@ -55,7 +65,10 @@ export function FeedDiscoveryRail({
         if (token) headers.Authorization = `Bearer ${token}`
         const qs = category ? `?category=${encodeURIComponent(category)}` : ''
         const res = await fetch(`/api/feed/v2/rails${qs}`, { headers, credentials: 'include' })
-        if (!res.ok) return
+        if (!res.ok) {
+          if (!cancelled) setLoadState('error')
+          return
+        }
         const data = (await res.json()) as {
           featured?: DiscoveryRailItem[]
           popular?: DiscoveryRailItem[]
@@ -79,15 +92,19 @@ export function FeedDiscoveryRail({
             return aMatch - bMatch
           })
         }
-        if (!cancelled) setItems(filtered.slice(0, 8))
+        if (!cancelled) {
+          const next = filtered.slice(0, isReader ? 6 : 8)
+          setItems(next)
+          setLoadState(next.length === 0 ? 'empty' : 'ok')
+        }
       } catch {
-        /* ignore */
+        if (!cancelled) setLoadState('error')
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [category])
+  }, [category, isReader])
 
   useEffect(() => {
     const el = rootRef.current
@@ -101,7 +118,11 @@ export function FeedDiscoveryRail({
               events: [
                 {
                   eventType: 'discovery_module_viewed',
-                  metadata: { count: items.length, category: category ?? null },
+                  metadata: {
+                    count: items.length,
+                    category: category ?? null,
+                    surface: isReader ? 'reader' : 'feed',
+                  },
                 },
               ],
             })
@@ -112,107 +133,213 @@ export function FeedDiscoveryRail({
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [items, category])
+  }, [items, category, isReader])
 
-  if (!items.length) return null
+  // Empty / error: no broken box (Reader + Feed).
+  if (loadState === 'empty' || loadState === 'error' || !items.length) return null
+
+  const heading = isReader ? 'Bu konuda daha fazlası' : 'Öne Çıkanlar'
+  const aria = isReader ? 'Bu konuda daha fazlası' : 'Öne çıkanlar'
 
   return (
     <section
       ref={rootRef}
-      className="w-full shrink-0"
-      data-testid="smart-feed-discovery-rail"
-      data-no-reader-gesture="1"
-      aria-label="Öne çıkanlar"
-      onTouchStart={(e) => e.stopPropagation()}
+      className={cn('w-full shrink-0', isReader && 'min-w-0')}
+      data-testid={isReader ? 'feed-reader-discovery-rail' : 'smart-feed-discovery-rail'}
+      data-discovery-variant={variant}
+      // Feed rail owns horizontal pan; Reader section must NOT blanket-block RIGHT return.
+      {...(isReader ? {} : { 'data-no-reader-gesture': '1' })}
+      aria-label={aria}
+      onTouchStart={isReader ? undefined : (e) => e.stopPropagation()}
     >
-      <h3 className="mb-2 px-0.5 text-[11px] font-extrabold tracking-wide text-white/85">
-        Öne Çıkanlar
-      </h3>
-      <div
-        className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x"
-        data-testid="smart-feed-discovery-scroll"
+      <h3
+        className={cn(
+          isReader
+            ? 'mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]'
+            : 'mb-2 px-0.5 text-[11px] font-extrabold tracking-wide text-white/85'
+        )}
+        data-testid={isReader ? 'feed-reader-recommendations-heading' : undefined}
       >
-        {items.map((item) => {
-          const skin = resolveFeedCardSkin(item.category)
-          const className = cn(
-            'relative h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900',
-            'active:scale-[0.98] transition text-left'
-          )
-          const style = { ['--feed-skin-accent' as string]: skin.accent }
-          const body = (
-            <>
-              {item.image ? (
-                <Image
-                  src={item.image}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="112px"
-                  // Match FullscreenNewsCard: remote publisher CDNs often block
-                  // /_next/image proxy — unoptimized avoids broken thumbnails.
-                  unoptimized={
-                    item.image.startsWith('http://') || item.image.startsWith('https://')
-                  }
-                />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 space-y-0.5 p-1.5">
-                <p className="line-clamp-3 text-[10px] font-bold leading-snug text-white">
-                  {item.headline}
-                </p>
-              </div>
-            </>
-          )
+        {heading}
+      </h3>
 
-          const trackOpen = () => {
-            onOpen?.(item.articleId)
-            void postTelemetryQuiet({
-              events: [
-                {
-                  eventType: 'discovery_card_opened',
-                  articleId: item.articleId,
-                  metadata: { category: item.category },
-                },
-              ],
-            })
-          }
+      {isReader ? (
+        <ul
+          className="flex flex-col gap-3"
+          data-testid="feed-reader-discovery-list"
+        >
+          {items.map((item) => {
+            const skin = resolveFeedCardSkin(item.category)
+            const className = cn(
+              'flex w-full min-h-[5.5rem] shrink-0 gap-3 overflow-hidden rounded-xl border border-white/10',
+              'bg-[color:var(--reader-page-elevated)] text-left active:scale-[0.99] transition'
+            )
+            const style = { ['--feed-skin-accent' as string]: skin.accent }
+            const body = (
+              <>
+                <div className="relative h-[5.5rem] w-[5.5rem] shrink-0 overflow-hidden bg-neutral-900">
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="88px"
+                      unoptimized={
+                        item.image.startsWith('http://') || item.image.startsWith('https://')
+                      }
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 py-2.5 pr-3">
+                  <p className="line-clamp-3 text-[15px] font-semibold leading-snug text-[color:var(--reader-page-text)]">
+                    {item.headline}
+                  </p>
+                  <p className="mt-1 truncate text-[12px] text-[color:var(--reader-page-muted)]">
+                    {[item.publisherName, item.category].filter(Boolean).join(' · ') || 'Haber'}
+                  </p>
+                </div>
+              </>
+            )
 
-          if (onOpenArticle) {
+            const trackOpen = () => {
+              onOpen?.(item.articleId)
+              void postTelemetryQuiet({
+                events: [
+                  {
+                    eventType: 'discovery_card_opened',
+                    articleId: item.articleId,
+                    metadata: { category: item.category, surface: 'reader' },
+                  },
+                ],
+              })
+            }
+
+            if (onOpenArticle) {
+              return (
+                <li key={item.articleId}>
+                  <button
+                    type="button"
+                    className={className}
+                    style={style}
+                    data-testid="feed-reader-discovery-tile"
+                    data-discovery-open="reader"
+                    data-no-reader-gesture="1"
+                    onClick={() => {
+                      trackOpen()
+                      onOpenArticle(item)
+                    }}
+                  >
+                    {body}
+                  </button>
+                </li>
+              )
+            }
+
             return (
-              <button
+              <li key={item.articleId}>
+                <Link
+                  href={`/haber/${item.slug || item.articleId}`}
+                  className={className}
+                  style={style}
+                  data-testid="feed-reader-discovery-tile"
+                  data-discovery-open="canonical"
+                  data-no-reader-gesture="1"
+                  onClick={trackOpen}
+                >
+                  {body}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <div
+          className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x"
+          data-testid="smart-feed-discovery-scroll"
+        >
+          {items.map((item) => {
+            const skin = resolveFeedCardSkin(item.category)
+            const className = cn(
+              'relative h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900',
+              'active:scale-[0.98] transition text-left'
+            )
+            const style = { ['--feed-skin-accent' as string]: skin.accent }
+            const body = (
+              <>
+                {item.image ? (
+                  <Image
+                    src={item.image}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="112px"
+                    unoptimized={
+                      item.image.startsWith('http://') || item.image.startsWith('https://')
+                    }
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 space-y-0.5 p-1.5">
+                  <p className="line-clamp-3 text-[10px] font-bold leading-snug text-white">
+                    {item.headline}
+                  </p>
+                </div>
+              </>
+            )
+
+            const trackOpen = () => {
+              onOpen?.(item.articleId)
+              void postTelemetryQuiet({
+                events: [
+                  {
+                    eventType: 'discovery_card_opened',
+                    articleId: item.articleId,
+                    metadata: { category: item.category },
+                  },
+                ],
+              })
+            }
+
+            if (onOpenArticle) {
+              return (
+                <button
+                  key={item.articleId}
+                  type="button"
+                  className={className}
+                  style={style}
+                  data-testid="smart-feed-discovery-tile"
+                  data-discovery-open="reader"
+                  onClick={() => {
+                    trackOpen()
+                    onOpenArticle(item)
+                  }}
+                >
+                  {body}
+                </button>
+              )
+            }
+
+            return (
+              <Link
                 key={item.articleId}
-                type="button"
+                href={`/haber/${item.slug || item.articleId}`}
                 className={className}
                 style={style}
                 data-testid="smart-feed-discovery-tile"
-                data-discovery-open="reader"
-                onClick={() => {
-                  trackOpen()
-                  onOpenArticle(item)
-                }}
+                data-discovery-open="canonical"
+                onClick={trackOpen}
               >
                 {body}
-              </button>
+              </Link>
             )
-          }
-
-          return (
-            <Link
-              key={item.articleId}
-              href={`/haber/${item.slug || item.articleId}`}
-              className={className}
-              style={style}
-              data-testid="smart-feed-discovery-tile"
-              data-discovery-open="canonical"
-              onClick={trackOpen}
-            >
-              {body}
-            </Link>
-          )
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </section>
   )
 }

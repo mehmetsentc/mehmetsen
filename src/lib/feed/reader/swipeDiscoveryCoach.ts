@@ -1,14 +1,16 @@
 /**
  * LEFT "Haberi Aç" discovery affordance — Feed → Reader.
  * Interactive hit target (not pointer-events:none on the chip).
- * Learned only after successful LEFT swipe OR affordance TAP.
- * Haberi Oku does NOT mark learned.
  *
- * V9: LEFT-open product authority re-teach (v8 could remain learned after prior UX).
- * Eligibility is !learned only — shownCount is diagnostic.
+ * V10: per-article Feed-session ownership.
+ * Successful LEFT swipe / affordance on Card A must NOT globally suppress B/C/D.
+ * Haberi Oku does NOT mark handled.
+ *
+ * Storage key v9 remains for diagnostic shownCount only — eligibility is session Set.
  */
 
-export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v9'
+export const SWIPE_DISCOVERY_STORAGE_KEY = 'nahaber.feedSwipeDiscovery.v10'
+export const SWIPE_DISCOVERY_STORAGE_KEY_V9 = 'nahaber.feedSwipeDiscovery.v9'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V8 = 'nahaber.feedSwipeDiscovery.v8'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V7 = 'nahaber.feedSwipeDiscovery.v7'
 export const SWIPE_DISCOVERY_STORAGE_KEY_V6 = 'nahaber.feedSwipeDiscovery.v6'
@@ -22,18 +24,22 @@ export const SWIPE_DISCOVERY_SETTLE_MS = 500
 export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 8
 export const SWIPE_DISCOVERY_ANIM_MS = 900
-/** Stay visible after motion cycles (soft rest) — do not vanish before user can act. */
-export const SWIPE_DISCOVERY_HINT_MS = 7200
+/** Short one-shot demo — then hide (not a permanent overlay). */
+export const SWIPE_DISCOVERY_HINT_MS = 4200
 export const SWIPE_DISCOVERY_REPEAT_COUNT = 2
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
-/** Diagnostic only — must NOT gate eligibility before learned. */
+/** Diagnostic only — must NOT gate eligibility. */
 export const SWIPE_DISCOVERY_MAX_SHOWS = Number.MAX_SAFE_INTEGER
 
+/** Bounded in-memory Feed-session ownership (no unbounded permanent list). */
+export const FEED_COACH_SESSION_MAX_IDS = 64
+
 export type SwipeDiscoveryState = {
+  /** @deprecated Global learned no longer gates eligibility (kept for diagnostics). */
   learned: boolean
   shownCount: number
-  version?: 9
+  version?: 10
 }
 
 export type SwipeDiscoveryPhase =
@@ -44,6 +50,9 @@ export type SwipeDiscoveryPhase =
   | 'done'
   | 'suppressed'
   | 'ineligible'
+
+const sessionShownArticleIds = new Set<string>()
+const sessionShownOrder: string[] = []
 
 function storage(): Storage | null {
   try {
@@ -72,18 +81,18 @@ function readLegacyState(key: string): SwipeDiscoveryState | null {
 
 export function readSwipeDiscoveryState(): SwipeDiscoveryState {
   const ss = storage()
-  if (!ss) return { learned: false, shownCount: 0, version: 9 }
+  if (!ss) return { learned: false, shownCount: 0, version: 10 }
   try {
     const raw = ss.getItem(SWIPE_DISCOVERY_STORAGE_KEY)
-    if (!raw) return { learned: false, shownCount: 0, version: 9 }
+    if (!raw) return { learned: false, shownCount: 0, version: 10 }
     const parsed = JSON.parse(raw) as Partial<SwipeDiscoveryState>
     return {
       learned: Boolean(parsed.learned),
       shownCount: typeof parsed.shownCount === 'number' ? parsed.shownCount : 0,
-      version: 9,
+      version: 10,
     }
   } catch {
-    return { learned: false, shownCount: 0, version: 9 }
+    return { learned: false, shownCount: 0, version: 10 }
   }
 }
 
@@ -93,35 +102,69 @@ export function writeSwipeDiscoveryState(next: SwipeDiscoveryState): void {
   try {
     ss.setItem(
       SWIPE_DISCOVERY_STORAGE_KEY,
-      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 9 })
+      JSON.stringify({ learned: next.learned, shownCount: next.shownCount, version: 10 })
     )
   } catch {
     // private mode / quota
   }
 }
 
-export function markSwipeDiscoveryLearned(): void {
+export function listFeedCoachSessionShownIds(): string[] {
+  return [...sessionShownOrder]
+}
+
+export function hasFeedCoachShownForArticle(articleId: string): boolean {
+  if (!articleId) return false
+  return sessionShownArticleIds.has(articleId)
+}
+
+/** Mark this article's Feed coach handled for the current Feed session. */
+export function markFeedCoachHandledForArticle(articleId: string): void {
+  if (!articleId || sessionShownArticleIds.has(articleId)) return
+  sessionShownArticleIds.add(articleId)
+  sessionShownOrder.push(articleId)
+  while (sessionShownOrder.length > FEED_COACH_SESSION_MAX_IDS) {
+    const oldest = sessionShownOrder.shift()
+    if (oldest) sessionShownArticleIds.delete(oldest)
+  }
+}
+
+/**
+ * Successful LEFT open for ONE article — session-scopes that card only.
+ * Does NOT permanently disable coaches for other cards.
+ */
+export function markSwipeDiscoveryLearned(articleId?: string): void {
+  if (articleId) markFeedCoachHandledForArticle(articleId)
   const cur = readSwipeDiscoveryState()
-  writeSwipeDiscoveryState({ learned: true, shownCount: cur.shownCount, version: 9 })
+  // Diagnostic counter only — do not set learned=true as a global gate.
+  writeSwipeDiscoveryState({ learned: false, shownCount: cur.shownCount, version: 10 })
 }
 
 export function resetSwipeDiscoveryPresentation(): void {
-  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 9 })
+  sessionShownArticleIds.clear()
+  sessionShownOrder.length = 0
+  writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 10 })
 }
 
-/** Eligible until REAL left-open learn (swipe or affordance tap). shown ≠ learned. */
+/**
+ * Eligible once per articleId during the current Feed session.
+ * Global localStorage `learned` must NOT suppress later cards.
+ */
 export function shouldShowSwipeDiscoveryCoach(opts?: {
+  articleId?: string
   state?: SwipeDiscoveryState
   maxShows?: number
 }): boolean {
-  const state = opts?.state ?? readSwipeDiscoveryState()
+  void opts?.state
   void opts?.maxShows
-  return !state.learned
+  const articleId = opts?.articleId
+  if (!articleId) return false
+  return !sessionShownArticleIds.has(articleId)
 }
 
 export function recordSwipeDiscoveryShown(state?: SwipeDiscoveryState): SwipeDiscoveryState {
   const cur = state ?? readSwipeDiscoveryState()
-  const next = { learned: cur.learned, shownCount: cur.shownCount + 1, version: 9 as const }
+  const next = { learned: false, shownCount: cur.shownCount + 1, version: 10 as const }
   writeSwipeDiscoveryState(next)
   return next
 }
@@ -163,6 +206,7 @@ export function priorKeysWouldHaveSuppressedCoach(): boolean {
     SWIPE_DISCOVERY_STORAGE_KEY_V6,
     SWIPE_DISCOVERY_STORAGE_KEY_V7,
     SWIPE_DISCOVERY_STORAGE_KEY_V8,
+    SWIPE_DISCOVERY_STORAGE_KEY_V9,
   ]) {
     const s = readLegacyState(key)
     if (!s) continue
@@ -182,6 +226,9 @@ export type SwipeCoachDebugSnapshot = {
   shownCount: number
   phase: SwipeDiscoveryPhase
   leftCoachVisible?: boolean
+  activeArticleId?: string | null
+  feedCoachEligible?: boolean
+  feedCoachShown?: boolean
 }
 
 let lastCoachDebug: SwipeCoachDebugSnapshot = {
@@ -191,6 +238,9 @@ let lastCoachDebug: SwipeCoachDebugSnapshot = {
   shownCount: 0,
   phase: 'idle',
   leftCoachVisible: false,
+  activeArticleId: null,
+  feedCoachEligible: false,
+  feedCoachShown: false,
 }
 
 export function publishSwipeCoachDebug(next: Partial<SwipeCoachDebugSnapshot>): void {
@@ -202,9 +252,12 @@ export function publishSwipeCoachDebug(next: Partial<SwipeCoachDebugSnapshot>): 
 
 export function readSwipeCoachDebug(): SwipeCoachDebugSnapshot {
   const s = readSwipeDiscoveryState()
+  const id = lastCoachDebug.activeArticleId
   return {
     ...lastCoachDebug,
-    learned: s.learned,
+    learned: false,
     shownCount: s.shownCount,
+    feedCoachEligible: id ? shouldShowSwipeDiscoveryCoach({ articleId: id }) : false,
+    feedCoachShown: id ? hasFeedCoachShownForArticle(id) : false,
   }
 }
