@@ -82,6 +82,9 @@ export interface InsertDiscoveredUrlInput {
   discoveryPrimaryImageCandidate?: string | null
   rssDescription?: string | null
   feedMetadata?: Record<string, unknown> | null
+  /** Durable discovery-memory rows may be inserted already processed (never PENDING_FETCH). */
+  status?: import('../types').CrawlerUrlStatus
+  logicalQueue?: import('../types').CrawlerLogicalQueue
 }
 
 export interface InsertRawArticleInput extends Omit<

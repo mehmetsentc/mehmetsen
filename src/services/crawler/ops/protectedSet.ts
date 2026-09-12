@@ -97,6 +97,7 @@ export type ProtectReason =
   | 'approved_for_ai_cluster'
   | 'protected_cluster_member'
   | 'published_used_media'
+  | 'discovery_memory'
   | 'fail_safe'
 
 export type ProtectedSet = {
@@ -285,6 +286,10 @@ export function computeProtectedSet(snapshot: CleanupSnapshot): ProtectedSet {
   for (const url of snapshot.urls) {
     const keys = [url.canonicalUrl, url.normalizedUrl, url.url].map(urlKey)
     if (keys.some((k) => k && publishedUrlKeys.has(k))) urlIds.add(url.id)
+    // Discovery identity survives raw-article deletion. Deleting CMS content
+    // must not make the crawler eligible to ingest the same source URL again.
+    urlIds.add(url.id)
+    addReason(reasons, url.id, 'discovery_memory')
   }
 
   return {

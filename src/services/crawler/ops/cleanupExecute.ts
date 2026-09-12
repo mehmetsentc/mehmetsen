@@ -5,7 +5,6 @@ import {
   crawlerAiDispatchShadow,
   crawlerArticleMedia,
   crawlerEditorialAudit,
-  discoveredArticleUrls,
   newsClusters,
   newsSources,
   rawArticles,
@@ -108,16 +107,10 @@ function executeOnMemory(store: MemoryCrawlerStore, plan: CleanupPlan): CleanupE
     store.clusters.delete(id)
     clusterDeleted += 1
   }
-  for (const id of plan.eligibleUrlIds) {
-    if (protectedUrl.has(id)) continue
-    const linked = [...store.articles.values()].some((a) => a.discoveredUrlId === id)
-    if (linked) continue
-    const url = store.urls.get(id)
-    if (!url) continue
-    store.urls.delete(id)
-    store.urlsByHash.delete(url.urlHash)
-    urlDeleted += 1
-  }
+  // Discovery identity is permanent. Raw delete / cleanup must not erase
+  // discovered_article_urls or the crawler will re-ingest the same source URL.
+  void protectedUrl
+  urlDeleted = 0
 
   return {
     executed: true,
@@ -416,20 +409,10 @@ async function executeOnDrizzle(plan: CleanupPlan): Promise<CleanupExecuteResult
     clusterDeleted += deleted.length
   }
 
-  for (const ids of chunk(plan.eligibleUrlIds)) {
-    if (!ids.length) continue
-    const deleted = await db
-      .delete(discoveredArticleUrls)
-      .where(
-        and(
-          inArray(discoveredArticleUrls.id, ids),
-          notInArray(discoveredArticleUrls.id, protectedUrl),
-          sql`NOT EXISTS (SELECT 1 FROM raw_articles r WHERE r.discovered_url_id = discovered_article_urls.id)`
-        )
-      )
-      .returning({ id: discoveredArticleUrls.id })
-    urlDeleted += deleted.length
-  }
+  // Discovery identity is permanent. Do not delete discovered_article_urls just
+  // because the corresponding raw_articles row was removed from Ham Haberler.
+  urlDeleted = 0
+  void protectedUrl
 
   const [sourceCount] = await db.select({ n: sql<number>`count(*)::int` }).from(newsSources)
   const [auditCount] = await db.select({ n: sql<number>`count(*)::int` }).from(crawlerEditorialAudit)

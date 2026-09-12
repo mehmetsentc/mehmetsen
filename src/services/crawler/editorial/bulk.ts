@@ -27,6 +27,7 @@ import {
   type ApprovalSource,
   type EditorialSelectionMode,
 } from './controlPlane'
+import { rememberDiscoveryIdentity } from '../discovery/rememberIdentity'
 
 export const BULK_ID_CAP = BULK_EVENT_CAP
 export const FILTER_MATCH_CAP = 10_000
@@ -254,6 +255,7 @@ export async function runArticleBulk(opts: {
         const relations = await articleHasRelations(opts.store, article)
         const hardAuth = authorizeCrawlerBulk(opts.actor.role, 'hard_delete')
         if (!relations && hardAuth.ok) {
+          await rememberDiscoveryIdentity(opts.store, article)
           await opts.store.deleteRawArticle(id)
           result.affected += 1
           result.hardDeleted += 1
@@ -269,6 +271,7 @@ export async function runArticleBulk(opts: {
           continue
         }
         newState = 'DELETED'
+        await rememberDiscoveryIdentity(opts.store, article)
         await opts.store.updateRawArticle(id, { editorialStatus: 'DELETED' })
         result.tombstoned += 1
       }

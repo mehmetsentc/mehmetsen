@@ -428,8 +428,10 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         normalizedUrl: input.normalizedUrl,
         urlHash: input.urlHash,
         publishedAtHint: input.publishedAtHint ?? null,
-        status: 'PENDING_FETCH',
-        logicalQueue: 'ARTICLE_FETCH_QUEUE',
+        status: input.status || 'PENDING_FETCH',
+        logicalQueue:
+          input.logicalQueue ||
+          (input.status && input.status !== 'PENDING_FETCH' ? 'CLUSTER_QUEUE' : 'ARTICLE_FETCH_QUEUE'),
         discoveryLane: input.discoveryLane || 'CRAWLER',
         discoveryLanes: input.discoveryLanes?.length ? input.discoveryLanes : [input.discoveryLane || 'CRAWLER'],
         titleHint: input.titleHint ?? null,

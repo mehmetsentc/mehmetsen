@@ -879,7 +879,7 @@ function CrawlerArticlesInner() {
       <CrawlerConfirmModal
         open={confirmDelete}
         title="Ham haberleri sil"
-        body={`${count} ham haber silinecek.\nBu işlem crawler kayıtlarını temizleyebilir ve geri alınamayabilir.\nKüme/medya ilişkisi varsa kayıt tombstone olur.\nDevam etmek istiyor musunuz?`}
+        body={`${count} ham haber silinecek.\nKaynak URL crawler belleğinde kalır; aynı haber birkaç dakika sonra geri gelmez.\nKüme/medya ilişkisi varsa kayıt tombstone olur.\nBu işlem geri alınamaz. Devam etmek istiyor musunuz?`}
         confirmLabel="Sil"
         danger
         busy={busyBulk}

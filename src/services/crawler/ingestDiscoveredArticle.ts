@@ -76,6 +76,8 @@ export async function ingestDiscoveredArticle(
   const imageCandidate = input.discoveryPrimaryImageCandidate?.trim() || null
 
   if (existing) {
+    // Permanent URL memory: refresh provenance metadata only. Never reset
+    // status back to PENDING_FETCH — a previously seen URL must not re-queue.
     const lanes = mergeDiscoveryLanes(existing.discoveryLanes, discoveryLane)
     await store.updateDiscoveredUrl(existing.id, {
       discoveryLanes: lanes,
