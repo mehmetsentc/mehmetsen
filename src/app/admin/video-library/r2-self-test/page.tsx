@@ -24,7 +24,7 @@ export default function R2SelfTestPage() {
   const validationId =
     typeof result?.validationId === 'string' ? result.validationId : null
 
-  async function call(action: 'run' | 'cleanup') {
+  async function call(action: 'run' | 'cleanup' | 'cors-inspect' | 'cors-apply') {
     setBusy(true)
     setError(null)
     try {
@@ -50,9 +50,25 @@ export default function R2SelfTestPage() {
   return (
     <AdminOsPageShell
       title="R2 self-test"
-      subtitle="Video Library özelliğini açmaz. Yalnızca production R2 upload → public GET → Range → faststart doğrulaması."
+      subtitle="Video Library özelliğini açmaz. CORS apply mevcut nahaber-media kurallarını silmeden www.nahaber.com playback origin ekler."
     >
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void call('cors-inspect')}
+          className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+        >
+          Inspect CORS
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void call('cors-apply')}
+          className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+        >
+          Apply CORS
+        </button>
         <button
           type="button"
           disabled={busy}

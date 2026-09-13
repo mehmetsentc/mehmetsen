@@ -9,7 +9,9 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasPermission } from '@/types/cms'
 import {
   assertSafeDiagnosticJson,
+  applyPlaybackCors,
   cleanupR2SelfTest,
+  inspectR2Cors,
   runR2SelfTest,
 } from '@/lib/storage/r2SelfTest'
 
@@ -64,6 +66,14 @@ export async function POST(request: Request) {
       }
       const result = await cleanupR2SelfTest(validationId)
       return json(result)
+    }
+
+    if (action === 'cors-inspect') {
+      return json(await inspectR2Cors())
+    }
+
+    if (action === 'cors-apply') {
+      return json(await applyPlaybackCors())
     }
 
     if (action !== 'run') {

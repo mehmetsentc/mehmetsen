@@ -205,3 +205,26 @@ describe('V1C.1R4 R2 self-test helpers', () => {
     expect(result.cleanupRequired).toBe(false)
   })
 })
+
+describe('V1C.1R5 CORS apply', () => {
+  it('keeps existing origins while adding nahaber playback rule', async () => {
+    let stored: string | null =
+      '<CORSConfiguration><CORSRule><AllowedOrigin>https://publisher.example</AllowedOrigin><AllowedMethod>GET</AllowedMethod></CORSRule></CORSConfiguration>'
+    const cors = {
+      async getBucketCors() {
+        return { status: stored ? 200 : 404, xml: stored }
+      },
+      async putBucketCors(xml: string) {
+        stored = xml
+      },
+    }
+    const { applyPlaybackCors } = await import('./r2SelfTest')
+    const result = await applyPlaybackCors({ configured: true, cors })
+    expect(result.apply).toBe('PASS')
+    expect(result.before).toHaveLength(1)
+    expect(result.after?.map((rule) => rule.origins).flat()).toEqual([
+      'https://publisher.example',
+      'https://www.nahaber.com',
+    ])
+  })
+})

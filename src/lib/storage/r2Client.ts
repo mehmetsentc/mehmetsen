@@ -35,7 +35,8 @@ async function signRequest(
   method: string,
   url: string,
   headers: Record<string, string>,
-  config: ReturnType<typeof getR2Config>
+  config: ReturnType<typeof getR2Config>,
+  body?: string,
 ): Promise<Record<string, string>> {
   const { AwsClient } = await import('aws4fetch')
   const client = new AwsClient({
@@ -48,6 +49,7 @@ async function signRequest(
   const signed = await client.sign(url, {
     method,
     headers,
+    ...(body !== undefined ? { body } : {}),
   })
 
   const signedHeaders: Record<string, string> = {}
@@ -158,5 +160,36 @@ export class R2StorageProvider implements StorageProvider {
     }
 
     return new Uint8Array(await res.arrayBuffer())
+  }
+
+  /** S3 GetBucketCors — bucket policy only, no object listing. */
+  async getBucketCors(): Promise<{ status: number; xml: string | null }> {
+    const config = getR2Config()
+    const endpoint = getEndpoint(config.accountId)
+    const url = `${endpoint}/${config.bucket}?cors`
+    const signedHeaders = await signRequest('GET', url, {}, config)
+    const res = await fetch(url, { method: 'GET', headers: signedHeaders })
+    if (res.status === 404) return { status: 404, xml: null }
+    if (!res.ok) {
+      throw new Error(`R2_CORS_GET_FAILED_${res.status}`)
+    }
+    return { status: res.status, xml: await res.text() }
+  }
+
+  /** S3 PutBucketCors — replaces the full CORS document. Caller must merge first. */
+  async putBucketCors(xml: string): Promise<void> {
+    const config = getR2Config()
+    const endpoint = getEndpoint(config.accountId)
+    const url = `${endpoint}/${config.bucket}?cors`
+    const headers: Record<string, string> = { 'content-type': 'application/xml' }
+    const signedHeaders = await signRequest('PUT', url, headers, config, xml)
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: signedHeaders,
+      body: xml,
+    })
+    if (!res.ok) {
+      throw new Error(`R2_CORS_PUT_FAILED_${res.status}`)
+    }
   }
 }

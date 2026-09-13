@@ -12,6 +12,8 @@ import {
   POSTER_WEBP_BASE64,
   fixtureBytes,
 } from './r2SelfTestFixtures'
+import type { PublicCorsRule } from './r2Cors'
+import { mergePlaybackCors, parseCorsXml, serializeCorsXml } from './r2Cors'
 
 export type CheckResult = 'PASS' | 'FAIL' | 'SKIP'
 
@@ -520,3 +522,137 @@ export async function cleanupR2SelfTest(
     cleanup: remaining === 0 ? 'PASS' : 'FAIL',
   }
 }
+
+export type CorsBucket = {
+  getBucketCors: () => Promise<{ status: number; xml: string | null }>
+  putBucketCors: (xml: string) => Promise<void>
+}
+
+export type R2CorsInspectResult = {
+  action: 'cors-inspect' | 'cors-apply'
+  configured: boolean
+  inspect: CheckResult
+  apply: CheckResult | 'SKIP'
+  changed: boolean
+  wildcardPresent: boolean
+  before: PublicCorsRule[]
+  after: PublicCorsRule[] | null
+}
+
+function corsBucket(deps: { cors?: CorsBucket }): CorsBucket {
+  return deps.cors ?? new R2StorageProvider()
+}
+
+export async function inspectR2Cors(deps: {
+  configured?: boolean
+  cors?: CorsBucket
+} = {}): Promise<R2CorsInspectResult> {
+  const configured = deps.configured ?? isR2Configured()
+  if (!configured) {
+    return {
+      action: 'cors-inspect',
+      configured: false,
+      inspect: 'SKIP',
+      apply: 'SKIP',
+      changed: false,
+      wildcardPresent: false,
+      before: [],
+      after: null,
+    }
+  }
+  try {
+    const { xml } = await corsBucket(deps).getBucketCors()
+    const before = parseCorsXml(xml)
+    const merged = mergePlaybackCors(before)
+    return {
+      action: 'cors-inspect',
+      configured: true,
+      inspect: 'PASS',
+      apply: 'SKIP',
+      changed: merged.changed,
+      wildcardPresent: merged.wildcardPresent,
+      before,
+      after: merged.rules,
+    }
+  } catch {
+    return {
+      action: 'cors-inspect',
+      configured: true,
+      inspect: 'FAIL',
+      apply: 'SKIP',
+      changed: false,
+      wildcardPresent: false,
+      before: [],
+      after: null,
+    }
+  }
+}
+
+export async function applyPlaybackCors(deps: {
+  configured?: boolean
+  cors?: CorsBucket
+} = {}): Promise<R2CorsInspectResult> {
+  const configured = deps.configured ?? isR2Configured()
+  if (!configured) {
+    return {
+      action: 'cors-apply',
+      configured: false,
+      inspect: 'SKIP',
+      apply: 'SKIP',
+      changed: false,
+      wildcardPresent: false,
+      before: [],
+      after: null,
+    }
+  }
+
+  const bucket = corsBucket(deps)
+  try {
+    const { xml } = await bucket.getBucketCors()
+    const before = parseCorsXml(xml)
+    const merged = mergePlaybackCors(before)
+
+    if (!merged.changed) {
+      return {
+        action: 'cors-apply',
+        configured: true,
+        inspect: 'PASS',
+        apply: 'PASS',
+        changed: false,
+        wildcardPresent: merged.wildcardPresent,
+        before,
+        after: merged.rules,
+      }
+    }
+
+    await bucket.putBucketCors(serializeCorsXml(merged.rules))
+    const verified = parseCorsXml((await bucket.getBucketCors()).xml)
+    const originOk = verifiedHasPlaybackOrigin(verified)
+    return {
+      action: 'cors-apply',
+      configured: true,
+      inspect: 'PASS',
+      apply: originOk ? 'PASS' : 'FAIL',
+      changed: true,
+      wildcardPresent: merged.wildcardPresent,
+      before,
+      after: verified,
+    }
+  } catch {
+    return {
+      action: 'cors-apply',
+      configured: true,
+      inspect: 'FAIL',
+      apply: 'FAIL',
+      changed: false,
+      wildcardPresent: false,
+      before: [],
+      after: null,
+    }
+  }
+}
+
+function verifiedHasPlaybackOrigin(rules: PublicCorsRule[]): boolean {
+  return rules.some((rule) => rule.origins.includes('https://www.nahaber.com'))
+}
+

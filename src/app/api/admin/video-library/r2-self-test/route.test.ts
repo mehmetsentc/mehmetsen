@@ -15,6 +15,8 @@ vi.mock('@/lib/storage/r2SelfTest', async () => {
     ...actual,
     runR2SelfTest: vi.fn(),
     cleanupR2SelfTest: vi.fn(),
+    inspectR2Cors: vi.fn(),
+    applyPlaybackCors: vi.fn(),
   }
 })
 
@@ -34,6 +36,8 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     vi.mocked(verifyCmsToken).mockReset()
     vi.mocked(r2SelfTest.runR2SelfTest).mockReset()
     vi.mocked(r2SelfTest.cleanupR2SelfTest).mockReset()
+    vi.mocked(r2SelfTest.inspectR2Cors).mockReset()
+    vi.mocked(r2SelfTest.applyPlaybackCors).mockReset()
     vi.unstubAllEnvs()
   })
 
