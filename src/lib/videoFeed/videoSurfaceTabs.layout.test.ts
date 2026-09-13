@@ -63,6 +63,24 @@ describe('VF2.2 video tabs sit on the player column', () => {
     expect(css).toContain('--reels-viewport-h: 100dvh')
   })
 
+  it('immersive scrollport stays viewport-sized so swipe/wheel can change slides', () => {
+    const css = read('src/app/globals.css')
+    const pageLayoutRule = css.match(
+      /html\[data-immersive-video='1'\] \.reels-page,[\s\S]*?html\[data-immersive-video='1'\] \.reels-layout \{[\s\S]*?\}/
+    )?.[0] ?? ''
+    expect(pageLayoutRule).toContain('.reels-layout')
+    expect(pageLayoutRule).not.toContain('reels-scroll-container')
+
+    const scroll = css.slice(
+      css.indexOf("html[data-immersive-video='1'] .reels-scroll-container"),
+      css.indexOf("html[data-platform='mobile'][data-immersive-video='1'] .reels-player-wrap")
+    )
+    expect(scroll).toContain('overflow-y: scroll')
+    expect(scroll).toContain('touch-action: pan-y')
+    expect(scroll).toContain('height: var(--reels-viewport-h)')
+    expect(scroll).not.toMatch(/height:\s*100%;/)
+  })
+
   it('tab container center equals video column center, independent of rail', () => {
     const player = { x: 80, width: 400 }
     const gap = 36

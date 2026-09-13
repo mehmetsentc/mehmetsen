@@ -2873,14 +2873,36 @@
     height: 100dvh;
     min-height: 100dvh;
     max-height: 100dvh;
+    overflow: hidden;
   }
 
   html[data-immersive-video='1'] .reels-page,
-  html[data-immersive-video='1'] .reels-layout,
-  html[data-immersive-video='1'] .reels-scroll-container {
+  html[data-immersive-video='1'] .reels-layout {
     height: 100%;
     min-height: 0;
     max-width: none;
+  }
+
+  /*
+   * VF2.3S: keep the snap scroller viewport-sized. A percentage height on
+   * that scroller followed an auto-sized player column, so overflow never
+   * engaged and swipe/wheel could not change the active slide.
+   */
+  html[data-immersive-video='1'] .reels-player-wrap {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  html[data-immersive-video='1'] .reels-scroll-container {
+    max-width: none;
+    height: var(--reels-viewport-h);
+    min-height: 0;
+    overflow-y: scroll;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
   html[data-platform='mobile'][data-immersive-video='1'] .reels-player-wrap,
@@ -2895,6 +2917,7 @@
   html[data-immersive-video='1'] .reels-video-card {
     height: var(--reels-viewport-h);
     min-height: 0;
+    touch-action: pan-y;
   }
 
   @media (min-width: 1280px) {

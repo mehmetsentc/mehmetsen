@@ -845,7 +845,7 @@ function VideoFeedItemInner({
                 key={`yt-${video.id}`}
                 src={embedSrc}
                 title={video.title}
-                className="absolute inset-0 h-full w-full border-0"
+                className="pointer-events-none absolute inset-0 h-full w-full border-0"
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
                 allowFullScreen
                 onLoad={() => {
@@ -865,9 +865,10 @@ function VideoFeedItemInner({
               {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
               <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
 
-              {/* Tap interceptor — iframe controls hidden; play/pause via postMessage */}
+              {/* Tap interceptor — iframe controls hidden; play/pause via postMessage.
+                  pan-y lets wheel/trackpad/touch reach the snap container. */}
               <div
-                className="absolute inset-0 z-[1]"
+                className="absolute inset-0 z-[1] touch-pan-y"
                 onClick={() => {
                   sendYTListening()
                   const playerPlaying =

@@ -108,9 +108,12 @@ export function useActiveSnapItem({
   }, [onActiveChange, suspend])
 
   const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'smooth') => {
+    const container = containerRef.current
     const el = itemRefs.current.get(index)
-    if (!el) return false
-    el.scrollIntoView({ behavior, block: 'start' })
+    if (!container || !el) return false
+    // Scroll the snap container itself. Aligning via the element API can
+    // walk to a locked document/body and leave /video stuck on the current slide.
+    container.scrollTo({ top: el.offsetTop, behavior })
     return true
   }, [])
 
