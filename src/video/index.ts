@@ -1,4 +1,4 @@
-export { isVideoLibraryEnabled, isVideoLibraryImportEnabled } from './featureFlag'
+export { isVideoLibraryEnabled, isVideoLibraryImportEnabled, isVideoLibraryProcessEnabled } from './featureFlag'
 export type {
   VideoInspectResult,
   VideoLibraryItem,
@@ -15,3 +15,5 @@ export { detectVideoProvider, listVideoProviders } from './providers/registry'
 export { buildVideoLibraryMediaKey } from './storage/keys'
 export { enqueueDownloadJob } from './importer/enqueue'
 export { processOneImportJob } from './importer/worker'
+export { enqueueProcessJob } from './processing/enqueue'
+export { processOneProcessJob } from './processing/worker'

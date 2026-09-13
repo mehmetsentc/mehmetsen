@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { hasDatabaseUrl } from '@/db'
-import { isVideoLibraryEnabled, isVideoLibraryImportEnabled } from '@/video/featureFlag'
+import { isVideoLibraryEnabled, isVideoLibraryImportEnabled, isVideoLibraryProcessEnabled } from '@/video/featureFlag'
 import { inspectVideoUrl } from '@/video/library/inspect'
 import { registerVideoUrl } from '@/video/library/register'
 import { videoLibraryRepository } from '@/video/library/repository'
 import { enqueueDownloadJob } from '@/video/importer/enqueue'
+import { enqueueProcessJob } from '@/video/processing/enqueue'
 import { videoImportStore } from '@/video/importer/store'
+import { isR2Configured, getStorage } from '@/lib/storage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,11 +29,27 @@ function mapError(err: unknown) {
   if (message === 'NOT_FOUND') {
     return NextResponse.json({ error: 'Kayıt bulunamadı', code: message }, { status: 404 })
   }
+  if (message === 'MISSING_ORIGINAL') {
+    return NextResponse.json({ error: 'Orijinal dosya yok', code: message }, { status: 400 })
+  }
   if (message === 'DATABASE_UNAVAILABLE') {
     return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
   }
   console.error('[admin/videos/library]', err)
   return NextResponse.json({ error: 'Video Library işlemi başarısız' }, { status: 500 })
+}
+
+function libraryAssetUrls(item: { posterStorageKey: string | null; playbackStorageKey: string | null }) {
+  if (!isR2Configured()) return { posterPublicUrl: null, playbackPublicUrl: null }
+  try {
+    const storage = getStorage()
+    return {
+      posterPublicUrl: item.posterStorageKey ? storage.getPublicUrl(item.posterStorageKey) : null,
+      playbackPublicUrl: item.playbackStorageKey ? storage.getPublicUrl(item.playbackStorageKey) : null,
+    }
+  } catch {
+    return { posterPublicUrl: null, playbackPublicUrl: null }
+  }
 }
 
 export async function GET(request: Request) {
@@ -52,11 +70,12 @@ export async function GET(request: Request) {
       offset: (page - 1) * pageSize,
     })
     return NextResponse.json({
-      items,
+      items: items.map((item) => ({ ...item, ...libraryAssetUrls(item) })),
       total,
       page,
       pageSize,
       importEnabled: isVideoLibraryImportEnabled(),
+      processEnabled: isVideoLibraryProcessEnabled(),
     })
   } catch (err) {
     return mapError(err)
@@ -74,7 +93,13 @@ export async function POST(request: Request) {
   }
 
   const action =
-    body.action === 'register' ? 'register' : body.action === 'import' ? 'import' : 'inspect'
+    body.action === 'register'
+      ? 'register'
+      : body.action === 'import'
+        ? 'import'
+        : body.action === 'process'
+          ? 'process'
+          : 'inspect'
   const permission = action === 'inspect' ? 'video:read' : 'video:create'
   const auth = await verifyCmsToken(request, permission)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -104,6 +129,23 @@ export async function POST(request: Request) {
       const id = typeof body.id === 'string' ? body.id : ''
       if (!id) return NextResponse.json({ error: 'id gerekli', code: 'INVALID_ID' }, { status: 400 })
       const result = await enqueueDownloadJob(id, videoImportStore)
+      return NextResponse.json({
+        outcome: result.outcome,
+        job: 'job' in result ? { id: result.job.id, status: result.job.status } : null,
+        item: result.item,
+      })
+    }
+
+    if (action === 'process') {
+      if (!isVideoLibraryProcessEnabled()) {
+        return NextResponse.json(
+          { error: 'Video işleme kapalı', code: 'VIDEO_LIBRARY_PROCESS_DISABLED' },
+          { status: 404 }
+        )
+      }
+      const id = typeof body.id === 'string' ? body.id : ''
+      if (!id) return NextResponse.json({ error: 'id gerekli', code: 'INVALID_ID' }, { status: 400 })
+      const result = await enqueueProcessJob(id, videoImportStore)
       return NextResponse.json({
         outcome: result.outcome,
         job: 'job' in result ? { id: result.job.id, status: result.job.status } : null,

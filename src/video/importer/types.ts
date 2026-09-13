@@ -29,12 +29,18 @@ export interface VideoImportStore {
   findItemById(id: string): Promise<VideoLibraryItem | null>
   findItemByContentHash(hash: string, exceptItemId?: string): Promise<VideoLibraryItem | null>
   findActiveDownloadJob(itemId: string): Promise<VideoImportJob | null>
+  findActiveProcessJob(itemId: string): Promise<VideoImportJob | null>
   insertJob(input: {
     itemId: string
     kind: VideoImportJobKind
     payload: Record<string, unknown>
   }): Promise<VideoImportJob>
   claimNextDownloadJob(input: {
+    workerId: string
+    now: Date
+    leaseMs: number
+  }): Promise<VideoImportJob | null>
+  claimNextProcessJob(input: {
     workerId: string
     now: Date
     leaseMs: number

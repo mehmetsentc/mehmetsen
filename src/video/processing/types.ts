@@ -10,7 +10,7 @@ export type VideoProcessingPlan = {
   renditions: VideoRendition[]
 }
 
-/** Architecture-ready transcoding plan. V1A does not run ffmpeg/HLS. */
+/** Architecture-ready transcoding plan. V1C.1 encodes a single 720p MP4; HLS remains unexecuted. */
 export function planPlaybackRenditions(itemId: string): VideoProcessingPlan {
   const renditions: VideoRendition[] = VIDEO_RENDITION_HEIGHTS.map((height: VideoRenditionHeight) => ({
     height,
@@ -32,12 +32,12 @@ export function planPlaybackRenditions(itemId: string): VideoProcessingPlan {
     playbackKey: buildVideoLibraryMediaKey({
       itemId,
       kind: 'playback',
-      filename: 'playback.mp4',
+      filename: '720p.mp4',
     }),
     posterKey: buildVideoLibraryMediaKey({
       itemId,
       kind: 'poster',
-      filename: 'poster.jpg',
+      filename: 'poster.webp',
     }),
     manifestKey: buildVideoLibraryMediaKey({
       itemId,

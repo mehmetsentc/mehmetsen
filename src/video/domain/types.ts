@@ -14,6 +14,9 @@ export const VIDEO_LIBRARY_STATUSES = [
   'PENDING_IMPORT',
   'IMPORTING',
   'READY',
+  'PROCESSING',
+  'PLAYBACK_READY',
+  'PROCESSING_FAILED',
   'FAILED',
   'REJECTED',
 ] as const
@@ -88,6 +91,11 @@ export type VideoLibraryItem = {
   renditions: VideoRendition[]
   mimeType: string | null
   fileSizeBytes: number | null
+  playbackMimeType: string | null
+  playbackFileSizeBytes: number | null
+  videoCodec: string | null
+  audioCodec: string | null
+  fps: number | null
   publishedAt: Date | null
   importedAt: Date | null
   publishedNewsId: string | null
@@ -98,6 +106,9 @@ export type VideoLibraryItem = {
   importErrorCode: string | null
   importErrorMessage: string | null
   lastImportJobId: string | null
+  processErrorCode: string | null
+  processErrorMessage: string | null
+  lastProcessJobId: string | null
   createdBy: string | null
   updatedBy: string | null
   createdAt: Date

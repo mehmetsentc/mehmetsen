@@ -35,3 +35,20 @@ export function videoLibraryMaxBytes(): number {
   if (Number.isFinite(raw) && raw > 0) return Math.min(raw, 2_147_483_647)
   return 100 * 1024 * 1024
 }
+
+/**
+ * VIDEO_LIBRARY_PROCESS_ENABLED — default false.
+ * Requires VIDEO_LIBRARY_ENABLED. FFmpeg never runs in a Next.js request.
+ */
+export function isVideoLibraryProcessEnabled(): boolean {
+  if (!isVideoLibraryEnabled()) return false
+  const env = parseTriState(process.env.VIDEO_LIBRARY_PROCESS_ENABLED)
+  if (env !== null) return env
+  return false
+}
+
+export function videoLibraryProcessTimeoutMs(): number {
+  const raw = Number(process.env.VIDEO_LIBRARY_PROCESS_TIMEOUT_MS)
+  if (Number.isFinite(raw) && raw >= 5_000) return Math.min(raw, 30 * 60_000)
+  return 180_000
+}

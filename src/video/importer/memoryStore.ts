@@ -1,6 +1,6 @@
 import { newVideoLibraryId } from '@/video/domain/ids'
 import type { VideoLibraryItem } from '@/video/domain/types'
-import type { VideoImportJob } from '@/video/storage/jobs'
+import type { VideoImportJob, VideoImportJobKind } from '@/video/storage/jobs'
 import { isActiveDownloadStatus, type VideoImportStore } from './types'
 import { newQueuedJob } from './enqueue'
 
@@ -27,31 +27,34 @@ export function createMemoryImportStore(seedItems: VideoLibraryItem[] = []): Vid
     async findActiveDownloadJob(itemId) {
       return (
         jobs.find(
-          (j) => iKindDownload(j) && j.itemId === itemId && isActiveDownloadStatus(j.status)
+          (j) => j.kind === 'DOWNLOAD' && j.itemId === itemId && isActiveDownloadStatus(j.status)
+        ) ?? null
+      )
+    },
+    async findActiveProcessJob(itemId) {
+      return (
+        jobs.find(
+          (j) => j.kind === 'PROCESS' && j.itemId === itemId && isActiveDownloadStatus(j.status)
         ) ?? null
       )
     },
     async insertJob(input) {
       const job = newQueuedJob(itemIdSafe(input.itemId), input.payload)
       job.kind = input.kind
-      if (await this.findActiveDownloadJob(input.itemId)) {
+      const active = jobs.find(
+        (j) => j.itemId === input.itemId && j.kind === input.kind && isActiveDownloadStatus(j.status)
+      )
+      if (active) {
         throw new Error('DUPLICATE_ACTIVE_JOB')
       }
       jobs.push(job)
       return job
     },
     async claimNextDownloadJob(input) {
-      const due = jobs
-        .filter((j) => iKindDownload(j) && claimable(j, input.now))
-        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
-      if (!due) return null
-      due.status = 'RUNNING'
-      due.attempts = due.status === 'RUNNING' ? due.attempts : due.attempts
-      due.claimedAt = input.now
-      due.claimedBy = input.workerId
-      due.leaseExpiresAt = new Date(input.now.getTime() + input.leaseMs)
-      due.updatedAt = input.now
-      return due
+      return claimNextKind(jobs, 'DOWNLOAD', input)
+    },
+    async claimNextProcessJob(input) {
+      return claimNextKind(jobs, 'PROCESS', input)
     },
     async saveJob(job) {
       const idx = jobs.findIndex((j) => j.id === job.id)
@@ -67,8 +70,21 @@ export function createMemoryImportStore(seedItems: VideoLibraryItem[] = []): Vid
   }
 }
 
-function iKindDownload(job: VideoImportJob): boolean {
-  return job.kind === 'DOWNLOAD'
+function claimNextKind(
+  jobs: VideoImportJob[],
+  kind: VideoImportJobKind,
+  input: { workerId: string; now: Date; leaseMs: number }
+): VideoImportJob | null {
+  const due = jobs
+    .filter((j) => j.kind === kind && claimable(j, input.now))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+  if (!due) return null
+  due.status = 'RUNNING'
+  due.claimedAt = input.now
+  due.claimedBy = input.workerId
+  due.leaseExpiresAt = new Date(input.now.getTime() + input.leaseMs)
+  due.updatedAt = input.now
+  return due
 }
 
 function claimable(job: VideoImportJob, now: Date): boolean {

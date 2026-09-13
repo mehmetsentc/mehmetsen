@@ -17,6 +17,11 @@ import { tr } from 'date-fns/locale'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { VideoLibraryItem, VideoMetadata } from '@/video/domain/types'
 
+type LibraryRow = VideoLibraryItem & {
+  posterPublicUrl?: string | null
+  playbackPublicUrl?: string | null
+}
+
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -47,7 +52,10 @@ function statusLabel(status: string): string {
     INSPECTED: 'İncelendi',
     PENDING_IMPORT: 'İçe aktarma bekliyor',
     IMPORTING: 'İçe aktarılıyor',
-    READY: 'Hazır',
+    READY: 'READY',
+    PROCESSING: 'PROCESSING',
+    PLAYBACK_READY: 'PLAYBACK_READY',
+    PROCESSING_FAILED: 'PROCESSING_FAILED',
     FAILED: 'Hata',
     REJECTED: 'Reddedildi',
   }
@@ -68,12 +76,14 @@ export function VideoLibraryAdminClient() {
   const [inspecting, setInspecting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState<InspectBody | null>(null)
-  const [items, setItems] = useState<VideoLibraryItem[]>([])
+  const [items, setItems] = useState<LibraryRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
+  const [processingId, setProcessingId] = useState<string | null>(null)
   const [importEnabled, setImportEnabled] = useState(false)
+  const [processEnabled, setProcessEnabled] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -83,15 +93,17 @@ export function VideoLibraryAdminClient() {
         headers: await authHeaders(),
       })
       const body = (await res.json()) as {
-        items?: VideoLibraryItem[]
+        items?: LibraryRow[]
         total?: number
         error?: string
         importEnabled?: boolean
+        processEnabled?: boolean
       }
       if (!res.ok) throw new Error(turkishAdminApiError(res.status, body.error))
       setItems(body.items ?? [])
       setTotal(body.total ?? 0)
       setImportEnabled(body.importEnabled === true)
+      setProcessEnabled(body.processEnabled === true)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Liste yüklenemedi')
       setItems([])
@@ -183,12 +195,34 @@ export function VideoLibraryAdminClient() {
     }
   }
 
+  const enqueueProcess = async (id: string) => {
+    if (!canCreate || !processEnabled) return
+    setProcessingId(id)
+    try {
+      const res = await fetch('/api/admin/videos/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ action: 'process', id }),
+      })
+      const body = (await res.json()) as { outcome?: string; error?: string }
+      if (!res.ok) throw new Error(body.error || 'İşleme kuyruğa alınamadı')
+      if (body.outcome === 'ALREADY_QUEUED') toast('İşleme zaten kuyrukta')
+      else if (body.outcome === 'ALREADY_PROCESSED') toast('Playback zaten hazır')
+      else toast.success('Playback kuyruğa alındı (worker ayrı çalışır)')
+      void load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'İşleme kuyruğa alınamadı')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
   const meta = preview?.metadata
 
   return (
     <AdminOsPageShell
       title="Video Kütüphanesi"
-      subtitle="URL incele + kayıt. İndirme ayrı adımdır. Publishing yok."
+      subtitle="URL incele + kayıt + indirme. Playback hazırlığı ayrı worker’dadır. Publishing yok."
       actions={
         <div className="flex items-center gap-2">
           <Link
@@ -333,9 +367,10 @@ export function VideoLibraryAdminClient() {
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1">
                         <span className={cn('w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                          item.status === 'READY' ? 'bg-emerald-100 text-emerald-800' :
-                          item.status === 'FAILED' ? 'bg-red-100 text-red-800' :
-                          item.status === 'IMPORTING' || item.status === 'PENDING_IMPORT' ? 'bg-amber-100 text-amber-800' :
+                          item.status === 'PLAYBACK_READY' ? 'bg-emerald-100 text-emerald-800' :
+                          item.status === 'READY' ? 'bg-sky-100 text-sky-800' :
+                          item.status === 'PROCESSING_FAILED' || item.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                          item.status === 'PROCESSING' || item.status === 'IMPORTING' || item.status === 'PENDING_IMPORT' ? 'bg-amber-100 text-amber-800' :
                           'bg-slate-100 text-slate-700'
                         )}>
                           {statusLabel(item.status)}
@@ -343,10 +378,30 @@ export function VideoLibraryAdminClient() {
                         {item.status === 'FAILED' && item.importErrorMessage ? (
                           <span className="max-w-[16rem] text-[11px] text-red-700">{item.importErrorMessage}</span>
                         ) : null}
+                        {item.status === 'PROCESSING_FAILED' && item.processErrorMessage ? (
+                          <span className="max-w-[16rem] text-[11px] text-red-700">{item.processErrorMessage}</span>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-[rgb(var(--color-muted))]">
-                      {item.status === 'READY' && item.originalStorageKey ? 'R2 original' : 'Dosya yok'}
+                      <div className="flex flex-col gap-1">
+                        {item.originalStorageKey ? <span>original</span> : <span>Dosya yok</span>}
+                        {item.posterStorageKey ? <span>poster</span> : null}
+                        {item.playbackStorageKey ? <span>playback 720p</span> : null}
+                        {item.posterPublicUrl ? (
+                          <img src={item.posterPublicUrl} alt="" className="mt-1 h-12 w-20 rounded object-cover" />
+                        ) : null}
+                        {item.status === 'PLAYBACK_READY' && item.playbackPublicUrl ? (
+                          <video
+                            className="mt-1 max-h-40 w-40 rounded bg-black"
+                            controls
+                            playsInline
+                            preload="metadata"
+                            poster={item.posterPublicUrl ?? undefined}
+                            src={item.playbackPublicUrl}
+                          />
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-[rgb(var(--color-muted))]">
                       <span className="inline-flex items-center gap-1">
@@ -357,16 +412,28 @@ export function VideoLibraryAdminClient() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      {canCreate && importEnabled && (item.status === 'INSPECTED' || item.status === 'FAILED') ? (
-                        <button
-                          type="button"
-                          onClick={() => void enqueueImport(item.id)}
-                          disabled={importingId === item.id}
-                          className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                        >
-                          {importingId === item.id ? 'Kuyruk…' : 'Kütüphaneye İndir'}
-                        </button>
-                      ) : null}
+                      <div className="flex flex-col gap-1">
+                        {canCreate && importEnabled && (item.status === 'INSPECTED' || item.status === 'FAILED') ? (
+                          <button
+                            type="button"
+                            onClick={() => void enqueueImport(item.id)}
+                            disabled={importingId === item.id}
+                            className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            {importingId === item.id ? 'Kuyruk…' : 'Kütüphaneye İndir'}
+                          </button>
+                        ) : null}
+                        {canCreate && processEnabled && item.originalStorageKey && (item.status === 'READY' || item.status === 'PROCESSING_FAILED') ? (
+                          <button
+                            type="button"
+                            onClick={() => void enqueueProcess(item.id)}
+                            disabled={processingId === item.id}
+                            className="rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            {processingId === item.id ? 'Kuyruk…' : 'Playback Hazırla'}
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

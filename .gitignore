@@ -56,6 +56,7 @@ tmp-*.json
 tmp-*.txt
 tmp-*.jsonl
 tmp-*.log
+.tmp/
 
 # Geo build/audit inputs — never ship to runtime/client
 scripts/_wikidata_districts_raw.json

@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -49,6 +50,11 @@ export const videoLibraryItems = pgTable(
 
     mimeType: varchar('mime_type', { length: 100 }),
     fileSizeBytes: bigint('file_size_bytes', { mode: 'number' }),
+    playbackMimeType: varchar('playback_mime_type', { length: 100 }),
+    playbackFileSizeBytes: bigint('playback_file_size_bytes', { mode: 'number' }),
+    videoCodec: varchar('video_codec', { length: 64 }),
+    audioCodec: varchar('audio_codec', { length: 64 }),
+    fps: real('fps'),
 
     publishedAt: timestamp('published_at', { withTimezone: true }),
     importedAt: timestamp('imported_at', { withTimezone: true }),
@@ -61,6 +67,9 @@ export const videoLibraryItems = pgTable(
     importErrorCode: varchar('import_error_code', { length: 64 }),
     importErrorMessage: varchar('import_error_message', { length: 300 }),
     lastImportJobId: varchar('last_import_job_id', { length: 64 }),
+    processErrorCode: varchar('process_error_code', { length: 64 }),
+    processErrorMessage: varchar('process_error_message', { length: 300 }),
+    lastProcessJobId: varchar('last_process_job_id', { length: 64 }),
 
     createdBy: varchar('created_by', { length: 128 }),
     updatedBy: varchar('updated_by', { length: 128 }),

@@ -1,5 +1,6 @@
 export const VIDEO_IMPORT_JOB_KINDS = [
   'DOWNLOAD',
+  'PROCESS',
   'POSTER',
   'TRANSCODE',
   'MANIFEST',
@@ -42,5 +43,14 @@ export function buildDownloadJobPayload(itemId: string, sourceUrl: string) {
     itemId,
     sourceUrl,
     kind: 'DOWNLOAD' as const,
+  }
+}
+
+export function buildProcessJobPayload(itemId: string, originalStorageKey: string) {
+  return {
+    itemId,
+    originalStorageKey,
+    kind: 'PROCESS' as const,
+    target: '720p' as const,
   }
 }
