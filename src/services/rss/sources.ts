@@ -2024,6 +2024,13 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
     maxItemsPerRun: 6,
     enabled: true,
   },
+  {
+    id: 'gezinomi',
+    label: 'Gezinomi',
+    feedUrl: 'https://news.google.com/rss/search?q=site:gezinomi.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
 
   // ══════════════════════════════════════════════════════════════════
   // GEZİ — Seyahat rotaları, destinasyon, keşif, gezi rehberi
@@ -2071,9 +2078,115 @@ const DEFAULT_SOURCES: RssSourceDefinition[] = [
   },
   {
     id: 'lonely-planet-tr',
-    label: 'Lonely Planet Türkiye (Google News)',
-    feedUrl: 'https://news.google.com/rss/search?q=lonely+planet+türkiye+gezi+destinasyon&hl=tr&gl=TR&ceid=TR:tr',
+    label: 'Lonely Planet',
+    feedUrl: 'https://news.google.com/rss/search?q=site:lonelyplanet.com&hl=tr&gl=TR&ceid=TR:tr',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=lonely+planet+türkiye+gezi+destinasyon&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'birgezi',
+    label: 'Bir Gezi',
+    feedUrl: 'https://news.google.com/rss/search?q=site:birgezi.com&hl=tr&gl=TR&ceid=TR:tr',
     maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'journavel',
+    label: 'Journavel',
+    feedUrl: 'https://www.journavel.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:journavel.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'geziekspresi',
+    label: 'Gezi Ekspresi',
+    feedUrl: 'https://news.google.com/rss/search?q=site:geziekspresi.com.tr&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'filgezi',
+    label: 'Fil Gezi',
+    feedUrl: 'https://www.filgezi.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:filgezi.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'bizevdeyokuz',
+    label: 'Biz Evde Yokuz',
+    feedUrl: 'https://www.bizevdeyokuz.com/feed/',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:bizevdeyokuz.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'geziall',
+    label: 'Gezi All',
+    feedUrl: 'https://news.google.com/rss/search?q=site:geziall.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'gezipgordum',
+    label: 'Gezip Gördüm',
+    feedUrl: 'https://news.google.com/rss/search?q=site:gezipgordum.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'gezimanya',
+    label: 'Gezimanya',
+    feedUrl: 'https://gezimanya.com/rss.xml',
+    alternateFeedUrls: [
+      'https://news.google.com/rss/search?q=site:gezimanya.com&hl=tr&gl=TR&ceid=TR:tr',
+    ],
+    maxItemsPerRun: 5,
+    enabled: true,
+  },
+  {
+    id: 'akdenizgezifirsatlari',
+    label: 'Akdeniz Gezi Fırsatları',
+    feedUrl: 'https://news.google.com/rss/search?q=site:akdenizgezifirsatlari.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'kulturportali',
+    label: 'Türkiye Kültür Portalı',
+    feedUrl: 'https://news.google.com/rss/search?q=site:kulturportali.gov.tr&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 4,
+    enabled: true,
+  },
+  {
+    id: 'jotjournaling',
+    label: 'Jot Journaling',
+    feedUrl: 'https://news.google.com/rss/search?q=site:jotjournaling.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'wandercircle',
+    label: 'The Wander Circle',
+    feedUrl: 'https://news.google.com/rss/search?q=site:thewandercircle.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
+    enabled: true,
+  },
+  {
+    id: 'castelliitaly',
+    label: 'Castelli Italy',
+    feedUrl: 'https://news.google.com/rss/search?q=site:castelliitaly.com&hl=tr&gl=TR&ceid=TR:tr',
+    maxItemsPerRun: 3,
     enabled: true,
   },
 
