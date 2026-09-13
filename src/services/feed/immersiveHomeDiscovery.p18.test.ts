@@ -27,6 +27,7 @@ describe('immersive home discovery Phase 2', () => {
 
   it('keeps first featured as a 10-item swipe rail, then masonry — no magazine / Akış heading', () => {
     const feed = read('src/components/home/HomeFeed.tsx')
+    const slider = read('src/components/home/FeaturedSlider.tsx')
     expect(feed).toContain('FeaturedSlider')
     expect(feed).not.toContain('MobileMagazineFeed')
     expect(feed).not.toContain('BreakingStories')
@@ -34,6 +35,16 @@ describe('immersive home discovery Phase 2', () => {
     expect(feed).toContain('home-market-ticker-desktop')
     expect(feed).toContain('hidden lg:block')
     expect(feed).toContain('home-featured-carousel')
+    expect(slider).toContain('home-featured-rail')
+    expect(slider).toContain('home-featured-rail__scroller')
+    expect(slider).not.toContain('FeaturedNewsCarousel')
+    expect(slider).toContain('layout="featuredRail"')
+    expect(slider).toContain('FEATURED_CAROUSEL_LIMIT')
+    const css = read('src/app/globals.css')
+    expect(css).toContain('.home-featured-rail__scroller')
+    expect(css).toContain('overflow-x: auto')
+    expect(css).toContain('.home-featured-rail .home-discovery-card__media')
+    expect(css).toContain('aspect-ratio: 4 / 5')
   })
 
   it('masonry uses AdaptiveMasonry CSS columns at 2-up on mobile', () => {
@@ -53,6 +64,8 @@ describe('immersive home discovery Phase 2', () => {
     expect(card).toContain('home-discovery-card__headline')
     expect(card).not.toMatch(/from ['"]next\/image['"]/)
     expect(card).toContain('discoveryAspectRatio')
+    expect(card).toContain('FEATURED_RAIL_ASPECT')
+    expect(card).toContain("layout === 'featuredRail'")
   })
 
   it('Ana Sayfa first content is not pulled under the fixed chrome', () => {

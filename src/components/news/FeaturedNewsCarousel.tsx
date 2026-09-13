@@ -151,10 +151,10 @@ export function FeaturedNewsCarousel({
       className={cn('featured-news-carousel', className)}
     >
       {showTitle ? (
-        <div className="home-rail-title mb-3 flex items-center justify-between gap-3 px-4 max-md:mb-4 md:px-0">
+        <div className="home-rail-title mb-3 flex items-center justify-between gap-3 px-4 max-md:mb-2 md:px-0">
           <div className="flex min-w-0 items-center gap-2">
             <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
-            <p className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.65rem]">
+            <p className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.05rem]">
               {title}
             </p>
           </div>

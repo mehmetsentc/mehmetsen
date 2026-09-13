@@ -30,6 +30,9 @@ export type HomeDiscoveryItem = {
   featured?: boolean
 }
 
+/** Shared Öne Çıkanlar rail frame — card owns geometry, source image covers. */
+export const FEATURED_RAIL_ASPECT = '4 / 5'
+
 /** Natural card height from media treatment + slot — not random, not identical. */
 export function discoveryAspectRatio(index: number, featured: boolean): string {
   if (featured) {
@@ -74,6 +77,8 @@ type HomeDiscoveryCardProps = {
   item: HomeDiscoveryItem
   index: number
   featured?: boolean
+  /** Equal-size horizontal rail vs variable-height masonry. */
+  layout?: 'masonry' | 'featuredRail'
   priority?: boolean
   hrefs?: string[]
   navSource?: 'featured' | 'feed' | 'category'
@@ -83,20 +88,31 @@ export function HomeDiscoveryCard({
   item,
   index,
   featured = false,
+  layout = 'masonry',
   priority = false,
   hrefs,
   navSource = 'feed',
 }: HomeDiscoveryCardProps) {
   const [mediaFailed, setMediaFailed] = useState(false)
-  const aspect = discoveryAspectRatio(index, featured)
+  const isFeaturedRail = layout === 'featuredRail'
+  const aspect = isFeaturedRail ? FEATURED_RAIL_ASPECT : discoveryAspectRatio(index, featured)
   const src = !mediaFailed && item.imageUrl?.trim() ? item.imageUrl.trim() : ''
   const showFallback = !src
   const likes = typeof item.likesCount === 'number' && item.likesCount > 0 ? item.likesCount : 0
 
   return (
     <article
-      className="exp-slot home-discovery-slot"
-      data-testid={index === 0 ? 'home-discovery-first' : 'home-discovery-card'}
+      className={cn(
+        'exp-slot home-discovery-slot',
+        isFeaturedRail && 'home-discovery-slot--featured-rail'
+      )}
+      data-testid={
+        isFeaturedRail
+          ? 'home-featured-discovery-card'
+          : index === 0
+            ? 'home-discovery-first'
+            : 'home-discovery-card'
+      }
       data-discovery-featured={featured ? '1' : '0'}
       data-discovery-id={item.id}
     >
@@ -135,7 +151,11 @@ export function HomeDiscoveryCard({
               src={src}
               alt={item.title}
               fill
-              sizes="(max-width: 1023px) 48vw, 24vw"
+              sizes={
+                isFeaturedRail
+                  ? '(max-width: 767px) 78vw, (max-width: 1023px) 42vw, 20rem'
+                  : '(max-width: 1023px) 48vw, 24vw'
+              }
               priority={priority}
               fetchPriority={priority ? 'high' : 'auto'}
               className="object-cover object-center"

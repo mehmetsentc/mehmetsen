@@ -77,8 +77,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathname.startsWith('/post/'))
   // Overlay chrome: one header row + shared context rail (destination row removed).
   const fallbackChromeHeight = showContextRail
-    ? 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 2.75rem + var(--nahaber-context-rail-height, 2.25rem))'
-    : 'calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 2.75rem)'
+    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + 2.75rem + var(--nahaber-context-rail-height, 2.25rem))'
+    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + 2.75rem)'
 
   useEffect(() => {
     setHydrated(true)
@@ -117,9 +117,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   const iconBtn =
-    'relative flex h-6 w-5 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-8px]'
+    'relative flex h-11 w-6 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
   const actionBtn =
-    'relative flex h-6 w-5 shrink-0 items-center justify-center touch-manipulation rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors duration-150 hover:bg-white/25 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-8px]'
+    'relative flex h-11 w-6 shrink-0 items-center justify-center touch-manipulation rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors duration-150 hover:bg-white/25 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
   function openSubmit() {
     if (!user) {
@@ -141,11 +141,11 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         className={cn(
           'mobile-top-chrome mobile-top-chrome--immersive is-fixed z-[100] lg:hidden',
           'overflow-x-hidden text-white',
-          'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
+          'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
         <header className="h-11 overflow-x-hidden bg-transparent text-white">
-          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-1">
+          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-0.5 px-1">
             <div className="flex min-w-0 items-center justify-self-start">
               {showBack ? (
                 <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
@@ -167,12 +167,12 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 <BrandWordmark
                   variant="onBrand"
                   size="sm"
-                  className="!text-[1.05rem] sm:!text-[1.15rem]"
+                  className="!text-[0.95rem] min-[400px]:!text-[1.05rem] sm:!text-[1.15rem]"
                 />
               </Link>
             </div>
 
-            <div className="flex justify-self-center px-0.5">
+            <div className="flex justify-self-center px-0">
               <div
                 className="header-surface-toggle"
                 role="group"
@@ -265,6 +265,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       <div
         className="lg:hidden shrink-0"
         aria-hidden
+        data-testid="mobile-chrome-spacer"
         style={{
           height: chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
         }}

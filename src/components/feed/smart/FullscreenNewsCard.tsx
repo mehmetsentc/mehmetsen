@@ -124,6 +124,8 @@ interface FullscreenNewsCardProps {
  * Publisher lives in the bottom text stack (reference Reels composition).
  */
 const MODE_NAV_CLEARANCE = 'pt-2'
+const HERO_FRAME =
+  'relative h-full min-h-[var(--feed-v2-hero-min)] w-full overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-neutral-950'
 
 const DOUBLE_TAP_MS = 280
 const TAP_MOVE_PX = 14
@@ -469,13 +471,15 @@ export function FullscreenNewsCard({
         ) : null}
 
         {/*
-          Sharp foreground hero + double-tap — text stack follows immediately
-          (no flex spacer gap between image and copy).
+          Sharp foreground hero grows to fill leftover viewport (recovered
+          black band). Copy + Haberi Oku + publisher stay shrink-wrapped
+          at the bottom — do not inflate summary to eat height.
         */}
         <div
-          className="relative w-full shrink-0 touch-pan-y"
+          className="relative flex min-h-0 w-full flex-1 touch-pan-y flex-col"
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
+          data-feed-hero-flex="1"
           onPointerDown={onTapZonePointerDown}
           onPointerMove={onTapZonePointerMove}
           onPointerUp={onTapZonePointerUp}
@@ -487,10 +491,7 @@ export function FullscreenNewsCard({
           {!showVideo && hasValidImage ? (
             <div
               className={cn(
-                'relative w-full overflow-hidden rounded-2xl',
-                'aspect-[4/3] max-h-[min(46dvh,100%)]',
-                'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
-                'bg-neutral-950',
+                HERO_FRAME,
                 playMediaDolly &&
                   'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
               )}
@@ -535,12 +536,7 @@ export function FullscreenNewsCard({
             </div>
           ) : showVideo ? (
             <div
-              className={cn(
-                'relative w-full overflow-hidden rounded-2xl',
-                'aspect-[4/3] max-h-[min(46dvh,100%)]',
-                'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
-                'bg-neutral-950'
-              )}
+              className={HERO_FRAME}
               data-testid="smart-feed-fg-hero"
               style={{
                 borderColor:
@@ -580,7 +576,7 @@ export function FullscreenNewsCard({
           ) : (
             /* No image: keep a tap surface without inventing a fake hero */
             <div
-              className="relative min-h-[var(--feed-v2-hero-min)] w-full"
+              className="relative min-h-[var(--feed-v2-hero-min)] h-full w-full"
               aria-hidden={hasValidImage ? undefined : true}
               data-testid="smart-feed-fg-hero-fallback"
             >
@@ -612,7 +608,7 @@ export function FullscreenNewsCard({
           Haberi Oku + publisher stay outside nested copy scroll.
         */}
         <div
-          className="relative z-[2] mt-2 flex w-full min-h-0 flex-1 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:mt-2.5 sm:pt-3"
+          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:pt-3"
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"
         >

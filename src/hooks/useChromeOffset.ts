@@ -2,7 +2,11 @@
 
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
-/** Measure fixed top-chrome height for a layout spacer (avoids content jump). */
+/**
+ * Shared mobile chrome authority: visual bottom of the fixed header+rail.
+ * Use getBoundingClientRect().bottom (not a magic padding) so /feed content
+ * starts at chromeBottom and /feed-v2 remaining-band matches the painted rail.
+ */
 export function useChromeOffset(enabled: boolean): {
   ref: RefObject<HTMLElement | null>
   height: number
@@ -19,7 +23,8 @@ export function useChromeOffset(enabled: boolean): {
     if (!el) return
 
     const sync = () => {
-      const next = Math.ceil(el.getBoundingClientRect().height)
+      const box = el.getBoundingClientRect()
+      const next = Math.max(0, Math.ceil(Math.max(box.height, box.bottom)))
       setHeight((prev) => (prev === next ? prev : next))
     }
 
@@ -27,9 +32,11 @@ export function useChromeOffset(enabled: boolean): {
     const ro = new ResizeObserver(sync)
     ro.observe(el)
     window.addEventListener('orientationchange', sync)
+    window.visualViewport?.addEventListener('resize', sync)
     return () => {
       ro.disconnect()
       window.removeEventListener('orientationchange', sync)
+      window.visualViewport?.removeEventListener('resize', sync)
     }
   }, [enabled])
 
