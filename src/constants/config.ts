@@ -141,6 +141,7 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'oyun-espor',  name: 'Oyun & Espor', slug: 'oyun-espor', iconName: 'gamepad-2',    color: '#7C3AED' },
   { id: 'din-inanc',   name: 'Din & İnanç', slug: 'din-inanc',  iconName: 'moon-star',    color: '#0F766E' },
   { id: 'magazin',     name: 'Magazin',     slug: 'magazin',     iconName: 'star',         color: '#F472B6' },
+  { id: 'influencer',  name: 'Influencer',  slug: 'influencer',  iconName: 'star',         color: '#F472B6', parentId: 'magazin' },
 
   // ── Spor + alt kategoriler ──────────────────────────────────────────────────
   { id: 'spor',              name: 'Spor',             slug: 'spor',              iconName: 'trophy',       color: '#10B981' },
@@ -154,20 +155,25 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'karate',            name: 'Karate',           slug: 'karate',            iconName: 'swords',       color: '#10B981', parentId: 'spor' },
   { id: 'dunya-kupasi-2026', name: '2026 Dünya Kupası (Arşiv)', slug: 'dunya-kupasi-2026', iconName: 'trophy',      color: '#F59E0B', parentId: 'spor', standalone: true },
 
+  // ── Müzik + alt kategoriler ─────────────────────────────────────────────────
+  { id: 'muzik',       name: 'Müzik',       slug: 'muzik',       iconName: 'music-2',      color: '#D946EF' },
+  { id: 'konser',      name: 'Konser',      slug: 'konser',      iconName: 'music',        color: '#8B5CF6', parentId: 'muzik' },
+  { id: 'sanatci-haberleri', name: 'Sanatçı Haberleri', slug: 'sanatci-haberleri', iconName: 'mic-2', color: '#D946EF', parentId: 'muzik' },
+
   // ── Kültür + alt kategoriler ────────────────────────────────────────────────
-  { id: 'kultur',      name: 'Kültür',      slug: 'kultur',      iconName: 'palette',      color: '#8B5CF6' },
+  { id: 'kultur',      name: 'Kültür & Sanat', slug: 'kultur',    iconName: 'palette',      color: '#8B5CF6' },
   { id: 'sinema',      name: 'Sinema',      slug: 'sinema',      iconName: 'film',         color: '#8B5CF6', parentId: 'kultur' },
+  { id: 'dizi-tv',     name: 'Dizi & TV',   slug: 'dizi-tv',     iconName: 'tv',           color: '#8B5CF6', parentId: 'kultur' },
   { id: 'tiyatro',     name: 'Tiyatro',     slug: 'tiyatro',     iconName: 'theater',      color: '#8B5CF6', parentId: 'kultur' },
-  { id: 'konser',      name: 'Konser',      slug: 'konser',      iconName: 'music',        color: '#8B5CF6', parentId: 'kultur' },
   { id: 'festival',    name: 'Festival',    slug: 'festival',    iconName: 'party-popper', color: '#8B5CF6', parentId: 'kultur' },
 
   // ── Yaşam + alt kategoriler ─────────────────────────────────────────────────
   { id: 'yasam',         name: 'Yaşam',         slug: 'yasam',         iconName: 'leaf',        color: '#16A34A' },
   { id: 'astroloji',     name: 'Astroloji',     slug: 'astroloji',     iconName: 'sparkles',    color: '#7C3AED', parentId: 'yasam' },
-  { id: 'moda',          name: 'Moda',           slug: 'moda',          iconName: 'shirt',       color: '#DB2777', parentId: 'yasam' },
+  { id: 'moda',          name: 'Moda & Güzellik', slug: 'moda',        iconName: 'shirt',       color: '#DB2777', parentId: 'yasam' },
   { id: 'anne-cocuk',    name: 'Anne & Çocuk',   slug: 'anne-cocuk',    iconName: 'baby',        color: '#E879F9', parentId: 'yasam' },
-  { id: 'dekorasyon',    name: 'Dekorasyon',     slug: 'dekorasyon',    iconName: 'sofa',        color: '#C2410C', parentId: 'yasam' },
-  { id: 'iliskiler',     name: 'İlişkiler',      slug: 'iliskiler',     iconName: 'heart-handshake', color: '#E11D48', parentId: 'yasam' },
+  { id: 'dekorasyon',    name: 'Ev & Yaşam',     slug: 'dekorasyon',    iconName: 'sofa',        color: '#C2410C', parentId: 'yasam' },
+  { id: 'iliskiler',     name: 'Aile & İlişkiler', slug: 'iliskiler',   iconName: 'heart-handshake', color: '#E11D48', parentId: 'yasam' },
   { id: 'gastronomi',    name: 'Gastronomi',    slug: 'gastronomi',    iconName: 'utensils',    color: '#F97316' },
   { id: 'otomobil',      name: 'Otomobil',      slug: 'otomobil',      iconName: 'car',         color: '#64748B' },
   { id: 'meteoroloji',   name: 'Meteoroloji',   slug: 'meteoroloji',   iconName: 'cloud-rain',  color: '#0EA5E9' },
@@ -196,6 +202,7 @@ const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
   { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim', 'oyun-espor'] },
   { label: 'Eğitim & Toplum', ids: ['egitim', 'cevre-iklim', 'din-inanc'] },
   { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'astroloji', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
+  { label: 'Müzik', ids: ['muzik'] },
   { label: 'Kültür & Magazin', ids: ['kultur', 'magazin'] },
   { label: 'Tarih', ids: ['tarih'] },
   { label: 'Özel', ids: ['etkinlikler'] },
