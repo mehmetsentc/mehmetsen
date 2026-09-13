@@ -35,6 +35,7 @@ export const CMS_FLAG_LABELS: Record<CmsFeatureFlagKey, string> = {
   pageBuilderEnabled: 'Sayfa oluşturucu',
   scopedRbacEnabled: 'Kapsamlı yetkiler',
   smmNetworkEnabled: '81 il SMM ağı',
+  videoLibraryEnabled: 'Video Kütüphanesi',
 }
 
 export function defaultSiteSettings(): SiteSettings {

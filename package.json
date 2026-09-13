@@ -49,7 +49,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "video:import-worker": "tsx scripts/video-library-import-worker.ts --loop",
+    "video:process-worker": "tsx scripts/video-processing-worker.ts --once"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
