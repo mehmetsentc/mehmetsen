@@ -2,8 +2,10 @@
  * Production-runtime R2 self-test (V1C.1R4).
  *
  * Reuses R2StorageProvider. No Postgres, Firestore, news, or Video Library tables.
- * Never logs or returns secret values.
+ * Never logs or returns secret values, lengths, prefixes, suffixes, hashes, or masks.
+ * Disabled unless R2_SELF_TEST_ENABLED is exactly "1" or "true".
  */
+import { createHash } from 'node:crypto'
 import type { StorageProvider } from './types'
 import { R2StorageProvider, isR2Configured } from '@/lib/storage'
 import {
@@ -90,6 +92,8 @@ export type R2SelfTestCleanupResult = {
   deletedCount: number
   remainingCount: number | null
   cleanup: CheckResult
+  /** Hard GO gate: createdCount === deletedCount && remainingCount === 0 */
+  go: boolean
 }
 
 export type R2SelfTestDeps = {
@@ -184,14 +188,67 @@ function header(res: Response, name: string): string | null {
   return res.headers.get(name)
 }
 
+const R2_SECRET_ENV_NAMES = [
+  'R2_SECRET_ACCESS_KEY',
+  'R2_ACCESS_KEY_ID',
+  'R2_ACCOUNT_ID',
+] as const
+
+/** Keys that would fingerprint secret presence (length/prefix/suffix/hash/mask). */
+const FORBIDDEN_PRESENCE_KEY =
+  /^(secretLength|keyLength|secretPrefix|secretSuffix|secretHash|maskedSecret|maskedValue|accessKeyPrefix|accessKeySuffix|r2KeyPrefix|r2KeySuffix|r2SecretLength|credentialHash|secretFingerprint)$/i
+
 function looksLikeSecret(value: string): boolean {
   return /secret|access[_-]?key|credential|authorization|aws4|r2_account/i.test(value)
 }
 
+function walkKeys(value: unknown, visit: (key: string) => void): void {
+  if (Array.isArray(value)) {
+    for (const item of value) walkKeys(item, visit)
+    return
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      visit(key)
+      walkKeys(child, visit)
+    }
+  }
+}
+
+function r2SecretFingerprints(): string[] {
+  const out: string[] = []
+  for (const name of R2_SECRET_ENV_NAMES) {
+    const value = process.env[name]
+    if (!value || value.length < 8) continue
+    out.push(value)
+    out.push(createHash('sha256').update(value).digest('hex'))
+    out.push(createHash('sha1').update(value).digest('hex'))
+    out.push(createHash('md5').update(value).digest('hex'))
+    out.push(`****${value.slice(-4)}`)
+    out.push(`${value.slice(0, 2)}***${value.slice(-2)}`)
+  }
+  return out
+}
+
+export function isR2SelfTestEnabled(): boolean {
+  const raw = process.env.R2_SELF_TEST_ENABLED
+  return raw === '1' || raw === 'true'
+}
+
 export function assertSafeDiagnosticJson(payload: unknown): void {
+  walkKeys(payload, (key) => {
+    if (FORBIDDEN_PRESENCE_KEY.test(key)) {
+      throw new Error('UNSAFE_DIAGNOSTIC_PAYLOAD')
+    }
+  })
   const serialized = JSON.stringify(payload)
   if (looksLikeSecret(serialized)) {
     throw new Error('UNSAFE_DIAGNOSTIC_PAYLOAD')
+  }
+  for (const fingerprint of r2SecretFingerprints()) {
+    if (fingerprint && serialized.includes(fingerprint)) {
+      throw new Error('UNSAFE_DIAGNOSTIC_PAYLOAD')
+    }
   }
 }
 
@@ -485,41 +542,62 @@ export async function cleanupR2SelfTest(
       action: 'cleanup',
       configured: false,
       validationId,
-      createdCount: keys.length,
+      createdCount: 0,
       deletedCount: 0,
       remainingCount: null,
       cleanup: 'SKIP',
+      go: false,
     }
   }
 
   const storage = resolveStorage(deps)
-  let deletedCount = 0
+
+  const existedBefore: string[] = []
+  for (const key of keys) {
+    try {
+      if (await storage.exists(key)) existedBefore.push(key)
+    } catch {
+      existedBefore.push(key)
+    }
+  }
+  const createdCount = existedBefore.length
+
   for (const key of keys) {
     try {
       await storage.delete(key)
-      deletedCount += 1
     } catch {
-      // continue; remainingCount captures leftovers
+      // remainingCount / deletedCount are verified via exists below
     }
   }
 
-  let remaining = 0
+  let remainingCount = 0
   for (const key of keys) {
     try {
-      if (await storage.exists(key)) remaining += 1
+      if (await storage.exists(key)) remainingCount += 1
     } catch {
-      remaining += 1
+      remainingCount += 1
     }
   }
 
+  let deletedCount = 0
+  for (const key of existedBefore) {
+    try {
+      if (!(await storage.exists(key))) deletedCount += 1
+    } catch {
+      // treat unverifiable delete as not deleted
+    }
+  }
+
+  const go = createdCount === deletedCount && remainingCount === 0
   return {
     action: 'cleanup',
     configured: true,
     validationId,
-    createdCount: keys.length,
+    createdCount,
     deletedCount,
-    remainingCount: remaining,
-    cleanup: remaining === 0 ? 'PASS' : 'FAIL',
+    remainingCount,
+    cleanup: go ? 'PASS' : 'FAIL',
+    go,
   }
 }
 

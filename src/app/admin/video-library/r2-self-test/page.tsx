@@ -23,6 +23,11 @@ export default function R2SelfTestPage() {
     typeof result?.posterPublicUrl === 'string' ? result.posterPublicUrl : null
   const validationId =
     typeof result?.validationId === 'string' ? result.validationId : null
+  const go = result?.go === true
+  const createdCount = typeof result?.createdCount === 'number' ? result.createdCount : null
+  const deletedCount = typeof result?.deletedCount === 'number' ? result.deletedCount : null
+  const remainingCount =
+    typeof result?.remainingCount === 'number' ? result.remainingCount : null
 
   async function call(action: 'run' | 'cleanup' | 'cors-inspect' | 'cors-apply') {
     setBusy(true)
@@ -50,8 +55,13 @@ export default function R2SelfTestPage() {
   return (
     <AdminOsPageShell
       title="R2 self-test"
-      subtitle="Video Library özelliğini açmaz. CORS apply mevcut nahaber-media kurallarını silmeden www.nahaber.com playback origin ekler."
+      subtitle="Varsayılan kapalı geçici tanı. Video Library açmaz. Cron / otomatik çağrı yok — yalnızca bu sayfadaki butonlar. CORS apply mevcut kuralları silmeden www.nahaber.com ekler."
     >
+      <p className="mb-3 max-w-xl text-sm text-zinc-600">
+        R2 mutasyonu için sunucuda <code>R2_SELF_TEST_ENABLED=1</code> ve açık{' '}
+        <code>action</code> gerekir. GO yalnızca cleanup sonrası created == deleted ve remaining == 0
+        ise.
+      </p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -88,6 +98,12 @@ export default function R2SelfTestPage() {
       </div>
       {status ? <p className="mt-3 text-sm text-zinc-500">HTTP {status}</p> : null}
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {createdCount !== null && deletedCount !== null ? (
+        <p className="mt-2 text-sm text-zinc-700">
+          Cleanup gate: created {createdCount} / deleted {deletedCount} / remaining{' '}
+          {remainingCount ?? 'n/a'} — {go ? 'GO' : 'NO-GO'}
+        </p>
+      ) : null}
       {playbackUrl ? (
         <div className="mt-4 max-w-xl">
           <video

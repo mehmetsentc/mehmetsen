@@ -1,11 +1,14 @@
+import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StorageProvider } from './types'
 import {
   VALIDATION_PREFIX,
   allValidationKeys,
+  assertSafeDiagnosticJson,
   assertSafeValidationId,
   cleanupR2SelfTest,
   findMp4BoxOffsets,
+  isR2SelfTestEnabled,
   runR2SelfTest,
   validationObjectKey,
 } from './r2SelfTest'
@@ -117,6 +120,16 @@ describe('V1C.1R4 R2 self-test helpers', () => {
     expect(() => validationObjectKey(id + '/../x', 'original.mp4')).toThrow('INVALID_VALIDATION_ID')
   })
 
+  it('is disabled unless R2_SELF_TEST_ENABLED is 1 or true', () => {
+    expect(isR2SelfTestEnabled()).toBe(false)
+    vi.stubEnv('R2_SELF_TEST_ENABLED', '0')
+    expect(isR2SelfTestEnabled()).toBe(false)
+    vi.stubEnv('R2_SELF_TEST_ENABLED', '1')
+    expect(isR2SelfTestEnabled()).toBe(true)
+    vi.stubEnv('R2_SELF_TEST_ENABLED', 'true')
+    expect(isR2SelfTestEnabled()).toBe(true)
+  })
+
   it('cleanup only targets the three validation keys', async () => {
     const id = '22222222-2222-4222-8111-222222222222'
     const storage = mockStorage()
@@ -124,10 +137,72 @@ describe('V1C.1R4 R2 self-test helpers', () => {
     expect(storage.deleted).toEqual(allValidationKeys(id))
     expect(storage.deleted.every((k) => k.startsWith(VALIDATION_PREFIX + id + '/'))).toBe(true)
     expect(storage.deleted.some((k) => k.includes('news/') || k.includes('..'))).toBe(false)
+    expect(result.createdCount).toBe(0)
+    expect(result.deletedCount).toBe(0)
+    expect(result.remainingCount).toBe(0)
+    expect(result.cleanup).toBe('PASS')
+    expect(result.go).toBe(true)
+  })
+
+  it('GO only when createdCount equals deletedCount and remainingCount is 0', async () => {
+    const id = '66666666-6666-4666-8666-666666666666'
+    const storage = mockStorage()
+    for (const key of allValidationKeys(id)) {
+      await storage.upload(key, new Uint8Array([1, 2, 3]), { contentType: 'video/mp4' })
+    }
+    const result = await cleanupR2SelfTest(id, { storage, configured: true })
     expect(result.createdCount).toBe(3)
     expect(result.deletedCount).toBe(3)
     expect(result.remainingCount).toBe(0)
     expect(result.cleanup).toBe('PASS')
+    expect(result.go).toBe(true)
+  })
+
+  it('fails GO when a leftover validation object remains', async () => {
+    const id = '77777777-7777-4777-8777-777777777777'
+    const storage = mockStorage()
+    for (const key of allValidationKeys(id)) {
+      await storage.upload(key, new Uint8Array([1, 2, 3]), { contentType: 'video/mp4' })
+    }
+    const innerDelete = storage.delete.bind(storage)
+    storage.delete = async (key) => {
+      if (key.endsWith('poster.webp')) return
+      await innerDelete(key)
+    }
+    const result = await cleanupR2SelfTest(id, { storage, configured: true })
+    expect(result.createdCount).toBe(3)
+    expect(result.deletedCount).toBe(2)
+    expect(result.remainingCount).toBe(1)
+    expect(result.cleanup).toBe('FAIL')
+    expect(result.go).toBe(false)
+  })
+
+  it('rejects secret values and presence fingerprints from diagnostic JSON', () => {
+    const secret = 'super-secret-r2-key-value'
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', secret)
+    vi.stubEnv('R2_ACCESS_KEY_ID', 'AKIAEXAMPLEKEY99')
+    expect(() => assertSafeDiagnosticJson({ configured: true, secretLength: secret.length })).toThrow(
+      'UNSAFE_DIAGNOSTIC_PAYLOAD',
+    )
+    expect(() => assertSafeDiagnosticJson({ configured: true, secretPrefix: secret.slice(0, 4) })).toThrow(
+      'UNSAFE_DIAGNOSTIC_PAYLOAD',
+    )
+    expect(() => assertSafeDiagnosticJson({ configured: true, secretSuffix: secret.slice(-4) })).toThrow(
+      'UNSAFE_DIAGNOSTIC_PAYLOAD',
+    )
+    expect(() => assertSafeDiagnosticJson({ configured: true, maskedSecret: `****${secret.slice(-4)}` })).toThrow(
+      'UNSAFE_DIAGNOSTIC_PAYLOAD',
+    )
+    expect(() =>
+      assertSafeDiagnosticJson({
+        configured: true,
+        secretHash: createHash('sha256').update(secret).digest('hex'),
+      }),
+    ).toThrow('UNSAFE_DIAGNOSTIC_PAYLOAD')
+    expect(() => assertSafeDiagnosticJson({ configured: true, leaked: secret })).toThrow(
+      'UNSAFE_DIAGNOSTIC_PAYLOAD',
+    )
+    expect(() => assertSafeDiagnosticJson({ configured: true, enabled: false, go: false })).not.toThrow()
   })
 
   it('rejects path-traversal cleanup ids before touching storage', async () => {
@@ -173,6 +248,9 @@ describe('V1C.1R4 R2 self-test helpers', () => {
     expect(serialized).not.toContain('super-secret')
     expect(serialized).not.toContain('AKIAEXAMPLE')
     expect(serialized).not.toContain('R2_SECRET')
+    expect(serialized).not.toMatch(/secretLength|secretPrefix|secretSuffix|maskedSecret|secretHash/)
+    expect(result).not.toHaveProperty('secretLength')
+    expect(typeof result.configured).toBe('boolean')
     expect(result.objects.playback?.bytes).toBe(playback.byteLength)
     expect(result.objects.playback?.mime).toBe('video/mp4')
   })

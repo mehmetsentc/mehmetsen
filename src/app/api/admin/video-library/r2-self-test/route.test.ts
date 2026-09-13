@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
-import { POST } from './route'
+import { GET, POST } from './route'
 import * as r2SelfTest from '@/lib/storage/r2SelfTest'
 
 vi.mock('@/lib/cmsAuthServer', () => ({
@@ -31,6 +33,18 @@ function request(body: unknown, auth = true) {
   })
 }
 
+function editorAuth() {
+  vi.mocked(verifyCmsToken).mockResolvedValue({
+    uid: 'admin',
+    role: 'editor',
+    email: 'ed@example.com',
+  })
+}
+
+function enableSelfTest() {
+  vi.stubEnv('R2_SELF_TEST_ENABLED', '1')
+}
+
 describe('POST /api/admin/video-library/r2-self-test', () => {
   afterEach(() => {
     vi.mocked(verifyCmsToken).mockReset()
@@ -46,6 +60,7 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     const res = await POST(request({ action: 'run' }, false))
     expect(res.status).toBe(401)
     expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.cleanupR2SelfTest).not.toHaveBeenCalled()
   })
 
   it('returns 403 when the role lacks video:edit', async () => {
@@ -61,13 +76,64 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
   })
 
-  it('redacts secrets from the diagnostic JSON', async () => {
-    vi.stubEnv('R2_SECRET_ACCESS_KEY', 'super-secret-r2-key')
-    vi.mocked(verifyCmsToken).mockResolvedValue({
-      uid: 'admin',
-      role: 'editor',
-      email: 'ed@example.com',
-    })
+  it('is disabled by default and performs no R2 mutation', async () => {
+    editorAuth()
+    const res = await POST(request({ action: 'run' }))
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toBe('R2_SELF_TEST_DISABLED')
+    expect(body.enabled).toBe(false)
+    expect(typeof body.configured).toBe('boolean')
+    expect(body.go).toBe(false)
+    expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.cleanupR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.applyPlaybackCors).not.toHaveBeenCalled()
+    expect(r2SelfTest.inspectR2Cors).not.toHaveBeenCalled()
+  })
+
+  it('does not mutate R2 without an explicit run or cleanup action', async () => {
+    editorAuth()
+    enableSelfTest()
+    const missing = await POST(request({}))
+    expect(missing.status).toBe(400)
+    expect((await missing.json()).error).toBe('ACTION_REQUIRED')
+    const invalid = await POST(request({ action: 'status' }))
+    expect(invalid.status).toBe(400)
+    const empty = await POST(
+      new Request('http://localhost/api/admin/video-library/r2-self-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-token' },
+        body: '',
+      }),
+    )
+    expect(empty.status).toBe(400)
+    expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.cleanupR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.applyPlaybackCors).not.toHaveBeenCalled()
+    expect(r2SelfTest.inspectR2Cors).not.toHaveBeenCalled()
+  })
+
+  it('blocks cors-apply while the kill switch is off', async () => {
+    editorAuth()
+    const res = await POST(request({ action: 'cors-apply' }))
+    expect(res.status).toBe(403)
+    expect(r2SelfTest.applyPlaybackCors).not.toHaveBeenCalled()
+    expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+  })
+
+  it('GET is a no-op 405 and never mutates R2', async () => {
+    const res = await GET()
+    expect(res.status).toBe(405)
+    expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.cleanupR2SelfTest).not.toHaveBeenCalled()
+    expect(r2SelfTest.applyPlaybackCors).not.toHaveBeenCalled()
+  })
+
+  it('redacts secrets and presence fingerprints from the diagnostic JSON', async () => {
+    const secret = 'super-secret-r2-key'
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', secret)
+    enableSelfTest()
+    editorAuth()
     vi.mocked(r2SelfTest.runR2SelfTest).mockResolvedValue({
       action: 'run',
       configured: true,
@@ -93,9 +159,38 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     expect(res.status).toBe(200)
     expect(serialized).not.toContain('super-secret')
     expect(serialized).not.toMatch(/R2_SECRET_ACCESS_KEY/)
+    expect(serialized).not.toContain(createHash('sha256').update(secret).digest('hex'))
+    expect(serialized).not.toMatch(/secretLength|secretPrefix|secretSuffix|maskedSecret|secretHash/)
+    expect(typeof body.configured).toBe('boolean')
+  })
+
+  it('does not GO when cleanup leaves remaining objects', async () => {
+    enableSelfTest()
+    editorAuth()
+    vi.mocked(r2SelfTest.cleanupR2SelfTest).mockResolvedValue({
+      action: 'cleanup',
+      configured: true,
+      validationId: '88888888-8888-4888-8888-888888888888',
+      createdCount: 3,
+      deletedCount: 2,
+      remainingCount: 1,
+      cleanup: 'FAIL',
+      go: false,
+    })
+    const res = await POST(
+      request({ action: 'cleanup', validationId: '88888888-8888-4888-8888-888888888888' }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.createdCount).toBe(3)
+    expect(body.deletedCount).toBe(2)
+    expect(body.remainingCount).toBe(1)
+    expect(body.cleanup).toBe('FAIL')
+    expect(body.go).toBe(false)
   })
 
   it('rejects cleanup outside the validation namespace', async () => {
+    enableSelfTest()
     vi.mocked(verifyCmsToken).mockResolvedValue({
       uid: 'admin',
       role: 'video_editor',
@@ -107,5 +202,16 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     const body = await res.json()
     expect(body.error).toBe('INVALID_VALIDATION_ID')
     expect(body.cleanup).toBe('FAIL')
+    expect(body.go).toBe(false)
+  })
+
+  it('is not referenced by vercel crons or frontend auto-call', () => {
+    const vercel = JSON.parse(readFileSync(new URL('../../../../../../vercel.json', import.meta.url), 'utf8')) as {
+      crons?: Array<{ path: string }>
+    }
+    expect((vercel.crons ?? []).some((cron) => cron.path.includes('r2-self-test'))).toBe(false)
+    const page = readFileSync(new URL('../../../../admin/video-library/r2-self-test/page.tsx', import.meta.url), 'utf8')
+    expect(page).not.toMatch(/useEffect/)
+    expect(page).toMatch(/onClick=\{\(\) => void call\('run'\)\}/)
   })
 })
