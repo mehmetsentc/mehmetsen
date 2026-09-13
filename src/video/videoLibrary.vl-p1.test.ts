@@ -20,7 +20,7 @@ import {
   UnsafeDownloadUrlError,
 } from '@/video/security/ssrf'
 import { downloadVideoFile, DownloadFailedError } from '@/video/importer/download'
-import { isVideoLibraryEnabled, isVideoLibraryImportEnabled, isVideoLibraryProcessEnabled, isVideoLibraryOneShotValidationEnabled } from '@/video/featureFlag'
+import { isVideoLibraryEnabled, isVideoLibraryImportEnabled, isVideoLibraryProcessEnabled } from '@/video/featureFlag'
 import { GET as libraryGET } from '@/app/api/admin/videos/library/route'
 
 function memoryRepo(): VideoLibraryRepository & { items: VideoLibraryItem[]; inserts: number } {
@@ -96,7 +96,6 @@ describe('VL-P1 flags stay off', () => {
     'NEXT_PUBLIC_VIDEO_LIBRARY_ENABLED',
     'VIDEO_LIBRARY_IMPORT_ENABLED',
     'VIDEO_LIBRARY_PROCESS_ENABLED',
-    'VIDEO_LIBRARY_ONE_SHOT_VALIDATION_ENABLED',
   ]
   const prev: Record<string, string | undefined> = {}
   beforeEach(() => {
@@ -115,7 +114,6 @@ describe('VL-P1 flags stay off', () => {
     expect(isVideoLibraryEnabled()).toBe(false)
     expect(isVideoLibraryImportEnabled()).toBe(false)
     expect(isVideoLibraryProcessEnabled()).toBe(false)
-    expect(isVideoLibraryOneShotValidationEnabled()).toBe(false)
   })
 
   it('API stays 404 while the product flag is off', async () => {

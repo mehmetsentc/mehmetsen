@@ -63,10 +63,6 @@
     "src/app/api/admin/newsroom/process-now/route.ts": {
       "memory": 1024
     },
-    "src/app/api/admin/video-library/import-once-validation/route.ts": {
-      "memory": 1024,
-      "maxDuration": 120
-    },
     "src/app/api/cron/newsroom/draft-reprocess/route.ts": {
       "memory": 1024
     },
