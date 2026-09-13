@@ -13,8 +13,9 @@ interface AdaptiveMasonryProps {
 
 /**
  * CSS columns + span-aware slots give a Pinterest-like masonry without a
- * heavy JS layout library. Column count adapts via CSS container queries /
- * media breakpoints in globals.css.
+ * heavy JS layout library. Column count adapts via CSS media breakpoints
+ * in globals.css. Ana Sayfa discovery reuses the same `.exp-masonry` engine
+ * with the `.exp-masonry--discovery` modifier (2 columns from mobile).
  */
 export function AdaptiveMasonry({
   slots,

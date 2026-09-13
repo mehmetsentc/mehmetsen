@@ -117,7 +117,7 @@ const LayoutShell = memo(function LayoutShell({
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}
       data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
-      data-header-bleed={pathname === ROUTES.FEED ? '1' : '0'}
+      data-header-bleed="0"
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
       {showTopNavbar ? <MobileSafeAreaShield /> : null}

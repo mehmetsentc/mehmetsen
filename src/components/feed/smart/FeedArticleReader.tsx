@@ -1055,6 +1055,17 @@ export function FeedArticleReader({
     readingMins ? `${readingMins} dk` : null,
   ].filter(Boolean)
 
+  const heroHasMedia = hero.state === 'LOADING' || hero.state === 'VALID_MEDIA'
+  const returnCoach = (
+    <ReaderReturnCoach
+      active={committed && !coachClosing}
+      articleId={item.articleId}
+      generation={generation}
+      suppressed={!committed || coachClosing}
+      onAffordanceActivate={() => beginClose('gesture')}
+    />
+  )
+
   return (
     <div
       className={cn(
@@ -1104,16 +1115,18 @@ export function FeedArticleReader({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        <ReaderReturnCoach
-          active={committed && !coachClosing}
-          articleId={item.articleId}
-          generation={generation}
-          suppressed={!committed || coachClosing}
-          onAffordanceActivate={() => beginClose('gesture')}
-        />
+        {heroHasMedia ? null : (
+          <div
+            className="pointer-events-none absolute inset-x-0 z-[50] h-0"
+            data-testid="reader-return-coach-edge"
+            style={{ top: 'max(4.75rem, calc(var(--reader-sat, var(--mobile-sat, env(safe-area-inset-top, 0px))) + 3.1rem))' }}
+          >
+            {returnCoach}
+          </div>
+        )}
 
         <header
-          className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-2 pt-[max(0.85rem,calc(var(--reader-sat,var(--mobile-sat,env(safe-area-inset-top,0px)))+0.45rem))]"
+          className="relative flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 pb-2 pt-[max(0.85rem,calc(var(--reader-sat,var(--mobile-sat,env(safe-area-inset-top,0px)))+0.45rem))]"
           style={{ background: 'var(--reader-page-bg)' }}
           data-testid="feed-reader-header"
         >
@@ -1223,6 +1236,7 @@ export function FeedArticleReader({
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[color:var(--reader-page-muted)]" />
               </div>
+              {returnCoach}
             </div>
           ) : null}
 
@@ -1243,6 +1257,7 @@ export function FeedArticleReader({
                   onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
                   onError={() => acceptHeroLoad(hero.url!, 'error')}
                 />
+                {returnCoach}
               </div>
               {hero.caption ? (
                 <figcaption className="mt-2 text-[12.5px] leading-[1.4] text-[color:var(--reader-page-muted)]">

@@ -1,6 +1,7 @@
 'use client'
 
-import { MobileFeedCardNews } from '@/components/feed/MobileFeedCard'
+import { HomeDiscoveryMasonry } from '@/components/home/HomeDiscoveryMasonry'
+import { newsItemToDiscovery } from '@/components/home/HomeDiscoveryCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { useCategoryDayLoadMore } from '@/hooks/useCategoryDayLoadMore'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
@@ -15,7 +16,7 @@ interface CategoryLoadMoreProps {
 
 /**
  * Mobile append-only day load-more under editorial landing.
- * Renders SonDakika-style cards consistent with the feed above.
+ * Continues the visual discovery masonry used above.
  */
 export function CategoryLoadMore({
   categoryId,
@@ -33,14 +34,14 @@ export function CategoryLoadMore({
   return (
     <div className="mt-2">
       {extraItems.length > 0 ? (
-        <div className="sd-feed">
-          {extraItems.map((item) => (
-            <MobileFeedCardNews key={item.id} item={item} />
-          ))}
-        </div>
-      ) : null}
-
-      {hasMore ? (
+        <HomeDiscoveryMasonry
+          items={extraItems.map(newsItemToDiscovery)}
+          navSource="category"
+          loadingMore={loadingMore}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+        />
+      ) : hasMore ? (
         <LoadMoreDayButton onClick={loadMore} loading={loadingMore} />
       ) : null}
     </div>

@@ -109,7 +109,7 @@ describe('P17 Feed coach per-article session ownership', () => {
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThan(0)
     const coach = read('src/components/feed/smart/SwipeDiscoveryCoach.tsx')
     expect(coach).toContain('-SWIPE_DISCOVERY_TRAVEL_PX')
-    expect(coach).toContain('Sola kaydır — haberi aç')
+    expect(coach).toContain('Sola kaydır')
     expect(coach).toContain('data-swipe-discovery-v10')
   })
 

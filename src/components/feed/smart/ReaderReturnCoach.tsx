@@ -218,10 +218,11 @@ export function ReaderReturnCoach({
       ref={rootRef}
       data-testid="reader-return-coach"
       data-reader-return-coach-v6="1"
+      data-reader-hud-region="media"
       data-reader-return-phase={phase}
       data-reader-coach-scope={scopeKey}
-      className="pointer-events-none absolute inset-x-0 top-[38%] z-[50] flex justify-center"
-      style={{ opacity: 1 }}
+      className="pointer-events-none absolute inset-x-0 z-[50] flex justify-center px-3"
+      style={{ top: '58%' }}
     >
       <div
         data-testid="reader-return-motion-shell"
@@ -249,7 +250,7 @@ export function ReaderReturnCoach({
             e.stopPropagation()
             onAffordanceActivate?.()
           }}
-          className="pointer-events-auto flex min-h-11 min-w-[11rem] touch-manipulation flex-col items-center justify-center gap-1 rounded-2xl bg-black/80 px-4 py-2.5 text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
+          className="pointer-events-auto flex min-h-11 min-w-[9.5rem] touch-manipulation flex-col items-center justify-center gap-0.5 rounded-2xl bg-black/60 px-3.5 py-2 text-white ring-1 ring-white/25 backdrop-blur-[6px] active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
           style={{
             boxShadow: '0 12px 32px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(225,29,46,0.55)',
           }}

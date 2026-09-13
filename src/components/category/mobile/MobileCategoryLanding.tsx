@@ -1,13 +1,12 @@
 'use client'
 
 import { useMemo } from 'react'
-import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
-import { FEATURED_CAROUSEL_LIMIT } from '@/types/newsItem'
-import { CategoryHeroCarousel } from '@/components/category/CategoryHeroCarousel'
-import { MobileFeedCard } from '@/components/feed/MobileFeedCard'
+import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
+import { HomeDiscoveryMasonry } from '@/components/home/HomeDiscoveryMasonry'
+import { timelinePostToDiscovery } from '@/components/home/HomeDiscoveryCard'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -34,10 +33,7 @@ interface MobileCategoryLandingProps {
 }
 
 /**
- * Mobile-only (<768px) category landing — SonDakika-style feed.
- *
- * Hero carousel at top (kept), followed by full-width vertical cards
- * matching the SonDakika.com feed pattern.
+ * Mobile category landing — same visual discovery language as Ana Sayfa.
  */
 export function MobileCategoryLanding({
   cat,
@@ -50,26 +46,20 @@ export function MobileCategoryLanding({
   pageTitle,
   topExtras,
 }: MobileCategoryLandingProps) {
-  const heroCarouselPosts = useMemo(() => {
-    const withImage = initialPosts.filter((p) => categoryPostImage(p).length > 10)
-    const pool = withImage.length > 0 ? withImage : initialPosts
-    const featured = pool.filter((p) => p.featured === true || p.isEditorPick === true)
-    const ordered =
-      featured.length > 0
-        ? [...featured, ...pool.filter((p) => !featured.some((f) => f.id === p.id))]
-        : pool
-    return ordered.slice(0, FEATURED_CAROUSEL_LIMIT)
+  const featuredPosts = useMemo(() => {
+    const featured = initialPosts.filter((p) => p.featured === true || p.isEditorPick === true)
+    return featured.slice(0, HOME_FEATURED_LIMIT)
   }, [initialPosts])
 
-  const heroIds = useMemo(
-    () => new Set(heroCarouselPosts.map((p) => p.id)),
-    [heroCarouselPosts]
+  const featuredIds = useMemo(
+    () => new Set(featuredPosts.map((p) => p.id)),
+    [featuredPosts]
   )
 
-  const feedPosts = useMemo(
-    () => initialPosts.filter((p) => !heroIds.has(p.id)),
-    [initialPosts, heroIds]
-  )
+  const discoveryItems = useMemo(() => {
+    const rest = initialPosts.filter((p) => !featuredIds.has(p.id))
+    return [...featuredPosts, ...rest].map(timelinePostToDiscovery)
+  }, [initialPosts, featuredPosts, featuredIds])
 
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
@@ -83,7 +73,7 @@ export function MobileCategoryLanding({
   const empty = initialPosts.length === 0
 
   return (
-    <div className="mc-page">
+    <div className="mc-page home-feed home-feed--discovery">
       <MobileCategoryHeader
         pageTitle={isSubcategory && parentCat ? cat.name : pageTitle.includes('·') ? cat.name : pageTitle}
         categoryId={cat.id}
@@ -102,25 +92,22 @@ export function MobileCategoryLanding({
         <p className="mc-empty">Bu kategoride henüz yayınlanmış haber bulunmuyor.</p>
       ) : null}
 
-      {heroCarouselPosts.length > 0 ? (
-        <div className="mc-hero-carousel px-0">
-          <CategoryHeroCarousel
-            posts={heroCarouselPosts}
-            priority
-            limit={FEATURED_CAROUSEL_LIMIT}
-          />
-        </div>
+      {featuredPosts.length > 0 ? (
+        <p className="home-discovery-label" data-testid="home-featured-label">
+          Öne Çıkanlar
+        </p>
       ) : null}
 
-      {feedPosts.length > 0 ? (
-        <div className="sd-feed mt-2">
-          {feedPosts.map((post, i) => (
-            <MobileFeedCard key={post.id} post={post} priority={i === 0 && heroCarouselPosts.length === 0} />
-          ))}
-        </div>
+      {discoveryItems.length > 0 ? (
+        <HomeDiscoveryMasonry
+          items={discoveryItems}
+          featuredCount={featuredPosts.length}
+          priorityCount={Math.min(4, discoveryItems.length)}
+          navSource="category"
+        />
       ) : null}
 
-      <div className="px-3 pt-2 pb-8">
+      <div className="pt-2 pb-8">
         <CategoryLoadMore
           categoryId={cat.id}
           initialItems={initialPosts.map((p) => ({

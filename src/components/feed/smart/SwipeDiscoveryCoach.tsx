@@ -9,7 +9,8 @@
  * -translate-*). WebKit fails hit-testing pointer-events:auto children under it.
  * Travel + vertical centering live on the INNER motion shell only.
  *
- * Position: ~52–58% of usable chrome (media → copy transition), responsive.
+ * Position: lower-middle of the IMAGE/MEDIA box (parent is the fg hero).
+ * Must never cover headline / summary / Haberi Oku.
  * Ownership: once per articleId in the current Feed session (not global learned).
  */
 
@@ -230,10 +231,11 @@ export function SwipeDiscoveryCoach({
       data-swipe-discovery-v10="1"
       data-swipe-discovery-phase={phase}
       data-swipe-coach-article={articleId}
-      className="pointer-events-none absolute inset-x-0 z-[40] flex justify-center pl-10"
+      data-swipe-hud-region="media"
+      className="pointer-events-none absolute inset-x-0 z-[40] flex justify-center px-3"
       style={{
-        /* Media → copy transition band (~52–58% of chrome). No transform on this root. */
-        top: 'min(58%, max(48%, calc(var(--feed-v2-top-clearance) + var(--feed-v2-hero-min) * 0.92)))',
+        /* Lower-middle of the media box. No transform on this root. */
+        top: '62%',
         opacity: resting ? 0 : 1,
         transition: 'opacity 280ms ease',
       }}
@@ -268,12 +270,12 @@ export function SwipeDiscoveryCoach({
             e.stopPropagation()
             onAffordanceActivate?.()
           }}
-          className="pointer-events-auto relative flex min-h-11 min-w-[11.5rem] touch-manipulation select-none flex-col items-center justify-center gap-1 rounded-2xl px-5 py-3 text-white active:scale-[0.98] disabled:opacity-90 [-webkit-tap-highlight-color:transparent]"
+          className="pointer-events-auto relative flex min-h-11 min-w-[9.5rem] touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-2xl px-3.5 py-2 text-white active:scale-[0.98] disabled:opacity-90 [-webkit-tap-highlight-color:transparent]"
           style={{
             background:
-              'radial-gradient(ellipse at center, rgba(37,99,235,0.45) 0%, rgba(0,0,0,0.72) 62%, rgba(0,0,0,0.55) 100%)',
+              'radial-gradient(ellipse at center, rgba(37,99,235,0.38) 0%, rgba(0,0,0,0.58) 70%, rgba(0,0,0,0.42) 100%)',
             boxShadow:
-              '0 0 36px rgba(37,99,235,0.55), 0 12px 28px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(147,197,253,0.35)',
+              '0 0 24px rgba(37,99,235,0.4), 0 8px 18px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(147,197,253,0.28)',
           }}
         >
           <span
@@ -318,14 +320,14 @@ export function SwipeDiscoveryCoach({
               <span>‹</span>
             </span>
           </span>
-          <span className="text-[15px] font-extrabold tracking-[0.02em]" data-testid="feed-swipe-discovery-title">
+          <span className="text-[13px] font-extrabold tracking-[0.02em]" data-testid="feed-swipe-discovery-title">
             Haberi Aç
           </span>
           <span
-            className="text-[11px] font-medium tracking-wide text-white/85"
+            className="text-[10px] font-medium tracking-wide text-white/85"
             data-testid="feed-swipe-discovery-subtitle"
           >
-            Sola kaydır — haberi aç
+            Sola kaydır
           </span>
         </button>
       </div>

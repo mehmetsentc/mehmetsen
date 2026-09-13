@@ -25,4 +25,14 @@ describe('SafeNewsImage remote RSS guard', () => {
     expect(local).toContain('<SafeNewsImage')
     expect(local).not.toMatch(/from ['"]next\/image['"]/)
   })
+
+  it('HomeDiscoveryCard keeps live RSS thumbs off next/image', () => {
+    const card = readFileSync(
+      join(__dirname, '../home/HomeDiscoveryCard.tsx'),
+      'utf8'
+    )
+    expect(card).toContain("from '@/components/news/SafeNewsImage'")
+    expect(card).toContain('<SafeNewsImage')
+    expect(card).not.toMatch(/from ['"]next\/image['"]/)
+  })
 })

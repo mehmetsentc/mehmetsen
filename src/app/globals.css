@@ -1833,6 +1833,27 @@
     column-gap: var(--exp-gap);
   }
 
+  /* Ana Sayfa visual discovery — 2 columns from the first mobile paint. */
+  .exp-masonry.exp-masonry--discovery {
+    --exp-gap: 0.4rem;
+    column-count: 2;
+    column-gap: var(--exp-gap);
+  }
+
+  @media (min-width: 1024px) {
+    .exp-masonry.exp-masonry--discovery {
+      --exp-gap: 0.65rem;
+      column-count: 3;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .exp-masonry.exp-masonry--discovery {
+      column-count: 4;
+      --exp-gap: 0.75rem;
+    }
+  }
+
   /* Featured hero must stay single-column — later .exp-masonry media queries
      would otherwise shrink the lead card to 1/2–1/3 width. */
   .exp-masonry--hero,
@@ -3725,6 +3746,120 @@ video.reels-video {
   @apply bg-[rgb(var(--color-surface))];
 }
 
+.home-feed--discovery {
+  max-width: none;
+  padding-inline: 0.2rem;
+}
+
+.home-discovery-label {
+  margin: 0 0 0.4rem 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(var(--color-muted));
+}
+
+.home-discovery-card {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.7rem;
+  text-decoration: none;
+  color: inherit;
+  background: rgb(var(--color-border) / 0.45);
+}
+
+.home-discovery-card__media {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: rgb(var(--color-border));
+}
+
+.home-discovery-card__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 0.88) 0%,
+    rgb(0 0 0 / 0.55) 32%,
+    rgb(0 0 0 / 0.16) 58%,
+    rgb(0 0 0 / 0) 78%
+  );
+}
+
+.home-discovery-card__copy {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0.55rem 0.55rem 0.5rem;
+}
+
+.home-discovery-card__kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.86);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.65);
+}
+
+.home-discovery-card__headline {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.75);
+}
+
+.home-discovery-card__meta {
+  margin: 0.22rem 0 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.78);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.7);
+}
+
+.home-discovery-card__play {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 2;
+  display: flex;
+  height: 1.45rem;
+  width: 1.45rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+}
+
+.home-discovery-card--skeleton {
+  min-height: 10rem;
+  animation: pulse 1.4s ease-in-out infinite;
+  background: rgb(var(--color-border));
+}
+
+@media (min-width: 1024px) {
+  .home-discovery-card__headline {
+    font-size: 0.92rem;
+  }
+}
+
 .home-section {
   @apply mb-5 px-1;
 }
@@ -3889,12 +4024,16 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
 }
 
-/* Newspaper overlay: Ana Sayfa heroes continue under the floating header.
-   Article detail keeps its own title/hero start (no pull-under).
+/* Newspaper overlay: optional pull-under for magazine heroes.
+   Ana Sayfa visual discovery keeps first content below chrome (bleed=0).
    Feed V2 keeps the remaining-band 100svh contract (no pull-under). */
 @media (max-width: 1023px) {
   [data-header-bleed='1'] .content-main-newspaper {
     margin-top: calc(-1 * var(--mobile-top-chrome-offset, 0px));
+  }
+
+  .home-feed--discovery {
+    padding-top: 0.35rem;
   }
 }
 

@@ -1,23 +1,17 @@
 'use client'
 
 import { useMemo } from 'react'
-import { BreakingStories } from '@/components/home/BreakingStories'
-import { FeaturedSlider } from '@/components/home/FeaturedSlider'
 import { MarketTicker } from '@/components/home/MarketTicker'
-import { MobileMagazineFeed } from '@/components/home/MobileMagazineFeed'
-import { MustReadSection } from '@/components/home/MustReadSection'
 import { LocalNewsSection } from '@/components/home/LocalNewsSection'
 import { LocationPermission } from '@/components/home/LocationPermission'
-import { TrendingRail } from '@/components/home/TrendingRail'
-import { GamesRail } from '@/components/home/GamesRail'
 import { LazySection } from '@/components/home/LazySection'
-import { LazyCategoryRails } from '@/components/home/LazyCategoryRails'
 import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
+import { HomeDiscoveryMasonry } from '@/components/home/HomeDiscoveryMasonry'
+import { newsItemToDiscovery } from '@/components/home/HomeDiscoveryCard'
 import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import type { NaEvent } from '@/types/event'
 import {
-  FEATURED_CAROUSEL_LIMIT,
   HOME_FEATURED_LIMIT,
   type HomeCategorySlug,
   type HomeFeedInitialData,
@@ -35,89 +29,83 @@ interface HomeFeedProps {
 export function HomeFeed({
   data,
   cityMode = false,
-  categoryRailIds,
   cinemaEvents = [],
   cityName,
 }: HomeFeedProps) {
-  const { breaking, featured, latest, trending, mostRead, categoryRails } = data
+  const { featured, latest } = data
 
-  const breakingIds = useMemo(() => new Set(breaking.map((b) => b.id)), [breaking])
-  const trendingIds = useMemo(() => new Set(trending.map((t) => t.id)), [trending])
-
-  // Mobile hero slider: prefer CMS-pinned featured posts; fall back to latest
-  // news with images so the carousel is never blank. City tenants include
-  // `localFeatured` pins (same list as desktop); national keeps `featured` only.
   const featuredPins = useMemo(
     () => pickHomeFeedFeaturedPins(featured, cityMode, HOME_FEATURED_LIMIT),
     [featured, cityMode]
   )
   const hasFeaturedPins = featuredPins.length > 0
-  const sliderItems = useMemo(
-    () => hasFeaturedPins ? featuredPins : latest.filter((item) => item.imageUrl).slice(0, FEATURED_CAROUSEL_LIMIT),
-    [hasFeaturedPins, featuredPins, latest]
+  const featuredIds = useMemo(
+    () => new Set(featuredPins.map((item) => item.id)),
+    [featuredPins]
   )
 
-  const dedupedLatest = useMemo(
-    () =>
-      latest.filter(
-        (item) =>
-          !breakingIds.has(item.id) &&
-          !trendingIds.has(item.id) &&
-          item.category !== 'son-dakika'
-      ),
-    [latest, breakingIds, trendingIds]
+  const algorithmItems = useMemo(
+    () => latest.filter((item) => !featuredIds.has(item.id)),
+    [latest, featuredIds]
   )
 
-  const feedHead = useMemo(() => dedupedLatest.slice(0, 6), [dedupedLatest])
-  const feedTail = useMemo(() => dedupedLatest.slice(6), [dedupedLatest])
+  const { items: moreItems, loadingMore, hasMore, loadMore } = useHomeFeedInfinite(
+    algorithmItems
+  )
 
-  const { items: moreItems, loadingMore, hasMore, loadMore } = useHomeFeedInfinite(feedTail)
+  const discoveryItems = useMemo(() => {
+    const continued = moreItems.filter((item) => !featuredIds.has(item.id))
+    return [...featuredPins, ...continued].map(newsItemToDiscovery)
+  }, [featuredPins, moreItems, featuredIds])
 
   return (
-    <div className="home-feed mx-auto w-full max-w-3xl pb-6 max-md:pb-10 max-md:pt-4">
-      {/* Mobile: Son Dakika → hero → markets. Tablet+: same logical order. */}
-      <div className="flex flex-col">
-        <div className="order-1">
-          <BreakingStories items={breaking} />
-        </div>
-        <div className="order-2">
-          <FeaturedSlider items={sliderItems} isFeatured={hasFeaturedPins} />
-        </div>
-        <div className="order-3 mt-0 max-md:mt-5">
-          <MarketTicker />
-        </div>
-        {cityMode && cinemaEvents.length > 0 ? (
-          <div className="order-4 mt-5">
-            <CityCinemaEventsStrip events={cinemaEvents} cityName={cityName} />
-          </div>
-        ) : null}
-      </div>
-
-      <section className="home-section max-md:!mb-6 max-md:!mt-7 max-md:!px-0" aria-label="Son haberler">
-        <div className="home-rail-title max-md:mb-4 max-md:px-4">
-          <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
-          <h2 className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.75rem]">
-            Akış
-          </h2>
-        </div>
-        <MobileMagazineFeed items={feedHead} />
-      </section>
-
-      <TrendingRail items={trending} />
-      {!cityMode ? <LocationPermission /> : null}
-
-      <MustReadSection items={mostRead} />
-
-      {!cityMode ? (
-        <LazySection minHeight={220}>
-          <GamesRail />
-        </LazySection>
+    <div
+      className="home-feed home-feed--discovery mx-auto w-full pb-6"
+      data-testid="home-visual-discovery"
+    >
+      {hasFeaturedPins ? (
+        <p className="home-discovery-label" data-testid="home-featured-label">
+          Öne Çıkanlar
+        </p>
       ) : null}
 
-      <LazyCategoryRails
-        initialRails={categoryRails}
-        categoryIds={cityMode ? categoryRailIds : undefined}
-      />
+      {discoveryItems.length > 0 ? (
+        <HomeDiscoveryMasonry
+          items={discoveryItems}
+          featuredCount={featuredPins.length}
+          priorityCount={Math.min(4, discoveryItems.length)}
+          loadingMore={!cityMode && loadingMore}
+          hasMore={!cityMode && hasMore}
+          onLoadMore={!cityMode ? () => void loadMore() : undefined}
+        />
+      ) : (
+        <div
+          className="exp-masonry exp-masonry--discovery"
+          aria-busy="true"
+          aria-label="Haberler yükleniyor"
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={`empty-sk-${i}`}
+              className="exp-slot home-discovery-slot home-discovery-skeleton"
+              aria-hidden
+            >
+              <div
+                className="home-discovery-card home-discovery-card--skeleton"
+                style={{ aspectRatio: i % 2 === 0 ? '4 / 5' : '3 / 4' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {cityMode && cinemaEvents.length > 0 ? (
+        <div className="mt-6">
+          <CityCinemaEventsStrip events={cinemaEvents} cityName={cityName} />
+        </div>
+      ) : null}
+
+      {!cityMode ? <LocationPermission /> : null}
 
       {!cityMode ? (
         <LazySection minHeight={280}>
@@ -125,16 +113,10 @@ export function HomeFeed({
         </LazySection>
       ) : null}
 
-      {!cityMode && (moreItems.length > 0 || hasMore) ? (
-        <section className="home-section" aria-label="Daha fazla haber">
-          <MobileMagazineFeed
-            items={moreItems}
-            loadingMore={loadingMore}
-            hasMore={hasMore}
-            onLoadMore={() => void loadMore()}
-          />
-        </section>
-      ) : null}
+      {/* Finance stays available on desktop, never between featured → discovery. */}
+      <div className="mt-8 hidden lg:block" data-testid="home-market-ticker-desktop">
+        <MarketTicker />
+      </div>
     </div>
   )
 }

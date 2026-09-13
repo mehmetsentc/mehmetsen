@@ -473,16 +473,6 @@ export function FullscreenNewsCard({
           'feed-v2-card-chrome'
         )}
       >
-        {/* Coach in CHROME layer (above media) — clear of social rail */}
-        {showSwipeDiscoveryCoach ? (
-          <SwipeDiscoveryCoach
-            active={isActive}
-            articleId={item.articleId}
-            suppressed={swipeDiscoverySuppressed}
-            onCardNudge={setSwipeCoachNudgePx}
-            onAffordanceActivate={onSwipeAffordanceActivate}
-          />
-        ) : null}
         {showSheetOpenCoach ? (
           <SheetOpenCoach active={isActive} onActivate={onSheetAffordanceActivate} />
         ) : null}
@@ -535,13 +525,33 @@ export function FullscreenNewsCard({
                   (item.image.startsWith('http://') || item.image.startsWith('https://'))
                 }
               />
+              {showSwipeDiscoveryCoach ? (
+                <SwipeDiscoveryCoach
+                  active={isActive}
+                  articleId={item.articleId}
+                  suppressed={swipeDiscoverySuppressed}
+                  onCardNudge={setSwipeCoachNudgePx}
+                  onAffordanceActivate={onSwipeAffordanceActivate}
+                />
+              ) : null}
             </div>
           ) : (
             /* No image: keep a tap surface without inventing a fake hero */
             <div
-              className="min-h-[var(--feed-v2-hero-min)] w-full"
+              className="relative min-h-[var(--feed-v2-hero-min)] w-full"
               aria-hidden={hasValidImage ? undefined : true}
-            />
+              data-testid="smart-feed-fg-hero-fallback"
+            >
+              {showSwipeDiscoveryCoach ? (
+                <SwipeDiscoveryCoach
+                  active={isActive}
+                  articleId={item.articleId}
+                  suppressed={swipeDiscoverySuppressed}
+                  onCardNudge={setSwipeCoachNudgePx}
+                  onAffordanceActivate={onSwipeAffordanceActivate}
+                />
+              ) : null}
+            </div>
           )}
           {heartBurst ? (
             <span
