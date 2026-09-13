@@ -118,6 +118,15 @@ describe('V1C.1R4 R2 self-test helpers', () => {
     expect(() => validationObjectKey(id, 'news/cover/x.webp')).toThrow('INVALID_OBJECT_NAME')
     expect(() => assertSafeValidationId('video-library/abc')).toThrow('INVALID_VALIDATION_ID')
     expect(() => validationObjectKey(id + '/../x', 'original.mp4')).toThrow('INVALID_VALIDATION_ID')
+    expect(allValidationKeys(id)).toEqual([
+      `${VALIDATION_PREFIX}${id}/original.mp4`,
+      `${VALIDATION_PREFIX}${id}/poster.webp`,
+      `${VALIDATION_PREFIX}${id}/playback-720p.mp4`,
+    ])
+    expect(() => assertSafeValidationId('2ff806f2-6f8a-4fca-9f93-fd045ad5639a/../secret')).toThrow(
+      'INVALID_VALIDATION_ID',
+    )
+    expect(() => assertSafeValidationId('not-a-uuid')).toThrow('INVALID_VALIDATION_ID')
   })
 
   it('is disabled unless R2_SELF_TEST_ENABLED is 1 or true', () => {

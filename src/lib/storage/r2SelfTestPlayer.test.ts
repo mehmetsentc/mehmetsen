@@ -16,5 +16,7 @@ describe('V1C.1R6 diagnostic player CSP + source', () => {
     expect(page).toContain('src={playbackUrl}')
     expect(page).toContain('<video')
     expect(page).not.toMatch(/crossOrigin/)
+    expect(page).toContain('Cleanup Existing Validation')
+    expect(page).not.toMatch(/useEffect/)
   })
 })

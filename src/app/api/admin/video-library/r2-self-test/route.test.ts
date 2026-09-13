@@ -189,6 +189,32 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     expect(body.go).toBe(false)
   })
 
+  it('cleans up a manually supplied valid id without calling Run', async () => {
+    enableSelfTest()
+    editorAuth()
+    const id = '2ff806f2-6f8a-4fca-9f93-fd045ad5639a'
+    vi.mocked(r2SelfTest.cleanupR2SelfTest).mockResolvedValue({
+      action: 'cleanup',
+      configured: true,
+      validationId: id,
+      createdCount: 3,
+      deletedCount: 3,
+      remainingCount: 0,
+      cleanup: 'PASS',
+      go: true,
+    })
+    const res = await POST(request({ action: 'cleanup', validationId: id }))
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.cleanup).toBe('PASS')
+    expect(body.createdCount).toBe(3)
+    expect(body.deletedCount).toBe(3)
+    expect(body.remainingCount).toBe(0)
+    expect(r2SelfTest.cleanupR2SelfTest).toHaveBeenCalledTimes(1)
+    expect(r2SelfTest.cleanupR2SelfTest).toHaveBeenCalledWith(id)
+    expect(r2SelfTest.runR2SelfTest).not.toHaveBeenCalled()
+  })
+
   it('rejects cleanup outside the validation namespace', async () => {
     enableSelfTest()
     vi.mocked(verifyCmsToken).mockResolvedValue({
@@ -213,6 +239,11 @@ describe('POST /api/admin/video-library/r2-self-test', () => {
     const page = readFileSync(new URL('../../../../admin/video-library/r2-self-test/page.tsx', import.meta.url), 'utf8')
     expect(page).not.toMatch(/useEffect/)
     expect(page).toMatch(/onClick=\{\(\) => void call\('run'\)\}/)
+    expect(page).toContain('Validation ID')
+    expect(page).toContain('Cleanup Existing Validation')
+    expect(page).toContain("call('cleanup', existingId.trim())")
+    expect(page).not.toContain('original.mp4')
+    expect(page).not.toMatch(/useEffect[\s\S]{0,200}call\('run'\)/)
     const invoke = readFileSync(new URL('../../../../../../scripts/r2-self-test-r4-invoke.mts', import.meta.url), 'utf8')
     expect(invoke).toMatch(/ACTION_REQUIRED/)
     expect(invoke).toMatch(/--action/)
