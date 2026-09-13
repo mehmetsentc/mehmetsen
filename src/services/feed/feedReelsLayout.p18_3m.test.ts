@@ -26,7 +26,12 @@ describe('P18.3M feed-v2 Reels reference layout', () => {
       'utf8'
     )
     expect(nav).toContain('trailing')
-    expect(nav).toContain('bg-white text-black')
+    expect(nav).toContain('contextRailChipClass')
+    const rail = readFileSync(
+      join(process.cwd(), 'src/components/layout/ContextRail.tsx'),
+      'utf8'
+    )
+    expect(rail).toContain('bg-white text-black')
 
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),

@@ -39,6 +39,7 @@ import { DesktopSidebarToggle } from '@/components/layout/DesktopSidebarToggle'
 import { DesktopGlobalScrollHeader } from '@/components/layout/DesktopGlobalScrollHeader'
 import { GlobalBackNav } from '@/components/layout/BackNavButton'
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
+import { ContextRailSlotProvider } from '@/components/layout/ContextRail'
 import { cn } from '@/lib/utils'
 
 const SiteFooter = dynamic(
@@ -109,12 +110,14 @@ const LayoutShell = memo(function LayoutShell({
   const globalNavV2 = isGlobalNavV2Active()
 
   return (
+    <ContextRailSlotProvider>
     <div
       className="min-h-screen bg-[rgb(var(--color-surface))]"
       data-platform={platform}
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}
       data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
+      data-header-bleed={pathname === ROUTES.FEED ? '1' : '0'}
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
       {showTopNavbar ? <MobileSafeAreaShield /> : null}
@@ -176,6 +179,7 @@ const LayoutShell = memo(function LayoutShell({
         </Suspense>
       ) : null}
     </div>
+    </ContextRailSlotProvider>
   )
 })
 

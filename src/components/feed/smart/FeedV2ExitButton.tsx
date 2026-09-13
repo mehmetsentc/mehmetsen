@@ -13,13 +13,15 @@ interface FeedV2ExitButtonProps {
   className?: string
   /** When Reader owns the surface, hide Level-2 exit (Level-3 owns Back). */
   hidden?: boolean
+  /** Match ContextRail height (2.25rem) while keeping a 44px hit area. */
+  compact?: boolean
 }
 
 /**
  * Feed V2 → previous NaHaber surface (Level 2 → Level 1).
  * Explicit router.push only — never blind browser history back.
  */
-export function FeedV2ExitButton({ className, hidden = false }: FeedV2ExitButtonProps) {
+export function FeedV2ExitButton({ className, hidden = false, compact = false }: FeedV2ExitButtonProps) {
   const router = useRouter()
 
   useEffect(() => {
@@ -42,8 +44,10 @@ export function FeedV2ExitButton({ className, hidden = false }: FeedV2ExitButton
       data-testid="smart-feed-exit-nav"
       data-feed-exit="1"
       className={cn(
-        'back-nav-btn back-nav-btn--dark shrink-0',
-        'inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center',
+        'back-nav-btn back-nav-btn--dark relative shrink-0',
+        compact
+          ? 'inline-flex h-8 w-8 min-h-8 min-w-8 items-center justify-center after:absolute after:inset-[-6px]'
+          : 'inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center',
         className
       )}
     >

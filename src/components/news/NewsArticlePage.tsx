@@ -10,8 +10,10 @@ interface NewsArticlePageProps {
 /** Responsive article column — phone → TV, sidebar open/closed aware via CSS. */
 export function NewsArticlePage({ children, className, id, articleId }: NewsArticlePageProps) {
   return (
-    <div id={id} className={cn('news-article-page', className)} data-article-id={articleId}>
-      {children}
+    <div className="nahaber-article-frame">
+      <div id={id} className={cn('news-article-page', className)} data-article-id={articleId}>
+        {children}
+      </div>
     </div>
   )
 }

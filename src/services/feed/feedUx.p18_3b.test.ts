@@ -10,7 +10,7 @@ describe('P18.3B Smart Feed UX', () => {
     )
     expect(src).toContain('FeedV2ExitButton')
     expect(src).toContain('safe-area-inset-top')
-    expect(src).toContain('data-testid="smart-feed-category-nav"')
+    expect(src).toContain('smart-feed-category-nav')
   })
 
   it('summary uses full text (no CSS line-clamp)', () => {

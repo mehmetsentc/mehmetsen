@@ -2262,9 +2262,7 @@ export function SmartFeedClient({
         {isTabSwitching ? (
           <div
             className="pointer-events-none absolute left-3 right-3 z-[55] h-0.5 overflow-hidden rounded-full bg-white/15"
-            style={{
-              top: 'max(4.85rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.35rem))',
-            }}
+            style={{ top: '0.35rem' }}
             data-testid="smart-feed-tab-loading"
             aria-hidden
           >

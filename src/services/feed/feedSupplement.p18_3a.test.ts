@@ -245,7 +245,7 @@ describe('P18.3A mode nav safe-area', () => {
       'utf8'
     )
     expect(src).toContain('safe-area-inset-top')
-    expect(src).toContain('data-testid="smart-feed-mode-nav"')
+    expect(src).toContain('smart-feed-mode-nav')
     expect(src).not.toContain('pt-safe-top')
   })
 })

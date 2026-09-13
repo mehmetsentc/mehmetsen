@@ -52,10 +52,6 @@ function newsItemToPost(item: CategoryFeedPage['items'][number]): Post {
   } as unknown as Post
 }
 
-const ArticleTOC = dynamic(
-  () => import('@/components/news/ArticleTOC').then((m) => m.ArticleTOC),
-  { ssr: false }
-)
 const ArticleReactions = dynamic(
   () => import('@/components/news/ArticleReactions').then((m) => m.ArticleReactions),
   { ssr: false }
@@ -123,7 +119,6 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
 
   return (
     <NewsArticlePage className="max-lg:pb-[var(--article-reader-clearance)] lg:pb-10" articleId={post.id}>
-      <ArticleTOC postId={post.id} />
       <ArticleReaderTools post={post} />
 
       <NewsArticleCard continued className="-mt-4">

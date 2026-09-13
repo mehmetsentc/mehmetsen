@@ -257,7 +257,7 @@ export function ArticleReaderTools({
       </section>
 
       {hasToc ? (
-        <section className="px-4 py-3 lg:hidden">
+        <section className="px-4 py-3">
           <Button
             size="md"
             variant="soft"

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getSwipeableFeedDestinations, resolveSwipeCategoryKey } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
+import { ContextRail, contextRailChipClass } from '@/components/layout/ContextRail'
 import { cn } from '@/lib/utils'
 
 const NAV_CATEGORIES = getSwipeableFeedDestinations()
@@ -35,23 +36,12 @@ export function CategoryNav({
   embedded = false,
 }: CategoryNavProps = {}) {
   const pathname = usePathname()
-  const isFeed = pathname === '/' || pathname === ROUTES.FEED
 
   const shellClass = cn(
-    'bg-[rgb(var(--header-navy-bg))] lg:hidden',
-    embedded
-      ? 'relative z-auto'
-      : 'sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)]'
+    'lg:hidden',
+    embedded ? 'relative z-auto' : 'sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)]'
   )
 
-  const scrollerClass = cn(
-    'category-nav-scroller flex overflow-x-auto overscroll-x-contain scrollbar-hide',
-    isFeed
-      ? 'min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 px-4'
-      : 'gap-0 scroll-px-3'
-  )
-
-  // When operating in national mode (no categories override)
   if (!categories) {
     const activeKey = resolveSwipeCategoryKey(pathname)
 
@@ -68,8 +58,8 @@ export function CategoryNav({
     if (hide) return null
 
     return (
-      <nav className={shellClass} aria-label="Kategoriler">
-        <div className={scrollerClass} data-no-category-swipe>
+      <div className={shellClass}>
+        <ContextRail ariaLabel="Kategoriler" testId="context-rail-home">
           {NAV_CATEGORIES.map((cat) => {
             const isActive = activeKey === cat.id
             return (
@@ -77,62 +67,38 @@ export function CategoryNav({
                 key={cat.href}
                 href={cat.href}
                 prefetch
-                className={cn(
-                  'relative flex shrink-0 items-center touch-manipulation transition-colors',
-                  isFeed
-                    ? 'min-h-[48px] snap-start px-0.5 text-[15px] font-semibold'
-                    : 'min-h-11 px-3.5 text-sm font-semibold',
-                  isActive
-                    ? 'text-white'
-                    : 'text-white/75 hover:text-white'
-                )}
+                className={contextRailChipClass(isActive)}
+                aria-current={isActive ? 'page' : undefined}
               >
                 {cat.label}
-                {isActive && (
-                  <span
-                    className={cn(
-                      'absolute bottom-0 h-[2.5px] rounded-full bg-white',
-                      isFeed ? 'left-0 right-0' : 'left-3 right-3 h-[2px]'
-                    )}
-                  />
-                )}
               </Link>
             )
           })}
-        </div>
-      </nav>
+        </ContextRail>
+      </div>
     )
   }
 
-  // City mode: render dynamic categories with onCategorySelect callback
   return (
-    <nav className={shellClass} aria-label="Kategoriler">
-      <div
-        className={cn(
-          'category-nav-scroller flex min-h-[48px] snap-x snap-mandatory scroll-px-4 gap-5 overflow-x-auto overscroll-x-contain px-4 scrollbar-hide'
-        )}
-        data-no-category-swipe
-      >
+    <div className={shellClass}>
+      <ContextRail ariaLabel="Kategoriler" testId="context-rail-city">
         {categories.map((cat) => {
-          const isActive = activeCategoryId === cat.id || (activeCategoryId === null && cat.id === '__all')
+          const isActive =
+            activeCategoryId === cat.id || (activeCategoryId === null && cat.id === '__all')
           return (
             <button
               key={cat.id}
               type="button"
               data-category-chip={cat.id}
               onClick={() => onCategorySelect?.(cat.id === '__all' ? null : cat.id)}
-              className={cn(
-                'relative flex shrink-0 snap-start items-center touch-manipulation transition-all duration-200',
-                isActive
-                  ? 'my-1.5 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-bold text-[rgb(var(--header-navy-bg,15,23,42))] shadow-sm'
-                  : 'min-h-[48px] px-0.5 text-[15px] font-semibold text-white/70 hover:text-white'
-              )}
+              className={contextRailChipClass(isActive)}
+              aria-current={isActive ? 'page' : undefined}
             >
               {cat.label}
             </button>
           )
         })}
-      </div>
-    </nav>
+      </ContextRail>
+    </div>
   )
 }

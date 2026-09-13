@@ -231,12 +231,12 @@ function SidebarInner({
                 'app-sidebar__item',
                 isItemActive(pathname, ROUTES.FEED, 'ana-feed') && 'is-active'
               )}
-              aria-label="Ana Feed"
+              aria-label="Ana Sayfa"
               aria-current={isItemActive(pathname, ROUTES.FEED, 'ana-feed') ? 'page' : undefined}
               data-testid="global-nav-ana-feed"
             >
               <Home className="app-sidebar__icon" aria-hidden />
-              <span>Ana Feed</span>
+              <span>Ana Sayfa</span>
             </Link>
             <Link
               href={ROUTES.FEED_V2}
@@ -249,14 +249,14 @@ function SidebarInner({
                 'app-sidebar__item',
                 isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') && 'is-active'
               )}
-              aria-label="Akıllı Akış"
+              aria-label="Akış"
               aria-current={
                 isItemActive(pathname, ROUTES.FEED_V2, 'feed-v2') ? 'page' : undefined
               }
               data-testid="global-nav-feed-v2"
             >
               <Zap className="app-sidebar__icon" aria-hidden />
-              <span>Akıllı Akış</span>
+              <span>Akış</span>
             </Link>
             <Link
               href={ROUTES.SEARCH}
@@ -265,12 +265,12 @@ function SidebarInner({
                 'app-sidebar__item',
                 isItemActive(pathname, ROUTES.SEARCH, 'search') && 'is-active'
               )}
-              aria-label="Arama"
+              aria-label="Ara"
               aria-current={isItemActive(pathname, ROUTES.SEARCH, 'search') ? 'page' : undefined}
               data-testid="global-nav-search"
             >
               <Search className="app-sidebar__icon" aria-hidden />
-              <span>Arama</span>
+              <span>Ara</span>
             </Link>
             <Link
               href={ROUTES.NOTIFICATIONS}

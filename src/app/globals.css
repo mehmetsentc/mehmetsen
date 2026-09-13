@@ -270,6 +270,71 @@
     transform: translateZ(0);
   }
 
+  /* Immersive overlay header: content-first, no opaque slab. */
+  .mobile-top-chrome--immersive {
+    background-color: transparent;
+    background-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.48),
+      rgb(0 0 0 / 0.18) 62%,
+      rgb(0 0 0 / 0)
+    );
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 0;
+    box-shadow: none;
+  }
+
+  .mobile-top-chrome--immersive.is-fixed::before,
+  .mobile-top-chrome--immersive.sticky::before {
+    background-color: rgb(0 0 0 / 0.55);
+  }
+
+  :root {
+    --nahaber-context-rail-height: 2.25rem;
+    --nahaber-glass-bg: rgb(255 255 255 / 0.12);
+    --nahaber-glass-blur: 10px;
+  }
+
+  .context-rail,
+  .context-rail-slot {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: var(--nahaber-context-rail-height);
+    min-height: var(--nahaber-context-rail-height);
+    overflow: hidden;
+  }
+
+  .context-rail {
+    gap: 0.25rem;
+    padding: 0 0.5rem 0.2rem;
+  }
+
+  .context-rail__scroller {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .context-rail__scroller::-webkit-scrollbar {
+    display: none;
+  }
+
+  .context-rail__trailing {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
   .mobile-top-chrome.is-fixed {
     /* Desktop keeps normal sticky; mobile overrides below. */
     position: sticky;
@@ -331,6 +396,10 @@
     z-index: 160;
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
+  }
+
+  [data-global-nav-v2='1'] .mobile-safe-area-shield {
+    background-color: rgb(0 0 0 / 0.42);
   }
 
   @media (min-width: 1024px) {
@@ -2174,6 +2243,42 @@
     padding-bottom: var(--article-reader-clearance, 7.5rem);
   }
 
+  .nahaber-article-frame {
+    width: 100%;
+    container-type: inline-size;
+    container-name: nahaber-article;
+  }
+
+  .article-toc-rail {
+    display: none;
+  }
+
+  @container nahaber-article (min-width: 60rem) {
+    .news-article-page:has(.article-toc-rail) {
+      display: grid;
+      grid-template-columns: minmax(0, var(--article-measure)) 15.5rem;
+      column-gap: 1.25rem;
+      justify-content: center;
+      max-width: min(100%, calc(var(--article-measure) + 17rem));
+    }
+
+    .news-article-page:has(.article-toc-rail) > :not(.article-toc-rail) {
+      grid-column: 1;
+    }
+
+    .article-toc-rail {
+      display: block;
+      grid-column: 2;
+      grid-row: 1 / -1;
+      position: sticky;
+      top: 6rem;
+      align-self: start;
+      width: 100%;
+      max-height: calc(100dvh - 8rem);
+      overflow-y: auto;
+    }
+  }
+
   @media (min-width: 640px) {
     .news-article-page {
       padding-inline: var(--layout-gutter);
@@ -2625,11 +2730,11 @@
     @apply mx-auto;
   }
 
-  /* SSR/first paint before Navbar measures — assume brand bar (h-14) + safe-area. */
+  /* SSR/first paint before Navbar measures — two-row overlay (h-11 + dest toggle). */
   @media (max-width: 1023px) {
     :root {
       --mobile-top-chrome-offset: calc(
-        var(--mobile-sat, env(safe-area-inset-top, 0px)) + 3.5rem
+        var(--mobile-sat, env(safe-area-inset-top, 0px)) + 7.25rem
       );
     }
   }
@@ -3784,6 +3889,15 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
 }
 
+/* Newspaper overlay: Ana Sayfa heroes continue under the floating header.
+   Article detail keeps its own title/hero start (no pull-under).
+   Feed V2 keeps the remaining-band 100svh contract (no pull-under). */
+@media (max-width: 1023px) {
+  [data-header-bleed='1'] .content-main-newspaper {
+    margin-top: calc(-1 * var(--mobile-top-chrome-offset, 0px));
+  }
+}
+
 /* Feed V2 hero share — short phones yield media to first-paint actions + rhythm */
 @media (max-height: 700px) {
   .feed-v2-card-chrome {
@@ -3849,7 +3963,7 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
     --feed-v2-gap-summary-cta: 0.85rem;
     --feed-v2-gap-cta-publisher: 0.6rem;
     --feed-v2-bottom-stack-max: min(78dvh, 22rem);
-    --feed-v2-top-clearance: 2.75rem;
+    --feed-v2-top-clearance: 0.5rem;
   }
 
   [data-testid='smart-feed-canonical-shell'],

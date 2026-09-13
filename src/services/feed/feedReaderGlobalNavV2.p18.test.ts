@@ -24,7 +24,7 @@ describe('Global Nav V2', () => {
     expect(resolveMobileNavVisible({ pathname: '/search' })).toBe(false)
   })
 
-  it('top Navbar on Ana Feed + Feed V2; hidden while Reader open on Feed V2', () => {
+  it('top Navbar on Ana Sayfa + Akış; hidden while Reader open on Feed V2', () => {
     expect(resolveTopNavbarVisible({ pathname: '/', readerSurfaceActive: false })).toBe(true)
     expect(resolveTopNavbarVisible({ pathname: '/feed', readerSurfaceActive: false })).toBe(true)
     expect(
@@ -41,7 +41,7 @@ describe('Global Nav V2', () => {
     )
   })
 
-  it('reuses Home + Zap Feed V2 icons; side nav primary destinations; no MobileNav mount when gated', () => {
+  it('header text destinations + sidebar labels; no MobileNav mount when gated', () => {
     const mobileNav = readFileSync(
       join(process.cwd(), 'src/components/layout/MobileNav.tsx'),
       'utf8'
@@ -57,10 +57,12 @@ describe('Global Nav V2', () => {
     expect(sidebar).toContain('global-nav-feed-v2')
     expect(sidebar).toContain('<Zap ')
     expect(sidebar).toContain('<Home ')
-    expect(sidebar).toContain('aria-label="Ana Feed"')
-    expect(sidebar).toContain('Akıllı Akış')
+    expect(sidebar).toContain('aria-label="Ana Sayfa"')
+    expect(sidebar).toContain('>Akış</span>')
+    expect(sidebar).not.toContain('Ana Feed')
+    expect(sidebar).not.toContain('Akıllı Akış')
     expect(sidebar).not.toMatch(/>\s*Feed 2\s*</)
-    expect(sidebar).toContain('aria-label="Arama"')
+    expect(sidebar).toContain('aria-label="Ara"')
     expect(sidebar).toContain('aria-label="Bildirimler"')
     expect(sidebar).toContain('aria-label="Profil"')
     expect(sidebar).toContain('clearFeedRestore')
@@ -76,11 +78,14 @@ describe('Global Nav V2', () => {
       'utf8'
     )
     expect(navbar).toContain('Menüyü aç')
-    expect(navbar).toContain('header-nav-ana-feed')
-    expect(navbar).toContain('header-nav-feed-v2')
-    expect(navbar).toContain('<Home ')
-    expect(navbar).toContain('<Zap ')
+    expect(navbar).toContain('header-nav-ana-sayfa')
+    expect(navbar).toContain('header-nav-akis')
+    expect(navbar).toContain('aria-label="Akış"')
+    expect(navbar).toContain('aria-label="Ana Sayfa"')
     expect(navbar).not.toMatch(/>\s*Feed 2\s*</)
+    expect(navbar).not.toMatch(/>\s*Feed V2\s*</)
+    expect(navbar).not.toContain('Ana Feed')
+    expect(navbar).not.toContain('Akıllı Akış')
     const back = readFileSync(
       join(process.cwd(), 'src/components/layout/BackNavButton.tsx'),
       'utf8'

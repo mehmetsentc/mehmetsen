@@ -20,8 +20,8 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-v2-bottom-clearance':
     'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
-  /** Top clearance for Feed category chips under site header (Global Nav V2). */
-  '--feed-v2-top-clearance': '3.5rem',
+  /** Top clearance after context rail moved into site header (Global Nav V2). */
+  '--feed-v2-top-clearance': '0.5rem',
   /**
    * Required lower band: Haberi Oku (~56px) + gap + publisher/follow (~48px).
    * Protected — always first-paint visible (outside nested copy scroll).

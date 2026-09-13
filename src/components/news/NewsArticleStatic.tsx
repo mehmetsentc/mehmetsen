@@ -22,6 +22,7 @@ import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridSt
 import { ArticleRelatedLinks } from '@/components/news/ArticleRelatedLinks'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
+import { ArticleTOC } from '@/components/news/ArticleTOC'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import type { ArticleSeoContext } from '@/lib/seo/articleSeoTypes'
 import { splitBlocksForMidAd } from '@/lib/publisher/articleAdPlacements'
@@ -477,6 +478,7 @@ export function NewsArticleStatic({
 
       {/* Page-level grid — same outer shell as "Daha fazla haber" / footer (not article measure) */}
       <ArticleRelatedGridStatic posts={relatedPosts} />
+      <ArticleTOC postId={post.id} />
     </NewsArticlePage>
   )
 }

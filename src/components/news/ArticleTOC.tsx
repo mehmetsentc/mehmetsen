@@ -100,12 +100,12 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
 
   return (
     <>
-      {/* Masaüstü panel — sayfa sağında sticky (1280px+) */}
+      {/* Masaüstü ray — article grid column (1280+). Never overlays body text. */}
       <aside
         aria-label="İçindekiler"
-        className="pointer-events-none fixed right-6 top-32 z-base hidden w-60 lg:block xl:right-[max(1.5rem,calc((100vw-720px)/2-280px))]"
+        className="article-toc-rail"
       >
-        <div className="pointer-events-auto rounded-2xl border border-border-subtle bg-bg-card/85 p-4 shadow-md backdrop-blur-xl">
+        <div className="rounded-2xl border border-border-subtle bg-bg-card/85 p-4 shadow-md backdrop-blur-xl">
           <p className="mb-3 flex items-center gap-2 text-2xs font-bold uppercase tracking-widest text-text-tertiary">
             <ListTree className="h-3.5 w-3.5" />
             İçindekiler
@@ -130,10 +130,10 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
         </div>
       </aside>
 
-      {/* Mobil sheet — okuma araçlarından açılır (ayrı FAB yok) */}
+      {/* Fallback sheet / popover — used when the side rail does not fit. */}
       <AnimatePresence>
         {open && (
-          <div className="fixed inset-0 z-sheet flex items-end lg:hidden">
+          <div className="fixed inset-0 z-sheet flex items-end sm:items-center sm:justify-center">
             <motion.div
               aria-hidden
               initial={{ opacity: 0 }}
@@ -148,7 +148,7 @@ export function ArticleTOC({ contentSelector = '.news-body', postId }: ArticleTO
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              className="relative z-10 max-h-[70dvh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-bg-card pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+              className="relative z-10 max-h-[70dvh] w-full overflow-y-auto rounded-t-3xl border-t border-border bg-bg-card pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:mx-4 sm:mb-0 sm:max-w-md sm:rounded-3xl sm:border"
             >
               <div className="flex justify-center pt-2 pb-1">
                 <span className="h-1 w-10 rounded-full bg-border-strong/40" />

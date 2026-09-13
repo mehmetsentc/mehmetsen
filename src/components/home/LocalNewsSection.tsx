@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { CalendarDays, MapPin, PartyPopper } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import { getLocalEvents, getLocalNews } from '@/lib/news'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
@@ -159,7 +159,7 @@ export function LocalNewsSection() {
                   className="flex gap-3 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2"
                 >
                   <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
-                    <Image src={image} alt={item.title} fill sizes="112px" className="object-cover" />
+                    <SafeNewsImage src={image} alt={item.title} fill sizes="112px" className="object-cover" />
                   </div>
                   <div className="flex min-w-0 flex-1 items-center">
                     <p className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))]">

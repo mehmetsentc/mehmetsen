@@ -101,27 +101,28 @@ describe('P18 full headline + summary', () => {
 })
 
 describe('P18 header + sidebar', () => {
-  it('header has icon-only Home + Zap with active states; no Feed 2 text', () => {
+  it('header has text destinations Ana Sayfa + Akış; no Feed 2 text', () => {
     const navbar = readFileSync(
       join(process.cwd(), 'src/components/layout/Navbar.tsx'),
       'utf8'
     )
-    expect(navbar).toContain('header-nav-ana-feed')
-    expect(navbar).toContain('header-nav-feed-v2')
-    expect(navbar).toContain('<Home ')
-    expect(navbar).toContain('<Zap ')
-    expect(navbar).toContain('aria-label="Ana Feed"')
+    expect(navbar).toContain('header-nav-ana-sayfa')
+    expect(navbar).toContain('header-nav-akis')
+    expect(navbar).toContain('aria-label="Ana Sayfa"')
+    expect(navbar).toContain('aria-label="Akış"')
     expect(navbar).toContain('ROUTES.FEED_V2')
     expect(navbar).not.toMatch(/>\s*Feed 2\s*</)
     expect(navbar).not.toMatch(/>\s*Feed V2\s*</)
+    expect(navbar).not.toContain('Ana Feed')
   })
 
-  it('sidebar uses Akıllı Akış; no user-facing Feed 2 label', () => {
+  it('sidebar uses Akış; no user-facing Feed 2 label', () => {
     const sidebar = readFileSync(
       join(process.cwd(), 'src/components/layout/Sidebar.tsx'),
       'utf8'
     )
-    expect(sidebar).toContain('Akıllı Akış')
+    expect(sidebar).toContain('>Akış</span>')
+    expect(sidebar).not.toContain('Akıllı Akış')
     expect(sidebar).not.toMatch(/>\s*Feed 2\s*</)
     expect(sidebar).toContain('<Zap ')
     expect(sidebar).toContain('ROUTES.FEED_V2')
