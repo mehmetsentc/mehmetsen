@@ -179,16 +179,21 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
   return (
     <ReelsAudioProvider>
     <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
-      {surface === 'video' ? (
-        <VideoSurfaceTabs
-          active={feedTab}
-          onChange={(tab) => {
-            setFeedTab(tab)
-            setActiveIndex(0)
-          }}
-        />
-      ) : null}
-      <div className={cn('reels-feed w-full', showVideoFeed && 'reels-player-wrap')}>
+      <div
+        className={cn(
+          'reels-feed w-full',
+          (showVideoFeed || surface === 'video') && 'reels-player-wrap'
+        )}
+      >
+        {surface === 'video' ? (
+          <VideoSurfaceTabs
+            active={feedTab}
+            onChange={(tab) => {
+              setFeedTab(tab)
+              setActiveIndex(0)
+            }}
+          />
+        ) : null}
         {loading || awaitingTarget || (displayVideos.length === 0 && loadingMore) ? (
         <ReelsStatePanel>
           <Loader2 className="h-9 w-9 animate-spin text-blue-500" />

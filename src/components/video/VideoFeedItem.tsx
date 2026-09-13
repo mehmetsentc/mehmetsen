@@ -15,6 +15,15 @@ import { VideoOverlay } from './VideoOverlay'
 import { VideoCommentSheet } from './VideoCommentSheet'
 import type { VideoFeedItem as VideoFeedItemType } from '@/hooks/useVideoFeed'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import {
+  mediaCommand,
+  nextUserPaused,
+  shouldObserverRestartPlayback,
+  userPausedAfterDeactivate,
+  youtubeMuteFunc,
+  youtubePlayerFunc,
+} from '@/lib/videoFeed/playbackIntent'
+import { pauseOtherPageVideos, setActiveReelsAudioSink } from '@/lib/videoPlayback'
 
 const DOUBLE_TAP_MS = 300
 const SEEN_THRESHOLD_MS = 2_500
@@ -76,7 +85,8 @@ function VideoFeedItemInner({
   const { user } = useAuth()
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tapCountRef = useRef(0)
-  const { muted, toggleMuted } = useReelsAudio()
+  const { muted, reportPlayerMuted } = useReelsAudio()
+  const userPausedRef = useRef(false)
   const tier = useNetworkTier()
   const {
     isVideoLoaded,
@@ -179,32 +189,66 @@ function VideoFeedItemInner({
   }, [muted, isActive, video.id, virtualized])
 
   useEffect(() => {
+    if (virtualized || !isActive) {
+      setActiveReelsAudioSink(null)
+      return
+    }
+    setActiveReelsAudioSink((nextMuted) => {
+      const native = videoRef.current
+      if (native) native.muted = nextMuted
+      sendYTCmd(youtubeMuteFunc(nextMuted))
+    })
+    return () => setActiveReelsAudioSink(null)
+  }, [isActive, virtualized, sendYTCmd, video.id])
+
+  useEffect(() => {
     if (virtualized) return
     const el = videoRef.current
     if (!el) return
 
-    if (isActive) {
-      if (!wasLoadedBefore) el.currentTime = 0
-      el.muted = muted
-      // Sesli autoplay dene; tarayıcı engellerse sadece elementi sessizleştir.
-      // setMuted ÇAĞIRILMAZ — kullanıcı tercihi korunur, sonraki gesture'da sesli oynar.
-      el.play().catch(() => {
-        el.muted = true
-        el.play().catch(() => setPaused(true))
-      })
-      setPaused(false)
-      if (!viewedRef.current) {
-        viewedRef.current = true
-        onUpdate(video.id, { viewsCount: video.viewsCount + 1 })
-        postService.incrementViews(video.id).catch(() => {})
-      }
-    } else {
+    if (!isActive) {
+      userPausedRef.current = userPausedAfterDeactivate()
       el.pause()
       if (!wasLoadedBefore) el.currentTime = 0
       setPaused(false)
       seenMarkedRef.current = false
+      return
     }
-  }, [isActive, video.id, muted, onUpdate, video.viewsCount, wasLoadedBefore, virtualized])
+
+    if (
+      !shouldObserverRestartPlayback({
+        userPaused: userPausedRef.current,
+        isActive: true,
+        sameItem: true,
+      })
+    ) {
+      el.pause()
+      setPaused(true)
+      return
+    }
+
+    if (!wasLoadedBefore) el.currentTime = 0
+    pauseOtherPageVideos(el)
+    el.play().catch(() => {
+      el.muted = true
+      reportPlayerMuted(true)
+      el.play().catch(() => setPaused(true))
+    })
+    setPaused(false)
+    if (!viewedRef.current) {
+      viewedRef.current = true
+      onUpdate(video.id, { viewsCount: video.viewsCount + 1 })
+      postService.incrementViews(video.id).catch(() => {})
+    }
+  }, [
+    isActive,
+    video.id,
+    onUpdate,
+    video.viewsCount,
+    wasLoadedBefore,
+    virtualized,
+    reportPlayerMuted,
+  ])
 
   useEffect(() => {
     if (virtualized || !isActive) return
@@ -253,14 +297,19 @@ function VideoFeedItemInner({
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current
-    if (!el) return
-    if (el.paused) {
-      void el.play()
-      setPaused(false)
-    } else {
-      el.pause()
-      setPaused(true)
+    userPausedRef.current = nextUserPaused(userPausedRef.current)
+    if (el) {
+      if (userPausedRef.current) {
+        el.pause()
+        setPaused(true)
+      } else {
+        pauseOtherPageVideos(el)
+        void el.play()
+        setPaused(false)
+      }
+      return
     }
+    setPaused(userPausedRef.current)
   }, [])
 
   const triggerDoubleTapLike = useCallback(
@@ -305,7 +354,7 @@ function VideoFeedItemInner({
     const el = audioRef.current
     if (!el || !isAudioMode) return
     el.muted = muted
-    if (isActive && !paused) {
+    if (isActive && !paused && !userPausedRef.current) {
       el.play().catch(() => setPaused(true))
     } else {
       el.pause()
@@ -321,72 +370,66 @@ function VideoFeedItemInner({
   useEffect(() => {
     if (virtualized || !isYouTube) return
 
-    const muteCmd = muted ? 'mute' : 'unMute'
-
-    const playActive = () => {
+    const applyPlayback = () => {
       sendYTListening()
-      if (isActive) {
-        sendYTCmd('playVideo')
-        sendYTCmd(muteCmd)
-      } else {
-        sendYTCmd('pauseVideo')
-      }
+      const command = mediaCommand({
+        isActive,
+        userPaused: userPausedRef.current,
+        visible: isActive,
+      })
+      sendYTCmd(youtubePlayerFunc(command))
+      sendYTCmd(youtubeMuteFunc(muted))
     }
 
-    playActive()
+    applyPlayback()
 
     const handleMessage = (e: MessageEvent) => {
-      // Sadece BU iframe'den gelen mesajlar işlenir.
-      // Sayfada birden fazla YouTube iframe olduğunda (virtual window) tüm handleMessage
-      // callback'leri tüm mesajları alır → yanlış iframe'in onStateChange'i aktif
-      // videonun pause/play state'ini bozar (shaking + play butonu takılması).
       if (e.source !== iframeRef.current?.contentWindow) return
       if (e.origin !== YT_EMBED_ORIGIN && e.origin !== 'https://www.youtube.com') return
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
         if (!data) return
 
-        // Herhangi bir YouTube event'i → API bağlandı
         if (data?.event) setYtApiConnected(true)
 
-        // Player hazır olduğunda hemen oynat (veya duraklat)
         if (data?.event === 'onReady') {
-          playActive()
+          applyPlayback()
         }
 
-        // Sync UI pause state with actual player state (tap overlay relies on this).
         if (data?.event === 'onStateChange') {
           const state = typeof data.info === 'number' ? data.info : data.info?.playerState
+          if (userPausedRef.current) {
+            if (state === 1) sendYTCmd('pauseVideo')
+            setPaused(true)
+            return
+          }
           if (state === 1) setPaused(false)
           else if (state === 2 || state === 0) setPaused(true)
-          if (isActive) sendYTCmd(muteCmd)
+          if (isActive) sendYTCmd(youtubeMuteFunc(muted))
         }
 
-        // infoDelivery: video gerçekte oynuyor veya buffer'a aldı → paused=false yap.
-        // Neden '*' ile postMessage? YouTube iframe yüklenince origin değişebiliyor.
-        // Hedefli postMessage (YT_EMBED_ORIGIN) sessizce düşüyor → 'listening' ulaşmıyor
-        // → YouTube event göndermez → onStateChange hiç gelmez → siyah ekran.
-        // '*' ile gönderince listening ulaşıyor ve bu infoDelivery'ler dönüyor.
         if (data?.event === 'infoDelivery' && isActive) {
           const info = data.info
           const pState = info?.playerState
-          // 1=oynuyor, 3=buffer → her iki durumda da oynatma başladı say
+          if (userPausedRef.current) {
+            if (pState === 1 || pState === 3) sendYTCmd('pauseVideo')
+            setPaused(true)
+            if (typeof info?.muted === 'boolean') reportPlayerMuted(info.muted)
+            return
+          }
           if (pState === 1 || pState === 3) {
             setPaused(false)
           }
           if (typeof info?.currentTime === 'number' && info.currentTime > 0) {
-            setPaused(false)
             setLoading(false)
-            // Mute senkronizasyonu: YouTube'dan muted durumu gelirse React ile eşitle
             if (typeof info.muted === 'boolean') {
+              reportPlayerMuted(info.muted)
               if (info.muted && !muted) sendYTCmd('unMute')
               else if (!info.muted && muted) sendYTCmd('mute')
             }
           }
         }
 
-        // Embedding engeli tespiti:
-        // 101/150 = video sahibi embedding'i kapattı, 100 = video kaldırıldı
         if (data?.event === 'onError') {
           const code = typeof data.info === 'number' ? data.info : data.info?.errorCode
           if (code === 100 || code === 101 || code === 150) {
@@ -395,16 +438,13 @@ function VideoFeedItemInner({
             setLoading(false)
           }
         }
-
-        // playerState: -1/5=hazır, 0=bitti, 1=oynuyor, 2=duraklatıldı, 3=yüklüyor
       } catch { /* ignore */ }
     }
 
     window.addEventListener('message', handleMessage)
-    // Yeniden deneme: player henüz hazır değilse gecikmiş komutlar
-    const t1 = setTimeout(playActive, 600)
-    const t2 = setTimeout(playActive, 1500)
-    const t3 = setTimeout(playActive, 3000)
+    const t1 = setTimeout(applyPlayback, 600)
+    const t2 = setTimeout(applyPlayback, 1500)
+    const t3 = setTimeout(applyPlayback, 3000)
 
     return () => {
       window.removeEventListener('message', handleMessage)
@@ -412,7 +452,7 @@ function VideoFeedItemInner({
       clearTimeout(t2)
       clearTimeout(t3)
     }
-  }, [muted, isYouTube, isActive, virtualized, sendYTCmd, sendYTListening])
+  }, [muted, isYouTube, isActive, virtualized, sendYTCmd, sendYTListening, reportPlayerMuted])
 
   useEffect(() => {
     if (surface !== 'video' || !playbackError) return
@@ -425,11 +465,17 @@ function VideoFeedItemInner({
 
   // Video değiştiğinde YouTube player state sıfırla
   useEffect(() => {
+    if (!isActive) {
+      userPausedRef.current = userPausedAfterDeactivate()
+    }
+  }, [isActive, video.id])
+
+  useEffect(() => {
     setYtApiConnected(false)
     setPlaybackError(false)
+    userPausedRef.current = userPausedAfterDeactivate()
     if (isYouTube) {
       setPaused(true)
-      // Capacitor'da ytBlocked kalıcı true — iframe hiç yüklenmez
       setYtBlocked(!YOUTUBE_IFRAME_OK)
       setLoading(true)
     }
@@ -505,9 +551,11 @@ function VideoFeedItemInner({
             className="reels-video-card relative cursor-pointer select-none overflow-hidden bg-black"
             onClick={() => {
               if (paused) {
+                userPausedRef.current = false
                 audioRef.current?.play().catch(() => {})
                 setPaused(false)
               } else {
+                userPausedRef.current = true
                 audioRef.current?.pause()
                 setPaused(true)
               }
@@ -745,12 +793,14 @@ function VideoFeedItemInner({
                 allowFullScreen
                 onLoad={() => {
                   sendYTListening()
-                  if (isActive) {
-                    sendYTCmd('playVideo')
-                    sendYTCmd(muted ? 'mute' : 'unMute')
-                    // autoplay=1&mute=1 iframe başlayınca oynar — overlay'i hemen kaldır
-                    setPaused(false)
-                  }
+                  const command = mediaCommand({
+                    isActive,
+                    userPaused: userPausedRef.current,
+                    visible: isActive,
+                  })
+                  sendYTCmd(youtubePlayerFunc(command))
+                  sendYTCmd(youtubeMuteFunc(muted))
+                  setPaused(command === 'pause' || !isActive)
                   setLoading(false)
                 }}
               />
@@ -763,14 +813,15 @@ function VideoFeedItemInner({
                 className="absolute inset-0 z-[1]"
                 onClick={() => {
                   sendYTListening()
-                  if (paused) {
-                    sendYTCmd('playVideo')
-                    sendYTCmd(muted ? 'mute' : 'unMute')
-                    setPaused(false)
-                  } else {
-                    sendYTCmd('pauseVideo')
-                    setPaused(true)
-                  }
+                  userPausedRef.current = nextUserPaused(userPausedRef.current)
+                  const command = mediaCommand({
+                    isActive: true,
+                    userPaused: userPausedRef.current,
+                    visible: true,
+                  })
+                  sendYTCmd(youtubePlayerFunc(command))
+                  sendYTCmd(youtubeMuteFunc(muted))
+                  setPaused(command === 'pause')
                 }}
               />
 

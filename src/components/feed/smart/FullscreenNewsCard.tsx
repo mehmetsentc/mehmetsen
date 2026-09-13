@@ -17,6 +17,8 @@ import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
 import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
+import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
+import { SmartFeedCardVideo } from '@/components/feed/smart/SmartFeedCardVideo'
 import type { FeedItemDto } from '@/types/smartFeed'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
@@ -159,6 +161,7 @@ export function FullscreenNewsCard({
   onDiscoveryArticleOpen,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
+  const [videoError, setVideoError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
   const [typedHeadline, setTypedHeadline] = useState(item.headline)
@@ -175,7 +178,8 @@ export function FullscreenNewsCard({
   const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
-  const showVideo = Boolean(videoEnabled && item.video && isActive)
+  const playableVideo = resolveFeedCardVideo(item.video)
+  const showVideo = Boolean(videoEnabled && playableVideo && isActive && !videoError)
   const hasValidImage = Boolean(item.image && !imageError)
   const cat = categoryLabel(item.category)
   const timeLabel = formatRelativeTime(item.publishedAt)
@@ -193,6 +197,10 @@ export function FullscreenNewsCard({
   void skin.layout
   const isCenter = false
   const playMediaDolly = isActive && motionOk
+
+  useEffect(() => {
+    setVideoError(false)
+  }, [item.articleId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -383,23 +391,7 @@ export function FullscreenNewsCard({
         L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
       */}
       <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
-        {showVideo ? (
-          <video
-            key={`vid-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
-            src={item.video!}
-            className={cn(
-              'h-full w-full object-cover will-change-transform',
-              playMediaDolly
-                ? 'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
-                : 'scale-100'
-            )}
-            autoPlay
-            playsInline
-            muted
-            loop
-            aria-hidden
-          />
-        ) : hasValidImage ? (
+        {hasValidImage ? (
           <Image
             src={item.image!}
             alt=""
@@ -497,7 +489,6 @@ export function FullscreenNewsCard({
             <div
               className={cn(
                 'relative w-full overflow-hidden rounded-2xl',
-                /* Taller than 16:9 — primary visual; short phones cap via max-h */
                 'aspect-[4/3] max-h-[min(46dvh,100%)]',
                 'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
                 'bg-neutral-950',
@@ -524,6 +515,58 @@ export function FullscreenNewsCard({
                   typeof item.image === 'string' &&
                   (item.image.startsWith('http://') || item.image.startsWith('https://'))
                 }
+              />
+              {playableVideo ? (
+                <span
+                  className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white"
+                  data-testid="smart-feed-video-badge"
+                >
+                  Video
+                </span>
+              ) : null}
+              {showSwipeDiscoveryCoach ? (
+                <SwipeDiscoveryCoach
+                  active={isActive}
+                  articleId={item.articleId}
+                  suppressed={swipeDiscoverySuppressed}
+                  onCardNudge={setSwipeCoachNudgePx}
+                  onAffordanceActivate={onSwipeAffordanceActivate}
+                />
+              ) : null}
+            </div>
+          ) : showVideo ? (
+            <div
+              className={cn(
+                'relative w-full overflow-hidden rounded-2xl',
+                'aspect-[4/3] max-h-[min(46dvh,100%)]',
+                'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
+                'bg-neutral-950'
+              )}
+              data-testid="smart-feed-fg-hero"
+              style={{
+                borderColor:
+                  'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
+              }}
+            >
+              {hasValidImage ? (
+                <Image
+                  src={item.image!}
+                  alt=""
+                  fill
+                  draggable={false}
+                  className="object-cover object-center"
+                  sizes="(max-width: 768px) 100vw, 44rem"
+                  unoptimized={
+                    typeof item.image === 'string' &&
+                    (item.image.startsWith('http://') || item.image.startsWith('https://'))
+                  }
+                />
+              ) : null}
+              <SmartFeedCardVideo
+                url={item.video!}
+                isActive={isActive}
+                poster={item.image}
+                onUnusable={() => setVideoError(true)}
               />
               {showSwipeDiscoveryCoach ? (
                 <SwipeDiscoveryCoach
