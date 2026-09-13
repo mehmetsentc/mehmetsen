@@ -146,3 +146,99 @@ export function serializeCorsXml(rules: PublicCorsRule[]): string {
     .join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>\n<CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">\n${body}\n</CORSConfiguration>\n`
 }
+
+/** Allowlisted S3 <Code> values. Anything else is collapsed so Message/ARN never leak. */
+const S3_CORS_ERROR_CODES = new Set([
+  'AccessDenied',
+  'AccessForbidden',
+  'ExpiredToken',
+  'InternalError',
+  'InvalidArgument',
+  'InvalidRequest',
+  'MalformedXML',
+  'NoSuchBucket',
+  'NoSuchCORSConfiguration',
+  'NotImplemented',
+  'RequestTimeTooSkewed',
+  'ServiceUnavailable',
+  'SignatureDoesNotMatch',
+])
+
+const UNSAFE_DIAGNOSTIC_TOKEN = /secret|access[_-]?key|credential|authorization|aws4|r2_account/i
+
+export type CorsErrorClass =
+  | 'Permission'
+  | 'Signature'
+  | 'Schema'
+  | 'NotFound'
+  | 'Unavailable'
+  | 'Unknown'
+
+export type SafeCorsError = {
+  code: string
+  httpStatus: number
+  errorClass: CorsErrorClass
+  safeMessage: string
+}
+
+function extractS3Code(xml: string): string | null {
+  const match = /<Code>([A-Za-z0-9]+)<\/Code>/i.exec(xml)
+  if (!match) return null
+  const code = match[1]
+  if (!S3_CORS_ERROR_CODES.has(code)) return null
+  if (UNSAFE_DIAGNOSTIC_TOKEN.test(code)) return null
+  return code
+}
+
+function errorClassFor(status: number, code: string | null): CorsErrorClass {
+  if (code === 'SignatureDoesNotMatch' || code === 'RequestTimeTooSkewed') return 'Signature'
+  if (code === 'MalformedXML' || code === 'InvalidArgument' || code === 'InvalidRequest') return 'Schema'
+  if (code === 'NoSuchBucket' || status === 404) return 'NotFound'
+  if (code === 'NotImplemented' || status >= 500) return 'Unavailable'
+  if (status === 401 || status === 403 || code === 'AccessDenied' || code === 'AccessForbidden' || code === 'ExpiredToken') {
+    return 'Permission'
+  }
+  return 'Unknown'
+}
+
+function safeMessageFor(errorClass: CorsErrorClass): string {
+  switch (errorClass) {
+    case 'Permission':
+      return 'Object-scope R2 token cannot manage bucket CORS. Admin Read and Write is required, or set CORS in the Cloudflare dashboard.'
+    case 'Signature':
+      return 'S3 signature mismatch on the bucket CORS call.'
+    case 'Schema':
+      return 'R2 rejected the CORS document.'
+    case 'NotFound':
+      return 'R2 bucket was not found.'
+    case 'Unavailable':
+      return 'R2 CORS API was unavailable.'
+    default:
+      return 'Bucket CORS call failed.'
+  }
+}
+
+export function classifyCorsS3Error(httpStatus: number, xmlOrText: string | null): SafeCorsError {
+  const code = xmlOrText ? extractS3Code(xmlOrText) : null
+  const errorClass = errorClassFor(httpStatus, code)
+  return {
+    code: code ?? `HTTP_${httpStatus}`,
+    httpStatus,
+    errorClass,
+    safeMessage: safeMessageFor(errorClass),
+  }
+}
+
+export function classifyThrownCorsError(err: unknown): SafeCorsError {
+  const message = err instanceof Error ? err.message : ''
+  const statusMatch = /R2_CORS_(?:GET|PUT)_FAILED_(\d{3})$/.exec(message)
+  if (statusMatch) {
+    return classifyCorsS3Error(Number(statusMatch[1]), null)
+  }
+  return {
+    code: 'HTTP_0',
+    httpStatus: 0,
+    errorClass: 'Unknown',
+    safeMessage: 'Bucket CORS call failed.',
+  }
+}

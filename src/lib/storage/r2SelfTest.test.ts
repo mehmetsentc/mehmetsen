@@ -296,13 +296,124 @@ describe('V1C.1R5 CORS apply', () => {
         stored = xml
       },
     }
-    const { applyPlaybackCors } = await import('./r2SelfTest')
+    const { applyPlaybackCors, assertSafeDiagnosticJson } = await import('./r2SelfTest')
     const result = await applyPlaybackCors({ configured: true, cors })
     expect(result.apply).toBe('PASS')
+    expect(result.changed).toBe(true)
     expect(result.before).toHaveLength(1)
     expect(result.after?.map((rule) => rule.origins).flat()).toEqual([
       'https://publisher.example',
       'https://www.nahaber.com',
     ])
+    expect(JSON.stringify(result)).not.toContain('*')
+    expect(() => assertSafeDiagnosticJson(result)).not.toThrow()
+  })
+
+  it('applies onto empty existing CORS', async () => {
+    let stored: string | null = null
+    let puts = 0
+    const cors = {
+      async getBucketCors() {
+        return { status: stored ? 200 : 404, xml: stored }
+      },
+      async putBucketCors(xml: string) {
+        puts += 1
+        stored = xml
+      },
+    }
+    const { applyPlaybackCors } = await import('./r2SelfTest')
+    const result = await applyPlaybackCors({ configured: true, cors })
+    expect(puts).toBe(1)
+    expect(result.apply).toBe('PASS')
+    expect(result.changed).toBe(true)
+    expect(result.before).toEqual([])
+    expect(result.after?.[0]?.origins).toEqual(['https://www.nahaber.com'])
+  })
+
+  it('is idempotent when playback CORS already matches', async () => {
+    const { playbackCorsTemplate, serializeCorsXml } = await import('./r2Cors')
+    const stored = serializeCorsXml([playbackCorsTemplate()])
+    let puts = 0
+    const cors = {
+      async getBucketCors() {
+        return { status: 200, xml: stored }
+      },
+      async putBucketCors() {
+        puts += 1
+      },
+    }
+    const { applyPlaybackCors } = await import('./r2SelfTest')
+    const result = await applyPlaybackCors({ configured: true, cors })
+    expect(puts).toBe(0)
+    expect(result.apply).toBe('PASS')
+    expect(result.changed).toBe(false)
+    expect(result.after).toHaveLength(1)
+  })
+
+  it('does not claim changed=true when PutBucketCors fails', async () => {
+    const existing =
+      '<CORSConfiguration><CORSRule><AllowedOrigin>https://publisher.example</AllowedOrigin><AllowedMethod>GET</AllowedMethod></CORSRule></CORSConfiguration>'
+    const cors = {
+      async getBucketCors() {
+        return { status: 200, xml: existing }
+      },
+      async putBucketCors() {
+        return {
+          ok: false as const,
+          status: 403,
+          error: {
+            code: 'AccessDenied',
+            httpStatus: 403,
+            errorClass: 'Permission' as const,
+            safeMessage:
+              'Object-scope R2 token cannot manage bucket CORS. Admin Read and Write is required, or set CORS in the Cloudflare dashboard.',
+          },
+        }
+      },
+    }
+    const { applyPlaybackCors, assertSafeDiagnosticJson } = await import('./r2SelfTest')
+    const result = await applyPlaybackCors({ configured: true, cors })
+    expect(result.inspect).toBe('PASS')
+    expect(result.apply).toBe('FAIL')
+    expect(result.changed).toBe(false)
+    expect(result.after).toBeNull()
+    expect(result.before[0]?.origins).toEqual(['https://publisher.example'])
+    expect(result.applyError?.code).toBe('AccessDenied')
+    expect(result.applyError?.httpStatus).toBe(403)
+    expect(() => assertSafeDiagnosticJson(result)).not.toThrow()
+  })
+
+  it('surfaces sanitized inspectError when GetBucketCors is denied', async () => {
+    const cors = {
+      async getBucketCors() {
+        return {
+          status: 403,
+          xml: null,
+          error: {
+            code: 'AccessDenied',
+            httpStatus: 403,
+            errorClass: 'Permission' as const,
+            safeMessage:
+              'Object-scope R2 token cannot manage bucket CORS. Admin Read and Write is required, or set CORS in the Cloudflare dashboard.',
+          },
+        }
+      },
+      async putBucketCors() {
+        throw new Error('put should not run')
+      },
+    }
+    const { inspectR2Cors, applyPlaybackCors, assertSafeDiagnosticJson } = await import('./r2SelfTest')
+    const inspect = await inspectR2Cors({ configured: true, cors })
+    expect(inspect.inspect).toBe('FAIL')
+    expect(inspect.changed).toBe(false)
+    expect(inspect.inspectError?.errorClass).toBe('Permission')
+    expect(() => assertSafeDiagnosticJson(inspect)).not.toThrow()
+
+    const apply = await applyPlaybackCors({ configured: true, cors })
+    expect(apply.apply).toBe('FAIL')
+    expect(apply.changed).toBe(false)
+    expect(apply.after).toBeNull()
+    expect(apply.applyError?.httpStatus).toBe(403)
+    expect(() => assertSafeDiagnosticJson(apply)).not.toThrow()
   })
 })

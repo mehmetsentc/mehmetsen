@@ -14,8 +14,13 @@ import {
   POSTER_WEBP_BASE64,
   fixtureBytes,
 } from './r2SelfTestFixtures'
-import type { PublicCorsRule } from './r2Cors'
-import { mergePlaybackCors, parseCorsXml, serializeCorsXml } from './r2Cors'
+import type { PublicCorsRule, SafeCorsError } from './r2Cors'
+import {
+  classifyThrownCorsError,
+  mergePlaybackCors,
+  parseCorsXml,
+  serializeCorsXml,
+} from './r2Cors'
 
 export type CheckResult = 'PASS' | 'FAIL' | 'SKIP'
 
@@ -602,8 +607,10 @@ export async function cleanupR2SelfTest(
 }
 
 export type CorsBucket = {
-  getBucketCors: () => Promise<{ status: number; xml: string | null }>
-  putBucketCors: (xml: string) => Promise<void>
+  getBucketCors: () => Promise<{ status: number; xml: string | null; error?: SafeCorsError | null }>
+  putBucketCors: (
+    xml: string,
+  ) => Promise<void | { ok?: boolean; status?: number; error?: SafeCorsError | null }>
 }
 
 export type R2CorsInspectResult = {
@@ -615,10 +622,31 @@ export type R2CorsInspectResult = {
   wildcardPresent: boolean
   before: PublicCorsRule[]
   after: PublicCorsRule[] | null
+  inspectError: SafeCorsError | null
+  applyError: SafeCorsError | null
 }
 
 function corsBucket(deps: { cors?: CorsBucket }): CorsBucket {
   return deps.cors ?? new R2StorageProvider()
+}
+
+function emptyCorsResult(
+  action: R2CorsInspectResult['action'],
+  partial: Partial<R2CorsInspectResult> = {},
+): R2CorsInspectResult {
+  return {
+    action,
+    configured: false,
+    inspect: 'SKIP',
+    apply: 'SKIP',
+    changed: false,
+    wildcardPresent: false,
+    before: [],
+    after: null,
+    inspectError: null,
+    applyError: null,
+    ...partial,
+  }
 }
 
 export async function inspectR2Cors(deps: {
@@ -627,20 +655,18 @@ export async function inspectR2Cors(deps: {
 } = {}): Promise<R2CorsInspectResult> {
   const configured = deps.configured ?? isR2Configured()
   if (!configured) {
-    return {
-      action: 'cors-inspect',
-      configured: false,
-      inspect: 'SKIP',
-      apply: 'SKIP',
-      changed: false,
-      wildcardPresent: false,
-      before: [],
-      after: null,
-    }
+    return emptyCorsResult('cors-inspect')
   }
   try {
-    const { xml } = await corsBucket(deps).getBucketCors()
-    const before = parseCorsXml(xml)
+    const got = await corsBucket(deps).getBucketCors()
+    if (got.error) {
+      return emptyCorsResult('cors-inspect', {
+        configured: true,
+        inspect: 'FAIL',
+        inspectError: got.error,
+      })
+    }
+    const before = parseCorsXml(got.xml)
     const merged = mergePlaybackCors(before)
     return {
       action: 'cors-inspect',
@@ -651,18 +677,15 @@ export async function inspectR2Cors(deps: {
       wildcardPresent: merged.wildcardPresent,
       before,
       after: merged.rules,
+      inspectError: null,
+      applyError: null,
     }
-  } catch {
-    return {
-      action: 'cors-inspect',
+  } catch (err) {
+    return emptyCorsResult('cors-inspect', {
       configured: true,
       inspect: 'FAIL',
-      apply: 'SKIP',
-      changed: false,
-      wildcardPresent: false,
-      before: [],
-      after: null,
-    }
+      inspectError: classifyThrownCorsError(err),
+    })
   }
 }
 
@@ -672,22 +695,25 @@ export async function applyPlaybackCors(deps: {
 } = {}): Promise<R2CorsInspectResult> {
   const configured = deps.configured ?? isR2Configured()
   if (!configured) {
-    return {
-      action: 'cors-apply',
-      configured: false,
-      inspect: 'SKIP',
-      apply: 'SKIP',
-      changed: false,
-      wildcardPresent: false,
-      before: [],
-      after: null,
-    }
+    return emptyCorsResult('cors-apply')
   }
 
   const bucket = corsBucket(deps)
+  let before: PublicCorsRule[] = []
+  let inspectPassed = false
   try {
-    const { xml } = await bucket.getBucketCors()
-    const before = parseCorsXml(xml)
+    const got = await bucket.getBucketCors()
+    if (got.error) {
+      return emptyCorsResult('cors-apply', {
+        configured: true,
+        inspect: 'FAIL',
+        apply: 'FAIL',
+        inspectError: got.error,
+        applyError: got.error,
+      })
+    }
+    before = parseCorsXml(got.xml)
+    inspectPassed = true
     const merged = mergePlaybackCors(before)
 
     if (!merged.changed) {
@@ -700,10 +726,27 @@ export async function applyPlaybackCors(deps: {
         wildcardPresent: merged.wildcardPresent,
         before,
         after: merged.rules,
+        inspectError: null,
+        applyError: null,
       }
     }
 
-    await bucket.putBucketCors(serializeCorsXml(merged.rules))
+    const put = await bucket.putBucketCors(serializeCorsXml(merged.rules))
+    if (put && put.ok === false) {
+      return {
+        action: 'cors-apply',
+        configured: true,
+        inspect: 'PASS',
+        apply: 'FAIL',
+        changed: false,
+        wildcardPresent: merged.wildcardPresent,
+        before,
+        after: null,
+        inspectError: null,
+        applyError: put.error ?? classifyThrownCorsError(new Error(`R2_CORS_PUT_FAILED_${put.status ?? 0}`)),
+      }
+    }
+
     const verified = parseCorsXml((await bucket.getBucketCors()).xml)
     const originOk = verifiedHasPlaybackOrigin(verified)
     return {
@@ -715,17 +758,29 @@ export async function applyPlaybackCors(deps: {
       wildcardPresent: merged.wildcardPresent,
       before,
       after: verified,
+      inspectError: null,
+      applyError: originOk
+        ? null
+        : {
+            code: 'HTTP_200',
+            httpStatus: 200,
+            errorClass: 'Schema',
+            safeMessage: 'R2 rejected the CORS document.',
+          },
     }
-  } catch {
+  } catch (err) {
+    const thrown = classifyThrownCorsError(err)
     return {
       action: 'cors-apply',
       configured: true,
-      inspect: 'FAIL',
+      inspect: inspectPassed ? 'PASS' : 'FAIL',
       apply: 'FAIL',
       changed: false,
       wildcardPresent: false,
-      before: [],
+      before,
       after: null,
+      inspectError: inspectPassed ? null : thrown,
+      applyError: thrown,
     }
   }
 }

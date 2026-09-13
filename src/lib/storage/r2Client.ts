@@ -10,6 +10,7 @@
  */
 
 import type { StorageProvider, StorageObject, StorageUploadOptions } from './types'
+import { classifyCorsS3Error, type SafeCorsError } from './r2Cors'
 
 function getR2Config() {
   const accountId = process.env.R2_ACCOUNT_ID
@@ -163,21 +164,22 @@ export class R2StorageProvider implements StorageProvider {
   }
 
   /** S3 GetBucketCors — bucket policy only, no object listing. */
-  async getBucketCors(): Promise<{ status: number; xml: string | null }> {
+  async getBucketCors(): Promise<{ status: number; xml: string | null; error: SafeCorsError | null }> {
     const config = getR2Config()
     const endpoint = getEndpoint(config.accountId)
     const url = `${endpoint}/${config.bucket}?cors`
     const signedHeaders = await signRequest('GET', url, {}, config)
     const res = await fetch(url, { method: 'GET', headers: signedHeaders })
-    if (res.status === 404) return { status: 404, xml: null }
+    const body = await res.text()
+    if (res.status === 404) return { status: 404, xml: null, error: null }
     if (!res.ok) {
-      throw new Error(`R2_CORS_GET_FAILED_${res.status}`)
+      return { status: res.status, xml: null, error: classifyCorsS3Error(res.status, body) }
     }
-    return { status: res.status, xml: await res.text() }
+    return { status: res.status, xml: body, error: null }
   }
 
   /** S3 PutBucketCors — replaces the full CORS document. Caller must merge first. */
-  async putBucketCors(xml: string): Promise<void> {
+  async putBucketCors(xml: string): Promise<{ ok: boolean; status: number; error: SafeCorsError | null }> {
     const config = getR2Config()
     const endpoint = getEndpoint(config.accountId)
     const url = `${endpoint}/${config.bucket}?cors`
@@ -189,7 +191,8 @@ export class R2StorageProvider implements StorageProvider {
       body: xml,
     })
     if (!res.ok) {
-      throw new Error(`R2_CORS_PUT_FAILED_${res.status}`)
+      return { ok: false, status: res.status, error: classifyCorsS3Error(res.status, await res.text()) }
     }
+    return { ok: true, status: res.status, error: null }
   }
 }
