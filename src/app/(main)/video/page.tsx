@@ -19,8 +19,8 @@ export const metadata: Metadata = {
 
 export default function VideoPage() {
   return (
-    <div className="dark min-h-[100dvh] bg-black" style={{ colorScheme: 'dark' }}>
-      <div className="relative mx-auto min-h-[min(100dvh,920px)] w-full bg-black">
+    <div className="dark h-full min-h-0 w-full bg-black" style={{ colorScheme: 'dark' }}>
+      <div className="relative h-full min-h-0 w-full bg-black">
         <ReelsLoader surface="video" />
       </div>
     </div>

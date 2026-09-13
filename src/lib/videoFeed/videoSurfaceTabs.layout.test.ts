@@ -42,10 +42,25 @@ describe('VF2.2 video tabs sit on the player column', () => {
     expect(feed).not.toMatch(/reels-feed w-full/)
   })
 
-  it('/video page does not cage the player+rail in max-w-lg', () => {
+  it('/video page fills the shell instead of stacking min-h 100dvh black bands', () => {
     const page = read('src/app/(main)/video/page.tsx')
     expect(page).not.toContain('max-w-lg')
-    expect(page).toContain('w-full')
+    expect(page).not.toContain('min-h-[100dvh]')
+    expect(page).not.toContain('min-h-[min(100dvh,920px)]')
+    expect(page).toContain('h-full min-h-0 w-full')
+    const client = read('src/components/video/ReelsPageClient.tsx')
+    expect(client).toContain('h-full min-h-0')
+    expect(client).not.toContain('min-h-screen')
+  })
+
+  it('immersive /video clears phantom chrome offset so the player can fill 100dvh', () => {
+    const layout = read('src/components/layout/MainLayoutClient.tsx')
+    expect(layout).toContain("data-immersive-video")
+    expect(layout).toContain("setAttribute('data-immersive-video', '1')")
+    const css = read('src/app/globals.css')
+    expect(css).toContain("html[data-immersive-video='1']")
+    expect(css).toContain('--mobile-top-chrome-offset: 0px')
+    expect(css).toContain('--reels-viewport-h: 100dvh')
   })
 
   it('tab container center equals video column center, independent of rail', () => {

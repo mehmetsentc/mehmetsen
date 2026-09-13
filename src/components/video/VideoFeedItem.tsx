@@ -25,6 +25,10 @@ import {
   youtubePlayerFunc,
 } from '@/lib/videoFeed/playbackIntent'
 import { isRealBrowser } from '@/lib/videoFeed/youtubeEmbedAllowlist'
+import {
+  youtubeEmbedParentOrigin,
+  youtubeEmbedSrc,
+} from '@/lib/videoFeed/youtubeEmbedOrigin'
 import { pauseOtherPageVideos, setActiveReelsAudioSink } from '@/lib/videoPlayback'
 
 const DOUBLE_TAP_MS = 300
@@ -712,14 +716,9 @@ function VideoFeedItemInner({
     const videoId = youtubeVideoId
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
 
-    // youtube-nocookie.com: gizlilik modu + iOS WebKit'te postMessage daha güvenilir
-    // autoplay=1 + mute=1: browser autoplay politikasını bypass eder (sesli → postMessage ile aç)
-    // Tek sabit src — key değişmez, iframe yeniden yüklenmez.
-    // Oynatma/durdurma postMessage (playVideo/pauseVideo) ile yönetilir.
-    // origin=https://nahaber.com hardcoded: Capacitor WebView'da window.location.origin
-    // "capacitor://localhost" döner, YouTube bunu bot olarak algılar → oturum açma overlay'i.
-    const baseEmbed = `https://www.youtube-nocookie.com/embed/${videoId}`
-    const embedSrc = `${baseEmbed}?autoplay=1&mute=1&loop=1&playlist=${videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=https://nahaber.com`
+    // origin must match the parent page or pause/unMute postMessage is ignored.
+    const embedOrigin = youtubeEmbedParentOrigin()
+    const embedSrc = youtubeEmbedSrc(videoId, embedOrigin)
 
     const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl
       ?? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`

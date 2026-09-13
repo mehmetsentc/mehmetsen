@@ -108,6 +108,16 @@ const LayoutShell = memo(function LayoutShell({
   const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
   const globalNavV2 = isGlobalNavV2Active()
+  const immersiveVideo = isImmersiveVideoPathname(pathname)
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (immersiveVideo) root.setAttribute('data-immersive-video', '1')
+    else root.removeAttribute('data-immersive-video')
+    return () => {
+      root.removeAttribute('data-immersive-video')
+    }
+  }, [immersiveVideo])
 
   return (
     <ContextRailSlotProvider>
@@ -117,6 +127,7 @@ const LayoutShell = memo(function LayoutShell({
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}
       data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
+      data-immersive-video={immersiveVideo ? '1' : '0'}
       data-header-bleed="0"
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}

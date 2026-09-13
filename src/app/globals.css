@@ -2849,6 +2849,58 @@
     @apply min-h-[100dvh] gap-0 px-[var(--layout-gutter)] py-3;
   }
 
+  /*
+   * /video and /reels hide site Navbar, but the feed-v2 chrome offset
+   * (sat + 7.25rem) still applied — leaving a large black empty band.
+   * Immersive video fills the visual viewport; player height = 100dvh.
+   */
+  html[data-immersive-video='1'] {
+    --mobile-top-chrome-offset: 0px;
+    --reels-viewport-h: 100dvh;
+  }
+
+  html[data-platform='mobile'][data-immersive-video='1'],
+  html[data-platform='tablet'][data-immersive-video='1'] {
+    --reels-video-w: 100%;
+    --reels-viewport-h: 100dvh;
+  }
+
+  html[data-immersive-video='1'] .content-stage-reels {
+    padding: 0;
+    min-height: 0;
+  }
+
+  html[data-immersive-video='1'] .content-main-reels {
+    --feed-card-h: 100dvh;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  html[data-immersive-video='1'] .reels-page,
+  html[data-immersive-video='1'] .reels-layout,
+  html[data-immersive-video='1'] .reels-scroll-container {
+    height: 100%;
+    min-height: 0;
+    max-width: none;
+  }
+
+  html[data-platform='mobile'][data-immersive-video='1'] .reels-player-wrap,
+  html[data-platform='tablet'][data-immersive-video='1'] .reels-player-wrap,
+  html[data-platform='mobile'][data-immersive-video='1'] .reels-layout > .reels-player-wrap,
+  html[data-platform='tablet'][data-immersive-video='1'] .reels-layout > .reels-player-wrap {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  html[data-immersive-video='1'] .reels-slide,
+  html[data-immersive-video='1'] .reels-video-card {
+    height: var(--reels-viewport-h);
+    min-height: 0;
+  }
+
   @media (min-width: 1280px) {
     html[data-platform='desktop'] .content-stage-reels {
       @apply items-center;

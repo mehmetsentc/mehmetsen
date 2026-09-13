@@ -12,6 +12,7 @@ import {
   youtubeCommandPayload,
   youtubePlayerFunc,
 } from '@/lib/videoFeed/playbackIntent'
+import { youtubeEmbedParentOrigin, youtubeEmbedSrc } from '@/lib/videoFeed/youtubeEmbedOrigin'
 import { pauseOtherPageVideos } from '@/lib/videoPlayback'
 
 const FEED_AUDIO_KEY = 'nahaber-feed-v2-preferred-unmuted'
@@ -229,7 +230,7 @@ export function SmartFeedCardVideo({
 
   const embedSrc =
     resolved.kind === 'youtube'
-      ? `https://www.youtube-nocookie.com/embed/${resolved.videoId}?autoplay=1&mute=1&loop=1&playlist=${resolved.videoId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=https://nahaber.com`
+      ? youtubeEmbedSrc(resolved.videoId, youtubeEmbedParentOrigin())
       : resolved.kind === 'vimeo'
         ? `https://player.vimeo.com/video/${resolved.videoId}?autoplay=1&muted=1&loop=1&playsinline=1`
         : resolved.kind === 'dailymotion'
