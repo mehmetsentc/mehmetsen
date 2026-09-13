@@ -15,6 +15,7 @@ import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import { nativePreloadRoleFor } from '@/lib/videoFeed/nativePreloadPolicy'
 import type { ReelsFeedTab } from '@/components/video/ReelsFeedTabs'
 
 function ReelsStatePanel({
@@ -252,6 +253,8 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
                 index={index}
                 isActive={playbackEnabled && index === activeIndex}
                 isNext={index === activeIndex + 1}
+                mediaRole={nativePreloadRoleFor(index, activeIndex)}
+                swipeGeneration={activeIndex}
                 setItemRef={setItemRef}
                 onUpdate={updateVideo}
                 virtualized={!inWindow}

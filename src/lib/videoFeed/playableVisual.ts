@@ -94,6 +94,11 @@ function isSupportedVisualNativeUrl(url: string): boolean {
   return isOwnedNativeVideoUrl(url)
 }
 
+/** Owned R2/Firebase/nahaber file URL that the native <video> path may load. HLS stays rejected. */
+export function isPlayableOwnedNativeUrl(url: string): boolean {
+  return isSupportedVisualNativeUrl(url)
+}
+
 function isSupportedEmbedUrl(url: string): boolean {
   if (isHlsUrl(url)) return false
   if (isDirectVisualFile(url) && !isOwnedNativeVideoUrl(url)) return false

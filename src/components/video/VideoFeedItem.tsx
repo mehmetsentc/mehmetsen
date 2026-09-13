@@ -7,7 +7,7 @@ import { markReelSeen } from '@/lib/reelsSeen'
 import { postService } from '@/services/postService'
 import { useAuth } from '@/hooks/useAuth'
 import { useReelsAudio } from '@/store/reelsAudioContext'
-import { useNetworkTier, videoPreloadForTier } from '@/store/networkContext'
+import { useNetworkTier } from '@/store/networkContext'
 import { useAppState } from '@/store/appStateContext'
 import { useLike } from '@/hooks/useLike'
 import { VideoActions } from './VideoActions'
@@ -30,6 +30,13 @@ import {
   youtubeEmbedSrc,
 } from '@/lib/videoFeed/youtubeEmbedOrigin'
 import { pauseOtherPageVideos, setActiveReelsAudioSink } from '@/lib/videoPlayback'
+import { selectOwnedNativePlayback } from '@/lib/videoFeed/ownedNativePlayback'
+import {
+  abortDetachedNativeVideo,
+  nativeMediaPolicyFor,
+  type NativePreloadRole,
+  warmupOwnedNativeMedia,
+} from '@/lib/videoFeed/nativePreloadPolicy'
 
 const DOUBLE_TAP_MS = 300
 const SEEN_THRESHOLD_MS = 2_500
@@ -44,6 +51,10 @@ interface VideoFeedItemProps {
   isActive: boolean
   /** True for the item immediately after the active one — triggers preload */
   isNext?: boolean
+  /** Render-window role; media attach/preload is derived from this, not from mount alone. */
+  mediaRole?: NativePreloadRole
+  /** Swipe generation (active index). Stale next warmup aborts when this changes. */
+  swipeGeneration?: number
   index: number
   setItemRef: (index: number, el: HTMLDivElement | null) => void
   onUpdate: (postId: string, patch: Partial<VideoFeedItemType>) => void
@@ -57,6 +68,8 @@ function VideoFeedItemInner({
   video,
   isActive,
   isNext = false,
+  mediaRole,
+  swipeGeneration = 0,
   index,
   setItemRef,
   onUpdate,
@@ -114,6 +127,23 @@ function VideoFeedItemInner({
   )
   const isYouTube = Boolean(youtubeVideoId)
 
+  const ownedNative = useMemo(
+    () =>
+      selectOwnedNativePlayback({
+        playbackUrl: (video as { playbackUrl?: string | null }).playbackUrl,
+        videoUrl: (video as { videoUrl?: string | null }).videoUrl,
+        videoEmbedUrl: (video as { videoEmbedUrl?: string | null }).videoEmbedUrl,
+        mediaItems: video.mediaItems,
+      }),
+    [video]
+  )
+  const mediaRoleResolved: NativePreloadRole =
+    mediaRole ?? (isActive ? 'current' : isNext ? 'next' : 'other')
+  const nativePolicy = nativeMediaPolicyFor(mediaRoleResolved, tier)
+  const nativeSrc = ownedNative.status === 'none' ? undefined : ownedNative.url
+  const swipeGenerationRef = useRef(swipeGeneration)
+  swipeGenerationRef.current = swipeGeneration
+
   // Audio-only mode: AI-generated news audio without video file
   const audioUrl = (video as VideoFeedItemType & { audioUrl?: string }).audioUrl
   const isAudioMode = !stableSrc && Boolean(audioUrl)
@@ -121,15 +151,7 @@ function VideoFeedItemInner({
 
   const wasLoadedBefore = isVideoLoaded(video.id) || Boolean(stableSrc && hasMediaBeenFetched(stableSrc))
 
-  const preload = useMemo((): 'none' | 'metadata' | 'auto' => {
-    if (wasLoadedBefore || (stableSrc && hasMediaBeenFetched(stableSrc))) {
-      return 'auto'
-    }
-    if (isActive) return videoPreloadForTier(tier, true)
-    // Sıradaki video: yavaş bağlantıda metadata, diğerlerinde tam buffer
-    if (isNext) return tier === 'low' ? 'metadata' : 'auto'
-    return 'none'
-  }, [wasLoadedBefore, stableSrc, tier, isActive, isNext, hasMediaBeenFetched])
+  const preload = nativePolicy.preload
 
   const refCallback = useCallback(
     (el: HTMLDivElement | null) => setItemRef(index, el),
@@ -162,12 +184,13 @@ function VideoFeedItemInner({
   // ── All hooks MUST be declared before any conditional return (Rules of Hooks) ──
 
   const handleMediaReady = useCallback(() => {
-    if (stableSrc) {
-      markMediaFetched(stableSrc)
-      markVideoLoaded(video.id, stableSrc)
+    const readySrc = nativeSrc ?? stableSrc
+    if (readySrc) {
+      markMediaFetched(readySrc)
+      markVideoLoaded(video.id, readySrc)
     }
     setLoading(false)
-  }, [stableSrc, markMediaFetched, markVideoLoaded, video.id])
+  }, [nativeSrc, stableSrc, markMediaFetched, markVideoLoaded, video.id])
 
   useEffect(() => {
     if (virtualized) return
@@ -496,6 +519,33 @@ function VideoFeedItemInner({
   useEffect(() => {
     if (surface === 'video' && isAudioMode) setPlaybackError(true)
   }, [surface, isAudioMode])
+
+  useEffect(() => {
+    if (virtualized || isYouTube || isAudioMode) return
+    if (nativePolicy.attachSrc) return
+    abortDetachedNativeVideo(videoRef.current)
+  }, [virtualized, isYouTube, isAudioMode, nativePolicy.attachSrc, video.id])
+
+  useEffect(() => {
+    if (virtualized || isYouTube || isAudioMode) return
+    if (mediaRoleResolved !== 'next' || nativePolicy.warmupBytes <= 0 || !nativeSrc) return
+    const generation = swipeGeneration
+    const ac = new AbortController()
+    void warmupOwnedNativeMedia(nativeSrc, {
+      signal: ac.signal,
+      generation,
+      currentGeneration: () => swipeGenerationRef.current,
+    })
+    return () => ac.abort()
+  }, [
+    virtualized,
+    isYouTube,
+    isAudioMode,
+    mediaRoleResolved,
+    nativePolicy.warmupBytes,
+    nativeSrc,
+    swipeGeneration,
+  ])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
   // IMPORTANT: this return must come AFTER ALL hooks above — Rules of Hooks.
@@ -885,12 +935,14 @@ function VideoFeedItemInner({
             alt=""
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover object-center"
+            fetchPriority={nativePolicy.posterFetchPriority}
           />
         )}
 
+        {nativeSrc && nativePolicy.attachSrc ? (
         <video
           ref={videoRef}
-          src={stableSrc}
+          src={nativeSrc}
           poster={media?.thumbnailUrl ?? undefined}
           className="reels-video"
           loop
@@ -912,8 +964,9 @@ function VideoFeedItemInner({
           }}
           onClick={handleVideoTap}
         />
+        ) : null}
 
-        {playbackError && (
+        {(playbackError || !nativeSrc) && (
           <div className="absolute inset-0 z-[6] flex items-center justify-center bg-black/35">
             <span className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-bold text-gray-900 shadow">
               Video kullanılamıyor

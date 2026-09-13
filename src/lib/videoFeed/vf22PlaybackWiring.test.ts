@@ -36,6 +36,18 @@ describe('VF2.2R player pause/sound wiring', () => {
     expect(actions).toContain('effectiveMuted')
   })
 
+  it('native owned path uses role policy instead of preload=auto on inactive slides', () => {
+    const src = read('src/components/video/VideoFeedItem.tsx')
+    expect(src).toContain('nativeMediaPolicyFor')
+    expect(src).toContain('selectOwnedNativePlayback')
+    expect(src).toContain('warmupOwnedNativeMedia')
+    expect(src).toContain('abortDetachedNativeVideo')
+    expect(src).not.toContain('wasLoadedBefore || (stableSrc && hasMediaBeenFetched(stableSrc))')
+    const feed = read('src/components/video/VideoFeed.tsx')
+    expect(feed).toContain('nativePreloadRoleFor')
+    expect(feed).toContain('windowEnd = activeIndex + 3')
+  })
+
   it('SmartFeedCardVideo uses the same YouTube args array + unmute volume commands', () => {
     const src = read('src/components/feed/smart/SmartFeedCardVideo.tsx')
     expect(src).toContain('youtubeCommandPayload')
