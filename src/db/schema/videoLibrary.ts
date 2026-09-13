@@ -58,6 +58,9 @@ export const videoLibraryItems = pgTable(
     rightsStatus: varchar('rights_status', { length: 32 }).default('UNKNOWN').notNull(),
     contentHash: varchar('content_hash', { length: 128 }),
     tags: text('tags').array(),
+    importErrorCode: varchar('import_error_code', { length: 64 }),
+    importErrorMessage: varchar('import_error_message', { length: 300 }),
+    lastImportJobId: varchar('last_import_job_id', { length: 64 }),
 
     createdBy: varchar('created_by', { length: 128 }),
     updatedBy: varchar('updated_by', { length: 128 }),
@@ -127,14 +130,19 @@ export const videoLibraryJobs = pgTable(
     status: varchar('status', { length: 32 }).default('PENDING').notNull(),
     attempts: integer('attempts').default(0).notNull(),
     lastError: text('last_error'),
+    errorCode: varchar('error_code', { length: 64 }),
     payload: jsonb('payload').$type<Record<string, unknown>>().default({}).notNull(),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     claimedBy: varchar('claimed_by', { length: 128 }),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     index('vlj_status_created_idx').on(t.status, t.createdAt),
     index('vlj_item_kind_idx').on(t.itemId, t.kind),
+    uniqueIndex('vlj_one_active_download_uidx')
+      .on(t.itemId, t.kind)
+      .where(sql`${t.status} in ('QUEUED','RUNNING','PENDING')`),
   ]
 )

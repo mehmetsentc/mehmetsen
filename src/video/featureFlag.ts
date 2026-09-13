@@ -18,3 +18,20 @@ export function isVideoLibraryEnabled(): boolean {
   if (env !== null) return env
   return isCmsFeatureEnabled('videoLibraryEnabled')
 }
+
+/**
+ * VIDEO_LIBRARY_IMPORT_ENABLED — default false.
+ * Requires VIDEO_LIBRARY_ENABLED. Does not publish.
+ */
+export function isVideoLibraryImportEnabled(): boolean {
+  if (!isVideoLibraryEnabled()) return false
+  const env = parseTriState(process.env.VIDEO_LIBRARY_IMPORT_ENABLED)
+  if (env !== null) return env
+  return false
+}
+
+export function videoLibraryMaxBytes(): number {
+  const raw = Number(process.env.VIDEO_LIBRARY_MAX_BYTES)
+  if (Number.isFinite(raw) && raw > 0) return Math.min(raw, 2_147_483_647)
+  return 100 * 1024 * 1024
+}

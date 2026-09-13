@@ -95,6 +95,9 @@ export type VideoLibraryItem = {
   rightsStatus: VideoRightsStatus
   contentHash: string | null
   tags: string[]
+  importErrorCode: string | null
+  importErrorMessage: string | null
+  lastImportJobId: string | null
   createdBy: string | null
   updatedBy: string | null
   createdAt: Date

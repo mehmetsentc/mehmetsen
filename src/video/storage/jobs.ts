@@ -8,10 +8,12 @@ export const VIDEO_IMPORT_JOB_KINDS = [
 export type VideoImportJobKind = (typeof VIDEO_IMPORT_JOB_KINDS)[number]
 
 export const VIDEO_IMPORT_JOB_STATUSES = [
-  'PENDING',
+  'QUEUED',
   'RUNNING',
-  'DONE',
+  'SUCCEEDED',
   'FAILED',
+  'CANCELLED',
+  'PENDING',
 ] as const
 
 export type VideoImportJobStatus = (typeof VIDEO_IMPORT_JOB_STATUSES)[number]
@@ -23,7 +25,13 @@ export type VideoImportJob = {
   status: VideoImportJobStatus
   attempts: number
   lastError: string | null
+  errorCode: string | null
   payload: Record<string, unknown>
+  claimedAt: Date | null
+  claimedBy: string | null
+  leaseExpiresAt: Date | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**

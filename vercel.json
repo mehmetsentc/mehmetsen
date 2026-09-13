@@ -84,6 +84,9 @@
     "src/app/api/cron/crawler-ai-worker/route.ts": {
       "memory": 1024
     },
+    "src/app/api/cron/video-library-import/route.ts": {
+      "memory": 1024
+    },
     "src/app/api/cron/newsroom/editor-ai-queue/route.ts": {
       "memory": 1024
     }
@@ -360,6 +363,10 @@
     {
       "path": "/api/cron/publisher-publication-reconcile",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/video-library-import",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/publisher-ad-schedule",

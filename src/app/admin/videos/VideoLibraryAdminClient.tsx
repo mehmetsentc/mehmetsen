@@ -72,6 +72,8 @@ export function VideoLibraryAdminClient() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [importingId, setImportingId] = useState<string | null>(null)
+  const [importEnabled, setImportEnabled] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,10 +86,12 @@ export function VideoLibraryAdminClient() {
         items?: VideoLibraryItem[]
         total?: number
         error?: string
+        importEnabled?: boolean
       }
       if (!res.ok) throw new Error(turkishAdminApiError(res.status, body.error))
       setItems(body.items ?? [])
       setTotal(body.total ?? 0)
+      setImportEnabled(body.importEnabled === true)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Liste yüklenemedi')
       setItems([])
@@ -157,12 +161,34 @@ export function VideoLibraryAdminClient() {
     }
   }
 
+  const enqueueImport = async (id: string) => {
+    if (!canCreate || !importEnabled) return
+    setImportingId(id)
+    try {
+      const res = await fetch('/api/admin/videos/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ action: 'import', id }),
+      })
+      const body = (await res.json()) as { outcome?: string; error?: string }
+      if (!res.ok) throw new Error(body.error || 'İndirme kuyruğa alınamadı')
+      if (body.outcome === 'ALREADY_QUEUED') toast('İndirme zaten kuyrukta')
+      else if (body.outcome === 'ALREADY_IMPORTED') toast('Bu video zaten R2’de')
+      else toast.success('İndirme kuyruğa alındı')
+      void load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'İndirme kuyruğa alınamadı')
+    } finally {
+      setImportingId(null)
+    }
+  }
+
   const meta = preview?.metadata
 
   return (
     <AdminOsPageShell
       title="Video Kütüphanesi"
-      subtitle="URL incele + kayıt. İndirme ve yayınlama sonraki fazda."
+      subtitle="URL incele + kayıt. İndirme ayrı adımdır. Publishing yok."
       actions={
         <div className="flex items-center gap-2">
           <Link
@@ -239,6 +265,9 @@ export function VideoLibraryAdminClient() {
                   {preview?.existing ? 'Zaten kayıtlı' : saving ? 'Kaydediliyor…' : 'Kütüphaneye Ekle'}
                 </button>
               ) : null}
+              <p className="mt-2 text-[11px] text-[rgb(var(--color-muted))]">
+                Kayıt indirme başlatmaz. İndirme için listeden “Kütüphaneye İndir” kullanın.
+              </p>
             </div>
           </div>
         ) : null}
@@ -256,7 +285,7 @@ export function VideoLibraryAdminClient() {
         <AdminOsEmptyState
           icon={Video}
           title="Kütüphane boş"
-          description="Bir video URL’si yapıştırıp inceleyin. İndirme sonraki fazda."
+          description="Bir video URL’si yapıştırıp inceleyin. İndirme ayrı bir adımdır ve otomatik başlamaz."
         />
       ) : (
         <div>
@@ -270,7 +299,9 @@ export function VideoLibraryAdminClient() {
                   <th className="px-3 py-2">Kaynak</th>
                   <th className="px-3 py-2">Süre</th>
                   <th className="px-3 py-2">Durum</th>
+                  <th className="px-3 py-2">Depolama</th>
                   <th className="px-3 py-2">Eklenme</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -300,13 +331,22 @@ export function VideoLibraryAdminClient() {
                     </td>
                     <td className="px-3 py-2">{formatDuration(item.durationMs)}</td>
                     <td className="px-3 py-2">
-                      <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                        item.status === 'READY' ? 'bg-emerald-100 text-emerald-800' :
-                        item.status === 'FAILED' ? 'bg-red-100 text-red-800' :
-                        'bg-slate-100 text-slate-700'
-                      )}>
-                        {statusLabel(item.status)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={cn('w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          item.status === 'READY' ? 'bg-emerald-100 text-emerald-800' :
+                          item.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                          item.status === 'IMPORTING' || item.status === 'PENDING_IMPORT' ? 'bg-amber-100 text-amber-800' :
+                          'bg-slate-100 text-slate-700'
+                        )}>
+                          {statusLabel(item.status)}
+                        </span>
+                        {item.status === 'FAILED' && item.importErrorMessage ? (
+                          <span className="max-w-[16rem] text-[11px] text-red-700">{item.importErrorMessage}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[rgb(var(--color-muted))]">
+                      {item.status === 'READY' && item.originalStorageKey ? 'R2 original' : 'Dosya yok'}
                     </td>
                     <td className="px-3 py-2 text-xs text-[rgb(var(--color-muted))]">
                       <span className="inline-flex items-center gap-1">
@@ -315,6 +355,18 @@ export function VideoLibraryAdminClient() {
                           ? formatDistanceToNow(new Date(item.createdAt), { locale: tr, addSuffix: true })
                           : '—'}
                       </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {canCreate && importEnabled && (item.status === 'INSPECTED' || item.status === 'FAILED') ? (
+                        <button
+                          type="button"
+                          onClick={() => void enqueueImport(item.id)}
+                          disabled={importingId === item.id}
+                          className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          {importingId === item.id ? 'Kuyruk…' : 'Kütüphaneye İndir'}
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
