@@ -247,6 +247,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com https://apis.google.com https://www.gstatic.com https://accounts.google.com https://www.google.com https://cdn.onesignal.com https://s3.tradingview.com https://charting-library.tradingview-widget.com https://static.tradingview.com https://pagead2.googlesyndication.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
+              "media-src 'self' blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.googleapis.com https://oauth2.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firebasestorage.googleapis.com https://www.google-analytics.com https://vitals.vercel-insights.com https://nahaberapp.firebaseapp.com https://api.open-meteo.com https://air-quality-api.open-meteo.com https://*.onesignal.com https://onesignal.com wss://*.onesignal.com https://*.tradingview.com wss://*.tradingview.com",
               "worker-src 'self' blob:",
