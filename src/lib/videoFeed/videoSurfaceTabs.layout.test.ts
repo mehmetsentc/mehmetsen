@@ -26,6 +26,7 @@ describe('VF2.2 video tabs sit on the player column', () => {
     expect(tabs).toContain('data-testid="video-surface-tabs"')
     expect(tabs).toContain('absolute inset-x-0')
     expect(tabs).toContain('justify-center')
+    expect(tabs).toContain('overflow-x-auto')
     expect(tabs).not.toMatch(/translate-x-\[/)
     expect(tabs).not.toMatch(/left:\s*\d+px/)
     expect(tabs).not.toMatch(/margin-left:\s*\d+px/)
@@ -36,5 +37,26 @@ describe('VF2.2 video tabs sit on the player column', () => {
     const wrap = css.slice(css.indexOf('.reels-player-wrap {'), css.indexOf('.reels-recommendations {'))
     expect(wrap).toContain('position: relative')
     expect(wrap).toContain('--reels-video-w')
+    const feed = read('src/components/video/VideoFeed.tsx')
+    expect(feed).toContain('data-testid="video-player-column"')
+    expect(feed).not.toMatch(/reels-feed w-full/)
+  })
+
+  it('/video page does not cage the player+rail in max-w-lg', () => {
+    const page = read('src/app/(main)/video/page.tsx')
+    expect(page).not.toContain('max-w-lg')
+    expect(page).toContain('w-full')
+  })
+
+  it('tab container center equals video column center, independent of rail', () => {
+    const player = { x: 80, width: 400 }
+    const gap = 36
+    const rail = { x: player.x + player.width + gap, width: 320 }
+    const tabs = { x: player.x, width: player.width }
+    const playerCenter = player.x + player.width / 2
+    const pageAndRailCenter = (player.x + rail.x + rail.width) / 2
+    const tabCenter = tabs.x + tabs.width / 2
+    expect(tabCenter).toBe(playerCenter)
+    expect(tabCenter).not.toBe(pageAndRailCenter)
   })
 })

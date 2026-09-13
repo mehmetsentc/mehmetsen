@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Play, Volume2, VolumeX } from 'lucide-react'
 import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import {
+  applyYoutubeMuteIntent,
   mediaCommand,
   nextPreferredMutedFromUiToggle,
-  nextUserPaused,
+  nextUserPausedFromTap,
   userPausedAfterDeactivate,
-  youtubeMuteFunc,
+  youtubeCommandPayload,
   youtubePlayerFunc,
 } from '@/lib/videoFeed/playbackIntent'
 import { pauseOtherPageVideos } from '@/lib/videoPlayback'
@@ -51,7 +52,9 @@ export function SmartFeedCardVideo({
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const userPausedRef = useRef(false)
+  const ytPlayerStateRef = useRef<number | null>(null)
   const preferredMutedRef = useRef(true)
+  const [userPaused, setUserPaused] = useState(false)
   const [paused, setPaused] = useState(false)
   const [preferredMuted, setPreferredMuted] = useState(true)
   const [playerMuted, setPlayerMuted] = useState<boolean | null>(null)
@@ -63,11 +66,16 @@ export function SmartFeedCardVideo({
   }, [])
 
   const sendYTCmd = useCallback(
-    (func: string) => {
-      postToYT({ event: 'command', func, args: '' })
+    (func: string, args: unknown[] = []) => {
+      postToYT(youtubeCommandPayload(func, args))
     },
     [postToYT]
   )
+
+  const setUserPausedIntent = useCallback((next: boolean) => {
+    userPausedRef.current = next
+    setUserPaused(next)
+  }, [])
 
   const applyPlayback = useCallback(() => {
     const command = mediaCommand({
@@ -79,6 +87,7 @@ export function SmartFeedCardVideo({
       const el = videoRef.current
       if (!el) return
       el.muted = preferredMutedRef.current
+      setPlayerMuted(el.muted)
       if (command === 'play') {
         pauseOtherPageVideos(el)
         void el.play().catch(() => {
@@ -99,10 +108,10 @@ export function SmartFeedCardVideo({
     if (resolved?.kind === 'youtube' || resolved?.kind === 'vimeo' || resolved?.kind === 'dailymotion') {
       postToYT({ event: 'listening', id: null, channel: 'widget' })
       sendYTCmd(youtubePlayerFunc(command))
-      sendYTCmd(youtubeMuteFunc(preferredMutedRef.current))
+      applyYoutubeMuteIntent(sendYTCmd, preferredMutedRef.current)
       setPaused(command === 'pause')
     }
-  }, [isActive, onUnusable, postToYT, resolved?.kind, sendYTCmd])
+  }, [isActive, onUnusable, postToYT, resolved?.kind, sendYTCmd, userPaused])
 
   useEffect(() => {
     preferredMutedRef.current = preferredMuted
@@ -120,12 +129,21 @@ export function SmartFeedCardVideo({
   }, [])
 
   useEffect(() => {
-    if (!isActive) {
-      userPausedRef.current = userPausedAfterDeactivate()
-      setPaused(false)
-    }
+    setUserPausedIntent(userPausedAfterDeactivate())
+    ytPlayerStateRef.current = null
+  }, [url, setUserPausedIntent])
+
+  useEffect(() => {
     applyPlayback()
-  }, [applyPlayback, isActive])
+  }, [applyPlayback, isActive, userPaused])
+
+  useEffect(() => {
+    if (!isActive || !userPaused || resolved?.kind !== 'youtube') return
+    const hold = window.setInterval(() => {
+      sendYTCmd('pauseVideo')
+    }, 400)
+    return () => window.clearInterval(hold)
+  }, [isActive, userPaused, resolved?.kind, sendYTCmd])
 
   useEffect(() => {
     if (resolved?.kind !== 'youtube') return
@@ -137,12 +155,19 @@ export function SmartFeedCardVideo({
         if (!data) return
         if (data.event === 'onReady') applyPlayback()
         if (data.event === 'onError') onUnusable?.()
-        if (data.event === 'infoDelivery' && data.info && typeof data.info.muted === 'boolean') {
-          setPlayerMuted(data.info.muted)
+        if (data.event === 'infoDelivery' && data.info) {
+          if (typeof data.info.muted === 'boolean') setPlayerMuted(data.info.muted)
+          const pState = data.info.playerState
+          if (typeof pState === 'number') ytPlayerStateRef.current = pState
+          if (userPausedRef.current && (pState === 1 || pState === 3)) {
+            sendYTCmd('pauseVideo')
+            setPaused(true)
+          }
         }
         if (data.event === 'onStateChange') {
           const state = typeof data.info === 'number' ? data.info : data.info?.playerState
-          if (userPausedRef.current && state === 1) {
+          if (typeof state === 'number') ytPlayerStateRef.current = state
+          if (userPausedRef.current && (state === 1 || state === 3)) {
             sendYTCmd('pauseVideo')
             setPaused(true)
             return
@@ -162,10 +187,18 @@ export function SmartFeedCardVideo({
   const togglePause = useCallback(
     (event: React.MouseEvent) => {
       event.stopPropagation()
-      userPausedRef.current = nextUserPaused(userPausedRef.current)
+      const el = videoRef.current
+      const playerPlaying = el
+        ? !el.paused
+        : ytPlayerStateRef.current === 1 || ytPlayerStateRef.current === 3
+      const next = nextUserPausedFromTap({
+        currentlyUserPaused: userPausedRef.current,
+        playerPlaying,
+      })
+      setUserPausedIntent(next)
       applyPlayback()
     },
-    [applyPlayback]
+    [applyPlayback, setUserPausedIntent]
   )
 
   const toggleSound = useCallback(
@@ -175,18 +208,19 @@ export function SmartFeedCardVideo({
       preferredMutedRef.current = nextMuted
       setPreferredMuted(nextMuted)
       persistPreferredMuted(nextMuted)
-      setPlayerMuted(nextMuted)
       const el = videoRef.current
       if (el) {
         el.muted = nextMuted
+        setPlayerMuted(el.muted)
         if (!nextMuted) {
           void el.play().catch(() => {
             el.muted = true
             setPlayerMuted(true)
           })
         }
+      } else {
+        applyYoutubeMuteIntent(sendYTCmd, nextMuted)
       }
-      sendYTCmd(youtubeMuteFunc(nextMuted))
     },
     [effectiveMuted, sendYTCmd]
   )
@@ -213,8 +247,11 @@ export function SmartFeedCardVideo({
           playsInline
           muted
           loop
-          autoPlay={isActive}
+          autoPlay={isActive && !userPaused}
           onError={() => onUnusable?.()}
+          onPlaying={() => {
+            if (userPausedRef.current) videoRef.current?.pause()
+          }}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={togglePause}
         />
