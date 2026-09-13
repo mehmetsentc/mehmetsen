@@ -25,7 +25,14 @@ describe('immersive header Phase 1', () => {
 
   it('hosts a compact Ana Sayfa/Akış surface toggle and icon actions — no destination row', () => {
     const nav = read('src/components/layout/Navbar.tsx')
+    const css = read('src/app/globals.css')
     expect(nav).toContain('header-surface-toggle')
+    expect(nav).toContain('data-active')
+    expect(nav).toContain('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
+    expect(nav).toContain('justify-self-center')
+    expect(css).toContain('width: 10.25rem')
+    expect(css).toContain('grid-template-columns: 1fr 1fr')
+    expect(css).toContain(".header-surface-toggle[data-active='akis']::before")
     expect(nav).toContain('aria-label="Ana Sayfa"')
     expect(nav).toContain('aria-label="Akış"')
     expect(nav).toContain('aria-label="Ara"')

@@ -117,9 +117,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   const iconBtn =
-    'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-6px]'
+    'relative flex h-6 w-5 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-8px]'
   const actionBtn =
-    'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors duration-150 hover:bg-white/25 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-6px]'
+    'relative flex h-6 w-5 shrink-0 items-center justify-center touch-manipulation rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors duration-150 hover:bg-white/25 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 after:absolute after:inset-[-8px]'
 
   function openSubmit() {
     if (!user) {
@@ -145,68 +145,73 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         )}
       >
         <header className="h-11 overflow-x-hidden bg-transparent text-white">
-          <div className="flex h-full min-w-0 items-center gap-0 px-1">
-            {showBack ? (
-              <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
-            ) : null}
-            <button
-              type="button"
-              onClick={onMenuClick}
-              className={iconBtn}
-              aria-label="Menüyü aç"
-            >
-              <Menu className="h-5 w-5" strokeWidth={2} />
-            </button>
-
-            <Link
-              href={ROUTES.FEED}
-              className="min-w-0 shrink px-0.5"
-              aria-label="NaHaber"
-            >
-              <BrandWordmark
-                variant="onBrand"
-                size="sm"
-                className="font-black text-[1.05rem] sm:text-[1.25rem]"
-              />
-            </Link>
-
-            <div
-              className="header-surface-toggle mx-0.5 min-w-0 shrink"
-              role="group"
-              aria-label="Yüzey"
-              data-testid="header-surface-toggle"
-            >
-              <Link
-                href={anaHref}
-                className={cn(
-                  'header-surface-toggle__opt',
-                  isHomeFeed && 'is-active'
-                )}
-                aria-label="Ana Sayfa"
-                aria-current={isHomeFeed ? 'page' : undefined}
-                data-testid="header-nav-ana-sayfa"
+          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-1">
+            <div className="flex min-w-0 items-center justify-self-start">
+              {showBack ? (
+                <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
+              ) : null}
+              <button
+                type="button"
+                onClick={onMenuClick}
+                className={iconBtn}
+                aria-label="Menüyü aç"
               >
-                Ana Sayfa
-              </Link>
+                <Menu className="h-5 w-5" strokeWidth={2} />
+              </button>
+
               <Link
-                href={akisHref}
-                onClick={() => {
-                  rememberFeedV2EntryOrigin(pathname)
-                  clearFeedRestoreForFeedV2Nav({ pathname })
-                }}
-                className={cn(
-                  'header-surface-toggle__opt',
-                  isFeedV2 && 'is-active'
-                )}
-                aria-label="Akış"
-                aria-current={isFeedV2 ? 'page' : undefined}
-                data-testid="header-nav-akis"
+                href={ROUTES.FEED}
+                className="shrink-0 px-0.5"
+                aria-label="NaHaber"
               >
-                Akış
+                <BrandWordmark
+                  variant="onBrand"
+                  size="sm"
+                  className="!text-[1.05rem] sm:!text-[1.15rem]"
+                />
               </Link>
             </div>
 
-            <div className="ml-auto flex min-w-0 shrink-0 items-center gap-0">
+            <div className="flex justify-self-center px-0.5">
+              <div
+                className="header-surface-toggle"
+                role="group"
+                aria-label="Yüzey"
+                data-testid="header-surface-toggle"
+                data-active={isHomeFeed ? 'home' : isFeedV2 ? 'akis' : undefined}
+              >
+                <Link
+                  href={anaHref}
+                  className={cn(
+                    'header-surface-toggle__opt',
+                    isHomeFeed && 'is-active'
+                  )}
+                  aria-label="Ana Sayfa"
+                  aria-current={isHomeFeed ? 'page' : undefined}
+                  data-testid="header-nav-ana-sayfa"
+                >
+                  Ana Sayfa
+                </Link>
+                <Link
+                  href={akisHref}
+                  onClick={() => {
+                    rememberFeedV2EntryOrigin(pathname)
+                    clearFeedRestoreForFeedV2Nav({ pathname })
+                  }}
+                  className={cn(
+                    'header-surface-toggle__opt',
+                    isFeedV2 && 'is-active'
+                  )}
+                  aria-label="Akış"
+                  aria-current={isFeedV2 ? 'page' : undefined}
+                  data-testid="header-nav-akis"
+                >
+                  Akış
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-self-end">
               <Link
                 href={ROUTES.SEARCH}
                 className={iconBtn}
