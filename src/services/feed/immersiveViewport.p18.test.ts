@@ -41,5 +41,7 @@ describe('immersive mobile viewport geometry', () => {
     expect(nav).toContain('header-surface-toggle')
     expect(nav).toContain('CategoryNav embedded')
     expect(nav).toContain('ContextRailSlot')
+    expect(nav).toContain('HeaderMoreMenu')
+    expect(nav).toContain('header-primary-actions')
   })
 })

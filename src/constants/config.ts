@@ -1,4 +1,5 @@
 import { ROUTES } from '@/constants/routes'
+import { isUserFacingNavProductEnabled } from '@/lib/nav/userNavAvailability'
 
 // P17.7 Editorial Safety Gate Version Constant
 export const EDITORIAL_SAFETY_VERSION = 'v17.7' as const
@@ -1046,7 +1047,7 @@ export function getSwipeableFeedDestinations(): SwipeDestination[] {
 
   for (const cat of getTopNavCategories()) {
     destinations.push(cat)
-    if (cat.id === 'spor') {
+    if (cat.id === 'spor' && isUserFacingNavProductEnabled('skor')) {
       destinations.push({ id: 'skor', label: 'Skor', href: ROUTES.SKOR })
     }
     if (cat.id === 'oyun-espor') {

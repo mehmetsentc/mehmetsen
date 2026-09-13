@@ -22,6 +22,8 @@ describe('shared category rail', () => {
     expect(shared.map((d) => d.id)).toContain('ekonomi')
     expect(shared.map((d) => d.id)).toContain('spor')
     expect(shared.map((d) => d.id)).toContain('yerel')
+    expect(shared.map((d) => d.id)).not.toContain('skor')
+    expect(shared.some((d) => d.label === 'Skor')).toBe(false)
     expect(shared.some((d) => d.label === 'Sana Özel')).toBe(false)
   })
 

@@ -10,8 +10,6 @@ import {
 } from '@/lib/feed/sharedCategoryRail'
 import { cn } from '@/lib/utils'
 
-const NAV_CATEGORIES = getSharedRailDestinations()
-
 export interface CategoryNavItem {
   id: string
   label: string
@@ -64,7 +62,7 @@ export function CategoryNav({
     return (
       <div className={shellClass}>
         <ContextRail ariaLabel="Kategoriler" testId="context-rail-home">
-          {NAV_CATEGORIES.map((cat) => {
+          {getSharedRailDestinations().map((cat) => {
             const isActive = activeKey === cat.id
             return (
               <Link

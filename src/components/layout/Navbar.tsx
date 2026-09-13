@@ -3,15 +3,14 @@
 import { useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Menu, MessageCircle, Plus, Search, User } from 'lucide-react'
+import { Menu, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
 import { ContextRailSlot } from '@/components/layout/ContextRail'
 import { BackNavButton } from '@/components/layout/BackNavButton'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
-import { NavMessagesBadge } from '@/components/layout/NavMessagesBadge'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { HeaderMoreMenu } from '@/components/layout/HeaderMoreMenu'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
 import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
@@ -117,9 +116,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   const iconBtn =
-    'relative flex h-11 w-6 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
-  const actionBtn =
-    'relative flex h-11 w-6 shrink-0 items-center justify-center touch-manipulation rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors duration-150 hover:bg-white/25 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+    'relative flex h-11 w-9 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
   function openSubmit() {
     if (!user) {
@@ -211,7 +208,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-self-end">
+            <div
+              className="flex shrink-0 items-center justify-self-end"
+              data-testid="header-primary-actions"
+            >
               <Link
                 href={ROUTES.SEARCH}
                 className={iconBtn}
@@ -221,41 +221,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               >
                 <Search className="h-4 w-4" strokeWidth={2.25} />
               </Link>
-              <NotificationBell
-                variant="onBrand"
-                iconClassName="h-4 w-4"
-                buttonClassName={cn(
-                  iconBtn,
-                  isBildirim(pathname) && 'text-white'
-                )}
+              <HeaderMoreMenu
+                profileHref={profileHref}
+                isProfil={isProfil(pathname)}
+                isBildirim={isBildirim(pathname)}
+                iconBtnClassName={iconBtn}
+                onSubmitNews={openSubmit}
               />
-              <Link
-                href={profileHref}
-                className={iconBtn}
-                aria-label="Profil"
-                aria-current={isProfil(pathname) ? 'page' : undefined}
-                data-testid="header-nav-profil"
-              >
-                <User className="h-4 w-4" strokeWidth={2.25} />
-              </Link>
-              <button
-                type="button"
-                onClick={openSubmit}
-                className={actionBtn}
-                aria-label="Haber Ekle"
-                data-testid="header-action-plus"
-              >
-                <Plus className="h-[18px] w-[18px]" strokeWidth={2.25} />
-              </button>
-              <Link
-                href={ROUTES.MESSAGES}
-                className={actionBtn}
-                aria-label="Mesajlar"
-                data-testid="header-action-messages"
-              >
-                <MessageCircle className="h-4 w-4" strokeWidth={2} />
-                <NavMessagesBadge size="sm" />
-              </Link>
             </div>
           </div>
         </header>

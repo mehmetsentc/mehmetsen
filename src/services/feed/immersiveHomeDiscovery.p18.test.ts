@@ -40,11 +40,15 @@ describe('immersive home discovery Phase 2', () => {
     expect(slider).not.toContain('FeaturedNewsCarousel')
     expect(slider).toContain('layout="featuredRail"')
     expect(slider).toContain('FEATURED_CAROUSEL_LIMIT')
+    expect(slider).toContain("isFeatured ? 'Öne Çıkanlar' : 'Manşet'")
+    expect(slider).not.toContain('formatFeedHighlightsHeading')
     const css = read('src/app/globals.css')
     expect(css).toContain('.home-featured-rail__scroller')
     expect(css).toContain('overflow-x: auto')
     expect(css).toContain('.home-featured-rail .home-discovery-card__media')
     expect(css).toContain('aspect-ratio: 4 / 5')
+    expect(css).toContain('.home-featured-rail .home-discovery-slot--featured-rail')
+    expect(css).toContain('content-visibility: visible')
   })
 
   it('masonry uses AdaptiveMasonry CSS columns at 2-up on mobile', () => {

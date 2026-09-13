@@ -358,6 +358,27 @@
     color: #fff;
   }
 
+  .header-more-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .header-more-menu__panel {
+    position: fixed;
+    z-index: 180;
+    min-width: 12.75rem;
+    padding: 0.3rem 0;
+    overflow: hidden;
+    border-radius: 0.9rem;
+    background: rgb(8 12 18 / 0.94);
+    box-shadow:
+      0 10px 28px rgb(0 0 0 / 0.38),
+      inset 0 0 0 1px rgb(255 255 255 / 0.14);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
   .context-rail,
   .context-rail-slot {
     display: flex;
@@ -3964,7 +3985,7 @@ video.reels-video {
 
 /* Öne Çıkanlar — equal-size horizontal rail (not masonry). */
 .home-featured-rail {
-  margin: 0 0 0.75rem;
+  margin: 0 0 1.25rem;
   max-width: 100%;
   min-width: 0;
 }
@@ -4050,6 +4071,17 @@ video.reels-video {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/*
+ * Masonry slots use content-visibility + contain-intrinsic-size to cut CLS.
+ * On the horizontal featured rail that reserved skipped-card height on the
+ * block axis and opened a giant dead zone above masonry.
+ */
+.home-featured-rail .home-discovery-slot--featured-rail {
+  content-visibility: visible;
+  contain-intrinsic-size: auto 0;
+  margin-bottom: 0;
 }
 
 .home-featured-rail .home-discovery-card__media {

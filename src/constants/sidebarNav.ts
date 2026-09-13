@@ -52,6 +52,7 @@ import {
 } from 'lucide-react'
 import { DEFAULT_CATEGORIES, getSubcategories, type CategoryDef } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
+import { isUserFacingNavProductEnabled } from '@/lib/nav/userNavAvailability'
 
 export type SidebarAccent =
   | 'brand'
@@ -308,7 +309,9 @@ export const SIDEBAR_EXPLORE: SidebarNavItem[] = SIDEBAR_CATEGORIES.filter(
 
 /** C — Araçlar / ürün yüzeyleri */
 export const SIDEBAR_TOOLS: SidebarNavItem[] = [
-  { id: 'skor', label: 'Skor', href: ROUTES.SKOR, icon: Trophy, accent: 'spor' },
+  ...(isUserFacingNavProductEnabled('skor')
+    ? [{ id: 'skor', label: 'Skor', href: ROUTES.SKOR, icon: Trophy, accent: 'spor' as const }]
+    : []),
   { id: 'etkinlikler', label: 'Etkinlikler', href: ROUTES.EVENTS, icon: CalendarDays, accent: 'yerel' },
   { id: 'teve', label: 'Teve', href: ROUTES.REELS, icon: Clapperboard, accent: 'magazin' },
   { id: 'trending', label: 'Trending', href: '/kategori/trend', icon: Flame, accent: 'gundem' },
