@@ -23,16 +23,21 @@ describe('immersive header Phase 1', () => {
     )
   })
 
-  it('primary destinations are Ana Sayfa / Akış / Ara / Profil', () => {
+  it('hosts a compact Ana Sayfa/Akış surface toggle and icon actions — no destination row', () => {
     const nav = read('src/components/layout/Navbar.tsx')
+    expect(nav).toContain('header-surface-toggle')
     expect(nav).toContain('aria-label="Ana Sayfa"')
     expect(nav).toContain('aria-label="Akış"')
     expect(nav).toContain('aria-label="Ara"')
     expect(nav).toContain('aria-label="Profil"')
+    expect(nav).toContain('useSearchParams')
+    expect(nav).toContain('resolveSharedCategoryId')
     expect(nav).toContain('header-nav-ana-sayfa')
     expect(nav).toContain('header-nav-akis')
     expect(nav).toContain('header-nav-ara')
     expect(nav).toContain('header-nav-profil')
+    expect(nav).toContain('NotificationBell')
+    expect(nav).not.toContain('header-dest-nav')
     expect(nav).not.toContain('Feed 2')
     expect(nav).not.toContain('Feed V2')
     expect(nav).not.toContain('Ana Feed')

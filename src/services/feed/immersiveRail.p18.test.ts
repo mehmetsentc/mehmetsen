@@ -38,18 +38,17 @@ describe('immersive ContextRail Phase 1A', () => {
     expect(layout).toContain('ContextRailSlotProvider')
   })
 
-  it('preserves Ana Sayfa category destinations and Akış Smart Feed tabs', () => {
+  it('Ana Sayfa and Akış consume the same canonical swipe destinations', () => {
     const home = read('src/components/layout/CategoryNav.tsx')
     const akis = read('src/components/feed/smart/FeedV2CategoryNav.tsx')
-    const tabs = read('src/lib/feed/feedV2Tabs.ts')
-    expect(home).toContain('getSwipeableFeedDestinations')
+    const helper = read('src/lib/feed/sharedCategoryRail.ts')
+    expect(home).toContain('getSharedRailDestinations')
     expect(home).toContain('href={cat.href}')
-    expect(akis).toContain('onChange(tab)')
-    expect(akis).toContain("/api/feed/v2/tabs")
-    expect(tabs).toContain("id: 'personal'")
-    expect(tabs).toContain("id: 'following'")
-    expect(tabs).toContain("FEED_MODE_LABELS.breaking")
-    expect(tabs).toContain("FEED_MODE_LABELS.local")
+    expect(akis).toContain('getSharedRailDestinations')
+    expect(akis).toContain('onChange(item.tab)')
+    expect(akis).not.toContain("/api/feed/v2/tabs")
+    expect(helper).toContain('getSwipeableFeedDestinations')
+    expect(helper).toContain("SHARED_RAIL_ALL_ID ? 'Tümü'")
   })
 
   it('does not introduce a second taxonomy or duplicate nav family', () => {

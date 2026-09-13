@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getSwipeableFeedDestinations, resolveSwipeCategoryKey } from '@/constants/config'
-import { ROUTES } from '@/constants/routes'
+import { resolveSwipeCategoryKey } from '@/constants/config'
 import { ContextRail, contextRailChipClass } from '@/components/layout/ContextRail'
+import {
+  getSharedRailDestinations,
+  sharedRailChipLabel,
+} from '@/lib/feed/sharedCategoryRail'
 import { cn } from '@/lib/utils'
 
-const NAV_CATEGORIES = getSwipeableFeedDestinations()
+const NAV_CATEGORIES = getSharedRailDestinations()
 
 export interface CategoryNavItem {
   id: string
@@ -71,7 +74,7 @@ export function CategoryNav({
                 className={contextRailChipClass(isActive)}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {cat.label}
+                {sharedRailChipLabel(cat)}
               </Link>
             )
           })}
