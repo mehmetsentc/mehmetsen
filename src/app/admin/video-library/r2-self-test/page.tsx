@@ -16,6 +16,7 @@ export default function R2SelfTestPage() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<number | null>(null)
+  const [existingId, setExistingId] = useState('')
 
   const playbackUrl =
     typeof result?.playbackPublicUrl === 'string' ? result.playbackPublicUrl : null
@@ -29,7 +30,10 @@ export default function R2SelfTestPage() {
   const remainingCount =
     typeof result?.remainingCount === 'number' ? result.remainingCount : null
 
-  async function call(action: 'run' | 'cleanup' | 'cors-inspect' | 'cors-apply') {
+  async function call(
+    action: 'run' | 'cleanup' | 'cors-inspect' | 'cors-apply',
+    cleanupId?: string,
+  ) {
     setBusy(true)
     setError(null)
     try {
@@ -38,7 +42,7 @@ export default function R2SelfTestPage() {
         headers: await authHeaders(),
         body: JSON.stringify({
           action,
-          validationId: action === 'cleanup' ? validationId : undefined,
+          validationId: action === 'cleanup' ? cleanupId : undefined,
         }),
       })
       setStatus(res.status)
@@ -90,10 +94,34 @@ export default function R2SelfTestPage() {
         <button
           type="button"
           disabled={busy || !validationId}
-          onClick={() => void call('cleanup')}
+          onClick={() => void call('cleanup', validationId ?? undefined)}
           className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
         >
           Cleanup
+        </button>
+      </div>
+      <div className="mt-4 flex max-w-xl flex-col gap-2">
+        <label className="text-sm font-medium text-zinc-700" htmlFor="r2-self-test-existing-id">
+          Validation ID
+        </label>
+        <input
+          id="r2-self-test-existing-id"
+          data-testid="r2-self-test-existing-id"
+          type="text"
+          value={existingId}
+          onChange={(e) => setExistingId(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          className="rounded-md border px-3 py-2 text-sm"
+        />
+        <button
+          type="button"
+          data-testid="r2-self-test-cleanup-existing"
+          disabled={busy || !existingId.trim()}
+          onClick={() => void call('cleanup', existingId.trim())}
+          className="w-fit rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+        >
+          Cleanup Existing Validation
         </button>
       </div>
       {status ? <p className="mt-3 text-sm text-zinc-500">HTTP {status}</p> : null}
