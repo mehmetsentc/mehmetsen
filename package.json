@@ -43,6 +43,7 @@
     "format": "prettier --write .",
     "test:facebook-post": "tsx scripts/test-facebook-post.ts",
     "test:facebook-byo": "tsx scripts/test-facebook-byo-app.ts",
+    "r2:self-test:r4": "npx tsx scripts/r2-self-test-r4-invoke.mts",
     "deploy:allowed": "node scripts/allow-deploy.mjs",
     "deploy:batch": "node scripts/allow-deploy.mjs && node -e \"console.log('Slot açık. Onaylı işi tek committe [deploy] ile push edin. Acil: [force-deploy]')\"",
     "db:generate": "drizzle-kit generate",
