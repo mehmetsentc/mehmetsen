@@ -100,3 +100,10 @@ export {
   crawlerAiEligibilityEnum,
   crawlerClusterStatusEnum,
 } from './crawler'
+
+export {
+  videoLibraryItems,
+  videoLibraryJobs,
+  videoLibraryCollections,
+  videoLibraryCollectionItems,
+} from './videoLibrary'

@@ -16,6 +16,7 @@ export type CmsFeatureFlagKey =
   | 'pageBuilderEnabled'
   | 'scopedRbacEnabled'
   | 'smmNetworkEnabled'
+  | 'videoLibraryEnabled'
 
 export type CmsFeatureFlags = Record<CmsFeatureFlagKey, boolean>
 
@@ -28,6 +29,7 @@ export const DEFAULT_CMS_FEATURE_FLAGS: CmsFeatureFlags = {
   pageBuilderEnabled: false,
   scopedRbacEnabled: true,
   smmNetworkEnabled: true,
+  videoLibraryEnabled: false,
 }
 
 // ─── Permission scopes ────────────────────────────────────────────────────────

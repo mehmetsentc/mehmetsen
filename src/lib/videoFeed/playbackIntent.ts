@@ -65,6 +65,9 @@ export function nextUserPausedFromTap(input: {
   playerPlaying: boolean
 }): boolean {
   if (input.currentlyUserPaused && input.playerPlaying) return true
+  // Buffering / failed autoplay is not an explicit pause. Tapping Play
+  // must request play, not lock the item into userPaused.
+  if (!input.currentlyUserPaused && !input.playerPlaying) return false
   return !input.currentlyUserPaused
 }
 
