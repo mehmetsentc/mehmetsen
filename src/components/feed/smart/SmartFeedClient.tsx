@@ -1272,27 +1272,30 @@ export function SmartFeedClient({
         : 0
     const innerH = typeof window !== 'undefined' ? Math.round(window.innerHeight) : 0
     const layoutH = vvH > 0 ? Math.min(vvH, innerH || vvH) : innerH
-    const measured = Math.max(0, Math.round(layoutH - top))
-    if (measured <= 0) return
+    const cardH = Math.max(0, Math.round(layoutH - top))
+    if (cardH <= 0) return
     const prev = cardHeightRef.current
-    cardHeightRef.current = measured
-    el.style.setProperty('--feed-card-h', `${measured}px`)
-    // Keep immersive shell the same unit as cards (prevents next-card bleed).
+    cardHeightRef.current = cardH
+    el.style.setProperty('--feed-card-h', `${cardH}px`)
+    // Shell includes the category rail ABOVE the scroller. Sizing it to
+    // cardH leaves a dead band under the last card (nav height + stage padding).
     const shell = el.closest('.content-main-reels') as HTMLElement | null
     if (shell) {
-      shell.style.setProperty('--feed-card-h', `${measured}px`)
-      shell.style.height = `${measured}px`
-      shell.style.minHeight = `${measured}px`
-      shell.style.maxHeight = `${measured}px`
+      const shellTop = shell.getBoundingClientRect().top
+      const shellH = Math.max(cardH, Math.round(layoutH - shellTop))
+      shell.style.setProperty('--feed-card-h', `${cardH}px`)
+      shell.style.height = `${shellH}px`
+      shell.style.minHeight = `${shellH}px`
+      shell.style.maxHeight = `${shellH}px`
     }
     if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--feed-card-h', `${measured}px`)
+      document.documentElement.style.setProperty('--feed-card-h', `${cardH}px`)
     }
-    if (measured !== cardHeightPx) setCardHeightPx(measured)
+    if (cardH !== cardHeightPx) setCardHeightPx(cardH)
     // Safari toolbar: keep the same GLOBAL card when the unit height changes.
-    if (prev > 0 && prev !== measured && items.length > 0) {
+    if (prev > 0 && prev !== cardH && items.length > 0) {
       programmaticScrollRef.current = true
-      el.scrollTop = activeIndexRef.current * measured
+      el.scrollTop = activeIndexRef.current * cardH
       requestAnimationFrame(() => {
         programmaticScrollRef.current = false
       })

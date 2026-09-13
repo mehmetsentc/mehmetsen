@@ -55,9 +55,10 @@ describe('P18 iOS Haberi Aç / card peek human NO-GO', () => {
     expect(downBlock).not.toContain('setPointerCapture(e.pointerId)')
   })
 
-  it('card height uses visualViewport + svh; shell synced to measured unit', () => {
+  it('card height uses visualViewport + svh; shell fills remaining viewport under chrome', () => {
     expect(client).toContain('visualViewport')
     expect(client).toContain("closest('.content-main-reels')")
+    expect(client).toContain('shell.getBoundingClientRect().top')
     expect(css).toMatch(/--feed-card-h:\s*calc\(100svh - var\(--mobile-top-chrome-offset/)
   })
 

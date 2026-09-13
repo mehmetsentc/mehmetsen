@@ -95,6 +95,14 @@ describe('P18 Feed V2 first-paint vertical budget', () => {
     expect(client).toContain('h-full min-h-0')
     expect(client).toContain('visualViewport')
     expect(client).toContain("closest('.content-main-reels')")
+    expect(client).toContain('shell.getBoundingClientRect().top')
+    expect(client).toMatch(/Math\.max\(cardH,\s*Math\.round\(layoutH - shellTop\)\)/)
+    expect(css).toMatch(
+      /html\[data-platform='desktop'\] \.content-stage-reels[\s\S]{0,120}py-0/
+    )
+    expect(css).not.toMatch(
+      /html\[data-platform='desktop'\] \.content-stage-reels[\s\S]{0,120}py-3/
+    )
   })
 
   it('reference rhythm tokens + flex hero; gaps wired on card', () => {

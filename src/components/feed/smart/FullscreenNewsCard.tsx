@@ -474,7 +474,7 @@ export function FullscreenNewsCard({
           (no flex spacer gap between image and copy).
         */}
         <div
-          className="relative w-full shrink-0 touch-pan-y"
+          className="relative min-h-0 w-full flex-1 touch-pan-y"
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
           onPointerDown={onTapZonePointerDown}
@@ -488,8 +488,7 @@ export function FullscreenNewsCard({
           {!showVideo && hasValidImage ? (
             <div
               className={cn(
-                'relative w-full overflow-hidden rounded-2xl',
-                'aspect-[4/3] max-h-[min(46dvh,100%)]',
+                'relative h-full min-h-[var(--feed-v2-hero-min)] w-full overflow-hidden rounded-2xl',
                 'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
                 'bg-neutral-950',
                 playMediaDolly &&
@@ -537,8 +536,7 @@ export function FullscreenNewsCard({
           ) : showVideo ? (
             <div
               className={cn(
-                'relative w-full overflow-hidden rounded-2xl',
-                'aspect-[4/3] max-h-[min(46dvh,100%)]',
+                'relative h-full min-h-[var(--feed-v2-hero-min)] w-full overflow-hidden rounded-2xl',
                 'ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)]',
                 'bg-neutral-950'
               )}
@@ -581,7 +579,7 @@ export function FullscreenNewsCard({
           ) : (
             /* No image: keep a tap surface without inventing a fake hero */
             <div
-              className="relative min-h-[var(--feed-v2-hero-min)] w-full"
+              className="relative h-full min-h-[var(--feed-v2-hero-min)] w-full"
               aria-hidden={hasValidImage ? undefined : true}
               data-testid="smart-feed-fg-hero-fallback"
             >
@@ -613,7 +611,7 @@ export function FullscreenNewsCard({
           Haberi Oku + publisher stay outside nested copy scroll.
         */}
         <div
-          className="relative z-[2] mt-2 flex w-full min-h-0 flex-1 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:mt-2.5 sm:pt-3"
+          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:pt-3"
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"
         >

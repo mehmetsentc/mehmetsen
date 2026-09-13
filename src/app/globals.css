@@ -2842,11 +2842,11 @@
   }
 
   html[data-platform='tablet'] .content-stage-reels {
-    @apply items-center justify-center px-[var(--layout-gutter)] py-3;
+    @apply items-stretch justify-start gap-0 px-[var(--layout-gutter)] py-0;
   }
 
   html[data-platform='desktop'] .content-stage-reels {
-    @apply min-h-[100dvh] gap-0 px-[var(--layout-gutter)] py-3;
+    @apply min-h-[100dvh] gap-0 px-[var(--layout-gutter)] py-0;
   }
 
   @media (min-width: 1280px) {
