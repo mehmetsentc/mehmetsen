@@ -13,20 +13,21 @@ function read(rel: string) {
 }
 
 describe('VF2.3L mobile fill + swipe autoplay', () => {
-  it('immersive mobile slides stretch and YouTube is cover-cropped', () => {
+  it('immersive mobile slides stretch; media uses a contain stage not cover-crop', () => {
     const css = read('src/app/globals.css')
     expect(css).toContain("html[data-platform='mobile'][data-immersive-video='1'] .reels-slide")
     expect(css).toContain('align-items: stretch')
-    expect(css).toContain('.reels-yt-cover')
-    expect(css).toContain('.reels-yt-frame')
-    expect(css).toContain('calc(var(--reels-viewport-h) * 16 / 9)')
+    expect(css).toContain('.reels-media-stage')
+    expect(css).toContain('.reels-yt-frame-box')
+    expect(css).toContain('aspect-ratio: 16 / 9')
+    expect(css).not.toContain('calc(var(--reels-viewport-h) * 16 / 9)')
   })
 
   it('does not keep a 4rem black chrome mask on mobile YouTube', () => {
     const item = read('src/components/video/VideoFeedItem.tsx')
-    expect(item).toContain('reels-yt-cover')
+    expect(item).toContain('reels-media-stage')
     expect(item).toContain('reels-yt-frame')
-    expect(item).toContain('hidden h-16 bg-black lg:block')
+    expect(item).not.toContain('h-16 bg-black')
     expect(item).toContain('userPausedAfterDeactivate')
   })
 

@@ -2853,6 +2853,8 @@
   html[data-immersive-video='1'] {
     --mobile-top-chrome-offset: 0px;
     --reels-viewport-h: 100dvh;
+    /* Bounded media stage: leftover slide is editorial, not a 9:16 crop canvas. */
+    --reels-media-stage-max-h: min(68dvh, calc(100dvh - 12.5rem));
   }
 
   html[data-platform='mobile'][data-immersive-video='1'],
@@ -2921,8 +2923,8 @@
   }
 
   /*
-   * VF2.3L: 16:9 YouTube in a 9:16 slide letterboxes a giant black band
-   * under the tabs. Cover-crop like object-fit:cover; tabs stay overlay.
+   * VF2.3AR: keep the slide stretched for snap, but do NOT cover-crop
+   * 16:9 media into the 9:16 card. Media sits in a bounded stage.
    */
   html[data-platform='mobile'][data-immersive-video='1'] .reels-slide,
   html[data-platform='tablet'][data-immersive-video='1'] .reels-slide {
@@ -2938,23 +2940,10 @@
     max-height: none;
     margin-inline: 0;
     border-radius: 0;
-  }
-
-  html[data-immersive-video='1'] .reels-yt-cover {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-
-  html[data-immersive-video='1'] .reels-yt-frame {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    height: 100%;
-    width: max(100%, calc(var(--reels-viewport-h) * 16 / 9));
-    max-width: none;
-    transform: translate(-50%, -50%);
-    border: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
   }
 
   @media (min-width: 1280px) {
@@ -3892,6 +3881,66 @@ video.reels-video::-webkit-media-controls-fullscreen-button {
 /* Alternatif: tüm native kontrolleri sıfırla */
 video.reels-video {
   -webkit-media-controls: none;
+}
+
+/*
+ * VF2.3AR media stage — unlayered so it wins over utilities object-fit:cover
+ * and the old VF2.3L iframe cover-crop. Original source ratio is preserved.
+ */
+.reels-media-stage {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+html[data-immersive-video='1'] .reels-media-stage {
+  padding-top: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 2.5rem);
+  max-height: var(--reels-media-stage-max-h);
+  box-sizing: border-box;
+}
+
+.reels-yt-frame-box {
+  position: relative;
+  width: min(100%, calc(var(--reels-media-stage-max-h, 100dvh) * 16 / 9));
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  max-height: var(--reels-media-stage-max-h, none);
+  background: #000;
+}
+
+iframe.reels-yt-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  border: 0;
+  transform: none;
+}
+
+.reels-media-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+}
+
+.reels-media-stage .reels-video {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--reels-media-stage-max-h, 68dvh);
+  object-fit: contain;
+  object-position: center center;
 }
 
 /* ── Timeline rail animation ── */
