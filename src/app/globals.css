@@ -3659,6 +3659,12 @@
     @apply shrink-0;
   }
 
+  .reels-layout > .reels-player-wrap {
+    width: var(--reels-video-w);
+    max-width: 100%;
+    position: relative;
+  }
+
   .reels-recommendations {
     @apply sticky top-6 hidden shrink-0 flex-col xl:flex;
     width: var(--layout-rail);

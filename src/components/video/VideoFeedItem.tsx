@@ -16,13 +16,15 @@ import { VideoCommentSheet } from './VideoCommentSheet'
 import type { VideoFeedItem as VideoFeedItemType } from '@/hooks/useVideoFeed'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 import {
+  applyYoutubeMuteIntent,
   mediaCommand,
-  nextUserPaused,
+  nextUserPausedFromTap,
   shouldObserverRestartPlayback,
   userPausedAfterDeactivate,
-  youtubeMuteFunc,
+  youtubeCommandPayload,
   youtubePlayerFunc,
 } from '@/lib/videoFeed/playbackIntent'
+import { isRealBrowser } from '@/lib/videoFeed/youtubeEmbedAllowlist'
 import { pauseOtherPageVideos, setActiveReelsAudioSink } from '@/lib/videoPlayback'
 
 const DOUBLE_TAP_MS = 300
@@ -30,26 +32,6 @@ const SEEN_THRESHOLD_MS = 2_500
 // YouTube iframe postMessage target — must match embed host (youtube-nocookie.com).
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
-/**
- * YouTube iframe sadece gerçek tarayıcılarda çalışır.
- * Capacitor WKWebView'da YouTube cookie yok → bot overlay.
- *
- * Güvenli yaklaşım: "WebView tespiti" yerine "gerçek tarayıcı tespiti".
- * Tanınmayan ortam → iframe yok, thumbnail + link göster.
- *
- * Gerçek tarayıcı kriterleri:
- *   - Masaüstü Chrome/Firefox/Edge (Mobile değil)
- *   - iOS Safari: hem "Safari" hem "Version/" içerir (Capacitor ikisini de içermez)
- */
-function isRealBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent
-  // Masaüstü Chrome/Firefox/Edge
-  if (/Chrome|Firefox|Edg\//.test(ua) && !/Mobile/.test(ua)) return true
-  // Gerçek iOS Safari: "Version/X.X" + "Safari" + "Mobile" — Capacitor bunu içermez
-  if (/iPhone|iPad|iPod/.test(ua) && /Version\/\d/.test(ua) && /Safari/.test(ua)) return true
-  return false
-}
 /** true → iframe göster | false → thumbnail + YouTube linki göster */
 const YOUTUBE_IFRAME_OK = isRealBrowser()
 
@@ -87,6 +69,8 @@ function VideoFeedItemInner({
   const tapCountRef = useRef(0)
   const { muted, reportPlayerMuted } = useReelsAudio()
   const userPausedRef = useRef(false)
+  const ytPlayerStateRef = useRef<number | null>(null)
+  const [userPaused, setUserPaused] = useState(false)
   const tier = useNetworkTier()
   const {
     isVideoLoaded,
@@ -155,11 +139,16 @@ function VideoFeedItemInner({
   }, [])
 
   const sendYTCmd = useCallback(
-    (func: string, args: string | unknown[] = '') => {
-      postToYT({ event: 'command', func, args })
+    (func: string, args: unknown[] = []) => {
+      postToYT(youtubeCommandPayload(func, args))
     },
     [postToYT]
   )
+
+  const setUserPausedIntent = useCallback((next: boolean) => {
+    userPausedRef.current = next
+    setUserPaused(next)
+  }, [])
 
   // Required before YouTube emits onReady/onStateChange back to the parent page.
   const sendYTListening = useCallback(() => {
@@ -186,7 +175,8 @@ function VideoFeedItemInner({
     const el = videoRef.current
     if (!el) return
     el.muted = muted
-  }, [muted, isActive, video.id, virtualized])
+    reportPlayerMuted(el.muted)
+  }, [muted, isActive, video.id, virtualized, reportPlayerMuted])
 
   useEffect(() => {
     if (virtualized || !isActive) {
@@ -195,11 +185,14 @@ function VideoFeedItemInner({
     }
     setActiveReelsAudioSink((nextMuted) => {
       const native = videoRef.current
-      if (native) native.muted = nextMuted
-      sendYTCmd(youtubeMuteFunc(nextMuted))
+      if (native) {
+        native.muted = nextMuted
+        reportPlayerMuted(native.muted)
+      }
+      applyYoutubeMuteIntent(sendYTCmd, nextMuted)
     })
     return () => setActiveReelsAudioSink(null)
-  }, [isActive, virtualized, sendYTCmd, video.id])
+  }, [isActive, virtualized, sendYTCmd, video.id, reportPlayerMuted])
 
   useEffect(() => {
     if (virtualized) return
@@ -207,7 +200,6 @@ function VideoFeedItemInner({
     if (!el) return
 
     if (!isActive) {
-      userPausedRef.current = userPausedAfterDeactivate()
       el.pause()
       if (!wasLoadedBefore) el.currentTime = 0
       setPaused(false)
@@ -248,6 +240,7 @@ function VideoFeedItemInner({
     wasLoadedBefore,
     virtualized,
     reportPlayerMuted,
+    userPaused,
   ])
 
   useEffect(() => {
@@ -297,9 +290,16 @@ function VideoFeedItemInner({
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current
-    userPausedRef.current = nextUserPaused(userPausedRef.current)
+    const playerPlaying = el
+      ? !el.paused
+      : ytPlayerStateRef.current === 1 || ytPlayerStateRef.current === 3
+    const next = nextUserPausedFromTap({
+      currentlyUserPaused: userPausedRef.current,
+      playerPlaying,
+    })
+    setUserPausedIntent(next)
     if (el) {
-      if (userPausedRef.current) {
+      if (next) {
         el.pause()
         setPaused(true)
       } else {
@@ -309,8 +309,11 @@ function VideoFeedItemInner({
       }
       return
     }
-    setPaused(userPausedRef.current)
-  }, [])
+    sendYTListening()
+    sendYTCmd(youtubePlayerFunc(next ? 'pause' : 'play'))
+    applyYoutubeMuteIntent(sendYTCmd, muted)
+    setPaused(next)
+  }, [muted, sendYTCmd, sendYTListening, setUserPausedIntent])
 
   const triggerDoubleTapLike = useCallback(
     (x: number, y: number) => {
@@ -378,7 +381,7 @@ function VideoFeedItemInner({
         visible: isActive,
       })
       sendYTCmd(youtubePlayerFunc(command))
-      sendYTCmd(youtubeMuteFunc(muted))
+      applyYoutubeMuteIntent(sendYTCmd, muted)
     }
 
     applyPlayback()
@@ -398,19 +401,21 @@ function VideoFeedItemInner({
 
         if (data?.event === 'onStateChange') {
           const state = typeof data.info === 'number' ? data.info : data.info?.playerState
+          if (typeof state === 'number') ytPlayerStateRef.current = state
           if (userPausedRef.current) {
-            if (state === 1) sendYTCmd('pauseVideo')
+            if (state === 1 || state === 3) sendYTCmd('pauseVideo')
             setPaused(true)
             return
           }
           if (state === 1) setPaused(false)
           else if (state === 2 || state === 0) setPaused(true)
-          if (isActive) sendYTCmd(youtubeMuteFunc(muted))
+          if (isActive) applyYoutubeMuteIntent(sendYTCmd, muted)
         }
 
         if (data?.event === 'infoDelivery' && isActive) {
           const info = data.info
           const pState = info?.playerState
+          if (typeof pState === 'number') ytPlayerStateRef.current = pState
           if (userPausedRef.current) {
             if (pState === 1 || pState === 3) sendYTCmd('pauseVideo')
             setPaused(true)
@@ -422,11 +427,10 @@ function VideoFeedItemInner({
           }
           if (typeof info?.currentTime === 'number' && info.currentTime > 0) {
             setLoading(false)
-            if (typeof info.muted === 'boolean') {
-              reportPlayerMuted(info.muted)
-              if (info.muted && !muted) sendYTCmd('unMute')
-              else if (!info.muted && muted) sendYTCmd('mute')
-            }
+          }
+          if (typeof info?.muted === 'boolean') {
+            reportPlayerMuted(info.muted)
+            if (info.muted !== muted) applyYoutubeMuteIntent(sendYTCmd, muted)
           }
         }
 
@@ -452,7 +456,16 @@ function VideoFeedItemInner({
       clearTimeout(t2)
       clearTimeout(t3)
     }
-  }, [muted, isYouTube, isActive, virtualized, sendYTCmd, sendYTListening, reportPlayerMuted])
+  }, [muted, isYouTube, isActive, userPaused, virtualized, sendYTCmd, sendYTListening, reportPlayerMuted])
+
+  useEffect(() => {
+    if (virtualized || !isYouTube || !isActive || !userPaused) return
+    const hold = window.setInterval(() => {
+      sendYTListening()
+      sendYTCmd('pauseVideo')
+    }, 400)
+    return () => window.clearInterval(hold)
+  }, [virtualized, isYouTube, isActive, userPaused, sendYTCmd, sendYTListening])
 
   useEffect(() => {
     if (surface !== 'video' || !playbackError) return
@@ -465,21 +478,16 @@ function VideoFeedItemInner({
 
   // Video değiştiğinde YouTube player state sıfırla
   useEffect(() => {
-    if (!isActive) {
-      userPausedRef.current = userPausedAfterDeactivate()
-    }
-  }, [isActive, video.id])
-
-  useEffect(() => {
     setYtApiConnected(false)
     setPlaybackError(false)
-    userPausedRef.current = userPausedAfterDeactivate()
+    ytPlayerStateRef.current = null
+    setUserPausedIntent(userPausedAfterDeactivate())
     if (isYouTube) {
       setPaused(true)
       setYtBlocked(!YOUTUBE_IFRAME_OK)
       setLoading(true)
     }
-  }, [video.id, isYouTube])
+  }, [video.id, isYouTube, setUserPausedIntent])
 
   useEffect(() => {
     if (surface === 'video' && isAudioMode) setPlaybackError(true)
@@ -551,11 +559,11 @@ function VideoFeedItemInner({
             className="reels-video-card relative cursor-pointer select-none overflow-hidden bg-black"
             onClick={() => {
               if (paused) {
-                userPausedRef.current = false
+                setUserPausedIntent(false)
                 audioRef.current?.play().catch(() => {})
                 setPaused(false)
               } else {
-                userPausedRef.current = true
+                setUserPausedIntent(true)
                 audioRef.current?.pause()
                 setPaused(true)
               }
@@ -799,7 +807,7 @@ function VideoFeedItemInner({
                     visible: isActive,
                   })
                   sendYTCmd(youtubePlayerFunc(command))
-                  sendYTCmd(youtubeMuteFunc(muted))
+                  applyYoutubeMuteIntent(sendYTCmd, muted)
                   setPaused(command === 'pause' || !isActive)
                   setLoading(false)
                 }}
@@ -813,14 +821,20 @@ function VideoFeedItemInner({
                 className="absolute inset-0 z-[1]"
                 onClick={() => {
                   sendYTListening()
-                  userPausedRef.current = nextUserPaused(userPausedRef.current)
+                  const playerPlaying =
+                    ytPlayerStateRef.current === 1 || ytPlayerStateRef.current === 3
+                  const next = nextUserPausedFromTap({
+                    currentlyUserPaused: userPausedRef.current,
+                    playerPlaying,
+                  })
+                  setUserPausedIntent(next)
                   const command = mediaCommand({
                     isActive: true,
-                    userPaused: userPausedRef.current,
+                    userPaused: next,
                     visible: true,
                   })
                   sendYTCmd(youtubePlayerFunc(command))
-                  sendYTCmd(youtubeMuteFunc(muted))
+                  applyYoutubeMuteIntent(sendYTCmd, muted)
                   setPaused(command === 'pause')
                 }}
               />
@@ -889,7 +903,10 @@ function VideoFeedItemInner({
           controlsList="nodownload nofullscreen noremoteplayback"
           onLoadedData={handleMediaReady}
           onWaiting={() => { if (!wasLoadedBefore) setLoading(true) }}
-          onPlaying={() => setLoading(false)}
+          onPlaying={() => {
+            setLoading(false)
+            if (userPausedRef.current) videoRef.current?.pause()
+          }}
           onError={() => {
             setPlaybackError(true)
             setLoading(false)

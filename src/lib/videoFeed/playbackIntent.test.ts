@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyYoutubeMuteIntent,
   effectiveMutedFromPlayer,
   isExclusivePlaybackOwner,
   mediaCommand,
   nextPreferredMutedFromUiToggle,
   nextUserPaused,
+  nextUserPausedFromTap,
   shouldAutoplay,
   shouldObserverRestartPlayback,
   userPausedAfterDeactivate,
+  youtubeCommandPayload,
+  youtubeMuteCommands,
   youtubeMuteFunc,
   youtubePlayerFunc,
 } from '@/lib/videoFeed/playbackIntent'
@@ -27,6 +31,35 @@ describe('playbackIntent autoplay gate', () => {
     expect(youtubePlayerFunc('pause')).toBe('pauseVideo')
     expect(youtubeMuteFunc(true)).toBe('mute')
     expect(youtubeMuteFunc(false)).toBe('unMute')
+  })
+
+  it('YouTube command payloads always send args as an array', () => {
+    expect(youtubeCommandPayload('pauseVideo')).toEqual({
+      event: 'command',
+      func: 'pauseVideo',
+      args: [],
+    })
+    expect(youtubeCommandPayload('playVideo', [])).toEqual({
+      event: 'command',
+      func: 'playVideo',
+      args: [],
+    })
+    expect(youtubeCommandPayload('setVolume', [100]).args).toEqual([100])
+    expect(Array.isArray(youtubeCommandPayload('unMute').args)).toBe(true)
+  })
+
+  it('unmute sends unMute then setVolume 100; mute sends mute only', () => {
+    expect(youtubeMuteCommands(true)).toEqual([{ func: 'mute', args: [] }])
+    expect(youtubeMuteCommands(false)).toEqual([
+      { func: 'unMute', args: [] },
+      { func: 'setVolume', args: [100] },
+    ])
+    const sent: Array<{ func: string; args?: unknown[] }> = []
+    applyYoutubeMuteIntent((func, args) => sent.push({ func, args }), false)
+    expect(sent).toEqual([
+      { func: 'unMute', args: [] },
+      { func: 'setVolume', args: [100] },
+    ])
   })
 })
 
@@ -59,6 +92,29 @@ describe('playbackIntent user pause vs observer/rerender', () => {
         isActive: true,
         sameItem: true,
       })
+    ).toBe(true)
+  })
+
+  it('observer flicker on the same paused item must not resume', () => {
+    const userPaused = true
+    expect(
+      shouldObserverRestartPlayback({ userPaused, isActive: false, sameItem: true })
+    ).toBe(false)
+    expect(
+      shouldObserverRestartPlayback({ userPaused, isActive: true, sameItem: true })
+    ).toBe(false)
+    expect(mediaCommand({ isActive: true, userPaused, visible: true })).toBe('pause')
+  })
+
+  it('paused overlay + still-playing player re-asserts pause instead of playing', () => {
+    expect(
+      nextUserPausedFromTap({ currentlyUserPaused: true, playerPlaying: true })
+    ).toBe(true)
+    expect(
+      nextUserPausedFromTap({ currentlyUserPaused: true, playerPlaying: false })
+    ).toBe(false)
+    expect(
+      nextUserPausedFromTap({ currentlyUserPaused: false, playerPlaying: true })
     ).toBe(true)
   })
 })

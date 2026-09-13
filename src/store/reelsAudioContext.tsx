@@ -56,7 +56,6 @@ export function ReelsAudioProvider({ children }: { children: ReactNode }) {
   const setMuted = useCallback((value: boolean) => {
     setMutedState(value)
     saveToStorage(value)
-    setPlayerMuted(value)
     applyReelsAudioPreference(value)
   }, [])
 
@@ -65,7 +64,6 @@ export function ReelsAudioProvider({ children }: { children: ReactNode }) {
     const next = nextPreferredMutedFromUiToggle(shown)
     setMutedState(next)
     saveToStorage(next)
-    setPlayerMuted(next)
     applyReelsAudioPreference(next)
   }, [playerMuted, muted])
 

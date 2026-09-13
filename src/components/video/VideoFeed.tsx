@@ -181,9 +181,10 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
     <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
       <div
         className={cn(
-          'reels-feed w-full',
-          (showVideoFeed || surface === 'video') && 'reels-player-wrap'
+          'reels-feed',
+          (showVideoFeed || surface === 'video') ? 'reels-player-wrap' : 'w-full'
         )}
+        data-testid="video-player-column"
       >
         {surface === 'video' ? (
           <VideoSurfaceTabs

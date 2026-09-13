@@ -101,26 +101,32 @@ describe('feed-v2 video mix — existing ranking, no splice', () => {
       publishedAt: new Date(now - 3_000),
       video: 'https://www.youtube.com/watch?v=abcdefghijk',
     })
+    const articleE = row({
+      articleId: 'e',
+      headline: 'Article E',
+      publishedAt: new Date(now - 4_000),
+      video: null,
+    })
 
     const ranked = feedScoringService.scoreAll(
-      [articleA, videoB, articleC, videoD],
+      [articleA, videoB, articleC, videoD, articleE],
       ctx(),
       'personal',
       new Set(),
       new Set()
     )
-    expect(ranked.map((item) => item.articleId)).toEqual(['a', 'b', 'c', 'd'])
+    expect(ranked.map((item) => item.articleId)).toEqual(['a', 'b', 'c', 'd', 'e'])
     expect(sanitizeFeedVideoUrl(videoB.video)).toBe(videoB.video)
     expect(sanitizeFeedVideoUrl(articleA.video)).toBeNull()
 
     const afterSeen = feedScoringService.scoreAll(
-      [articleA, videoB, articleC, videoD],
+      [articleA, videoB, articleC, videoD, articleE],
       ctx(),
       'personal',
       new Set(['b']),
       new Set()
     )
-    expect(afterSeen.map((item) => item.articleId)).toEqual(['a', 'c', 'd'])
+    expect(afterSeen.map((item) => item.articleId)).toEqual(['a', 'c', 'd', 'e'])
 
     const withVideo = feedScoringService.scoreCandidate(videoB, ctx(), 'personal')
     const withoutVideo = feedScoringService.scoreCandidate(
