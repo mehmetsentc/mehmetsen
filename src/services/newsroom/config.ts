@@ -199,7 +199,7 @@ export const TURIZM_SOURCE_IDS = [
   'turizm-google-news',
   'turizmgazetesi', 'turizmekonomi',
   'turizmajansi', 'turizmnews', 'turizmaktuel', 'turizmguncel',
-  'tourismtoday',
+  'tourismtoday', 'gezinomi',
   'aa-turizm', 'hurriyet-seyahat', 'ntv-seyahat', 'sabah-turizm',
   'eventnews-turizm',
 ] as const
@@ -218,6 +218,10 @@ export const KIBRIS_SOURCE_IDS = [
 export const GEZI_SOURCE_IDS = [
   'gezi-google-news', 'gezginler', 'milliyet-seyahat',
   'cnnturk-seyahat', 'lonely-planet-tr',
+  'birgezi', 'journavel', 'geziekspresi', 'filgezi',
+  'bizevdeyokuz', 'geziall', 'gezipgordum', 'gezimanya',
+  'akdenizgezifirsatlari', 'kulturportali',
+  'jotjournaling', 'wandercircle', 'castelliitaly',
 ] as const
 
 /** Sinema kaynakları — Box Office Türkiye Atom (sinema worker, forcedCategoryId: sinema). */

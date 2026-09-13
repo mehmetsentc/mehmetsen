@@ -3,8 +3,8 @@ import { runRssWorker } from '@/services/newsroom/workers/baseWorker'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 
 /**
- * Gezi worker — Gezginler.net, Milliyet Seyahat, CNN Türk Seyahat,
- * Lonely Planet, Google News gezi aramaları.
+ * Gezi worker — Gezginler.net, Milliyet/CNN Türk Seyahat, Lonely Planet,
+ * gezi blogları (Biz Evde Yokuz, Fil Gezi, Gezimanya vb.) ve Google News.
  * Covers: destinasyon önerileri, gezi rotaları, seyahat rehberleri,
  * tatil fikirleri, keşif haberleri, konaklama tavsiyeleri.
  * Cron: every 60 min.

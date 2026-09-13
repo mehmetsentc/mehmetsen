@@ -3,7 +3,7 @@ import { runRssWorker } from '@/services/newsroom/workers/baseWorker'
 import type { NewsroomRunResult } from '@/services/newsroom/types'
 
 /**
- * Turizm worker — Turizm Gazetesi, Turizm Aktüel, AA Turizm,
+ * Turizm worker — Turizm Gazetesi, Turizm Aktüel, Gezinomi, AA Turizm,
  * Hürriyet/NTV/Sabah Seyahat, Google News turizm aramaları.
  * Covers: otel açılışları, tatil sezonları, tur operatörü haberleri,
  * havalimanı istatistikleri, ziyaretçi rakamları, TÜRSAB kararları.
