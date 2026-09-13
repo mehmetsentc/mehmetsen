@@ -62,6 +62,11 @@ interface VideoFeedItemProps {
   virtualized?: boolean
   surface?: VideoFeedSurface
   onUnusable?: (id: string) => void
+  /**
+   * Temporary V1C.2A admin validation only. Default false — production /video
+   * analytics paths stay unchanged. When true, skip views/seen/social UI.
+   */
+  isolateFromAnalytics?: boolean
 }
 
 function VideoFeedItemInner({
@@ -76,6 +81,7 @@ function VideoFeedItemInner({
   virtualized = false,
   surface = 'reels',
   onUnusable,
+  isolateFromAnalytics = false,
 }: VideoFeedItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -111,7 +117,7 @@ function VideoFeedItemInner({
     postId: video.id,
     initialLiked: video.isLiked,
     initialCount: video.likesCount,
-    enabled: surface !== 'video',
+    enabled: surface !== 'video' && !isolateFromAnalytics,
   })
 
   const media = getPrimaryVideo(video)
@@ -256,8 +262,10 @@ function VideoFeedItemInner({
     setPaused(false)
     if (!viewedRef.current) {
       viewedRef.current = true
-      onUpdate(video.id, { viewsCount: video.viewsCount + 1 })
-      postService.incrementViews(video.id).catch(() => {})
+      if (!isolateFromAnalytics) {
+        onUpdate(video.id, { viewsCount: video.viewsCount + 1 })
+        postService.incrementViews(video.id).catch(() => {})
+      }
     }
   }, [
     isActive,
@@ -268,9 +276,11 @@ function VideoFeedItemInner({
     virtualized,
     reportPlayerMuted,
     userPaused,
+    isolateFromAnalytics,
   ])
 
   useEffect(() => {
+    if (isolateFromAnalytics) return
     if (virtualized || !isActive) return
     const el = videoRef.current
     if (!el) return
@@ -289,7 +299,7 @@ function VideoFeedItemInner({
       el.removeEventListener('playing', handlePlaying)
       if (timer) clearTimeout(timer)
     }
-  }, [isActive, video.id, user?.uid, virtualized])
+  }, [isActive, video.id, user?.uid, virtualized, isolateFromAnalytics])
 
   // Progress bar — timeupdate; reset to 0 when inactive or virtualized
   useEffect(() => {
@@ -344,6 +354,7 @@ function VideoFeedItemInner({
 
   const triggerDoubleTapLike = useCallback(
     (x: number, y: number) => {
+      if (isolateFromAnalytics) return
       if (surface !== 'video' && !liked) {
         toggleLike()
         onUpdate(video.id, { isLiked: true, likesCount: likesCount + 1 })
@@ -351,7 +362,7 @@ function VideoFeedItemInner({
       setHeartBurst({ x, y, key: Date.now() })
       setTimeout(() => setHeartBurst(null), 900)
     },
-    [liked, toggleLike, onUpdate, video.id, likesCount, surface]
+    [liked, toggleLike, onUpdate, video.id, likesCount, surface, isolateFromAnalytics]
   )
 
   const handleVideoTap = useCallback(
@@ -362,20 +373,20 @@ function VideoFeedItemInner({
 
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
 
-      if (tapCountRef.current >= 2) {
+      if (tapCountRef.current >= 2 && !isolateFromAnalytics) {
         tapCountRef.current = 0
         triggerDoubleTapLike(x, y)
         return
       }
 
       tapTimerRef.current = setTimeout(() => {
-        if (tapCountRef.current === 1) {
+        if (tapCountRef.current >= 1) {
           togglePlay()
         }
         tapCountRef.current = 0
       }, DOUBLE_TAP_MS)
     },
-    [togglePlay, triggerDoubleTapLike]
+    [togglePlay, triggerDoubleTapLike, isolateFromAnalytics]
   )
 
   // ── Audio-only card ses senkronizasyonu ───────────────────────────────────
@@ -898,6 +909,8 @@ function VideoFeedItemInner({
                 </div>
               )}
 
+              {!isolateFromAnalytics && (
+                <>
               <VideoActions
                 video={{ ...video, isLiked: liked, likesCount }}
                 onCommentClick={() => setCommentsOpen(true)}
@@ -919,6 +932,8 @@ function VideoFeedItemInner({
                 onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
                 surface={surface}
               />
+                </>
+              )}
             </>
           )}
         </div>
@@ -1001,6 +1016,8 @@ function VideoFeedItemInner({
           </div>
         )}
 
+        {!isolateFromAnalytics && (
+          <>
         <VideoActions
           video={{ ...video, isLiked: liked, likesCount }}
           onCommentClick={() => setCommentsOpen(true)}
@@ -1024,6 +1041,8 @@ function VideoFeedItemInner({
           onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
           surface={surface}
         />
+          </>
+        )}
 
         {/* ── Progress bar (TikTok stili, en alt) ── */}
         {isActive && (
