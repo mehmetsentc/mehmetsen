@@ -3619,6 +3619,7 @@
   }
 
   .reels-player-wrap {
+    position: relative;
     width: var(--reels-video-w);
     max-width: 100%;
     @apply shrink-0;

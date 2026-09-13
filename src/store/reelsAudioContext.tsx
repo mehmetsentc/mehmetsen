@@ -9,25 +9,25 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { applyReelsAudioPreference } from '@/lib/videoPlayback'
+import { effectiveMutedFromPlayer, nextPreferredMutedFromUiToggle } from '@/lib/videoFeed/playbackIntent'
 
 interface ReelsAudioContextValue {
   muted: boolean
+  effectiveMuted: boolean
   toggleMuted: () => void
   setMuted: (muted: boolean) => void
+  reportPlayerMuted: (actual: boolean) => void
 }
 
 const ReelsAudioContext = createContext<ReelsAudioContextValue | undefined>(undefined)
 
-// localStorage → oturumlar arası ses tercihi kalıcı (sessionStorage değil)
 const REELS_MUTED_KEY = 'nahaber-reels-muted'
 
 function readInitialMuted(): boolean {
   if (typeof window === 'undefined') return true
   try {
     const stored = localStorage.getItem(REELS_MUTED_KEY)
-    // null = ilk ziyaret → sessiz (tarayıcı autoplay politikası gereği)
-    // '0' = kullanıcı daha önce açıkça sesi açmış → sessiz değil
-    // '1' = kullanıcı daha önce açıkça sessize almış → sessiz
     return stored !== '0'
   } catch {
     return true
@@ -42,28 +42,40 @@ function saveToStorage(value: boolean) {
 
 export function ReelsAudioProvider({ children }: { children: ReactNode }) {
   const [muted, setMutedState] = useState(true)
+  const [playerMuted, setPlayerMuted] = useState<boolean | null>(null)
 
   useEffect(() => {
     setMutedState(readInitialMuted())
   }, [])
 
-  // Sadece kullanıcı açıkça toggle ettiğinde storage'a yazar
+  const effectiveMuted = effectiveMutedFromPlayer({
+    preferredMuted: muted,
+    playerMuted,
+  })
+
   const setMuted = useCallback((value: boolean) => {
     setMutedState(value)
     saveToStorage(value)
+    setPlayerMuted(value)
+    applyReelsAudioPreference(value)
   }, [])
 
   const toggleMuted = useCallback(() => {
-    setMutedState((prev) => {
-      const next = !prev
-      saveToStorage(next)
-      return next
-    })
+    const shown = playerMuted ?? muted
+    const next = nextPreferredMutedFromUiToggle(shown)
+    setMutedState(next)
+    saveToStorage(next)
+    setPlayerMuted(next)
+    applyReelsAudioPreference(next)
+  }, [playerMuted, muted])
+
+  const reportPlayerMuted = useCallback((actual: boolean) => {
+    setPlayerMuted(actual)
   }, [])
 
   const value = useMemo(
-    () => ({ muted, toggleMuted, setMuted }),
-    [muted, toggleMuted, setMuted]
+    () => ({ muted, effectiveMuted, toggleMuted, setMuted, reportPlayerMuted }),
+    [muted, effectiveMuted, toggleMuted, setMuted, reportPlayerMuted]
   )
 
   return <ReelsAudioContext.Provider value={value}>{children}</ReelsAudioContext.Provider>

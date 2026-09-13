@@ -12,6 +12,7 @@ import { isNfRankShadowEnabled } from '@/lib/feed/featureFlag'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
+import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -131,7 +132,7 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     summary: row.summary,
     category: row.category,
     image: row.image,
-    video: row.video,
+    video: sanitizeFeedVideoUrl(row.video),
     publishedAt: row.publishedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     breaking: row.breaking,

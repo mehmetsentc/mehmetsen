@@ -32,7 +32,7 @@ export function VideoActions({
   className,
   surface = 'reels',
 }: VideoActionsProps) {
-  const { muted, toggleMuted } = useReelsAudio()
+  const { effectiveMuted, toggleMuted } = useReelsAudio()
   const articleSocial = useVideoArticleSocial({
     articleId: video.id,
     initialLiked: video.isLiked,
@@ -85,14 +85,14 @@ export function VideoActions({
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); toggleMuted() }}
-        aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
+        aria-label={effectiveMuted ? 'Sesi aç' : 'Sesi kapat'}
         className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90"
       >
-        {muted
+        {effectiveMuted
           ? <VolumeX className="h-7 w-7 text-white/70" />
           : <Volume2 className="h-7 w-7 text-white" />
         }
-        <span className="text-xs font-bold drop-shadow">{muted ? 'Sessiz' : 'Sesli'}</span>
+        <span className="text-xs font-bold drop-shadow">{effectiveMuted ? 'Sessiz' : 'Sesli'}</span>
       </button>
 
       {/* Thumbs up (like) */}
