@@ -6,7 +6,7 @@ import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { ROUTES } from '@/constants/routes'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
-  if (pathname === ROUTES.REELS) return false
+  if (pathname === ROUTES.REELS || pathname === ROUTES.VIDEO) return false
   if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return false
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false

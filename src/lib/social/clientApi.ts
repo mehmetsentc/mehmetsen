@@ -90,6 +90,11 @@ export const socialApi = {
     const q = encodeURIComponent(publisherIds.join(','))
     return socialFetch(`/api/social/publisher/state?ids=${q}`, { method: 'GET' }, true)
   },
+  listComments(articleId: string, cursor?: string | null) {
+    const params = new URLSearchParams({ articleId })
+    if (cursor) params.set('cursor', cursor)
+    return socialFetch(`/api/social/comments?${params.toString()}`, { method: 'GET' }, true)
+  },
   createComment(articleId: string, content: string, parentId?: string | null) {
     return socialFetch('/api/social/comments', {
       method: 'POST',

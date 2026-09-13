@@ -10,6 +10,8 @@ import { formatCount } from '@/lib/postUtils'
 import { moderate } from '@/lib/moderationClient'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { socialApi } from '@/lib/social/clientApi'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 
 interface VideoCommentSheetProps {
   postId: string
@@ -17,6 +19,7 @@ interface VideoCommentSheetProps {
   onClose: () => void
   commentsCount: number
   onCommentAdded?: () => void
+  surface?: VideoFeedSurface
 }
 
 type ReportReason = 'spam' | 'harassment' | 'hate_speech' | 'misinformation' | 'violence' | 'nudity' | 'other'
@@ -236,6 +239,7 @@ export function VideoCommentSheet({
   onClose,
   commentsCount,
   onCommentAdded,
+  surface = 'reels',
 }: VideoCommentSheetProps) {
   const { user } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
@@ -247,14 +251,47 @@ export function VideoCommentSheet({
   const loadComments = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await commentService.getByPost(postId)
-      setComments(data)
+      if (surface === 'video') {
+        const res = await socialApi.listComments(postId)
+        const items = (
+          res as {
+            items?: Array<{
+              id: string
+              userId: string
+              parentId?: string | null
+              content: string
+              createdAt: string
+              author?: { username?: string; avatarUrl?: string | null }
+            }>
+          }
+        ).items ?? []
+        setComments(
+          items.map((item) => ({
+            id: item.id,
+            postId,
+            parentId: item.parentId ?? null,
+            authorId: item.userId,
+            authorUsername: item.author?.username ?? 'kullanici',
+            authorPhotoURL: item.author?.avatarUrl ?? null,
+            content: item.content,
+            likesCount: 0,
+            repliesCount: 0,
+            isEdited: false,
+            isDeleted: false,
+            createdAt: item.createdAt,
+            updatedAt: item.createdAt,
+          }))
+        )
+      } else {
+        const data = await commentService.getByPost(postId)
+        setComments(data)
+      }
     } catch {
       toast.error('Yorumlar yüklenemedi')
     } finally {
       setLoading(false)
     }
-  }, [postId])
+  }, [postId, surface])
 
   useEffect(() => {
     if (open) loadComments()
@@ -291,13 +328,17 @@ export function VideoCommentSheet({
         return
       }
 
-      await commentService.create({
-        postId,
-        content,
-        authorId: user.uid,
-        authorUsername: user.username,
-        authorPhotoURL: user.photoURL,
-      })
+      if (surface === 'video') {
+        await socialApi.createComment(postId, content)
+      } else {
+        await commentService.create({
+          postId,
+          content,
+          authorId: user.uid,
+          authorUsername: user.username,
+          authorPhotoURL: user.photoURL,
+        })
+      }
       setText('')
       await loadComments()
       onCommentAdded?.()
@@ -305,7 +346,11 @@ export function VideoCommentSheet({
     } catch (error) {
       console.error('[VideoCommentSheet] submit failed:', error)
       const message = error instanceof Error ? error.message : 'Yorum gönderilemedi'
-      toast.error(message)
+      if (message === 'AUTH_REQUIRED' || message === 'Unauthorized') {
+        toast.error('Yorum yapmak için giriş yapın')
+      } else {
+        toast.error(message)
+      }
     } finally {
       setSubmitting(false)
     }

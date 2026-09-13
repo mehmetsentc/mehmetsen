@@ -971,8 +971,11 @@ function resolveHeaderNavItem(
   if (id === 'yerel') {
     return { id: 'yerel', label: labelOverride ?? 'Yerel', href: ROUTES.LOCAL }
   }
-  if (id === 'video' || id === 'teve') {
-    return { id: 'video', label: labelOverride ?? 'Video', href: ROUTES.REELS }
+  if (id === 'video') {
+    return { id: 'video', label: labelOverride ?? 'Video', href: ROUTES.VIDEO }
+  }
+  if (id === 'teve') {
+    return { id: 'teve', label: labelOverride ?? 'Teve', href: ROUTES.REELS }
   }
   const def = DEFAULT_CATEGORIES.find((c) => c.id === id)
   if (!def) return null

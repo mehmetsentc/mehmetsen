@@ -8,7 +8,8 @@ export const STORE_KEYS = {
 /** AppStateContext / clientCache feed snapshot prefixes. */
 export const CACHE_KEYS = {
   timeline: (categoryId: string | null) => `timeline:nahaber:${categoryId ?? 'all'}`,
-  videoFeed: (mode: string, userId?: string) => `videoFeed:${mode}:${userId ?? 'guest'}`,
+  videoFeed: (mode: string, userId?: string, surface = 'reels') =>
+    `videoFeed:${surface}:${mode}:${userId ?? 'guest'}`,
   newsDetail: (postId: string) => `news:detail:${postId}`,
 } as const
 
@@ -20,6 +21,7 @@ export const PAGE_STATE_KEYS = {
   eventsCategory: 'eventsCategory',
   eventsUserPickedCity: 'eventsUserPickedCity',
   reelsFeedTab: 'reelsFeedTab',
+  videoFeedTab: 'videoFeedTab',
   reelsActiveIndexByTab: 'reelsActiveIndexByTab',
   discoverSection: 'discoverSection',
   influencerPlatform: 'influencerPlatform',

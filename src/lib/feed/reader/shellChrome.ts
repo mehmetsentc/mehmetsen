@@ -27,6 +27,14 @@ export function isReelsPathname(pathname: string): boolean {
   return pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)
 }
 
+export function isPublicVideoPathname(pathname: string): boolean {
+  return pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)
+}
+
+export function isImmersiveVideoPathname(pathname: string): boolean {
+  return isReelsPathname(pathname) || isPublicVideoPathname(pathname)
+}
+
 export function isGlobalNavV2Active(): boolean {
   return isGlobalNavV2EnabledClient()
 }
@@ -46,7 +54,7 @@ export function resolveTopNavbarVisible(opts: {
   pathname: string
   readerSurfaceActive?: boolean
 }): boolean {
-  if (isReelsPathname(opts.pathname)) return false
+  if (isImmersiveVideoPathname(opts.pathname)) return false
   if (isGlobalNavV2Active()) {
     if (isFeedV2Pathname(opts.pathname) && opts.readerSurfaceActive) return false
     return true
@@ -67,7 +75,7 @@ export function resolveMobileNavVisible(opts: {
 }): boolean {
   void opts.readerSurfaceActive
   if (isGlobalNavV2Active()) return false
-  if (isReelsPathname(opts.pathname)) return false
+  if (isImmersiveVideoPathname(opts.pathname)) return false
   if (isFeedV2Pathname(opts.pathname)) return false
   return true
 }
@@ -91,5 +99,5 @@ export function resolveSiteChromeVisible(opts: {
 
 /** Immersive full-bleed stage (reels layout tokens) — includes Feed V2 cards. */
 export function isFeedImmersiveStage(pathname: string): boolean {
-  return isReelsPathname(pathname) || isFeedV2Pathname(pathname)
+  return isImmersiveVideoPathname(pathname) || isFeedV2Pathname(pathname)
 }

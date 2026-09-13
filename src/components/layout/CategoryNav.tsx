@@ -47,6 +47,7 @@ export function CategoryNav({
 
     const hide =
       pathname === '/reels' ||
+      pathname === '/video' ||
       pathname === '/feed-v2' ||
       pathname.startsWith('/feed-v2/') ||
       pathname.startsWith('/messages') ||

@@ -11,6 +11,8 @@ export const ROUTES = {
   EVENTS: '/events',
   REELS: '/reels',
   REELS_VIDEO: (id: string) => `/reels?v=${encodeURIComponent(id)}`,
+  VIDEO: '/video',
+  VIDEO_ITEM: (id: string) => `/video?v=${encodeURIComponent(id)}`,
   POST_CREATE: '/post/create',
   POST_DETAIL: (id: string) => `/post/${id}`,
   NEWS_DETAIL: (slug: string) => `/haber/${slug}`,
@@ -167,6 +169,7 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
   ROUTES.FEED_V3,
   ROUTES.EVENTS,
   ROUTES.REELS,
+  ROUTES.VIDEO,
   ROUTES.LOCAL,
   ROUTES.SPOR,
   ROUTES.TEKNOLOJI,
@@ -180,6 +183,7 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
 // Beğen/yorum/paylaş gibi aksiyonlarda useAuth devreye girer.
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
+  if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)) return true
   if (pathname.startsWith('/feed-v2')) return true
   if (pathname.startsWith('/feed-v3')) return true
   if (pathname.startsWith('/profile/')) return true

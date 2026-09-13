@@ -6,7 +6,7 @@ import { useUiStore } from '@/store/uiStore'
 import { ROUTES } from '@/constants/routes'
 
 function hasDesktopWebHeader(pathname: string): boolean {
-  if (pathname === ROUTES.REELS) return false
+  if (pathname === ROUTES.REELS || pathname === ROUTES.VIDEO) return false
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false

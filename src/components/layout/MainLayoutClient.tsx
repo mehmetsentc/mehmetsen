@@ -26,7 +26,7 @@ import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
   isGlobalNavV2Active,
-  isReelsPathname,
+  isImmersiveVideoPathname,
   resolveMobileNavVisible,
   resolveTopNavbarVisible,
 } from '@/lib/feed/reader/shellChrome'
@@ -50,7 +50,7 @@ const SiteFooter = dynamic(
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string): ContentVariant {
-  if (isReelsPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
+  if (isImmersiveVideoPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/profile/')) return 'newspaper'
   if (pathname.startsWith('/publisher/')) return 'newspaper'
@@ -243,7 +243,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
           <NetworkProvider>
             <ScrollHeaderProvider>
               {/* Feed V2 stays dark-first; true /reels unchanged. */}
-              <ReelsRouteTheme active={isReelsPathname(pathname) || isFeedV2Pathname(pathname)} />
+              <ReelsRouteTheme active={isImmersiveVideoPathname(pathname) || isFeedV2Pathname(pathname)} />
               <RouteEffects />
               <PageStateEffects />
               <UiEffects />

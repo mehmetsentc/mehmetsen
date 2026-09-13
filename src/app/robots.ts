@@ -118,7 +118,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       },
       {
         userAgent: 'Googlebot-Video',
-        allow: ['/haber/', '/reels', '/video-sitemap.xml'],
+          allow: ['/haber/', '/reels', '/video', '/video-sitemap.xml'],
         disallow: ['/admin/', '/api/'],
       },
       {

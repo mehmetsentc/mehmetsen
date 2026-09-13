@@ -1,7 +1,6 @@
 'use client'
 
 import { ThumbsUp, ThumbsDown, MessageCircle, Volume2, VolumeX } from 'lucide-react'
-import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
 import { PostMoreButton } from '@/components/post/PostMoreMenu'
@@ -10,6 +9,8 @@ import { useSave } from '@/hooks/useSave'
 import { useReelsAudio } from '@/store/reelsAudioContext'
 import { formatCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
+import { useVideoArticleSocial } from '@/hooks/useVideoArticleSocial'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 import type { VideoFeedItem } from '@/hooks/useVideoFeed'
 
 interface VideoActionsProps {
@@ -19,6 +20,7 @@ interface VideoActionsProps {
   onSaveChange?: (saved: boolean, count: number) => void
   onShareChange?: (count: number) => void
   className?: string
+  surface?: VideoFeedSurface
 }
 
 export function VideoActions({
@@ -28,32 +30,52 @@ export function VideoActions({
   onSaveChange,
   onShareChange,
   className,
+  surface = 'reels',
 }: VideoActionsProps) {
   const { muted, toggleMuted } = useReelsAudio()
+  const articleSocial = useVideoArticleSocial({
+    articleId: video.id,
+    initialLiked: video.isLiked,
+    initialLikeCount: video.likesCount,
+    initialSaved: video.isSaved,
+    initialSaveCount: video.savesCount,
+    enabled: surface === 'video',
+  })
 
   const { liked, count: likesCount, toggle: toggleLike, loading: likeLoading } = useLike({
     postId: video.id,
     initialLiked: video.isLiked,
     initialCount: video.likesCount,
+    enabled: surface !== 'video',
   })
 
   const { saved, count: savesCount, toggle: toggleSave, loading: saveLoading } = useSave({
     postId: video.id,
     initialSaved: video.isSaved,
     initialCount: video.savesCount,
+    enabled: surface !== 'video',
   })
 
+  const displayLiked = surface === 'video' ? articleSocial.liked : liked
+  const displayLikes = surface === 'video' ? articleSocial.likeCount : likesCount
+  const displaySaved = surface === 'video' ? articleSocial.saved : saved
+  const displaySaves = surface === 'video' ? articleSocial.saveCount : savesCount
+  const displayLikeLoading = surface === 'video' ? articleSocial.likeLoading : likeLoading
+  const displaySaveLoading = surface === 'video' ? articleSocial.saveLoading : saveLoading
+
   const handleLike = async () => {
-    const prevLiked = liked
-    const prevCount = likesCount
-    await toggleLike()
+    const prevLiked = displayLiked
+    const prevCount = displayLikes
+    if (surface === 'video') await articleSocial.toggleLike()
+    else await toggleLike()
     onLikeChange?.(!prevLiked, prevLiked ? prevCount - 1 : prevCount + 1)
   }
 
   const handleSave = async () => {
-    const prevSaved = saved
-    const prevCount = savesCount
-    await toggleSave()
+    const prevSaved = displaySaved
+    const prevCount = displaySaves
+    if (surface === 'video') await articleSocial.toggleSave()
+    else await toggleSave()
     onSaveChange?.(!prevSaved, prevSaved ? prevCount - 1 : prevCount + 1)
   }
 
@@ -77,14 +99,14 @@ export function VideoActions({
       <button
         type="button"
         onClick={handleLike}
-        disabled={likeLoading}
+        disabled={displayLikeLoading}
         aria-label="Beğen"
         className="flex flex-col items-center gap-1.5 text-white transition-transform active:scale-90 disabled:opacity-60"
       >
         <ThumbsUp
-          className={cn('h-7 w-7 transition-colors', liked ? 'fill-white text-white' : 'text-white')}
+          className={cn('h-7 w-7 transition-colors', displayLiked ? 'fill-white text-white' : 'text-white')}
         />
-        <span className="text-xs font-bold drop-shadow">{formatCount(likesCount)}</span>
+        <span className="text-xs font-bold drop-shadow">{formatCount(displayLikes)}</span>
       </button>
 
       {/* Thumbs down (decorative — no backend dislike system yet) */}
@@ -100,9 +122,14 @@ export function VideoActions({
       {/* Share */}
       <ShareButton
         postId={video.id}
+        slug={surface === 'video' ? video.slug : undefined}
         title={video.title}
+        text={surface === 'video' ? video.summary : undefined}
         variant="reels"
-        onShared={() => onShareChange?.((video.sharesCount ?? 0) + 1)}
+        onShared={() => {
+          if (surface === 'video') void articleSocial.recordShare()
+          onShareChange?.((video.sharesCount ?? 0) + 1)
+        }}
       />
 
       {/* Comments */}
@@ -119,10 +146,10 @@ export function VideoActions({
       </button>
 
       <SaveButton
-        saved={saved}
-        count={savesCount}
+        saved={displaySaved}
+        count={displaySaves}
         onToggle={handleSave}
-        loading={saveLoading}
+        loading={displaySaveLoading}
         variant="reels"
       />
 
@@ -133,12 +160,12 @@ export function VideoActions({
           authorUsername: video.authorUsername,
           isVideo: true,
           viewsCount: video.viewsCount,
-          likesCount,
+          likesCount: displayLikes,
           commentsCount: video.commentsCount,
-          savesCount,
+          savesCount: displaySaves,
         }}
         variant="reels"
-        saved={saved}
+        saved={displaySaved}
         onToggleSave={handleSave}
       />
     </div>

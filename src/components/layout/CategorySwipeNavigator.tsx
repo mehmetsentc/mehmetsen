@@ -11,6 +11,7 @@ const DISABLED_PREFIXES = [
   '/messages',
   '/admin',
   '/reels',
+  '/video',
   '/login',
   '/register',
   '/settings',

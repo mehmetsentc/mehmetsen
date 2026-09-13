@@ -8,7 +8,7 @@ import { ROUTES } from '@/constants/routes'
 
 /** Gazete header’ı olmayan slim sayfalarda yüzen menü düğmesi. */
 function needsFloatingToggle(pathname: string): boolean {
-  if (pathname === ROUTES.REELS) return false
+  if (pathname === ROUTES.REELS || pathname === ROUTES.VIDEO) return false
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false

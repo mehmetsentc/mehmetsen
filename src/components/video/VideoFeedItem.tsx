@@ -14,6 +14,7 @@ import { VideoActions } from './VideoActions'
 import { VideoOverlay } from './VideoOverlay'
 import { VideoCommentSheet } from './VideoCommentSheet'
 import type { VideoFeedItem as VideoFeedItemType } from '@/hooks/useVideoFeed'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 
 const DOUBLE_TAP_MS = 300
 const SEEN_THRESHOLD_MS = 2_500
@@ -53,6 +54,8 @@ interface VideoFeedItemProps {
   onUpdate: (postId: string, patch: Partial<VideoFeedItemType>) => void
   /** Virtual window — render only a scroll-snap anchor, no video content */
   virtualized?: boolean
+  surface?: VideoFeedSurface
+  onUnusable?: (id: string) => void
 }
 
 function VideoFeedItemInner({
@@ -63,6 +66,8 @@ function VideoFeedItemInner({
   setItemRef,
   onUpdate,
   virtualized = false,
+  surface = 'reels',
+  onUnusable,
 }: VideoFeedItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -88,12 +93,14 @@ function VideoFeedItemInner({
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null)
   const [progress, setProgress] = useState(0) // 0–100
+  const [playbackError, setPlaybackError] = useState(false)
 
   // Like hook for double-tap like
   const { liked, count: likesCount, toggle: toggleLike } = useLike({
     postId: video.id,
     initialLiked: video.isLiked,
     initialCount: video.likesCount,
+    enabled: surface !== 'video',
   })
 
   const media = getPrimaryVideo(video)
@@ -258,14 +265,14 @@ function VideoFeedItemInner({
 
   const triggerDoubleTapLike = useCallback(
     (x: number, y: number) => {
-      if (!liked) {
+      if (surface !== 'video' && !liked) {
         toggleLike()
         onUpdate(video.id, { isLiked: true, likesCount: likesCount + 1 })
       }
       setHeartBurst({ x, y, key: Date.now() })
       setTimeout(() => setHeartBurst(null), 900)
     },
-    [liked, toggleLike, onUpdate, video.id, likesCount]
+    [liked, toggleLike, onUpdate, video.id, likesCount, surface]
   )
 
   const handleVideoTap = useCallback(
@@ -384,6 +391,7 @@ function VideoFeedItemInner({
           const code = typeof data.info === 'number' ? data.info : data.info?.errorCode
           if (code === 100 || code === 101 || code === 150) {
             setYtBlocked(true)
+            setPlaybackError(true)
             setLoading(false)
           }
         }
@@ -406,7 +414,10 @@ function VideoFeedItemInner({
     }
   }, [muted, isYouTube, isActive, virtualized, sendYTCmd, sendYTListening])
 
-  // ── YouTube API timeout kaldırıldı ─────────────────────────────────────────
+  useEffect(() => {
+    if (surface !== 'video' || !playbackError) return
+    onUnusable?.(video.id)
+  }, [surface, playbackError, onUnusable, video.id])
   // Eski mantık: iOS/WebKit'te postMessage gelmezse 7s sonra ytBlocked=true yapıyordu.
   // Sorun: gerçekte oynayan videolar "engelli" sanılıp "YouTube'da İzle" gösteriliyordu.
   // Yeni mantık: ytBlocked yalnızca gerçek hata kodlarında (100/101/150) set edilir.
@@ -415,6 +426,7 @@ function VideoFeedItemInner({
   // Video değiştiğinde YouTube player state sıfırla
   useEffect(() => {
     setYtApiConnected(false)
+    setPlaybackError(false)
     if (isYouTube) {
       setPaused(true)
       // Capacitor'da ytBlocked kalıcı true — iframe hiç yüklenmez
@@ -422,6 +434,10 @@ function VideoFeedItemInner({
       setLoading(true)
     }
   }, [video.id, isYouTube])
+
+  useEffect(() => {
+    if (surface === 'video' && isAudioMode) setPlaybackError(true)
+  }, [surface, isAudioMode])
 
   // Virtual window: render only scroll-snap anchor outside ± render window.
   // IMPORTANT: this return must come AFTER ALL hooks above — Rules of Hooks.
@@ -437,6 +453,50 @@ function VideoFeedItemInner({
   }
 
   if (!stableSrc) {
+    if (isAudioMode && surface === 'video') {
+      const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl ?? null
+      return (
+        <div ref={refCallback} data-index={index} className="reels-slide">
+          <div className="reels-video-card relative overflow-hidden bg-black">
+            {coverSrc && (
+              <img
+                src={coverSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-60"
+                loading="lazy"
+              />
+            )}
+            <div className="absolute inset-0 z-[5] flex items-center justify-center">
+              <span className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-bold text-gray-900 shadow">
+                Video kullanılamıyor
+              </span>
+            </div>
+            <VideoActions
+              video={{ ...video, isLiked: liked, likesCount }}
+              onCommentClick={() => setCommentsOpen(true)}
+              onLikeChange={(likedVal, count) =>
+                onUpdate(video.id, { isLiked: likedVal, likesCount: count })
+              }
+              onSaveChange={(saved, count) =>
+                onUpdate(video.id, { isSaved: saved, savesCount: count })
+              }
+              onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+              surface={surface}
+            />
+            <VideoOverlay video={video} surface={surface} />
+            <VideoCommentSheet
+              postId={video.id}
+              open={commentsOpen}
+              onClose={() => setCommentsOpen(false)}
+              commentsCount={video.commentsCount}
+              onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+              surface={surface}
+            />
+          </div>
+        </div>
+      )
+    }
+
     if (isAudioMode) {
       const coverSrc = video.coverImageUrl ?? video.mediaItems?.[0]?.thumbnailUrl ?? null
       return (
@@ -523,9 +583,10 @@ function VideoFeedItemInner({
                 onUpdate(video.id, { isSaved: saved, savesCount: count })
               }
               onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+              surface={surface}
             />
 
-            <VideoOverlay video={video} />
+            <VideoOverlay video={video} surface={surface} />
 
             <VideoCommentSheet
               postId={video.id}
@@ -533,6 +594,7 @@ function VideoFeedItemInner({
               onClose={() => setCommentsOpen(false)}
               commentsCount={video.commentsCount}
               onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+              surface={surface}
             />
           </div>
         </div>
@@ -569,14 +631,16 @@ function VideoFeedItemInner({
               onUpdate(video.id, { isSaved: saved, savesCount: count })
             }
             onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+            surface={surface}
           />
-          <VideoOverlay video={video} />
+          <VideoOverlay video={video} surface={surface} />
           <VideoCommentSheet
             postId={video.id}
             open={commentsOpen}
             onClose={() => setCommentsOpen(false)}
             commentsCount={video.commentsCount}
             onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+            surface={surface}
           />
         </div>
       </div>
@@ -636,7 +700,7 @@ function VideoFeedItemInner({
                   </svg>
                 </div>
                 <span className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-bold text-gray-900 shadow">
-                  YouTube&apos;da İzle
+                  {surface === 'video' ? 'Video kullanılamıyor' : "YouTube'da İzle"}
                 </span>
               </a>
 
@@ -650,14 +714,16 @@ function VideoFeedItemInner({
                   onUpdate(video.id, { isSaved: saved, savesCount: count })
                 }
                 onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+                surface={surface}
               />
-              <VideoOverlay video={video} />
+              <VideoOverlay video={video} surface={surface} />
               <VideoCommentSheet
                 postId={video.id}
                 open={commentsOpen}
                 onClose={() => setCommentsOpen(false)}
                 commentsCount={video.commentsCount}
                 onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+                surface={surface}
               />
             </>
           ) : (
@@ -727,14 +793,16 @@ function VideoFeedItemInner({
                   onUpdate(video.id, { isSaved: saved, savesCount: count })
                 }
                 onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+                surface={surface}
               />
-              <VideoOverlay video={video} />
+              <VideoOverlay video={video} surface={surface} />
               <VideoCommentSheet
                 postId={video.id}
                 open={commentsOpen}
                 onClose={() => setCommentsOpen(false)}
                 commentsCount={video.commentsCount}
                 onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+                surface={surface}
               />
             </>
           )}
@@ -771,8 +839,20 @@ function VideoFeedItemInner({
           onLoadedData={handleMediaReady}
           onWaiting={() => { if (!wasLoadedBefore) setLoading(true) }}
           onPlaying={() => setLoading(false)}
+          onError={() => {
+            setPlaybackError(true)
+            setLoading(false)
+          }}
           onClick={handleVideoTap}
         />
+
+        {playbackError && (
+          <div className="absolute inset-0 z-[6] flex items-center justify-center bg-black/35">
+            <span className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-bold text-gray-900 shadow">
+              Video kullanılamıyor
+            </span>
+          </div>
+        )}
 
         {loading && isActive && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
@@ -810,9 +890,10 @@ function VideoFeedItemInner({
             onUpdate(video.id, { isSaved: saved, savesCount: count })
           }
           onShareChange={(count) => onUpdate(video.id, { sharesCount: count })}
+          surface={surface}
         />
 
-        <VideoOverlay video={video} />
+        <VideoOverlay video={video} surface={surface} />
 
         <VideoCommentSheet
           postId={video.id}
@@ -820,6 +901,7 @@ function VideoFeedItemInner({
           onClose={() => setCommentsOpen(false)}
           commentsCount={video.commentsCount}
           onCommentAdded={() => onUpdate(video.id, { commentsCount: video.commentsCount + 1 })}
+          surface={surface}
         />
 
         {/* ── Progress bar (TikTok stili, en alt) ── */}

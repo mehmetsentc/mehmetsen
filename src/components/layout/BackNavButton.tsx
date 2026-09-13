@@ -28,6 +28,7 @@ function resolveFallback(pathname: string): string {
   }
   if (pathname.startsWith('/haber/') || pathname.startsWith('/post/')) return ROUTES.FEED
   if (pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}?`)) return ROUTES.FEED
+  if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}?`)) return ROUTES.FEED
   if (pathname.startsWith('/settings')) return ROUTES.SETTINGS
   return ROUTES.FEED
 }
@@ -101,13 +102,15 @@ export function GlobalBackNav() {
   const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
   const isReels =
     pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)
+  const isPublicVideo =
+    pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)
   const globalNavV2 = isGlobalNavV2EnabledClient()
 
   // Global Nav V2: Feed V2 uses site header menu — no floating exit control.
   if (hidden) return null
   if (globalNavV2 && isFeedV2) return null
 
-  const isImmersive = isReels || isFeedV2
+  const isImmersive = isReels || isPublicVideo || isFeedV2
 
   return (
     <div

@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 
 function ReelsBootSkeleton() {
   return (
@@ -19,6 +20,6 @@ const ReelsPageClient = dynamic(
   }
 )
 
-export function ReelsLoader() {
-  return <ReelsPageClient />
+export function ReelsLoader({ surface = 'reels' }: { surface?: VideoFeedSurface }) {
+  return <ReelsPageClient surface={surface} />
 }

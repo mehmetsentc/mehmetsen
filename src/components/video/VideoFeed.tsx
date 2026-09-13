@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,11 +8,14 @@ import { useVideoFeed } from '@/hooks/useVideoFeed'
 import { useInfiniteScroll, useActiveSnapItem } from '@/hooks/useInfiniteScroll'
 import { VideoFeedItem } from './VideoFeedItem'
 import { ReelsRecommendations } from './ReelsRecommendations'
+import { VideoSurfaceTabs } from './VideoSurfaceTabs'
 import { ReelsAudioProvider } from '@/store/reelsAudioContext'
 import { ROUTES } from '@/constants/routes'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import type { ReelsFeedTab } from '@/components/video/ReelsFeedTabs'
 
 function ReelsStatePanel({
   children,
@@ -33,12 +36,12 @@ function ReelsStatePanel({
   )
 }
 
-export function VideoFeed() {
+export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const targetVideoId = searchParams.get('v')
-  // Tab sistemi kaldırıldı — sadece "senin için" akışı
-  const feedTab = 'for-you' as const
+  const [feedTab, setFeedTab] = useState<ReelsFeedTab>('for-you')
+  const [unusableIds, setUnusableIds] = useState<Set<string>>(() => new Set())
   const [activeIndexByTab, setActiveIndexByTab] = usePageState<
     Record<string, number>
   >(PAGE_STATE_KEYS.reelsActiveIndexByTab, { 'for-you': 0 })
@@ -58,7 +61,18 @@ export function VideoFeed() {
     loadMore,
     updateVideo,
     retry,
-  } = useVideoFeed(targetVideoId, feedTab)
+  } = useVideoFeed(targetVideoId, surface === 'reels' ? 'for-you' : feedTab, surface)
+
+  const displayVideos = videos.filter((video) => !unusableIds.has(video.id))
+
+  const handleUnusable = useCallback((id: string) => {
+    setUnusableIds((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
 
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: loadMore,
@@ -79,7 +93,7 @@ export function VideoFeed() {
 
   const { containerRef, setItemRef, scrollToIndex } = useActiveSnapItem({
     onActiveChange: handleActiveChange,
-    itemCount: videos.length,
+    itemCount: displayVideos.length,
     suspend: awaitingTarget,
   })
 
@@ -90,6 +104,7 @@ export function VideoFeed() {
 
   useEffect(() => {
     restoredScrollRef.current = false
+    setUnusableIds(new Set())
   }, [feedTab])
 
   useLayoutEffect(() => {
@@ -114,12 +129,12 @@ export function VideoFeed() {
 
   // Restore vertical scroll position when returning to reels (per tab).
   useLayoutEffect(() => {
-    if (targetVideoId || awaitingTarget || videos.length === 0 || restoredScrollRef.current) {
+    if (targetVideoId || awaitingTarget || displayVideos.length === 0 || restoredScrollRef.current) {
       return
     }
 
     const savedIndex = activeIndexByTab[feedTab] ?? 0
-    const index = Math.min(Math.max(0, savedIndex), videos.length - 1)
+    const index = Math.min(Math.max(0, savedIndex), displayVideos.length - 1)
     if (index > 0) {
       scrollToIndex(index, 'auto')
       setActiveIndex(index)
@@ -128,7 +143,7 @@ export function VideoFeed() {
   }, [
     targetVideoId,
     awaitingTarget,
-    videos.length,
+    displayVideos.length,
     feedTab,
     activeIndexByTab,
     scrollToIndex,
@@ -142,30 +157,39 @@ export function VideoFeed() {
   }, [])
 
   useEffect(() => {
-    if (pathname !== ROUTES.REELS) {
+    if (pathname !== ROUTES.REELS && pathname !== ROUTES.VIDEO) {
       pauseAllPageVideos()
     }
   }, [pathname])
 
   useEffect(() => {
-    if (loading || awaitingTarget || videos.length === 0) return
-    if (activeIndex >= videos.length - 2 && hasMore && !loadingMore) {
+    if (loading || awaitingTarget || displayVideos.length === 0) return
+    if (activeIndex >= displayVideos.length - 2 && hasMore && !loadingMore) {
       loadMore()
     }
-  }, [activeIndex, videos.length, hasMore, loadingMore, loadMore, loading, awaitingTarget])
+  }, [activeIndex, displayVideos.length, hasMore, loadingMore, loadMore, loading, awaitingTarget])
 
   const playbackEnabled = !targetVideoId || !resolvingTarget
   const showVideoFeed =
     !loading &&
     !awaitingTarget &&
     !error &&
-    videos.length > 0
+    displayVideos.length > 0
 
   return (
     <ReelsAudioProvider>
     <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
+      {surface === 'video' ? (
+        <VideoSurfaceTabs
+          active={feedTab}
+          onChange={(tab) => {
+            setFeedTab(tab)
+            setActiveIndex(0)
+          }}
+        />
+      ) : null}
       <div className={cn('reels-feed w-full', showVideoFeed && 'reels-player-wrap')}>
-        {loading || awaitingTarget ? (
+        {loading || awaitingTarget || (displayVideos.length === 0 && loadingMore) ? (
         <ReelsStatePanel>
           <Loader2 className="h-9 w-9 animate-spin text-blue-500" />
           <p className="text-sm text-[rgb(var(--color-muted))]">
@@ -188,11 +212,15 @@ export function VideoFeed() {
             Tekrar dene
           </button>
         </ReelsStatePanel>
-      ) : videos.length === 0 ? (
+      ) : displayVideos.length === 0 ? (
         <ReelsStatePanel>
-          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Video bulunamadı</p>
+          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
+            {surface === 'video' ? 'Bu kategoride henüz video yok.' : 'Video bulunamadı'}
+          </p>
           <p className="text-sm text-[rgb(var(--color-muted))]">
-            Henüz yayınlanmış video yok. İlk videoyu paylaşarak akışı başlat!
+            {surface === 'video'
+              ? 'Başka bir kategori deneyin veya daha sonra tekrar bakın.'
+              : 'Henüz yayınlanmış video yok. İlk videoyu paylaşarak akışı başlat!'}
           </p>
         </ReelsStatePanel>
       ) : (
@@ -204,7 +232,7 @@ export function VideoFeed() {
           )}
           style={{ scrollSnapType: 'y mandatory' }}
         >
-          {videos.map((video, index) => {
+          {displayVideos.map((video, index) => {
             // Virtual window: render full content only for ±1 around active + 3 ahead.
             // Out-of-window items render as empty scroll-snap anchors — this prevents
             // iOS WebKit from holding dozens of <video> elements in memory simultaneously.
@@ -221,6 +249,8 @@ export function VideoFeed() {
                 setItemRef={setItemRef}
                 onUpdate={updateVideo}
                 virtualized={!inWindow}
+                surface={surface}
+                onUnusable={handleUnusable}
               />
             )
           })}
@@ -238,7 +268,7 @@ export function VideoFeed() {
 
       {showVideoFeed && (
         <ReelsRecommendations
-          videos={videos}
+          videos={displayVideos}
           activeIndex={activeIndex}
           onSelect={(index) => scrollToIndex(index)}
         />

@@ -9,16 +9,17 @@ interface UseSaveOptions {
   postId: string
   initialSaved?: boolean
   initialCount?: number
+  enabled?: boolean
 }
 
-export function useSave({ postId, initialSaved = false, initialCount = 0 }: UseSaveOptions) {
+export function useSave({ postId, initialSaved = false, initialCount = 0, enabled = true }: UseSaveOptions) {
   const { user } = useAuth()
   const [saved, setSaved] = useState(initialSaved)
   const [count, setCount] = useState(initialCount)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!user?.uid || !postId) return
+    if (!enabled || !user?.uid || !postId) return
     let cancelled = false
     saveService.isSaved(user.uid, postId).then((isSaved) => {
       if (!cancelled) setSaved(isSaved)
@@ -26,9 +27,10 @@ export function useSave({ postId, initialSaved = false, initialCount = 0 }: UseS
     return () => {
       cancelled = true
     }
-  }, [user?.uid, postId])
+  }, [enabled, user?.uid, postId])
 
   const toggle = useCallback(async () => {
+    if (!enabled) return
     if (!user) {
       toast.error('Kaydetmek için giriş yapın')
       return
@@ -53,7 +55,7 @@ export function useSave({ postId, initialSaved = false, initialCount = 0 }: UseS
     } finally {
       setLoading(false)
     }
-  }, [user, postId, saved, count, loading])
+  }, [enabled, user, postId, saved, count, loading])
 
   return { saved, count, toggle, loading, setSaved, setCount }
 }

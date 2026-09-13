@@ -11,6 +11,7 @@ import {
   resolveTopNavbarVisible,
   isFeedV2Pathname,
   isReelsPathname,
+  isPublicVideoPathname,
 } from '@/lib/feed/reader/shellChrome'
 import {
   canHistoryBackForOpen,
@@ -90,6 +91,14 @@ describe('shell chrome authority', () => {
   it('true /reels stays immersive without site chrome', () => {
     expect(isReelsPathname('/reels')).toBe(true)
     expect(resolveSiteChromeVisible({ pathname: '/reels', readerSurfaceActive: false })).toBe(
+      false
+    )
+  })
+
+  it('public /video is immersive without site chrome and does not change /reels identity', () => {
+    expect(isPublicVideoPathname('/video')).toBe(true)
+    expect(isReelsPathname('/video')).toBe(false)
+    expect(resolveSiteChromeVisible({ pathname: '/video', readerSurfaceActive: false })).toBe(
       false
     )
   })

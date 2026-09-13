@@ -8,6 +8,9 @@ import { saveService } from '@/services/saveService'
 import { useAuth } from '@/hooks/useAuth'
 import { sortByEngagement } from '@/lib/engagementScore'
 import { hasVideoContent } from '@/lib/postUtils'
+import { hasPlayableVisualVideo } from '@/lib/videoFeed/playableVisual'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import { socialApi } from '@/lib/social/clientApi'
 import { CACHE_TTL } from '@/lib/clientCache'
 import { CACHE_KEYS } from '@/lib/stateKeys'
 import { useAppState } from '@/store/appStateContext'
@@ -53,7 +56,11 @@ function dedupePostsById<T extends Post>(posts: T[]): T[] {
   return result
 }
 
-export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedTab = 'for-you') {
+export function useVideoFeed(
+  targetVideoId?: string | null,
+  feedMode: ReelsFeedTab = 'for-you',
+  surface: VideoFeedSurface = 'reels'
+) {
   const { user, loading: authLoading } = useAuth()
   const { getCachedFeed, setCachedFeed } = useAppState()
   const [videos, setVideos] = useState<VideoFeedItem[]>([])
@@ -72,19 +79,57 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
   const resolveInFlightRef = useRef(false)
   const seededFromCacheRef = useRef(false)
   const autoFetchAllSeenRef = useRef(0)
+  const emptyVisualPageRef = useRef(0)
   const feedModeRef = useRef(feedMode)
+  const surfaceRef = useRef(surface)
   const userIdRef = useRef(user?.uid)
 
   feedModeRef.current = feedMode
+  surfaceRef.current = surface
   userIdRef.current = user?.uid
 
   const enrichWithUserState = useCallback(
     async (posts: Post[]): Promise<VideoFeedItem[]> => {
-      if (!user?.uid || posts.length === 0) {
-        return posts
+      if (posts.length === 0) return posts
+      const ids = posts.map((p) => p.id)
+      const currentSurface = surfaceRef.current
+
+      if (currentSurface === 'video') {
+        try {
+          const res = await socialApi.getArticleState(ids)
+          const states = (
+            res as {
+              states?: Array<{
+                articleId: string
+                liked?: boolean
+                saved?: boolean
+                likeCount?: number
+                saveCount?: number
+                commentCount?: number
+              }>
+            }
+          ).states ?? []
+          const byId = new Map(states.map((s) => [s.articleId, s]))
+          return posts.map((p) => {
+            const state = byId.get(p.id)
+            return {
+              ...p,
+              isLiked: state?.liked ?? false,
+              isSaved: state?.saved ?? false,
+              likesCount: typeof state?.likeCount === 'number' ? state.likeCount : p.likesCount,
+              savesCount: typeof state?.saveCount === 'number' ? state.saveCount : p.savesCount,
+              commentsCount:
+                typeof state?.commentCount === 'number' ? state.commentCount : p.commentsCount,
+            }
+          })
+        } catch (enrichError) {
+          console.warn('[useVideoFeed] article social enrichment failed:', enrichError)
+          return posts
+        }
       }
 
-      const ids = posts.map((p) => p.id)
+      if (!user?.uid) return posts
+
       try {
         const [likedMap, savedMap] = await Promise.all([
           likeService.getLikedStatus(user.uid, ids),
@@ -111,6 +156,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
 
       const mode = feedModeRef.current
       const userId = userIdRef.current
+      const currentSurface = surfaceRef.current
 
       if (mode === 'following' && !userId) {
         if (reset) {
@@ -130,6 +176,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
       if (reset) {
         lastDocRef.current = null
         autoFetchAllSeenRef.current = 0
+        emptyVisualPageRef.current = 0
         setLoading(true)
         setError(null)
       } else {
@@ -140,10 +187,10 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
         const cursor = reset ? undefined : (lastDocRef.current ?? undefined)
         const result =
           mode === 'following' && userId
-            ? await postService.getFollowingVideoFeed(userId, cursor)
+            ? await postService.getFollowingVideoFeed(userId, cursor, { surface: currentSurface })
             : isCategoryTab(mode)
-              ? await postService.getVideoFeedByCategory(mode, cursor)
-              : await postService.getVideoFeed(cursor)
+              ? await postService.getVideoFeedByCategory(mode, cursor, { surface: currentSurface })
+              : await postService.getVideoFeed(cursor, { surface: currentSurface })
 
         if (fetchId !== fetchIdRef.current) return
 
@@ -156,7 +203,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
           const next = partitionBySeen(merged, userId)
           // Persist the head of the (revalidated) feed for instant re-entry.
           setCachedFeed(
-            CACHE_KEYS.videoFeed(mode, userId),
+            CACHE_KEYS.videoFeed(mode, userId, currentSurface),
             next.slice(0, MAX_CACHED_VIDEOS),
             CACHE_TTL.LONG
           )
@@ -213,7 +260,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
     // fetch fresh in the background. Skip seeding when targeting a deep-linked
     // video so the resolve flow can run unobstructed.
     const cached = !targetVideoId
-      ? getCachedFeed<VideoFeedItem[]>(CACHE_KEYS.videoFeed(feedMode, user?.uid))
+      ? getCachedFeed<VideoFeedItem[]>(CACHE_KEYS.videoFeed(feedMode, user?.uid, surface))
       : null
     if (cached && cached.length > 0) {
       setVideos(partitionBySeen(cached, user?.uid))
@@ -225,7 +272,7 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
     }
 
     fetchVideosRef.current(true)
-  }, [feedMode, user?.uid, authLoading, targetVideoId, getCachedFeed])
+  }, [feedMode, surface, user?.uid, authLoading, targetVideoId, getCachedFeed])
 
   useEffect(() => {
     if (authLoading || !user?.uid || videos.length === 0) return
@@ -270,7 +317,10 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
   const mergeVideoById = useCallback(
     async (videoId: string): Promise<number> => {
       const post = await postService.getNewsById(videoId)
-      if (!post || !hasVideoContent(post)) return -1
+      if (!post) return -1
+      const playable =
+        surfaceRef.current === 'video' ? hasPlayableVisualVideo(post) : hasVideoContent(post)
+      if (!playable) return -1
 
       const [enriched] = await enrichWithUserState([post])
       let mergedIndex = -1
@@ -367,6 +417,18 @@ export function useVideoFeed(targetVideoId?: string | null, feedMode: ReelsFeedT
     autoFetchAllSeenRef.current += 1
     fetchVideosRef.current(false)
   }, [videos, hasMore, loading, loadingMore, user?.uid])
+
+  useEffect(() => {
+    if (surface !== 'video') return
+    if (loading || loadingMore || !hasMore || isFetchingRef.current) return
+    if (videos.length > 0) {
+      emptyVisualPageRef.current = 0
+      return
+    }
+    if (emptyVisualPageRef.current >= MAX_AUTO_FETCH_ALL_SEEN) return
+    emptyVisualPageRef.current += 1
+    fetchVideosRef.current(false)
+  }, [surface, videos.length, hasMore, loading, loadingMore])
 
   const retry = useCallback(() => {
     hasFetchedRef.current = false

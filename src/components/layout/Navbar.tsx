@@ -53,12 +53,14 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     isHomeFeed || isFeedV2 || isAra(pathname) || isProfil(pathname)
   const showBack =
     !isPrimaryDest &&
-    pathname !== ROUTES.REELS
+    pathname !== ROUTES.REELS &&
+    pathname !== ROUTES.VIDEO
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
 
   const showContextRail =
     isFeedV2 ||
     (pathname !== ROUTES.REELS &&
+      pathname !== ROUTES.VIDEO &&
       !isArticle &&
       !isProfil(pathname) &&
       !pathname.startsWith('/messages') &&

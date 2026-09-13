@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import { VideoFeed } from '@/components/video/VideoFeed'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 
 function ReelsLoadingFallback() {
   return (
@@ -13,17 +14,17 @@ function ReelsLoadingFallback() {
 }
 
 /**
- * Teve page — forced dark mode, immersive full-screen video feed.
+ * Teve / Video page — forced dark mode, immersive full-screen video feed.
  * Always renders in dark mode regardless of user system preference.
  */
-export function ReelsPageClient() {
+export function ReelsPageClient({ surface = 'reels' }: { surface?: VideoFeedSurface }) {
   return (
     // `dark` class forces Tailwind dark-mode variants for this entire subtree
     <div className="dark" style={{ colorScheme: 'dark' }}>
       <div className="relative min-h-screen bg-black">
         {/* Back is provided globally via GlobalBackNav; keep page immersive. */}
         <Suspense fallback={<ReelsLoadingFallback />}>
-          <VideoFeed />
+          <VideoFeed surface={surface} />
         </Suspense>
       </div>
     </div>

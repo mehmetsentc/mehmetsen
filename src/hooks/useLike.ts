@@ -9,20 +9,21 @@ interface UseLikeOptions {
   postId: string
   initialLiked?: boolean
   initialCount?: number
+  enabled?: boolean
 }
 
 function clampCount(value: number): number {
   return Math.max(0, value)
 }
 
-export function useLike({ postId, initialLiked = false, initialCount = 0 }: UseLikeOptions) {
+export function useLike({ postId, initialLiked = false, initialCount = 0, enabled = true }: UseLikeOptions) {
   const { user } = useAuth()
   const [liked, setLiked] = useState(initialLiked)
   const [count, setCount] = useState(() => clampCount(initialCount))
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!user?.uid || !postId) return
+    if (!enabled || !user?.uid || !postId) return
     let cancelled = false
     likeService.isLiked(user.uid, postId).then((isLiked) => {
       if (!cancelled) setLiked(isLiked)
@@ -30,9 +31,10 @@ export function useLike({ postId, initialLiked = false, initialCount = 0 }: UseL
     return () => {
       cancelled = true
     }
-  }, [user?.uid, postId])
+  }, [enabled, user?.uid, postId])
 
   const toggle = useCallback(async () => {
+    if (!enabled) return
     if (!user) {
       toast.error('Beğenmek için giriş yapın')
       return
@@ -65,7 +67,7 @@ export function useLike({ postId, initialLiked = false, initialCount = 0 }: UseL
     } finally {
       setLoading(false)
     }
-  }, [user, postId, liked, count, loading])
+  }, [enabled, user, postId, liked, count, loading])
 
   return { liked, count: clampCount(count), toggle, loading, setLiked, setCount }
 }

@@ -25,6 +25,11 @@ import { isNationalBreakingEligible } from '@/lib/featuredScope'
 import { db, Collections, VIDEO_FEED_COLLECTION } from '@/lib/firebase/firestore'
 import { hasVideoContent, isPubliclyVisibleStatus } from '@/lib/postUtils'
 import {
+  finalizeVideoFeedPosts,
+  shouldUseTtsVideoFallback,
+} from '@/lib/videoFeed/selectVideoFeedPosts'
+import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import {
   hasNewsVideoUrl,
   mapNewsSnapshot,
   newsDocToPost,
@@ -39,6 +44,7 @@ export { NEWS_FEED_QUERY, NEWS_REELS_QUERY }
 
 const PAGE_SIZE = 10
 const REELS_PAGE_SIZE = 24
+const VIDEO_SURFACE_PAGE_SIZE = 40
 const QUERY_TIMEOUT_MS = 8_000
 
 // ── Videos collection document (AI-generated TTS reels) ──────────────────────
@@ -382,13 +388,25 @@ export const postService = {
     }
   },
 
-  async getVideoFeed(lastDoc?: QueryDocumentSnapshot) {
-    devLog('postService', 'getVideoFeed', { query: NEWS_REELS_QUERY.firestore, hasCursor: !!lastDoc })
+  async getVideoFeed(
+    lastDoc?: QueryDocumentSnapshot,
+    options?: { surface?: VideoFeedSurface }
+  ) {
+    const surface: VideoFeedSurface = options?.surface ?? 'reels'
+    const pageSize = surface === 'video' ? VIDEO_SURFACE_PAGE_SIZE : REELS_PAGE_SIZE
+    devLog('postService', 'getVideoFeed', {
+      query: NEWS_REELS_QUERY.firestore,
+      hasCursor: !!lastDoc,
+      surface,
+    })
 
     const mapReelsDocs = (docs: QueryDocumentSnapshot[]) =>
-      mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument)))
-        .filter((p) => isPubliclyVisibleStatus(p.status))
-        .filter(hasVideoContent)
+      finalizeVideoFeedPosts(
+        mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))).filter((p) =>
+          isPubliclyVisibleStatus(p.status)
+        ),
+        surface
+      )
 
     let newsPosts: Post[] = []
     let newsLastDoc: QueryDocumentSnapshot | null = null
@@ -400,7 +418,7 @@ export const postService = {
         where('hasVideo', '==', true),
         where('status', '==', 'published'),
         orderBy('createdAt', 'desc'),
-        limit(REELS_PAGE_SIZE),
+        limit(pageSize),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
       ],
       // Fallback: explicit videoUrl field
@@ -408,7 +426,7 @@ export const postService = {
         where('videoUrl', '!=', ''),
         orderBy('videoUrl'),
         orderBy('createdAt', 'desc'),
-        limit(REELS_PAGE_SIZE),
+        limit(pageSize),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
       ],
     ]
@@ -421,12 +439,16 @@ export const postService = {
           QUERY_TIMEOUT_MS,
           `getVideoFeed-attempt-${attempt}`
         )
-        const posts = mapReelsDocs(snap.docs).slice(0, REELS_PAGE_SIZE)
-        if (posts.length > 0 || lastDoc) {
+        const posts = mapReelsDocs(snap.docs)
+        if (snap.docs.length > 0 || lastDoc) {
           newsPosts = posts
           newsLastDoc = snap.docs[snap.docs.length - 1] ?? null
-          newsHasMore = snap.docs.length >= REELS_PAGE_SIZE
-          devLog('postService', 'getVideoFeed news hit', { raw: snap.docs.length, videos: posts.length })
+          newsHasMore = snap.docs.length >= pageSize
+          devLog('postService', 'getVideoFeed news hit', {
+            raw: snap.docs.length,
+            videos: posts.length,
+            surface,
+          })
           break
         }
       } catch (reelsError) {
@@ -434,11 +456,15 @@ export const postService = {
       }
     }
 
-    if (newsPosts.length > 0 || lastDoc) {
+    if (surface === 'video' || newsPosts.length > 0 || lastDoc) {
       return { posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore }
     }
 
-    // Final fallback: videos collection (AI-generated TTS audio reels)
+    if (!shouldUseTtsVideoFallback(surface, newsPosts.length, Boolean(lastDoc))) {
+      return { posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore }
+    }
+
+    // Final fallback: videos collection (AI-generated TTS audio reels) — /reels only
     devLog('postService', 'getVideoFeed falling back to videos collection')
     try {
       const videosSnap = await withTimeout(
@@ -465,12 +491,21 @@ export const postService = {
     }
   },
 
-  /** Belirli bir kategorideki videoları çeker (reels kategori filtresi). */
-  async getVideoFeedByCategory(categoryId: string, lastDoc?: QueryDocumentSnapshot) {
+  /** Belirli bir kategorideki videoları çeker (reels/video kategori filtresi). */
+  async getVideoFeedByCategory(
+    categoryId: string,
+    lastDoc?: QueryDocumentSnapshot,
+    options?: { surface?: VideoFeedSurface }
+  ) {
+    const surface: VideoFeedSurface = options?.surface ?? 'reels'
+    const pageSize = surface === 'video' ? VIDEO_SURFACE_PAGE_SIZE : REELS_PAGE_SIZE
     const mapReelsDocs = (docs: QueryDocumentSnapshot[]) =>
-      mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument)))
-        .filter((p) => isPubliclyVisibleStatus(p.status))
-        .filter(hasVideoContent)
+      finalizeVideoFeedPosts(
+        mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))).filter((p) =>
+          isPubliclyVisibleStatus(p.status)
+        ),
+        surface
+      )
 
     const { getHomeFeedCategoryFamily } = await import('@/constants/config')
     const family = getHomeFeedCategoryFamily(categoryId)
@@ -483,7 +518,7 @@ export const postService = {
           ? [where('categoryId', 'in', family)]
           : [where('categoryId', '==', categoryId)]),
         orderBy('createdAt', 'desc'),
-        limit(REELS_PAGE_SIZE),
+        limit(pageSize),
         ...(lastDoc ? [startAfter(lastDoc)] : []),
       ]
       const snap = await withTimeout(
@@ -495,7 +530,7 @@ export const postService = {
       return {
         posts,
         lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length >= REELS_PAGE_SIZE,
+        hasMore: snap.docs.length >= pageSize,
       }
     } catch (err) {
       console.warn(`[postService] getVideoFeedByCategory(${categoryId}) failed:`, err)
@@ -503,7 +538,12 @@ export const postService = {
     }
   },
 
-  async getFollowingVideoFeed(followerId: string, lastDoc?: QueryDocumentSnapshot) {
+  async getFollowingVideoFeed(
+    followerId: string,
+    lastDoc?: QueryDocumentSnapshot,
+    options?: { surface?: VideoFeedSurface }
+  ) {
+    const surface: VideoFeedSurface = options?.surface ?? 'reels'
     const { followService } = await import('@/services/followService')
     const followingIds = await followService.getFollowingIds(followerId)
     if (followingIds.length === 0) {
@@ -529,9 +569,10 @@ export const postService = {
       const q = query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)
       const snap = await withTimeout(getDocs(q), QUERY_TIMEOUT_MS, 'following-reels')
 
-      const posts = mapNewsSnapshot(snap.docs)
-        .filter((p) => isPubliclyVisibleStatus(p.status))
-        .filter(hasVideoContent)
+      const posts = finalizeVideoFeedPosts(
+        mapNewsSnapshot(snap.docs).filter((p) => isPubliclyVisibleStatus(p.status)),
+        surface
+      )
 
       return {
         posts,
@@ -551,10 +592,12 @@ export const postService = {
       const snap = await withTimeout(getDocs(q), QUERY_TIMEOUT_MS, 'following-reels-fallback')
 
       const authorSet = new Set(authorIds)
-      const posts = mapNewsSnapshot(snap.docs)
-        .filter((p) => isPubliclyVisibleStatus(p.status))
-        .filter(hasVideoContent)
-        .filter((p) => authorSet.has(p.authorId))
+      const posts = finalizeVideoFeedPosts(
+        mapNewsSnapshot(snap.docs)
+          .filter((p) => isPubliclyVisibleStatus(p.status))
+          .filter((p) => authorSet.has(p.authorId)),
+        surface
+      )
 
       return {
         posts,
