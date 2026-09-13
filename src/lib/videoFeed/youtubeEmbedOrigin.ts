@@ -22,5 +22,5 @@ export function youtubeEmbedParentOrigin(rawOrigin?: string | null): string {
 export function youtubeEmbedSrc(videoId: string, origin: string): string {
   const safeId = encodeURIComponent(videoId)
   const safeOrigin = encodeURIComponent(origin)
-  return `https://www.youtube-nocookie.com/embed/${safeId}?autoplay=1&mute=1&loop=1&playlist=${safeId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&origin=${safeOrigin}`
+  return `https://www.youtube-nocookie.com/embed/${safeId}?autoplay=1&mute=1&loop=1&playlist=${safeId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&controls=0&iv_load_policy=3&origin=${safeOrigin}`
 }

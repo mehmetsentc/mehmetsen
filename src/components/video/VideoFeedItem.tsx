@@ -514,6 +514,16 @@ function VideoFeedItemInner({
   // Yeni mantık: ytBlocked yalnızca gerçek hata kodlarında (100/101/150) set edilir.
   // ytApiConnected state'i artık kullanılmıyor ama kaldırılmadı (ref için güvenli).
 
+  // Swipe away: explicit pause is for the current item only. The next
+  // (and this item if revisited) may autoplay again.
+  const wasActiveRef = useRef(isActive)
+  useEffect(() => {
+    if (wasActiveRef.current && !isActive) {
+      setUserPausedIntent(userPausedAfterDeactivate())
+    }
+    wasActiveRef.current = isActive
+  }, [isActive, setUserPausedIntent])
+
   // Video değiştiğinde YouTube player state sıfırla
   useEffect(() => {
     setYtApiConnected(false)
@@ -521,7 +531,7 @@ function VideoFeedItemInner({
     ytPlayerStateRef.current = null
     setUserPausedIntent(userPausedAfterDeactivate())
     if (isYouTube) {
-      setPaused(true)
+      setPaused(false)
       setYtBlocked(!YOUTUBE_IFRAME_OK)
       setLoading(true)
     }
@@ -851,12 +861,13 @@ function VideoFeedItemInner({
                 </div>
               )}
 
+              <div className="reels-yt-cover">
               <iframe
                 ref={iframeRef}
                 key={`yt-${video.id}`}
                 src={embedSrc}
                 title={video.title}
-                className="pointer-events-none absolute inset-0 h-full w-full border-0"
+                className="pointer-events-none reels-yt-frame"
                 allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
                 allowFullScreen
                 onLoad={() => {
@@ -872,9 +883,11 @@ function VideoFeedItemInner({
                   setLoading(false)
                 }}
               />
+              </div>
 
-              {/* YouTube üst başlık/kanal overlay'ini gizle — siyah bant */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-black" />
+              {/* Desktop only: hide YouTube title chrome. On mobile this 4rem
+                  band is the unused black gap under the tabs. */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] hidden h-16 bg-black lg:block" />
 
               {/* Tap interceptor — iframe controls hidden; play/pause via postMessage.
                   pan-y lets wheel/trackpad/touch reach the snap container. */}

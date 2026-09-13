@@ -26,7 +26,7 @@ describe('VF2.3S /video swipe-scroll contract', () => {
 
   it('YouTube iframe does not capture wheel/touch; interceptor keeps pause taps', () => {
     const item = read('src/components/video/VideoFeedItem.tsx')
-    expect(item).toContain('pointer-events-none absolute inset-0 h-full w-full border-0')
+    expect(item).toContain('pointer-events-none reels-yt-frame')
     expect(item).toContain('touch-pan-y')
     expect(item).toContain('nextUserPausedFromTap')
     expect(item).toContain('youtubeEmbedParentOrigin')

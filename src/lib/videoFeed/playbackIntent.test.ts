@@ -116,6 +116,9 @@ describe('playbackIntent user pause vs observer/rerender', () => {
     expect(
       nextUserPausedFromTap({ currentlyUserPaused: false, playerPlaying: true })
     ).toBe(true)
+    expect(
+      nextUserPausedFromTap({ currentlyUserPaused: false, playerPlaying: false })
+    ).toBe(false)
   })
 })
 
