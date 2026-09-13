@@ -198,6 +198,12 @@ function VideoFeedItemInner({
     setLoading(false)
   }, [nativeSrc, stableSrc, markMediaFetched, markVideoLoaded, video.id])
 
+  const applyNativeAspectRatio = useCallback((el: HTMLVideoElement) => {
+    if (el.videoWidth > 0 && el.videoHeight > 0) {
+      el.style.aspectRatio = `${el.videoWidth} / ${el.videoHeight}`
+    }
+  }, [])
+
   useEffect(() => {
     if (virtualized) return
     if (wasLoadedBefore) setLoading(false)
@@ -854,14 +860,14 @@ function VideoFeedItemInner({
             </>
           ) : (
             <>
-              {/* Spinner — iframe yüklenene kadar */}
+              <div className="reels-media-stage" data-reels-media-stage>
               {loading && isActive && (
                 <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/30">
                   <Loader2 className="h-10 w-10 animate-spin text-white/80" />
                 </div>
               )}
 
-              <div className="reels-yt-cover">
+              <div className="reels-yt-frame-box">
               <iframe
                 ref={iframeRef}
                 key={`yt-${video.id}`}
@@ -885,9 +891,14 @@ function VideoFeedItemInner({
               />
               </div>
 
-              {/* Desktop only: hide YouTube title chrome. On mobile this 4rem
-                  band is the unused black gap under the tabs. */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] hidden h-16 bg-black lg:block" />
+              {paused && isActive && (
+                <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+                    <Play className="h-8 w-8 fill-white text-white" />
+                  </div>
+                </div>
+              )}
+              </div>
 
               {/* Tap interceptor — iframe controls hidden; play/pause via postMessage.
                   pan-y lets wheel/trackpad/touch reach the snap container. */}
@@ -912,15 +923,6 @@ function VideoFeedItemInner({
                   setPaused(command === 'pause')
                 }}
               />
-
-              {/* Duraklama ikonu */}
-              {paused && isActive && (
-                <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
-                    <Play className="h-8 w-8 fill-white text-white" />
-                  </div>
-                </div>
-              )}
 
               {!isolateFromAnalytics && (
                 <>
@@ -956,14 +958,14 @@ function VideoFeedItemInner({
 
   return (
     <div ref={refCallback} data-index={index} className="reels-slide">
-      <div className="reels-video-card">
-        {/* Thumbnail background — shows instantly while video buffers, prevents white flash */}
+      <div className="reels-video-card relative overflow-hidden bg-black">
+        <div className="reels-media-stage" data-reels-media-stage>
         {media?.thumbnailUrl && (
           <img
             src={media.thumbnailUrl}
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="reels-media-poster"
             fetchPriority={nativePolicy.posterFetchPriority}
           />
         )}
@@ -981,6 +983,7 @@ function VideoFeedItemInner({
           disablePictureInPicture
           // iOS native kontrol overlay'lerini gizle (CC, airplay, volume badge)
           controlsList="nodownload nofullscreen noremoteplayback"
+          onLoadedMetadata={(event) => applyNativeAspectRatio(event.currentTarget)}
           onLoadedData={handleMediaReady}
           onWaiting={() => { if (!wasLoadedBefore) setLoading(true) }}
           onPlaying={() => {
@@ -1016,6 +1019,7 @@ function VideoFeedItemInner({
             </div>
           </div>
         )}
+        </div>
 
 
         {/* Heart burst on double-tap */}
