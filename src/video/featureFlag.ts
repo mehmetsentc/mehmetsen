@@ -52,3 +52,17 @@ export function videoLibraryProcessTimeoutMs(): number {
   if (Number.isFinite(raw) && raw >= 5_000) return Math.min(raw, 30 * 60_000)
   return 180_000
 }
+
+/**
+ * VIDEO_LIBRARY_ONE_SHOT_VALIDATION_ENABLED — default false.
+ * Temporary VL-P3B production-runtime executor. Not a worker host.
+ */
+export function isVideoLibraryOneShotValidationEnabled(): boolean {
+  if (!isVideoLibraryEnabled()) return false
+  const env = parseTriState(process.env.VIDEO_LIBRARY_ONE_SHOT_VALIDATION_ENABLED)
+  return env === true
+}
+
+export function isVercelProductionRuntime(): boolean {
+  return process.env.VERCEL_ENV === 'production'
+}
