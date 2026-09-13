@@ -36,6 +36,10 @@ interface FeaturedNewsCarouselProps {
   limit?: number
   /** Show section title row (“Öne Çıkan”) */
   showTitle?: boolean
+  /** Override the title text when showTitle is on. */
+  title?: string
+  /** “1 / 10” next to the title — latest featured carousel. */
+  showIndex?: boolean
   className?: string
   /** First slide gets LCP priority */
   priority?: boolean
@@ -57,6 +61,8 @@ export function FeaturedNewsCarousel({
   label = 'Öne çıkan haberler',
   limit = FEATURED_CAROUSEL_LIMIT,
   showTitle = false,
+  title = 'Öne Çıkan',
+  showIndex = false,
   className,
   priority = true,
 }: FeaturedNewsCarouselProps) {
@@ -145,11 +151,21 @@ export function FeaturedNewsCarousel({
       className={cn('featured-news-carousel', className)}
     >
       {showTitle ? (
-        <div className="home-rail-title mb-3 px-4 max-md:mb-4 md:px-0">
-          <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
-          <p className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.65rem]">
-            Öne Çıkan
-          </p>
+        <div className="home-rail-title mb-3 flex items-center justify-between gap-3 px-4 max-md:mb-4 md:px-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="home-rail-accent max-md:h-8 max-md:w-[5px]" aria-hidden />
+            <p className="text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.65rem]">
+              {title}
+            </p>
+          </div>
+          {showIndex && slides.length > 0 ? (
+            <p
+              className="shrink-0 text-xs font-bold tabular-nums text-[rgb(var(--color-muted))]"
+              data-testid="home-featured-index"
+            >
+              {current + 1} / {slides.length}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

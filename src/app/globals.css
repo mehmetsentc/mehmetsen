@@ -270,15 +270,10 @@
     transform: translateZ(0);
   }
 
-  /* Immersive overlay header: content-first, no opaque slab. */
+  /* Immersive header: solid chrome so content starts below the rail, not under it. */
   .mobile-top-chrome--immersive {
-    background-color: transparent;
-    background-image: linear-gradient(
-      to bottom,
-      rgb(0 0 0 / 0.48),
-      rgb(0 0 0 / 0.18) 62%,
-      rgb(0 0 0 / 0)
-    );
+    background-color: rgb(8 12 18 / 0.96);
+    background-image: none;
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-bottom: 0;
@@ -2818,11 +2813,12 @@
     @apply mx-auto;
   }
 
-  /* SSR/first paint before Navbar measures — two-row overlay (h-11 + dest toggle). */
+  /* SSR/first paint before Navbar measures — header 44px + rail 36px. */
   @media (max-width: 1023px) {
     :root {
       --mobile-top-chrome-offset: calc(
-        var(--mobile-sat, env(safe-area-inset-top, 0px)) + 7.25rem
+        var(--mobile-sat, env(safe-area-inset-top, 0px)) + 2.75rem +
+          var(--nahaber-context-rail-height, 2.25rem)
       );
     }
   }
@@ -3886,6 +3882,26 @@ video.reels-video {
   color: rgb(var(--color-muted));
 }
 
+.home-category-featured-rail {
+  margin: 0.85rem 0 1rem;
+}
+
+.home-category-featured-rail__scroller {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding: 0 0.2rem 0.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-category-featured-rail__card {
+  flex: 0 0 68%;
+  max-width: 16.5rem;
+  scroll-snap-align: start;
+}
+
 .home-discovery-card {
   display: block;
   overflow: hidden;
@@ -4168,7 +4184,7 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   .feed-v2-card-chrome {
     --feed-v2-hero-min: clamp(14dvh, 18dvh, 22dvh);
     --feed-v2-hero-max: clamp(26dvh, 32dvh, 38dvh);
-    --feed-v2-action-zone: 7.25rem;
+    --feed-v2-action-zone: 8rem;
     --feed-v2-copy-scroll-max: min(36dvh, 15rem);
     --feed-v2-gap-cat-headline: 0.7rem;
     --feed-v2-gap-headline-summary: 0.8rem;
@@ -4183,7 +4199,7 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   .feed-v2-card-chrome {
     --feed-v2-hero-min: clamp(16dvh, 22dvh, 26dvh);
     --feed-v2-hero-max: clamp(32dvh, 42dvh, 48dvh);
-    --feed-v2-action-zone: 7.5rem;
+    --feed-v2-action-zone: 8.25rem;
     --feed-v2-copy-scroll-max: min(38dvh, 17rem);
     --feed-v2-gap-cat-headline: 0.75rem;
     --feed-v2-gap-headline-summary: 0.875rem;
@@ -4198,7 +4214,7 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   .feed-v2-card-chrome {
     --feed-v2-hero-min: clamp(20dvh, 26dvh, 32dvh);
     --feed-v2-hero-max: clamp(36dvh, 46dvh, 54dvh);
-    --feed-v2-action-zone: 7.5rem;
+    --feed-v2-action-zone: 8.25rem;
     --feed-v2-copy-scroll-max: min(40dvh, 18rem);
     --feed-v2-gap-cat-headline: 0.8rem;
     --feed-v2-gap-headline-summary: 1rem;

@@ -13,23 +13,27 @@ describe('immersive home discovery Phase 2', () => {
   it('reuses featured pins + home latest order, not a new ranking engine', () => {
     const feed = read('src/components/home/HomeFeed.tsx')
     expect(feed).toContain('pickHomeFeedFeaturedPins')
+    expect(feed).toContain('FEATURED_CAROUSEL_LIMIT')
     expect(feed).toContain('useHomeFeedInfinite')
     expect(feed).toContain('HomeDiscoveryMasonry')
+    expect(feed).toContain('FeaturedSlider')
+    expect(feed).toContain('buildDiscoveryStream')
+    expect(feed).toContain('HomeCategoryFeaturedRail')
     expect(feed).not.toContain('PinterestRanking')
     expect(feed).not.toContain('HomeRankingV2')
     expect(feed).not.toContain('DiscoveryRankingV2')
     expect(feed).toContain('featuredIds.has(item.id)')
   })
 
-  it('does not keep the magazine carousel / Akış heading / mobile finance interruption', () => {
+  it('keeps first featured as a 10-item swipe rail, then masonry — no magazine / Akış heading', () => {
     const feed = read('src/components/home/HomeFeed.tsx')
-    expect(feed).not.toContain('FeaturedSlider')
+    expect(feed).toContain('FeaturedSlider')
     expect(feed).not.toContain('MobileMagazineFeed')
     expect(feed).not.toContain('BreakingStories')
     expect(feed).not.toMatch(/>Akış</)
     expect(feed).toContain('home-market-ticker-desktop')
     expect(feed).toContain('hidden lg:block')
-    expect(feed).toContain('Öne Çıkanlar')
+    expect(feed).toContain('home-featured-carousel')
   })
 
   it('masonry uses AdaptiveMasonry CSS columns at 2-up on mobile', () => {

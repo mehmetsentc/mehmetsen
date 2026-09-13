@@ -38,7 +38,9 @@ export function FeaturedSlider({ items, isFeatured = true }: FeaturedSliderProps
         <FeaturedNewsCarousel
           slides={slides}
           label={title}
+          title="Öne Çıkanlar"
           showTitle
+          showIndex
           limit={FEATURED_CAROUSEL_LIMIT}
           priority
         />

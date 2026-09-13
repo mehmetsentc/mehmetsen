@@ -123,8 +123,7 @@ interface FullscreenNewsCardProps {
  * Top clearance for absolute mode nav only.
  * Publisher lives in the bottom text stack (reference Reels composition).
  */
-const MODE_NAV_CLEARANCE =
-  'pt-[var(--feed-v2-top-clearance,max(5.25rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+4rem)))]'
+const MODE_NAV_CLEARANCE = 'pt-2'
 
 const DOUBLE_TAP_MS = 280
 const TAP_MOVE_PX = 14
@@ -771,7 +770,7 @@ export function FullscreenNewsCard({
 
             {item.publisher ? (
               <div
-                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5"
+                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
                 data-testid="smart-feed-publisher-row"
               >
                 {publisherHref ? (

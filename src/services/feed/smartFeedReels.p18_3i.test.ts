@@ -105,6 +105,7 @@ describe('P18.3I layout hierarchy (source)', () => {
     expect(card).toContain('100dvh')
     expect(card).toContain('snap-start snap-always')
     expect(card).toContain('smart-feed-publisher-row')
+    expect(card).toContain('pr-12')
     expect(card).toContain('MODE_NAV_CLEARANCE')
     expect(card).toContain('smart-feed-media')
     expect(card).toContain('smart-feed-bottom-chrome')
