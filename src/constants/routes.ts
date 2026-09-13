@@ -103,6 +103,7 @@ export const ROUTES = {
     NEWS_CREATE: '/admin/news/create',
     NEWS_EDIT: (id: string) => `/admin/news/${id}/edit`,
     VIDEOS: '/admin/videos',
+    VIDEO_QUEUE: '/admin/videos/queue',
     AUTHORS: '/admin/authors',
     EDITORS: '/admin/editors',
     USERS: '/admin/users',

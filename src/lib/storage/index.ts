@@ -135,3 +135,22 @@ export function buildPublisherAdMediaKey(
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'creative.bin'
   return `publishers/${safePub}/ads/${safeAd}/${safeName}`
 }
+
+/**
+ * Video Library object key (V1A). Same R2 bucket as news/publisher media.
+ * Format: video-library/{itemId}/{kind}/{filename}
+ */
+export function buildVideoLibraryMediaKey(input: {
+  itemId: string
+  kind: 'original' | 'playback' | 'poster' | 'manifest' | 'rendition'
+  filename: string
+  height?: number
+}): string {
+  const safeItem = input.itemId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80) || 'item'
+  const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'video.bin'
+  if (input.kind === 'rendition') {
+    const height = Number.isFinite(input.height) ? String(input.height) : 'unknown'
+    return `video-library/${safeItem}/renditions/${height}/${safeName}`
+  }
+  return `video-library/${safeItem}/${input.kind}/${safeName}`
+}
