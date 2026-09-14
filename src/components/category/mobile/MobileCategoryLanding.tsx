@@ -1,12 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import { MobileCategoryHeader } from './MobileCategoryHeader'
 import { MobileYerelCityStrip } from './MobileYerelCityStrip'
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
-import { HomeDiscoveryMasonry } from '@/components/home/HomeDiscoveryMasonry'
-import { timelinePostToDiscovery } from '@/components/home/HomeDiscoveryCard'
+import { SourceStories } from '@/components/home/SourceStories'
+import { MagazineNewsList } from '@/components/home/MagazineNewsList'
+import { groupNewsBySource } from '@/lib/home/sourceStories'
+import { timelinePostToNewsItem } from '@/lib/newsItemToTimelinePost'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
@@ -33,7 +34,8 @@ interface MobileCategoryLandingProps {
 }
 
 /**
- * Mobile category landing — same visual discovery language as Ana Sayfa.
+ * Category landing — same magazine + source-story language as Ana Sayfa.
+ * Does not apply to Akış (/feed-v2).
  */
 export function MobileCategoryLanding({
   cat,
@@ -46,20 +48,11 @@ export function MobileCategoryLanding({
   pageTitle,
   topExtras,
 }: MobileCategoryLandingProps) {
-  const featuredPosts = useMemo(() => {
-    const featured = initialPosts.filter((p) => p.featured === true || p.isEditorPick === true)
-    return featured.slice(0, HOME_FEATURED_LIMIT)
-  }, [initialPosts])
-
-  const featuredIds = useMemo(
-    () => new Set(featuredPosts.map((p) => p.id)),
-    [featuredPosts]
+  const newsItems = useMemo(
+    () => initialPosts.map(timelinePostToNewsItem),
+    [initialPosts]
   )
-
-  const discoveryItems = useMemo(() => {
-    const rest = initialPosts.filter((p) => !featuredIds.has(p.id))
-    return [...featuredPosts, ...rest].map(timelinePostToDiscovery)
-  }, [initialPosts, featuredPosts, featuredIds])
+  const storyGroups = useMemo(() => groupNewsBySource(newsItems), [newsItems])
 
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
@@ -73,7 +66,7 @@ export function MobileCategoryLanding({
   const empty = initialPosts.length === 0
 
   return (
-    <div className="mc-page home-feed home-feed--discovery">
+    <div className="mc-page home-feed home-feed--magazine" data-testid="category-magazine-feed">
       <MobileCategoryHeader
         pageTitle={isSubcategory && parentCat ? cat.name : pageTitle.includes('·') ? cat.name : pageTitle}
         categoryId={cat.id}
@@ -92,29 +85,16 @@ export function MobileCategoryLanding({
         <p className="mc-empty">Bu kategoride henüz yayınlanmış haber bulunmuyor.</p>
       ) : null}
 
-      {featuredPosts.length > 0 ? (
-        <p className="home-discovery-label" data-testid="home-featured-label">
-          Öne Çıkanlar
-        </p>
-      ) : null}
+      <SourceStories groups={storyGroups} />
 
-      {discoveryItems.length > 0 ? (
-        <HomeDiscoveryMasonry
-          items={discoveryItems}
-          featuredCount={featuredPosts.length}
-          priorityCount={Math.min(4, discoveryItems.length)}
-          navSource="category"
-        />
+      {newsItems.length > 0 ? (
+        <MagazineNewsList items={newsItems} priorityCount={Math.min(2, newsItems.length)} />
       ) : null}
 
       <div className="pt-2 pb-8">
         <CategoryLoadMore
           categoryId={cat.id}
-          initialItems={initialPosts.map((p) => ({
-            id: p.id,
-            slug: p.slug ?? p.id,
-            title: p.title ?? '',
-          }))}
+          initialItems={newsItems}
           initialBeforeDay={initialBeforeDay}
           initialHasMore={initialPosts.length > 0}
         />

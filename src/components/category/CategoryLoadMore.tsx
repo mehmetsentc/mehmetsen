@@ -1,7 +1,6 @@
 'use client'
 
-import { HomeDiscoveryMasonry } from '@/components/home/HomeDiscoveryMasonry'
-import { newsItemToDiscovery } from '@/components/home/HomeDiscoveryCard'
+import { MagazineNewsList } from '@/components/home/MagazineNewsList'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { useCategoryDayLoadMore } from '@/hooks/useCategoryDayLoadMore'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
@@ -15,8 +14,7 @@ interface CategoryLoadMoreProps {
 }
 
 /**
- * Mobile append-only day load-more under editorial landing.
- * Continues the visual discovery masonry used above.
+ * Mobile append-only day load-more under the magazine category landing.
  */
 export function CategoryLoadMore({
   categoryId,
@@ -34,9 +32,9 @@ export function CategoryLoadMore({
   return (
     <div className="mt-2">
       {extraItems.length > 0 ? (
-        <HomeDiscoveryMasonry
-          items={extraItems.map(newsItemToDiscovery)}
-          navSource="category"
+        <MagazineNewsList
+          items={extraItems}
+          priorityCount={0}
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={loadMore}

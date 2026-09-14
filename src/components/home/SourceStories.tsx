@@ -1,0 +1,116 @@
+'use client'
+
+import { useCallback, useState } from 'react'
+import { Newspaper } from 'lucide-react'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
+import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
+import { StoryViewer } from '@/components/home/StoryViewer'
+import {
+  sourceStoryTour,
+  type SourceStoryGroup,
+} from '@/lib/home/sourceStories'
+import type { NewsItem } from '@/types/newsItem'
+
+type SourceStoriesProps = {
+  groups: SourceStoryGroup[]
+}
+
+function StoryCard({
+  item,
+  label,
+  onOpen,
+}: {
+  item: NewsItem
+  label: string
+  onOpen: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      data-testid="source-stories-card"
+      className="source-story-card group relative shrink-0 snap-start overflow-hidden rounded-2xl text-left"
+      style={{ width: 163, height: 290, aspectRatio: '9 / 16' }}
+    >
+      <SafeNewsImage
+        src={item.imageUrl || FEED_FALLBACK_LOGO}
+        alt={item.title}
+        fill
+        sizes="163px"
+        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-3">
+        <span className="source-story-card__dash" aria-hidden />
+        <p className="line-clamp-4 text-xs font-bold leading-snug text-white">{item.title}</p>
+        <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-wide text-white/70">
+          {label}
+        </p>
+      </div>
+    </button>
+  )
+}
+
+export function SourceStories({ groups }: SourceStoriesProps) {
+  const [viewerItems, setViewerItems] = useState<NewsItem[]>([])
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const openGroup = useCallback((items: NewsItem[], index = 0) => {
+    if (items.length === 0) return
+    setViewerItems(items)
+    setActiveIndex(index)
+    setViewerOpen(true)
+  }, [])
+
+  if (groups.length === 0) return null
+
+  const tour = sourceStoryTour(groups)
+
+  return (
+    <section aria-label="Kaynak hikayeleri" className="home-section" data-testid="source-stories-rail">
+      <div
+        className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory"
+        data-no-category-swipe
+      >
+        <div className="shrink-0 snap-start">
+          <button
+            type="button"
+            data-testid="source-stories-hub"
+            onClick={() => openGroup(tour, 0)}
+            className="relative flex h-[290px] w-[163px] flex-col items-center justify-center overflow-hidden rounded-2xl p-3 text-center shadow-brand transition-transform duration-quick ease-out-soft hover:-translate-y-0.5"
+            style={{
+              aspectRatio: '9 / 16',
+              background:
+                'linear-gradient(135deg, rgb(var(--brand-600)) 0%, rgb(var(--brand-700)) 60%, rgb(var(--brand-900)) 100%)',
+            }}
+          >
+            <Newspaper className="mb-2 h-8 w-8 text-white" />
+            <span className="text-sm font-black uppercase leading-tight text-white">
+              Tüm Kaynaklar
+            </span>
+          </button>
+        </div>
+        {groups.map((group) => {
+          const cover = group.items[0]
+          if (!cover) return null
+          return (
+            <StoryCard
+              key={group.key}
+              item={cover}
+              label={group.label}
+              onOpen={() => openGroup(group.items, 0)}
+            />
+          )
+        })}
+      </div>
+
+      <StoryViewer
+        items={viewerItems}
+        open={viewerOpen}
+        initialIndex={activeIndex}
+        onClose={() => setViewerOpen(false)}
+      />
+    </section>
+  )
+}

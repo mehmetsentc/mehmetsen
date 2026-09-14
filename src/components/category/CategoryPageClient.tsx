@@ -1,10 +1,7 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { CategoryFeed } from '@/components/feed/CategoryFeed'
-import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
+import { useState } from 'react'
 import { MobileCategoryLanding } from '@/components/category/mobile/MobileCategoryLanding'
-import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { DesktopCategoryPage } from '@/components/home/desktop/DesktopCategoryPage'
 import { WorldCupCategoryTabs } from '@/components/sports/WorldCupCategoryTabs'
 import { SporCategoryExtras } from '@/components/sports/SporCategoryExtras'
@@ -95,18 +92,10 @@ export function CategoryPageClient({
     />
   )
 
-  const feedFallback = (
-    <div className="space-y-4">
-      {[...Array(4)].map((_, i) => (
-        <TimelineItemSkeleton key={i} />
-      ))}
-    </div>
-  )
-
   return (
     <>
-      {/* Phone only — editorial newspaper landing */}
-      <div className="md:hidden w-full">
+      {/* Phone + tablet — magazine + source stories (not Akış) */}
+      <div className="lg:hidden w-full">
         {showNewsFeed ? (
           <MobileCategoryLanding
             cat={cat}
@@ -124,32 +113,7 @@ export function CategoryPageClient({
         )}
       </div>
 
-      {/* Tablet — preserve existing BBC category template */}
-      <div className="bbc-category-page hidden md:block lg:hidden w-full">
-        <CategoryBbcPageHeader
-          pageTitle={pageTitle}
-          subTabs={showTabs ? subTabs : []}
-          tabParentSlug={tabParent?.slug}
-          isSubcategory={isSubcategory}
-          categoryId={cat.id}
-          stickySubnav
-          className="mb-6 px-1"
-        />
-
-        {topExtras ? <div className="mb-6">{topExtras}</div> : null}
-
-        {showNewsFeed ? (
-          <Suspense fallback={feedFallback}>
-            <CategoryFeed
-              categoryId={cat.id}
-              initialPosts={initialPosts}
-              visibleSectionIds={visibleSectionIds}
-            />
-          </Suspense>
-        ) : null}
-      </div>
-
-      {/* Desktop — unchanged */}
+      {/* Desktop — magazine body, same source-story language */}
       <div className="hidden lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
           <DesktopCategoryPage

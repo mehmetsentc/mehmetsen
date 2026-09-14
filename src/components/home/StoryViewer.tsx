@@ -15,13 +15,13 @@ import {
   Pause,
   Share2,
   X,
-  Zap,
 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
+import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
@@ -247,7 +247,7 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
           transition={{ duration: 0.2 }}
           role="dialog"
           aria-modal="true"
-          aria-label="Son dakika hikayesi"
+          aria-label="Kaynak hikayesi"
         >
           <motion.div
             className="relative flex h-[100dvh] w-full max-w-[100vw] sm:h-[90dvh] sm:max-w-[min(90vw,480px)] md:max-w-[min(75vw,560px)] lg:max-w-[min(55vw,640px)] flex-col overflow-hidden bg-black sm:rounded-3xl sm:shadow-2xl"
@@ -278,12 +278,11 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
               })}
             </div>
 
-            {/* ── Header: Son Dakika rozeti + kapat ──────────── */}
+            {/* ── Header: kaynak + kapat ──────────── */}
             <header className="absolute inset-x-0 top-7 z-30 flex items-center justify-between px-4 pt-2">
               <div className="flex items-center gap-2">
-                <Badge variant="sondakika" uppercase size="sm" className="shadow-lg">
-                  <Zap className="h-3 w-3" />
-                  Son Dakika
+                <Badge variant="solid" uppercase size="sm" className="shadow-lg">
+                  {formatPublicSourceLabel(current.source) || 'NaHaber'}
                 </Badge>
                 <span className="text-2xs font-semibold text-white/70">
                   {index + 1} / {total}
