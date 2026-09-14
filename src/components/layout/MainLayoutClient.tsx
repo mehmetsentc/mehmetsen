@@ -21,7 +21,7 @@ import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { useSmartFeedReaderSurfaceActive } from '@/hooks/useSmartFeedReaderSurfaceActive'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
-import { isPublicRoute } from '@/constants/routes'
+import { isPublicRoute, ROUTES } from '@/constants/routes'
 import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
@@ -199,7 +199,7 @@ function RouteEffects() {
       clearFeedOwnerRescue()
       return
     }
-    if (pathname !== '/' && pathname !== '') return
+    if (pathname !== '/' && pathname !== '' && pathname !== ROUTES.FEED) return
     if (!consumeFeedOwnerRescue()) return
     document.documentElement.classList.remove('smart-feed-reader-open')
     document.body.classList.remove('smart-feed-reader-open')

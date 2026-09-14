@@ -144,7 +144,7 @@ describe('P18 Reader dark visual + presentation override', () => {
     expect(reader).toContain('heroEpochRef')
     expect(reader).toContain('acceptHeroLoad')
     expect(reader).not.toContain('#f7f4ef')
-    expect(reader).toContain('translate3d(${(progress - 1) * 100}%, 0, 0)')
+    expect(reader).toContain('translate3d(${(1 - progress) * 100}%, 0, 0)')
 
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
@@ -157,7 +157,7 @@ describe('P18 Reader dark visual + presentation override', () => {
     expect(client).toContain('#0c0c0e')
     expect(client).not.toContain('#f7f4ef')
     expect(client).toContain('progressAnimating: true')
-    expect(client).toContain('translate3d(${pageProgress * 28}%, 0, 0)')
+    expect(client).toContain('translate3d(${-pageProgress * 28}%, 0, 0)')
   })
 
   it('page-turn transforms differ at 25/50/75%', () => {

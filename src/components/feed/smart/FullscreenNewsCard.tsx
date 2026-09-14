@@ -166,8 +166,6 @@ export function FullscreenNewsCard({
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
   const [typedHeadline, setTypedHeadline] = useState(item.headline)
-  const [headlineDone, setHeadlineDone] = useState(true)
-  const [showCursor, setShowCursor] = useState(false)
   const [motionOk, setMotionOk] = useState(true)
   const [swipeCoachNudgePx, setSwipeCoachNudgePx] = useState(0)
 
@@ -176,7 +174,6 @@ export function FullscreenNewsCard({
   const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
-  const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const playableVideo = resolveFeedCardVideo(item.video)
@@ -212,59 +209,10 @@ export function FullscreenNewsCard({
     return () => mq.removeEventListener?.('change', sync)
   }, [])
 
-  // Typewriter: only when card becomes active (skip if reduced motion)
+  // Headline paints in full — typewriter caused layout jump on every card.
   useEffect(() => {
-    const clearType = () => {
-      if (typeTimerRef.current != null) {
-        window.clearTimeout(typeTimerRef.current)
-        typeTimerRef.current = null
-      }
-    }
-
-    clearType()
-
-    if (!isActive) {
-      setTypedHeadline(item.headline)
-      setHeadlineDone(true)
-      setShowCursor(false)
-      return
-    }
-
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    if (reduced || !item.headline) {
-      setTypedHeadline(item.headline)
-      setHeadlineDone(true)
-      setShowCursor(false)
-      return
-    }
-
-    const full = item.headline
-    // Cap total typewriter ~1.6s regardless of length
-    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
-    setTypedHeadline('')
-    setHeadlineDone(false)
-    setShowCursor(true)
-
-    let i = 0
-    const tick = () => {
-      i += 1
-      setTypedHeadline(full.slice(0, i))
-      if (i >= full.length) {
-        setHeadlineDone(true)
-        setShowCursor(false)
-        typeTimerRef.current = null
-        return
-      }
-      typeTimerRef.current = window.setTimeout(tick, step)
-    }
-    // slight delay so media expand / chrome settle
-    typeTimerRef.current = window.setTimeout(tick, 140)
-
-    return clearType
-  }, [isActive, item.headline, item.articleId, skin.typeMs])
+    setTypedHeadline(item.headline)
+  }, [item.headline, item.articleId])
 
   const triggerDoubleTapLike = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -338,7 +286,7 @@ export function FullscreenNewsCard({
           {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
         </span>
       )}
-      <span className="min-w-0 truncate text-[0.95rem] font-bold text-white underline-offset-2 group-hover:underline">
+      <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
         {item.publisher.name}
       </span>
       {publisherHref ? (
@@ -671,13 +619,6 @@ export function FullscreenNewsCard({
                 style={{ marginTop: 'var(--feed-v2-gap-cat-headline)' }}
               >
                 {typedHeadline}
-                {showCursor ? (
-                  <span
-                    className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
-                    style={{ background: 'var(--feed-skin-accent)' }}
-                    aria-hidden
-                  />
-                ) : null}
               </h2>
               {item.summary ? (
                 <p
@@ -686,7 +627,7 @@ export function FullscreenNewsCard({
                     'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-white',
                     // With highlights: keep rail discoverable — presentation clamp only.
                     showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
-                    headlineDone ? 'opacity-100' : 'opacity-0'
+                    'opacity-100'
                   )}
                   data-testid="smart-feed-summary"
                   data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}
@@ -759,7 +700,7 @@ export function FullscreenNewsCard({
                 onReadClick()
               }}
               className="inline-flex h-14 w-full shrink-0 touch-manipulation items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-tap-highlight-color:transparent]"
-              style={{ background: 'color-mix(in srgb, var(--feed-skin-accent) 18%, white)' }}
+              style={{ background: '#f4f4f5' }}
             >
               Haberi Oku
             </button>

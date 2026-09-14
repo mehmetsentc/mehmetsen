@@ -274,7 +274,7 @@ export function FeedArticleReader({
   const feedImage = item.image
   const detailImage = detail?.image
   const imageCaption = detail?.imageCaption ?? null
-  const publisherName = detail?.publisher?.name || item.publisher?.name || 'Kaynak'
+  const publisherName = item.publisher?.name || detail?.publisher?.name || 'Kaynak'
   const category = detail?.category || item.category
   const categoryLabel = formatReaderCategoryLabel(category)
   const sourceUrl = detail?.sourceUrl
@@ -1218,7 +1218,7 @@ export function FeedArticleReader({
 
           {hero.state === 'LOADING' && hero.url ? (
             <div
-              className="relative mx-auto mt-7 aspect-[16/9] w-full max-h-[min(62vh,28rem)] max-w-[var(--feed-reader-surface-max,44rem)] overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]"
+              className="relative mx-auto mt-7 aspect-[16/9] min-h-[11rem] w-full max-w-[var(--feed-reader-surface-max,44rem)] overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]"
               data-testid="feed-reader-hero-loading"
               aria-busy="true"
             >
@@ -1245,7 +1245,7 @@ export function FeedArticleReader({
               className="mx-auto mt-7 w-full max-w-[var(--feed-reader-surface-max,44rem)]"
               data-testid="feed-reader-hero"
             >
-              <div className="relative aspect-[16/9] max-h-[min(62vh,28rem)] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">
+              <div className="relative aspect-[16/9] min-h-[11rem] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">
                 <Image
                   src={hero.url}
                   alt=""
@@ -1259,7 +1259,7 @@ export function FeedArticleReader({
                 />
                 {returnCoach}
               </div>
-              {hero.caption ? (
+              {hero.caption && hero.caption.trim() !== headline.trim() ? (
                 <figcaption className="mt-2 text-[12.5px] leading-[1.4] text-[color:var(--reader-page-muted)]">
                   {hero.caption}
                 </figcaption>
@@ -1330,7 +1330,7 @@ export function FeedArticleReader({
               Kaynak
             </p>
             <p className="mt-1 font-medium text-[color:var(--reader-page-text)]">
-              {detail?.source || publisherName}
+              {publisherName}
             </p>
             {sourceUrl ? (
               <a

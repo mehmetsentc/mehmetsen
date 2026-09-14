@@ -100,6 +100,9 @@ export function ContextRail({
         className="context-rail__scroller"
         role="tablist"
         data-no-category-swipe
+        data-no-reader-gesture="1"
+        onPointerDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
       >
         {children}
       </div>

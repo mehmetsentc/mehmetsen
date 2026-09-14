@@ -115,7 +115,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         data-testid="global-header-chrome"
         className={cn(
           'mobile-top-chrome mobile-top-chrome--immersive is-fixed z-[100] lg:hidden',
-          'overflow-x-hidden text-white',
+          'text-white',
           'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >

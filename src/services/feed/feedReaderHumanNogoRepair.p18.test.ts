@@ -115,7 +115,7 @@ describe('RIGHT Haberi Aç V8 + LEFT return coach V4', () => {
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     expect(SWIPE_DISCOVERY_TRAVEL_PX).toBeGreaterThanOrEqual(36)
     expect(SWIPE_DISCOVERY_REPEAT_COUNT).toBeGreaterThanOrEqual(2)
-    expect(SWIPE_DISCOVERY_HINT_MS).toBeGreaterThanOrEqual(3500)
+    expect(SWIPE_DISCOVERY_HINT_MS).toBeGreaterThanOrEqual(2000)
     markSwipeDiscoveryLearned('card-a')
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
 

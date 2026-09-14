@@ -136,6 +136,7 @@ export function FeedV2CategoryNav({
       data-tabs-source="canonical"
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-context-rail-portaled={portaled ? '1' : '0'}
+      className="min-w-0 w-full max-w-full"
     >
       {nav}
     </div>

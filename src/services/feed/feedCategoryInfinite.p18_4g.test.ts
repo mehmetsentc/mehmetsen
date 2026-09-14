@@ -28,10 +28,10 @@ describe('P18.4G category infinite scroll (archive session)', () => {
     expect(clientSrc).toContain('EMPTY_PAGE_REFILL_MAX = 8')
   })
 
-  it('active card restores typewriter + media expand dolly', () => {
-    expect(cardSrc).toContain('Typewriter: only when card becomes active')
+  it('active card paints the full headline without typewriter jump', () => {
+    expect(cardSrc).toContain('Headline paints in full')
     expect(cardSrc).toContain('smart-feed-media-dolly')
     expect(cardSrc).toContain('setTypedHeadline')
-    expect(cardSrc).toContain('skin.typeMs')
+    expect(cardSrc).not.toContain('Typewriter: only when card becomes active')
   })
 })

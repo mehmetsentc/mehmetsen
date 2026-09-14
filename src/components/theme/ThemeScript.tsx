@@ -16,7 +16,17 @@ export function ThemeScript() {
           resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         var root = document.documentElement;
-        if (resolved !== 'light') root.classList.add('dark');
+        var path = location.pathname || '';
+        var forceDark =
+          path === '/feed-v2' ||
+          path.indexOf('/feed-v2/') === 0 ||
+          path === '/feed-v3' ||
+          path.indexOf('/feed-v3/') === 0 ||
+          path === '/reels' ||
+          path.indexOf('/reels/') === 0 ||
+          path === '/video' ||
+          path.indexOf('/video/') === 0;
+        if (forceDark || resolved !== 'light') root.classList.add('dark');
         if (resolved === 'oled') root.setAttribute('data-theme', 'oled');
         var w = window.innerWidth;
         root.setAttribute('data-platform', w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'mobile');

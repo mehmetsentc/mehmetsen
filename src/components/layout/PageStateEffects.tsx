@@ -41,11 +41,13 @@ export function PageStateEffects() {
     }
 
     const saved = getScroll(pathname)
+    const footerDump =
+      (pathname === '/feed' || pathname === '/') && saved > 2400
 
     // Cancel any pending restore from a previous route
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
 
-    if (saved > 0) {
+    if (saved > 0 && !footerDump) {
       // Double-RAF: first frame lets React commit the new tree,
       // second frame fires after the browser has painted it.
       rafRef.current = requestAnimationFrame(() => {

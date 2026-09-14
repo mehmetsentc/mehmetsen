@@ -74,7 +74,7 @@ describe('swipe coaches — LEFT open / RIGHT return + re-teach keys', () => {
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(true)
     markFeedCoachHandledForArticle('card-a')
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-a' })).toBe(false)
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-b' })).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'card-b' })).toBe(false)
 
     const coach = read('src/components/feed/smart/SwipeDiscoveryCoach.tsx')
     expect(coach).toContain('Sola kaydır')

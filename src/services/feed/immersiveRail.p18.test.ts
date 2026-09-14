@@ -61,6 +61,18 @@ describe('immersive ContextRail Phase 1A', () => {
     expect(akis).toContain('useContextRailSlot')
     expect(akis).toContain('compact')
   })
+
+  it('category scroller owns horizontal pan and is not clipped by the chrome wrapper', () => {
+    const css = read('src/app/globals.css')
+    const nav = read('src/components/layout/Navbar.tsx')
+    const rail = read('src/components/layout/ContextRail.tsx')
+    expect(css).toContain('touch-action: pan-x')
+    expect(css).toContain('-webkit-overflow-scrolling: touch')
+    expect(css).toContain('.context-rail-slot > *')
+    expect(rail).toContain('data-no-reader-gesture="1"')
+    expect(nav).not.toContain("'overflow-x-hidden text-white'")
+    expect(nav).toContain('overflow-x-hidden text-white')
+  })
 })
 
 describe('article TOC non-overlap', () => {

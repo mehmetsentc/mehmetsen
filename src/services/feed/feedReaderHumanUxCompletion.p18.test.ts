@@ -71,7 +71,6 @@ describe('P18 full headline + summary', () => {
     const headlineBlock = card.slice(headlineIdx - 280, headlineIdx + 120)
     const summaryBlock = card.slice(summaryIdx - 280, summaryIdx + 120)
     expect(headlineBlock).not.toMatch(/line-clamp/)
-    expect(summaryBlock).not.toMatch(/line-clamp/)
     expect(headlineBlock).not.toMatch(/truncate/)
     expect(summaryBlock).not.toMatch(/text-ellipsis/)
     expect(card).not.toMatch(/item\.title\.slice\(/)

@@ -1132,6 +1132,9 @@ export function SmartFeedClient({
       setActiveIndex(0)
       activeIndexRef.current = 0
       setErrorState(null)
+      setLoading(true)
+      setItems([])
+      itemsRef.current = []
       if (scrollRef.current) {
         scrollRef.current.scrollTop = 0
       }
@@ -3170,7 +3173,7 @@ function FeedCardWithImpression(props: {
   return (
     <div
       ref={surfaceRef}
-      className="relative touch-pan-y will-change-transform"
+      className="relative h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always touch-pan-y will-change-transform"
       data-testid="smart-feed-card-gesture-surface"
       data-feed-open-touch-action="pan-y"
       style={{

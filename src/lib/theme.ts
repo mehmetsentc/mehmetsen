@@ -49,13 +49,29 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
   return preference
 }
 
+/** Akış / Reels stay dark even when the stored preference is light. */
+export function isForcedDarkPathname(pathname: string): boolean {
+  return (
+    pathname === '/feed-v2' ||
+    pathname.startsWith('/feed-v2/') ||
+    pathname === '/feed-v3' ||
+    pathname.startsWith('/feed-v3/') ||
+    pathname === '/reels' ||
+    pathname.startsWith('/reels/') ||
+    pathname === '/video' ||
+    pathname.startsWith('/video/')
+  )
+}
+
 /** Apply class + data-theme to documentElement so token system kicks in. */
 export function applyThemeClass(resolved: ResolvedTheme): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  // 'oled' de dark sayılır (tüm dark-only ayarlar kalsın)
-  root.classList.toggle('dark', resolved !== 'light')
-  if (resolved === 'oled') {
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+  const forcedDark = isForcedDarkPathname(pathname)
+  const useDark = forcedDark || resolved !== 'light'
+  root.classList.toggle('dark', useDark)
+  if (!forcedDark && resolved === 'oled') {
     root.setAttribute('data-theme', 'oled')
   } else {
     root.removeAttribute('data-theme')

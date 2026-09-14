@@ -358,6 +358,7 @@ describe('P18 Reader return ownership — history matrix', () => {
     expect(reader).toContain('// Always clear chrome lock on unmount')
     expect(layout).toContain('consumeFeedOwnerRescue')
     expect(layout).toContain("router.replace('/feed-v2')")
+    expect(layout).toContain('ROUTES.FEED')
   })
 
   it('button and gesture plan replace_unowned_feed (never history_back — HOME escape fix)', () => {

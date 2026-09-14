@@ -275,9 +275,8 @@ function buildCategoryItem(entry: (typeof SIDEBAR_CATEGORY_ORDER)[number]): Side
   }
 }
 
-/** Ana Sayfa + tüm ana/alt kategoriler (tek düz ağaç, global sıra). */
+/** Ana Sayfa lives in Gezinme; categories start at Gündem. */
 export const SIDEBAR_CATEGORIES: SidebarNavItem[] = [
-  { id: 'feed', label: 'Ana Sayfa', href: ROUTES.FEED, icon: LayoutGrid, accent: 'brand' },
   ...SIDEBAR_CATEGORY_ORDER.map(buildCategoryItem).filter(
     (item): item is SidebarNavItem => item !== null
   ),

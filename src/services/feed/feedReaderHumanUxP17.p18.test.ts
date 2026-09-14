@@ -74,13 +74,11 @@ describe('P17 Feed coach per-article session ownership', () => {
     expect(hasFeedCoachShownForArticle('A')).toBe(true)
   })
 
-  it('3-4-6: Card B / C / D each eligible independently', () => {
+  it('3-4-6: first painted coach consumes the rest of the session', () => {
     markFeedCoachHandledForArticle('A')
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'B' })).toBe(true)
-    markFeedCoachHandledForArticle('B')
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'C' })).toBe(true)
-    markFeedCoachHandledForArticle('C')
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'D' })).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'B' })).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'C' })).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'D' })).toBe(false)
   })
 
   it('5: return to B in same session does not nag', () => {
@@ -89,12 +87,12 @@ describe('P17 Feed coach per-article session ownership', () => {
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'B' })).toBe(false)
   })
 
-  it('7: successful A LEFT swipe does NOT globally suppress B/C/D', () => {
+  it('7: successful A LEFT swipe consumes the session coach', () => {
     markSwipeDiscoveryLearned('A')
     expect(shouldShowSwipeDiscoveryCoach({ articleId: 'A' })).toBe(false)
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'B' })).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'C' })).toBe(true)
-    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'D' })).toBe(true)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'B' })).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'C' })).toBe(false)
+    expect(shouldShowSwipeDiscoveryCoach({ articleId: 'D' })).toBe(false)
   })
 
   it('10: Haberi Oku path does not call mark without article scope in client', () => {

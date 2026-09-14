@@ -25,7 +25,7 @@ export const SWIPE_DISCOVERY_TRAVEL_PX = 44
 export const SWIPE_DISCOVERY_CARD_NUDGE_PX = 8
 export const SWIPE_DISCOVERY_ANIM_MS = 900
 /** Short one-shot demo — then hide (not a permanent overlay). */
-export const SWIPE_DISCOVERY_HINT_MS = 4200
+export const SWIPE_DISCOVERY_HINT_MS = 2400
 export const SWIPE_DISCOVERY_REPEAT_COUNT = 2
 /** @deprecated Prefer SWIPE_DISCOVERY_CARD_NUDGE_PX */
 export const SWIPE_DISCOVERY_NUDGE_PX = SWIPE_DISCOVERY_CARD_NUDGE_PX
@@ -34,6 +34,8 @@ export const SWIPE_DISCOVERY_MAX_SHOWS = Number.MAX_SAFE_INTEGER
 
 /** Bounded in-memory Feed-session ownership (no unbounded permanent list). */
 export const FEED_COACH_SESSION_MAX_IDS = 64
+/** First painted/learned coach consumes the rest of this Feed session. */
+let sessionCoachConsumed = false
 
 export type SwipeDiscoveryState = {
   /** @deprecated Global learned no longer gates eligibility (kept for diagnostics). */
@@ -120,7 +122,9 @@ export function hasFeedCoachShownForArticle(articleId: string): boolean {
 
 /** Mark this article's Feed coach handled for the current Feed session. */
 export function markFeedCoachHandledForArticle(articleId: string): void {
-  if (!articleId || sessionShownArticleIds.has(articleId)) return
+  if (!articleId) return
+  sessionCoachConsumed = true
+  if (sessionShownArticleIds.has(articleId)) return
   sessionShownArticleIds.add(articleId)
   sessionShownOrder.push(articleId)
   while (sessionShownOrder.length > FEED_COACH_SESSION_MAX_IDS) {
@@ -134,21 +138,22 @@ export function markFeedCoachHandledForArticle(articleId: string): void {
  * Does NOT permanently disable coaches for other cards.
  */
 export function markSwipeDiscoveryLearned(articleId?: string): void {
+  sessionCoachConsumed = true
   if (articleId) markFeedCoachHandledForArticle(articleId)
   const cur = readSwipeDiscoveryState()
-  // Diagnostic counter only — do not set learned=true as a global gate.
   writeSwipeDiscoveryState({ learned: false, shownCount: cur.shownCount, version: 10 })
 }
 
 export function resetSwipeDiscoveryPresentation(): void {
+  sessionCoachConsumed = false
   sessionShownArticleIds.clear()
   sessionShownOrder.length = 0
   writeSwipeDiscoveryState({ learned: false, shownCount: 0, version: 10 })
 }
 
 /**
- * Eligible once per articleId during the current Feed session.
- * Global localStorage `learned` must NOT suppress later cards.
+ * Eligible once per Feed session (first card only).
+ * Per-article repeats covered the photo on every snap — session consume stops that.
  */
 export function shouldShowSwipeDiscoveryCoach(opts?: {
   articleId?: string
@@ -159,6 +164,7 @@ export function shouldShowSwipeDiscoveryCoach(opts?: {
   void opts?.maxShows
   const articleId = opts?.articleId
   if (!articleId) return false
+  if (sessionCoachConsumed) return false
   return !sessionShownArticleIds.has(articleId)
 }
 
