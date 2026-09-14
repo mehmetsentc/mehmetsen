@@ -45,27 +45,27 @@ describe('Feed V2 mobile category nav — Takip#2 regression', () => {
     expect(live.findIndex((t) => t.id === 'following')).toBeGreaterThan(5)
   })
 
-  it('FeedV2CategoryNav uses canonical shared destinations, not live activity order', () => {
+  it('FeedV2CategoryNav leads with Sana Özel then live newest-category order', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
-    expect(src).toContain('getSharedRailDestinations')
-    expect(src).toContain("data-tabs-source=\"canonical\"")
-    expect(src).not.toContain("/api/feed/v2/tabs")
-    expect(src).not.toContain('getClientAuthToken')
-    expect(src).not.toContain('Sana Özel')
-    expect(src).toContain('sharedRailChipLabel')
+    expect(src).toContain('/api/feed/v2/tabs')
+    expect(src).toContain('buildFallbackFeedV2Tabs')
+    expect(src).toContain('ensurePersonalLeadTabs')
+    expect(src).toContain('feed-v2-cat-chip')
+    expect(src).toContain("data-tabs-source={tabsSource}")
+    expect(src).not.toContain('getSharedRailDestinations')
+    expect(src).not.toContain('sharedRailChipLabel')
   })
 
-  it('Sana Özel remains an internal Smart Feed mode, not a visible taxonomy chip', () => {
+  it('Sana Özel is the visible first chip, not a hidden internal-only mode', () => {
     const src = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/FeedV2CategoryNav.tsx'),
       'utf8'
     )
-    expect(src).toContain("activeTabId === 'personal'")
-    expect(src).toContain('sharedRailAkisItem')
-    expect(src).toContain('getSharedRailDestinations')
-    expect(src).not.toContain('Sana Özel')
+    expect(src).toContain('Sana Özel first')
+    expect(src).toContain('isFeedV2TabActive')
+    expect(src).toContain("next[0]?.id !== 'personal'")
   })
 })

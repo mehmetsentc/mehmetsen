@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFallbackFeedV2Tabs,
   buildFeedV2Tabs,
+  ensurePersonalLeadTabs,
 } from '@/lib/feed/feedV2Tabs'
 import {
   FEED_V2_CATEGORY_FALLBACK_ORDER,
@@ -13,6 +14,14 @@ describe('Feed V2 dynamic category chip ordering', () => {
     const tabs = buildFeedV2Tabs(['spor', 'magazin', 'ekonomi'])
     expect(tabs[0]?.id).toBe('personal')
     expect(tabs[0]?.label).toMatch(/Sana/i)
+    const reshuffled = ensurePersonalLeadTabs([
+      tabs[2]!,
+      tabs[0]!,
+      tabs[1]!,
+    ])
+    expect(reshuffled[0]?.id).toBe('personal')
+    expect(reshuffled[0]?.label).toBe('Sana Özel')
+    expect(reshuffled.filter((tab) => tab.id === 'personal')).toHaveLength(1)
   })
 
   it('Magazin is NOT statically pinned after Sana Özel; Takip is not #2 either', () => {

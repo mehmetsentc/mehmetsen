@@ -109,6 +109,29 @@ export function buildFeedV2Tabs(orderedCategoryIds: string[]): FeedV2Tab[] {
   return [...FEED_V2_LEAD_TABS, ...cats]
 }
 
+/** Keep the algorithm rail first even if the API payload is reordered. */
+export function ensurePersonalLeadTabs(tabs: FeedV2Tab[]): FeedV2Tab[] {
+  const rest = tabs.filter((tab) => tab.id !== 'personal')
+  const seen = new Set<string>(['personal'])
+  const unique: FeedV2Tab[] = []
+  for (const tab of rest) {
+    if (!tab.id || seen.has(tab.id)) continue
+    seen.add(tab.id)
+    unique.push(tab)
+  }
+  return [...FEED_V2_LEAD_TABS, ...unique]
+}
+
+export function isFeedV2TabActive(tab: FeedV2Tab, activeTabId: string): boolean {
+  if (tab.id === activeTabId) return true
+  if (tab.mode === 'personal' && activeTabId === 'personal') return true
+  if (tab.mode === 'local' && (activeTabId === 'local' || activeTabId === 'yerel')) return true
+  if (tab.mode === 'breaking' && (activeTabId === 'breaking' || activeTabId === 'son-dakika')) {
+    return true
+  }
+  return Boolean(tab.category && tab.category === activeTabId)
+}
+
 export function parseFeedV2TabFromSearch(params: {
   mode?: string | null
   category?: string | null

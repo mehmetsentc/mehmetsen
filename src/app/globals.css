@@ -403,6 +403,28 @@
     box-shadow: inset 0 -2px 0 #fff;
   }
 
+  .feed-v2-cat-rail .context-rail__scroller {
+    gap: 0.45rem;
+  }
+
+  .feed-v2-cat-chip {
+    min-height: 2rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: rgb(255 255 255 / 0.08);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .feed-v2-cat-chip.context-rail__chip--active {
+    border-color: rgb(255 255 255 / 0.42);
+    background: rgb(255 255 255 / 0.2);
+    box-shadow: none;
+    color: #fff;
+  }
+
   .context-rail__chip {
     text-shadow: 0 1px 8px rgb(0 0 0 / 0.4);
   }
