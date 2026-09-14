@@ -13,12 +13,9 @@ function needsFloatingToggle(pathname: string): boolean {
   if (pathname.startsWith('/admin')) return false
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false
   return (
-    pathname.startsWith('/search') ||
-    pathname.startsWith('/ara') ||
     pathname.startsWith('/saved') ||
     pathname.startsWith('/settings') ||
-    pathname.startsWith('/notifications') ||
-    pathname.startsWith('/oyunlar')
+    pathname.startsWith('/notifications')
   )
 }
 

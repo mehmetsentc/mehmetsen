@@ -18,6 +18,8 @@ export function ThemeScript() {
         var root = document.documentElement;
         if (resolved !== 'light') root.classList.add('dark');
         if (resolved === 'oled') root.setAttribute('data-theme', 'oled');
+        var w = window.innerWidth;
+        root.setAttribute('data-platform', w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'mobile');
       } catch (e) {}
     })();
   `

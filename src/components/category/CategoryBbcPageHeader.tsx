@@ -49,7 +49,7 @@ export function CategoryBbcPageHeader({
       <div className="bbc-category-header__top">
         <BackNavButton
           fallbackHref={backFallback}
-          className="back-nav-btn--inline max-lg:hidden"
+          className="back-nav-btn--inline lg:hidden"
         />
         <div className="min-w-0 flex-1">
           <span className="bbc-category-kicker">{accent.kicker}</span>

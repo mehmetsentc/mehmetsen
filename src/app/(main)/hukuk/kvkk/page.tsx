@@ -7,9 +7,10 @@ export const metadata: Metadata = {
 
 export default function KVKKPage() {
   return (
-    <div className="space-y-8 text-sm leading-relaxed text-[rgb(var(--color-text))]">
+    <div className="nl-editorial desktop-newspaper-shell space-y-8 text-sm leading-relaxed text-[rgb(var(--color-text))]">
       <div>
-        <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">
+        <p className="nl-kicker">Yasal</p>
+        <h1 className="nl-editorial__title">
           Kişisel Verilerin Korunması Politikası
         </h1>
         <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">

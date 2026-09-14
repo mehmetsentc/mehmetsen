@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { NewspaperEditorialPage } from '@/components/home/desktop/NewspaperEditorialPage'
 import { ROUTES } from '@/constants/routes'
 
 export const metadata: Metadata = {
@@ -9,11 +10,11 @@ export const metadata: Metadata = {
 
 export default function KVKKPage() {
   return (
-    <article className="prose prose-sm mx-auto max-w-2xl dark:prose-invert px-2 py-6">
-      <h1 className="text-xl font-black text-[rgb(var(--color-text))]">
-        KVKK Kişisel Verilerin Korunması Aydınlatma Metni
-      </h1>
-      <p className="text-xs text-[rgb(var(--color-muted))]">Son güncelleme: Haziran 2025</p>
+    <NewspaperEditorialPage
+      title="KVKK Kişisel Verilerin Korunması Aydınlatma Metni"
+      kicker="Yasal"
+      updated="Son güncelleme: Haziran 2025"
+    >
 
       <p>
         <strong>NaHaber</strong> olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu
@@ -135,6 +136,6 @@ export default function KVKKPage() {
           Ana Sayfa
         </Link>
       </div>
-    </article>
+    </NewspaperEditorialPage>
   )
 }

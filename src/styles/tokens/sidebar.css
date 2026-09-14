@@ -6,7 +6,8 @@
 
 /* Desktop: overlay drawer — üst kenar siyah header ile aynı hizada, viewport sol */
 @media (min-width: 1024px) {
-  html[data-desktop-header='concept-b'] .app-sidebar {
+  html[data-desktop-header='concept-b'] .app-sidebar,
+  html[data-desktop-header='newspaper'] .app-sidebar {
     top: 0 !important;
     left: 0 !important;
     height: 100dvh !important;

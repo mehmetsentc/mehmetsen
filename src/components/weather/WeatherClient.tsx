@@ -126,12 +126,13 @@ export function WeatherClient() {
   const todayHours = weather?.forecast?.[0]?.hour ?? []
 
   return (
-    <div className="space-y-5">
+    <div className="nl-editorial desktop-newspaper-shell space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[rgb(var(--color-text))]">
-            🌤️ Hava Durumu
+          <p className="nl-kicker">Meteoroloji</p>
+          <h1 className="nl-editorial__title">
+            Hava Durumu
           </h1>
           {weather && (
             <p className="text-xs text-[rgb(var(--color-muted))]">

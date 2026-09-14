@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getHeaderAllNavItems,
+  getNewspaperNavItems,
   getSiteNavItems,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -30,5 +31,26 @@ describe('desktop header nav', () => {
     expect(ids.indexOf('ekonomi')).toBeLessThan(ids.indexOf('finans-piyasa'))
     expect(ids.at(-1)).toBe('video')
     expect(header.every((item) => !item.indent)).toBe(true)
+  })
+
+  it('locks the approved 12-link newspaper masthead order', () => {
+    const items = getNewspaperNavItems()
+    expect(items.map((item) => item.id)).toEqual([
+      'feed',
+      'gundem',
+      'yerel',
+      'asayis',
+      'dunya',
+      'siyaset',
+      'ekonomi',
+      'spor',
+      'teknoloji',
+      'kultur',
+      'saglik',
+      'video',
+    ])
+    expect(items.find((item) => item.id === 'siyaset')?.label).toBe('Siyaset')
+    expect(items.find((item) => item.id === 'kultur')?.label).toBe('Kültür')
+    expect(items.at(-1)?.href).toBe(ROUTES.REELS)
   })
 })

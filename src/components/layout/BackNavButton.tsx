@@ -104,15 +104,11 @@ export function GlobalBackNav() {
     pathname === '/feed-v2' ||
     pathname.startsWith('/feed-v2/')
 
-  if (hidden) return null
+  if (hidden || !isImmersive) return null
 
   return (
     <div
-      className={cn(
-        'back-nav-global',
-        // Mobile non-immersive: Navbar already has back. Desktop + immersive: floating.
-        isImmersive ? 'back-nav-global--reels' : 'back-nav-global--desktop'
-      )}
+      className={cn('back-nav-global', 'back-nav-global--reels')}
       data-testid={isImmersive ? 'smart-feed-exit-nav' : undefined}
     >
       <BackNavButton

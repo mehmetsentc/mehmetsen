@@ -33,7 +33,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
     <section
       className={cn(
         'local-news-top-panel mb-6 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
-        isMobile ? 'rounded-none' : 'rounded-xl border shadow-sm'
+        isMobile ? 'rounded-none' : 'rounded-none border'
       )}
       aria-label="Yerel haber araçları"
     >
@@ -41,7 +41,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
         <div className={cn('flex flex-wrap items-center gap-3', isMobile && 'gap-2')}>
           <div
             className={cn(
-              'flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2',
+              'flex min-w-0 flex-1 items-center gap-2 rounded-none border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2',
               isMobile ? 'min-w-[200px]' : 'min-w-[240px]'
             )}
           >
@@ -67,7 +67,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
             title="GPS ile tespit et"
             aria-busy={locationState === 'requesting'}
             className={cn(
-              'inline-flex shrink-0 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))] disabled:cursor-wait disabled:opacity-70',
+              'inline-flex shrink-0 items-center gap-2 rounded-none border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))] disabled:cursor-wait disabled:opacity-70',
               isMobile ? 'h-9 w-9 justify-center px-0' : 'px-3 py-2',
               locationState === 'denied' && 'border-red-300 text-red-600 hover:text-red-700'
             )}
@@ -121,7 +121,7 @@ export function LocalNewsTopPanel({ state, variant = 'desktop' }: LocalNewsTopPa
                 type="button"
                 onClick={() => handleSelectCity(c)}
                 className={cn(
-                  'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
+                  'shrink-0 rounded-none px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition-all',
                   isMobile && 'snap-start',
                   isSelected
                     ? 'bg-[rgb(5_150_105)] text-white shadow-sm'

@@ -6,15 +6,17 @@ import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { ROUTES } from '@/constants/routes'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
-  if (pathname === ROUTES.REELS) return false
+  if (pathname === ROUTES.REELS || pathname === '/video' || pathname.startsWith('/video/')) {
+    return false
+  }
   if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return false
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false
-  // App shell pages — skip heavy desktop news header (duplicate nav + INP)
-  if (pathname.startsWith('/search') || pathname.startsWith('/ara')) return false
+  if (pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/onboarding')) {
+    return false
+  }
   if (pathname.startsWith('/saved') || pathname.startsWith('/settings')) return false
-  if (pathname.startsWith('/notifications') || pathname.startsWith('/oyunlar')) return false
+  if (pathname.startsWith('/notifications')) return false
   return true
 }
 

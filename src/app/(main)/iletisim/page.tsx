@@ -69,6 +69,7 @@ const TOPIC_CHANNELS = [
     title: 'Reklam & İş Birliği',
     description: 'Reklam, sponsorluk ve içerik ortaklığı talepleri.',
     subject: 'Reklam ve İş Birliği',
+    id: 'reklam',
   },
 ] as const
 
@@ -144,10 +145,23 @@ const FAQ: FaqEntry[] = [
   },
 ]
 
-function TopicCard({ title, description, subject }: { title: string; description: string; subject: string }) {
+function TopicCard({
+  title,
+  description,
+  subject,
+  id,
+}: {
+  title: string
+  description: string
+  subject: string
+  id?: string
+}) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900/60">
-      <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">{title}</h3>
+    <div
+      id={id}
+      className="rounded-none border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5"
+    >
+      <h3 className="text-base font-bold text-[rgb(var(--color-text))]">{title}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-gray-700 dark:text-gray-300">{description}</p>
       <a
         href={mailto(subject)}
@@ -167,12 +181,14 @@ export default function IletisimPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 text-gray-900 sm:px-6">
+      <div className="nl-editorial desktop-newspaper-shell mx-auto w-full max-w-3xl py-10 text-[rgb(var(--color-text))]">
         <header className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100">
+          <p className="nl-kicker">Kurumsal</p>
+          <h1 className="nl-editorial__title">
             Destek ve İletişim
           </h1>
-          <p className="mt-3 text-base leading-relaxed text-gray-700 dark:text-gray-300">
+          <hr className="nl-rule-thick mt-6" />
+          <p className="mt-3 text-base leading-relaxed text-[rgb(var(--color-text-secondary,var(--color-muted)))]">
             Tüm talepleriniz için tek iletişim adresimiz{' '}
             <a
               href={mailto()}
@@ -185,7 +201,7 @@ export default function IletisimPage() {
         </header>
 
         <section
-          className="mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/60"
+          className="mb-10 rounded-none border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6"
           aria-label="E-posta iletişim"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

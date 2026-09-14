@@ -15,7 +15,7 @@ import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
-import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
+import { DesktopMarketTicker } from '@/components/home/desktop/DesktopMarketTicker'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
 import {
@@ -201,12 +201,12 @@ export function DesktopHomeFeed({
             : 'NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler'}
       </h1>
 
-      <NewspaperMasthead
-        lastUpdated={layout.lastUpdated}
-        cityName={cityName}
-        districtName={districtName}
-        sectionTitle={sectionTitle}
-      />
+      {cityName || districtName || sectionTitle ? (
+        <p className="mb-4 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
+          {sectionTitle || (districtName ? `${districtName} Haberleri` : `${cityName} Haberleri`)}
+        </p>
+      ) : null}
+      <DesktopMarketTicker />
 
       <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
 

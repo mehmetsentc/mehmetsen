@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { NewspaperEditorialPage } from '@/components/home/desktop/NewspaperEditorialPage'
 import { getSiteUrl } from '@/lib/seo'
 
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -13,12 +14,13 @@ export const metadata: Metadata = {
 
 export default function GizlilikPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-2 text-3xl font-bold">Gizlilik Politikası</h1>
-      <p className="mb-8 text-sm text-[rgb(var(--color-muted))]">Son güncelleme: Temmuz 2026</p>
-
-      <div className="prose prose-invert max-w-none space-y-6 text-[rgb(var(--color-muted))]">
-        <h2 className="text-xl font-semibold text-white">1. Toplanan Veriler</h2>
+    <NewspaperEditorialPage
+      title="Gizlilik Politikası"
+      kicker="Yasal"
+      updated="Son güncelleme: Temmuz 2026"
+    >
+      <div className="space-y-6">
+        <h2>1. Toplanan Veriler</h2>
         <p>
           Analitik izni vermeniz halinde sayfa görüntülemeleri, oturum ve anonim ziyaretçi
           kimlikleri, yönlendiren site ve kampanya bilgileri, yaklaşık ülke/şehir, tarayıcı
@@ -28,14 +30,14 @@ export default function GizlilikPage() {
           oluşturmanız durumunda e-posta adresiniz ve kullanıcı adınız da işlenmektedir.
         </p>
 
-        <h2 className="text-xl font-semibold text-white">2. Verilerin Kullanımı</h2>
+        <h2>2. Verilerin Kullanımı</h2>
         <p>
           Toplanan veriler yalnızca hizmetin iyileştirilmesi, kişiselleştirilmiş içerik
           sunulması ve teknik sorunların çözümü amacıyla kullanılmaktadır. Verileriniz
           herhangi bir üçüncü tarafa satılmamaktadır.
         </p>
 
-        <h2 className="text-xl font-semibold text-white">3. Çerezler</h2>
+        <h2>3. Çerezler</h2>
         <p>
           Zorunlu depolama oturum yönetimi için kullanılır. Analitik amaçlı ziyaretçi ve
           oturum tanımlayıcıları yalnızca açık analitik izninizden sonra oluşturulur.
@@ -43,10 +45,10 @@ export default function GizlilikPage() {
           analitik olayları en fazla 90 gün tutulur ve günlük otomatik temizleme ile silinir.
         </p>
 
-        <h2 className="text-xl font-semibold text-white">4. Reklam ve Üçüncü Taraf Teknolojileri</h2>
+        <h2>4. Reklam ve Üçüncü Taraf Teknolojileri</h2>
         <p>
-          {siteName}, reklamları sunmak amacıyla <strong className="text-white">Google AdSense</strong> hizmetini
-          kullanmaktadır. Google, <strong className="text-white">DoubleClick DART çerezi</strong> dahil olmak üzere
+          {siteName}, reklamları sunmak amacıyla <strong>Google AdSense</strong> hizmetini
+          kullanmaktadır. Google, <strong>DoubleClick DART çerezi</strong> dahil olmak üzere
           çeşitli çerezler aracılığıyla sitenize ve internet genelindeki önceki ziyaretlerinize
           dayalı reklamlar gösterebilir.
         </p>
@@ -92,7 +94,7 @@ export default function GizlilikPage() {
           </a>&apos;nı inceleyebilirsiniz.
         </p>
 
-        <h2 className="text-xl font-semibold text-white">5. KVKK Hakları</h2>
+        <h2>5. KVKK Hakları</h2>
         <p>
           6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında verilerinize erişim,
           düzeltme ve silme haklarına sahipsiniz. Talepleriniz için{' '}
@@ -102,7 +104,7 @@ export default function GizlilikPage() {
           adresine yazabilirsiniz.
         </p>
 
-        <h2 className="text-xl font-semibold text-white">6. Üçüncü Taraf Gizlilik Politikaları</h2>
+        <h2>6. Üçüncü Taraf Gizlilik Politikaları</h2>
         <p>
           {siteName}&apos;nin gizlilik politikası yalnızca bu siteye uygulanmaktadır.
           Üçüncü taraf reklam ortakları, analiz sağlayıcıları veya bağlantılı siteler için
@@ -111,24 +113,24 @@ export default function GizlilikPage() {
         </p>
         <ul>
           <li>
-            <strong className="text-white">Google AdSense / Google LLC</strong> —{' '}
+            <strong>Google AdSense / Google LLC</strong> —{' '}
             <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
               className="text-[rgb(var(--color-brand))] underline">gizlilik politikası</a>
           </li>
           <li>
-            <strong className="text-white">Google Analytics / Google LLC</strong> —{' '}
+            <strong>Google Analytics / Google LLC</strong> —{' '}
             <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
               className="text-[rgb(var(--color-brand))] underline">gizlilik politikası</a>
           </li>
           <li>
-            <strong className="text-white">Firebase / Google LLC</strong> — kimlik doğrulama ve veritabanı
+            <strong>Firebase / Google LLC</strong> — kimlik doğrulama ve veritabanı
           </li>
           <li>
-            <strong className="text-white">Vercel Inc.</strong> — hosting ve performans izleme
+            <strong>Vercel Inc.</strong> — hosting ve performans izleme
           </li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-white">7. İletişim</h2>
+        <h2>7. İletişim</h2>
         <p>
           Gizlilik politikamızla ilgili sorularınız için{' '}
           <a href="/iletisim" className="text-[rgb(var(--color-brand))] underline">
@@ -137,6 +139,6 @@ export default function GizlilikPage() {
           ziyaret edebilirsiniz.
         </p>
       </div>
-    </div>
+    </NewspaperEditorialPage>
   )
 }

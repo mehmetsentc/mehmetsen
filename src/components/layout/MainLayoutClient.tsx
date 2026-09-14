@@ -36,28 +36,20 @@ const SiteFooter = dynamic(
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string): ContentVariant {
-  if (pathname === ROUTES.REELS) return 'reels'
+  if (pathname === ROUTES.REELS || pathname === '/video' || pathname.startsWith('/video/')) {
+    return 'reels'
+  }
   if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
-  if (pathname.startsWith('/profile/')) return 'newspaper'
-  if (pathname.startsWith('/publisher/')) return 'newspaper'
-  if (pathname.startsWith('/yazar/')) return 'newspaper'
-  if (pathname.startsWith('/kaynak/')) return 'newspaper'
-  if (pathname === ROUTES.FEED) return 'newspaper'
-  if (pathname.startsWith('/kategori/')) return 'newspaper'
-  if (pathname.startsWith('/etiket/')) return 'newspaper'
-  if (pathname.startsWith('/haber/')) return 'newspaper'
-  if (pathname.startsWith('/canli/')) return 'newspaper'
-  if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'newspaper'
-  if (pathname.startsWith('/hukuk/')) return 'newspaper'
-  if (pathname === '/kunye') return 'newspaper'
-  if (pathname.startsWith('/iletisim')) return 'newspaper'
-  if (pathname.startsWith('/hakkimizda')) return 'newspaper'
-  if (pathname.startsWith('/editoryal-ilkeler')) return 'newspaper'
-  if (pathname.startsWith('/aydinlatma-metni')) return 'newspaper'
-  if (pathname === ROUTES.SITE_MAP) return 'newspaper'
-  if (pathname === ROUTES.EVENTS || pathname.startsWith(`${ROUTES.EVENTS}/`)) return 'newspaper'
-  return 'default'
+  if (pathname.startsWith('/admin')) return 'default'
+  if (pathname.startsWith('/publisher-studio') || pathname.startsWith('/advertiser')) return 'default'
+  if (pathname.startsWith('/settings') || pathname.startsWith('/saved') || pathname.startsWith('/notifications')) {
+    return 'default'
+  }
+  if (pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/onboarding')) {
+    return 'default'
+  }
+  return 'newspaper'
 }
 
 function getStageClass(pathname: string, isReels: boolean, variant: ContentVariant): string {
@@ -184,7 +176,12 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
-  const isReels = pathname === ROUTES.REELS || pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
+  const isReels =
+    pathname === ROUTES.REELS ||
+    pathname === '/video' ||
+    pathname.startsWith('/video/') ||
+    pathname === '/feed-v2' ||
+    pathname.startsWith('/feed-v2/')
   const variant = getContentVariant(pathname)
   const slim = isSlimAppShell(pathname)
 
