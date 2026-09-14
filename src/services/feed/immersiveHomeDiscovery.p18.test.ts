@@ -86,6 +86,12 @@ describe('featured manşet presentation', () => {
     expect(slider).toContain('home-featured-rail-dots')
     expect(slider).toContain('layout="headline"')
     expect(slider).not.toContain('layout="featuredRail"')
+    const discovery = read('src/components/home/HomeDiscoveryCard.tsx')
+    expect(discovery).toContain("FEATURED_RAIL_ASPECT = '16 / 9'")
+    const css = read('src/app/globals.css')
+    expect(css).toMatch(
+      /\.home-featured-rail \.home-discovery-card__media \{[\s\S]*?aspect-ratio:\s*16 \/ 9/
+    )
     expect(ticker).toContain('home-market-ticker--attached')
     expect(ticker).toContain('attached')
   })

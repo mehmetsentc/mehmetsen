@@ -76,8 +76,8 @@
     --reels-video-w: min(100%, calc(var(--reels-viewport-h) * 9 / 16));
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Floating mobile bottom-nav pill (clearance + chrome sizing) */
-    --mobile-nav-pill-h: 3.75rem;
-    --mobile-nav-float-gap: 0.625rem;
+    --mobile-nav-pill-h: 3rem;
+    --mobile-nav-float-gap: 1.15rem;
     --mobile-nav-inset-x: 1rem;
     --mobile-nav-clearance: calc(
       var(--mobile-nav-pill-h) + var(--mobile-nav-float-gap) + var(--safe-bottom, 0px) + 0.75rem
@@ -3422,7 +3422,7 @@
        Height must be the REMAINING viewport under fixed mobile top chrome —
        raw min-height:100dvh here + navbar spacer pushes publisher past first paint. */
     padding-bottom: 0 !important;
-    --feed-card-h: calc(100svh - var(--mobile-top-chrome-offset, 0px));
+    --feed-card-h: calc(100dvh - var(--mobile-top-chrome-offset, 0px));
     height: var(--feed-card-h);
     min-height: var(--feed-card-h);
     max-height: var(--feed-card-h);
@@ -4727,19 +4727,19 @@ iframe.reels-yt-frame {
 }
 
 .home-featured-rail .home-discovery-card__media {
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 16 / 9;
   width: 100%;
 }
 
 .home-featured-rail--headline .home-discovery-card__copy {
-  padding: 1.1rem 1rem 1.25rem;
+  padding: 0.7rem 0.9rem 0.8rem;
 }
 
 .home-featured-rail--headline .home-discovery-card__headline {
-  font-size: 1.38rem;
-  line-height: 1.12;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
+  font-size: 1.18rem;
+  line-height: 1.16;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .home-discovery-card {
@@ -5009,7 +5009,7 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
 
 /* Newspaper overlay: optional pull-under for magazine heroes.
    Ana Sayfa visual discovery keeps first content below chrome (bleed=0).
-   Feed V2 keeps the remaining-band 100svh contract (no pull-under). */
+   Feed V2 keeps the remaining-band 100dvh contract (no pull-under). */
 @media (max-width: 1023px) {
   [data-header-bleed='1'] .content-main-newspaper {
     margin-top: calc(-1 * var(--mobile-top-chrome-offset, 0px));

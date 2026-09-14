@@ -30,8 +30,8 @@ export type HomeDiscoveryItem = {
   featured?: boolean
 }
 
-/** Shared Öne Çıkanlar rail frame — card owns geometry, source image covers. */
-export const FEATURED_RAIL_ASPECT = '4 / 5'
+/** Shared Öne Çıkanlar rail frame — landscape manşet, not a tall portrait tile. */
+export const FEATURED_RAIL_ASPECT = '16 / 9'
 
 /** Natural card height from media treatment + slot — not random, not identical. */
 export function discoveryAspectRatio(index: number, featured: boolean): string {

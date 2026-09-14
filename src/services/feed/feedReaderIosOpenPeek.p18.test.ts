@@ -58,7 +58,7 @@ describe('P18 iOS Haberi Aç / card peek human NO-GO', () => {
   it('card height uses visualViewport + svh; shell synced to measured unit', () => {
     expect(client).toContain('visualViewport')
     expect(client).toContain("closest('.content-main-reels')")
-    expect(css).toMatch(/--feed-card-h:\s*calc\(100svh - var\(--mobile-top-chrome-offset/)
+    expect(css).toMatch(/--feed-card-h:\s*calc\(100dvh - var\(--mobile-top-chrome-offset/)
   })
 
   it('Haberi Oku is gesture-ignored + pointerup safe on iOS', () => {

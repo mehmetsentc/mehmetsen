@@ -87,7 +87,7 @@ describe('P18 Feed V2 first-paint vertical budget', () => {
     expect(css).toContain('--mobile-top-chrome-offset')
     expect(css).toContain('content-main-reels')
     expect(css).toMatch(
-      /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100svh - var\(--mobile-top-chrome-offset/
+      /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100dvh - var\(--mobile-top-chrome-offset/
     )
     const nav = read('src/components/layout/Navbar.tsx')
     expect(nav).toContain('--mobile-top-chrome-offset')

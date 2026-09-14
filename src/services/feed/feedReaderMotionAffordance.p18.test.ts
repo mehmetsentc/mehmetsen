@@ -158,7 +158,7 @@ describe('page motion', () => {
     expect(client).toContain("behavior: 'auto'")
     expect(client).toContain('Tap must not shift the card')
     expect(client).not.toContain('scale(${1 - pageProgress')
-    expect(client).toContain('Math.abs(prev - measured) < 96')
+    expect(client).toContain('prev - measured < 96')
     expect(READER_GESTURE.dominance).toBe(1.35)
     expect(READER_GESTURE.activatePx).toBe(14)
     expect(READER_GESTURE.completePx).toBe(72)

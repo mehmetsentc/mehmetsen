@@ -44,7 +44,7 @@ describe('nav-safe Feed card layout', () => {
         safeBottom: 34,
         breathPx: 14,
       })
-      expect(clearance).toBe(116)
+      expect(clearance).toBe(114)
       expect(clearance).toBeGreaterThan(80)
       expect(h).toBeGreaterThan(clearance + 200)
     }

@@ -15,11 +15,12 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-reader-surface-max': '44rem',
   /**
-   * Bottom pad: floating nav pill + home-indicator.
-   * Reader / comments hide the pill via CSS; extra pad is then unused.
+   * Bottom pad: dock overlay (pill + lift) + home-indicator.
+   * env(safe-area-inset-bottom) matches MobileNav; keep extras tiny so the
+   * card is not a black band above the pills.
    */
   '--feed-v2-bottom-clearance':
-    'calc(var(--mobile-nav-pill-h, 3.75rem) + var(--mobile-nav-float-gap, 0.625rem) + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+    'calc(var(--mobile-nav-pill-h, 3rem) + var(--mobile-nav-float-gap, 1.15rem) + env(safe-area-inset-bottom, 0px) + 0.85rem)',
   /** Top clearance after context rail moved into site header (Global Nav V2). */
   '--feed-v2-top-clearance': '0.5rem',
   /**
@@ -66,15 +67,17 @@ export function feedReaderSurfaceMaxPx(rootFontPx = 16): number {
   return FEED_READER_SURFACE_MAX_REM * rootFontPx
 }
 
-/** Pure helper for tests — safe-area + floating nav pill. */
+/** Pure helper for tests — dock overlay band (pill + float gap + safe-area + breath). */
 export function feedV2BottomClearancePx(opts: {
   safeBottom: number
   breathPx?: number
   navPillPx?: number
+  floatGapPx?: number
 }): number {
-  const breath = opts.breathPx ?? 12
-  const nav = opts.navPillPx ?? 68
-  return Math.max(16, opts.safeBottom + breath + nav)
+  const breath = opts.breathPx ?? 14
+  const nav = opts.navPillPx ?? 48
+  const floatGap = opts.floatGapPx ?? 18
+  return Math.max(16, opts.safeBottom + nav + floatGap + breath)
 }
 
 /** Haberi Oku ~56 + gap ~14 + publisher ~48 (design). */

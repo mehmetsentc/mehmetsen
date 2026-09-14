@@ -125,7 +125,7 @@ interface FullscreenNewsCardProps {
  */
 const MODE_NAV_CLEARANCE = 'pt-2'
 const HERO_FRAME =
-  'relative h-full min-h-[var(--feed-v2-hero-min)] w-full overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-neutral-950'
+  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-neutral-950'
 
 const DOUBLE_TAP_MS = 280
 const TAP_MOVE_PX = 14
@@ -735,8 +735,8 @@ export function FullscreenNewsCard({
             className="flex shrink-0 flex-col"
             data-testid="smart-feed-action-zone"
             data-feed-first-paint-actions="1"
+            data-feed-action-token="--feed-v2-action-zone"
             style={{
-              minHeight: 'var(--feed-v2-action-zone)',
               paddingTop: showDiscoveryRail
                 ? '0.75rem'
                 : 'var(--feed-v2-gap-summary-cta)',

@@ -114,7 +114,7 @@
 .sd-fab {
   position: fixed;
   bottom: calc(
-    var(--mobile-nav-pill-h, 3.5rem) + var(--mobile-nav-float-gap, 0.625rem) +
+    var(--mobile-nav-pill-h, 3rem) + var(--mobile-nav-float-gap, 1.15rem) +
       env(safe-area-inset-bottom, 0px) + 0.75rem
   );
   right: 1rem;

@@ -23,7 +23,7 @@ describe('immersive header Phase 1', () => {
     expect(immersive.slice(0, 420)).not.toContain('background-color: transparent')
     expect(css).toContain("[data-header-bleed='1'] .content-main-newspaper")
     expect(css).toMatch(
-      /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100svh - var\(--mobile-top-chrome-offset/
+      /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100dvh - var\(--mobile-top-chrome-offset/
     )
   })
 

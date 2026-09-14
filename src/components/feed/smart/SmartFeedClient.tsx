@@ -1275,8 +1275,9 @@ export function SmartFeedClient({
     const measured = Math.max(0, Math.round(layoutH - top))
     if (measured <= 0) return
     const prev = cardHeightRef.current
-    // Ignore iOS toolbar show/hide on tap so the card does not jump vertically.
-    if (prev > 0 && Math.abs(prev - measured) < 96) {
+    // Ignore iOS toolbar *appearing* (height shrink) so the card does not jump.
+    // Always accept a taller measure — leftover black under the card is a miss.
+    if (prev > 0 && measured < prev && prev - measured < 96) {
       return
     }
     cardHeightRef.current = measured
