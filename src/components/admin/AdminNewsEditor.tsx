@@ -35,6 +35,7 @@ import type { Post } from '@/types/post'
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 
 /** {"caption":"..."} formatındaki bozuk değerleri temizler */
 function sanitizeCaptionValue(v: string | undefined | null): string {
@@ -383,11 +384,11 @@ export function AdminNewsEditor({
         body: JSON.stringify({ mode: 'keywords', input }),
         signal: AbortSignal.timeout(90_000),
       })
-      const data = await res.json() as {
+      const data = await parseApiResponse<{
         keywords?: string[]
         seoKeywords?: string[]
         error?: string
-      }
+      }>(res)
       if (!res.ok) {
         throw new Error(data.error || `AI isteği başarısız (${res.status})`)
       }
@@ -573,8 +574,9 @@ export function AdminNewsEditor({
           ...(districtSlug ? { districtSlug } : {}),
           isBreaking,
         }),
+        signal: AbortSignal.timeout(280_000),
       })
-      const data = await res.json() as ProfessionalAiResult
+      const data = await parseApiResponse<ProfessionalAiResult>(res)
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
 
       const nextTitle = stripHtmlToNewsPlainText(data.title?.trim() || title)
@@ -701,7 +703,16 @@ export function AdminNewsEditor({
       if (variant === 'drawer') onClose?.()
       else router.push(ROUTES.ADMIN.NEWS)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'AI editör isteği başarısız')
+      const timedOut =
+        (error instanceof DOMException && error.name === 'TimeoutError') ||
+        (error instanceof Error && /aborted|timeout|zaman aşımı/i.test(error.message))
+      toast.error(
+        timedOut
+          ? 'AI düzenleme zaman aşımına uğradı (DeepSeek yanıtı gelmedi). Lütfen tekrar deneyin.'
+          : error instanceof Error
+            ? error.message
+            : 'AI editör isteği başarısız'
+      )
     } finally {
       setAiPreparing(false)
     }

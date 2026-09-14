@@ -50,6 +50,7 @@ import {
 } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -134,8 +135,9 @@ function AiToolbar({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mode, input: post.title + '\n\n' + (post.summary ?? '') }),
       })
-      if (!res.ok) throw new Error()
-      setResult(await res.json() as AiResult)
+      const data = await parseApiResponse<AiResult & { error?: string }>(res)
+      if (!res.ok) throw new Error(data.error || 'AI servisi kullanılamıyor')
+      setResult(data)
     } catch {
       toast.error('AI servisi kullanılamıyor')
     } finally {

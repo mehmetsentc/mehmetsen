@@ -1,6 +1,7 @@
 'use client'
 
 import { auth } from '@/lib/firebase/auth'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 
 import { useState, useRef, useCallback } from 'react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
@@ -45,11 +46,11 @@ async function callAiAssistant(mode: AiMode, input: string, idToken: string): Pr
     },
     body: JSON.stringify({ mode, input }),
   })
+  const data = await parseApiResponse<AiResult & { error?: string }>(res)
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error((err as {error?: string}).error ?? `HTTP ${res.status}`)
+    throw new Error(data.error ?? `HTTP ${res.status}`)
   }
-  return res.json() as Promise<AiResult>
+  return data
 }
 
 function CopyButton({ text }: { text: string }) {

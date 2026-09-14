@@ -24,7 +24,13 @@ import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+/** DeepSeek + araştırma + görsel analizi 120s'i aşıyordu → Vercel HTML 504. */
+export const maxDuration = 300
+
+/** Leave headroom under maxDuration so the handler can still return JSON. */
+const AI_ASSIST_DEADLINE_MS = 250_000
+const DEEPSEEK_FIRST_MS = 60_000
+const DEEPSEEK_RETRY_MS = 40_000
 
 type AssistMode =
   | 'create'
@@ -257,16 +263,22 @@ async function callGeminiFallback(
   return parseAiJson(raw)
 }
 
-async function callAi(systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
+async function callAi(
+  systemPrompt: string,
+  userMessage: string,
+  deadlineMs: number
+): Promise<Record<string, unknown>> {
   const errors: string[] = []
   const { isGeminiFallbackEnabled, isGeminiCreditError } = await import('@/lib/ai/deepseekClient')
+  const remain = () => deadlineMs - Date.now()
 
-  // DeepSeek primary — V4 thinking kapalı + boş yanıtta retry
+  // DeepSeek primary — V4 thinking kapalı + boş yanıtta retry (süre kalırsa)
   if (process.env.DEEPSEEK_API_KEY?.trim()) {
+    const firstTimeout = Math.min(DEEPSEEK_FIRST_MS, Math.max(12_000, remain() - DEEPSEEK_RETRY_MS - 8_000))
     try {
       return await callDeepSeekOnce(systemPrompt, userMessage, {
-        timeoutMs: 85_000,
-        maxTokens: 6000,
+        timeoutMs: firstTimeout,
+        maxTokens: 5000,
         attempt: 1,
       })
     } catch (e) {
@@ -275,12 +287,13 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
       const shouldRetry = /timeout|aborted|AbortError|boş yanıt|0 karakter|HTTP 429|HTTP 5\d\d/i.test(
         msg
       )
-      if (shouldRetry) {
+      const retryBudget = Math.min(DEEPSEEK_RETRY_MS, remain() - 8_000)
+      if (shouldRetry && retryBudget >= 12_000) {
         try {
           console.warn('[ai-assist] DeepSeek retry')
           return await callDeepSeekOnce(systemPrompt, userMessage, {
-            timeoutMs: 70_000,
-            maxTokens: 4000,
+            timeoutMs: retryBudget,
+            maxTokens: 3500,
             attempt: 2,
           })
         } catch (e2) {
@@ -313,7 +326,15 @@ async function callAi(systemPrompt: string, userMessage: string): Promise<Record
 }
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'ai:use')
+  const deadlineMs = Date.now() + AI_ASSIST_DEADLINE_MS
+  let auth
+  try {
+    auth = await verifyCmsToken(request, 'ai:use')
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[ai-assist] auth', msg)
+    return NextResponse.json({ error: 'Yetki doğrulanamadı' }, { status: 401 })
+  }
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (!isManualEditorAiEnabled()) {
@@ -454,20 +475,25 @@ export async function POST(request: Request) {
       .map((url) => url.trim())
       .filter((url, index, all) => url && all.indexOf(url) === index)
       .slice(0, 6)
+    const analyzeUrls = requestedUrls.slice(0, 1)
 
     const researchPromise =
       mode === 'publish-ready'
         ? researchLiveNews({ query: input.slice(0, 500), context: input })
         : Promise.resolve(null)
     const imagePromise =
-      mode === 'publish-ready' && requestedUrls.length > 0
+      mode === 'publish-ready' && analyzeUrls.length > 0
         ? Promise.all(
-            requestedUrls.map(async (url) => {
-              const analysis = await generateImageAnalysis({
-                imageUrl: url,
-                title: '',
-                content: input.slice(0, 2500),
-              })
+            analyzeUrls.map(async (url) => {
+              const analysis = await runWithAiUsageContext(
+                { ingestionLane: 'manual_editor' },
+                () =>
+                  generateImageAnalysis({
+                    imageUrl: url,
+                    title: '',
+                    content: input.slice(0, 2500),
+                  })
+              )
               return analysis ? { url, ...analysis } : null
             })
           )
@@ -508,7 +534,7 @@ export async function POST(request: Request) {
             .filter(Boolean)
             .join('\n')
         : userMessage
-    const parsed = await callAi(systemPrompt, enrichedUserMessage)
+    const parsed = await callAi(systemPrompt, enrichedUserMessage, deadlineMs)
 
     if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
       const title = stripAiHtmlLeak(String(parsed.title ?? ''))
