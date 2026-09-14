@@ -1017,6 +1017,31 @@ export function getHeaderPrimaryNavItems(): SiteNavItem[] {
   return getHeaderAllNavItems().filter((item) => HEADER_PRIMARY_ID_SET.has(item.id))
 }
 
+/** Masaüstü Ana Sayfa gazete kromu — screenshot sırası, mevcut rotalar. */
+export const HEADER_PORTAL_NAV_IDS = [
+  'gundem',
+  'siyaset',
+  'ekonomi',
+  'dunya',
+  'yasam',
+  'spor',
+  'teknoloji',
+  'kultur',
+  'saglik',
+  'egitim',
+  'video',
+] as const
+
+export function getHeaderPortalNavItems(): SiteNavItem[] {
+  const labels: Partial<Record<(typeof HEADER_PORTAL_NAV_IDS)[number], string>> = {
+    kultur: 'Kültür-Sanat',
+    siyaset: 'Siyaset',
+  }
+  return HEADER_PORTAL_NAV_IDS.map((id) => resolveHeaderNavItem(id, labels[id])).filter(
+    (item): item is SiteNavItem => item !== null
+  )
+}
+
 /** Concept B — lacivert bardaki ikincil kategori linkleri. */
 export function getHeaderSecondaryNavItems(): SiteNavItem[] {
   return getHeaderAllNavItems().filter((item) => !HEADER_PRIMARY_ID_SET.has(item.id))

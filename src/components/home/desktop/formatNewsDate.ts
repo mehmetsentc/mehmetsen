@@ -33,3 +33,15 @@ export function formatNewsRelative(value?: string | number | null): string | nul
 export function formatNewsClock(value?: string | number | null): string | null {
   return formatNewsDateBbc(value)
 }
+
+/** Manşet listesi saati — yayının gerçek HH:mm değeri. */
+export function formatNewsClockTime(value?: string | number | null): string | null {
+  if (value == null) return null
+  const iso = typeof value === 'number' ? new Date(value).toISOString() : value
+  const parsed = Date.parse(iso)
+  if (!Number.isFinite(parsed)) return null
+  return new Intl.DateTimeFormat('tr-TR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(parsed))
+}

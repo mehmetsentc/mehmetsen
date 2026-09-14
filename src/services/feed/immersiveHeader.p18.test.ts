@@ -10,45 +10,45 @@ function read(rel: string) {
 }
 
 describe('immersive header Phase 1', () => {
-  it('uses overlay chrome + glass tokens, not an opaque brand slab class on the immersive header', () => {
+  it('uses opaque Pinterest chrome so stories cannot paint through the header', () => {
     const nav = read('src/components/layout/Navbar.tsx')
     const css = read('src/app/globals.css')
     expect(nav).toContain('mobile-top-chrome--immersive')
     expect(nav).not.toContain('bg-[rgb(var(--header-brand-bg))]')
     expect(css).toContain('.mobile-top-chrome--immersive')
-    expect(css).toContain('background-color: transparent')
     expect(css).toContain('--nahaber-header-row-height')
     expect(nav).toContain('--nahaber-header-row-height')
-    expect(css).toContain('backdrop-filter')
+    const immersive = css.slice(css.indexOf('.mobile-top-chrome--immersive'))
+    expect(immersive.slice(0, 420)).toContain('rgb(var(--header-brand-bg))')
+    expect(immersive.slice(0, 420)).not.toContain('background-color: transparent')
     expect(css).toContain("[data-header-bleed='1'] .content-main-newspaper")
     expect(css).toMatch(
       /\.content-main-reels[\s\S]{0,500}--feed-card-h:\s*calc\(100svh - var\(--mobile-top-chrome-offset/
     )
   })
 
-  it('hosts a compact Ana Sayfa/Akış surface toggle and icon actions — no destination row', () => {
+  it('keeps search/plus/more in the header; Ana Sayfa, Akış, Profil live in the bottom dock', () => {
     const nav = read('src/components/layout/Navbar.tsx')
     const more = read('src/components/layout/HeaderMoreMenu.tsx')
-    const css = read('src/app/globals.css')
-    expect(nav).toContain('header-surface-toggle')
-    expect(nav).toContain('data-active')
-    expect(nav).toContain('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
-    expect(nav).toContain('justify-self-center')
-    expect(css).toContain('width: 10.75rem')
-    expect(css).toContain('grid-template-columns: 1fr 1fr')
-    expect(css).toContain(".header-surface-toggle[data-active='akis']::before")
-    expect(nav).toContain('aria-label="Ana Sayfa"')
-    expect(nav).toContain('aria-label="Akış"')
+    const dock = read('src/components/layout/MobileNav.tsx')
+    expect(nav).not.toContain('header-surface-toggle')
+    expect(nav).not.toContain('header-nav-ana-sayfa')
+    expect(nav).not.toContain('header-nav-akis')
     expect(nav).toContain('aria-label="Ara"')
-    expect(nav).toContain('HeaderMoreMenu')
-    expect(more).toContain('header-nav-more')
-    expect(nav).toContain('useSearchParams')
-    expect(nav).toContain('resolveSharedCategoryId')
-    expect(nav).toContain('header-nav-ana-sayfa')
-    expect(nav).toContain('header-nav-akis')
     expect(nav).toContain('header-nav-ara')
-    expect(more).toContain('header-nav-profil')
+    expect(nav).toContain('header-action-plus')
+    expect(nav).toContain('HeaderMoreMenu')
+    expect(nav).toContain('justify-between')
+    expect(more).toContain('header-nav-more')
+    expect(more).not.toContain('header-nav-profil')
     expect(more).toContain('ROUTES.NOTIFICATIONS')
+    expect(dock).toContain('header-nav-ana-sayfa')
+    expect(dock).toContain('header-nav-akis')
+    expect(dock).toContain('header-nav-profil')
+    expect(dock).toContain("label: 'Ana Sayfa'")
+    expect(dock).toContain("label: 'Akış'")
+    expect(dock).toContain("label: 'Profil'")
+    expect(dock).toContain('hrefForNewsSurface')
     expect(nav).not.toContain('NotificationBell')
     expect(nav).not.toContain('header-dest-nav')
     expect(nav).not.toContain('Feed 2')
@@ -76,10 +76,10 @@ describe('immersive header Phase 1', () => {
   })
 
   it('keeps existing profile destination (no new identity fetch)', () => {
-    const nav = read('src/components/layout/Navbar.tsx')
-    expect(nav).toContain('ROUTES.PROFILE(user.username || user.uid)')
-    expect(nav).not.toContain('publisher-studio/mine')
-    expect(nav).not.toContain('listPublishersForUser')
+    const dock = read('src/components/layout/MobileNav.tsx')
+    expect(dock).toContain('ROUTES.PROFILE(user.username || user.uid)')
+    expect(dock).not.toContain('publisher-studio/mine')
+    expect(dock).not.toContain('listPublishersForUser')
   })
 
   it('does not remount MobileNav and does not touch Reader/SmartFeed ranking files', () => {

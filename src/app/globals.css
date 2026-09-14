@@ -270,9 +270,9 @@
     transform: translateZ(0);
   }
 
-  /* Immersive header: transparent chrome; spacer still keeps first content below. */
+  /* Pinterest chrome: opaque brand slab so feed cards cannot paint through. */
   .mobile-top-chrome--immersive {
-    background-color: transparent;
+    background-color: rgb(var(--header-brand-bg));
     background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -282,7 +282,7 @@
 
   .mobile-top-chrome--immersive.is-fixed::before,
   .mobile-top-chrome--immersive.sticky::before {
-    background-color: transparent;
+    background-color: rgb(var(--header-brand-bg));
   }
 
   :root {
@@ -2817,6 +2817,597 @@
     border-bottom: none;
   }
 
+  .desktop-web-header--portal {
+    width: 100%;
+    max-width: var(--layout-content-newspaper);
+    margin-inline: auto;
+    background: #fff;
+    color: #111827;
+  }
+
+  .desktop-web-header--portal .desktop-ad-banner,
+  .desktop-portal-masthead .desktop-ad-banner,
+  .desktop-portal-masthead__ad,
+  .desktop-home-feed [data-ad-slot='leaderboard-top'] {
+    display: none !important;
+  }
+
+  .desktop-portal-utility {
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+
+  .desktop-portal-utility__inner,
+  .desktop-portal-masthead__inner,
+  .desktop-portal-nav__inner,
+  .desktop-portal-breaking__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+  }
+
+  .desktop-portal-utility__meta,
+  .desktop-portal-utility__link {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .desktop-portal-utility__link:hover {
+    color: #111827;
+  }
+
+  .desktop-portal-masthead__inner {
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.85rem 0 1rem;
+  }
+
+  .desktop-portal-masthead__brand {
+    display: flex;
+    min-width: 12rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-decoration: none;
+  }
+
+  .desktop-portal-masthead__tagline {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  .desktop-portal-nav {
+    background: #111827;
+    color: #fff;
+  }
+
+  .desktop-portal-nav__inner {
+    padding: 0;
+    gap: 0.35rem;
+  }
+
+  .desktop-portal-nav__home,
+  .desktop-portal-nav__search {
+    display: flex;
+    height: 2.65rem;
+    width: 2.65rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .desktop-portal-nav__list {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  .desktop-portal-nav__link {
+    display: flex;
+    align-items: center;
+    height: 2.65rem;
+    padding: 0 0.7rem;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .desktop-portal-nav__link:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .desktop-portal-breaking {
+    border: 0;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    margin-top: 0;
+  }
+
+  .desktop-portal-breaking__inner {
+    padding: 0.35rem 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .desktop-portal-breaking__label {
+    display: inline-flex;
+    align-items: center;
+    height: 1.85rem;
+    padding: 0 0.7rem;
+    background: #e50914;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .desktop-portal-breaking__story {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: 0.7rem;
+    color: #111827;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .desktop-portal-breaking__time {
+    color: #e50914;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-breaking__controls {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .desktop-portal-breaking__controls button {
+    display: flex;
+    height: 1.85rem;
+    width: 1.85rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+  }
+
+  .desktop-portal-kicker {
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .desktop-portal-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr) minmax(16rem, 0.85fr);
+    align-items: stretch;
+    gap: 1.1rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .desktop-portal-manset,
+  .desktop-portal-rail,
+  .desktop-portal-hero {
+    min-height: 0;
+  }
+
+  .desktop-portal-manset,
+  .desktop-portal-rail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .desktop-portal-hero {
+    height: 100%;
+  }
+
+  .desktop-portal-manset__list,
+  .desktop-portal-rail__list,
+  .desktop-portal-photos__grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .desktop-portal-manset__row {
+    display: grid;
+    grid-template-columns: 3rem 2.4rem minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #eef2f7;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .desktop-portal-manset__row--thumb {
+    grid-template-columns: 3rem minmax(0, 1fr);
+  }
+
+  .desktop-portal-manset__thumb {
+    position: relative;
+    display: block;
+    width: 3rem;
+    height: 3rem;
+    overflow: hidden;
+    background: #e5e7eb;
+  }
+
+  .desktop-portal-manset__time {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-manset__title,
+  .desktop-portal-rail__blurb,
+  .desktop-portal-cat__dek,
+  .desktop-portal-hero__dek,
+  .desktop-portal-photos__card span {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .desktop-portal-manset__title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .desktop-portal-hero__media {
+    position: relative;
+    height: 100%;
+    min-height: 22rem;
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  .desktop-portal-hero__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 35%, rgb(15 23 42 / 0.88));
+  }
+
+  .desktop-portal-hero__copy {
+    position: absolute;
+    left: 1.1rem;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    color: #fff;
+  }
+
+  .desktop-portal-hero__cat {
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    padding: 0.15rem 0.45rem;
+    background: #e50914;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .desktop-portal-hero__title {
+    display: block;
+    color: #fff;
+    font-family: var(--font-serif-display, Georgia, serif);
+    font-size: clamp(1.35rem, 2vw, 2rem);
+    font-weight: 800;
+    line-height: 1.15;
+    text-decoration: none;
+  }
+
+  .desktop-portal-hero__dek {
+    margin: 0.5rem 0 0;
+    max-width: 40rem;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    color: rgb(255 255 255 / 0.86);
+    -webkit-line-clamp: 3;
+  }
+
+  .desktop-portal-hero__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.9);
+    color: #111827;
+    transform: translateY(-50%);
+  }
+
+  .desktop-portal-hero__arrow--prev { left: 0.7rem; }
+  .desktop-portal-hero__arrow--next { right: 0.7rem; }
+
+  .desktop-portal-hero__dots {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+  }
+
+  .desktop-portal-hero__dots button {
+    width: 0.45rem;
+    height: 0.45rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.4);
+  }
+
+  .desktop-portal-hero__dots button.is-active {
+    background: #fff;
+  }
+
+  .desktop-portal-rail__row {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #eef2f7;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .desktop-portal-rail__row--ranked {
+    grid-template-columns: 1.4rem minmax(0, 1fr);
+  }
+
+  .desktop-portal-rail__rank {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-rail__name {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .desktop-portal-rail__blurb {
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .desktop-portal-rail__avatar {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+  }
+
+  .desktop-portal-rail__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .desktop-portal-rail__avatar--fallback {
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #334155;
+  }
+
+  .desktop-portal-cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.35rem;
+    align-items: stretch;
+  }
+
+  .desktop-portal-cat {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+    flex-direction: column;
+    border: 1px solid #e5e7eb;
+    border-top-width: 3px;
+    background: #fff;
+    padding: 0.75rem;
+  }
+
+  .desktop-portal-cat__kicker {
+    display: inline-block;
+    margin-bottom: 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .desktop-portal-cat__media {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: #e5e7eb;
+  }
+
+  .desktop-portal-cat__title {
+    display: block;
+    margin-top: 0.55rem;
+    color: #111827;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .desktop-portal-cat__dek {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #64748b;
+    -webkit-line-clamp: 3;
+  }
+
+  .desktop-portal-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(16rem, 0.9fr);
+    gap: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .desktop-portal-bottom--no-video {
+    grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 0.9fr);
+  }
+
+  .desktop-portal-bottom__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .desktop-portal-more {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-decoration: none;
+  }
+
+  .desktop-portal-video__card {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: 0.7rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .desktop-portal-video__media {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  .desktop-portal-video__play {
+    position: absolute;
+    left: 0.45rem;
+    bottom: 0.45rem;
+    display: flex;
+    height: 1.6rem;
+    width: 1.6rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #e50914;
+    color: #fff;
+  }
+
+  .desktop-portal-video__title {
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .desktop-portal-photos__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .desktop-portal-photos__card {
+    position: relative;
+    display: block;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #e5e7eb;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .desktop-portal-photos__card span {
+    position: absolute;
+    left: 0.35rem;
+    right: 0.35rem;
+    bottom: 0.35rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-shadow: 0 1px 6px rgb(0 0 0 / 0.65);
+  }
+
+  .desktop-portal-nl {
+    background: #e50914;
+    color: #fff;
+    padding: 1rem;
+  }
+
+  .desktop-portal-nl__title {
+    margin: 0.35rem 0 0.25rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .desktop-portal-nl p {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  .desktop-portal-nl__form label,
+  .desktop-portal-nl__form label span,
+  .desktop-portal-nl__form a {
+    color: rgb(255 255 255 / 0.88);
+  }
+
+  @media (max-width: 1279px) {
+    .desktop-portal-stage,
+    .desktop-portal-cats,
+    .desktop-portal-bottom {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .desktop-portal-hero {
+      grid-column: 1 / -1;
+    }
+  }
+
   .desktop-newspaper .desktop-must-watch .desktop-section-header,
   .desktop-newspaper .desktop-must-watch h2,
   .desktop-newspaper .desktop-must-watch a {
@@ -4403,16 +4994,17 @@ iframe.reels-yt-frame {
 }
 
 /* Clear the floating bottom-nav pill on mobile + tablet.
-   Feed V2 / reels are immersive — MobileNav does not mount; cards use
-   --feed-v2-bottom-clearance (safe-area only) inside FullscreenNewsCard.
-   Global Nav V2: no bottom nav footprint anywhere — keep device safe-area only. */
+   Feed V2 cards also reserve --feed-v2-bottom-clearance inside FullscreenNewsCard.
+   Desktop keeps device safe-area only (MobileNav is lg:hidden). */
 html[data-platform='mobile'] .content-main:not(.content-main-reels),
 html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   padding-bottom: var(--mobile-nav-clearance);
 }
 
-[data-global-nav-v2='1'] .content-main:not(.content-main-reels) {
-  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+@media (max-width: 1023px) {
+  [data-global-nav-v2='1'] .content-main:not(.content-main-reels) {
+    padding-bottom: var(--mobile-nav-clearance);
+  }
 }
 
 /* Newspaper overlay: optional pull-under for magazine heroes.

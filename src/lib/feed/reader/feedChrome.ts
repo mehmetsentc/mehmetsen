@@ -1,6 +1,6 @@
 /**
  * Feed V2 chrome geometry — immersive card layout tokens.
- * No MobileNav on /feed-v2 — only home-indicator / safe-area breathing.
+ * Bottom clearance includes the Pinterest floating nav when it is visible.
  */
 
 /**
@@ -15,11 +15,11 @@ export const FEED_V2_CHROME_CSS_VARS = {
    */
   '--feed-reader-surface-max': '44rem',
   /**
-   * Bottom pad without MobileNav reservation.
-   * Design: 16–24px safe breath under publisher.
+   * Bottom pad: floating nav pill + home-indicator.
+   * Reader / comments hide the pill via CSS; extra pad is then unused.
    */
   '--feed-v2-bottom-clearance':
-    'max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
+    'calc(var(--mobile-nav-pill-h, 3.75rem) + var(--mobile-nav-float-gap, 0.625rem) + env(safe-area-inset-bottom, 0px) + 0.5rem)',
   /** Top clearance after context rail moved into site header (Global Nav V2). */
   '--feed-v2-top-clearance': '0.5rem',
   /**
@@ -66,14 +66,15 @@ export function feedReaderSurfaceMaxPx(rootFontPx = 16): number {
   return FEED_READER_SURFACE_MAX_REM * rootFontPx
 }
 
-/** Pure helper for tests — safe-area bottom clearance (no MobileNav pill). */
+/** Pure helper for tests — safe-area + floating nav pill. */
 export function feedV2BottomClearancePx(opts: {
   safeBottom: number
   breathPx?: number
+  navPillPx?: number
 }): number {
   const breath = opts.breathPx ?? 12
-  // Design target ~16–24px breath when inset is 0; with inset, clear home indicator.
-  return Math.max(16, opts.safeBottom + breath)
+  const nav = opts.navPillPx ?? 68
+  return Math.max(16, opts.safeBottom + breath + nav)
 }
 
 /** Haberi Oku ~56 + gap ~14 + publisher ~48 (design). */

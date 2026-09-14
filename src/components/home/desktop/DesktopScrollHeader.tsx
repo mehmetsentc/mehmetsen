@@ -1,8 +1,10 @@
 'use client'
 
 import { useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { useScrollCompact } from '@/hooks/useScrollCompact'
 import { DesktopWebHeader } from '@/components/home/desktop/DesktopWebHeader'
+import { ROUTES } from '@/constants/routes'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -32,8 +34,10 @@ export function DesktopScrollHeader({
   threshold = 120,
   ...headerProps
 }: DesktopScrollHeaderProps) {
+  const pathname = usePathname()
+  const portal = pathname === ROUTES.FEED
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const compact = useScrollCompact(threshold)
+  const compact = useScrollCompact(portal ? 560 : threshold)
 
   return (
     <>
@@ -49,7 +53,11 @@ export function DesktopScrollHeader({
       ) : null}
 
       <div ref={sentinelRef} className="hidden lg:block">
-        <DesktopWebHeader {...headerProps} variant="full" />
+        <DesktopWebHeader
+          {...headerProps}
+          variant="full"
+          chrome={portal ? 'portal' : 'default'}
+        />
       </div>
     </>
   )

@@ -14,14 +14,19 @@ import {
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 
 describe('Global Nav V2', () => {
-  it('flag defaults ON; MobileNav never visible', () => {
+  it('flag defaults ON; Pinterest dock visible except reels, reader, admin', () => {
     expect(isGlobalNavV2EnabledClient()).toBe(true)
     expect(isGlobalNavV2Active()).toBe(true)
-    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/feed' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/haber/x' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/search' })).toBe(false)
+    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/feed' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/haber/x' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/search' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/reels' })).toBe(false)
+    expect(
+      resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
+    ).toBe(false)
+    expect(resolveMobileNavVisible({ pathname: '/admin' })).toBe(false)
   })
 
   it('top Navbar on Ana Sayfa + Akış; hidden while Reader open on Feed V2', () => {
@@ -41,13 +46,16 @@ describe('Global Nav V2', () => {
     )
   })
 
-  it('header text destinations + sidebar labels; no MobileNav mount when gated', () => {
+  it('header + sidebar labels; Pinterest dock hosts Ana Sayfa / Akış / Profil', () => {
     const mobileNav = readFileSync(
       join(process.cwd(), 'src/components/layout/MobileNav.tsx'),
       'utf8'
     )
     expect(mobileNav).toContain('Zap')
-    expect(mobileNav).toContain('ROUTES.FEED_V2')
+    expect(mobileNav).toContain('hrefForNewsSurface')
+    expect(mobileNav).toContain('header-nav-ana-sayfa')
+    expect(mobileNav).toContain('header-nav-akis')
+    expect(mobileNav).toContain('header-nav-profil')
     const sidebar = readFileSync(
       join(process.cwd(), 'src/components/layout/Sidebar.tsx'),
       'utf8'
@@ -78,10 +86,10 @@ describe('Global Nav V2', () => {
       'utf8'
     )
     expect(navbar).toContain('Menüyü aç')
-    expect(navbar).toContain('header-nav-ana-sayfa')
-    expect(navbar).toContain('header-nav-akis')
-    expect(navbar).toContain('aria-label="Akış"')
-    expect(navbar).toContain('aria-label="Ana Sayfa"')
+    expect(navbar).not.toContain('header-nav-ana-sayfa')
+    expect(navbar).not.toContain('header-nav-akis')
+    expect(navbar).toContain('header-nav-ara')
+    expect(navbar).toContain('header-action-plus')
     expect(navbar).not.toMatch(/>\s*Feed 2\s*</)
     expect(navbar).not.toMatch(/>\s*Feed V2\s*</)
     expect(navbar).not.toContain('Ana Feed')
@@ -94,16 +102,16 @@ describe('Global Nav V2', () => {
     expect(back).toContain('if (globalNavV2 && isFeedV2) return null')
   })
 
-  it('CSS removes bottom-nav layout footprint under Global Nav V2; safe-area retained', () => {
+  it('CSS keeps bottom-nav clearance on mobile; Feed V2 cards reserve the pill', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8')
     expect(css).toContain("[data-global-nav-v2='1'] .content-main:not(.content-main-reels)")
-    expect(css).toContain('env(safe-area-inset-bottom')
+    expect(css).toContain('--mobile-nav-clearance')
     const chrome = readFileSync(
       join(process.cwd(), 'src/lib/feed/reader/feedChrome.ts'),
       'utf8'
     )
     expect(chrome).toContain('safe-area-inset-bottom')
-    expect(chrome).not.toContain('mobile-nav-pill-h')
+    expect(chrome).toContain('mobile-nav-pill-h')
   })
 
   it('does not touch Reader ownership history helpers', () => {

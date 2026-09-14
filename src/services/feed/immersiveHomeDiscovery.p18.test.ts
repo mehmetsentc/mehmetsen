@@ -176,6 +176,25 @@ describe('surfaces reuse magazine language except Akış and desktop', () => {
     expect(feed).toContain('DesktopNewspaperShell')
     expect(feed).toContain('hidden lg:block')
     expect(feed).not.toContain('HomeDiscoveryMasonry')
+    const desktop = read('src/components/home/desktop/DesktopHomeFeed.tsx')
+    expect(desktop).toContain('DesktopPortalHome')
+    expect(desktop).toContain('uniqueWithImage')
+    expect(desktop).toContain('cityMode && layout.featureLead && layout.featureImage')
+    expect(desktop).not.toContain('PinterestRanking')
+    const portal = read('src/components/home/desktop/DesktopPortalHome.tsx')
+    expect(portal).toContain('function withImage')
+    expect(portal).not.toContain('FEED_FALLBACK_LOGO')
+    expect(read('src/components/home/desktop/DesktopPortalFullHeader.tsx')).not.toContain('DesktopAdBanner')
+    const header = read('src/components/home/desktop/DesktopScrollHeader.tsx')
+    expect(header).toContain("chrome={portal ? 'portal' : 'default'}")
+    expect(feed).toContain('homeFeedData.breaking.length > 0')
+    expect(feed).toContain('homeFeedData.latest')
+    const types = read('src/types/newsItem.ts')
+    const ssrRails = types.slice(
+      types.indexOf('HOME_FEED_SSR_RAILS'),
+      types.indexOf('HOME_FEED_DESKTOP_LAZY_RAILS')
+    )
+    expect(ssrRails).toContain("'siyaset'")
   })
 
   it('Akış client is not rewritten to magazine', () => {

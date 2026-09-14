@@ -3,23 +3,19 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell, MessageCircle, MoreVertical, Plus, User } from 'lucide-react'
+import { Bell, MessageCircle, MoreVertical, Plus } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { NavMessagesBadge } from '@/components/layout/NavMessagesBadge'
 import { useNotifications } from '@/hooks/useNotifications'
 import { cn } from '@/lib/utils'
 
 type HeaderMoreMenuProps = {
-  profileHref: string
-  isProfil: boolean
   isBildirim: boolean
   iconBtnClassName: string
   onSubmitNews: () => void
 }
 
 export function HeaderMoreMenu({
-  profileHref,
-  isProfil,
   isBildirim,
   iconBtnClassName,
   onSubmitNews,
@@ -115,17 +111,6 @@ export function HeaderMoreMenu({
                 ) : null}
               </span>
               Bildirimler
-            </Link>
-            <Link
-              href={profileHref}
-              role="menuitem"
-              className={itemClass}
-              aria-current={isProfil ? 'page' : undefined}
-              data-testid="header-nav-profil"
-              onClick={close}
-            >
-              <User className="h-4 w-4" strokeWidth={2.25} />
-              Profil
             </Link>
             <button
               type="button"

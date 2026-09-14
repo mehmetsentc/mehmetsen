@@ -55,10 +55,10 @@ function mockHistory(startUrl: string) {
 }
 
 describe('shell chrome authority', () => {
-  it('Feed V2 never shows MobileNav (closed / open / any reader state)', () => {
+  it('Feed V2 shows Pinterest dock unless Reader surface is active', () => {
     expect(
       resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
-    ).toBe(false)
+    ).toBe(true)
     expect(
       resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
     ).toBe(false)
@@ -79,12 +79,12 @@ describe('shell chrome authority', () => {
     ).toBe(false)
   })
 
-  it('HOME and /haber keep top chrome; MobileNav off under Global Nav V2', () => {
+  it('HOME and /haber keep top chrome; Pinterest dock stays on outside Reader', () => {
     expect(resolveSiteChromeVisible({ pathname: '/', readerSurfaceActive: false })).toBe(true)
     expect(
       resolveSiteChromeVisible({ pathname: '/haber/ornek', readerSurfaceActive: false })
     ).toBe(true)
-    expect(resolveMobileNavVisible({ pathname: '/haber/ornek' })).toBe(false)
+    expect(resolveMobileNavVisible({ pathname: '/haber/ornek' })).toBe(true)
     expect(resolveTopNavbarVisible({ pathname: '/haber/ornek' })).toBe(true)
   })
 

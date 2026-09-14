@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getHeaderAllNavItems,
+  getHeaderPortalNavItems,
   getSiteNavItems,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -30,5 +31,26 @@ describe('desktop header nav', () => {
     expect(ids.indexOf('ekonomi')).toBeLessThan(ids.indexOf('finans-piyasa'))
     expect(ids.at(-1)).toBe('video')
     expect(header.every((item) => !item.indent)).toBe(true)
+  })
+
+  it('portal homepage nav uses existing routes in newspaper order', () => {
+    const portal = getHeaderPortalNavItems()
+    expect(portal.map((item) => item.id)).toEqual([
+      'gundem',
+      'siyaset',
+      'ekonomi',
+      'dunya',
+      'yasam',
+      'spor',
+      'teknoloji',
+      'kultur',
+      'saglik',
+      'egitim',
+      'video',
+    ])
+    expect(portal.find((item) => item.id === 'siyaset')?.label).toBe('Siyaset')
+    expect(portal.find((item) => item.id === 'kultur')?.label).toBe('Kültür-Sanat')
+    expect(portal.find((item) => item.id === 'video')?.href).toBe(ROUTES.VIDEO)
+    expect(portal.every((item) => item.href.length > 1)).toBe(true)
   })
 })

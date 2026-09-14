@@ -10,7 +10,7 @@
 importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js')
 
 // Bump when fetch/cache policy changes so clients drop stale HTML shells.
-const CACHE_VERSION = 'nahaber-v6'
+const CACHE_VERSION = 'nahaber-v7'
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',
@@ -101,6 +101,7 @@ self.addEventListener('fetch', (event) => {
   // transient failure. Let the browser handle them with their own Cache-Control.
   const requestPath = new URL(event.request.url).pathname
   if (requestPath.startsWith('/api/')) return
+  if (requestPath.startsWith('/_next/')) return
 
   const isNavigation =
     event.request.mode === 'navigate' ||

@@ -45,9 +45,11 @@ interface FeedPageClientProps {
 }
 
 function FeedScrollHeaderConfig({ homeFeedData }: FeedPageClientProps) {
+  const breakingItems =
+    homeFeedData.breaking.length > 0 ? homeFeedData.breaking : homeFeedData.latest
   useScrollHeaderConfig({
-    breakingItems: homeFeedData.breaking,
-    showBreaking: true,
+    breakingItems,
+    showBreaking: breakingItems.length > 0,
   })
   return null
 }

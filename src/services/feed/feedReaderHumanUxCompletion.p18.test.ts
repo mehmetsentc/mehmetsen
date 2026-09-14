@@ -101,16 +101,22 @@ describe('P18 full headline + summary', () => {
 })
 
 describe('P18 header + sidebar', () => {
-  it('header has text destinations Ana Sayfa + Akış; no Feed 2 text', () => {
+  it('bottom dock owns Ana Sayfa + Akış; header has no Feed 2 text', () => {
     const navbar = readFileSync(
       join(process.cwd(), 'src/components/layout/Navbar.tsx'),
       'utf8'
     )
-    expect(navbar).toContain('header-nav-ana-sayfa')
-    expect(navbar).toContain('header-nav-akis')
-    expect(navbar).toContain('aria-label="Ana Sayfa"')
-    expect(navbar).toContain('aria-label="Akış"')
-    expect(navbar).toContain('ROUTES.FEED_V2')
+    const dock = readFileSync(
+      join(process.cwd(), 'src/components/layout/MobileNav.tsx'),
+      'utf8'
+    )
+    expect(navbar).not.toContain('header-nav-ana-sayfa')
+    expect(navbar).not.toContain('header-nav-akis')
+    expect(dock).toContain('header-nav-ana-sayfa')
+    expect(dock).toContain('header-nav-akis')
+    expect(dock).toContain("label: 'Ana Sayfa'")
+    expect(dock).toContain("label: 'Akış'")
+    expect(dock).toContain('hrefForNewsSurface')
     expect(navbar).not.toMatch(/>\s*Feed 2\s*</)
     expect(navbar).not.toMatch(/>\s*Feed V2\s*</)
     expect(navbar).not.toContain('Ana Feed')
@@ -128,7 +134,7 @@ describe('P18 header + sidebar', () => {
     expect(sidebar).toContain('ROUTES.FEED_V2')
   })
 
-  it('MobileNav remains gated off under Global Nav V2', () => {
+  it('MobileNav remains gated by resolveMobileNavVisible', () => {
     const layout = readFileSync(
       join(process.cwd(), 'src/components/layout/MainLayoutClient.tsx'),
       'utf8'
@@ -236,7 +242,7 @@ describe('P18 viewport budget still fits CTA zone', () => {
           copyPreviewPx: 160,
         })
       ).toBe(true)
-      expect(feedV2BottomClearancePx({ safeBottom: 34 })).toBeLessThan(80)
+      expect(feedV2BottomClearancePx({ safeBottom: 34 })).toBe(114)
       expect(feedV2ContentBudgetPx({ viewportHeight: vp.h, safeTop: 47, safeBottom: 34 })).toBeGreaterThan(
         400
       )

@@ -138,6 +138,7 @@ export const HOME_CATEGORY_DESKTOP_CARDS = 4
  */
 export const HOME_FEED_SSR_RAILS: HomeCategorySlug[] = [
   'gundem',
+  'siyaset',
   'spor',
   'ekonomi',
   'teknoloji',

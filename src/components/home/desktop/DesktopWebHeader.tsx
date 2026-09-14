@@ -7,6 +7,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
+import { DesktopPortalFullHeader } from '@/components/home/desktop/DesktopPortalFullHeader'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
 import { DesktopThemeToggle } from '@/components/home/desktop/DesktopThemeToggle'
 import { ROUTES } from '@/constants/routes'
@@ -52,6 +53,7 @@ interface DesktopWebHeaderProps {
   tabParent?: CategoryDef | null
   className?: string
   variant?: 'full' | 'compact'
+  chrome?: 'default' | 'portal'
 }
 
 function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
@@ -158,8 +160,19 @@ export function DesktopWebHeader({
   tabParent,
   className,
   variant = 'full',
+  chrome = 'default',
 }: DesktopWebHeaderProps) {
   const showSubTabs = subcategories && subcategories.length > 0
+
+  if (variant === 'full' && chrome === 'portal') {
+    return (
+      <DesktopPortalFullHeader
+        breakingItems={breakingItems}
+        showBreaking={showBreaking}
+        className={className}
+      />
+    )
+  }
 
   if (variant === 'compact') {
     return (

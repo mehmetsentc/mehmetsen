@@ -38,15 +38,14 @@ beforeEach(() => {
 })
 
 describe('nav-safe Feed card layout', () => {
-  it('bottom clearance is safe-area only (no MobileNav pill reservation)', () => {
+  it('bottom clearance reserves the Pinterest dock pill plus safe-area', () => {
     for (const h of FEED_V2_LAYOUT_TEST_HEIGHTS) {
       const clearance = feedV2BottomClearancePx({
         safeBottom: 34,
         breathPx: 14,
       })
-      expect(clearance).toBe(48)
-      // Must not reserve ~3.5rem MobileNav pill anymore.
-      expect(clearance).toBeLessThan(80)
+      expect(clearance).toBe(116)
+      expect(clearance).toBeGreaterThan(80)
       expect(h).toBeGreaterThan(clearance + 200)
     }
   })
@@ -63,7 +62,7 @@ describe('nav-safe Feed card layout', () => {
     expect(card).toContain('smart-feed-publisher-row')
     const chrome = readFileSync(join(process.cwd(), 'src/lib/feed/reader/feedChrome.ts'), 'utf8')
     expect(chrome).toContain('safe-area-inset-bottom')
-    expect(chrome).not.toContain('mobile-nav-pill-h')
+    expect(chrome).toContain('mobile-nav-pill-h')
   })
 })
 

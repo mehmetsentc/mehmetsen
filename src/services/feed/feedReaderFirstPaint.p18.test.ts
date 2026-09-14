@@ -56,8 +56,8 @@ describe('P18 Feed V2 first-paint vertical budget', () => {
     ).toBe(false)
     expect(
       feedV2ElementInFirstPaint({
-        top: 520,
-        bottom: 568,
+        top: 480,
+        bottom: 528,
         viewportHeight: 667,
         contentTop: 56,
         safeBottomInset: 34,

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Menu, Search } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
@@ -13,13 +13,7 @@ import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { HeaderMoreMenu } from '@/components/layout/HeaderMoreMenu'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
-import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
-import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
-import {
-  hrefForNewsSurface,
-  resolveNewsSurface,
-  resolveSharedCategoryId,
-} from '@/lib/feed/sharedCategoryRail'
+import { resolveNewsSurface } from '@/lib/feed/sharedCategoryRail'
 import { cn } from '@/lib/utils'
 
 interface NavbarProps {
@@ -43,11 +37,9 @@ function isBildirim(pathname: string): boolean {
 }
 
 export function Navbar({ onMenuClick }: NavbarProps = {}) {
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [hydrated, setHydrated] = useState(false)
   const [submitOpen, setSubmitOpen] = useState(false)
   const isHomeFeed = resolveNewsSurface(pathname) === 'home'
   const isArticle = pathname.startsWith('/haber/')
@@ -74,14 +66,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathname.startsWith('/messages') &&
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/post/'))
-  // Overlay chrome: one header row + shared context rail (destination row removed).
   const fallbackChromeHeight = showContextRail
     ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem) + var(--nahaber-context-rail-height, 3.15rem))'
     : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem))'
-
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
 
   /**
    * Feed/reels shells use 100dvh-sized cards. When mobile top chrome is fixed +
@@ -110,11 +97,6 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     }
   }, [chromeHeight, fallbackChromeHeight])
 
-  const profileHref =
-    hydrated && !loading && user
-      ? ROUTES.PROFILE(user.username || user.uid)
-      : ROUTES.LOGIN
-
   const iconBtn =
     'relative flex h-12 w-11 shrink-0 items-center justify-center touch-manipulation rounded-full text-white transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
@@ -125,10 +107,6 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     }
     setSubmitOpen(true)
   }
-
-  const categoryId = resolveSharedCategoryId(pathname, searchParams.toString())
-  const anaHref = hrefForNewsSurface('home', categoryId)
-  const akisHref = hrefForNewsSurface('akis', categoryId)
 
   return (
     <>
@@ -141,9 +119,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden bg-transparent text-white">
-          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2.5">
-            <div className="flex min-w-0 items-center justify-self-start">
+        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden text-white">
+          <div className="flex h-full min-w-0 items-center justify-between gap-2 px-2.5">
+            <div className="flex min-w-0 items-center">
               {showBack ? (
                 <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
               ) : null}
@@ -169,47 +147,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               </Link>
             </div>
 
-            <div className="flex justify-self-center px-0">
-              <div
-                className="header-surface-toggle"
-                role="group"
-                aria-label="Yüzey"
-                data-testid="header-surface-toggle"
-                data-active={isHomeFeed ? 'home' : isFeedV2 ? 'akis' : undefined}
-              >
-                <Link
-                  href={anaHref}
-                  className={cn(
-                    'header-surface-toggle__opt',
-                    isHomeFeed && 'is-active'
-                  )}
-                  aria-label="Ana Sayfa"
-                  aria-current={isHomeFeed ? 'page' : undefined}
-                  data-testid="header-nav-ana-sayfa"
-                >
-                  Ana Sayfa
-                </Link>
-                <Link
-                  href={akisHref}
-                  onClick={() => {
-                    rememberFeedV2EntryOrigin(pathname)
-                    clearFeedRestoreForFeedV2Nav({ pathname })
-                  }}
-                  className={cn(
-                    'header-surface-toggle__opt',
-                    isFeedV2 && 'is-active'
-                  )}
-                  aria-label="Akış"
-                  aria-current={isFeedV2 ? 'page' : undefined}
-                  data-testid="header-nav-akis"
-                >
-                  Akış
-                </Link>
-              </div>
-            </div>
-
             <div
-              className="flex shrink-0 items-center justify-self-end"
+              className="flex shrink-0 items-center"
               data-testid="header-primary-actions"
             >
               <Link
@@ -221,9 +160,16 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               >
                 <Search className="h-5 w-5" strokeWidth={2.25} />
               </Link>
+              <button
+                type="button"
+                className={iconBtn}
+                aria-label="Haber Ekle"
+                data-testid="header-action-plus"
+                onClick={openSubmit}
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.25} />
+              </button>
               <HeaderMoreMenu
-                profileHref={profileHref}
-                isProfil={isProfil(pathname)}
                 isBildirim={isBildirim(pathname)}
                 iconBtnClassName={iconBtn}
                 onSubmitNews={openSubmit}

@@ -70,7 +70,7 @@ describe('P18 Feed V2 card fit matrix', () => {
           copyPreviewPx: feedV2TypicalCopyPx(vp.h),
         })
       ).toBe(true)
-      expect(feedV2BottomClearancePx({ safeBottom: 34 })).toBeLessThan(80)
+      expect(feedV2BottomClearancePx({ safeBottom: 34 })).toBe(114)
       expect(feedV2ContentBudgetPx({ viewportHeight: vp.h, safeTop: 47, safeBottom: 34 })).toBeGreaterThan(
         400
       )

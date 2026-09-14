@@ -6,7 +6,6 @@ import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
 import { DESKTOP_SECTION_DIVIDER, FOUR_CARD_GRID, HERO_SPLIT_ASIDE, HERO_SPLIT_MAIN, HERO_SPLIT_SECTION } from '@/components/home/desktop/desktopLayout'
 import { DesktopCategoryGridSection } from '@/components/home/desktop/DesktopCategoryGridSection'
 import { DesktopMarketSidebar } from '@/components/home/desktop/DesktopMarketSidebar'
-import { DesktopMoreGridChunks } from '@/components/home/desktop/DesktopMoreGridChunks'
 import { DesktopMostReadGrid } from '@/components/home/desktop/DesktopMostReadGrid'
 import { DesktopMustWatch } from '@/components/home/desktop/DesktopMustWatch'
 import { DesktopFeaturedGrid } from '@/components/home/desktop/DesktopFeaturedGrid'
@@ -17,6 +16,7 @@ import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStr
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
 import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
+import { DesktopPortalHome } from '@/components/home/desktop/DesktopPortalHome'
 import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
 import {
   HeroImageOnly,
@@ -27,7 +27,6 @@ import {
   TextLeadStory,
 } from '@/components/home/desktop/DesktopStoryBlocks'
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
-import { useHomeFeedInfinite } from '@/hooks/useHomeFeedInfinite'
 import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -44,6 +43,22 @@ import type { NaEvent } from '@/types/event'
 
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = HOME_FEED_DESKTOP_LAZY_RAILS
+const PORTAL_CATEGORY_ROW = ['siyaset', 'ekonomi', 'dunya', 'spor', 'teknoloji'] as const
+
+function hasArticleImage(item: NewsItem | null | undefined): item is NewsItem {
+  return Boolean(item?.imageUrl?.trim())
+}
+
+function uniqueWithImage(items: NewsItem[]): NewsItem[] {
+  const seen = new Set<string>()
+  const out: NewsItem[] = []
+  for (const item of items) {
+    if (!hasArticleImage(item) || seen.has(item.id)) continue
+    seen.add(item.id)
+    out.push(item)
+  }
+  return out
+}
 
 function sliceCategoryRail(
   rails: HomeFeedInitialData['categoryRails'],
@@ -87,9 +102,9 @@ export function DesktopHomeFeed({
   streamSectionLabel,
   streamSectionHref,
 }: DesktopHomeFeedProps) {
-  const lazyRailIds = cityMode
+  const lazyRailIds: HomeCategorySlug[] = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
-    : HOME_FEED_DESKTOP_LAZY_RAILS
+    : [...HOME_FEED_DESKTOP_LAZY_RAILS, 'siyaset', 'yasam']
 
   const categoryRails = useMergedCategoryRails(
     data.categoryRails,
@@ -130,14 +145,14 @@ export function DesktopHomeFeed({
       : CATEGORY_ROW_1
     ).map((id) => ({
       id,
-      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS),
+      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS).filter(hasArticleImage),
     }))
     const catRow2 = (cityMode
       ? Object.keys(categoryRails).slice(4, 8)
       : CATEGORY_ROW_2
     ).map((id) => ({
       id,
-      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS),
+      items: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS).filter(hasArticleImage),
     }))
     const catRow1Filler = rowGapFiller(catRow1, takeFeatured)
     const catRow2Filler = rowGapFiller(catRow2, takeFeatured)
@@ -159,6 +174,29 @@ export function DesktopHomeFeed({
 
     const lastUpdated = data.latest[0]?.publishedAt ?? data.latest[0]?.createdAt
 
+    const portalHero = uniqueWithImage([...featuredSlider, ...heroPool, ...data.latest]).slice(0, 5)
+    const portalHeroIds = new Set(portalHero.map((item) => item.id))
+    const portalManset = uniqueWithImage([...featuredSlider, ...heroPool, ...data.latest])
+      .filter((item) => !portalHeroIds.has(item.id))
+      .slice(0, 5)
+    const columnists = uniqueWithImage(
+      [...featuredSlider, ...data.latest].filter((item) => item.articleFormat === 'column')
+    )
+    const portalCategories = PORTAL_CATEGORY_ROW.map((id) => ({
+      id,
+      title: getCategoryLabel(id),
+      item: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS).find(hasArticleImage) ?? null,
+    }))
+    const videoItem =
+      [...data.trending, ...data.latest, ...featuredSlider].find(
+        (item) => Boolean(item.videoUrl) && hasArticleImage(item)
+      ) ?? null
+    const photoItems = uniqueWithImage([
+      ...sliceCategoryRail(categoryRails, 'kultur', 4),
+      ...sliceCategoryRail(categoryRails, 'magazin', 4),
+      ...data.latest,
+    ]).slice(0, 4)
+
     return {
       featuredSlider,
       heroLead,
@@ -173,17 +211,20 @@ export function DesktopHomeFeed({
       catRow2,
       catRow1Filler,
       catRow2Filler,
-      mostRead,
-      trending,
+      mostRead: uniqueWithImage(mostRead),
+      trending: uniqueWithImage(trending),
       moreList,
       opinionItems,
       lastUpdated,
+      portalHero,
+      portalManset,
+      columnists,
+      portalCategories,
+      videoItem,
+      photoItems,
     }
   }, [data, categoryRails, cityMode])
 
-  const { items: moreItems, loadingMore, hasMore, loadMore } = useHomeFeedInfinite(
-    cityMode ? [] : layout.moreList
-  )
   const hasHero = layout.heroLead
   const hasHeroAside = layout.heroRight.length > 0
   const sectionHref = streamSectionHref ?? ROUTES.CATEGORY('gundem')
@@ -201,16 +242,29 @@ export function DesktopHomeFeed({
             : 'NaHaber — Türkiye Gündem, Son Dakika ve Güncel Haberler'}
       </h1>
 
-      <NewspaperMasthead
-        lastUpdated={layout.lastUpdated}
-        cityName={cityName}
-        districtName={districtName}
-        sectionTitle={sectionTitle}
-      />
+      {cityMode ? (
+        <>
+          <NewspaperMasthead
+            lastUpdated={layout.lastUpdated}
+            cityName={cityName}
+            districtName={districtName}
+            sectionTitle={sectionTitle}
+          />
+          <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
+        </>
+      ) : (
+        <DesktopPortalHome
+          heroSlides={layout.portalHero}
+          mansetItems={layout.portalManset}
+          columnists={layout.columnists}
+          mostRead={layout.mostRead}
+          categoryCards={layout.portalCategories}
+          videoItem={layout.videoItem}
+          photoItems={layout.photoItems}
+        />
+      )}
 
-      <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
-
-      {layout.featuredSlider.length > 0 ? (
+      {cityMode && layout.featuredSlider.length > 0 ? (
         <div className="mb-8 border-b border-[rgb(var(--color-border))] pb-8">
           <DesktopSectionHeader title="Öne Çıkan" href={sectionHref} />
           <DesktopFeaturedGrid items={layout.featuredSlider} />
@@ -227,9 +281,9 @@ export function DesktopHomeFeed({
         </div>
       ) : null}
 
-      <DesktopSectionHeader title="Haberler" href={sectionHref} />
+      {cityMode ? <DesktopSectionHeader title="Haberler" href={sectionHref} /> : null}
 
-      {hasHero ? (
+      {cityMode && hasHero ? (
         <section
           className={`mb-10 ${HERO_SPLIT_SECTION} border-b border-[rgb(var(--color-border))] pb-10`}
           aria-label="Manşet"
@@ -256,9 +310,9 @@ export function DesktopHomeFeed({
         </section>
       ) : null}
 
-      {layout.mostRead.length > 0 ? <DesktopMostReadGrid items={layout.mostRead} /> : null}
+      {cityMode && layout.mostRead.length > 0 ? <DesktopMostReadGrid items={layout.mostRead} /> : null}
 
-      {layout.topFour.length > 0 ? (
+      {cityMode && layout.topFour.length > 0 ? (
         <section className={`mb-6 ${HERO_SPLIT_SECTION}`} aria-label="Öne çıkanlar">
           <div className={HERO_SPLIT_MAIN}>
             <div className="grid grid-cols-2 gap-4">
@@ -273,9 +327,9 @@ export function DesktopHomeFeed({
         </section>
       ) : null}
 
-      <QuickHeadlineStrip items={layout.quickHeadlines} />
+      {cityMode ? <QuickHeadlineStrip items={layout.quickHeadlines} /> : null}
 
-      {layout.moreGrid.length > 0 ? (
+      {cityMode && layout.moreGrid.length > 0 ? (
         <section className={DESKTOP_SECTION_DIVIDER} aria-label={streamSectionTitle}>
           <DesktopSectionHeader title={streamSectionTitle} href={sectionHref} />
           <div className={FOUR_CARD_GRID}>
@@ -296,19 +350,19 @@ export function DesktopHomeFeed({
         </section>
       ) : null}
 
-      <DesktopAdBanner slot="leaderboard-mid" className="mb-10" />
+      {cityMode ? <DesktopAdBanner slot="leaderboard-mid" className="mb-10" /> : null}
 
-      <DesktopMustWatch items={layout.trending} />
+      {cityMode ? <DesktopMustWatch items={layout.trending} /> : null}
 
-      {!cityMode ? (
+      {cityMode ? (
         <LazySection minHeight={240}>
           <GamesRail variant="desktop" />
         </LazySection>
       ) : null}
 
-      <DesktopOpinionStrip items={layout.opinionItems} />
+      {cityMode ? <DesktopOpinionStrip items={layout.opinionItems} /> : null}
 
-      {layout.featureLead && layout.featureImage ? (
+      {cityMode && layout.featureLead && layout.featureImage ? (
         <section className={DESKTOP_SECTION_DIVIDER} aria-label="Editoryal">
           <DesktopSectionHeader title="Editoryal Seçki" href={ROUTES.CATEGORY('gundem')} />
           <div className="grid grid-cols-12 items-start gap-4">
@@ -322,19 +376,21 @@ export function DesktopHomeFeed({
         </section>
       ) : null}
 
-      {layout.catRow1
-        .filter(({ items }) => items.length > 0)
-        .map(({ id, items }) => (
-          <LazySection key={id} minHeight={320}>
-            <DesktopCategoryGridSection
-              categoryId={id}
-              title={getCategoryLabel(id)}
-              items={items}
-            />
-          </LazySection>
-        ))}
+      {cityMode
+        ? layout.catRow1
+            .filter(({ items }) => items.length > 0)
+            .map(({ id, items }) => (
+              <LazySection key={id} minHeight={320}>
+                <DesktopCategoryGridSection
+                  categoryId={id}
+                  title={getCategoryLabel(id)}
+                  items={items}
+                />
+              </LazySection>
+            ))
+        : null}
 
-      {layout.catRow1Filler.length > 0 ? (
+      {cityMode && layout.catRow1Filler.length > 0 ? (
         <LazySection minHeight={320}>
           <DesktopCategoryGridSection
             categoryId="gundem"
@@ -345,21 +401,23 @@ export function DesktopHomeFeed({
         </LazySection>
       ) : null}
 
-      <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" />
+      {cityMode ? <DesktopAdBanner slot="leaderboard-bottom" size="large" className="mb-10" /> : null}
 
-      {layout.catRow2
-        .filter(({ items }) => items.length > 0)
-        .map(({ id, items }) => (
-          <LazySection key={id} minHeight={320}>
-            <DesktopCategoryGridSection
-              categoryId={id}
-              title={getCategoryLabel(id)}
-              items={items}
-            />
-          </LazySection>
-        ))}
+      {cityMode
+        ? layout.catRow2
+            .filter(({ items }) => items.length > 0)
+            .map(({ id, items }) => (
+              <LazySection key={id} minHeight={320}>
+                <DesktopCategoryGridSection
+                  categoryId={id}
+                  title={getCategoryLabel(id)}
+                  items={items}
+                />
+              </LazySection>
+            ))
+        : null}
 
-      {layout.catRow2Filler.length > 0 ? (
+      {cityMode && layout.catRow2Filler.length > 0 ? (
         <LazySection minHeight={320}>
           <DesktopCategoryGridSection
             categoryId="gundem"
@@ -370,18 +428,7 @@ export function DesktopHomeFeed({
         </LazySection>
       ) : null}
 
-      {!cityMode ? (
-        <DesktopMoreGridChunks
-          items={moreItems}
-          title="Daha Fazla"
-          href={ROUTES.CATEGORY('gundem')}
-          loadingMore={loadingMore}
-          hasMore={hasMore}
-          onLoadMore={() => void loadMore()}
-        />
-      ) : null}
-
-      {!cityMode ? (
+      {cityMode ? (
         <section
           className="mt-10 grid grid-cols-1 gap-6 border-t border-[rgb(var(--color-border))] pt-8 lg:grid-cols-12"
           aria-label="Dizin ve abonelik"

@@ -38,7 +38,7 @@ describe('immersive mobile viewport geometry', () => {
   it('does not restore destination row or a second category rail', () => {
     const nav = read('src/components/layout/Navbar.tsx')
     expect(nav).not.toContain('header-dest-nav')
-    expect(nav).toContain('header-surface-toggle')
+    expect(nav).not.toContain('header-surface-toggle')
     expect(nav).toContain('CategoryNav embedded')
     expect(nav).toContain('ContextRailSlot')
     expect(nav).toContain('HeaderMoreMenu')
