@@ -12,6 +12,7 @@ const SIZE_CLASS = {
   sm: 'text-[1.35rem]',
   md: 'text-[1.55rem]',
   lg: 'text-[1.85rem]',
+  xl: 'text-[clamp(2.6rem,5vw,4rem)]',
 } as const
 
 /** Master brand red — header, masthead, sidebar must match */

@@ -8,8 +8,9 @@ export const metadata: Metadata = {
 
 export default function KullanimKosullariPage() {
   return (
-    <div className="legal-content prose prose-sm max-w-none text-[rgb(var(--color-text))]">
-      <h1 className="text-2xl font-black text-[rgb(var(--color-text))] mb-1">Kullanım Koşulları</h1>
+    <div className="nl-editorial desktop-newspaper-shell legal-content prose prose-sm max-w-none text-[rgb(var(--color-text))]">
+      <p className="nl-kicker">Yasal</p>
+      <h1 className="nl-editorial__title mb-1">Kullanım Koşulları</h1>
       <p className="text-xs text-[rgb(var(--color-muted))] mb-8">Son güncelleme: Haziran 2025</p>
 
       <Section title="1. Kabul">

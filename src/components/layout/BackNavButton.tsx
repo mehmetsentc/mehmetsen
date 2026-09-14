@@ -106,18 +106,15 @@ export function GlobalBackNav() {
     pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)
   const globalNavV2 = isGlobalNavV2EnabledClient()
 
-  // Global Nav V2: Feed V2 uses site header menu — no floating exit control.
-  if (hidden) return null
-  if (globalNavV2 && isFeedV2) return null
-
   const isImmersive = isReels || isPublicVideo || isFeedV2
+
+  // Newspaper desktop has masthead back; only immersive routes keep a floating control.
+  if (hidden || !isImmersive) return null
+  if (globalNavV2 && isFeedV2) return null
 
   return (
     <div
-      className={cn(
-        'back-nav-global',
-        isImmersive ? 'back-nav-global--reels' : 'back-nav-global--desktop'
-      )}
+      className={cn('back-nav-global', 'back-nav-global--reels')}
       data-testid={isImmersive ? 'smart-feed-exit-nav' : undefined}
     >
       <BackNavButton

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function KunyePage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+    <div className="nl-editorial desktop-newspaper-shell mx-auto max-w-2xl py-10">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-8 flex items-center gap-1 text-sm text-[rgb(var(--color-muted))]">
         <Link href="/" className="hover:text-[rgb(var(--color-text))]">Ana Sayfa</Link>

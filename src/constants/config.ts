@@ -1047,6 +1047,46 @@ export function getHeaderSecondaryNavItems(): SiteNavItem[] {
   return getHeaderAllNavItems().filter((item) => !HEADER_PRIMARY_ID_SET.has(item.id))
 }
 
+/**
+ * Onaylı global gazete üst şeridi — her masaüstü sayfada aynı 12 link.
+ * Ana Sayfa · Gündem · Yerel · 3. Sayfa · Dünya · Siyaset · Ekonomi · Spor · Teknoloji · Kültür · Sağlık · Video
+ */
+export const NEWSPAPER_NAV_IDS = [
+  'feed',
+  'gundem',
+  'yerel',
+  'asayis',
+  'dunya',
+  'siyaset',
+  'ekonomi',
+  'spor',
+  'teknoloji',
+  'kultur',
+  'saglik',
+  'video',
+] as const
+
+const NEWSPAPER_NAV_LABELS: Record<string, string> = {
+  feed: 'Ana Sayfa',
+  gundem: 'Gündem',
+  yerel: 'Yerel',
+  asayis: '3. Sayfa',
+  dunya: 'Dünya',
+  siyaset: 'Siyaset',
+  ekonomi: 'Ekonomi',
+  spor: 'Spor',
+  teknoloji: 'Teknoloji',
+  kultur: 'Kültür',
+  saglik: 'Sağlık',
+  video: 'Video',
+}
+
+export function getNewspaperNavItems(): SiteNavItem[] {
+  return NEWSPAPER_NAV_IDS.map((id) =>
+    resolveHeaderNavItem(id, NEWSPAPER_NAV_LABELS[id])
+  ).filter((item): item is SiteNavItem => item !== null)
+}
+
 export interface SwipeDestination {
   id: string
   label: string

@@ -80,7 +80,7 @@ function FooterColumn({ title, links }: { title: string; links: readonly FooterL
       </h2>
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
         {links.map((link) => (
-          <li key={`${title}-${link.href}`}>
+          <li key={`${title}-${link.label}-${link.href}`}>
             <FooterLinkItem link={link} />
           </li>
         ))}

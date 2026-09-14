@@ -210,10 +210,12 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === ROUTES.SITE_MAP) return true
   if (pathname.startsWith('/hakkimizda')) return true
   if (pathname.startsWith('/iletisim')) return true
+  if (pathname.startsWith('/gizlilik')) return true
   if (pathname.startsWith('/hukuk/')) return true
   if (pathname.startsWith('/aydinlatma-metni')) return true
   if (pathname.startsWith('/editoryal-ilkeler')) return true
-  if (pathname === '/kunye') return true
+  if (pathname === '/kunye' || pathname === '/kune') return true
+  if (pathname === '/video' || pathname.startsWith('/video/')) return true
   if (pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER) return true
   if (pathname === ROUTES.APP) return true
   // City tenant routes are all public

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getHeaderAllNavItems,
   getHeaderPortalNavItems,
+  getNewspaperNavItems,
   getSiteNavItems,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -52,5 +53,26 @@ describe('desktop header nav', () => {
     expect(portal.find((item) => item.id === 'kultur')?.label).toBe('Kültür-Sanat')
     expect(portal.find((item) => item.id === 'video')?.href).toBe(ROUTES.VIDEO)
     expect(portal.every((item) => item.href.length > 1)).toBe(true)
+  })
+
+  it('locks the approved 12-link newspaper masthead order', () => {
+    const items = getNewspaperNavItems()
+    expect(items.map((item) => item.id)).toEqual([
+      'feed',
+      'gundem',
+      'yerel',
+      'asayis',
+      'dunya',
+      'siyaset',
+      'ekonomi',
+      'spor',
+      'teknoloji',
+      'kultur',
+      'saglik',
+      'video',
+    ])
+    expect(items.find((item) => item.id === 'siyaset')?.label).toBe('Siyaset')
+    expect(items.find((item) => item.id === 'kultur')?.label).toBe('Kültür')
+    expect(items.at(-1)?.href).toBe(ROUTES.VIDEO)
   })
 })
