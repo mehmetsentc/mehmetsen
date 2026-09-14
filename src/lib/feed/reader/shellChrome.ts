@@ -35,6 +35,11 @@ export function isImmersiveVideoPathname(pathname: string): boolean {
   return isReelsPathname(pathname) || isPublicVideoPathname(pathname)
 }
 
+/** Desktop /video uses the newspaper masthead; mobile/tablet keep the immersive player. */
+export function isNewspaperDesktopVideo(pathname: string, isDesktop: boolean): boolean {
+  return isDesktop && isPublicVideoPathname(pathname)
+}
+
 export function isGlobalNavV2Active(): boolean {
   return isGlobalNavV2EnabledClient()
 }

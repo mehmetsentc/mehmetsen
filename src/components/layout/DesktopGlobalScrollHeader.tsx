@@ -7,7 +7,6 @@ import { ROUTES } from '@/constants/routes'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
   if (pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)) return false
-  if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)) return false
   if (pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')) return false
   if (pathname.startsWith('/messages')) return false
   if (pathname.startsWith('/admin')) return false

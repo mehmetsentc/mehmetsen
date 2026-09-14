@@ -17,6 +17,7 @@ import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 import { nativePreloadRoleFor } from '@/lib/videoFeed/nativePreloadPolicy'
 import type { ReelsFeedTab } from '@/components/video/ReelsFeedTabs'
+import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 
 function ReelsStatePanel({
   children,
@@ -40,6 +41,8 @@ function ReelsStatePanel({
 export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { isDesktop } = usePlatformLayout()
+  const newspaperVideo = surface === 'video' && isDesktop
   const targetVideoId = searchParams.get('v')
   const [feedTab, setFeedTab] = useState<ReelsFeedTab>('for-you')
   const [unusableIds, setUnusableIds] = useState<Set<string>>(() => new Set())
@@ -179,7 +182,13 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
 
   return (
     <ReelsAudioProvider>
-    <div className={cn('reels-page', showVideoFeed && 'reels-layout')}>
+    <div
+      className={cn(
+        'reels-page',
+        showVideoFeed && 'reels-layout',
+        newspaperVideo && 'nl-video-page'
+      )}
+    >
       <div
         className={cn(
           'reels-feed',
@@ -189,6 +198,7 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
       >
         {surface === 'video' ? (
           <VideoSurfaceTabs
+            placement={newspaperVideo ? 'masthead' : 'overlay'}
             active={feedTab}
             onChange={(tab) => {
               setFeedTab(tab)

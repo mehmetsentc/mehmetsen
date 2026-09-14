@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
+import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 
 const HIDDEN_PREFIXES = [
   ROUTES.LOGIN,
@@ -98,6 +99,7 @@ export function BackNavButton({
 /** Fixed global back control for immersive routes (reels / feed-v2) and desktop chrome. */
 export function GlobalBackNav() {
   const pathname = usePathname()
+  const { isDesktop } = usePlatformLayout()
   const hidden = useMemo(() => shouldHideBack(pathname), [pathname])
   const isFeedV2 = pathname === '/feed-v2' || pathname.startsWith('/feed-v2/')
   const isReels =
@@ -108,8 +110,9 @@ export function GlobalBackNav() {
 
   const isImmersive = isReels || isPublicVideo || isFeedV2
 
-  // Newspaper desktop has masthead back; only immersive routes keep a floating control.
+  // Newspaper desktop has masthead; only immersive routes keep a floating control.
   if (hidden || !isImmersive) return null
+  if (isPublicVideo && isDesktop) return null
   if (globalNavV2 && isFeedV2) return null
 
   return (

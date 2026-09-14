@@ -6,7 +6,6 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
-import { DesktopPortalFullHeader } from '@/components/home/desktop/DesktopPortalFullHeader'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
 import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
@@ -52,7 +51,6 @@ interface DesktopWebHeaderProps {
   tabParent?: CategoryDef | null
   className?: string
   variant?: 'full' | 'compact'
-  chrome?: 'default' | 'portal'
 }
 
 function SubcategoryTabs({
@@ -102,19 +100,8 @@ export function DesktopWebHeader({
   tabParent,
   className,
   variant = 'full',
-  chrome = 'default',
 }: DesktopWebHeaderProps) {
   const showSubTabs = Boolean(subcategories && subcategories.length > 0 && tabParent)
-
-  if (variant === 'full' && chrome === 'portal') {
-    return (
-      <DesktopPortalFullHeader
-        breakingItems={breakingItems}
-        showBreaking={showBreaking}
-        className={className}
-      />
-    )
-  }
 
   if (variant === 'compact') {
     return (

@@ -1,10 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
-import { usePathname } from 'next/navigation'
 import { useScrollCompact } from '@/hooks/useScrollCompact'
 import { DesktopWebHeader } from '@/components/home/desktop/DesktopWebHeader'
-import { ROUTES } from '@/constants/routes'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -27,17 +25,14 @@ interface DesktopScrollHeaderProps {
 }
 
 /**
- * NYT tarzı scroll header: sayfa üstündeyken tam masthead, aşağı kaydırınca
- * üstte sabit kompakt kategori çubuğu.
+ * Gazete masthead: üstte tam kâğıt başlık, kaydırınca kompakt kategori şeridi.
  */
 export function DesktopScrollHeader({
-  threshold = 120,
+  threshold = 200,
   ...headerProps
 }: DesktopScrollHeaderProps) {
-  const pathname = usePathname()
-  const portal = pathname === ROUTES.FEED
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const compact = useScrollCompact(portal ? 560 : threshold)
+  const compact = useScrollCompact(threshold)
 
   return (
     <>
@@ -53,11 +48,7 @@ export function DesktopScrollHeader({
       ) : null}
 
       <div ref={sentinelRef} className="hidden lg:block">
-        <DesktopWebHeader
-          {...headerProps}
-          variant="full"
-          chrome={portal ? 'portal' : 'default'}
-        />
+        <DesktopWebHeader {...headerProps} variant="full" />
       </div>
     </>
   )
