@@ -152,17 +152,29 @@
 }
 
 .mag-category-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 0.75rem;
-  padding: 0 0.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0.75rem;
+  padding: 0 0.75rem 0.45rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mag-category-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .mag-category-grid__card {
   display: flex;
+  flex: 0 0 auto;
+  width: min(11.25rem, 46vw);
   min-width: 0;
   flex-direction: column;
   gap: 0.45rem;
+  scroll-snap-align: start;
 }
 
 .mag-category-grid__media {
@@ -195,8 +207,11 @@
   }
 
   .mag-category-grid {
-    padding: 0;
-    grid-template-columns: 1fr 1fr;
+    padding: 0 0 0.35rem;
     gap: 1rem;
+  }
+
+  .mag-category-grid__card {
+    width: min(13.5rem, 30vw);
   }
 }

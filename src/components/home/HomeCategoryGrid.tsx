@@ -40,7 +40,7 @@ export function HomeCategoryGrid({ categoryId, items }: HomeCategoryGridProps) {
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
       </div>
-      <div className="mag-category-grid">
+      <div className="mag-category-grid" data-no-category-swipe>
         {cards.map((item) => (
           <Link
             key={item.id}
@@ -52,7 +52,7 @@ export function HomeCategoryGrid({ categoryId, items }: HomeCategoryGridProps) {
                 src={item.imageUrl || FEED_FALLBACK_LOGO}
                 alt={item.title}
                 fill
-                sizes="(max-width: 768px) 50vw, 280px"
+                sizes="(max-width: 768px) 46vw, 220px"
                 className="object-cover"
               />
             </span>

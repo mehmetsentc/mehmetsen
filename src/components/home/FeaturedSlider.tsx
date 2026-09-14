@@ -12,15 +12,21 @@ interface FeaturedSliderProps {
   items: NewsItem[]
   /** True when items are CMS-pinned featured; false when latest-news fallback. */
   isFeatured?: boolean
+  /** Card cap — homepage hikaye altı 20, kategori manşet 10. */
+  limit?: number
 }
 
 /**
  * Homepage Öne Çıkanlar — equal-size horizontal rail.
  * Ranking/order comes from pickHomeFeedFeaturedPins; this is presentation only.
  */
-export function FeaturedSlider({ items, isFeatured = true }: FeaturedSliderProps) {
+export function FeaturedSlider({
+  items,
+  isFeatured = true,
+  limit = FEATURED_CAROUSEL_LIMIT,
+}: FeaturedSliderProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const cards = items.slice(0, FEATURED_CAROUSEL_LIMIT).map(newsItemToDiscovery)
+  const cards = items.slice(0, limit).map(newsItemToDiscovery)
   const hrefs = cards.map((card) => card.href)
   const title = isFeatured ? 'Öne Çıkanlar' : 'Manşet'
 

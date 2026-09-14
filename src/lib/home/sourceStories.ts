@@ -77,11 +77,28 @@ export function sourceStoryTour(groups: SourceStoryGroup[]): NewsItem[] {
     .filter((item): item is NewsItem => Boolean(item))
 }
 
+/** Hikaye altı kategori kartları — üst nav sırası, Tümü hariç. */
 export const MAGAZINE_INLINE_CATEGORY_ORDER: HomeCategorySlug[] = [
   'gundem',
   'ekonomi',
   'spor',
   'dunya',
   'siyaset',
+  'teknoloji',
   'saglik',
+  'kultur',
+  'asayis',
+  'kibris-haberleri',
+  'egitim',
+  'turizm',
+  'gezi',
+  'bilim',
+  'cevre-iklim',
+  'oyun-espor',
+  'din-inanc',
+  'yasam',
+  'gastronomi',
+  'otomobil',
+  'magazin',
+  'tarih',
 ]

@@ -9,6 +9,7 @@ import {
   isNationalFeaturedEligible,
   pickCityFeaturedCarouselItems,
   pickHomeFeedFeaturedPins,
+  fillHomeFeaturedRail,
 } from '@/lib/featuredScope'
 
 describe('featuredScope', () => {
@@ -226,5 +227,22 @@ describe('featuredScope', () => {
     expect(pickHomeFeedFeaturedPins(featured, false, 11).map((p) => p.id)).toEqual([
       'old-national-pin',
     ])
+  })
+
+  it('fills national featured rail from latest after CMS pins', () => {
+    const filled = fillHomeFeaturedRail(
+      [
+        { id: 'pin', featured: true },
+        { id: 'not-pin', featured: false },
+      ],
+      [
+        { id: 'pin', featured: true },
+        { id: 'a', featured: false },
+        { id: 'b', featured: false },
+      ],
+      false,
+      3
+    )
+    expect(filled.map((p) => p.id)).toEqual(['pin', 'a', 'b'])
   })
 })

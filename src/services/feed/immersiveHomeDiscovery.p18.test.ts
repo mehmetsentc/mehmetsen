@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { groupNewsBySource, sourceStoryTour } from '@/lib/home/sourceStories'
-import { buildMagazineStream } from '@/lib/home/magazineStream'
+import {
+  MAGAZINE_CHUNK,
+  buildMagazineStream,
+  sequentialCategoryLatest,
+} from '@/lib/home/magazineStream'
+import { fillHomeFeaturedRail } from '@/lib/featuredScope'
+import { HOME_FEATURED_RAIL_LIMIT } from '@/types/newsItem'
 import type { NewsItem } from '@/types/newsItem'
 
 function read(rel: string) {
@@ -55,7 +61,14 @@ describe('source-grouped stories', () => {
     expect(feed).toContain('buildMagazineStream')
     expect(feed).toContain('MustReadSection')
     expect(feed).not.toContain('HomeDiscoveryMasonry')
-    expect(feed).not.toContain('FeaturedSlider')
+    expect(feed).toContain('FeaturedSlider')
+    expect(feed).toContain('HOME_FEATURED_RAIL_LIMIT')
+    expect(feed).toContain('fillHomeFeaturedRail')
+    expect(feed).toContain('sequentialCategoryLatest')
+    expect(feed).toContain('home-market-ticker')
+    expect(feed).not.toContain('hidden lg:block')
+    expect(feed.indexOf('<SourceStories')).toBeLessThan(feed.indexOf('<FeaturedSlider'))
+    expect(feed.indexOf('<FeaturedSlider')).toBeLessThan(feed.indexOf('<MarketTicker'))
     expect(feed).not.toContain('PinterestRanking')
     expect(feed).not.toMatch(/>Akış</)
     expect(feed).not.toContain('Feed 2')
@@ -63,7 +76,8 @@ describe('source-grouped stories', () => {
 })
 
 describe('magazine stream', () => {
-  it('punctuates latest order with existing category rails', () => {
+  it('punctuates latest order with existing category rails every 5 items', () => {
+    expect(MAGAZINE_CHUNK).toBe(5)
     const latest = [
       item({ id: '1', title: '1' }),
       item({ id: '2', title: '2' }),
@@ -82,8 +96,35 @@ describe('magazine stream', () => {
       rails: { spor },
     })
     expect(blocks[0]?.kind).toBe('magazine')
+    if (blocks[0]?.kind === 'magazine') expect(blocks[0].items).toHaveLength(5)
     expect(blocks[1]?.kind).toBe('category')
     if (blocks[1]?.kind === 'category') expect(blocks[1].categoryId).toBe('spor')
+  })
+
+  it('sequences one latest story from each category in nav order', () => {
+    const sequenced = sequentialCategoryLatest([
+      item({ id: 'e1', title: 'e1', category: 'ekonomi' }),
+      item({ id: 'g1', title: 'g1', category: 'gundem' }),
+      item({ id: 's1', title: 's1', category: 'spor' }),
+      item({ id: 'e2', title: 'e2', category: 'ekonomi' }),
+    ])
+    expect(sequenced.map((n) => n.id)).toEqual(['g1', 'e1', 's1', 'e2'])
+  })
+})
+
+describe('featured rail fill', () => {
+  it('fills leftover Öne Çıkan slots from latest without ranking', () => {
+    const pins = [
+      item({ id: 'p1', title: 'p1', featured: true }),
+      item({ id: 'p2', title: 'p2', featured: true }),
+    ]
+    const latest = Array.from({ length: 22 }, (_, i) =>
+      item({ id: `l${i}`, title: `l${i}` })
+    )
+    const filled = fillHomeFeaturedRail(pins, latest, false, HOME_FEATURED_RAIL_LIMIT)
+    expect(filled).toHaveLength(20)
+    expect(filled[0]?.id).toBe('p1')
+    expect(filled[2]?.id).toBe('l0')
   })
 })
 

@@ -150,6 +150,29 @@ export function pickHomeFeedFeaturedPins<T extends FeaturedPinFlags>(
   return pins.slice(0, limit)
 }
 
+/**
+ * Homepage Öne Çıkan rail — CMS pins first, then existing latest/rail items.
+ * Presentation fill only; does not rank or fetch.
+ */
+export function fillHomeFeaturedRail<T extends FeaturedPinFlags & { id: string }>(
+  featured: T[],
+  fillers: T[],
+  cityMode: boolean,
+  limit: number
+): T[] {
+  const pins = pickHomeFeedFeaturedPins(featured, cityMode, limit)
+  if (pins.length >= limit) return pins
+  const seen = new Set(pins.map((item) => item.id))
+  const out = [...pins]
+  for (const item of fillers) {
+    if (out.length >= limit) break
+    if (seen.has(item.id)) continue
+    seen.add(item.id)
+    out.push(item)
+  }
+  return out
+}
+
 /** Kıbrıs category page Öne Çıkan: any kibris-* category pin. */
 export function isKibrisFeaturedEligible(input: FeaturedScopeInput): boolean {
   if (isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(input))) return false

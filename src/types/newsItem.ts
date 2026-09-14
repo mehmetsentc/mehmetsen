@@ -163,6 +163,9 @@ export const HOME_FEATURED_LIMIT = 11
 /** Mobil manşet carousel — ana sayfa + kategori (tek satır dot için max 10). */
 export const FEATURED_CAROUSEL_LIMIT = 10
 
+/** Ana sayfa hikâye altı kaydırmalı Öne Çıkanlar — pin + latest doldurma, yeni ranking yok. */
+export const HOME_FEATURED_RAIL_LIMIT = 20
+
 export interface HomeFeedInitialData {
   breaking: NewsItem[]
   /** CMS Öne Çıkan — kategori bağımsız, en fazla HOME_FEATURED_LIMIT. */
