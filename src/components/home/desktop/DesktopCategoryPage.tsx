@@ -1,16 +1,18 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
-import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
-import { CategoryBbcPageHeader } from '@/components/category/CategoryBbcPageHeader'
+import { DesktopCategoryCard } from '@/components/home/desktop/DesktopCategoryCard'
+import { DesktopCategoryHero } from '@/components/home/desktop/DesktopCategoryHero'
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
-import { SourceStories } from '@/components/home/SourceStories'
-import { MagazineNewsList } from '@/components/home/MagazineNewsList'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
-import { groupNewsBySource } from '@/lib/home/sourceStories'
+import { getCategoryAccent } from '@/constants/categoryTheme'
+import { DESKTOP_CATEGORY_FEATURED_COUNT } from '@/lib/home/desktopCategoryPortal'
 import { timelinePostToNewsItem } from '@/lib/newsItemToTimelinePost'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
+import { cn } from '@/lib/utils'
+import { ROUTES } from '@/constants/routes'
 import type { CategoryDef } from '@/constants/config'
 import type { TimelinePost } from '@/types/post'
 
@@ -39,7 +41,8 @@ interface DesktopCategoryPageProps {
 }
 
 /**
- * Desktop category — same magazine + source-story language as Ana Sayfa.
+ * Desktop category portal — hero + chips + 4-up cards.
+ * Mobile magazine landing is unchanged.
  */
 export function DesktopCategoryPage({
   cat,
@@ -58,12 +61,17 @@ export function DesktopCategoryPage({
   const pageTitle =
     pageTitleProp ??
     (isSubcategory && parentCat ? `${parentCat.name} · ${cat.name}` : cat.name)
+  const heroTitle = isSubcategory ? cat.name : pageTitle
+  const accent = getCategoryAccent(cat.id)
+  const parentSlug = tabParent?.slug ?? parentCat?.slug
 
   const newsItems = useMemo(
     () => initialPosts.map(timelinePostToNewsItem),
     [initialPosts]
   )
-  const storyGroups = useMemo(() => groupNewsBySource(newsItems), [newsItems])
+  const featured = newsItems.slice(0, DESKTOP_CATEGORY_FEATURED_COUNT)
+  const rest = newsItems.slice(DESKTOP_CATEGORY_FEATURED_COUNT)
+  const heroImage = newsItems.find((item) => item.imageUrl)?.imageUrl
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
     lastPost?.publishedAt == null
@@ -75,42 +83,67 @@ export function DesktopCategoryPage({
 
   return (
     <div
-      className="desktop-category-page bbc-category-page desktop-newspaper-shell home-feed--magazine w-full pb-10"
-      data-testid="category-magazine-feed-desktop"
+      className="dcp-page desktop-category-page"
+      data-testid="desktop-category-portal"
+      style={{ ['--cat-accent' as string]: accent.rgb }}
     >
-      <CategoryBbcPageHeader
-        pageTitle={pageTitle}
-        subTabs={showTabs ? subTabs : []}
-        tabParentSlug={tabParent?.slug}
-        isSubcategory={isSubcategory}
-        categoryId={cat.id}
-        className="mb-8"
-      />
+      <DesktopCategoryHero title={heroTitle} categoryId={cat.id} imageUrl={heroImage} />
 
-      {topSlot ? <div className="bbc-category-top-slot mb-8">{topSlot}</div> : null}
+      <div className="dcp-body">
+        {showTabs && parentSlug ? (
+          <nav className="dcp-subnav" aria-label="Alt kategoriler" data-no-category-swipe>
+            <Link
+              href={ROUTES.CATEGORY(parentSlug)}
+              className={cn('dcp-chip', !isSubcategory && 'is-active')}
+            >
+              Tümü
+            </Link>
+            {subTabs.map((sub) => (
+              <Link
+                key={sub.id}
+                href={sub.href}
+                className={cn('dcp-chip', sub.active && 'is-active')}
+              >
+                {sub.name}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
 
-      {showFeed ? (
-        <>
-          <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mb-8" />
+        {topSlot ? <div className="dcp-extras">{topSlot}</div> : null}
 
-          <SourceStories groups={storyGroups} />
-          {newsItems.length > 0 ? (
-            <MagazineNewsList items={newsItems} priorityCount={Math.min(2, newsItems.length)} />
-          ) : null}
-          <CategoryLoadMore
-            categoryId={cat.id}
-            initialItems={newsItems}
-            initialBeforeDay={initialBeforeDay}
-            initialHasMore={initialPosts.length > 0}
-          />
+        {showFeed ? (
+          <>
+            <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mt-6" />
 
-          <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mb-10" />
+            {featured.length > 0 ? (
+              <div className="dcp-grid" data-testid="desktop-category-featured">
+                {featured.map((item, index) => (
+                  <DesktopCategoryCard key={item.id} item={item} priority={index < 2} />
+                ))}
+              </div>
+            ) : null}
 
-          <div className="mt-8 max-w-md">
-            <DesktopInsideIndex title="İçindekiler" />
-          </div>
-        </>
-      ) : null}
+            {rest.length > 0 ? (
+              <div className="dcp-grid">
+                {rest.map((item) => (
+                  <DesktopCategoryCard key={item.id} item={item} />
+                ))}
+              </div>
+            ) : null}
+
+            <CategoryLoadMore
+              categoryId={cat.id}
+              initialItems={newsItems}
+              initialBeforeDay={initialBeforeDay}
+              initialHasMore={initialPosts.length > 0}
+              layout="desktop-grid"
+            />
+
+            <DesktopAdBanner slot={`category-${cat.id}-bottom`} size="large" className="mt-10" />
+          </>
+        ) : null}
+      </div>
     </div>
   )
 }

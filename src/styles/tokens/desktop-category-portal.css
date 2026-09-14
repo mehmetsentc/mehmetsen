@@ -1,0 +1,157 @@
+/* Desktop category portal — lg+ only; mobile magazine landing untouched. */
+.dcp-page {
+  width: 100%;
+  padding-bottom: 3rem;
+  background: #f4f5f7;
+  color: #111827;
+}
+
+.dcp-hero {
+  position: relative;
+  display: flex;
+  min-height: 22rem;
+  align-items: flex-end;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgb(var(--cat-accent, 225 29 72) / 0.92), rgb(15 23 42 / 0.72)),
+    rgb(15 23 42);
+}
+
+.dcp-hero__image {
+  z-index: 0;
+}
+
+.dcp-hero__shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    105deg,
+    rgb(15 23 42 / 0.72) 8%,
+    rgb(var(--cat-accent, 225 29 72) / 0.45) 55%,
+    rgb(15 23 42 / 0.35) 100%
+  );
+}
+
+.dcp-hero__copy {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 72rem;
+  padding: 2.75rem 1.75rem 2.25rem;
+}
+
+.dcp-hero__title {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 4.25rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 8px 28px rgb(0 0 0 / 0.35);
+}
+
+.dcp-hero__slogan {
+  margin: 0.75rem 0 0;
+  max-width: 36rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgb(255 255 255 / 0.92);
+}
+
+.dcp-body {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.75rem 0;
+}
+
+.dcp-subnav {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.35rem;
+  scrollbar-width: none;
+}
+
+.dcp-subnav::-webkit-scrollbar {
+  display: none;
+}
+
+.dcp-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+  text-decoration: none;
+}
+
+.dcp-chip:hover {
+  color: #0f172a;
+  background: #fff;
+}
+
+.dcp-chip.is-active {
+  color: #fff;
+  background: rgb(var(--cat-accent, 225 29 72));
+  box-shadow: none;
+}
+
+.dcp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.15rem;
+  margin-top: 1.35rem;
+}
+
+.dcp-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dcp-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  background: #e5e7eb;
+}
+
+.dcp-card__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #111827;
+}
+
+.dcp-grid__more {
+  grid-column: 1 / -1;
+  margin-top: 0.35rem;
+}
+
+.dcp-extras {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+  .dcp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

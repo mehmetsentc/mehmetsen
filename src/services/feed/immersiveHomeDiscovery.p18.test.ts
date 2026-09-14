@@ -11,6 +11,7 @@ import {
   sequentialCategoryLatest,
 } from '@/lib/home/magazineStream'
 import { fillHomeFeaturedRail } from '@/lib/featuredScope'
+import { desktopCategorySlogan } from '@/lib/home/desktopCategoryPortal'
 import { HOME_FEATURED_RAIL_LIMIT } from '@/types/newsItem'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -128,22 +129,38 @@ describe('featured rail fill', () => {
   })
 })
 
-describe('surfaces reuse magazine language except Akış', () => {
-  it('category landing and load-more use magazine + stories', () => {
+describe('surfaces reuse magazine language except Akış and desktop', () => {
+  it('mobile category landing and load-more keep magazine + stories', () => {
     const landing = read('src/components/category/mobile/MobileCategoryLanding.tsx')
     const loadMore = read('src/components/category/CategoryLoadMore.tsx')
-    const desktop = read('src/components/home/desktop/DesktopCategoryPage.tsx')
     const client = read('src/components/category/CategoryPageClient.tsx')
     expect(landing).toContain('SourceStories')
     expect(landing).toContain('MagazineNewsList')
     expect(landing).not.toContain('HomeDiscoveryMasonry')
     expect(loadMore).toContain('MagazineNewsList')
     expect(loadMore).not.toContain('HomeDiscoveryMasonry')
-    expect(desktop).toContain('SourceStories')
-    expect(desktop).toContain('MagazineNewsList')
-    expect(desktop).not.toContain('CategoryExperience')
     expect(client).not.toContain('md:hidden')
     expect(client).toContain('lg:hidden')
+  })
+
+  it('desktop category page uses the portal hero, not magazine stories', () => {
+    const desktop = read('src/components/home/desktop/DesktopCategoryPage.tsx')
+    expect(desktop).toContain('DesktopCategoryHero')
+    expect(desktop).toContain('desktop-category-portal')
+    expect(desktop).toContain('dcp-grid')
+    expect(desktop).not.toContain('SourceStories')
+    expect(desktop).not.toContain('MagazineNewsList')
+    expect(desktop).not.toContain('CategoryExperience')
+  })
+
+  it('national /feed keeps magazine HomeFeed on mobile and newspaper on desktop', () => {
+    const feed = read('src/components/feed/FeedPageClient.tsx')
+    expect(feed).toContain('lg:hidden')
+    expect(feed).toContain('<HomeFeed data={liveFeedData} />')
+    expect(feed).toContain('DesktopHomeFeed')
+    expect(feed).toContain('DesktopNewspaperShell')
+    expect(feed).toContain('hidden lg:block')
+    expect(feed).not.toContain('HomeDiscoveryMasonry')
   })
 
   it('Akış client is not rewritten to magazine', () => {
@@ -157,5 +174,12 @@ describe('surfaces reuse magazine language except Akış', () => {
     const shared = read('src/lib/feed/sharedCategoryRail.ts')
     expect(shared).toContain('getSwipeableFeedDestinations')
     expect(shared).toContain("dest.id === SHARED_RAIL_ALL_ID ? 'Tümü'")
+  })
+})
+
+describe('desktop category portal copy', () => {
+  it('keeps slogans as presentation text', () => {
+    expect(desktopCategorySlogan('gundem')).toBe('Bugünün gündemi, yarının tarihi')
+    expect(desktopCategorySlogan('dunya')).toBe('Dünyayı anlamak, geleceği görmek')
   })
 })

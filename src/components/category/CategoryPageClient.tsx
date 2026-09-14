@@ -113,7 +113,7 @@ export function CategoryPageClient({
         )}
       </div>
 
-      {/* Desktop — magazine body, same source-story language */}
+      {/* Desktop — portal hero + 4-up cards (mobile magazine untouched) */}
       <div className="hidden lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
           <DesktopCategoryPage

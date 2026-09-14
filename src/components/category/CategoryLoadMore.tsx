@@ -1,6 +1,7 @@
 'use client'
 
 import { MagazineNewsList } from '@/components/home/MagazineNewsList'
+import { DesktopCategoryCard } from '@/components/home/desktop/DesktopCategoryCard'
 import { LoadMoreDayButton } from '@/components/feed/LoadMoreDayButton'
 import { useCategoryDayLoadMore } from '@/hooks/useCategoryDayLoadMore'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
@@ -11,6 +12,8 @@ interface CategoryLoadMoreProps {
   initialItems?: NewsItem[]
   initialBeforeDay: string
   initialHasMore?: boolean
+  /** Desktop portal uses a 4-up grid; mobile magazine landing stays default. */
+  layout?: 'magazine' | 'desktop-grid'
 }
 
 /**
@@ -21,6 +24,7 @@ export function CategoryLoadMore({
   initialItems = [],
   initialBeforeDay,
   initialHasMore = true,
+  layout = 'magazine',
 }: CategoryLoadMoreProps) {
   const { extraItems, hasMore, loadingMore, loadMore } = useCategoryDayLoadMore({
     categoryId,
@@ -29,9 +33,20 @@ export function CategoryLoadMore({
     excludeIds: initialItems.map((i) => i.id),
   })
 
-  return (
-    <div className="mt-2">
-      {extraItems.length > 0 ? (
+  const extra =
+    extraItems.length > 0 ? (
+      layout === 'desktop-grid' ? (
+        <div className="dcp-grid">
+          {extraItems.map((item) => (
+            <DesktopCategoryCard key={item.id} item={item} />
+          ))}
+          {hasMore ? (
+            <div className="dcp-grid__more">
+              <LoadMoreDayButton onClick={loadMore} loading={loadingMore} />
+            </div>
+          ) : null}
+        </div>
+      ) : (
         <MagazineNewsList
           items={extraItems}
           priorityCount={0}
@@ -39,11 +54,12 @@ export function CategoryLoadMore({
           hasMore={hasMore}
           onLoadMore={loadMore}
         />
-      ) : hasMore ? (
-        <LoadMoreDayButton onClick={loadMore} loading={loadingMore} />
-      ) : null}
-    </div>
-  )
+      )
+    ) : hasMore ? (
+      <LoadMoreDayButton onClick={loadMore} loading={loadingMore} />
+    ) : null
+
+  return <div className="mt-2">{extra}</div>
 }
 
 export function categoryBeforeDayFromItems(items: NewsItem[]): string {
