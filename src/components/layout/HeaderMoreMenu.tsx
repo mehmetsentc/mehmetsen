@@ -173,7 +173,7 @@ export function HeaderMoreMenu({
         data-testid="header-nav-more"
         onClick={toggle}
       >
-        <MoreVertical className="h-4 w-4" strokeWidth={2.25} />
+        <MoreVertical className="h-5 w-5" strokeWidth={2.25} />
         {unreadCount > 0 ? (
           <span
             className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-red-500"

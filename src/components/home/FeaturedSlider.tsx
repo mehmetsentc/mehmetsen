@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import {
   HomeDiscoveryCard,
   newsItemToDiscovery,
 } from '@/components/home/HomeDiscoveryCard'
 import { FEATURED_CAROUSEL_LIMIT, type NewsItem } from '@/types/newsItem'
+import { cn } from '@/lib/utils'
 
 interface FeaturedSliderProps {
   items: NewsItem[]
@@ -17,7 +17,7 @@ interface FeaturedSliderProps {
 }
 
 /**
- * Homepage Öne Çıkanlar — equal-size horizontal rail.
+ * Homepage Öne Çıkanlar — full-bleed manşet + pagination dots.
  * Ranking/order comes from pickHomeFeedFeaturedPins; this is presentation only.
  */
 export function FeaturedSlider({
@@ -26,55 +26,44 @@ export function FeaturedSlider({
   limit = FEATURED_CAROUSEL_LIMIT,
 }: FeaturedSliderProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
   const cards = items.slice(0, limit).map(newsItemToDiscovery)
   const hrefs = cards.map((card) => card.href)
   const title = isFeatured ? 'Öne Çıkanlar' : 'Manşet'
 
-  const scrollByCard = useCallback((direction: 1 | -1) => {
+  const onScroll = useCallback(() => {
     const scroller = scrollerRef.current
     if (!scroller) return
-    const card = scroller.querySelector<HTMLElement>('[data-testid="home-featured-rail-card"]')
-    const gap = 10
-    const delta = (card?.offsetWidth ?? Math.round(scroller.clientWidth * 0.72)) + gap
-    scroller.scrollBy({ left: direction * delta, behavior: 'smooth' })
-  }, [])
+    const width = scroller.clientWidth || 1
+    const next = Math.round(scroller.scrollLeft / width)
+    setActive(Math.max(0, Math.min(next, cards.length - 1)))
+  }, [cards.length])
+
+  const goTo = useCallback(
+    (index: number) => {
+      const scroller = scrollerRef.current
+      if (!scroller) return
+      const width = scroller.clientWidth || 1
+      scroller.scrollTo({ left: index * width, behavior: 'smooth' })
+    },
+    []
+  )
 
   if (cards.length === 0) return null
 
   return (
     <section
-      className="home-featured-rail"
+      className="home-featured-rail home-featured-rail--headline"
       aria-label={title}
       data-testid="home-featured-rail"
     >
-      <div className="home-featured-rail__header">
-        <p className="home-discovery-label">{title}</p>
-        {cards.length > 1 ? (
-          <div className="home-featured-rail__controls" aria-hidden={false}>
-            <button
-              type="button"
-              className="home-featured-rail__nav"
-              aria-label="Önceki öne çıkan"
-              onClick={() => scrollByCard(-1)}
-            >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-            <button
-              type="button"
-              className="home-featured-rail__nav"
-              aria-label="Sonraki öne çıkan"
-              onClick={() => scrollByCard(1)}
-            >
-              <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <h2 className="sr-only">{title}</h2>
       <div
         ref={scrollerRef}
         className="home-featured-rail__scroller"
         data-no-category-swipe
         data-testid="home-featured-rail-scroller"
+        onScroll={onScroll}
       >
         {cards.map((item, index) => (
           <div
@@ -86,7 +75,7 @@ export function FeaturedSlider({
               item={item}
               index={index}
               featured
-              layout="featuredRail"
+              layout="headline"
               priority={index < 2}
               hrefs={hrefs}
               navSource="featured"
@@ -94,6 +83,29 @@ export function FeaturedSlider({
           </div>
         ))}
       </div>
+      {cards.length > 1 ? (
+        <div
+          className="home-featured-rail__dots"
+          data-testid="home-featured-rail-dots"
+          role="tablist"
+          aria-label="Öne çıkanlar"
+        >
+          {cards.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-label={`${index + 1} / ${cards.length}`}
+              aria-selected={index === active}
+              className={cn(
+                'home-featured-rail__dot',
+                index === active && 'is-active'
+              )}
+              onClick={() => goTo(index)}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

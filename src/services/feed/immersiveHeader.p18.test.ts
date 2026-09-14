@@ -34,7 +34,7 @@ describe('immersive header Phase 1', () => {
     expect(nav).toContain('data-active')
     expect(nav).toContain('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
     expect(nav).toContain('justify-self-center')
-    expect(css).toContain('width: 8.75rem')
+    expect(css).toContain('width: 10.75rem')
     expect(css).toContain('grid-template-columns: 1fr 1fr')
     expect(css).toContain(".header-surface-toggle[data-active='akis']::before")
     expect(nav).toContain('aria-label="Ana Sayfa"')

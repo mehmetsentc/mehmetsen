@@ -90,12 +90,13 @@ describe('discovery peek (3–5% from RIGHT, single Reader)', () => {
     expect(isStillHoldMovement(20, 0)).toBe(false)
   })
 
-  it('FeedCardWithImpression arms peek via existing onOpenReaderProgress', () => {
+  it('FeedCardWithImpression does not arm peek on tap', () => {
     const client = read('src/components/feed/smart/SmartFeedClient.tsx')
     expect(client).toContain('READER_GESTURE.peekProgress')
-    expect(client).toContain('READER_GESTURE.peekQualifyMs')
     expect(client).toContain('peekArmedRef')
-    expect(client).toContain('onOpenReaderProgress?.(READER_GESTURE.peekProgress)')
+    expect(client).toContain('Tap must not shift the card')
+    expect(client).not.toContain('READER_GESTURE.peekQualifyMs')
+    expect(client).not.toContain('onOpenReaderProgress?.(READER_GESTURE.peekProgress)')
     expect(client).toContain('key={`reader-${readerSession.generation}`}')
     expect(client).not.toContain('peekReaderSession')
   })

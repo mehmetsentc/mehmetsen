@@ -76,7 +76,7 @@
     --reels-video-w: min(100%, calc(var(--reels-viewport-h) * 9 / 16));
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* Floating mobile bottom-nav pill (clearance + chrome sizing) */
-    --mobile-nav-pill-h: 3.5rem;
+    --mobile-nav-pill-h: 3.75rem;
     --mobile-nav-float-gap: 0.625rem;
     --mobile-nav-inset-x: 1rem;
     --mobile-nav-clearance: calc(
@@ -286,8 +286,8 @@
   }
 
   :root {
-    --nahaber-header-row-height: 3.25rem;
-    --nahaber-context-rail-height: 2.75rem;
+    --nahaber-header-row-height: 3.85rem;
+    --nahaber-context-rail-height: 3.15rem;
     --nahaber-glass-bg: rgb(255 255 255 / 0.12);
     --nahaber-glass-blur: 10px;
   }
@@ -298,10 +298,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: stretch;
-    width: 8.75rem;
+    width: 10.75rem;
     max-width: 100%;
     min-width: 0;
-    height: 1.85rem;
+    height: 2.25rem;
     padding: 2px;
     overflow: hidden;
     border-radius: 999px;
@@ -344,9 +344,9 @@
     min-width: 0;
     align-items: center;
     justify-content: center;
-    padding: 0 0.35rem;
-    font-size: 11px;
-    font-weight: 650;
+    padding: 0 0.45rem;
+    font-size: 13px;
+    font-weight: 700;
     line-height: 1;
     letter-spacing: -0.02em;
     white-space: nowrap;
@@ -393,8 +393,18 @@
   }
 
   .context-rail {
-    gap: 0.35rem;
-    padding: 0.2rem 0.75rem 0.55rem;
+    gap: 0.45rem;
+    padding: 0.15rem 0.85rem 0.45rem;
+  }
+
+  .context-rail__chip--active {
+    background: transparent;
+    color: #fff;
+    box-shadow: inset 0 -2px 0 #fff;
+  }
+
+  .context-rail__chip {
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.4);
   }
 
   .context-rail__scroller {
@@ -708,28 +718,22 @@
     font-weight: 700;
   }
 
-  /* Dark floating capsule — matches Instagram-style dock chrome */
+  /* Pinterest-like floating white circles */
   .mobile-bottom-nav-pill {
     display: flex;
-    width: 100%;
-    max-width: 26rem;
+    width: auto;
+    max-width: calc(100% - 1rem);
     height: var(--mobile-nav-pill-h);
     align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
     border-radius: 9999px;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    background: rgb(22 22 24 / 0.92);
-    box-shadow:
-      0 10px 28px rgb(0 0 0 / 0.32),
-      0 2px 8px rgb(0 0 0 / 0.18);
-    backdrop-filter: blur(20px) saturate(1.2);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    padding-inline: 0.35rem;
-  }
-
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .mobile-bottom-nav-pill {
-      background: rgb(22 22 24 / 0.97);
-    }
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding-inline: 0.15rem;
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
@@ -2840,8 +2844,8 @@
     :root {
       --mobile-top-chrome-offset: calc(
         max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) +
-          var(--nahaber-header-row-height, 3.25rem) +
-          var(--nahaber-context-rail-height, 2.75rem)
+          var(--nahaber-header-row-height, 3.85rem) +
+          var(--nahaber-context-rail-height, 3.15rem)
       );
     }
   }
@@ -4034,57 +4038,33 @@ iframe.reels-yt-frame {
   scroll-snap-align: start;
 }
 
-/* Öne Çıkanlar — equal-size horizontal rail (not masonry). */
-.home-featured-rail {
-  margin: 0 0 1.25rem;
+/* Öne Çıkanlar — full-bleed manşet + dots (hikâye altı). */
+.home-featured-manset-block {
+  margin: 0 0 1.15rem;
   max-width: 100%;
   min-width: 0;
 }
 
-.home-featured-rail__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0 0.35rem 0.35rem;
+.home-featured-rail {
+  margin: 0;
+  max-width: 100%;
+  min-width: 0;
 }
 
-.home-featured-rail__controls {
-  display: none;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-@media (min-width: 1024px) {
-  .home-featured-rail__controls {
-    display: flex;
-  }
-}
-
-.home-featured-rail__nav {
-  display: inline-flex;
-  height: 2rem;
-  width: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgb(var(--color-card));
-  color: rgb(var(--color-text));
-  box-shadow: inset 0 0 0 1px rgb(var(--color-border));
-}
-
-.home-featured-rail__nav:hover {
-  background: rgb(var(--color-surface-elevated, var(--color-card)));
+.home-featured-rail--headline {
+  margin-left: calc(-1 * var(--layout-gutter, 0px));
+  margin-right: calc(-1 * var(--layout-gutter, 0px));
+  width: calc(100% + 2 * var(--layout-gutter, 0px));
 }
 
 .home-featured-rail__scroller {
   display: flex;
-  gap: 0.55rem;
+  gap: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  scroll-padding-inline: 0.35rem;
-  padding: 0 0.35rem 0.45rem;
+  scroll-padding-inline: 0;
+  padding: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -4094,27 +4074,48 @@ iframe.reels-yt-frame {
 }
 
 .home-featured-rail__card {
-  flex: 0 0 auto;
-  width: min(17.25rem, calc(100% - 3.25rem));
+  flex: 0 0 100%;
+  width: 100%;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
-@media (min-width: 768px) {
-  .home-featured-rail__card {
-    width: min(18.5rem, 44%);
-  }
+.home-featured-rail__dots {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  overflow-x: auto;
+  padding: 0.7rem 0.75rem 0.55rem;
+  background: #fff;
+  scrollbar-width: none;
 }
 
-@media (min-width: 1024px) {
-  .home-featured-rail__card {
-    width: min(20rem, 31.5%);
-  }
+.home-featured-rail__dots::-webkit-scrollbar {
+  display: none;
 }
 
-@media (min-width: 1440px) {
-  .home-featured-rail__card {
-    width: min(20.5rem, 23.8%);
-  }
+.home-featured-rail__dot {
+  flex: 0 0 auto;
+  width: 0.42rem;
+  height: 0.42rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #c8c8c8;
+  touch-action: manipulation;
+}
+
+.home-featured-rail__dot.is-active {
+  background: #e11d2e;
+}
+
+.home-market-ticker--attached {
+  margin-top: 0;
+  background: #161618;
+  color: #fff;
+  border: 0;
 }
 
 .home-featured-rail .home-discovery-slot--featured-rail,
@@ -4124,20 +4125,30 @@ iframe.reels-yt-frame {
   height: 100%;
 }
 
-/*
- * Masonry slots use content-visibility + contain-intrinsic-size to cut CLS.
- * On the horizontal featured rail that reserved skipped-card height on the
- * block axis and opened a giant dead zone above masonry.
- */
 .home-featured-rail .home-discovery-slot--featured-rail {
   content-visibility: visible;
   contain-intrinsic-size: auto 0;
   margin-bottom: 0;
 }
 
+.home-featured-rail--headline .home-discovery-card {
+  border-radius: 0;
+}
+
 .home-featured-rail .home-discovery-card__media {
   aspect-ratio: 4 / 5;
   width: 100%;
+}
+
+.home-featured-rail--headline .home-discovery-card__copy {
+  padding: 1.1rem 1rem 1.25rem;
+}
+
+.home-featured-rail--headline .home-discovery-card__headline {
+  font-size: 1.38rem;
+  line-height: 1.12;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
 }
 
 .home-discovery-card {

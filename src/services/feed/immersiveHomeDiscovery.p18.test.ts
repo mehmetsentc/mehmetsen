@@ -66,13 +66,28 @@ describe('source-grouped stories', () => {
     expect(feed).toContain('HOME_FEATURED_RAIL_LIMIT')
     expect(feed).toContain('fillHomeFeaturedRail')
     expect(feed).toContain('sequentialCategoryLatest')
+    expect(feed).toContain('home-featured-manset-block')
     expect(feed).toContain('home-market-ticker')
+    expect(feed).toContain('<MarketTicker attached')
     expect(feed).not.toContain('hidden lg:block')
     expect(feed.indexOf('<SourceStories')).toBeLessThan(feed.indexOf('<FeaturedSlider'))
     expect(feed.indexOf('<FeaturedSlider')).toBeLessThan(feed.indexOf('<MarketTicker'))
     expect(feed).not.toContain('PinterestRanking')
     expect(feed).not.toMatch(/>Akış</)
     expect(feed).not.toContain('Feed 2')
+  })
+})
+
+describe('featured manşet presentation', () => {
+  it('uses full-bleed headline slides + dots, not equal peek cards', () => {
+    const slider = read('src/components/home/FeaturedSlider.tsx')
+    const ticker = read('src/components/home/MarketTicker.tsx')
+    expect(slider).toContain('home-featured-rail--headline')
+    expect(slider).toContain('home-featured-rail-dots')
+    expect(slider).toContain('layout="headline"')
+    expect(slider).not.toContain('layout="featuredRail"')
+    expect(ticker).toContain('home-market-ticker--attached')
+    expect(ticker).toContain('attached')
   })
 })
 

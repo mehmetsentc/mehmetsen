@@ -114,17 +114,19 @@ export function HomeFeed({
     <div className="home-feed home-feed--magazine mx-auto w-full pb-6" data-testid="home-magazine-feed">
       <SourceStories groups={storyGroups} />
 
-      <FeaturedSlider
-        items={featuredRail}
-        isFeatured={!cityMode}
-        limit={HOME_FEATURED_RAIL_LIMIT}
-      />
+      <div className="home-featured-manset-block">
+        <FeaturedSlider
+          items={featuredRail}
+          isFeatured={!cityMode}
+          limit={HOME_FEATURED_RAIL_LIMIT}
+        />
 
-      {!cityMode ? (
-        <div className="mt-1" data-testid="home-market-ticker">
-          <MarketTicker />
-        </div>
-      ) : null}
+        {!cityMode ? (
+          <div data-testid="home-market-ticker">
+            <MarketTicker attached />
+          </div>
+        ) : null}
+      </div>
 
       {magazineBlocks.length > 0 ? (
         magazineBlocks.map((block, index) =>

@@ -16,7 +16,7 @@ describe('immersive ContextRail Phase 1A', () => {
     const akis = read('src/components/feed/smart/FeedV2CategoryNav.tsx')
     const modes = read('src/components/feed/smart/FeedModeNav.tsx')
     expect(rail).toContain('CONTEXT_RAIL_CHIP_ACTIVE')
-    expect(rail).toContain('bg-white text-black')
+    expect(rail).toContain('context-rail__chip--active')
     expect(rail).toContain('CONTEXT_RAIL_CHIP_IDLE')
     expect(home).toContain('contextRailChipClass')
     expect(home).toContain("from '@/components/layout/ContextRail'")

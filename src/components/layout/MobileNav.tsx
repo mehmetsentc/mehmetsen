@@ -47,8 +47,8 @@ function NavSlotChrome({
   return (
     <span
       className={cn(
-        'relative flex h-11 w-11 items-center justify-center rounded-[14px] transition-colors duration-150',
-        active ? 'bg-white/20 text-white' : 'text-white/90'
+        'relative flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgb(0_0_0_/_0.28)] transition-transform duration-150',
+        active ? 'scale-105 text-black' : 'text-black/55'
       )}
     >
       {children}
@@ -88,10 +88,10 @@ const MobileNavLink = memo(function MobileNavLink({
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       onClick={handleClick}
-      className="flex flex-1 items-center justify-center touch-manipulation"
+      className="flex items-center justify-center touch-manipulation"
     >
       <NavSlotChrome active={active} badge={badge}>
-        <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.35 : 1.85} />
+        <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.45 : 2} />
       </NavSlotChrome>
     </Link>
   )
@@ -137,10 +137,10 @@ function MobileNavInner() {
             type="button"
             aria-label="Haber Ekle"
             onClick={() => setSubmitOpen(true)}
-            className="flex flex-1 items-center justify-center touch-manipulation"
+            className="flex items-center justify-center touch-manipulation"
           >
             <NavSlotChrome active={false}>
-              <Plus className="h-[22px] w-[22px]" strokeWidth={2.25} />
+              <Plus className="h-[22px] w-[22px]" strokeWidth={2.35} />
             </NavSlotChrome>
           </button>
 

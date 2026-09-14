@@ -77,8 +77,8 @@ type HomeDiscoveryCardProps = {
   item: HomeDiscoveryItem
   index: number
   featured?: boolean
-  /** Equal-size horizontal rail vs variable-height masonry. */
-  layout?: 'masonry' | 'featuredRail'
+  /** Equal-size rail, full-bleed manşet, or variable-height masonry. */
+  layout?: 'masonry' | 'featuredRail' | 'headline'
   priority?: boolean
   hrefs?: string[]
   navSource?: 'featured' | 'feed' | 'category'
@@ -94,7 +94,8 @@ export function HomeDiscoveryCard({
   navSource = 'feed',
 }: HomeDiscoveryCardProps) {
   const [mediaFailed, setMediaFailed] = useState(false)
-  const isFeaturedRail = layout === 'featuredRail'
+  const isFeaturedRail = layout === 'featuredRail' || layout === 'headline'
+  const isHeadline = layout === 'headline'
   const aspect = isFeaturedRail ? FEATURED_RAIL_ASPECT : discoveryAspectRatio(index, featured)
   const src = !mediaFailed && item.imageUrl?.trim() ? item.imageUrl.trim() : ''
   const showFallback = !src
@@ -104,7 +105,8 @@ export function HomeDiscoveryCard({
     <article
       className={cn(
         'exp-slot home-discovery-slot',
-        isFeaturedRail && 'home-discovery-slot--featured-rail'
+        isFeaturedRail && 'home-discovery-slot--featured-rail',
+        isHeadline && 'home-discovery-slot--headline'
       )}
       data-testid={
         isFeaturedRail
@@ -152,9 +154,11 @@ export function HomeDiscoveryCard({
               alt={item.title}
               fill
               sizes={
-                isFeaturedRail
-                  ? '(max-width: 767px) 78vw, (max-width: 1023px) 42vw, 20rem'
-                  : '(max-width: 1023px) 48vw, 24vw'
+                isHeadline
+                  ? '100vw'
+                  : isFeaturedRail
+                    ? '(max-width: 767px) 78vw, (max-width: 1023px) 42vw, 20rem'
+                    : '(max-width: 1023px) 48vw, 24vw'
               }
               priority={priority}
               fetchPriority={priority ? 'high' : 'auto'}

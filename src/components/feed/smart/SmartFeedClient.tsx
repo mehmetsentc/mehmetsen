@@ -1275,6 +1275,10 @@ export function SmartFeedClient({
     const measured = Math.max(0, Math.round(layoutH - top))
     if (measured <= 0) return
     const prev = cardHeightRef.current
+    // Ignore iOS toolbar show/hide on tap so the card does not jump vertically.
+    if (prev > 0 && Math.abs(prev - measured) < 96) {
+      return
+    }
     cardHeightRef.current = measured
     el.style.setProperty('--feed-card-h', `${measured}px`)
     // Keep immersive shell the same unit as cards (prevents next-card bleed).
@@ -1390,14 +1394,14 @@ export function SmartFeedClient({
       programmaticScrollRef.current = true
       el.scrollTo({
         top: clamped * h,
-        behavior: reducedMotion ? 'auto' : 'smooth',
+        behavior: 'auto',
       })
       setActiveIndex(clamped)
       requestAnimationFrame(() => {
         programmaticScrollRef.current = false
       })
     },
-    [reducedMotion, items.length]
+    [items.length]
   )
 
   useEffect(() => {
@@ -3172,7 +3176,7 @@ function FeedCardWithImpression(props: {
         transform:
           reducedMotion || pageProgress <= 0
             ? undefined
-            : `translate3d(${-pageProgress * 28}%, 0, 0) scale(${1 - pageProgress * 0.035})`,
+            : `translate3d(${-pageProgress * 28}%, 0, 0)`,
         opacity: reducedMotion ? 1 : 1 - pageProgress * 0.18,
         transition:
           (snapAnimating || readerUnderlayProgress > 0 || readerUnderlayAnimating) &&
@@ -3551,40 +3555,10 @@ function FeedCardWithImpression(props: {
         }
         e.currentTarget.addEventListener('pointermove', moveListener, { passive: false })
 
-        // Subtle Reader discovery peek (3–5% from RIGHT) after short still-down qualify.
-        // Reuses the same uncommitted readerSession — not a second Reader.
+        // Tap must not shift the card. Horizontal page-turn starts only after
+        // axis lock; no still-down discovery peek.
         clearPeekTimer()
         peekArmedRef.current = false
-        if (pageTurnOpen && !sheetOpen && !reducedMotion) {
-          const qualifyPointerId = pointerId
-          peekTimerRef.current = window.setTimeout(() => {
-            peekTimerRef.current = null
-            const d = drag.current
-            if (!d || d.pointerId !== qualifyPointerId || d.axis !== 'none') return
-            peekArmedRef.current = true
-            setDragProgress(READER_GESTURE.peekProgress)
-            onOpenReaderProgress?.(READER_GESTURE.peekProgress)
-            onGesturePointerDebug?.({
-              phase: 'move',
-              pointerType: e.pointerType,
-              startX,
-              currentX: startX,
-              startY,
-              currentY: startY,
-              dx: 0,
-              dy: 0,
-              owner: 'NONE',
-              directionValid: true,
-              activated: false,
-              captured: false,
-              progress: READER_GESTURE.peekProgress,
-              reducedMotion,
-              targetTag: targetTagName(e.target),
-              touchAction: readTouchActionForTarget(e.target),
-              lastAction: 'NONE',
-            })
-          }, READER_GESTURE.peekQualifyMs)
-        }
       }}
       onPointerUp={(e) => {
         const d = drag.current

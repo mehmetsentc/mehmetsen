@@ -76,8 +76,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathname.startsWith('/post/'))
   // Overlay chrome: one header row + shared context rail (destination row removed).
   const fallbackChromeHeight = showContextRail
-    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.25rem) + var(--nahaber-context-rail-height, 2.75rem))'
-    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.25rem))'
+    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem) + var(--nahaber-context-rail-height, 3.15rem))'
+    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem))'
 
   useEffect(() => {
     setHydrated(true)
@@ -116,7 +116,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       : ROUTES.LOGIN
 
   const iconBtn =
-    'relative flex h-11 w-9 shrink-0 items-center justify-center touch-manipulation rounded-full text-white/90 transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+    'relative flex h-12 w-11 shrink-0 items-center justify-center touch-manipulation rounded-full text-white transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
   function openSubmit() {
     if (!user) {
@@ -141,8 +141,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-[var(--nahaber-header-row-height,3.25rem)] overflow-x-hidden bg-transparent text-white">
-          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2">
+        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden bg-transparent text-white">
+          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2.5">
             <div className="flex min-w-0 items-center justify-self-start">
               {showBack ? (
                 <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
@@ -153,7 +153,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 className={iconBtn}
                 aria-label="Menüyü aç"
               >
-                <Menu className="h-5 w-5" strokeWidth={2} />
+                <Menu className="h-6 w-6" strokeWidth={2.15} />
               </button>
 
               <Link
@@ -163,8 +163,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               >
                 <BrandWordmark
                   variant="onBrand"
-                  size="sm"
-                  className="!text-[0.95rem] min-[400px]:!text-[1.05rem] sm:!text-[1.15rem]"
+                  size="md"
+                  className="font-extrabold !text-[1.28rem] min-[400px]:!text-[1.42rem] sm:!text-[1.55rem]"
                 />
               </Link>
             </div>
@@ -219,7 +219,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 aria-current={isAra(pathname) ? 'page' : undefined}
                 data-testid="header-nav-ara"
               >
-                <Search className="h-4 w-4" strokeWidth={2.25} />
+                <Search className="h-5 w-5" strokeWidth={2.25} />
               </Link>
               <HeaderMoreMenu
                 profileHref={profileHref}

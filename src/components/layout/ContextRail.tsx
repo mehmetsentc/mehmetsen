@@ -13,11 +13,11 @@ import { cn } from '@/lib/utils'
 export const CONTEXT_RAIL_SLOT_ID = 'nahaber-context-rail'
 
 export const CONTEXT_RAIL_CHIP =
-  'context-rail__chip relative flex min-h-8 shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold leading-none whitespace-nowrap touch-manipulation transition-colors duration-150 select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+  'context-rail__chip relative flex min-h-10 shrink-0 items-center justify-center px-2.5 py-2 text-[0.9375rem] font-semibold leading-none whitespace-nowrap touch-manipulation transition-colors duration-150 select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
-export const CONTEXT_RAIL_CHIP_ACTIVE = 'bg-white text-black shadow-sm'
+export const CONTEXT_RAIL_CHIP_ACTIVE = 'context-rail__chip--active text-white'
 export const CONTEXT_RAIL_CHIP_IDLE =
-  'bg-transparent text-white/72 hover:text-white'
+  'bg-transparent text-white/62 hover:text-white'
 
 export function contextRailChipClass(active: boolean): string {
   return cn(

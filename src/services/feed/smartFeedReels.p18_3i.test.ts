@@ -129,7 +129,7 @@ describe('P18.3I layout hierarchy (source)', () => {
     const rail = readFileSync(join(process.cwd(), 'src/components/layout/ContextRail.tsx'), 'utf8')
     expect(nav).toContain('absolute')
     expect(nav).toContain('contextRailChipClass')
-    expect(rail).toContain('bg-white text-black')
+    expect(rail).toContain('context-rail__chip--active')
   })
 
   it('summary boundary still blocks body fallback', () => {
