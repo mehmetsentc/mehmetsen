@@ -48,9 +48,19 @@ describe('VF2.2 video tabs sit on the player column', () => {
     expect(page).not.toContain('min-h-[100dvh]')
     expect(page).not.toContain('min-h-[min(100dvh,920px)]')
     expect(page).toContain('h-full min-h-0 w-full')
+    expect(page).toContain('nl-video-page')
     const client = read('src/components/video/ReelsPageClient.tsx')
     expect(client).toContain('h-full min-h-0')
     expect(client).not.toContain('min-h-screen')
+  })
+
+  it('desktop /video uses newspaper masthead tabs, mobile keeps overlay pills', () => {
+    const feed = read('src/components/video/VideoFeed.tsx')
+    const tabs = read('src/components/video/VideoSurfaceTabs.tsx')
+    expect(feed).toContain("newspaperVideo ? 'masthead' : 'overlay'")
+    expect(tabs).toContain("placement = 'overlay'")
+    expect(tabs).toContain('absolute inset-x-0')
+    expect(tabs).toContain('nl-video-tabs')
   })
 
   it('immersive /video clears phantom chrome offset so the player can fill 100dvh', () => {

@@ -598,4 +598,97 @@
     font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
     font-weight: 700;
   }
+
+  /* Desktop /video — same masthead column, watch stage under the paper header */
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-shell,
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page {
+    height: auto;
+    min-height: 0;
+    background: transparent;
+    color-scheme: light;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page {
+    --nl-video-chrome: 15.25rem;
+    --reels-viewport-h: min(640px, max(420px, calc(100dvh - var(--nl-video-chrome))));
+    --reels-video-w: min(100%, 720px);
+    --reels-media-stage-max-h: min(52dvh, calc(var(--reels-viewport-h) - 9.5rem));
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page.reels-layout {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    align-items: start;
+    column-gap: 1.75rem;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-player-wrap,
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page.reels-layout > .reels-player-wrap {
+    width: min(100%, 720px);
+    max-width: 100%;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-scroll-container,
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-slide,
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-video-card {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-media-stage {
+    padding-top: 0;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-recommendations {
+    top: 2.4rem;
+    max-height: var(--reels-viewport-h);
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-recommendations-title {
+    color: #111;
+    font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-recommendation-item {
+    border-radius: 0;
+    padding-inline: 0;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-recommendation-item-active {
+    background: rgb(17 17 17 / 0.06);
+    box-shadow: none;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-page .reels-recommendation-thumb {
+    width: 7.5rem;
+    height: 4.25rem;
+    border-radius: 0;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-tabs {
+    border-bottom: 1px solid rgb(17 17 17 / 0.18);
+    margin-bottom: 0.85rem;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-boot {
+    position: relative;
+    inset: auto;
+    min-height: 16rem;
+    justify-content: center;
+    background: transparent;
+    padding: 2rem 0;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-boot__title {
+    color: #111;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper'] .nl-video-boot__meta {
+    color: rgb(17 17 17 / 0.5);
+  }
 }

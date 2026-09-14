@@ -27,6 +27,9 @@ import {
   isFeedV2Pathname,
   isGlobalNavV2Active,
   isImmersiveVideoPathname,
+  isNewspaperDesktopVideo,
+  isPublicVideoPathname,
+  isReelsPathname,
   resolveMobileNavVisible,
   resolveTopNavbarVisible,
 } from '@/lib/feed/reader/shellChrome'
@@ -49,8 +52,9 @@ const SiteFooter = dynamic(
 
 type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
-function getContentVariant(pathname: string): ContentVariant {
-  if (isImmersiveVideoPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
+function getContentVariant(pathname: string, isDesktop: boolean): ContentVariant {
+  if (isReelsPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
+  if (isPublicVideoPathname(pathname)) return isDesktop ? 'newspaper' : 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/admin')) return 'default'
   if (pathname.startsWith('/publisher-studio') || pathname.startsWith('/advertiser')) return 'default'
@@ -98,7 +102,8 @@ const LayoutShell = memo(function LayoutShell({
   const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
   const globalNavV2 = isGlobalNavV2Active()
-  const immersiveVideo = isImmersiveVideoPathname(pathname)
+  const newspaperVideo = isNewspaperDesktopVideo(pathname, isDesktop)
+  const immersiveVideo = isImmersiveVideoPathname(pathname) && !newspaperVideo
 
   useEffect(() => {
     const root = document.documentElement
@@ -166,7 +171,7 @@ const LayoutShell = memo(function LayoutShell({
             >
               <DesktopGlobalScrollHeader />
               {children}
-              {variant === 'newspaper' && (
+              {variant === 'newspaper' && !isPublicVideoPathname(pathname) && (
                 <SiteFooter suppressNewsletter={suppressFooterNewsletter} />
               )}
             </main>
@@ -225,7 +230,8 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
   const { platform, isMobile, isDesktop } = usePlatformLayout()
   const isPublic = isPublicRoute(pathname)
   const readerSurfaceActive = useSmartFeedReaderSurfaceActive()
-  const immersiveStage = isFeedImmersiveStage(pathname)
+  const newspaperVideo = isNewspaperDesktopVideo(pathname, isDesktop)
+  const immersiveStage = isFeedImmersiveStage(pathname) && !newspaperVideo
   const showTopNavbar = resolveTopNavbarVisible({
     pathname,
     readerSurfaceActive,
@@ -234,7 +240,7 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
     pathname,
     readerSurfaceActive,
   })
-  const variant = getContentVariant(pathname)
+  const variant = getContentVariant(pathname, isDesktop)
   const slim = isSlimAppShell(pathname)
 
   return (
@@ -244,7 +250,13 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
           <NetworkProvider>
             <ScrollHeaderProvider>
               {/* Feed V2 stays dark-first; true /reels unchanged. */}
-              <ReelsRouteTheme active={isImmersiveVideoPathname(pathname) || isFeedV2Pathname(pathname)} />
+              <ReelsRouteTheme
+                active={
+                  isReelsPathname(pathname) ||
+                  isFeedV2Pathname(pathname) ||
+                  (isPublicVideoPathname(pathname) && !isDesktop)
+                }
+              />
               <RouteEffects />
               <PageStateEffects />
               <UiEffects />

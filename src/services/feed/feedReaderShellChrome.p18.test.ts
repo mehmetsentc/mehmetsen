@@ -12,6 +12,7 @@ import {
   isFeedV2Pathname,
   isReelsPathname,
   isPublicVideoPathname,
+  isNewspaperDesktopVideo,
 } from '@/lib/feed/reader/shellChrome'
 import {
   canHistoryBackForOpen,
@@ -95,12 +96,34 @@ describe('shell chrome authority', () => {
     )
   })
 
-  it('public /video is immersive without site chrome and does not change /reels identity', () => {
+  it('public /video stays distinct from /reels; mobile chrome stays off', () => {
     expect(isPublicVideoPathname('/video')).toBe(true)
     expect(isReelsPathname('/video')).toBe(false)
+    expect(isNewspaperDesktopVideo('/video', true)).toBe(true)
+    expect(isNewspaperDesktopVideo('/video', false)).toBe(false)
+    expect(isNewspaperDesktopVideo('/reels', true)).toBe(false)
     expect(resolveSiteChromeVisible({ pathname: '/video', readerSurfaceActive: false })).toBe(
       false
     )
+  })
+
+  it('desktop newspaper masthead is wired for /video without treating it as /reels', () => {
+    const header = readFileSync(
+      join(process.cwd(), 'src/components/layout/DesktopGlobalScrollHeader.tsx'),
+      'utf8'
+    )
+    const effects = readFileSync(
+      join(process.cwd(), 'src/components/layout/UiEffects.tsx'),
+      'utf8'
+    )
+    const layout = readFileSync(
+      join(process.cwd(), 'src/components/layout/MainLayoutClient.tsx'),
+      'utf8'
+    )
+    expect(header).not.toMatch(/pathname === ROUTES\.VIDEO/)
+    expect(effects).not.toMatch(/pathname === ROUTES\.VIDEO/)
+    expect(layout).toContain('isNewspaperDesktopVideo')
+    expect(layout).toContain("isDesktop ? 'newspaper' : 'reels'")
   })
 
   it('MainLayoutClient wires MobileNav + top Navbar separately', () => {
