@@ -24,6 +24,8 @@ export type HomeDiscoveryItem = {
   imageUrl?: string
   categoryId?: string
   categoryLabel?: string
+  /** Red manşet badge over the photo (spot / summary / category). */
+  kicker?: string
   source?: string
   likesCount?: number
   videoUrl?: string
@@ -32,6 +34,8 @@ export type HomeDiscoveryItem = {
 
 /** Shared Öne Çıkanlar rail frame — landscape manşet, not a tall portrait tile. */
 export const FEATURED_RAIL_ASPECT = '16 / 9'
+/** Homepage hikâye-altı manşet photo — 4:3 frame, title sits in a black band below. */
+export const FEATURED_HEADLINE_ASPECT = '5 / 4'
 
 /** Natural card height from media treatment + slot — not random, not identical. */
 export function discoveryAspectRatio(index: number, featured: boolean): string {
@@ -56,7 +60,15 @@ export function newsItemToDiscovery(item: NewsItem): HomeDiscoveryItem {
     likesCount: item.likesCount,
     videoUrl: item.videoUrl,
     featured: item.featured === true,
+    kicker: featuredRailKicker(item),
   }
+}
+
+function featuredRailKicker(item: NewsItem): string {
+  const label = newsItemCategoryLabel(item)?.trim() || ''
+  const summary = (item.summary?.trim() || item.description?.trim() || '')
+  if (summary && summary.length <= 42) return summary
+  return label
 }
 
 export function timelinePostToDiscovery(post: TimelinePost): HomeDiscoveryItem {
@@ -96,7 +108,12 @@ export function HomeDiscoveryCard({
   const [mediaFailed, setMediaFailed] = useState(false)
   const isFeaturedRail = layout === 'featuredRail' || layout === 'headline'
   const isHeadline = layout === 'headline'
-  const aspect = isFeaturedRail ? FEATURED_RAIL_ASPECT : discoveryAspectRatio(index, featured)
+  const aspect = isHeadline
+    ? FEATURED_HEADLINE_ASPECT
+    : isFeaturedRail
+      ? FEATURED_RAIL_ASPECT
+      : discoveryAspectRatio(index, featured)
+  const kicker = item.kicker?.trim() || (isHeadline ? item.categoryLabel : undefined)
   const src = !mediaFailed && item.imageUrl?.trim() ? item.imageUrl.trim() : ''
   const showFallback = !src
   const likes = typeof item.likesCount === 'number' && item.likesCount > 0 ? item.likesCount : 0
@@ -162,32 +179,44 @@ export function HomeDiscoveryCard({
               }
               priority={priority}
               fetchPriority={priority ? 'high' : 'auto'}
-              className="object-cover object-center"
+              className={
+                isHeadline ? 'object-cover object-[center_18%]' : 'object-cover object-center'
+              }
               onLoadError={() => setMediaFailed(true)}
             />
           )}
-          <div className="home-discovery-card__scrim" aria-hidden />
+          {!isHeadline ? <div className="home-discovery-card__scrim" aria-hidden /> : null}
+          {isHeadline && kicker ? (
+            <p className="home-discovery-card__kicker">{kicker}</p>
+          ) : null}
           {item.videoUrl ? (
             <span className="home-discovery-card__play" aria-label="Video">
               <Play className="h-3.5 w-3.5 fill-white" />
             </span>
           ) : null}
-          <div className="home-discovery-card__copy">
-            {item.categoryLabel ? (
-              <p className="home-discovery-card__kicker">{item.categoryLabel}</p>
-            ) : null}
-            <h3 className="home-discovery-card__headline">{item.title}</h3>
-            <p className="home-discovery-card__meta">
-              {item.source ? <span>{item.source}</span> : null}
-              {likes > 0 ? (
-                <span className={cn('inline-flex items-center gap-0.5', item.source && 'ml-2')}>
-                  <Heart className="h-3 w-3 fill-white" aria-hidden />
-                  {formatCount(likes)}
-                </span>
+          {isHeadline ? null : (
+            <div className="home-discovery-card__copy">
+              {item.categoryLabel ? (
+                <p className="home-discovery-card__kicker">{item.categoryLabel}</p>
               ) : null}
-            </p>
-          </div>
+              <h3 className="home-discovery-card__headline">{item.title}</h3>
+              <p className="home-discovery-card__meta">
+                {item.source ? <span>{item.source}</span> : null}
+                {likes > 0 ? (
+                  <span className={cn('inline-flex items-center gap-0.5', item.source && 'ml-2')}>
+                    <Heart className="h-3 w-3 fill-white" aria-hidden />
+                    {formatCount(likes)}
+                  </span>
+                ) : null}
+              </p>
+            </div>
+          )}
         </div>
+        {isHeadline ? (
+          <div className="home-discovery-card__copy">
+            <h3 className="home-discovery-card__headline">{item.title}</h3>
+          </div>
+        ) : null}
       </Link>
     </article>
   )

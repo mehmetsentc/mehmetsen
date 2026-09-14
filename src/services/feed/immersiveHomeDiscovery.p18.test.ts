@@ -85,13 +85,18 @@ describe('featured manşet presentation', () => {
     expect(slider).toContain('home-featured-rail--headline')
     expect(slider).toContain('home-featured-rail-dots')
     expect(slider).toContain('layout="headline"')
+    expect(slider).toContain('home-featured-rail__nav')
     expect(slider).not.toContain('layout="featuredRail"')
     const discovery = read('src/components/home/HomeDiscoveryCard.tsx')
     expect(discovery).toContain("FEATURED_RAIL_ASPECT = '16 / 9'")
+    expect(discovery).toContain("FEATURED_HEADLINE_ASPECT = '5 / 4'")
     const css = read('src/app/globals.css')
     expect(css).toMatch(
-      /\.home-featured-rail \.home-discovery-card__media \{[\s\S]*?aspect-ratio:\s*16 \/ 9/
+      /\.home-featured-rail--headline \.home-discovery-card__media \{[\s\S]*?aspect-ratio:\s*5 \/ 4/
     )
+    expect(css).toContain('.home-featured-rail__dot.is-active')
+    expect(css).toMatch(/\.home-featured-rail__dots \{[\s\S]*?background:\s*#2a2a2c/)
+    expect(css).toMatch(/\.home-featured-rail--headline \.home-discovery-card__kicker \{[\s\S]*?background:\s*#e11d2e/)
     expect(ticker).toContain('home-market-ticker--attached')
     expect(ticker).toContain('attached')
   })
