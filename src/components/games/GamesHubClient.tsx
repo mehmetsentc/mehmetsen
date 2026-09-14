@@ -1,19 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { Gamepad2 } from 'lucide-react'
 import { NAHABER_GAMES } from '@/constants/games'
 import { ROUTES } from '@/constants/routes'
 
 export function GamesHubClient() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 pb-16">
+    <div className="nl-editorial desktop-newspaper-shell mx-auto max-w-4xl py-8 pb-16">
       <header className="mb-8">
-        <div className="mb-2 flex items-center gap-2 text-violet-600">
-          <Gamepad2 className="h-6 w-6" />
-          <span className="text-sm font-semibold uppercase tracking-wide">NaHaber Oyun</span>
-        </div>
-        <h1 className="text-3xl font-black text-[rgb(var(--color-text))]">Online Oyunlar</h1>
+        <p className="nl-kicker">Mola</p>
+        <h1 className="nl-editorial__title">Online Oyunlar</h1>
         <p className="mt-2 max-w-2xl text-[rgb(var(--color-muted))]">
           Haber arası molada oynayın — tavla, satranç, sudoku, kelime günü, adam asmaca ve daha
           fazlası. Oynamak için üye girişi gerekir; seviyeler kolaydan zora ilerler.

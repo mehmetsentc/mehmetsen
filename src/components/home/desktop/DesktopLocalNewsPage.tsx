@@ -53,7 +53,7 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
   const { lead, rail, list, gridChunks } = layout
 
   return (
-    <div className="desktop-category-page local-page pb-10">
+    <div className="desktop-category-page desktop-newspaper-shell local-page pb-10">
       <LocalNewsTopPanel state={state} variant="desktop" />
 
       <header className="mb-6">

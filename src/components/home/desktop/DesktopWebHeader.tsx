@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Menu, PanelLeftClose, Search } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -9,7 +8,7 @@ import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreaking
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopPortalFullHeader } from '@/components/home/desktop/DesktopPortalFullHeader'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
-import { DesktopThemeToggle } from '@/components/home/desktop/DesktopThemeToggle'
+import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/uiStore'
@@ -28,11 +27,11 @@ function HeaderSidebarToggle({ compact }: { compact?: boolean }) {
       aria-label={desktopSidebarOpen ? 'Kenar çubuğunu kapat' : 'Kenar çubuğunu aç'}
       aria-expanded={desktopSidebarOpen}
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white',
-        compact ? 'h-9 w-9' : 'h-10 w-10'
+        'flex shrink-0 items-center justify-center text-[rgb(var(--color-text))]/70 transition-colors hover:text-[rgb(var(--color-text))]',
+        compact ? 'h-8 w-8' : 'h-9 w-9'
       )}
     >
-      <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={2} />
+      <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={1.75} />
     </button>
   )
 }
@@ -56,102 +55,45 @@ interface DesktopWebHeaderProps {
   chrome?: 'default' | 'portal'
 }
 
-function HeaderBrandWordmark({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
-  return (
-    <BrandWordmark
-      variant="onBrand"
-      size={size}
-      showDotCom
-      className="font-serif font-bold"
-    />
-  )
-}
-
-/** Content-width header bar — charcoal navy shell (#11192B) in both themes. */
-function HeaderBar({
-  tone,
-  className,
-  innerClassName,
-  children,
-  as: Tag = 'div',
-  'aria-label': ariaLabel,
-}: {
-  tone: 'brand' | 'navy'
-  className?: string
-  innerClassName?: string
-  children: ReactNode
-  as?: 'div' | 'nav'
-  'aria-label'?: string
-}) {
-  return (
-    <Tag
-      className={cn(
-        'desktop-web-header__bar w-full max-w-full',
-        tone === 'brand' ? 'desktop-web-header__bar--brand' : 'desktop-web-header__bar--navy',
-        className
-      )}
-      {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
-    >
-      <div className={cn('desktop-web-header__inner w-full max-w-full', innerClassName)}>
-        {children}
-      </div>
-    </Tag>
-  )
-}
-
 function SubcategoryTabs({
   subcategories,
   tabParent,
-  compact,
 }: {
   subcategories: SubTab[]
   tabParent?: CategoryDef | null
-  compact?: boolean
 }) {
   return (
-    <HeaderBar
-      as="nav"
-      tone="navy"
-      className="border-t border-white/10"
+    <nav
+      className="nl-masthead-subnav"
       aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
-      innerClassName={cn(
-        'flex items-stretch overflow-x-auto scrollbar-hide',
-        compact ? 'px-1' : 'px-3 sm:px-4'
-      )}
     >
-      <div className="flex min-w-max items-stretch scroll-px-3">
+      <Link
+        href={`/kategori/${tabParent!.slug}`}
+        className={cn(
+          'nl-masthead-subnav__link',
+          subcategories.every((s) => !s.active) && 'is-active'
+        )}
+      >
+        Tümü
+      </Link>
+      {subcategories.map((sub) => (
         <Link
-          href={`/kategori/${tabParent!.slug}`}
-          className={cn(
-            'shrink-0 font-semibold uppercase tracking-wide transition-colors',
-            compact ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 text-[12px]',
-            subcategories.every((s) => !s.active)
-              ? 'border-b-2 border-white text-white'
-              : 'text-white/70 hover:text-white'
-          )}
+          key={sub.id}
+          href={sub.href}
+          aria-current={sub.active ? 'page' : undefined}
+          className={cn('nl-masthead-subnav__link', sub.active && 'is-active')}
         >
-          Tümü
+          {sub.name}
         </Link>
-        {subcategories.map((sub) => (
-          <Link
-            key={sub.id}
-            href={sub.href}
-            aria-current={sub.active ? 'page' : undefined}
-            className={cn(
-              'shrink-0 font-semibold uppercase tracking-wide transition-colors',
-              compact ? 'px-3 py-2 text-[11px]' : 'px-4 py-2.5 text-[12px]',
-              sub.active
-                ? 'border-b-2 border-white text-white'
-                : 'text-white/70 hover:text-white'
-            )}
-          >
-            {sub.name}
-          </Link>
-        ))}
-      </div>
-    </HeaderBar>
+      ))}
+    </nav>
   )
 }
+
+const UTILITY_SOCIAL = [
+  { label: 'X', href: process.env.NEXT_PUBLIC_X_URL ?? 'https://x.com/nahabercom' },
+  { label: 'Facebook', href: process.env.NEXT_PUBLIC_FACEBOOK_URL ?? 'https://www.facebook.com/nahabercom' },
+] as const
 
 export function DesktopWebHeader({
   breakingItems = [],
@@ -162,7 +104,7 @@ export function DesktopWebHeader({
   variant = 'full',
   chrome = 'default',
 }: DesktopWebHeaderProps) {
-  const showSubTabs = subcategories && subcategories.length > 0
+  const showSubTabs = Boolean(subcategories && subcategories.length > 0 && tabParent)
 
   if (variant === 'full' && chrome === 'portal') {
     return (
@@ -178,63 +120,32 @@ export function DesktopWebHeader({
     return (
       <header
         className={cn(
-          'desktop-web-header desktop-web-header--compact desktop-web-header--concept-b py-0',
+          'desktop-web-header desktop-web-header--compact desktop-web-header--newspaper py-0',
           className
         )}
         itemScope
         itemType="https://schema.org/WPHeader"
       >
-        <HeaderBar
-          tone="brand"
-          className="text-white"
-          innerClassName="flex items-center gap-2 px-1"
-        >
-          <div className="flex shrink-0 items-center gap-1 py-2 pl-1">
-            <HeaderSidebarToggle compact />
-            <Link
-              href={ROUTES.FEED}
-              className="flex items-center gap-2 pr-2 transition-opacity hover:opacity-90"
-              aria-label="NaHaber Ana Sayfa"
-            >
-              <HeaderBrandWordmark size="sm" />
-            </Link>
-          </div>
-
-          <div className="flex-1" />
-
+        <div className="nl-masthead-compact">
+          <HeaderSidebarToggle compact />
+          <Link
+            href={ROUTES.FEED}
+            className="flex items-center pr-3"
+            aria-label="NaHaber Ana Sayfa"
+          >
+            <BrandWordmark variant="default" size="sm" showDotCom className="font-serif font-bold" />
+          </Link>
+          <nav className="min-w-0 flex-1 overflow-x-auto scrollbar-hide" aria-label="Haber kategorileri">
+            <DesktopSiteNavLinks variant="header-newspaper" className="justify-start" />
+          </nav>
           <Link
             href={ROUTES.SEARCH}
-            className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]"
             aria-label="Haber ara"
           >
             <Search className="h-4 w-4" />
           </Link>
-
-          <NotificationBell
-            variant="onBrand"
-            iconClassName="h-4 w-4"
-            buttonClassName="relative flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white"
-          />
-
-          <DesktopHeaderAuth variant="onBrand" className="shrink-0 self-center" />
-        </HeaderBar>
-
-        <HeaderBar
-          as="nav"
-          tone="navy"
-          aria-label="Haber kategorileri"
-          innerClassName="flex items-center overflow-x-auto scrollbar-hide px-1"
-        >
-          <DesktopSiteNavLinks variant="header-all" className="w-full justify-start" />
-        </HeaderBar>
-
-        {showSubTabs ? (
-          <SubcategoryTabs
-            subcategories={subcategories}
-            tabParent={tabParent}
-            compact
-          />
-        ) : null}
+        </div>
       </header>
     )
   }
@@ -242,69 +153,83 @@ export function DesktopWebHeader({
   return (
     <header
       className={cn(
-        'desktop-web-header desktop-web-header--full desktop-web-header--concept-b mb-6 pb-0',
+        'desktop-web-header desktop-web-header--full desktop-web-header--newspaper mb-6',
         className
       )}
       itemScope
       itemType="https://schema.org/WPHeader"
     >
-      {/* Theme D kömür bar — gazete content sütunu genişliğinde */}
-      <HeaderBar
-        tone="brand"
-        className="relative z-20 text-white"
-        innerClassName="flex items-center gap-3 px-3 py-2.5 sm:px-4"
-      >
-        <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+      <div className="nl-masthead-utility">
+        <div className="nl-masthead-utility__left">
           <HeaderSidebarToggle />
-          <Link
-            href={ROUTES.FEED}
-            className="flex items-center transition-opacity hover:opacity-90"
-            aria-label="NaHaber Ana Sayfa"
-            itemProp="url"
-          >
-            <HeaderBrandWordmark size="lg" />
+          <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
+          <Link href={ROUTES.WEATHER} className="nl-masthead-utility__meta hover:underline">
+            Hava Durumu
           </Link>
         </div>
-
-        <div className="flex-1" />
-
-        <div className="flex shrink-0 items-center gap-2">
+        <p className="nl-masthead-utility__edition">Dijital Gazete · Türkiye</p>
+        <div className="nl-masthead-utility__right">
+          <Link href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
+            Hakkımızda
+          </Link>
+          <Link href="/iletisim" className="nl-masthead-utility__meta hover:underline">
+            İletişim
+          </Link>
+          {UTILITY_SOCIAL.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nl-masthead-utility__meta hover:underline"
+            >
+              {item.label}
+            </a>
+          ))}
           <Link
             href={ROUTES.SEARCH}
-            className="flex h-9 items-center gap-2 rounded-full bg-white px-3.5 text-[13px] font-medium text-slate-500 shadow-sm transition-opacity hover:opacity-95"
+            className="flex h-8 w-8 items-center justify-center text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]"
             aria-label="Haber ara"
           >
-            <Search className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="hidden sm:inline">Ara</span>
+            <Search className="h-4 w-4" />
           </Link>
           <NotificationBell
-            variant="onBrand"
+            variant="default"
             iconClassName="h-4 w-4"
-            buttonClassName="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+            buttonClassName="relative flex h-8 w-8 items-center justify-center text-[rgb(var(--color-text))]/70 transition-colors hover:text-[rgb(var(--color-text))]"
           />
-          <DesktopThemeToggle variant="onBrand" />
-          <DesktopHeaderAuth variant="onBrand" />
+          <DesktopHeaderAuth variant="default" className="shrink-0" />
         </div>
-      </HeaderBar>
+      </div>
 
-      <HeaderBar
-        as="nav"
-        tone="navy"
-        aria-label="Haber kategorileri"
-        innerClassName="flex items-center overflow-x-auto scrollbar-hide px-3 sm:px-4"
+      <Link
+        href={ROUTES.FEED}
+        className="nl-masthead-brand block no-underline"
+        aria-label="NaHaber Ana Sayfa"
+        itemProp="url"
       >
-        <DesktopSiteNavLinks
-          variant="header-all"
-          className="w-full justify-start"
+        <BrandWordmark
+          variant="default"
+          size="xl"
+          showDotCom
+          className="nl-masthead__title font-serif font-black"
         />
-      </HeaderBar>
+      </Link>
+
+      <hr className="nl-rule-thick mb-0" />
+
+      <nav className="nl-masthead-nav" aria-label="Haber kategorileri">
+        <DesktopSiteNavLinks variant="header-newspaper" />
+      </nav>
+
+      <hr className="nl-rule mt-0" />
 
       {showBreaking && breakingItems.length > 0 ? (
         <DesktopBreakingTicker items={breakingItems} />
       ) : null}
 
       {showSubTabs ? (
-        <SubcategoryTabs subcategories={subcategories} tabParent={tabParent} />
+        <SubcategoryTabs subcategories={subcategories!} tabParent={tabParent} />
       ) : null}
     </header>
   )

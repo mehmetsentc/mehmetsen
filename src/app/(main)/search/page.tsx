@@ -215,10 +215,11 @@ function SearchPageContent() {
   const showDiscover = !query.trim() || (!searched && !loading)
 
   return (
-    <div className="space-y-6">
+    <div className="nl-search desktop-newspaper-shell space-y-6">
       <div>
-        <h1 className="page-title">Keşfet</h1>
-        <p className="page-subtitle">Haber, kullanıcı ve video ara</p>
+        <p className="nl-kicker hidden lg:block">Arşiv</p>
+        <h1 className="page-title nl-search__title">Haber Ara</h1>
+        <p className="page-subtitle">Haber, konu ve video ara</p>
       </div>
 
       <form

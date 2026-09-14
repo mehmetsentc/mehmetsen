@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { NewspaperEditorialPage } from '@/components/home/desktop/NewspaperEditorialPage'
 import { getSiteUrl } from '@/lib/seo'
 
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -44,19 +45,17 @@ export default function HakkimizdaPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="mb-6 text-3xl font-bold">Hakkımızda</h1>
-
-        <section className="prose prose-invert max-w-none space-y-6 text-[rgb(var(--color-muted))]">
+      <NewspaperEditorialPage title="Hakkımızda" kicker="Kurumsal">
+        <section className="space-y-6">
           <p>
-            <strong className="text-white">NaHaber</strong>, Türkiye&apos;nin dijital haber
+            <strong>NaHaber</strong>, Türkiye&apos;nin dijital haber
             platformudur. Gündem, siyaset, ekonomi, spor, teknoloji, sağlık, kültür ve dünya
             haberlerini hızlı, doğru ve anlaşılır biçimde okuyucularına ulaştırmayı hedefler.
             Yerel gelişmelerden ulusal gündeme, spordan bilime kadar geniş bir yelpazede
             güncel içerik sunar.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">Misyonumuz</h2>
+          <h2>Misyonumuz</h2>
           <p>
             Vatandaşların güvenilir, hızlı ve kapsamlı haberlere erişimini sağlamak; bilgiye
             dayalı bir kamuoyu oluşumuna katkıda bulunmak. Her haber sayfasında okuyucuya
@@ -64,14 +63,14 @@ export default function HakkimizdaPage() {
             deneyimi vermeyi amaçlarız.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">Vizyonumuz</h2>
+          <h2>Vizyonumuz</h2>
           <p>
             Türkiye&apos;nin güvenilir dijital haber kaynaklarından biri olmak; okuyucuları
             doğru ve zamanında bilgiyle güçlendirmek. Mobil ve masaüstünde hızlı, erişilebilir
             ve şeffaf bir yayın deneyimi sunmak.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">Haber anlayışımız</h2>
+          <h2>Haber anlayışımız</h2>
           <p>
             Haberlerimiz doğrulanabilir kaynaklardan derlenir, editoryal standartlarımız
             çerçevesinde işlenir ve yayınlanır. Bağımsızlık, tarafsızlık, düzeltme politikası
@@ -86,7 +85,7 @@ export default function HakkimizdaPage() {
             sayfasına bakabilirsiniz.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">Editoryal süreç ve teknoloji</h2>
+          <h2>Editoryal süreç ve teknoloji</h2>
           <p>
             NaHaber, haber üretim sürecinde yapay zekâ destekli araçlardan yararlanabilir;
             ancak içerikler otomatik üretilmiş sayfa yığını değildir. Kaynak tarama, taslak
@@ -95,7 +94,7 @@ export default function HakkimizdaPage() {
             olgusal tutarlılığı ve okunabilirliği önceliğimizdir.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">Kategoriler ve yerel haber</h2>
+          <h2>Kategoriler ve yerel haber</h2>
           <p>
             Platform; gündem, siyaset, ekonomi, spor, dünya, teknoloji, sağlık, kültür,
             turizm ve daha birçok kategoride içerik barındırır. Ayrıca şehir bazlı{' '}
@@ -109,7 +108,7 @@ export default function HakkimizdaPage() {
             bölümü ile kullanıcıya günlük yaşamda işe yarayan bilgi sunmayı hedefleriz.
           </p>
 
-          <h2 className="text-xl font-semibold text-white">İletişim</h2>
+          <h2>İletişim</h2>
           <p>
             Görüş, öneri, düzeltme talebi ve reklam iş birlikleri için{' '}
             <Link href="/iletisim" className="text-[rgb(var(--color-brand))] underline">
@@ -126,7 +125,7 @@ export default function HakkimizdaPage() {
             sayfasındadır.
           </p>
         </section>
-      </div>
+      </NewspaperEditorialPage>
     </>
   )
 }

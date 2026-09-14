@@ -14,7 +14,6 @@ import { LazySection } from '@/components/home/LazySection'
 import { DesktopNewsletterSignup } from '@/components/home/desktop/DesktopNewsletterSignup'
 import { DesktopOpinionStrip } from '@/components/home/desktop/DesktopOpinionStrip'
 import { DesktopSectionHeader } from '@/components/home/desktop/DesktopSectionHeader'
-import { NewspaperMasthead } from '@/components/home/desktop/NewspaperMasthead'
 import { DesktopInsideIndex } from '@/components/home/desktop/DesktopInsideIndex'
 import { DesktopPortalHome } from '@/components/home/desktop/DesktopPortalHome'
 import { CityCinemaEventsStrip } from '@/components/city/CityCinemaEventsStrip'
@@ -172,8 +171,6 @@ export function DesktopHomeFeed({
         ? featuredSlider.slice(0, 3)
         : data.latest.slice(0, 3)
 
-    const lastUpdated = data.latest[0]?.publishedAt ?? data.latest[0]?.createdAt
-
     const portalHero = uniqueWithImage([...featuredSlider, ...heroPool, ...data.latest]).slice(0, 5)
     const portalHeroIds = new Set(portalHero.map((item) => item.id))
     const portalManset = uniqueWithImage([...featuredSlider, ...heroPool, ...data.latest])
@@ -215,7 +212,6 @@ export function DesktopHomeFeed({
       trending: uniqueWithImage(trending),
       moreList,
       opinionItems,
-      lastUpdated,
       portalHero,
       portalManset,
       columnists,
@@ -244,12 +240,11 @@ export function DesktopHomeFeed({
 
       {cityMode ? (
         <>
-          <NewspaperMasthead
-            lastUpdated={layout.lastUpdated}
-            cityName={cityName}
-            districtName={districtName}
-            sectionTitle={sectionTitle}
-          />
+          {cityName || districtName || sectionTitle ? (
+            <p className="mb-4 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
+              {sectionTitle || (districtName ? `${districtName} Haberleri` : `${cityName} Haberleri`)}
+            </p>
+          ) : null}
           <DesktopAdBanner slot="leaderboard-top" size="large" className="mb-8" />
         </>
       ) : (

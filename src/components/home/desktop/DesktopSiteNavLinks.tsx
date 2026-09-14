@@ -6,6 +6,7 @@ import {
   getHeaderAllNavItems,
   getHeaderPrimaryNavItems,
   getHeaderSecondaryNavItems,
+  getNewspaperNavItems,
   getSiteNavItems,
 } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -17,11 +18,12 @@ const NAV = getSiteNavItems()
 const PRIMARY = getHeaderPrimaryNavItems()
 const SECONDARY = getHeaderSecondaryNavItems()
 const ALL = getHeaderAllNavItems()
+const NEWSPAPER = getNewspaperNavItems()
 const FOOTER_PRIMARY = NAV.filter((item) => !item.indent && item.id !== 'teve')
 const FOOTER_GROUPED = NAV.filter((item) => item.indent)
 
 interface DesktopSiteNavLinksProps {
-  variant: 'header' | 'footer' | 'header-primary' | 'header-secondary' | 'header-all'
+  variant: 'header' | 'footer' | 'header-primary' | 'header-secondary' | 'header-all' | 'header-newspaper'
   /** masthead: NYT tarzı ortalanmış, ayırıcısız nav (legacy) */
   layout?: 'default' | 'masthead'
   className?: string
@@ -140,6 +142,46 @@ export function DesktopSiteNavLinks({
 
   if (variant === 'header-all') {
     return <HeaderNavList items={ALL} tone="onNavy" className={className} />
+  }
+
+  if (variant === 'header-newspaper') {
+    return (
+      <ul
+        className={cn(
+          'm-0 flex min-w-max list-none items-stretch justify-center p-0',
+          className
+        )}
+      >
+        {NEWSPAPER.map((item) => {
+          const active = isActive(pathname, item.href, item.id)
+          return (
+            <li key={item.id} className="flex items-stretch">
+              <Link
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                title={`${item.label} haberleri`}
+                onClick={() => {
+                  if (item.id === 'feed-v2') clearFeedRestore()
+                }}
+                className={cn(
+                  'shrink-0 px-2.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors xl:px-3',
+                  active
+                    ? 'text-[rgb(var(--color-text))]'
+                    : 'text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]'
+                )}
+              >
+                <span className="relative inline-block whitespace-nowrap">
+                  {item.label}
+                  {active ? (
+                    <span className="absolute inset-x-0 -bottom-2 h-0.5 bg-[#E50914]" />
+                  ) : null}
+                </span>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    )
   }
 
   if (variant === 'header') {

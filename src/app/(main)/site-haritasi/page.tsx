@@ -75,7 +75,7 @@ export default function SiteHaritasiPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <article className="mx-auto max-w-3xl px-4 py-8">
+      <article className="nl-editorial desktop-newspaper-shell mx-auto max-w-3xl py-8">
         <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[rgb(var(--color-muted))]">
           <ol className="flex list-none flex-wrap gap-2 p-0 m-0">
             <li>
@@ -88,7 +88,8 @@ export default function SiteHaritasiPage() {
           </ol>
         </nav>
 
-        <h1 className="mb-2 text-2xl font-black text-[rgb(var(--color-text))]">Site Haritası</h1>
+        <p className="nl-kicker">NaHaber</p>
+        <h1 className="nl-editorial__title mb-2">Site Haritası</h1>
         <p className="mb-8 text-sm leading-relaxed text-[rgb(var(--color-muted))]">
           NaHaber&apos;deki tüm haber kategorileri, önemli sayfalar ve arama motorları için XML
           site haritaları.
