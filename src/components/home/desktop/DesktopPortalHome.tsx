@@ -20,8 +20,14 @@ const PORTAL_CATEGORY_ACCENTS: Record<string, string> = {
   teknoloji: '#EA580C',
 }
 
-function withImage(items: NewsItem[]): NewsItem[] {
-  return items.filter((item) => Boolean(item.imageUrl?.trim()))
+type NewsWithImage = NewsItem & { imageUrl: string }
+
+function hasImage(item: NewsItem): item is NewsWithImage {
+  return Boolean(item.imageUrl?.trim())
+}
+
+function withImage(items: NewsItem[]): NewsWithImage[] {
+  return items.filter(hasImage)
 }
 
 export function DesktopPortalHome({
@@ -49,8 +55,11 @@ export function DesktopPortalHome({
   const railTitle = isColumnists ? 'Yazarlar' : 'En çok okunan'
   const manset = withImage(mansetItems).slice(0, 5)
   const photos = withImage(photoItems).slice(0, 4)
-  const video = videoItem?.imageUrl?.trim() ? videoItem : null
-  const cats = categoryCards.filter((card) => card.item?.imageUrl?.trim())
+  const video = videoItem && hasImage(videoItem) ? videoItem : null
+  const cats = categoryCards.filter(
+    (card): card is { id: string; title: string; item: NewsWithImage } =>
+      Boolean(card.item && hasImage(card.item))
+  )
 
   const go = useCallback(
     (dir: -1 | 1) => {
@@ -184,7 +193,7 @@ export function DesktopPortalHome({
         <section className="desktop-portal-cats" aria-label="Kategoriler">
           {cats.map((card) => {
             const accent = PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)
-            const item = card.item!
+            const item = card.item
             return (
               <article key={card.id} className="desktop-portal-cat" style={{ borderTopColor: accent }}>
                 <Link
