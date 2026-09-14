@@ -76,8 +76,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathname.startsWith('/post/'))
   // Overlay chrome: one header row + shared context rail (destination row removed).
   const fallbackChromeHeight = showContextRail
-    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + 2.75rem + var(--nahaber-context-rail-height, 2.25rem))'
-    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + 2.75rem)'
+    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.25rem) + var(--nahaber-context-rail-height, 2.75rem))'
+    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.25rem))'
 
   useEffect(() => {
     setHydrated(true)
@@ -141,8 +141,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-11 overflow-x-hidden bg-transparent text-white">
-          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-0.5 px-1">
+        <header className="h-[var(--nahaber-header-row-height,3.25rem)] overflow-x-hidden bg-transparent text-white">
+          <div className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2">
             <div className="flex min-w-0 items-center justify-self-start">
               {showBack ? (
                 <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />

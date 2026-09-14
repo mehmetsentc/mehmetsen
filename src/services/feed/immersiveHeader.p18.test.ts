@@ -16,8 +16,9 @@ describe('immersive header Phase 1', () => {
     expect(nav).toContain('mobile-top-chrome--immersive')
     expect(nav).not.toContain('bg-[rgb(var(--header-brand-bg))]')
     expect(css).toContain('.mobile-top-chrome--immersive')
-    expect(css).toContain('background-color: rgb(8 12 18 / 0.96)')
-    expect(css).toContain('2.75rem +')
+    expect(css).toContain('background-color: transparent')
+    expect(css).toContain('--nahaber-header-row-height')
+    expect(nav).toContain('--nahaber-header-row-height')
     expect(css).toContain('backdrop-filter')
     expect(css).toContain("[data-header-bleed='1'] .content-main-newspaper")
     expect(css).toMatch(
