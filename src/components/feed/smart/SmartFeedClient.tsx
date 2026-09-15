@@ -403,6 +403,29 @@ export function SmartFeedClient({
   useEffect(() => {
     void tryLockFeedPortraitOrientation()
   }, [])
+
+  // Defensive chrome unlock: Reader close / cancel / iOS bfcache can leave
+  // smart-feed-reader-open stuck → MobileNav + top Navbar hidden, black band below card.
+  useEffect(() => {
+    if (readerSession) return
+    document.documentElement.classList.remove('smart-feed-reader-open')
+    document.body.classList.remove('smart-feed-reader-open')
+  }, [readerSession])
+
+  useEffect(() => {
+    const unlockIfIdle = () => {
+      if (readerSession) return
+      document.documentElement.classList.remove('smart-feed-reader-open')
+      document.body.classList.remove('smart-feed-reader-open')
+    }
+    window.addEventListener('pageshow', unlockIfIdle)
+    document.addEventListener('visibilitychange', unlockIfIdle)
+    return () => {
+      window.removeEventListener('pageshow', unlockIfIdle)
+      document.removeEventListener('visibilitychange', unlockIfIdle)
+    }
+  }, [readerSession])
+
   useEffect(() => {
     setReaderNavTraceEnabled(readerDebugQuery)
     if (readerDebugQuery) {

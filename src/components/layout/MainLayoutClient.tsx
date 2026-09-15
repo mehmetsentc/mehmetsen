@@ -211,6 +211,24 @@ function RouteEffects() {
     router.replace('/feed-v2')
   }, [pathname, router])
 
+  // iOS Safari bfcache: returning to Feed can restore a document that still has
+  // smart-feed-reader-open from a prior Reader session (cleanup never re-ran).
+  useEffect(() => {
+    if (!isFeedV2Pathname(pathname)) return
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      if (document.documentElement.classList.contains('smart-feed-reader-open') ||
+          document.body.classList.contains('smart-feed-reader-open')) {
+        // SmartFeedClient also clears when readerSession is null; this covers
+        // the case where Feed shell remounts without an active Reader child.
+        document.documentElement.classList.remove('smart-feed-reader-open')
+        document.body.classList.remove('smart-feed-reader-open')
+      }
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [pathname])
+
   return null
 }
 
