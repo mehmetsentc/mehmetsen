@@ -128,6 +128,12 @@
     }
   }
 
+  @media (min-width: 1440px) {
+    :root {
+      --layout-newspaper-max: 1440px;
+    }
+  }
+
   @media (min-width: 1280px) {
     :root {
       --layout-gutter: 1.75rem;
@@ -3333,6 +3339,69 @@
     font-weight: 700;
     line-height: 1.3;
     text-decoration: none;
+  }
+
+  .desktop-portal-scroll {
+    max-height: 22rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .desktop-portal-rail-x {
+    display: flex;
+    gap: 0.85rem;
+    overflow-x: auto;
+    padding-bottom: 0.4rem;
+    scroll-snap-type: x mandatory;
+  }
+
+  .desktop-portal-rail-x > * {
+    flex: 0 0 13.75rem;
+    min-width: 13.75rem;
+    scroll-snap-align: start;
+  }
+
+  .desktop-portal-pulse__list {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+  }
+
+  .desktop-portal-pulse__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.65rem;
+    align-items: baseline;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eef2f7;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .desktop-portal-pulse__val {
+    font-variant-numeric: tabular-nums;
+    color: #111827;
+  }
+
+  .desktop-portal-pulse__row .is-up {
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-pulse__row .is-down {
+    color: #dc2626;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-pulse__wx {
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.75rem;
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .desktop-portal-video-tile .desktop-portal-video__play {

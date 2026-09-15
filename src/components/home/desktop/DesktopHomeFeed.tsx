@@ -31,6 +31,7 @@ import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   HOME_CATEGORY_DESKTOP_CARDS,
+  HOME_CATEGORY_PORTAL_FETCH,
   HOME_CATEGORY_RAIL_GUNDEM_FETCH,
   HOME_FEED_DESKTOP_LAZY_RAILS,
   HOME_FEATURED_LIMIT,
@@ -43,6 +44,15 @@ import type { NaEvent } from '@/types/event'
 const CATEGORY_ROW_1 = ['spor', 'ekonomi', 'teknoloji', 'dunya'] as const
 const CATEGORY_ROW_2 = HOME_FEED_DESKTOP_LAZY_RAILS
 const PORTAL_CATEGORY_ROW = ['siyaset', 'ekonomi', 'dunya', 'spor', 'teknoloji'] as const
+const PORTAL_LAZY_RAILS: HomeCategorySlug[] = [
+  ...HOME_FEED_DESKTOP_LAZY_RAILS,
+  'siyaset',
+  'yasam',
+  'yerel-haber',
+  'asayis',
+  'magazin',
+  'egitim',
+]
 
 function hasArticleImage(item: NewsItem | null | undefined): item is NewsItem {
   return Boolean(item?.imageUrl?.trim())
@@ -103,12 +113,13 @@ export function DesktopHomeFeed({
 }: DesktopHomeFeedProps) {
   const lazyRailIds: HomeCategorySlug[] = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
-    : [...HOME_FEED_DESKTOP_LAZY_RAILS, 'siyaset', 'yasam', 'yerel-haber', 'asayis']
+    : PORTAL_LAZY_RAILS
 
   const categoryRails = useMergedCategoryRails(
     data.categoryRails,
     lazyRailIds,
-    cityMode ? 0 : 1200
+    cityMode ? 0 : 800,
+    cityMode ? 1 : HOME_CATEGORY_PORTAL_FETCH
   )
 
   const layout = useMemo(() => {
@@ -179,39 +190,65 @@ export function DesktopHomeFeed({
     const columnists = uniqueWithImage(
       [...featuredSlider, ...data.latest].filter((item) => item.articleFormat === 'column')
     )
+    const usedIds = new Set<string>([...portalHero, ...portalManset].map((item) => item.id))
+    const takePortalRail = (source: NewsItem[], count: number, imageLead = true): NewsItem[] => {
+      const out: NewsItem[] = []
+      const ordered = imageLead ? [...uniqueWithImage(source), ...source] : source
+      for (const item of ordered) {
+        if (!item?.id || usedIds.has(item.id)) continue
+        if (imageLead && out.length === 0 && !hasArticleImage(item)) continue
+        usedIds.add(item.id)
+        out.push(item)
+        if (out.length >= count) break
+      }
+      return out
+    }
     const portalCategories = PORTAL_CATEGORY_ROW.map((id) => ({
       id,
       title: getCategoryLabel(id),
-      item: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS).find(hasArticleImage) ?? null,
+      items: takePortalRail(sliceCategoryRail(categoryRails, id, 16), HOME_CATEGORY_PORTAL_FETCH),
     }))
-    const takeFresh = (source: NewsItem[], count: number) => uniqueWithImage(source).slice(0, count)
-    const gundemItems = takeFresh([...gundemRail, ...data.latest], 4)
-    const yerelItems = takeFresh(
-      [...sliceCategoryRail(categoryRails, 'yerel-haber', 8), ...data.latest],
-      4
+    const gundemItems = takePortalRail(
+      [...gundemRail, ...data.latest],
+      HOME_CATEGORY_PORTAL_FETCH
     )
-    const thirdPageItems = takeFresh(
-      [...sliceCategoryRail(categoryRails, 'asayis', 8), ...data.latest],
-      4
+    const yerelItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'yerel-haber', 16),
+      HOME_CATEGORY_PORTAL_FETCH
     )
-    const kulturItems = takeFresh(
-      [...sliceCategoryRail(categoryRails, 'kultur', 6), ...data.latest],
-      2
+    const thirdPageItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'asayis', 16),
+      HOME_CATEGORY_PORTAL_FETCH
     )
-    const saglikItems = takeFresh(
-      [...sliceCategoryRail(categoryRails, 'saglik', 6), ...data.latest],
-      2
+    const kulturItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'kultur', 16),
+      HOME_CATEGORY_PORTAL_FETCH
     )
-    const videoItems = takeFresh(
+    const saglikItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'saglik', 16),
+      HOME_CATEGORY_PORTAL_FETCH
+    )
+    const turizmItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'turizm', 16),
+      HOME_CATEGORY_PORTAL_FETCH
+    )
+    const yasamItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'yasam', 16),
+      HOME_CATEGORY_PORTAL_FETCH
+    )
+    const magazinItems = takePortalRail(
+      sliceCategoryRail(categoryRails, 'magazin', 16),
+      HOME_CATEGORY_PORTAL_FETCH
+    )
+    const videoItems = takePortalRail(
       [...data.trending, ...data.latest, ...featuredSlider].filter((item) => Boolean(item.videoUrl)),
-      4
+      HOME_CATEGORY_PORTAL_FETCH
     )
     const videoItem = videoItems[0] ?? null
-    const photoItems = takeFresh(
+    const photoItems = takePortalRail(
       [
-        ...sliceCategoryRail(categoryRails, 'kultur', 8),
-        ...sliceCategoryRail(categoryRails, 'magazin', 8),
-        ...data.latest,
+        ...sliceCategoryRail(categoryRails, 'kultur', 16),
+        ...sliceCategoryRail(categoryRails, 'magazin', 16),
       ],
       4
     )
@@ -246,6 +283,9 @@ export function DesktopHomeFeed({
       thirdPageItems,
       kulturItems,
       saglikItems,
+      turizmItems,
+      yasamItems,
+      magazinItems,
     }
   }, [data, categoryRails, cityMode])
 
@@ -290,6 +330,9 @@ export function DesktopHomeFeed({
           thirdPageItems={layout.thirdPageItems}
           kulturItems={layout.kulturItems}
           saglikItems={layout.saglikItems}
+          turizmItems={layout.turizmItems}
+          yasamItems={layout.yasamItems}
+          magazinItems={layout.magazinItems}
         />
       )}
 

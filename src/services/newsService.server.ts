@@ -34,6 +34,7 @@ import { getCanonicalNewsBySlug } from '@/lib/canonical/canonicalEligibility'
 import {
   HOME_CATEGORY_RAILS,
   HOME_CATEGORY_RAIL_FETCH,
+  HOME_CATEGORY_PORTAL_FETCH,
   HOME_CATEGORY_RAIL_GUNDEM_FETCH,
   HOME_CATEGORY_DESKTOP_CARDS,
   HOME_FEED_SSR_RAILS,
@@ -713,7 +714,11 @@ export async function getHomeFeedInitialData(): Promise<HomeFeedInitialData> {
     { eligible: homePool.length, poolSize: pool.length }
   )
   // Kategori rayları featured’ı dışlamaz — haber hem Öne Çıkan’da hem kendi kategorisinde.
-  const categoryRails = await fillCategoryRails(homePool, HOME_FEED_SSR_RAILS, HOME_CATEGORY_RAIL_FETCH)
+  const categoryRails = await fillCategoryRails(
+    homePool,
+    HOME_FEED_SSR_RAILS,
+    HOME_CATEGORY_PORTAL_FETCH
+  )
 
   const slimRails: HomeFeedInitialData['categoryRails'] = {}
   for (const [key, items] of Object.entries(categoryRails)) {
@@ -754,7 +759,7 @@ export async function getHomeCategoryRailsLazy(
           (HOME_CATEGORY_RAILS as readonly string[]).includes(c)
         )
       : HOME_CATEGORY_RAILS.filter((c) => !HOME_FEED_SSR_RAILS.includes(c))
-  const rails = await fillCategoryRails(pool, wanted, HOME_CATEGORY_RAIL_FETCH)
+  const rails = await fillCategoryRails(pool, wanted, HOME_CATEGORY_PORTAL_FETCH)
   const slim: Partial<Record<HomeCategorySlug, NewsItem[]>> = {}
   for (const [key, items] of Object.entries(rails)) {
     slim[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])

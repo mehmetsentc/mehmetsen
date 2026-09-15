@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Mail, Play } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
+import { DesktopPortalPulse } from '@/components/home/desktop/DesktopPortalPulse'
 import { formatNewsClockTime } from '@/components/home/desktop/formatNewsDate'
 import { getCategoryAccentColor } from '@/lib/categoryAccent'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -74,29 +75,37 @@ function PortalLeadColumn({
   title: string
   href: string
   accent: string
-  items: NewsWithImage[]
+  items: NewsItem[]
 }) {
-  const [lead, ...rest] = items
-  if (!lead) return null
+  const imaged = withImage(items)
+  const lead = imaged[0]
+  const rest = items.filter((item) => item.id !== lead?.id).slice(0, 9)
+  if (!lead && rest.length === 0) return null
 
   return (
     <article className="desktop-portal-cat" style={{ borderTopColor: accent }}>
       <Link href={href} className="desktop-portal-cat__kicker" style={{ color: accent }}>
         {title}
       </Link>
-      <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
-        <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
-      </Link>
-      <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
-        {lead.title}
-      </Link>
-      <ul className="desktop-portal-extra">
-        {rest.slice(0, 3).map((item) => (
-          <li key={item.id}>
-            <Link href={newsItemDetailHref(item)}>{item.title}</Link>
-          </li>
-        ))}
-      </ul>
+      {lead ? (
+        <>
+          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
+            <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
+          </Link>
+          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
+            {lead.title}
+          </Link>
+        </>
+      ) : null}
+      {rest.length > 0 ? (
+        <ul className="desktop-portal-extra desktop-portal-scroll">
+          {rest.map((item) => (
+            <li key={item.id}>
+              <Link href={newsItemDetailHref(item)}>{item.title}</Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   )
 }
@@ -115,12 +124,15 @@ export function DesktopPortalHome({
   videoItems = [],
   kulturItems = [],
   saglikItems = [],
+  turizmItems = [],
+  yasamItems = [],
+  magazinItems = [],
 }: {
   heroSlides: NewsItem[]
   mansetItems: NewsItem[]
   columnists: NewsItem[]
   mostRead: NewsItem[]
-  categoryCards: { id: string; title: string; item: NewsItem | null }[]
+  categoryCards: { id: string; title: string; items: NewsItem[] }[]
   videoItem: NewsItem | null
   photoItems: NewsItem[]
   gundemItems?: NewsItem[]
@@ -129,6 +141,9 @@ export function DesktopPortalHome({
   videoItems?: NewsItem[]
   kulturItems?: NewsItem[]
   saglikItems?: NewsItem[]
+  turizmItems?: NewsItem[]
+  yasamItems?: NewsItem[]
+  magazinItems?: NewsItem[]
 }) {
   const slides = withImage(heroSlides).slice(0, 5)
   const [active, setActive] = useState(0)
@@ -138,19 +153,19 @@ export function DesktopPortalHome({
   const railTitle = isColumnists ? 'Yazarlar' : 'En çok okunan'
   const manset = withImage(mansetItems).slice(0, 5)
   const photos = withImage(photoItems).slice(0, 4)
-  const gundem = withImage(gundemItems).slice(0, 4)
-  const yerel = withImage(yerelItems).slice(0, 4)
-  const thirdPage = withImage(thirdPageItems).slice(0, 4)
+  const gundem = withImage(gundemItems).slice(0, 10)
+  const yerel = yerelItems.slice(0, 10)
+  const thirdPage = thirdPageItems.slice(0, 10)
   const videos = withImage(videoItems.length > 0 ? videoItems : videoItem ? [videoItem] : []).slice(
     0,
-    4
+    10
   )
-  const kultur = withImage(kulturItems).slice(0, 2)
-  const saglik = withImage(saglikItems).slice(0, 2)
-  const cats = categoryCards.filter(
-    (card): card is { id: string; title: string; item: NewsWithImage } =>
-      Boolean(card.item && hasImage(card.item))
-  )
+  const kultur = kulturItems.slice(0, 10)
+  const saglik = saglikItems.slice(0, 10)
+  const turizm = turizmItems.slice(0, 10)
+  const yasam = yasamItems.slice(0, 10)
+  const magazin = magazinItems.slice(0, 10)
+  const cats = categoryCards.filter((card) => card.items.length > 0)
 
   const go = useCallback(
     (dir: -1 | 1) => {
@@ -166,6 +181,7 @@ export function DesktopPortalHome({
       data-testid="desktop-portal-home"
       data-gundem-count={gundem.length}
       data-yerel-count={yerel.length}
+      data-third-count={thirdPage.length}
     >
       <section className="desktop-portal-stage" aria-label="Manşet">
         <aside className="desktop-portal-manset" aria-label="Günün manşetleri">
@@ -287,45 +303,26 @@ export function DesktopPortalHome({
 
       {cats.length > 0 ? (
         <section className="desktop-portal-cats" aria-label="Kategoriler">
-          {cats.map((card) => {
-            const accent = PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)
-            const item = card.item
-            return (
-              <article key={card.id} className="desktop-portal-cat" style={{ borderTopColor: accent }}>
-                <Link
-                  href={ROUTES.CATEGORY(card.id)}
-                  className="desktop-portal-cat__kicker"
-                  style={{ color: accent }}
-                >
-                  {card.title}
-                </Link>
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                  <SafeNewsImage
-                    src={item.imageUrl}
-                    alt=""
-                    fill
-                    sizes="240px"
-                    className="object-cover"
-                  />
-                </Link>
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
-                  {item.title}
-                </Link>
-                {item.summary || item.description ? (
-                  <p className="desktop-portal-cat__dek">{item.summary || item.description}</p>
-                ) : null}
-              </article>
-            )
-          })}
+          {cats.map((card) => (
+            <PortalLeadColumn
+              key={card.id}
+              title={card.title}
+              href={ROUTES.CATEGORY(card.id)}
+              accent={PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)}
+              items={card.items}
+            />
+          ))}
         </section>
       ) : null}
+
+      <DesktopPortalPulse />
 
       {gundem.length > 0 ? (
         <section className="desktop-portal-band" aria-label="Gündem">
           <PortalBandHead title="Gündem" href={ROUTES.CATEGORY('gundem')} more="Tümü" />
-          <div className="desktop-portal-grid-4">
+          <div className="desktop-portal-rail-x">
             {gundem.map((item) => (
-              <PortalTile key={item.id} item={item} />
+              <PortalTile key={item.id} item={item} sizes="200px" />
             ))}
           </div>
         </section>
@@ -335,26 +332,20 @@ export function DesktopPortalHome({
         <section className="desktop-portal-band" aria-label="Yerel ve 3. Sayfa">
           <div className="desktop-portal-split">
             {yerel.length > 0 ? (
-              <div>
-                <PortalBandHead title="Yerel" href={ROUTES.CATEGORY('yerel-haber')} more="Tümü" />
-                <PortalLeadColumn
-                  title="Yerel"
-                  href={ROUTES.CATEGORY('yerel-haber')}
-                  accent={getCategoryAccentColor('yerel-haber')}
-                  items={yerel}
-                />
-              </div>
+              <PortalLeadColumn
+                title="Yerel"
+                href={ROUTES.CATEGORY('yerel-haber')}
+                accent={getCategoryAccentColor('yerel-haber')}
+                items={yerel}
+              />
             ) : null}
             {thirdPage.length > 0 ? (
-              <div>
-                <PortalBandHead title="3. Sayfa" href={ROUTES.CATEGORY('asayis')} more="Tümü" />
-                <PortalLeadColumn
-                  title="3. Sayfa"
-                  href={ROUTES.CATEGORY('asayis')}
-                  accent={getCategoryAccentColor('asayis')}
-                  items={thirdPage}
-                />
-              </div>
+              <PortalLeadColumn
+                title="3. Sayfa"
+                href={ROUTES.CATEGORY('asayis')}
+                accent={getCategoryAccentColor('asayis')}
+                items={thirdPage}
+              />
             ) : null}
           </div>
         </section>
@@ -363,7 +354,7 @@ export function DesktopPortalHome({
       {videos.length > 0 ? (
         <section className="desktop-portal-band" aria-label="Video">
           <PortalBandHead title="Video" href={ROUTES.VIDEO} more="Tüm videolar" />
-          <div className="desktop-portal-videos">
+          <div className="desktop-portal-rail-x">
             {videos.map((item) => (
               <article key={item.id} className="desktop-portal-video-tile">
                 <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
@@ -391,25 +382,55 @@ export function DesktopPortalHome({
         <section className="desktop-portal-band" aria-label="Kültür ve sağlık">
           <div className="desktop-portal-split">
             {kultur.length > 0 ? (
-              <div>
-                <PortalBandHead title="Kültür" href={ROUTES.CATEGORY('kultur')} more="Tümü" />
-                <div className="desktop-portal-grid-2">
-                  {kultur.map((item) => (
-                    <PortalTile key={item.id} item={item} />
-                  ))}
-                </div>
-              </div>
+              <PortalLeadColumn
+                title="Kültür"
+                href={ROUTES.CATEGORY('kultur')}
+                accent={getCategoryAccentColor('kultur')}
+                items={kultur}
+              />
             ) : null}
             {saglik.length > 0 ? (
-              <div>
-                <PortalBandHead title="Sağlık" href={ROUTES.CATEGORY('saglik')} more="Tümü" />
-                <div className="desktop-portal-grid-2">
-                  {saglik.map((item) => (
-                    <PortalTile key={item.id} item={item} />
-                  ))}
-                </div>
-              </div>
+              <PortalLeadColumn
+                title="Sağlık"
+                href={ROUTES.CATEGORY('saglik')}
+                accent={getCategoryAccentColor('saglik')}
+                items={saglik}
+              />
             ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {turizm.length > 0 || yasam.length > 0 ? (
+        <section className="desktop-portal-band" aria-label="Turizm ve yaşam">
+          <div className="desktop-portal-split">
+            {turizm.length > 0 ? (
+              <PortalLeadColumn
+                title="Turizm"
+                href={ROUTES.CATEGORY('turizm')}
+                accent={getCategoryAccentColor('turizm')}
+                items={turizm}
+              />
+            ) : null}
+            {yasam.length > 0 ? (
+              <PortalLeadColumn
+                title="Yaşam"
+                href={ROUTES.CATEGORY('yasam')}
+                accent={getCategoryAccentColor('yasam')}
+                items={yasam}
+              />
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {withImage(magazin).length > 0 ? (
+        <section className="desktop-portal-band" aria-label="Magazin">
+          <PortalBandHead title="Magazin" href={ROUTES.CATEGORY('magazin')} more="Tümü" />
+          <div className="desktop-portal-rail-x">
+            {withImage(magazin).map((item) => (
+              <PortalTile key={item.id} item={item} sizes="200px" />
+            ))}
           </div>
         </section>
       ) : null}
