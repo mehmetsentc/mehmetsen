@@ -4,21 +4,22 @@ import { useEffect, useMemo, useState } from 'react'
 import type { HomeCategorySlug, NewsItem } from '@/types/newsItem'
 
 /**
- * Merges SSR category rails with a deferred fetch for missing categories.
+ * Merges SSR category rails with a deferred fetch for missing / thin categories.
  */
 export function useMergedCategoryRails(
   initialRails: Partial<Record<HomeCategorySlug, NewsItem[]>>,
   ensureCategories: readonly HomeCategorySlug[],
-  deferMs = 2500
+  deferMs = 2500,
+  minCount = 1
 ): Partial<Record<HomeCategorySlug, NewsItem[]>> {
   const [extraRails, setExtraRails] = useState<Partial<Record<HomeCategorySlug, NewsItem[]>>>({})
 
   const missingKey = useMemo(
     () =>
       ensureCategories
-        .filter((id) => !initialRails[id]?.length)
+        .filter((id) => (initialRails[id]?.length ?? 0) < minCount)
         .join(','),
-    [ensureCategories, initialRails]
+    [ensureCategories, initialRails, minCount]
   )
 
   useEffect(() => {
@@ -46,11 +47,17 @@ export function useMergedCategoryRails(
     }
   }, [missingKey, deferMs])
 
-  return useMemo(
-    () => ({
-      ...extraRails,
-      ...initialRails,
-    }),
-    [extraRails, initialRails]
-  )
+  return useMemo(() => {
+    const merged: Partial<Record<HomeCategorySlug, NewsItem[]>> = { ...initialRails }
+    for (const [key, items] of Object.entries(extraRails) as [
+      HomeCategorySlug,
+      NewsItem[] | undefined,
+    ][]) {
+      const current = merged[key]
+      if (!current?.length || (items?.length ?? 0) > current.length) {
+        merged[key] = items
+      }
+    }
+    return merged
+  }, [extraRails, initialRails])
 }

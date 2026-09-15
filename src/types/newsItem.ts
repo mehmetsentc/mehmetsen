@@ -122,6 +122,8 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
 export const HOME_CATEGORY_RAIL_FETCH = 5
 export const HOME_CATEGORY_RAIL_DISPLAY = 5
 export const HOME_CATEGORY_RAIL_MIN = 4
+/** Masaüstü gazete gövdesi — her kategori bandında son 10 haber. */
+export const HOME_CATEGORY_PORTAL_FETCH = 10
 
 /**
  * Masaüstü hero/alt bölümler için Gündem'den ekstra haber gerekir.
