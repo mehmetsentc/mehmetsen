@@ -2,9 +2,12 @@
  * Feed V2 / Reader shell chrome authority.
  * Single source of truth for Navbar + MobileNav visibility on Feed surfaces.
  *
- * Pinterest chrome (Global Nav V2 default ON):
+ * Global Nav V2 (default ON):
  * - Top Navbar on /feed-v2 except while Reader surface is active
- * - MobileNav (Ana Sayfa / Akış / Profil) on unless reels, reader, or admin
+ * - Bottom MobileNav (Ana Sayfa / Akış / Profil) on unless reels, reader, or admin
+ *
+ * Legacy / kill-switch (GLOBAL_NAV_V2=0):
+ * - MobileNav on unless reels, reader, or admin
  */
 
 import { ROUTES } from '@/constants/routes'
@@ -71,8 +74,8 @@ export function resolveTopNavbarVisible(opts: {
 /**
  * Global MobileNav / bottom navbar visibility.
  *
- * Pinterest chrome: Ana Sayfa / Akış / Profil live in the floating bottom bar.
- * Hidden on true reels/video and while Feed Reader owns the surface.
+ * Pinterest dock: Ana Sayfa / Akış / Profil.
+ * Hidden on true reels/video, while Feed Reader owns the surface, and admin.
  */
 export function resolveMobileNavVisible(opts: {
   pathname: string

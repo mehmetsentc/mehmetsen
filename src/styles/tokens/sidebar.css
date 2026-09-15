@@ -106,15 +106,18 @@
 
 .app-sidebar__icon {
   flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  color: rgb(var(--text-tertiary));
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgb(var(--text-tertiary) / 0.55);
   transition: color 120ms ease;
 }
 
-.app-sidebar__item:hover .app-sidebar__icon,
+.app-sidebar__item:hover .app-sidebar__icon {
+  color: rgb(var(--text-tertiary));
+}
+
 .app-sidebar__item.is-active .app-sidebar__icon {
-  color: rgb(var(--sb-accent));
+  color: rgb(var(--brand-500));
 }
 
 .app-sidebar__item[data-accent='brand'] { --sb-accent: var(--brand-500); }

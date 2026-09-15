@@ -2408,6 +2408,29 @@
     container-name: nahaber-article;
   }
 
+  .article-reader-shell {
+    background: var(--reader-page-bg, #0c0c0e);
+    color: var(--reader-page-text, #f4f1ea);
+    border-radius: 0;
+  }
+
+  .article-reader-shell .news-article-card {
+    background: var(--reader-page-elevated, #141417);
+    border-color: var(--reader-page-edge, rgba(255, 255, 255, 0.1));
+  }
+
+  .article-reader-shell .news-article-body,
+  .article-reader-shell .article-prose,
+  .article-reader-shell .news-body,
+  .article-reader-shell .news-body p {
+    color: var(--reader-prose-text, #e8e6e1);
+  }
+
+  .article-reader-shell a {
+    color: var(--reader-accent, #e11d2e);
+  }
+
+
   .article-toc-rail {
     display: none;
   }

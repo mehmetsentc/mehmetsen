@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -56,6 +56,11 @@ interface FeedDiscoveryRailProps {
    * `reader` — vertical Reader end-of-article recommendations (natural scroll flow).
    */
   variant?: 'feed' | 'reader'
+  /**
+   * When rail is empty/error (or smart-feed unavailable), render this instead.
+   * Used by canonical /haber so related posts remain when rails cannot load.
+   */
+  fallback?: ReactNode
 }
 
 /**
@@ -70,6 +75,7 @@ export function FeedDiscoveryRail({
   onOpenArticle,
   onSeeAll,
   variant = 'feed',
+  fallback = null,
 }: FeedDiscoveryRailProps) {
   const [items, setItems] = useState<DiscoveryRailItem[]>([])
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>('idle')
@@ -161,8 +167,11 @@ export function FeedDiscoveryRail({
     return () => io.disconnect()
   }, [items, category, isReader])
 
-  // Empty / error: no broken box (Reader + Feed).
-  if (loadState === 'empty' || loadState === 'error' || !items.length) return null
+  // Empty / error: optional fallback (canonical /haber). Loading stays quiet.
+  if (loadState === 'empty' || loadState === 'error' || (loadState === 'ok' && !items.length)) {
+    return fallback ? <>{fallback}</> : null
+  }
+  if (!items.length) return null
 
   const heading = isReader ? 'Bu konuda daha fazlası' : formatFeedHighlightsHeading(category)
   const aria = isReader ? 'Bu konuda daha fazlası' : heading

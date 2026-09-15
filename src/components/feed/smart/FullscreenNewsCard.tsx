@@ -165,7 +165,10 @@ export function FullscreenNewsCard({
   const [videoError, setVideoError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
-  const [typedHeadline, setTypedHeadline] = useState(item.headline)
+  const [typedHeadline, setTypedHeadline] = useState(() => (isActive ? '' : item.headline))
+  const [headlineDone, setHeadlineDone] = useState(() => !isActive)
+  const [headlineReveal, setHeadlineReveal] = useState(true)
+  const [showCursor, setShowCursor] = useState(false)
   const [motionOk, setMotionOk] = useState(true)
   const [swipeCoachNudgePx, setSwipeCoachNudgePx] = useState(0)
 
@@ -174,6 +177,7 @@ export function FullscreenNewsCard({
   const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
+  const typeTimerRef = useRef<number | null>(null)
 
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const playableVideo = resolveFeedCardVideo(item.video)
@@ -209,10 +213,78 @@ export function FullscreenNewsCard({
     return () => mq.removeEventListener?.('change', sync)
   }, [])
 
-  // Headline paints in full — typewriter caused layout jump on every card.
+  // Typewriter: only when card becomes active.
+  // Reduced motion → short opacity reveal (no multi-step daktilo).
   useEffect(() => {
-    setTypedHeadline(item.headline)
-  }, [item.headline, item.articleId])
+    const clearType = () => {
+      if (typeTimerRef.current != null) {
+        window.clearTimeout(typeTimerRef.current)
+        typeTimerRef.current = null
+      }
+    }
+
+    clearType()
+
+    if (!isActive) {
+      setTypedHeadline(item.headline)
+      setHeadlineDone(true)
+      setShowCursor(false)
+      setHeadlineReveal(true)
+      return
+    }
+
+    const full = item.headline || ''
+    if (!full) {
+      setTypedHeadline('')
+      setHeadlineDone(true)
+      setShowCursor(false)
+      setHeadlineReveal(true)
+      return
+    }
+
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (reduced) {
+      // Soft reveal — no character typing against OS preference.
+      setTypedHeadline(full)
+      setShowCursor(false)
+      setHeadlineDone(false)
+      setHeadlineReveal(false)
+      typeTimerRef.current = window.setTimeout(() => {
+        setHeadlineReveal(true)
+        setHeadlineDone(true)
+        typeTimerRef.current = null
+      }, 180)
+      return clearType
+    }
+
+    // Cap total typewriter ~1.6s regardless of length
+    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
+    setTypedHeadline('')
+    setHeadlineDone(false)
+    setHeadlineReveal(true)
+    setShowCursor(true)
+
+    let i = 0
+    const tick = () => {
+      i += 1
+      setTypedHeadline(full.slice(0, i))
+      if (i >= full.length) {
+        setHeadlineDone(true)
+        setShowCursor(false)
+        typeTimerRef.current = null
+        return
+      }
+      typeTimerRef.current = window.setTimeout(tick, step)
+    }
+    // slight delay so media expand / chrome settle
+    typeTimerRef.current = window.setTimeout(tick, 140)
+
+    return clearType
+  }, [isActive, item.headline, item.articleId, skin.typeMs])
+
 
   const triggerDoubleTapLike = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -613,12 +685,22 @@ export function FullscreenNewsCard({
               <h2
                 className={cn(
                   'wrap-words text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
-                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]'
+                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]',
+                  'transition-opacity duration-200',
+                  headlineReveal ? 'opacity-100' : 'opacity-0'
                 )}
                 data-testid="smart-feed-headline"
+                data-feed-typewriter={showCursor ? '1' : '0'}
                 style={{ marginTop: 'var(--feed-v2-gap-cat-headline)' }}
               >
                 {typedHeadline}
+                {showCursor ? (
+                  <span
+                    className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
+                    style={{ background: 'var(--feed-skin-accent)' }}
+                    aria-hidden
+                  />
+                ) : null}
               </h2>
               {item.summary ? (
                 <p
@@ -627,7 +709,7 @@ export function FullscreenNewsCard({
                     'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-white',
                     // With highlights: keep rail discoverable — presentation clamp only.
                     showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
-                    'opacity-100'
+                    headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
                   data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}
