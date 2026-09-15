@@ -52,8 +52,11 @@ function NavSlotChrome({
   return (
     <span
       className={cn(
-        'relative flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgb(0_0_0_/_0.28)] transition-transform duration-150',
-        active ? 'scale-105 text-black' : 'text-black/55'
+        'relative flex h-12 w-12 items-center justify-center rounded-[14px] transition-colors duration-150',
+        /* Legacy MobileNav (Global Nav V2 kill-switch only): P19 red / transparent. */
+        active
+          ? 'bg-transparent text-[rgb(var(--brand-500))]'
+          : 'bg-transparent text-white/45'
       )}
     >
       {children}

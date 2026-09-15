@@ -1,17 +1,33 @@
 import { cn } from '@/lib/utils'
+import type { CSSProperties } from 'react'
 
 interface NewsArticlePageProps {
   children: React.ReactNode
   className?: string
   id?: string
   articleId?: string
+  style?: CSSProperties
+  'data-testid'?: string
 }
 
 /** Responsive article column — phone → TV, sidebar open/closed aware via CSS. */
-export function NewsArticlePage({ children, className, id, articleId }: NewsArticlePageProps) {
+export function NewsArticlePage({
+  children,
+  className,
+  id,
+  articleId,
+  style,
+  'data-testid': testId,
+}: NewsArticlePageProps) {
   return (
     <div className="nahaber-article-frame">
-      <div id={id} className={cn('news-article-page', className)} data-article-id={articleId}>
+      <div
+        id={id}
+        className={cn('news-article-page', className)}
+        data-article-id={articleId}
+        data-testid={testId}
+        style={style}
+      >
         {children}
       </div>
     </div>

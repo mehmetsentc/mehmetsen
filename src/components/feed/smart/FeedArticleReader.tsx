@@ -71,6 +71,7 @@ import {
   FEED_READER_EASING,
   FEED_READER_HERO_LOAD_TIMEOUT_MS,
 } from '@/lib/feed/reader/tokens'
+import { ARTICLE_READER_SHELL_CLASS } from '@/lib/feed/reader/articleReaderPresentation'
 import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
 import {
   applyHeroRuntimeEvent,
@@ -1087,8 +1088,10 @@ export function FeedArticleReader({
       <div
         className={cn(
           'feed-reader-article relative flex h-[100dvh] flex-col overflow-hidden md:my-0',
+          ARTICLE_READER_SHELL_CLASS,
           FEED_READER_SURFACE_CLASS
         )}
+        data-article-reader-skin="feed-v2"
         style={{
           ...FEED_V2_CHROME_CSS_VARS,
           ...styleVars,

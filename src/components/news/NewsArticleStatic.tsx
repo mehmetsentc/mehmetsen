@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -18,11 +18,10 @@ import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
 import { ArticleGallery } from '@/components/news/ArticleGallery'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
-import { ArticleRelatedGridStatic } from '@/components/news/ArticleRelatedGridStatic'
 import { ArticleRelatedLinks } from '@/components/news/ArticleRelatedLinks'
+import { HaberEndRecommendations } from '@/components/news/HaberEndRecommendations'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
-import { ArticleTOC } from '@/components/news/ArticleTOC'
 import { NewsletterSignup } from '@/components/newsletter/NewsletterSignup'
 import type { ArticleSeoContext } from '@/lib/seo/articleSeoTypes'
 import { splitBlocksForMidAd } from '@/lib/publisher/articleAdPlacements'
@@ -31,6 +30,14 @@ import {
 } from '@/components/publisher/PublisherVideoPrerollPlayer'
 import type { PublisherAdViewModel } from '@/components/publisher/PublisherAdRenderer'
 import { isPublisherVideoPrerollEnabled } from '@/lib/publisher/selfManagedAdFlags'
+import {
+  ARTICLE_READER_BODY_CLASS,
+  ARTICLE_READER_HEADLINE_CLASS,
+  ARTICLE_READER_SHELL_CLASS,
+  ARTICLE_READER_SHELL_TESTID,
+  ARTICLE_READER_SPOT_CLASS,
+  FEED_READER_CSS_VARS,
+} from '@/lib/feed/reader/articleReaderPresentation'
 
 interface NewsArticleStaticProps {
   post: Post
@@ -207,11 +214,20 @@ export function NewsArticleStatic({
   } = parseArticleContent(post)
 
   return (
-    <NewsArticlePage id="news-article-static" articleId={post.id}>
-      <nav aria-label="Breadcrumb" className="news-article-breadcrumb mb-3 hidden text-sm text-[rgb(var(--color-muted))] sm:mb-4 sm:block">
+    <NewsArticlePage
+      id="news-article-static"
+      articleId={post.id}
+      className={ARTICLE_READER_SHELL_CLASS}
+      data-testid={ARTICLE_READER_SHELL_TESTID}
+      style={FEED_READER_CSS_VARS as CSSProperties}
+    >
+      <nav
+        aria-label="Breadcrumb"
+        className="news-article-breadcrumb mb-3 hidden text-sm text-[color:var(--reader-page-muted)] sm:mb-4 sm:block"
+      >
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
+            <Link href={ROUTES.FEED} className="hover:text-[color:var(--reader-page-text)]">
               Ana Sayfa
             </Link>
           </li>
@@ -223,7 +239,7 @@ export function NewsArticleStatic({
               <li>
                 <Link
                   href={ROUTES.CATEGORY(post.categoryId)}
-                  className="hover:text-[rgb(var(--color-text))]"
+                  className="hover:text-[color:var(--reader-page-text)]"
                 >
                   {categoryLabel}
                 </Link>
@@ -233,16 +249,16 @@ export function NewsArticleStatic({
               </li>
             </>
           )}
-          <li className="line-clamp-1 font-medium text-[rgb(var(--color-text))]" aria-current="page">
+          <li className="line-clamp-1 font-medium text-[color:var(--reader-page-text)]" aria-current="page">
             {articleTitle}
           </li>
         </ol>
       </nav>
 
-      <NewsArticleCard>
+      <NewsArticleCard className="border-[color:var(--reader-page-edge)] bg-[color:var(--reader-page-elevated)]">
         <header className="news-article-header">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex rounded-full bg-[rgb(var(--color-brand))]/10 px-2.5 py-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]">
+            <span className="inline-flex rounded-full bg-[color:var(--reader-accent)]/15 px-2.5 py-0.5 text-xs font-semibold text-[color:var(--reader-accent)]">
               {categoryLabel}
             </span>
             {post.isBreaking && (
@@ -252,28 +268,26 @@ export function NewsArticleStatic({
             )}
           </div>
 
-          <h1 className="news-article-title font-serif font-black text-[rgb(var(--color-text))]">
-            {articleTitle}
-          </h1>
+          <h1 className={ARTICLE_READER_HEADLINE_CLASS}>{articleTitle}</h1>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[rgb(var(--color-muted))]">
-            <span className="inline-flex items-center gap-1 font-semibold text-[rgb(var(--color-text))]">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[color:var(--reader-page-muted)]">
+            <span className="inline-flex items-center gap-1 font-semibold text-[color:var(--reader-page-text)]">
               <User className="h-3.5 w-3.5" />
               {bylineName}
             </span>
             {publishedLabel && (
               <>
-                <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
+                <span aria-hidden className="text-[color:var(--reader-page-edge)]">·</span>
                 <time dateTime={publishedAt ?? ''}>{publishedLabel}</time>
               </>
             )}
             {updatedLabel && (
               <>
-                <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
+                <span aria-hidden className="text-[color:var(--reader-page-edge)]">·</span>
                 <time dateTime={updatedAt ?? ''}>Güncellendi: {updatedLabel}</time>
               </>
             )}
-            <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
+            <span aria-hidden className="text-[color:var(--reader-page-edge)]">·</span>
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
               {readMinutes} dk okuma
@@ -300,11 +314,11 @@ export function NewsArticleStatic({
           return null
         })()}
 
-        <NewsArticleBody>
+        <NewsArticleBody className={ARTICLE_READER_BODY_CLASS}>
           <ArticleAudioPlayer post={post} />
 
           {showLead && (
-            <p className="news-lead mb-8 border-l-4 border-[rgb(var(--color-brand))] bg-[rgb(var(--color-surface))] px-5 py-4 text-lg font-medium leading-relaxed text-[rgb(var(--color-text))] sm:text-xl">
+            <p className={`${ARTICLE_READER_SPOT_CLASS} mb-8`}>
               {leadText}
             </p>
           )}
@@ -399,7 +413,7 @@ export function NewsArticleStatic({
           )}
 
           {!showLead && !hasBodyBlocks && !hasHtmlContent && paragraphs.length === 0 && (
-            <p className="text-[rgb(var(--color-muted))]">Bu haber için içerik bulunamadı.</p>
+            <p className="text-[color:var(--reader-page-muted)]">Bu haber için içerik bulunamadı.</p>
           )}
 
           <ArticleAuthorBox post={post} />
@@ -417,14 +431,14 @@ export function NewsArticleStatic({
 
           {/* Kaynak satırı */}
           {(publicSource || post.sourceUrl) && (
-            <div className="mt-6 border-t border-[rgb(var(--color-border))] pt-4 text-sm text-[rgb(var(--color-muted))]">
-              <span className="font-semibold">Kaynak: </span>
+            <div className="mt-6 border-t border-[color:var(--reader-page-edge)] pt-4 text-sm text-[color:var(--reader-page-muted)]">
+              <span className="font-semibold text-[color:var(--reader-page-text)]">Kaynak: </span>
               {post.sourceUrl ? (
                 <a
                   href={post.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  className="underline hover:text-[rgb(var(--color-text))]"
+                  className="underline hover:text-[color:var(--reader-page-text)]"
                 >
                   {publicSource || new URL(post.sourceUrl).hostname.replace(/^www\./, '')}
                 </a>
@@ -436,7 +450,7 @@ export function NewsArticleStatic({
                   {' · '}
                   <Link
                     href={ROUTES.SOURCE_PROFILE(publicSource)}
-                    className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
+                    className="font-semibold text-[color:var(--reader-accent)] hover:underline"
                   >
                     {publicSource} — tüm haberleri
                   </Link>
@@ -447,14 +461,14 @@ export function NewsArticleStatic({
 
           {(hasTags || hasCity) && (
             <section aria-label="Etiketler" className="mt-5 sm:mt-6">
-              <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[color:var(--reader-page-muted)]">
                 Etiketler
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {hasCity && post.citySlug && (
                   <Link
                     href={`${ROUTES.FEED}?category=${encodeURIComponent(cityCategoryId(post.citySlug))}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/25 dark:text-emerald-400"
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/25"
                   >
                     <MapPin className="h-3 w-3" />
                     {post.city ?? post.citySlug}
@@ -464,7 +478,7 @@ export function NewsArticleStatic({
                   <Link
                     key={tag}
                     href={ROUTES.TAG(tag)}
-                    className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-[rgb(var(--color-brand))] ring-1 ring-[rgb(var(--color-border))]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[color:var(--reader-page-bg)] px-2.5 py-1 text-xs font-semibold text-[color:var(--reader-accent)] ring-1 ring-[color:var(--reader-page-edge)]"
                   >
                     <Hash className="h-3 w-3" />
                     {formatTagLabel(tag).slice(1)}
@@ -476,9 +490,12 @@ export function NewsArticleStatic({
         </NewsArticleBody>
       </NewsArticleCard>
 
-      {/* Page-level grid — same outer shell as "Daha fazla haber" / footer (not article measure) */}
-      <ArticleRelatedGridStatic posts={relatedPosts} />
-      <ArticleTOC postId={post.id} />
+      {/* Feed V2–aligned end recommendations (rails → related fallback). */}
+      <HaberEndRecommendations
+        category={post.categoryId}
+        excludeIds={[post.id]}
+        relatedPosts={relatedPosts}
+      />
     </NewsArticlePage>
   )
 }

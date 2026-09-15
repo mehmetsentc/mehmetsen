@@ -97,8 +97,11 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     }
   }, [chromeHeight, fallbackChromeHeight])
 
-  const iconBtn =
-    'relative flex h-12 w-11 shrink-0 items-center justify-center touch-manipulation rounded-full text-white transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+  const iconIdle =
+    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white/45 transition-colors duration-150 hover:text-white/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+  const iconActive =
+    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+  const iconBtn = iconIdle
 
   function openSubmit() {
     if (!user) {
@@ -120,8 +123,8 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         )}
       >
         <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden text-white">
-          <div className="flex h-full min-w-0 items-center justify-between gap-2 px-2.5">
-            <div className="flex min-w-0 items-center">
+          <div className="flex h-full min-w-0 items-center justify-between gap-2 px-2.5 sm:gap-2.5 sm:px-3">
+            <div className="flex min-w-0 items-center gap-0.5">
               {showBack ? (
                 <BackNavButton className="back-nav-btn--navbar back-nav-btn--on-brand" />
               ) : null}
@@ -131,12 +134,12 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 className={iconBtn}
                 aria-label="Menüyü aç"
               >
-                <Menu className="h-6 w-6" strokeWidth={2.15} />
+                <Menu className="h-6 w-6" strokeWidth={1.75} />
               </button>
 
               <Link
                 href={ROUTES.FEED}
-                className="shrink-0 px-0.5"
+                className="shrink-0 px-1"
                 aria-label="NaHaber"
               >
                 <BrandWordmark
@@ -148,30 +151,32 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             </div>
 
             <div
-              className="flex shrink-0 items-center"
+              className="flex shrink-0 items-center gap-0.5 sm:gap-1"
               data-testid="header-primary-actions"
+              data-testid-alias="global-nav-v2-icon-row"
             >
               <Link
                 href={ROUTES.SEARCH}
-                className={iconBtn}
+                className={isAra(pathname) ? iconActive : iconIdle}
                 aria-label="Ara"
                 aria-current={isAra(pathname) ? 'page' : undefined}
                 data-testid="header-nav-ara"
+                data-nav-active={isAra(pathname) ? '1' : '0'}
               >
-                <Search className="h-5 w-5" strokeWidth={2.25} />
+                <Search className="h-5 w-5" strokeWidth={isAra(pathname) ? 2.35 : 1.6} />
               </Link>
               <button
                 type="button"
-                className={iconBtn}
+                className={iconIdle}
                 aria-label="Haber Ekle"
                 data-testid="header-action-plus"
                 onClick={openSubmit}
               >
-                <Plus className="h-5 w-5" strokeWidth={2.25} />
+                <Plus className="h-5 w-5" strokeWidth={1.6} />
               </button>
               <HeaderMoreMenu
                 isBildirim={isBildirim(pathname)}
-                iconBtnClassName={iconBtn}
+                iconBtnClassName={iconIdle}
                 onSubmitNews={openSubmit}
               />
             </div>
