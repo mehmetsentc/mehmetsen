@@ -260,8 +260,11 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', damping: 28, stiffness: 280, mass: 0.7 }}
           >
-            {/* ── Progress bars (üst) ──────────────────────── */}
-            <div className="absolute inset-x-0 top-0 z-30 flex gap-1.5 px-3 pt-3">
+            {/* ── Progress bars (üst) — iOS status bar / notch safe-area ── */}
+            <div
+              className="absolute inset-x-0 top-0 z-30 flex gap-1.5 px-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
+              data-testid="story-viewer-progress"
+            >
               {items.map((_, i) => {
                 const fill = i < index ? 100 : i === index ? progress : 0
                 return (
@@ -278,8 +281,14 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
               })}
             </div>
 
-            {/* ── Header: kaynak + kapat ──────────── */}
-            <header className="absolute inset-x-0 top-7 z-30 flex items-center justify-between px-4 pt-2">
+            {/* ── Header: kaynak + kapat — progress’in altında, status bar’ın altında ── */}
+            <header
+              className="absolute inset-x-0 z-30 flex items-center justify-between px-4"
+              style={{
+                top: 'max(2.75rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 1.35rem))',
+              }}
+              data-testid="story-viewer-header"
+            >
               <div className="flex items-center gap-2">
                 <Badge variant="solid" uppercase size="sm" className="shadow-lg">
                   {formatPublicSourceLabel(current.source) || 'NaHaber'}

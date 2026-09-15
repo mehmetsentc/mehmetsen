@@ -14,14 +14,14 @@ import {
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 
 describe('Global Nav V2', () => {
-  it('flag defaults ON; MobileNav always off under Global Nav V2', () => {
+  it('flag defaults ON; Pinterest dock visible except reels, reader, admin', () => {
     expect(isGlobalNavV2EnabledClient()).toBe(true)
     expect(isGlobalNavV2Active()).toBe(true)
-    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/feed' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/haber/x' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/search' })).toBe(false)
+    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/feed' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/haber/x' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/search' })).toBe(true)
     expect(resolveMobileNavVisible({ pathname: '/reels' })).toBe(false)
     expect(
       resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })

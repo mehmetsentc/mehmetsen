@@ -26,13 +26,14 @@ describe('P19 Global Nav', () => {
     expect(nav).toContain('h-12 w-12')
   })
 
-  it('Global Nav V2 hides MobileNav (authority + CSS belt)', () => {
+  it('Global Nav V2 keeps bottom MobileNav dock (hidden only on reels/reader/admin)', () => {
     expect(isGlobalNavV2Active()).toBe(true)
-    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(false)
-    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(false)
-    const css = read('src/app/globals.css')
-    expect(css).toContain("[data-global-nav-v2='1'] .mobile-bottom-nav")
-    expect(css).toContain('display: none !important')
+    expect(resolveMobileNavVisible({ pathname: '/feed-v2' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/' })).toBe(true)
+    expect(resolveMobileNavVisible({ pathname: '/reels' })).toBe(false)
+    expect(
+      resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
+    ).toBe(false)
   })
 })
 

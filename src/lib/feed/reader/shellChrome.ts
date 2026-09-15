@@ -3,8 +3,8 @@
  * Single source of truth for Navbar + MobileNav visibility on Feed surfaces.
  *
  * Global Nav V2 (default ON):
- * - MobileNav always off (header + side drawer authority)
  * - Top Navbar on /feed-v2 except while Reader surface is active
+ * - Bottom MobileNav (Ana Sayfa / Akış / Profil) on unless reels, reader, or admin
  *
  * Legacy / kill-switch (GLOBAL_NAV_V2=0):
  * - MobileNav on unless reels, reader, or admin
@@ -74,14 +74,13 @@ export function resolveTopNavbarVisible(opts: {
 /**
  * Global MobileNav / bottom navbar visibility.
  *
- * Global Nav V2 → always hidden (no layout footprint; CSS belt also hides).
- * Legacy: hidden on reels/video, reader surface, and admin.
+ * Pinterest dock: Ana Sayfa / Akış / Profil.
+ * Hidden on true reels/video, while Feed Reader owns the surface, and admin.
  */
 export function resolveMobileNavVisible(opts: {
   pathname: string
   readerSurfaceActive?: boolean
 }): boolean {
-  if (isGlobalNavV2Active()) return false
   if (isImmersiveVideoPathname(opts.pathname)) return false
   if (opts.readerSurfaceActive) return false
   if (opts.pathname.startsWith('/admin')) return false
@@ -90,7 +89,7 @@ export function resolveMobileNavVisible(opts: {
 
 /**
  * Combined site chrome helper.
- * Global Nav V2: top Navbar is the chrome authority (MobileNav always off).
+ * Global Nav V2: top Navbar is the chrome authority; bottom dock is independent.
  * Legacy: both top + bottom must be visible.
  */
 export function resolveSiteChromeVisible(opts: {

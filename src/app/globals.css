@@ -5233,12 +5233,6 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   }
 }
 
-/* Belt-and-suspenders: Global Nav V2 never shows legacy bottom pill. */
-[data-global-nav-v2='1'] .mobile-bottom-nav {
-  display: none !important;
-}
-
-
 /* Newspaper overlay: optional pull-under for magazine heroes.
    Ana Sayfa visual discovery keeps first content below chrome (bleed=0).
    Feed V2 keeps the remaining-band 100dvh contract (no pull-under). */
