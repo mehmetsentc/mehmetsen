@@ -260,7 +260,7 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', damping: 28, stiffness: 280, mass: 0.7 }}
           >
-            {/* ── Progress bars (üst) — iOS status bar / notch safe-area ── */}
+            {/* ── Progress bars (üst) — iOS status bar / notch safe-area (force ship) ── */}
             <div
               className="absolute inset-x-0 top-0 z-30 flex gap-1.5 px-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
               data-testid="story-viewer-progress"
