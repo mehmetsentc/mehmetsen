@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P17b Reader rec measurement fixture</title>
+    <style>
+      :root {
+        --reader-page-bg: #0c0c0e;
+        --reader-page-elevated: #141417;
+        --reader-page-text: #f4f1ea;
+        --reader-page-muted: #a8a29a;
+        --reader-page-edge: rgba(255, 255, 255, 0.1);
+        --reader-prose-max: 42rem;
+        --reader-footer-clearance: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--reader-page-bg);
+        color: var(--reader-page-text);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      .reader {
+        width: 100%;
+        max-width: 390px;
+        margin: 0 auto;
+        min-height: 100dvh;
+        position: relative;
+        overflow: hidden;
+      }
+      .scroll {
+        height: 100dvh;
+        overflow-y: auto;
+        padding: 1.25rem;
+        padding-bottom: 0;
+      }
+      .prose { max-width: var(--reader-prose-max); margin: 0 auto; }
+      .article-end {
+        margin-top: 2rem;
+        padding: 1rem;
+        border: 1px solid var(--reader-page-edge);
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+      }
+      .recs { margin-top: 3rem; }
+      .heading {
+        margin: 0 0 1.25rem;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--reader-page-muted);
+      }
+      ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+      .card {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: 11rem;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid var(--reader-page-edge);
+        background: var(--reader-page-elevated);
+      }
+      .media { position: relative; aspect-ratio: 16 / 9; width: 100%; background: #171717; }
+      .media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .copy { padding: 0.875rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+      .hl {
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 1.0625rem;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+      .meta { margin: 0; font-size: 12.5px; color: var(--reader-page-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .clearance { height: var(--reader-footer-clearance); }
+      .footer {
+        position: absolute; inset-inline: 0; bottom: 0;
+        display: flex; justify-content: space-between; gap: 0.5rem;
+        padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+        border-top: 1px solid rgba(255,255,255,0.1);
+        background: var(--reader-page-bg);
+      }
+      .footer button {
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 999px;
+        background: transparent;
+        color: inherit;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+      }
+      #out {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+        background: rgba(0,0,0,0.85); color: #86efac; font: 11px/1.35 ui-monospace, monospace;
+        padding: 6px 8px; white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="out">measuring…</pre>
+    <div class="reader" data-testid="fixture-reader">
+      <div class="scroll" data-testid="fixture-scroll">
+        <div class="prose">
+          <div class="article-end">Kaynak / article ending</div>
+          <div class="recs" data-testid="feed-reader-recommendations">
+            <h3 class="heading">Bu konuda daha fazlası</h3>
+            <ul data-testid="feed-reader-discovery-list">
+              <li>
+                <article class="card" data-testid="feed-reader-discovery-tile">
+                  <div class="media" data-testid="feed-reader-discovery-media">
+                    <img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450'%3E%3Crect fill='%23333' width='100%25' height='100%25'/%3E%3C/svg%3E" />
+                  </div>
+                  <div class="copy">
+                    <p class="hl" data-testid="feed-reader-discovery-headline">Kısa başlık örneği</p>
+                    <p class="meta">Anadolu Ajansı · spor · 12 Eyl</p>
+                  </div>
+                </article>
+              </li>
+              <li>
+                <article class="card" data-testid="feed-reader-discovery-tile">
+                  <div class="media">
+                    <img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450'%3E%3Crect fill='%23444' width='100%25' height='100%25'/%3E%3C/svg%3E" />
+                  </div>
+                  <div class="copy">
+                    <p class="hl">Uzun başlık örneği: Türkiye’de spor ve turizm gündeminde öne çıkan gelişmeler ve okuyucunun anlayabileceği kadar detay</p>
+                    <p class="meta">Demirören · turizm · 11 Eyl</p>
+                  </div>
+                </article>
+              </li>
+              <li>
+                <article class="card" data-testid="feed-reader-discovery-tile">
+                  <div class="media" style="background:linear-gradient(#333,#111)"></div>
+                  <div class="copy">
+                    <p class="hl">Görselsiz kart — fallback yüzeyi</p>
+                    <p class="meta">Haber</p>
+                  </div>
+                </article>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="clearance" data-testid="feed-reader-footer-clearance"></div>
+      </div>
+      <footer class="footer" data-testid="feed-reader-footer">
+        <button type="button">Beğen</button>
+        <button type="button">Kaydet</button>
+        <button type="button">Paylaş</button>
+      </footer>
+    </div>
+    <script>
+      function measure() {
+        const reader = document.querySelector('[data-testid="fixture-reader"]')
+        const recs = document.querySelector('[data-testid="feed-reader-recommendations"]')
+        const cards = [...document.querySelectorAll('[data-testid="feed-reader-discovery-tile"]')]
+        const media = cards[0]?.querySelector('[data-testid="feed-reader-discovery-media"]')
+        const hl = cards[0]?.querySelector('[data-testid="feed-reader-discovery-headline"]')
+        const clearance = document.querySelector('[data-testid="feed-reader-footer-clearance"]')
+        const footer = document.querySelector('[data-testid="feed-reader-footer"]')
+        const last = cards[cards.length - 1]
+        const lastRect = last.getBoundingClientRect()
+        const footerRect = footer.getBoundingClientRect()
+        const cs = getComputedStyle(hl)
+        const gap = getComputedStyle(document.querySelector('[data-testid="feed-reader-discovery-list"]')).gap
+        const out = {
+          viewport: { w: innerWidth, h: innerHeight },
+          readerWidth: reader.clientWidth,
+          recommendationSectionWidth: recs.clientWidth,
+          cardWidth: cards[0].clientWidth,
+          cardHeight: cards[0].clientHeight,
+          cardMinHeight: getComputedStyle(cards[0]).minHeight,
+          image: { w: media.clientWidth, h: media.clientHeight, aspect: (media.clientWidth / media.clientHeight).toFixed(3) },
+          headline: { fontSize: cs.fontSize, lineHeight: cs.lineHeight, clamp: 3 },
+          gap,
+          clearanceHeight: clearance.clientHeight,
+          lastCardBottom: lastRect.bottom,
+          footerTop: footerRect.top,
+          lastAboveFooter: lastRect.bottom <= footerRect.top + 1,
+        }
+        document.getElementById('out').textContent = JSON.stringify(out, null, 2)
+        document.title = 'MEASURED:' + out.cardWidth + 'x' + out.cardHeight
+      }
+      requestAnimationFrame(() => requestAnimationFrame(measure))
+      addEventListener('resize', measure)
+    </script>
+  </body>
+</html>

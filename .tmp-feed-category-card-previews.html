@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NaHaber — Kategori Feed Kart v2 (Onay)</title>
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --panel: #141418;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+      --line: #27272a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px 80px;
+    }
+    header {
+      max-width: 1180px;
+      margin: 0 auto 28px;
+    }
+    header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      max-width: 54rem;
+    }
+    .note {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      font-size: 0.85rem;
+      color: #d4d4d8;
+      line-height: 1.45;
+    }
+    .rules {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: #d4d4d8;
+    }
+    .rules li { margin-left: 1rem; }
+    .grid {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 28px;
+    }
+    .card-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .meta .num {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .meta h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 650;
+    }
+    .meta .tag {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+    }
+    .phone {
+      position: relative;
+      aspect-ratio: 9 / 16;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid #3f3f46;
+      background: #0a0a0a;
+      box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    }
+
+    /* Layer 1: ORIGINAL photo as full-bleed foggy background */
+    .bg-blur {
+      position: absolute;
+      inset: -12%;
+      background-size: cover;
+      background-position: center;
+      filter: blur(36px) brightness(0.52) saturate(1.1);
+      transform: scale(1.12);
+    }
+    /* Soft fog veil — photo still readable as atmosphere */
+    .bg-veil {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg,
+          rgba(0,0,0,.28) 0%,
+          rgba(0,0,0,.12) 22%,
+          rgba(0,0,0,.35) 48%,
+          rgba(0,0,0,.78) 100%);
+      backdrop-filter: blur(2px);
+    }
+
+    .live-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      z-index: 5;
+      background: linear-gradient(90deg, #e11d2e, #fb7185, #e11d2e);
+    }
+
+    /* Copy starts mid-upper — not crushed to bottom */
+    .stack {
+      position: absolute;
+      left: 0; right: 0;
+      top: 18%;
+      bottom: 10px;
+      z-index: 3;
+      padding: 0 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      overflow: hidden;
+    }
+
+    /* Layer 2: SAME original photo, sharp + framed, sitting ON the fog */
+    .hero-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1.5px solid color-mix(in srgb, var(--accent) 50%, rgba(255,255,255,.45));
+      box-shadow:
+        0 12px 32px rgba(0,0,0,.55),
+        0 0 0 1px rgba(255,255,255,.08);
+      flex-shrink: 0;
+      background: #111;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: none; /* sharp — contrast to foggy bg */
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .badge.solid { background: var(--accent); }
+    .badge.ghost {
+      background: rgba(255,255,255,.08);
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    }
+    .cat-link {
+      font-size: 0.62rem;
+      color: rgba(255,255,255,.78);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .headline {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      color: #fff;
+      /* full — no clamp */
+    }
+    .headline-underline {
+      display: block;
+      width: 72px;
+      height: 3px;
+      margin-top: -2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #facc15));
+      flex-shrink: 0;
+    }
+    .badge-underline {
+      display: block;
+      width: 100%;
+      max-width: 120px;
+      height: 1px;
+      margin-top: -4px;
+      background: color-mix(in srgb, var(--accent) 80%, #fff);
+      opacity: .85;
+      flex-shrink: 0;
+    }
+    .summary {
+      margin: 0;
+      font-size: 0.78rem;
+      font-weight: 500;
+      line-height: 1.42;
+      color: rgba(255,255,255,.92);
+      /* full — no line-clamp */
+    }
+    .mag-band {
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+      border-radius: 12px;
+      padding: 8px 9px 10px;
+      background: rgba(0,0,0,.22);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #111;
+      background: color-mix(in srgb, var(--accent) 72%, #fff);
+      border: none;
+      flex-shrink: 0;
+      margin-top: auto;
+    }
+    .pub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 22px; height: 22px;
+      border-radius: 999px;
+      background: #52525b;
+      background-size: cover;
+    }
+    .pub-name { font-size: 0.68rem; color: rgba(255,255,255,.85); }
+    .follow {
+      margin-left: auto;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+    .social {
+      position: absolute;
+      right: 8px;
+      top: 42%;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .social span {
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+    .desc {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.4;
+      min-height: 2.6em;
+    }
+    footer {
+      max-width: 1180px;
+      margin: 36px auto 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NaHaber Feed — kategori kart örnekleri v2</h1>
+    <p>
+      Yeni kompozisyon önerisi. Onaylamadan koda / production’a alınmaz.
+    </p>
+    <div class="note">
+      <strong>Katman:</strong> (1) arkada <em>aynı orijinal foto</em> — buğulu / flu arka plan ·
+      (2) onun üstünde <em>aynı foto net</em> — 16:9 çerçeveli gerçek görsel ·
+      (3) altında tam manşet + tam özet (kesilmez), yazılar yukarıdan.
+    </div>
+    <ul class="rules">
+      <li>Ortak iskelet tüm kategorilerde aynı</li>
+      <li>Fark: badge / accent / (spor çizgi, ekonomi ticker, magazin inset, son dakika live bar)</li>
+      <li>Onay: numara yaz — ör. <code>hepsi OK</code> veya <code>4’te çerçeve daha ince</code></li>
+    </ul>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>Local preview · .tmp-feed-category-card-previews.html · deploy yok</footer>
+
+  <script>
+    const cards = [
+      {
+        n: 1, id: "son-dakika", label: "Son Dakika", accent: "#e11d2e",
+        badge: "solid", badgeText: "SON DAKİKA", liveBar: true,
+        headline: "Ankara’da kritik gelişme: son durum açıklandı",
+        summary: "Yetkililer gece saatlerinde brifing verdi. Gelişmenin ayrıntıları dakikalar içinde netleşiyor; ekipler sahada.",
+        photo: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=900&q=80&auto=format&fit=crop",
+        tip: "Üst live bar + flu arka plan + çerçeveli 16:9 hero manşetin üstünde.",
+      },
+      {
+        n: 2, id: "gundem", label: "Gündem", accent: "#e11d2e",
+        badge: "solid", badgeText: "GÜNDEM",
+        headline: "Meclis’te yoğun mesai: yeni paket görüşülüyor",
+        summary: "Partiler arası görüşmeler sürerken günün öne çıkan başlıkları netleşiyor. Komisyon takvimi de masada.",
+        photo: "https://images.unsplash.com/photo-1523995462485-3d171b5c8fa9?w=900&q=80&auto=format&fit=crop",
+        tip: "Sade kırmızı accent; hero çerçeve accent’e hafif bağlı.",
+      },
+      {
+        n: 3, id: "siyaset", label: "Siyaset", accent: "#94a3b8",
+        badge: "ghost", badgeText: "SİYASET",
+        headline: "Liderler zirvesi sonrası ilk açıklamalar geldi",
+        summary: "Masadaki başlıklar ve tarafların tutumu gün boyu yakından izleniyor. Ortak bildiri ihtimali konuşuluyor.",
+        photo: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=900&q=80&auto=format&fit=crop",
+        tip: "Ghost slate badge — resmi ton. Çizgi yok.",
+      },
+      {
+        n: 4, id: "magazin", label: "Magazin", accent: "#f4b460",
+        badge: "ghost", badgeText: "MAGAZİN", magazineBand: true,
+        headline: "Kırmızı halı gecesi: öne çıkan stil ve sürprizler",
+        summary: "Etkinlikte dikkat çeken looks ve kısa röportajlar magazin gündemini belirledi. Konuk listesi de paylaşıldı.",
+        photo: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=900&q=80&auto=format&fit=crop",
+        tip: "Altın inset yalnızca metin bandında; full-card orphan frame yok.",
+      },
+      {
+        n: 5, id: "kultur", label: "Kültür", accent: "#e8c4a8",
+        badge: "ghost", badgeText: "KÜLTÜR",
+        headline: "İstanbul’da yeni sergi: sanatseverlere davet",
+        summary: "Küratör turu ve açılış konuşmasıyla haftanın kültür notları. Biletler online açıldı.",
+        photo: "https://images.unsplash.com/photo-1536924940846-227afb31e2a5?w=900&q=80&auto=format&fit=crop",
+        tip: "Warm ghost badge; zarif sade layout.",
+      },
+      {
+        n: 6, id: "spor", label: "Spor", accent: "#16a34a",
+        badge: "solid", badgeText: "FUTBOL", underline: "headline",
+        headline: "Alanyaspor ile Göztepe karşı karşıya: kritik skor",
+        summary: "Maçın ikinci yarısında tempo yükseldi; teknik ekiplerin hamleleri belirleyici oldu. Stat atmosferi yoğundu.",
+        photo: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=900&q=80&auto=format&fit=crop",
+        tip: "Başlık-altı kısa yeşil çizgi (headline’a bağlı). Mid-card wipe yok.",
+      },
+      {
+        n: 7, id: "ekonomi", label: "Ekonomi", accent: "#2563eb",
+        badge: "solid", badgeText: "EKONOMİ", underline: "badge",
+        headline: "Piyasalarda gün sonu: dolar ve borsa dengesi",
+        summary: "Merkez bankası beklentileri ve işlem hacmi yatırımcıların odağında. Analistler temkinli iyimser.",
+        photo: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=900&q=80&auto=format&fit=crop",
+        tip: "Badge altı ince mavi çizgi. Kart ortası orphan ticker yok.",
+      },
+      {
+        n: 8, id: "teknoloji", label: "Teknoloji", accent: "#06b6d4",
+        badge: "solid", badgeText: "TEKNOLOJİ",
+        headline: "Yeni telefon modeli: kamera ve pil iddiaları",
+        summary: "Tanıtım etkinliğinde öne çıkan özellikler ve Türkiye fiyat beklentisi. Ön sipariş tarihi de konuşuluyor.",
+        photo: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=900&q=80&auto=format&fit=crop",
+        tip: "Cyan solid; net modern kart.",
+      },
+      {
+        n: 9, id: "dunya", label: "Dünya", accent: "#64748b",
+        badge: "ghost", badgeText: "DÜNYA",
+        headline: "Avrupa’da zirve: enerji ve güvenlik masada",
+        summary: "Liderler ortak bildiri için müzakereleri sürdürüyor. Gündemde iki ana başlık öne çıkıyor.",
+        photo: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=900&q=80&auto=format&fit=crop",
+        tip: "Nötr ghost badge — uluslararası haber dili.",
+      },
+      {
+        n: 10, id: "saglik", label: "Sağlık", accent: "#14b8a6",
+        badge: "solid", badgeText: "SAĞLIK",
+        headline: "Uzmanlar uyardı: mevsim geçişinde bağışıklık",
+        summary: "Korunma önerileri ve sık sorulan soruların yanıtları. Risk grupları için ek notlar paylaşıldı.",
+        photo: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=900&q=80&auto=format&fit=crop",
+        tip: "Teal solid; güven veren temiz kart.",
+      },
+      {
+        n: 11, id: "yerel", label: "Yerel", accent: "#e11d2e",
+        badge: "solid", badgeText: "YEREL",
+        headline: "Şehir merkezinde ulaşım düzenlemesi başladı",
+        summary: "Belediye duyurusuna göre çalışma takvimi ve alternatif güzergâhlar. Vatandaşlar bilgilendirildi.",
+        photo: "https://images.unsplash.com/photo-1477959858617-67f85b73bdc2?w=900&q=80&auto=format&fit=crop",
+        tip: "Kırmızı solid; yerel kimlik badge’de.",
+      },
+      {
+        n: 12, id: "gastronomi", label: "Gastronomi", accent: "#f97316",
+        badge: "ghost", badgeText: "GASTRONOMİ",
+        headline: "Yeni restoran: şefin imza menüsü masada",
+        summary: "Tatlıdan mezeye öneriler ve rezervasyon notları. Açılış haftası özel tadım da var.",
+        photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=80&auto=format&fit=crop",
+        tip: "Turuncu ghost; lezzet tonu, sade layout.",
+      },
+      {
+        n: 13, id: "default", label: "Default", accent: "#e11d2e",
+        badge: "solid", badgeText: "HABER",
+        headline: "Eşleşmeyen kategori için varsayılan kart",
+        summary: "Bilinmeyen slug’lar kırmızı default skin’e düşer. Aynı kompozisyon, güvenli fallback.",
+        photo: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=900&q=80&auto=format&fit=crop",
+        tip: "Fallback — Gündem’e yakın kompozisyon.",
+      },
+    ];
+
+    const grid = document.getElementById("grid");
+    for (const c of cards) {
+      const wrap = document.createElement("article");
+      wrap.className = "card-wrap";
+      const editorial = `
+        <div class="row">
+          <span class="badge ${c.badge}">${c.badgeText}</span>
+          <span class="cat-link">Kategoriye Git</span>
+        </div>
+        ${c.underline === "badge" ? '<span class="badge-underline"></span>' : ""}
+        <h3 class="headline">${c.headline}</h3>
+        ${c.underline === "headline" ? '<span class="headline-underline" aria-hidden="true"></span>' : ""}
+        <p class="summary">${c.summary}</p>
+      `;
+      wrap.innerHTML = `
+        <div class="meta">
+          <div>
+            <div class="num">#${c.n}</div>
+            <h2>${c.label}</h2>
+          </div>
+          <div class="tag">${c.id}</div>
+        </div>
+        <div class="phone" style="--accent:${c.accent}">
+          <div class="bg-blur" style="background-image:url('${c.photo}')"></div>
+          <div class="bg-veil"></div>
+          ${c.liveBar ? '<div class="live-bar"></div>' : ""}
+          <div class="social"><span></span><span></span><span></span></div>
+          <div class="stack">
+            <div class="hero-frame">
+              <img src="${c.photo}" alt="" loading="lazy" />
+            </div>
+            ${c.magazineBand ? `<div class="mag-band">${editorial}</div>` : editorial}
+            <button class="cta" type="button">Haberi Oku</button>
+            <div class="pub">
+              <div class="avatar" style="background-image:url('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&q=60&auto=format&fit=crop')"></div>
+              <span class="pub-name">Örnek Yayın</span>
+              <span class="follow">Takip Et</span>
+            </div>
+          </div>
+        </div>
+        <p class="desc">${c.tip}</p>
+      `;
+      grid.appendChild(wrap);
+    }
+  </script>
+</body>
+</html>
