@@ -3290,6 +3290,55 @@
     align-items: stretch;
   }
 
+  .desktop-portal-band {
+    margin-bottom: 1.5rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .desktop-portal-grid-4,
+  .desktop-portal-videos {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .desktop-portal-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .desktop-portal-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .desktop-portal-extra {
+    list-style: none;
+    margin: 0.65rem 0 0;
+    padding: 0;
+  }
+
+  .desktop-portal-extra li {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eef2f7;
+  }
+
+  .desktop-portal-extra a {
+    color: #111827;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .desktop-portal-video-tile .desktop-portal-video__play {
+    z-index: 1;
+  }
+
   .desktop-portal-cat {
     display: flex;
     min-width: 0;
@@ -3455,7 +3504,10 @@
   @media (max-width: 1279px) {
     .desktop-portal-stage,
     .desktop-portal-cats,
-    .desktop-portal-bottom {
+    .desktop-portal-bottom,
+    .desktop-portal-grid-4,
+    .desktop-portal-videos,
+    .desktop-portal-split {
       grid-template-columns: 1fr 1fr;
     }
 

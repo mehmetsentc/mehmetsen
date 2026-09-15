@@ -103,7 +103,7 @@ export function DesktopHomeFeed({
 }: DesktopHomeFeedProps) {
   const lazyRailIds: HomeCategorySlug[] = cityMode
     ? (Object.keys(data.categoryRails) as HomeCategorySlug[])
-    : [...HOME_FEED_DESKTOP_LAZY_RAILS, 'siyaset', 'yasam']
+    : [...HOME_FEED_DESKTOP_LAZY_RAILS, 'siyaset', 'yasam', 'yerel-haber', 'asayis']
 
   const categoryRails = useMergedCategoryRails(
     data.categoryRails,
@@ -184,15 +184,37 @@ export function DesktopHomeFeed({
       title: getCategoryLabel(id),
       item: sliceCategoryRail(categoryRails, id, HOME_CATEGORY_DESKTOP_CARDS).find(hasArticleImage) ?? null,
     }))
-    const videoItem =
-      [...data.trending, ...data.latest, ...featuredSlider].find(
-        (item) => Boolean(item.videoUrl) && hasArticleImage(item)
-      ) ?? null
-    const photoItems = uniqueWithImage([
-      ...sliceCategoryRail(categoryRails, 'kultur', 4),
-      ...sliceCategoryRail(categoryRails, 'magazin', 4),
-      ...data.latest,
-    ]).slice(0, 4)
+    const takeFresh = (source: NewsItem[], count: number) => uniqueWithImage(source).slice(0, count)
+    const gundemItems = takeFresh([...gundemRail, ...data.latest], 4)
+    const yerelItems = takeFresh(
+      [...sliceCategoryRail(categoryRails, 'yerel-haber', 8), ...data.latest],
+      4
+    )
+    const thirdPageItems = takeFresh(
+      [...sliceCategoryRail(categoryRails, 'asayis', 8), ...data.latest],
+      4
+    )
+    const kulturItems = takeFresh(
+      [...sliceCategoryRail(categoryRails, 'kultur', 6), ...data.latest],
+      2
+    )
+    const saglikItems = takeFresh(
+      [...sliceCategoryRail(categoryRails, 'saglik', 6), ...data.latest],
+      2
+    )
+    const videoItems = takeFresh(
+      [...data.trending, ...data.latest, ...featuredSlider].filter((item) => Boolean(item.videoUrl)),
+      4
+    )
+    const videoItem = videoItems[0] ?? null
+    const photoItems = takeFresh(
+      [
+        ...sliceCategoryRail(categoryRails, 'kultur', 8),
+        ...sliceCategoryRail(categoryRails, 'magazin', 8),
+        ...data.latest,
+      ],
+      4
+    )
 
     return {
       featuredSlider,
@@ -217,7 +239,13 @@ export function DesktopHomeFeed({
       columnists,
       portalCategories,
       videoItem,
+      videoItems,
       photoItems,
+      gundemItems,
+      yerelItems,
+      thirdPageItems,
+      kulturItems,
+      saglikItems,
     }
   }, [data, categoryRails, cityMode])
 
@@ -255,7 +283,13 @@ export function DesktopHomeFeed({
           mostRead={layout.mostRead}
           categoryCards={layout.portalCategories}
           videoItem={layout.videoItem}
+          videoItems={layout.videoItems}
           photoItems={layout.photoItems}
+          gundemItems={layout.gundemItems}
+          yerelItems={layout.yerelItems}
+          thirdPageItems={layout.thirdPageItems}
+          kulturItems={layout.kulturItems}
+          saglikItems={layout.saglikItems}
         />
       )}
 
