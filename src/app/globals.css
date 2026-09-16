@@ -2413,6 +2413,7 @@
     container-name: nahaber-article;
   }
 
+  /* P19 — Feed V2 Reader skin on canonical /haber (SSR body preserved). */
   .article-reader-shell {
     background: var(--reader-page-bg, #0c0c0e);
     color: var(--reader-page-text, #f4f1ea);
@@ -2431,10 +2432,25 @@
     color: var(--reader-prose-text, #e8e6e1);
   }
 
+  /*
+   * Body inherits --reader-prose-text, but .article-block-heading / base h2–h3
+   * still use light-theme --color-text (near-black). On the dark reader shell
+   * that makes in-article headings invisible — force reader page text.
+   * !important matches .feed-reader-article heading overrides (source HTML
+   * / cascade can otherwise win with --color-text).
+   */
+  .article-reader-shell .article-block-heading,
+  .article-reader-shell .news-article-body :is(h1, h2, h3, h4, h5, h6),
+  .article-reader-shell .article-prose :is(h1, h2, h3, h4, h5, h6),
+  .article-reader-shell .reader-body :is(h1, h2, h3, h4, h5, h6),
+  .article-reader-shell .feed-reader-body :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--reader-page-text, #f4f1ea) !important;
+    -webkit-text-fill-color: var(--reader-page-text, #f4f1ea) !important;
+  }
+
   .article-reader-shell a {
     color: var(--reader-accent, #e11d2e);
   }
-
 
   .article-toc-rail {
     display: none;
@@ -5318,6 +5334,11 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   .home-feed--discovery {
     padding-top: 0.25rem;
   }
+}
+
+/* Belt-and-suspenders: Global Nav V2 never shows legacy bottom pill. */
+[data-global-nav-v2='1'] .mobile-bottom-nav {
+  display: none !important;
 }
 
 /* Feed V2 hero share — short phones yield media to first-paint actions + rhythm */
