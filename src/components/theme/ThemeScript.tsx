@@ -30,6 +30,15 @@ export function ThemeScript() {
         if (resolved === 'oled') root.setAttribute('data-theme', 'oled');
         var w = window.innerWidth;
         root.setAttribute('data-platform', w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'mobile');
+        var newspaper = !(
+          path === '/reels' || path.indexOf('/reels/') === 0 ||
+          path === '/video' || path.indexOf('/video/') === 0 ||
+          path.indexOf('/messages') === 0 || path.indexOf('/admin') === 0 ||
+          path.indexOf('/login') === 0 || path.indexOf('/register') === 0 ||
+          path.indexOf('/onboarding') === 0 || path.indexOf('/saved') === 0 ||
+          path.indexOf('/settings') === 0 || path.indexOf('/notifications') === 0
+        );
+        root.setAttribute('data-desktop-header', newspaper ? 'newspaper' : 'none');
       } catch (e) {}
     })();
   `

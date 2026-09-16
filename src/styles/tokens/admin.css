@@ -27,13 +27,43 @@
 }
 
 .admin-shell {
+  /*
+   * Newspaper "paper lock" rewrites --bg-* / --text-* on
+   * html[data-desktop-header='newspaper']. Admin is a CMS, not the gazette —
+   * pin the original light ladder so cream paper / ink tokens cannot leak in.
+   */
+  --bg-base:        255 255 255;
+  --bg-subtle:      252 252 253;
+  --bg-muted:       246 247 249;
+  --bg-card:        255 255 255;
+  --bg-elevated:    248 250 252;
+  --border-subtle:  229 231 235;
+  --border-default: 226 232 240;
+  --border-strong:  203 213 225;
+  --text-primary:    15  23  42;
+  --text-body:       39  50  68;
+  --text-secondary:  71  85 105;
+  --text-tertiary:  102 112 133;
+  --text-muted:     122 134 153;
+  --text-link:      200   9  18;
+  --brand-500:      229   9  20;
+  --brand-600:      200   9  18;
+  --nav-hover:      237 240 247;
+  --nav-active:     229   9  20;
+  --nav-inactive:    71  85 105;
+  --nav-bar-bg:     255 255 255;
+  --header-brand-bg: 17  25  43;
+  --header-navy-bg:  17  25  43;
+  --header-onbrand: 255 255 255;
+  --color-brand: var(--brand-500);
+  --color-primary: var(--brand-500);
   --color-bg: var(--bg-base);
   --color-surface: var(--bg-muted);
   --color-card: var(--bg-card);
   --color-border: var(--border-default);
   --color-text: var(--text-primary);
   --color-muted: var(--text-muted);
-  --color-brand: var(--brand-500);
+  --color-body: var(--text-body);
 
   --admin-bg: var(--bg-base);
   --admin-surface: var(--bg-card);
@@ -49,7 +79,45 @@
 }
 
 .dark .admin-shell {
+  --bg-base:        17  25  43;
+  --bg-subtle:      21  30  49;
+  --bg-muted:       25  35  56;
+  --bg-card:        21  30  49;
+  --bg-elevated:    17  25  43;
+  --border-subtle:  32  42  60;
+  --border-default: 38  49  71;
+  --border-strong:  52  65  88;
+  --text-primary:  248 250 252;
+  --text-body:     229 231 235;
+  --text-secondary: 203 213 225;
+  --text-tertiary: 168 179 197;
+  --text-muted:    137 149 168;
+  --text-link:     252 165 172;
+  --nav-hover:      25  35  56;
+  --nav-active:    255  51  68;
+  --nav-inactive:  174 185 202;
+  --nav-bar-bg:     17  25  43;
+  --header-brand-bg: 17  25  43;
+  --header-navy-bg:  17  25  43;
+  --header-onbrand: 255 255 255;
+  --color-brand: var(--nav-active);
+  --color-primary: var(--nav-active);
   color-scheme: dark;
+}
+
+html[data-theme='oled'] .admin-shell {
+  --bg-base:         0   0   0;
+  --bg-subtle:       8   8  12;
+  --bg-muted:       14  14  20;
+  --bg-card:        10  10  14;
+  --bg-elevated:    16  16  22;
+  --border-subtle:  28  28  36;
+  --border-default: 40  40  52;
+  --border-strong:  64  64  80;
+  --nav-hover:      18  18  24;
+  --nav-bar-bg:      0   0   0;
+  --header-brand-bg: 17  17  17;
+  --header-navy-bg:  26  26  26;
 }
 
 .admin-surface {

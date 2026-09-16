@@ -519,10 +519,11 @@
   }
 
   /* Paper lock — newspaper pages stay #F6F3EC even if the user prefers dark.
-     Also flip chrome tokens that .dark would otherwise leave as pale-on-cream. */
-  html[data-desktop-header='newspaper'],
-  html.dark[data-desktop-header='newspaper'],
-  html[data-theme='oled'][data-desktop-header='newspaper'] {
+     Also flip chrome tokens that .dark would otherwise leave as pale-on-cream.
+     Exclude admin: CMS shares the root html attribute but must not inherit paper. */
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)),
+  html.dark[data-desktop-header='newspaper']:not(:has(.admin-shell)),
+  html[data-theme='oled'][data-desktop-header='newspaper']:not(:has(.admin-shell)) {
     --nl-paper: 246 243 236;
     --nl-ink: 17 17 17;
     --nl-accent: 200 9 18;
@@ -556,8 +557,8 @@
     --cat-yerel: 146 64 14;
   }
 
-  html[data-desktop-header='newspaper'] body,
-  html[data-desktop-header='newspaper'] .min-h-screen {
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)) body,
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)) .min-h-screen:not(.admin-shell) {
     background: rgb(246 243 236);
     color: #111;
   }
