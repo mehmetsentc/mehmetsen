@@ -2,7 +2,9 @@ import { ROUTES } from '@/constants/routes'
 
 /**
  * Profil dock / sidebar — yalnızca yayıncı üyeleri.
- * Tek yayın → public publisher profile; birden fazla → studio picker.
+ * Kendi yayın profili her zaman studio’ya gider (public /publisher/*
+ * UNCLAIMED / allowlist dışı / slug kuralları yüzünden 404 verebiliyor).
+ * Birden fazla üyelik → studio picker.
  */
 export function resolvePublisherProfileHref(
   publishers: Array<{ slug: string }> | null | undefined
@@ -10,7 +12,7 @@ export function resolvePublisherProfileHref(
   if (!publishers || publishers.length === 0) return null
   if (publishers.length === 1) {
     const slug = publishers[0]?.slug?.trim()
-    return slug ? ROUTES.PUBLISHER(slug) : null
+    return slug ? ROUTES.PUBLISHER_STUDIO.PUBLISHER(slug) : null
   }
   return ROUTES.PUBLISHER_STUDIO.ROOT
 }

@@ -20,8 +20,10 @@ describe('resolvePublisherProfileHref', () => {
     expect(resolvePublisherProfileHref(null)).toBeNull()
   })
 
-  it('routes single membership to public publisher profile', () => {
-    expect(resolvePublisherProfileHref([{ slug: 'cumhuriyet' }])).toBe('/publisher/cumhuriyet')
+  it('routes single membership to publisher studio (not public page)', () => {
+    expect(resolvePublisherProfileHref([{ slug: 'cumhuriyet' }])).toBe(
+      '/publisher-studio/cumhuriyet'
+    )
   })
 
   it('routes multi membership to studio picker', () => {
