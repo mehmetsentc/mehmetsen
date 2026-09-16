@@ -56,8 +56,10 @@ const STORY_DURATION_MS = 6000
 const TICK_MS = 60
 const SWIPE_SOURCE_PX = 72
 const SWIPE_SOURCE_VX = 450
-const SWIPE_CLOSE_PX = 80
-const SWIPE_CLOSE_VY = 500
+const SWIPE_CLOSE_PX = 56
+const SWIPE_CLOSE_VY = 420
+/** Prefer vertical dismiss when vertical motion dominates (iOS Chrome axis lock). */
+const SWIPE_VERTICAL_BIAS = 1.15
 
 interface StoryViewerProps {
   /** Flat list (Son Dakika). Ignored when `groups` is non-empty. */
@@ -157,16 +159,18 @@ export function StoryViewer({
   }, [open, current?.id, user?.uid, current])
 
   const applyCursor = useCallback(
-    (next: SourceStoryCursor | 'close', dir: 1 | -1) => {
-      if (next === 'close') {
-        onClose()
+    (next: SourceStoryCursor | 'close' | 'end', dir: 1 | -1) => {
+      // End of tour: pause on the last frame — only X / swipe-down dismiss.
+      if (next === 'end' || next === 'close') {
+        setPaused(true)
+        setProgress(100)
         return
       }
       setDirection(dir)
       setCursor(next)
       setProgress(0)
     },
-    [onClose]
+    []
   )
 
   const goNext = useCallback(() => {
@@ -175,7 +179,7 @@ export function StoryViewer({
 
   const goPrev = useCallback(() => {
     const next = stepSourceStoryCursor(resolvedGroups, cursor, -1)
-    if (next === 'close') return
+    if (next === 'close' || next === 'end') return
     if (
       next.groupIndex === cursor.groupIndex &&
       next.itemIndex === cursor.itemIndex
@@ -194,7 +198,7 @@ export function StoryViewer({
 
   const goPrevSource = useCallback(() => {
     const next = jumpSourceStoryGroup(resolvedGroups, cursor, -1)
-    if (next === 'noop' || next === 'close') {
+    if (next === 'noop' || next === 'close' || next === 'end') {
       setProgress(0)
       return
     }
@@ -303,10 +307,18 @@ export function StoryViewer({
     router.push(newsItemDetailHref(current))
   }, [current, onClose, router])
 
-  // Swipe-down → kapat; yatay swipe → kaynak değiştir
+  // Swipe-down → kapat; yatay swipe → kaynak değiştir (dikey öncelikli)
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const ax = Math.abs(info.offset.x)
     const ay = Math.abs(info.offset.y)
+    const verticalDominant = ay >= ax * SWIPE_VERTICAL_BIAS
+    if (
+      verticalDominant &&
+      (info.offset.y > SWIPE_CLOSE_PX || info.velocity.y > SWIPE_CLOSE_VY)
+    ) {
+      onClose()
+      return
+    }
     if (ax > ay && multiSource) {
       if (info.offset.x <= -SWIPE_SOURCE_PX || info.velocity.x <= -SWIPE_SOURCE_VX) {
         goNextSource()
@@ -407,7 +419,7 @@ export function StoryViewer({
                   return (
                     <div
                       key={`${currentGroup.key}-${i}`}
-                      className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/35"
+                      className="h-1 flex-1 overflow-hidden rounded-full bg-black/55 shadow-[0_0_0_1px_rgba(255,255,255,0.22)]"
                     >
                       <div
                         className="h-full bg-white transition-[width] duration-instant"
@@ -469,9 +481,10 @@ export function StoryViewer({
               >
                 <SafeNewsImage
                   src={current.imageUrl || FEED_FALLBACK_LOGO}
+                  fallbackSrc={FEED_FALLBACK_LOGO}
                   alt={current.title}
                   fill
-                  sizes="440px"
+                  sizes="100vw"
                   priority
                   className="object-cover"
                 />
@@ -497,7 +510,7 @@ export function StoryViewer({
                   <ChevronRight className="h-5 w-5" />
                 </button>
 
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-5 pb-32 sm:pb-36">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-5 pb-[calc(env(safe-area-inset-bottom)+5.75rem)] sm:pb-36">
                   <h2 className="text-2xl font-black leading-[1.15] tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-3xl">
                     {current.title}
                   </h2>

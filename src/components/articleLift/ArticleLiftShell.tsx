@@ -203,11 +203,11 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
         }}
         onAnimationComplete={handleAnimationComplete}
         style={{ transformOrigin: 'center center' }}
-        className="absolute inset-0 flex flex-col overflow-hidden bg-[rgb(var(--color-bg))] sm:inset-3 sm:rounded-2xl sm:shadow-2xl md:inset-6 lg:inset-x-[8%] lg:inset-y-6 xl:inset-x-[14%]"
+        className="absolute inset-0 flex flex-col overflow-hidden bg-[color:var(--reader-page-bg,#0c0c0e)] sm:inset-3 sm:rounded-2xl sm:shadow-2xl md:inset-6 lg:inset-x-[8%] lg:inset-y-6 xl:inset-x-[14%]"
         {...panelMotionProps}
       >
         <div
-          className="relative flex shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 pb-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
+          className="relative flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[color:var(--reader-page-elevated,#141417)] px-3 pb-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
           data-testid="article-lift-header"
         >
           <button
@@ -216,20 +216,20 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
             onClick={close}
             aria-label="Geri dön"
             data-testid="article-lift-back"
-            className="inline-flex h-11 min-w-[5.5rem] items-center justify-center gap-1.5 rounded-full bg-[rgb(var(--color-bg))] px-3 text-sm font-semibold text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] transition-colors hover:bg-[rgb(var(--color-card))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
+            className="inline-flex h-11 min-w-[5.5rem] items-center justify-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-semibold text-[color:var(--reader-page-text,#f4f1ea)] ring-1 ring-white/15 transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden strokeWidth={2.25} />
             Geri
           </button>
           <span
             aria-hidden
-            className="absolute left-1/2 top-[max(0.55rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.2rem))] hidden h-1 w-10 -translate-x-1/2 rounded-full bg-[rgb(var(--color-border))] sm:block"
+            className="absolute left-1/2 top-[max(0.55rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.2rem))] hidden h-1 w-10 -translate-x-1/2 rounded-full bg-white/25 sm:block"
           />
           <button
             type="button"
             onClick={close}
             aria-label="Haberi kapat"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-bg))] hover:text-[rgb(var(--color-text))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/55 transition-colors hover:bg-white/10 hover:text-[color:var(--reader-page-text,#f4f1ea)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>

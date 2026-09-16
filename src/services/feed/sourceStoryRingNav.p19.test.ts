@@ -46,8 +46,8 @@ describe('stepSourceStoryCursor', () => {
     })
   })
 
-  it('closes after the last story of the last source', () => {
-    expect(stepSourceStoryCursor(groups(), { groupIndex: 2, itemIndex: 0 }, 1)).toBe('close')
+  it('signals end after the last story of the last source (viewer pauses; no auto-close)', () => {
+    expect(stepSourceStoryCursor(groups(), { groupIndex: 2, itemIndex: 0 }, 1)).toBe('end')
   })
 
   it('goes to previous source last story when stepping back from start', () => {
@@ -80,8 +80,8 @@ describe('jumpSourceStoryGroup', () => {
     })
   })
 
-  it('closes when swiping past last source', () => {
-    expect(jumpSourceStoryGroup(groups(), { groupIndex: 2, itemIndex: 0 }, 1)).toBe('close')
+  it('signals end when swiping past last source (viewer pauses; no auto-close)', () => {
+    expect(jumpSourceStoryGroup(groups(), { groupIndex: 2, itemIndex: 0 }, 1)).toBe('end')
   })
 
   it('noops when swiping before first source', () => {
@@ -112,5 +112,11 @@ describe('SourceStories + StoryViewer wiring', () => {
     expect(viewer).toContain('dragDirectionLock')
     expect(viewer).toContain('goNextSource')
     expect(viewer).toContain('data-multi-source')
+    expect(viewer).toContain("next === 'end'")
+    expect(viewer).toContain('SWIPE_VERTICAL_BIAS')
+    expect(viewer).toContain('h-1 flex-1')
+    expect(viewer).toContain('bg-black/55')
+    expect(viewer).toContain('fallbackSrc={FEED_FALLBACK_LOGO}')
+    expect(viewer).toContain('sizes="100vw"')
   })
 })

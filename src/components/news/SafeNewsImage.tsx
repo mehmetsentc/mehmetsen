@@ -7,6 +7,8 @@ import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
 
 type SafeNewsImageProps = {
   src: string
+  /** Shown once if `src` fails (e.g. brand logo). Prevents a blank black frame. */
+  fallbackSrc?: string
   alt?: string
   className?: string
   fill?: boolean
@@ -34,6 +36,7 @@ function hasObjectFitClass(className?: string): boolean {
  */
 export function SafeNewsImage({
   src,
+  fallbackSrc,
   alt,
   className,
   fill,
@@ -48,18 +51,28 @@ export function SafeNewsImage({
   fetchPriority,
 }: SafeNewsImageProps) {
   const [errored, setErrored] = useState(false)
+  const [useFallback, setUseFallback] = useState(false)
   const resolvedSrc = typeof src === 'string' ? src.trim() : ''
+  const resolvedFallback =
+    typeof fallbackSrc === 'string' && fallbackSrc.trim() && fallbackSrc.trim() !== resolvedSrc
+      ? fallbackSrc.trim()
+      : ''
+  const activeSrc = useFallback && resolvedFallback ? resolvedFallback : resolvedSrc
 
-  if (errored || !resolvedSrc) return null
+  if (errored || !activeSrc) return null
 
   function handleError() {
+    if (!useFallback && resolvedFallback) {
+      setUseFallback(true)
+      return
+    }
     setErrored(true)
     onLoadError?.()
   }
 
   const numericWidth = typeof width === 'number' ? width : undefined
   const numericHeight = typeof height === 'number' ? height : undefined
-  const useNextImage = shouldUseNextImage(resolvedSrc)
+  const useNextImage = shouldUseNextImage(activeSrc)
   const lazy = !priority && loading !== 'eager'
   const resolvedFetchPriority = fetchPriority ?? (priority ? 'high' : 'auto')
 
@@ -68,7 +81,7 @@ export function SafeNewsImage({
       return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={resolvedSrc}
+          src={activeSrc}
           alt={alt ?? ''}
           loading={lazy ? 'lazy' : 'eager'}
           fetchPriority={resolvedFetchPriority}
@@ -89,7 +102,7 @@ export function SafeNewsImage({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={resolvedSrc}
+        src={activeSrc}
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
         fetchPriority={resolvedFetchPriority}
@@ -107,7 +120,8 @@ export function SafeNewsImage({
 
   return (
     <Image
-      src={resolvedSrc}
+      key={activeSrc}
+      src={activeSrc}
       alt={alt ?? ''}
       className={cn(fill && !hasObjectFitClass(className) && 'object-cover', className)}
       fill={fill}

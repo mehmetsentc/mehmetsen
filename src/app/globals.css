@@ -5336,10 +5336,8 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   }
 }
 
-/* Belt-and-suspenders: Global Nav V2 never shows legacy bottom pill. */
-[data-global-nav-v2='1'] .mobile-bottom-nav {
-  display: none !important;
-}
+/* Global Nav V2 keeps the Pinterest bottom dock (Ana Sayfa / Akış / Profil).
+   Reader / reels hide it via resolveMobileNavVisible + smart-feed-reader-open CSS. */
 
 /* Feed V2 hero share — short phones yield media to first-paint actions + rhythm */
 @media (max-height: 700px) {

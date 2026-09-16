@@ -34,6 +34,8 @@ describe('P19 Global Nav', () => {
     expect(
       resolveMobileNavVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
     ).toBe(false)
+    const css = read('src/app/globals.css')
+    expect(css).not.toContain("[data-global-nav-v2='1'] .mobile-bottom-nav")
   })
 })
 

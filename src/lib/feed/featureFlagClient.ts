@@ -17,7 +17,7 @@ export function isSmartFeedVideoEnabledClient(): boolean {
 
 /**
  * GLOBAL_NAV_V2 — default ON.
- * Removes global bottom MobileNav; header + side drawer are the authority.
+ * Header + side drawer + Pinterest bottom dock (Ana Sayfa / Akış / Profil).
  * Kill-switch: NEXT_PUBLIC_GLOBAL_NAV_V2=0
  */
 export function isGlobalNavV2EnabledClient(): boolean {

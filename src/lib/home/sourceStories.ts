@@ -85,14 +85,14 @@ export type SourceStoryCursor = {
 
 /**
  * Step within / across source rings.
- * Forward past the last ring → 'close'.
+ * Forward past the last ring → 'end' (stay on last; UI pauses — X / swipe-down close).
  * Backward before the first story → stay at start ('noop' not needed; returns same cursor).
  */
 export function stepSourceStoryCursor(
   groups: SourceStoryGroup[],
   cursor: SourceStoryCursor,
   dir: 1 | -1
-): SourceStoryCursor | 'close' {
+): SourceStoryCursor | 'end' | 'close' {
   if (groups.length === 0) return 'close'
   const group = groups[cursor.groupIndex]
   if (!group || group.items.length === 0) return 'close'
@@ -104,7 +104,7 @@ export function stepSourceStoryCursor(
     if (cursor.groupIndex < groups.length - 1) {
       return { groupIndex: cursor.groupIndex + 1, itemIndex: 0 }
     }
-    return 'close'
+    return 'end'
   }
 
   if (cursor.itemIndex > 0) {
@@ -122,18 +122,18 @@ export function stepSourceStoryCursor(
 
 /**
  * Horizontal swipe between sources (rings).
- * Next past last → 'close'. Prev before first → 'noop'.
+ * Next past last → 'end' (stay; UI pauses). Prev before first → 'noop'.
  * Landing always starts at the first story of the target ring.
  */
 export function jumpSourceStoryGroup(
   groups: SourceStoryGroup[],
   cursor: SourceStoryCursor,
   dir: 1 | -1
-): SourceStoryCursor | 'close' | 'noop' {
+): SourceStoryCursor | 'end' | 'close' | 'noop' {
   if (groups.length === 0) return 'close'
   const next = cursor.groupIndex + dir
   if (next < 0) return 'noop'
-  if (next >= groups.length) return 'close'
+  if (next >= groups.length) return 'end'
   return { groupIndex: next, itemIndex: 0 }
 }
 

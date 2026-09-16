@@ -17,6 +17,8 @@ describe('StoryViewer iOS top chrome', () => {
     expect(src).toContain('data-testid="story-viewer-header"')
     expect(src).toContain('47px')
     expect(src).toContain('safe-area-inset-top')
+    expect(src).toContain('bg-black/55')
+    expect(src).toContain('h-1 flex-1')
     // Progress must not be independently absolutely positioned above a fixed header top.
     expect(src).not.toMatch(
       /data-testid="story-viewer-progress"[\s\S]{0,120}absolute inset-x-0 top-0/

@@ -25,11 +25,13 @@ describe('Article detail back chrome', () => {
     expect(bar).toContain('BackNavButton')
   })
 
-  it('Article Lift header has safe-area + Geri button', () => {
+  it('Article Lift header has safe-area + Geri button + reader dark chrome', () => {
     const lift = read('src/components/articleLift/ArticleLiftShell.tsx')
     expect(lift).toContain('data-testid="article-lift-back"')
     expect(lift).toContain('safe-area-inset-top')
     expect(lift).toContain('Geri')
+    expect(lift).toContain('--reader-page-bg')
+    expect(lift).toContain('--reader-page-text')
   })
 
   it('reader chrome lock CSS is scoped to Feed V2 reels stage only', () => {

@@ -1,5 +1,5 @@
 /**
- * Global Navigation V2 — remove bottom MobileNav; header + side drawer authority.
+ * Global Navigation V2 — header + drawer + Pinterest bottom dock.
  * AUTOMATED — NOT HUMAN GO.
  */
 import { describe, expect, it } from 'vitest'

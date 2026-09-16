@@ -60,7 +60,7 @@ export function isNfRankLiveEnabled(): boolean {
   return false
 }
 
-/** GLOBAL_NAV_V2 — default ON. Kill with GLOBAL_NAV_V2=0 / NEXT_PUBLIC_GLOBAL_NAV_V2=0 */
+/** GLOBAL_NAV_V2 — default ON (header + drawer + bottom dock). Kill with GLOBAL_NAV_V2=0 / NEXT_PUBLIC_GLOBAL_NAV_V2=0 */
 export function isGlobalNavV2Enabled(): boolean {
   const v =
     process.env.NEXT_PUBLIC_GLOBAL_NAV_V2?.trim().toLowerCase() ||
