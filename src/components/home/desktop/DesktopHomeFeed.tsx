@@ -316,7 +316,7 @@ export function DesktopHomeFeed({
       {cityMode ? (
         <>
           {cityName || districtName || sectionTitle ? (
-            <p className="mb-4 text-center text-sm font-bold text-[rgb(var(--color-text-secondary))]">
+            <p className="mb-4 text-center text-sm font-bold text-[rgb(var(--color-text))]">
               {sectionTitle || (districtName ? `${districtName} Haberleri` : `${cityName} Haberleri`)}
             </p>
           ) : null}

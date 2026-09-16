@@ -15,9 +15,10 @@ export const CONTEXT_RAIL_SLOT_ID = 'nahaber-context-rail'
 export const CONTEXT_RAIL_CHIP =
   'context-rail__chip relative flex min-h-10 shrink-0 items-center justify-center px-2.5 py-2 text-[0.9375rem] font-semibold leading-none whitespace-nowrap touch-manipulation transition-colors duration-150 select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
 
-export const CONTEXT_RAIL_CHIP_ACTIVE = 'context-rail__chip--active text-white'
+export const CONTEXT_RAIL_CHIP_ACTIVE =
+  'context-rail__chip--active text-[rgb(var(--header-onbrand))]'
 export const CONTEXT_RAIL_CHIP_IDLE =
-  'bg-transparent text-white/62 hover:text-white'
+  'bg-transparent text-[rgb(var(--header-onbrand))]/62 hover:text-[rgb(var(--header-onbrand))]'
 
 export function contextRailChipClass(active: boolean): string {
   return cn(

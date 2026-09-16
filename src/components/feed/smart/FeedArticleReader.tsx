@@ -224,16 +224,6 @@ export function FeedArticleReader({
     document.body.classList.remove('smart-feed-reader-open')
   }
 
-  // Lock site chrome for the full open ramp (not only after commit) so Global Nav
-  // cannot leak beside a half-turned Reader page on iOS.
-  useEffect(() => {
-    document.documentElement.classList.add('smart-feed-reader-open')
-    document.body.classList.add('smart-feed-reader-open')
-    return () => {
-      clearReaderChromeLock()
-    }
-  }, [])
-
   const onVisualProgressRef = useRef(onVisualProgress)
   onVisualProgressRef.current = onVisualProgress
 
@@ -267,6 +257,25 @@ export function FeedArticleReader({
     internalProgress !== null ? internalProgress : Math.min(1, Math.max(0, visualProgress))
   const progressRef = useRef(progress)
   progressRef.current = progress
+
+  // Lock site chrome for the full open ramp (not only after commit) so Global Nav
+  // cannot leak beside a half-turned Reader page on iOS.
+  // Clear whenever the shell is effectively idle/invisible — otherwise a cancelled
+  // Haberi Oku ramp or bfcache restore can leave MobileNav + top chrome hidden
+  // while Feed still reserves --feed-v2-bottom-clearance (black band).
+  useEffect(() => {
+    const lockChrome =
+      committed || progress > 0.001 || progressAnimating || animating || closingRef.current
+    if (lockChrome) {
+      document.documentElement.classList.add('smart-feed-reader-open')
+      document.body.classList.add('smart-feed-reader-open')
+    } else {
+      clearReaderChromeLock()
+    }
+    return () => {
+      clearReaderChromeLock()
+    }
+  }, [committed, progress, progressAnimating, animating])
 
   const headline = pickFullReaderCopy(detail?.headline, item.headline) || item.headline
   const summary = pickFullReaderCopy(detail?.summary, item.summary)

@@ -74,11 +74,11 @@ describe('P18 Feed Reader return animation + global ON', () => {
     expect(reader).toMatch(/feed-reader-close[\s\S]{0,350}Akışa Dön/)
   })
 
-  it('chrome lock applies on Reader mount (full open ramp), not only commit', () => {
+  it('chrome lock applies on Reader open ramp; clears when shell idle', () => {
     expect(reader).toContain('smart-feed-reader-open')
-    expect(reader).toMatch(
-      /Lock site chrome for the full open ramp[\s\S]{0,220}smart-feed-reader-open/
-    )
+    expect(reader).toContain('Lock site chrome for the full open ramp')
+    expect(reader).toContain('Clear whenever the shell is effectively idle')
+    expect(reader).toMatch(/progress > 0\.001/)
     expect(css).toContain('.mobile-safe-area-shield')
     expect(css).toMatch(
       /smart-feed-reader-open[\s\S]{0,280}\.mobile-safe-area-shield/

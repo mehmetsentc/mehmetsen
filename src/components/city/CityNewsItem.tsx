@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { cn } from '@/lib/utils'
 import { newsItemCategoryLabel } from '@/lib/newsItemUtils'
@@ -19,7 +18,7 @@ export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
   const categoryLabel = newsItemCategoryLabel(item)
 
   return (
-    <Link href={href} className="group block" prefetch={false}>
+    <a href={href} className="group block">
       <article className="flex gap-3 py-3">
         {item.imageUrl && (
           <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface-raised))]">
@@ -55,6 +54,6 @@ export function CityNewsItem({ item, priority = false }: CityNewsItemProps) {
           </div>
         </div>
       </article>
-    </Link>
+    </a>
   )
 }
