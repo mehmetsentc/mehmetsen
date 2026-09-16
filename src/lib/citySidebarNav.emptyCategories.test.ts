@@ -25,13 +25,13 @@ function item(category: string): NewsItem {
 describe('city header empty-category filter', () => {
   it('always keeps Ana Sayfa, Etkinlik, İş İlanları, İlçeler', () => {
     const sections = buildCitySectionNavItems({ hasSpor: false })
-    expect(sections.map((s) => s.id)).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'ilceler'])
+    expect(sections.map((s) => s.id)).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'canakkale' }).map((s) => s.id)
-    ).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
+    ).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'antalya' }).map((s) => s.id)
-    ).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
+    ).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'bursa' }).map((s) => s.id)
     ).not.toContain('nobetci-eczaneler')
@@ -56,6 +56,7 @@ describe('city header empty-category filter', () => {
     )
     expect(items.map((i) => i.id)).toEqual([
       'feed',
+      'akis',
       'etkinlik',
       'is-ilanlari',
       'ilceler',
@@ -82,5 +83,18 @@ describe('city header empty-category filter', () => {
     expect(presence.categories.map((c) => c.id)).toContain('yerel-duyuru')
     expect(presence.categories.map((c) => c.id)).toContain('siyaset')
     expect(presence.categories.map((c) => c.id)).not.toContain('spor')
+  })
+})
+
+describe('city feed-v2 tabs', () => {
+  it('leads with Sana Özel then city categories only', async () => {
+    const { buildCityFeedV2Tabs } = await import('@/lib/feed/feedV2Tabs')
+    const tabs = buildCityFeedV2Tabs([
+      { id: 'siyaset', name: 'Siyaset' },
+      { id: 'ekonomi', name: 'Ekonomi' },
+    ])
+    expect(tabs[0]?.id).toBe('personal')
+    expect(tabs.map((t) => t.id)).toEqual(['personal', 'siyaset', 'ekonomi'])
+    expect(tabs.some((t) => t.id === 'yerel' || t.id === 'following')).toBe(false)
   })
 })

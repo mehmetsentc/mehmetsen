@@ -147,6 +147,7 @@ async function fetchFeedPage(opts: {
   cursor?: string | null
   city?: string | null
   district?: string | null
+  lockCity?: boolean
   refresh?: boolean
   signal?: AbortSignal
   forceAuthRefresh?: boolean
@@ -159,6 +160,7 @@ async function fetchFeedPage(opts: {
   params.set('limit', String(FEED_PAGINATION.defaultLimit))
   if (opts.city) params.set('city', opts.city)
   if (opts.district) params.set('district', opts.district)
+  if (opts.lockCity && opts.city) params.set('lockCity', '1')
 
   const headers: Record<string, string> = {
     'x-feed-session': getOrCreateFeedSessionId(),
@@ -223,6 +225,8 @@ async function postTelemetry(payload: {
 interface SmartFeedClientProps {
   initialCitySlug?: string | null
   initialDistrictSlug?: string | null
+  /** City tenant — never leak GPS/national corpus into this host. */
+  lockCitySlug?: boolean
   /** SSR-prefetched first page — paints cards before auth/profile finishes. */
   initialPage?: FeedPageDto | null
   debug?: boolean
@@ -236,6 +240,7 @@ interface SmartFeedClientProps {
 export function SmartFeedClient({
   initialCitySlug,
   initialDistrictSlug,
+  lockCitySlug = false,
   initialPage = null,
   debug,
   presentation = 'overlay',
@@ -723,6 +728,7 @@ export function SmartFeedClient({
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
     (activeMode: FeedMode): string | null => {
+      if (lockCitySlug && initialCitySlug) return initialCitySlug
       if (activeMode === 'local') {
         if (localCitySlugRef.current) return localCitySlugRef.current
         const persisted = readLocalNewsCitySlug()
@@ -743,7 +749,7 @@ export function SmartFeedClient({
         null
       )
     },
-    [userLocation.ready, userLocation.citySlug, userLocation.source, initialCitySlug]
+    [userLocation.ready, userLocation.citySlug, userLocation.source, initialCitySlug, lockCitySlug]
   )
 
   const windowStart = Math.max(0, activeIndex - WINDOW_BEFORE)
@@ -812,6 +818,7 @@ export function SmartFeedClient({
             cursor: pageCursor,
             city: resolveFeedCity(activeMode),
             district: initialDistrictSlug,
+            lockCity: lockCitySlug,
             refresh: !append && emptyRefills === 0,
             signal,
             forceAuthRefresh,
@@ -981,7 +988,7 @@ export function SmartFeedClient({
         }
       }
     },
-    [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity]
+    [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity, lockCitySlug]
   )
 
   const applyLocalCity = useCallback(

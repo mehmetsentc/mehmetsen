@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { HomeFeed } from '@/components/home/HomeFeed'
-import { CityThreadFeed } from '@/components/city/CityThreadFeed'
+import { CityHomeMagazine } from '@/components/city/CityHomeMagazine'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import type { HomeFeedInitialData, HomeCategorySlug } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
@@ -150,9 +150,7 @@ function CityFeedPageBody({
             groups={dutyPharmacyGroups}
           />
         ) : null}
-        {/* Şehir subdomain — mobilde Threads/Twitter tarzı akış */}
         {districtName ? (
-          /* İlçe sayfaları: mevcut HomeFeed'i koru */
           <HomeFeed
             data={homeFeedData}
             cityMode
@@ -161,8 +159,11 @@ function CityFeedPageBody({
             cityName={cityName}
           />
         ) : (
-          /* Şehir ana sayfası: yeni thread feed */
-          <CityThreadFeed initialItems={homeFeedData.latest} />
+          <CityHomeMagazine
+            homeFeedData={homeFeedData}
+            cityName={cityName}
+            cinemaEvents={cinemaEvents}
+          />
         )}
       </div>
 

@@ -787,6 +787,18 @@ function deriveRailCategoriesFromPool(pool: NewsItem[]): HomeCategorySlug[] {
   })
 }
 
+function isCityTenantStory(item: NewsItem, citySlug: string): boolean {
+  const forCity = citySlug.trim().toLowerCase()
+  const itemCity = (item.citySlug || '').trim().toLowerCase()
+  if (!forCity || itemCity !== forCity) return false
+  if (item.localFeatured === true) return true
+  return isLocalScopedNews({
+    category: item.category,
+    originalCategoryId: item.originalCategoryId,
+    citySlug: item.citySlug,
+  })
+}
+
 function buildCityFeedFromPool(
   pool: NewsItem[],
   citySlug: string,
@@ -797,11 +809,15 @@ function buildCityFeedFromPool(
   ) => Partial<Record<HomeCategorySlug, NewsItem[]>> = bucketCityCategoryRails,
   featuredPinned: NewsItem[] = []
 ): HomeFeedInitialData {
-  if (pool.length === 0 && featuredPinned.length === 0) return EMPTY_HOME_FEED
+  const scopedPool = pool.filter((item) => isCityTenantStory(item, citySlug))
+  const scopedPins = featuredPinned.filter((item) =>
+    isCityFeaturedPin({ ...item, forCitySlug: citySlug })
+  )
+  if (scopedPool.length === 0 && scopedPins.length === 0) return EMPTY_HOME_FEED
 
   const now = Date.now()
-  const nonBreaking = pool.filter((item) => !isCityBreakingItem(item))
-  const categoryRails = bucketRails(pool, railCategoryIds)
+  const nonBreaking = scopedPool.filter((item) => !isCityBreakingItem(item))
+  const categoryRails = bucketRails(scopedPool, railCategoryIds)
   const slimRails: HomeFeedInitialData['categoryRails'] = {}
   for (const [key, items] of Object.entries(categoryRails)) {
     slimRails[key as HomeCategorySlug] = slimNewsItemsForFeed(items ?? [])
@@ -815,9 +831,9 @@ function buildCityFeedFromPool(
       : nonBreaking.slice(0, 6)
 
   return {
-    breaking: slimNewsItemsForFeed(pool.filter(isCityBreakingItem).slice(0, 8)),
+    breaking: slimNewsItemsForFeed(scopedPool.filter(isCityBreakingItem).slice(0, 8)),
     featured: slimNewsItemsForFeed(
-      bucketCityFeatured(pool, citySlug, HOME_FEATURED_LIMIT, featuredPinned)
+      bucketCityFeatured(scopedPool, citySlug, HOME_FEATURED_LIMIT, scopedPins)
     ),
     latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
     trending: slimNewsItemsForFeed(trending),
@@ -841,7 +857,7 @@ const getCityHomeFeedCached = unstable_cache(
 
     return buildCityFeedFromPool(pool, citySlug, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v8'],
+  ['city-home-feed-v9'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

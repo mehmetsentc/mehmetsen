@@ -28,6 +28,8 @@ export interface RankingPipelineInput {
   citySlug?: string | null
   districtSlug?: string | null
   region?: string | null
+  /** City tenant — local corpus only (no national personal mix). */
+  lockCity?: boolean
   seenArticles: Set<string>
   seenClusters: Set<string>
   /** Feed V2 NFRank: off | shadow (eval only) | live (visible order). */
@@ -52,6 +54,7 @@ async function fetchPools(
     citySlug?: string | null
     districtSlug?: string | null
     region?: string | null
+    lockCity?: boolean
     excludeArticleIds: Set<string>
     excludeClusterIds: Set<string>
     publishedBefore?: Date | string | null
@@ -70,6 +73,14 @@ async function fetchPools(
   }
 
   const limits = FEED_RANKING_CONFIG_V1.candidatePoolLimits
+
+  if (opts.lockCity && opts.citySlug) {
+    const local = await feedCandidateService.fetchLocal({
+      ...base,
+      limit: Math.max(opts.limit, limits.LOCAL),
+    })
+    return { LOCAL: local }
+  }
 
   if (mode === 'personal') {
     const [featured, breaking, recent, popular, local, discovery, following] = await Promise.all([
@@ -214,6 +225,7 @@ export class FeedRankingPipeline {
       citySlug: input.citySlug,
       districtSlug: input.districtSlug,
       region: input.region,
+      lockCity: input.lockCity,
       excludeArticleIds,
       excludeClusterIds: input.seenClusters,
       publishedBefore: null,
@@ -228,6 +240,7 @@ export class FeedRankingPipeline {
         citySlug: input.citySlug,
         districtSlug: input.districtSlug,
         region: input.region,
+        lockCity: input.lockCity,
         excludeArticleIds,
         excludeClusterIds: input.seenClusters,
         publishedBefore,
@@ -243,8 +256,8 @@ export class FeedRankingPipeline {
     }
 
     // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions.
-    // LOCAL mode must NEVER nationwide-fill — that made Eskişehir appear in Antalya Yerel.
-    if (flat.length < input.limit && input.mode !== 'local') {
+    // LOCAL / city-tenant lock must NEVER nationwide-fill — that leaked Kozinoğlu into Çanakkale.
+    if (flat.length < input.limit && input.mode !== 'local' && !input.lockCity) {
       const before =
         publishedBefore ??
         (flat.length ? oldestPublishedIso(flat) : new Date().toISOString())
@@ -263,7 +276,7 @@ export class FeedRankingPipeline {
         seen.add(row.articleId)
         flat.push(row)
       }
-    } else if (flat.length < input.limit && input.mode === 'local') {
+    } else if (flat.length < input.limit && (input.mode === 'local' || input.lockCity)) {
       candidateCounts.LOCAL_NO_NATIONWIDE_FILL = 1
     }
 

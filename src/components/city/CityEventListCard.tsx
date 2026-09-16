@@ -28,10 +28,8 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
   const free = isEventFree(event)
 
   return (
-    <Link
-      href={`/etkinlik/${event.id}`}
-      className="flex gap-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2.5 shadow-sm hover:shadow-md transition-shadow"
-    >
+    <article className="flex gap-3 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2.5 shadow-sm transition-shadow hover:shadow-md">
+      <Link href={`/etkinlik/${event.id}`} className="flex min-w-0 flex-1 gap-3">
       <div className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-surface-elevated))]">
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -92,6 +90,7 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
         )}
       </div>
 
+      </Link>
       {event.ticketUrl ? (
         <a
           href={event.ticketUrl}
@@ -107,7 +106,7 @@ export function CityEventListCard({ event }: CityEventListCardProps) {
           Ücretsiz
         </div>
       ) : null}
-    </Link>
+    </article>
   )
 }
 

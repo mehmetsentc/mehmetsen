@@ -7,7 +7,7 @@
  * Sayfa navları (Etkinlik, İş, Eczane, Spor, İlçeler) alt navda (CityMobileNav) zaten var.
  *
  * Aktif chip: marka kırmızısı dolgu + beyaz metin (brand fill).
- * Swipe desteği CityThreadFeed tarafından sağlanır — bu bileşen sadece render.
+ * Swipe desteği CityHomeMagazine tarafından sağlanır — bu bileşen sadece render.
  */
 
 import { useRef } from 'react'

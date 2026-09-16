@@ -13,6 +13,9 @@ export function isCitySectionActive(pathname: string, href: string): boolean {
   if (href === '/') {
     return path === '/' || path === '/feed' || path === '/yerel'
   }
+  if (href === '/feed-v2') {
+    return path === '/feed-v2' || path.startsWith('/feed-v2/')
+  }
   return path === href || path.startsWith(`${href}/`)
 }
 
@@ -20,4 +23,10 @@ export function isCitySectionActive(pathname: string, href: string): boolean {
 export function isCityFeedPath(pathname: string): boolean {
   const path = normalizeCityPath(pathname)
   return path === '/' || path === '/feed' || path === '/yerel'
+}
+
+/** Immersive Akış — no city chrome (matches national /feed-v2). */
+export function isCityImmersivePath(pathname: string): boolean {
+  const path = normalizeCityPath(pathname)
+  return path === '/feed-v2' || path.startsWith('/feed-v2/')
 }

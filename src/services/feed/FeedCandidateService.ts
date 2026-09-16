@@ -939,6 +939,7 @@ export class FeedCandidateService {
     const cursorTs = opts.cursor?.publishedAt ? new Date(opts.cursor.publishedAt) : null
     const cursorOk = Boolean(cursorTs && !Number.isNaN(cursorTs.getTime()))
     const cursorId = opts.cursor?.id?.trim() || null
+    const categoryIds = resolveOptsCategoryIds(opts)
 
     try {
       const db = getAdminFirestore()
@@ -989,6 +990,10 @@ export class FeedCandidateService {
           }
           // Defense: never accept another province from a mis-indexed doc.
           if ((row.citySlug || '').toLowerCase() !== citySlug) continue
+          if (categoryIds.length) {
+            const rowCat = (row.category || '').toLowerCase()
+            if (!rowCat || !categoryIds.includes(rowCat)) continue
+          }
           seen.add(doc.id)
           const rowDistrict = (row.districtSlug || '').toLowerCase()
           if (districtSlug && rowDistrict === districtSlug) districtHits.push(row)

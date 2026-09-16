@@ -123,8 +123,8 @@ export function isAdminLocalFeatured(input: FeaturedScopeInput & FeaturedPinFlag
 }
 
 /**
- * Local page carousel: pinned local-featured items, or the latest `limit` stories
- * when that city has no pins. Does not mix leftover pin slots with filler.
+ * Local page carousel: pinned local-featured items, or the latest yerel stories
+ * for that city. National gündem (Instagram / Yargıtay, …) never fills city manşet.
  */
 export function pickCityFeaturedCarouselItems<
   T extends FeaturedScopeInput & FeaturedPinFlags & { id: string },
@@ -132,7 +132,12 @@ export function pickCityFeaturedCarouselItems<
   const pins = items.filter((item) => isCityFeaturedPin({ ...item, forCitySlug: citySlug }))
   if (pins.length > 0) return pins.slice(0, limit)
   return items
-    .filter((item) => !isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(item)))
+    .filter(
+      (item) =>
+        citySlugMatches(item, citySlug) &&
+        isLocalScopedNews(item) &&
+        !isExcludedFromHomepageMainSlots(resolveEditorialScopeCategory(item))
+    )
     .slice(0, limit)
 }
 

@@ -6,6 +6,7 @@ import {
   Briefcase,
   LayoutGrid,
   Pill,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
@@ -34,6 +35,7 @@ export interface CitySidebarNavItem {
 
 const SECTION_ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], LucideIcon> = {
   home: Home,
+  zap: Zap,
   calendar: Calendar,
   trophy: Trophy,
   'map-pin': MapPin,

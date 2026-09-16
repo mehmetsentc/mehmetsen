@@ -78,6 +78,26 @@ export function resolveFeedV2TabForArticleCategory(
   return null
 }
 
+/** City-tenant Akış tabs — Sana Özel + that city's published categories. */
+export function buildCityFeedV2Tabs(
+  categories: ReadonlyArray<{ id: string; name: string }>
+): FeedV2Tab[] {
+  const seen = new Set(FEED_V2_LEAD_TABS.map((t) => t.id))
+  const cats: FeedV2Tab[] = []
+  for (const cat of categories) {
+    const id = cat.id.trim().toLowerCase()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    cats.push({
+      id,
+      kind: 'category',
+      label: cat.name,
+      category: id,
+    })
+  }
+  return [...FEED_V2_LEAD_TABS, ...cats]
+}
+
 /** Static fallback order when freshness API is unavailable. */
 export function buildFallbackFeedV2Tabs(): FeedV2Tab[] {
   const cats = FALLBACK_CATEGORY_IDS.map(categoryTabFromId).filter(Boolean) as FeedV2Tab[]

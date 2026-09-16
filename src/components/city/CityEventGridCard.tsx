@@ -31,13 +31,13 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
   const category = resolveEventFilterCategory(event)
 
   return (
-    <Link
-      href={`/etkinlik/${event.id}`}
+    <article
       className={cn(
         'group flex h-full flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))]',
         'bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md'
       )}
     >
+      <Link href={`/etkinlik/${event.id}`} className="flex min-h-0 flex-1 flex-col">
       <div
         className={cn(
           'relative w-full overflow-hidden bg-[rgb(var(--color-surface-elevated))]',
@@ -107,31 +107,33 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
           </div>
         )}
 
-        {event.ticketUrl ? (
-          <a
-            href={event.ticketUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg',
-              'bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white',
-              'transition-opacity hover:opacity-90'
-            )}
-          >
-            <Ticket className="h-3.5 w-3.5" />
-            Bilet Al
-          </a>
-        ) : free ? (
+        {free && !event.ticketUrl ? (
           <div className="mt-auto pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             Halka açık · giriş ücretsiz
           </div>
-        ) : (
+        ) : !event.ticketUrl ? (
           <div className="mt-auto pt-1 text-[11px] font-medium text-[rgb(var(--color-text-secondary))]">
             Bilgi yok
           </div>
-        )}
+        ) : null}
       </div>
-    </Link>
+      </Link>
+      {event.ticketUrl ? (
+        <a
+          href={event.ticketUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            'mx-3 mb-3 mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg',
+            'bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white',
+            'transition-opacity hover:opacity-90'
+          )}
+        >
+          <Ticket className="h-3.5 w-3.5" />
+          Bilet Al
+        </a>
+      ) : null}
+    </article>
   )
 }
 

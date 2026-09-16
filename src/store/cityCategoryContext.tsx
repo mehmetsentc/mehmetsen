@@ -44,3 +44,8 @@ export function useCityCategoryFilter(): CityCategoryContextValue {
   }
   return ctx
 }
+
+/** National surfaces (feed-v2) may render without a city provider. */
+export function useOptionalCityCategoryFilter(): CityCategoryContextValue | null {
+  return useContext(CityCategoryContext)
+}

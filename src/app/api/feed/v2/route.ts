@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { hasDatabaseUrl } from '@/db'
 import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
+import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { resolveTenant } from '@/lib/tenant'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedService } from '@/services/feed/FeedService'
 import type { FeedMode } from '@/types/smartFeed'
@@ -41,7 +43,13 @@ export async function GET(request: Request) {
   const cursor = url.searchParams.get('cursor')
   const limitRaw = url.searchParams.get('limit')
   const limit = limitRaw ? Number(limitRaw) : undefined
-  const citySlug = url.searchParams.get('city')?.trim() || null
+  const hostCity = await getCitySlugFromHeaders()
+  const tenant = hostCity ? await resolveTenant(hostCity) : null
+  const hostCitySlug = tenant?.provinceSlug ?? hostCity ?? null
+  const queryCity = url.searchParams.get('city')?.trim() || null
+  const lockCity =
+    url.searchParams.get('lockCity') === '1' || Boolean(hostCitySlug)
+  const citySlug = (hostCitySlug || queryCity)?.trim().toLowerCase() || null
   const districtSlug = url.searchParams.get('district')?.trim() || null
   const region = url.searchParams.get('region')?.trim() || null
   const sessionId = request.headers.get('x-feed-session')?.trim() || null
@@ -62,6 +70,7 @@ export async function GET(request: Request) {
       citySlug,
       districtSlug,
       region,
+      lockCity,
       refresh,
       category,
       surface: 'feed-v2',

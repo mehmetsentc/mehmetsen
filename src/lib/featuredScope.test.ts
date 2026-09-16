@@ -193,7 +193,7 @@ describe('featuredScope', () => {
     ).toBe(false)
   })
 
-  it('carousel uses pins when present, otherwise latest 10 excluding gastronomi', () => {
+  it('carousel uses pins when present, otherwise latest yerel for that city (never national gündem)', () => {
     const items = [
       { id: '1', category: 'yerel-haber', citySlug: 'antalya', featured: true },
       { id: '2', category: 'yerel-spor', citySlug: 'antalya' },
@@ -212,7 +212,16 @@ describe('featuredScope', () => {
       'antalya',
       10
     )
-    expect(fallback.map((p) => p.id)).toEqual(['a', 'c'])
+    expect(fallback.map((p) => p.id)).toEqual(['a'])
+  })
+
+  it('city homepage pool must drop national gündem (Antalya ≠ Instagram/Yargıtay)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const src = readFileSync(join(process.cwd(), 'src/services/cityNewsService.server.ts'), 'utf8')
+    expect(src).toContain('function isCityTenantStory')
+    expect(src).toContain('scopedPool')
+    expect(src).toContain('city-home-feed-v9')
   })
 
   it('city homepage carousel keeps localFeatured pins that are not nationally featured', () => {

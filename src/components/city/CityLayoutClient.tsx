@@ -18,8 +18,10 @@ import { CityNavbar } from './CityNavbar'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
 import { CityFooter } from './CityFooter'
+import { GlobalBackNav } from '@/components/layout/BackNavButton'
+import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import type { CityCategory } from '@/services/cityNewsService.server'
-import { isCityFeedPath } from '@/lib/cityPaths'
+import { isCityFeedPath, isCityImmersivePath } from '@/lib/cityPaths'
 
 interface CityLayoutClientProps {
   tenantSlug: string
@@ -111,6 +113,16 @@ const CityShell = memo(function CityShell({
       setMobileDrawerOpen(true)
     }
   }, [isDesktop, toggleDesktopSidebar, setMobileDrawerOpen])
+
+  if (isCityImmersivePath(pathname)) {
+    return (
+      <div className="min-h-screen bg-black">
+        <ReelsRouteTheme active />
+        <GlobalBackNav />
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-surface))]">

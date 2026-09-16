@@ -4,6 +4,8 @@ import { SmartFeedClient } from '@/components/feed/smart/SmartFeedClient'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { hasDatabaseUrl } from '@/db'
 import { FEED_PAGINATION } from '@/lib/feed/config'
+import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { resolveTenant } from '@/lib/tenant'
 import {
   FEED_READER_SURFACE_CLASS,
   FEED_V2_CHROME_CSS_VARS,
@@ -28,6 +30,9 @@ export const metadata: Metadata = {
 export default async function FeedV2Page() {
   const debug = process.env.NODE_ENV !== 'production'
   let initialPage: FeedPageDto | null = null
+  const hostCity = await getCitySlugFromHeaders()
+  const tenant = hostCity ? await resolveTenant(hostCity) : null
+  const citySlug = tenant?.provinceSlug ?? hostCity ?? null
 
   try {
     if (hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
@@ -37,6 +42,8 @@ export default async function FeedV2Page() {
         mode: 'personal',
         limit: FEED_PAGINATION.defaultLimit,
         surface: 'feed-v2',
+        citySlug,
+        lockCity: Boolean(citySlug),
       })
     }
   } catch (err) {
@@ -62,7 +69,12 @@ export default async function FeedV2Page() {
         />
         {initialPage?.items?.length ? null : <FullscreenNewsCardSkeleton />}
         <div className="absolute inset-0 z-30">
-          <SmartFeedClient initialPage={initialPage} debug={debug} />
+          <SmartFeedClient
+            initialPage={initialPage}
+            initialCitySlug={citySlug}
+            lockCitySlug={Boolean(citySlug)}
+            debug={debug}
+          />
         </div>
       </div>
     </div>

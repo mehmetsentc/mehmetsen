@@ -81,11 +81,17 @@ export interface FeedRequestContext {
   citySlug?: string | null
   districtSlug?: string | null
   region?: string | null
+  /** City tenant — never mix national/personal corpus into this host. */
+  lockCity?: boolean
   refresh?: boolean
   /** When set, restrict corpus to this category (+ children). */
   category?: string | null
   /** Isolation: NFRank only when surface === 'feed-v2'. */
   surface?: FeedSurface
+}
+
+function isCityLockedFeed(ctx: FeedRequestContext): boolean {
+  return Boolean(ctx.lockCity && ctx.citySlug?.trim())
 }
 
 function clampLimit(limit?: number): number {
@@ -352,8 +358,14 @@ export class FeedService {
             limit: Math.max(limit * 4, 40),
           }
 
-          const recent = await feedCandidateService.fetchRecent(fetchOpts)
-          let batch = feedRankingV1.rankMode('personal', recent, Math.max(limit * 2, 20))
+          const recent = isCityLockedFeed(ctx)
+            ? await feedCandidateService.fetchLocal(fetchOpts)
+            : await feedCandidateService.fetchRecent(fetchOpts)
+          let batch = feedRankingV1.rankMode(
+            isCityLockedFeed(ctx) ? 'local' : 'personal',
+            recent,
+            Math.max(limit * 2, 20)
+          )
 
           // Progressive archive: if thin, walk older with publishedBefore while keeping exclusions.
           if (batch.length < limit) {
@@ -365,14 +377,23 @@ export class FeedService {
                 : walkCursor?.publishedAt ?? null)
             for (let walk = 0; walk < 6 && batch.length < limit * 2; walk++) {
               if (!olderBound) break
-              const older = await feedCandidateService.fetchRecent({
-                ...candidateOpts,
-                cursor: null,
-                publishedBefore: olderBound,
-                excludeArticleIds: new Set([...exclude, ...have]),
-                excludeClusterIds: seenClusters,
-                limit: Math.max(limit * 4, 40),
-              })
+              const older = isCityLockedFeed(ctx)
+                ? await feedCandidateService.fetchLocal({
+                    ...candidateOpts,
+                    cursor: null,
+                    publishedBefore: olderBound,
+                    excludeArticleIds: new Set([...exclude, ...have]),
+                    excludeClusterIds: seenClusters,
+                    limit: Math.max(limit * 4, 40),
+                  })
+                : await feedCandidateService.fetchRecent({
+                    ...candidateOpts,
+                    cursor: null,
+                    publishedBefore: olderBound,
+                    excludeArticleIds: new Set([...exclude, ...have]),
+                    excludeClusterIds: seenClusters,
+                    limit: Math.max(limit * 4, 40),
+                  })
               if (!older.length) break
               for (const row of older) {
                 if (have.has(row.articleId)) continue
@@ -383,7 +404,11 @@ export class FeedService {
               olderBound = last.publishedAt.toISOString()
               if (older.length < Math.max(3, Math.floor(limit / 2))) break
             }
-            batch = feedRankingV1.rankMode('personal', batch, Math.max(limit * 2, 20))
+            batch = feedRankingV1.rankMode(
+              isCityLockedFeed(ctx) ? 'local' : 'personal',
+              batch,
+              Math.max(limit * 2, 20)
+            )
           }
 
           const newIds = batch.map((r) => r.articleId)
@@ -474,7 +499,7 @@ export class FeedService {
         const sessionIntent = await loadSessionIntent(ctx.userId)
         const pipelineResult = await feedRankingPipeline.run({
           userId: ctx.userId,
-          mode: ctx.mode,
+          mode: isCityLockedFeed(ctx) ? 'local' : ctx.mode,
           limit,
           cursor: ctx.cursor,
           sessionToken,
@@ -482,6 +507,7 @@ export class FeedService {
           citySlug: ctx.citySlug,
           districtSlug: ctx.districtSlug,
           region: ctx.region,
+          lockCity: isCityLockedFeed(ctx),
           seenArticles,
           seenClusters,
           nfRankMode,
@@ -547,7 +573,10 @@ export class FeedService {
 
       let ranked: FeedCandidateRow[] = []
 
-      if (ctx.mode === 'personal' && timeCursor) {
+      if (isCityLockedFeed(ctx)) {
+        const rows = await feedCandidateService.fetchLocal(suppressOpts)
+        ranked = feedRankingV1.rankMode('local', rows, limit)
+      } else if (ctx.mode === 'personal' && timeCursor) {
         // Append pages: walk recent corpus by cursor (remixing the head would stall ~1–2 pages).
         const rows = await feedCandidateService.fetchRecent(suppressOpts)
         ranked = feedRankingV1.rankMode(ctx.mode, rows, limit)

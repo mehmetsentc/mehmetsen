@@ -53,11 +53,12 @@ export interface CityBottomNavItem {
   id: string
   label: string
   href: string
-  iconName: 'home' | 'calendar' | 'trophy' | 'map-pin' | 'briefcase'
+  iconName: 'home' | 'zap' | 'calendar' | 'trophy' | 'map-pin' | 'briefcase'
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
   { id: 'feed', label: 'Ana Sayfa', href: '/', iconName: 'home' },
+  { id: 'akis', label: 'Akış', href: '/feed-v2', iconName: 'zap' },
   { id: 'etkinlik', label: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
   { id: 'is-ilanlari', label: 'İş', href: '/is-ilanlari', iconName: 'briefcase' },
   { id: 'spor', label: 'Spor', href: '/spor', iconName: 'trophy' },
@@ -70,6 +71,7 @@ export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
  */
 export const CITY_ALWAYS_VISIBLE_SECTION_IDS = new Set<string>([
   'feed',
+  'akis',
   'etkinlik',
   'is-ilanlari',
   'ilceler',
