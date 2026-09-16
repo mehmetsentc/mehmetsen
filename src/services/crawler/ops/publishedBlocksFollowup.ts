@@ -9,7 +9,7 @@
  * Precise follow-up plan (production acceptance separate):
  * 1. Feature flag `PUBLISHED_BLOCKS_HOME_ENABLED=false` (default).
  * 2. Keep city-host rendering untouched.
- * 3. Replace national `redirect(ROUTES.FEED)` in `src/app/page.tsx` with a
+ * 3. Replace national home in `src/app/(main)/page.tsx` with a
  *    published-layout renderer that reads `pageLayoutService.getPublished('national')`.
  * 4. Render only known block kinds via existing page-block components.
  * 5. Rollback = flip flag off OR restore previous layout version from CMS
@@ -32,7 +32,7 @@ export const PUBLISHED_BLOCKS_FOLLOWUP = {
     'rollback_via_flag_or_layout_version',
   ],
   files: [
-    'src/app/page.tsx',
+    'src/app/(main)/page.tsx',
     'src/services/newsroomOs/pageLayoutService.ts',
     'src/app/admin/page-controls/page.tsx',
     'src/app/admin/global-layout/page.tsx',

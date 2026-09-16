@@ -1,5 +1,4 @@
 import { cache } from 'react'
-import { notFound } from 'next/navigation'
 import { ArticleCopyGuard } from '@/components/news/ArticleCopyGuard'
 import { NewsArticleStatic } from '@/components/news/NewsArticleStatic'
 import { NewsArticleInteractive } from '@/components/news/NewsArticleInteractive'
@@ -9,6 +8,8 @@ import { canResolveArticleDetail, classifyPublicRead, publicReadMetaFromPost } f
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { ArticleLiftShell } from '@/components/articleLift/ArticleLiftShell'
+import { ArticleLiftHardNavFallback } from '@/components/articleLift/ArticleLiftHardNavFallback'
+import { ROUTES } from '@/constants/routes'
 
 // ISR note: this route shares the same 60s revalidate window as the
 // canonical /haber/[slug] page it intercepts (see that file) so the two
@@ -53,6 +54,11 @@ type PageProps = {
  * adSlots, prerollAd, ArticlePageChrome (scroll progress + swipe-nav chrome
  * that assumes it owns the full page). The Lift is a reading surface for
  * the article body/media/social actions — not a second SEO-bearing page.
+ *
+ * IMPORTANT: never call `notFound()` here. A missing/blocked post in the
+ * intercept slot would replace the whole soft-nav tree with the global 404
+ * even when a hard navigation to the same URL would succeed (or should fall
+ * through to the canonical page). Use a hard-nav fallback instead.
  */
 export default async function ArticleLiftInterceptedPage({ params }: PageProps) {
   const { slug: rawSlug } = await params
@@ -61,18 +67,24 @@ export default async function ArticleLiftInterceptedPage({ params }: PageProps) 
     slug = decodeURIComponent(rawSlug)
   } catch {}
 
+  const canonicalHref = ROUTES.NEWS_DETAIL(slug)
+
   let post = null
   try {
     post = await getCachedNews(slug)
   } catch {
-    // Fall through to notFound() below, same as the canonical page.
+    return <ArticleLiftHardNavFallback href={canonicalHref} />
   }
 
-  if (!post) notFound()
-  if (!isPubliclyVisibleStatus(post.status)) notFound()
+  if (!post) return <ArticleLiftHardNavFallback href={canonicalHref} />
+  if (!isPubliclyVisibleStatus(post.status)) {
+    return <ArticleLiftHardNavFallback href={canonicalHref} />
+  }
 
   const readClass = classifyPublicRead(publicReadMetaFromPost(post))
-  if (!canResolveArticleDetail(readClass)) notFound()
+  if (!canResolveArticleDetail(readClass)) {
+    return <ArticleLiftHardNavFallback href={canonicalHref} />
+  }
 
   // Deliberately NOT redirecting on slug mismatch here (unlike the canonical
   // page's permanentRedirect): a redirect inside an intercepted parallel

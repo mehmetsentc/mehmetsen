@@ -1,13 +1,10 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityHomeFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
+import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
 import { getCityCinemaEventsServer } from '@/services/eventService.server'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
-import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
-import { ArticleLiftOriginCapture } from '@/components/articleLift/ArticleLiftOriginCapture'
 import { NationalHomePage, nationalHomeMetadata } from '@/components/home/NationalHomePage'
 
 export const dynamic = 'force-dynamic'
@@ -41,12 +38,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Root `/` handler.
+ * National + city homepage at `/`, under `(main)` so soft-nav into
+ * `/haber/[slug]` stays inside the same layout that owns `@modal` Article
+ * Lift. Living at `src/app/page.tsx` (outside `(main)`) caused soft clicks
+ * from anasayfa to render the global 404 while hard refresh still worked.
  *
- * City subdomains: middleware normally rewrites `/` → `/city-site`, but if
- * the middleware is unavailable we detect the city from the Host header.
- *
- * National site: Anasayfa lives at `/` (eski `/feed` buraya yönlenir).
+ * City chrome (`CityLayoutClient`) and national chrome (`MainLayoutClient`)
+ * come from `(main)/layout.tsx` — do not wrap them again here.
  */
 export default async function Home() {
   const tenant = await getActiveTenant()
@@ -54,36 +52,19 @@ export default async function Home() {
   const citySlug = tenant?.provinceSlug ?? hostCitySlug
 
   if (citySlug) {
-    const slug = tenant?.slug ?? citySlug
     const displayName = getCityCategoryName(citySlug)
-    const [homeFeedData, navPresence, cinemaEvents] = await Promise.all([
+    const [homeFeedData, cinemaEvents] = await Promise.all([
       getCityHomeFeedInitialData(citySlug),
-      getCityNavPresence(citySlug),
       getCityCinemaEventsServer(citySlug),
     ])
     return (
-      <CityLayoutClient
-        tenantSlug={slug}
-        displayName={displayName}
-        provinceSlug={citySlug}
-        categories={navPresence.categories}
-        hasSpor={navPresence.hasSpor}
-      >
-        <CityFeedPageClient
-          homeFeedData={homeFeedData}
-          cityName={displayName}
-          cinemaEvents={cinemaEvents}
-        />
-      </CityLayoutClient>
+      <CityFeedPageClient
+        homeFeedData={homeFeedData}
+        cityName={displayName}
+        cinemaEvents={cinemaEvents}
+      />
     )
   }
 
-  return (
-    <>
-      <ArticleLiftOriginCapture />
-      <MainLayoutClient>
-        <NationalHomePage />
-      </MainLayoutClient>
-    </>
-  )
+  return <NationalHomePage />
 }
