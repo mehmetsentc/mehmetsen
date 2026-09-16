@@ -18,9 +18,11 @@ export function ConversationList({ className }: ConversationListProps) {
   const { user } = useAuth()
   const { conversations, loading } = useConversations(user?.uid)
 
-  const activeId = pathname.startsWith('/messages/')
-    ? pathname.split('/messages/')[1]?.split('/')[0]
-    : null
+  const activeId = pathname.startsWith('/mesajlar/')
+    ? pathname.split('/mesajlar/')[1]?.split('/')[0]
+    : pathname.startsWith('/messages/')
+      ? pathname.split('/messages/')[1]?.split('/')[0]
+      : null
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col', className)}>

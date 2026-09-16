@@ -2,13 +2,15 @@ import { tagToSlug } from '@/lib/tags'
 
 export const ROUTES = {
   HOME: '/',
-  LOGIN: '/login',
-  REGISTER: '/register',
+  LOGIN: '/giris',
+  REGISTER: '/kayit',
   ONBOARDING: '/onboarding',
-  FEED: '/feed',
+  /** Anasayfa. Eski `/feed` 301 ile buraya düşer. */
+  FEED: '/',
+  FEED_LEGACY: '/feed',
   FEED_V2: '/feed-v2',
   FEED_V3: '/feed-v3',
-  EVENTS: '/events',
+  EVENTS: '/etkinlikler',
   REELS: '/reels',
   REELS_VIDEO: (id: string) => `/reels?v=${encodeURIComponent(id)}`,
   VIDEO: '/video',
@@ -17,12 +19,14 @@ export const ROUTES = {
   POST_DETAIL: (id: string) => `/post/${id}`,
   NEWS_DETAIL: (slug: string) => `/haber/${slug}`,
   POST_EDIT: (id: string) => `/post/${id}/edit`,
-  PROFILE: (username: string) => `/profile/${username}`,
+  PROFILE: (username: string) => `/profil/${encodeURIComponent(username)}`,
   USER_PROFILE: (username: string) => `/u/${encodeURIComponent(username)}`,
-  SAVED: '/saved',
-  BOOKMARKS: '/saved',
-  SEARCH: '/search',
-  /** Türkçe arama alias'ı — /search'e yönlendirilir */
+  SAVED: '/kaydedilenler',
+  BOOKMARKS: '/kaydedilenler',
+  SEARCH: '/ara',
+  /** Eski İngilizce arama yolu — /ara'ya yönlendirilir */
+  SEARCH_EN: '/search',
+  /** @deprecated SEARCH ile aynı — geriye dönük */
   SEARCH_TR: '/ara',
   TAG: (slug: string) => `/etiket/${encodeURIComponent(tagToSlug(slug))}`,
   /** Topic alias — canonical etiket slug */
@@ -54,10 +58,10 @@ export const ROUTES = {
   },
   MOST_READ: '/cok-okunanlar',
   LIVE: (slug: string) => `/canli/${encodeURIComponent(slug)}`,
-  DISCOVER: '/discover',
+  DISCOVER: '/kesfet',
   APP: '/uygulama',
-  INFLUENCER: '/influencer',
-  WEATHER: '/weather',
+  INFLUENCER: '/fenomenler',
+  WEATHER: '/hava-durumu',
   GAMES: '/oyunlar',
   GAME: (slug: string) => `/oyunlar/${encodeURIComponent(slug)}`,
   LOCAL: '/yerel',
@@ -73,19 +77,19 @@ export const ROUTES = {
   SAGLIK: '/kategori/saglik',
   EKONOMI: '/kategori/ekonomi',
   SIYASET: '/kategori/siyaset',
-  NOTIFICATIONS: '/notifications',
-  MESSAGES: '/messages',
-  MESSAGES_CONVERSATION: (conversationId: string) => `/messages/${conversationId}`,
-  SETTINGS: '/settings',
-  SETTINGS_PRIVACY: '/settings/privacy',
-  SETTINGS_NOTIFICATIONS: '/settings/notifications',
-  SETTINGS_APPEARANCE: '/settings/appearance',
-  SETTINGS_HELP: '/settings/help',
-  SETTINGS_ABOUT: '/settings/about',
-  SETTINGS_TERMS: '/settings/terms',
-  SETTINGS_PRIVACY_POLICY: '/settings/privacy-policy',
-  SETTINGS_PROFILE: '/settings/profile',
-  SETTINGS_ACCOUNT_DELETE: '/settings/account/delete',
+  NOTIFICATIONS: '/bildirimler',
+  MESSAGES: '/mesajlar',
+  MESSAGES_CONVERSATION: (conversationId: string) => `/mesajlar/${encodeURIComponent(conversationId)}`,
+  SETTINGS: '/ayarlar',
+  SETTINGS_PRIVACY: '/ayarlar/gizlilik',
+  SETTINGS_NOTIFICATIONS: '/ayarlar/bildirimler',
+  SETTINGS_APPEARANCE: '/ayarlar/gorunum',
+  SETTINGS_HELP: '/ayarlar/yardim',
+  SETTINGS_ABOUT: '/ayarlar/hakkinda',
+  SETTINGS_TERMS: '/ayarlar/kosullar',
+  SETTINGS_PRIVACY_POLICY: '/ayarlar/gizlilik-politikasi',
+  SETTINGS_PROFILE: '/ayarlar/profil',
+  SETTINGS_ACCOUNT_DELETE: '/ayarlar/hesap/sil',
   FEED_CONTENT_POLICY: '/feed/kurallar',
   SITE_MAP: '/site-haritasi',
   /** City tenant routes (served on city subdomains) */
@@ -164,8 +168,23 @@ export const ROUTES = {
   },
 } as const
 
+export function isHomePathname(pathname: string): boolean {
+  return pathname === '/' || pathname === '' || pathname === '/feed'
+}
+
+/** prefix === '/' için yalnızca anasayfa; diğerlerinde tam eşleşme veya alt yol. */
+export function pathIs(pathname: string, ...prefixes: string[]): boolean {
+  return prefixes.some((prefix) => {
+    if (!prefix) return false
+    if (prefix === '/') return isHomePathname(pathname)
+    return pathname === prefix || pathname.startsWith(`${prefix}/`)
+  })
+}
+
 export const PUBLIC_ROUTES: Set<string> = new Set([
+  ROUTES.HOME,
   ROUTES.FEED,
+  ROUTES.FEED_LEGACY,
   ROUTES.FEED_V2,
   ROUTES.FEED_V3,
   ROUTES.EVENTS,
@@ -184,25 +203,25 @@ export const PUBLIC_ROUTES: Set<string> = new Set([
 // Beğen/yorum/paylaş gibi aksiyonlarda useAuth devreye girer.
 export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
+  if (isHomePathname(pathname)) return true
   if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)) return true
   if (pathname.startsWith('/feed-v2')) return true
   if (pathname.startsWith('/feed-v3')) return true
-  if (pathname.startsWith('/profile/')) return true
+  if (pathIs(pathname, '/profil', '/profile')) return true
   if (pathname.startsWith('/publisher/')) return true
   if (pathname.startsWith('/u/')) return true
   if (pathname.startsWith('/kategori/')) return true
   if (pathname.startsWith('/haber/')) return true
   if (pathname.startsWith('/yerel')) return true
-  if (pathname.startsWith('/events')) return true
-  if (pathname.startsWith('/weather')) return true
-  if (pathname.startsWith('/discover')) return true
-  if (pathname.startsWith('/search')) return true
-  if (pathname.startsWith('/ara')) return true
+  if (pathIs(pathname, ROUTES.EVENTS, '/events')) return true
+  if (pathIs(pathname, ROUTES.WEATHER, '/weather')) return true
+  if (pathIs(pathname, ROUTES.DISCOVER, '/discover')) return true
+  if (pathIs(pathname, ROUTES.SEARCH, '/search', '/ara')) return true
   if (pathname.startsWith('/etiket/')) return true
   if (pathname.startsWith('/yazar/')) return true
   if (pathname.startsWith('/canli/')) return true
   if (pathname === ROUTES.MOST_READ || pathname.startsWith('/cok-okunanlar')) return true
-  if (pathname.startsWith('/influencer')) return true
+  if (pathIs(pathname, ROUTES.INFLUENCER, '/influencer')) return true
   if (pathname.startsWith('/futbol-canli')) return true
   if (pathname.startsWith('/skor')) return true
   if (pathname.startsWith('/muzeler')) return true
@@ -216,7 +235,8 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith('/editoryal-ilkeler')) return true
   if (pathname === '/kunye' || pathname === '/kune') return true
   if (pathname === '/video' || pathname.startsWith('/video/')) return true
-  if (pathname === ROUTES.LOGIN || pathname === ROUTES.REGISTER) return true
+  if (pathIs(pathname, ROUTES.LOGIN, '/login')) return true
+  if (pathIs(pathname, ROUTES.REGISTER, '/register')) return true
   if (pathname === ROUTES.APP) return true
   // City tenant routes are all public
   if (pathname === ROUTES.CITY_EVENTS || pathname.startsWith('/etkinlik')) return true

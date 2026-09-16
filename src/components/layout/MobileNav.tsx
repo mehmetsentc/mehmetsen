@@ -14,7 +14,7 @@ import {
   resolveNewsSurface,
   resolveSharedCategoryId,
 } from '@/lib/feed/sharedCategoryRail'
-import { ROUTES } from '@/constants/routes'
+import { pathIs, ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 interface MobileNavItem {
@@ -27,10 +27,9 @@ interface MobileNavItem {
 
 function isProfilPath(pathname: string): boolean {
   return (
-    pathname.startsWith('/profile/') ||
+    pathIs(pathname, '/profil', '/profile') ||
     pathname.startsWith('/u/') ||
-    pathname === ROUTES.LOGIN ||
-    pathname.startsWith(`${ROUTES.LOGIN}/`)
+    pathIs(pathname, ROUTES.LOGIN, '/login')
   )
 }
 

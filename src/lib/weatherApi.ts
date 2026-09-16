@@ -123,16 +123,60 @@ export function parseWeatherWallClock(localtime: string): {
   return { ymd: match[1], minutes: hour * 60 + minute }
 }
 
-/** Parse WeatherAPI astro clock: "05:53 AM" / "08:13 PM" → minutes since midnight. */
+/** Parse WeatherAPI astro clock: "05:53 AM" / "08:13 PM" / "19:00" → minutes since midnight. */
 export function astroTimeToMinutes(astroTime: string): number | null {
-  const match = astroTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-  if (!match) return null
-  let hour = Number(match[1])
-  const minute = Number(match[2])
-  const meridiem = match[3].toUpperCase()
-  if (meridiem === 'PM' && hour !== 12) hour += 12
-  if (meridiem === 'AM' && hour === 12) hour = 0
+  const trimmed = astroTime.trim()
+  const ampm = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (ampm) {
+    let hour = Number(ampm[1])
+    const minute = Number(ampm[2])
+    const meridiem = ampm[3].toUpperCase()
+    if (meridiem === 'PM' && hour !== 12) hour += 12
+    if (meridiem === 'AM' && hour === 12) hour = 0
+    return hour * 60 + minute
+  }
+  const h24 = trimmed.match(/^(\d{1,2}):(\d{2})$/)
+  if (!h24) return null
+  const hour = Number(h24[1])
+  const minute = Number(h24[2])
+  if (hour > 23 || minute > 59) return null
   return hour * 60 + minute
+}
+
+/** Kullanıcıya 24 saatlik saat: "06:37 AM" → "06:37", "07:00 PM" → "19:00". */
+export function formatAstroClockTr(astroTime: string): string {
+  const minutes = astroTimeToMinutes(astroTime)
+  if (minutes == null) return astroTime.replace(/\s*(AM|PM)\s*/gi, '').trim()
+  const hour = Math.floor(minutes / 60)
+  const minute = minutes % 60
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+const WEATHER_PLACE_TR: Record<string, string> = {
+  istanbul: 'İstanbul',
+  izmir: 'İzmir',
+  canakkale: 'Çanakkale',
+  eskisehir: 'Eskişehir',
+  diyarbakir: 'Diyarbakır',
+  sanliurfa: 'Şanlıurfa',
+  gaziantep: 'Gaziantep',
+  mugla: 'Muğla',
+  usak: 'Uşak',
+  agri: 'Ağrı',
+  elazig: 'Elazığ',
+  kahramanmaras: 'Kahramanmaraş',
+  turkey: 'Türkiye',
+}
+
+export function turkishWeatherPlaceName(name: string | null | undefined): string {
+  const raw = name?.trim() ?? ''
+  if (!raw) return ''
+  const key = raw
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .toLowerCase()
+  return WEATHER_PLACE_TR[key] ?? raw
 }
 
 /** Parse WeatherAPI localtime: "2026-07-20 17:00" as a wall-clock Date (legacy). */

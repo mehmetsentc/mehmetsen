@@ -26,7 +26,7 @@ export function NewspaperMasthead({
     : new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(new Date())
 
   return (
-    <div className="nl-masthead" aria-label="Gazete masthead">
+    <div className="nl-masthead" aria-label="Gazete başlığı">
       <div className="nl-masthead__meta">
         <p className="m-0 capitalize">{formatNewsDateLong()}</p>
         <div className="flex flex-wrap items-center gap-3">
@@ -63,8 +63,8 @@ export function NewspaperMasthead({
           {districtName} Haberleri
         </p>
       ) : null}
-      <p className="mt-1 mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgb(var(--color-muted))]">
-        Dijital Gazete · Türkiye
+      <p className="mt-1 mb-3 text-center text-[11px] font-semibold tracking-wide text-[rgb(var(--color-muted))]">
+        Türkiye dijital gazetesi
       </p>
       <hr className="nl-rule-thick mb-4" />
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   conditionEmoji,
+  formatAstroClockTr,
   getEffectiveIsDay,
   parseWeatherAstroTime,
   parseWeatherLocaltime,
   resolveIsDay,
+  turkishWeatherPlaceName,
 } from '@/lib/weatherApi'
 import type { WeatherData } from '@/types/weather'
 
@@ -65,6 +67,24 @@ describe('parse helpers', () => {
     expect(parseWeatherLocaltime('2026-07-20 17:05')?.getHours()).toBe(17)
     expect(parseWeatherAstroTime('05:53 AM', '2026-07-20')?.getHours()).toBe(5)
     expect(parseWeatherAstroTime('08:13 PM', '2026-07-20')?.getHours()).toBe(20)
+  })
+})
+
+describe('formatAstroClockTr', () => {
+  it('converts English AM/PM to 24-hour clock', () => {
+    expect(formatAstroClockTr('06:37 AM')).toBe('06:37')
+    expect(formatAstroClockTr('07:00 PM')).toBe('19:00')
+    expect(formatAstroClockTr('12:05 AM')).toBe('00:05')
+    expect(formatAstroClockTr('12:00 PM')).toBe('12:00')
+  })
+})
+
+describe('turkishWeatherPlaceName', () => {
+  it('maps English WeatherAPI city names to Turkish', () => {
+    expect(turkishWeatherPlaceName('Istanbul')).toBe('İstanbul')
+    expect(turkishWeatherPlaceName('İstanbul')).toBe('İstanbul')
+    expect(turkishWeatherPlaceName('Izmir')).toBe('İzmir')
+    expect(turkishWeatherPlaceName('Antalya')).toBe('Antalya')
   })
 })
 

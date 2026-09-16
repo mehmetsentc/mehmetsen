@@ -1,4 +1,4 @@
-import { ROUTES } from '@/constants/routes'
+import { isHomePathname, ROUTES } from '@/constants/routes'
 import { isUserFacingNavProductEnabled } from '@/lib/nav/userNavAvailability'
 
 // P17.7 Editorial Safety Gate Version Constant
@@ -1126,7 +1126,7 @@ export function getSwipeableFeedDestinations(): SwipeDestination[] {
 
 /** Aktif sayfayı swipe zincirindeki üst düzey kategori anahtarına çevirir. */
 export function resolveSwipeCategoryKey(pathname: string): string | null {
-  if (pathname === ROUTES.FEED) return 'feed'
+  if (isHomePathname(pathname)) return 'feed'
   if (pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)) return 'yerel'
   if (pathname === ROUTES.GAMES || pathname.startsWith(`${ROUTES.GAMES}/`)) return 'oyunlar'
   if (pathname === ROUTES.SKOR || pathname.startsWith(`${ROUTES.SKOR}/`)) return 'skor'

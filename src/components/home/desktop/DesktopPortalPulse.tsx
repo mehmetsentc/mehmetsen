@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { FinanceRates } from '@/app/api/finance/rates/route'
 import { ROUTES } from '@/constants/routes'
+import { turkishWeatherPlaceName } from '@/lib/weatherApi'
 
 type WeatherRow = {
   city: string
@@ -11,7 +12,11 @@ type WeatherRow = {
   text: string
 }
 
-const WEATHER_CITIES = ['Istanbul', 'Ankara', 'Izmir'] as const
+const WEATHER_CITIES = [
+  { q: 'Istanbul', label: 'İstanbul' },
+  { q: 'Ankara', label: 'Ankara' },
+  { q: 'Izmir', label: 'İzmir' },
+] as const
 
 function fmt(n: number, decimals = 2) {
   return n.toLocaleString('tr-TR', {
@@ -64,13 +69,13 @@ export function DesktopPortalPulse() {
     let cancelled = false
     void Promise.all(
       WEATHER_CITIES.map((city) =>
-        fetch(`/api/weather?city=${encodeURIComponent(city)}&days=1`, { cache: 'no-store' })
+        fetch(`/api/weather?city=${encodeURIComponent(city.q)}&days=1`, { cache: 'no-store' })
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
             const temp = Number(data?.current?.temp_c)
             if (!Number.isFinite(temp)) return null
             return {
-              city: String(data?.location?.name || city),
+              city: turkishWeatherPlaceName(data?.location?.name) || city.label,
               temp: Math.round(temp),
               text: String(data?.current?.condition?.text || ''),
             } satisfies WeatherRow

@@ -3,17 +3,17 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUiStore } from '@/store/uiStore'
-import { ROUTES } from '@/constants/routes'
+import { pathIs, ROUTES } from '@/constants/routes'
 
 function hasDesktopWebHeader(pathname: string): boolean {
   if (pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}/`)) return false
-  if (pathname.startsWith('/messages')) return false
+  if (pathIs(pathname, ROUTES.MESSAGES, '/messages')) return false
   if (pathname.startsWith('/admin')) return false
-  if (pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/onboarding')) {
+  if (pathIs(pathname, ROUTES.LOGIN, '/login', ROUTES.REGISTER, '/register', '/onboarding')) {
     return false
   }
-  if (pathname.startsWith('/saved') || pathname.startsWith('/settings')) return false
-  if (pathname.startsWith('/notifications')) return false
+  if (pathIs(pathname, ROUTES.SAVED, '/saved', ROUTES.SETTINGS, '/settings')) return false
+  if (pathIs(pathname, ROUTES.NOTIFICATIONS, '/notifications')) return false
   return true
 }
 

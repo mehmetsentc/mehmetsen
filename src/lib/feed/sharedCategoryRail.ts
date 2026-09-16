@@ -3,7 +3,7 @@ import {
   resolveSwipeCategoryKey,
   type SwipeDestination,
 } from '@/constants/config'
-import { ROUTES } from '@/constants/routes'
+import { isHomePathname, ROUTES } from '@/constants/routes'
 import { categoryTabFromId, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
 
 export type NewsSurface = 'home' | 'akis'
@@ -28,9 +28,7 @@ export function resolveNewsSurface(pathname: string): NewsSurface | null {
     return 'akis'
   }
   if (
-    pathname === ROUTES.FEED ||
-    pathname === ROUTES.HOME ||
-    pathname === '/' ||
+    isHomePathname(pathname) ||
     pathname.startsWith('/kategori/') ||
     pathname === ROUTES.LOCAL ||
     pathname.startsWith(`${ROUTES.LOCAL}/`) ||

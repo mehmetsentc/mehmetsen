@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdminUser } from '@/lib/admin'
-import { ROUTES } from '@/constants/routes'
+import { isHomePathname, pathIs, ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
@@ -41,26 +41,26 @@ interface SidebarProps {
 
 function isItemActive(pathname: string, href: string, id: string): boolean {
   if (id === 'feed' || id === 'ana-feed') {
-    return pathname === ROUTES.FEED || pathname === ROUTES.HOME || pathname === '/'
+    return isHomePathname(pathname)
   }
   if (id === 'feed-v2' || href === ROUTES.FEED_V2) {
     return pathname === ROUTES.FEED_V2 || pathname.startsWith(`${ROUTES.FEED_V2}/`)
   }
   if (href === ROUTES.SEARCH || id === 'search') {
-    return pathname.startsWith(ROUTES.SEARCH) || pathname.startsWith(ROUTES.SEARCH_TR)
+    return pathIs(pathname, ROUTES.SEARCH, '/search')
   }
   if (href === ROUTES.NOTIFICATIONS || id === 'notifications') {
-    return pathname.startsWith(ROUTES.NOTIFICATIONS)
+    return pathIs(pathname, ROUTES.NOTIFICATIONS, '/notifications')
   }
   if (id === 'profile') {
-    return pathname.startsWith('/profile/')
+    return pathIs(pathname, '/profil', '/profile')
   }
   if (href === ROUTES.LOCAL) return pathname.startsWith(ROUTES.LOCAL)
   if (href === ROUTES.SKOR) return pathname.startsWith(ROUTES.SKOR)
   if (href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)
-  if (href === ROUTES.EVENTS) return pathname.startsWith(ROUTES.EVENTS)
-  if (href === ROUTES.WEATHER) return pathname.startsWith(ROUTES.WEATHER)
-  if (href === ROUTES.INFLUENCER) return pathname.startsWith(ROUTES.INFLUENCER)
+  if (href === ROUTES.EVENTS) return pathIs(pathname, ROUTES.EVENTS, '/events')
+  if (href === ROUTES.WEATHER) return pathIs(pathname, ROUTES.WEATHER, '/weather')
+  if (href === ROUTES.INFLUENCER) return pathIs(pathname, ROUTES.INFLUENCER, '/influencer')
   if (href === ROUTES.MUZELER) return pathname.startsWith(ROUTES.MUZELER)
   if (href === ROUTES.FOOTBALL) return pathname.startsWith(ROUTES.FOOTBALL)
   return pathname === href || pathname.startsWith(`${href}/`)
@@ -367,7 +367,7 @@ function SidebarInner({
                   data-accent="brand"
                 >
                   <Shield className="app-sidebar__icon" />
-                  Admin Panel
+                  Yönetim
                 </a>
               ) : null}
               <button

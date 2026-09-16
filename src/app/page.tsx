@@ -1,6 +1,4 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
-import { ROUTES } from '@/constants/routes'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
 import { getCityHomeFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
@@ -8,15 +6,17 @@ import { getCityCinemaEventsServer } from '@/services/eventService.server'
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
+import { ArticleLiftOriginCapture } from '@/components/articleLift/ArticleLiftOriginCapture'
+import { NationalHomePage, nationalHomeMetadata } from '@/components/home/NationalHomePage'
 
-// force-dynamic so the host header is available at request time
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getActiveTenant()
   const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
   const citySlug = tenant?.provinceSlug ?? hostCitySlug
-  if (!citySlug) return {}
+  if (!citySlug) return nationalHomeMetadata()
 
   const slug = tenant?.slug ?? citySlug
   const cityName = getCityCategoryName(citySlug)
@@ -44,11 +44,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * Root `/` handler.
  *
  * City subdomains: middleware normally rewrites `/` → `/city-site`, but if
- * the middleware is unavailable (build mismatch, edge config issue, etc.),
- * we detect the city from the Host header and render city content inline.
- * This makes city routing middleware-independent.
+ * the middleware is unavailable we detect the city from the Host header.
  *
- * National site: redirect to /feed (307, not 308, so browsers don't cache it).
+ * National site: Anasayfa lives at `/` (eski `/feed` buraya yönlenir).
  */
 export default async function Home() {
   const tenant = await getActiveTenant()
@@ -80,5 +78,12 @@ export default async function Home() {
     )
   }
 
-  redirect(ROUTES.FEED)
+  return (
+    <>
+      <ArticleLiftOriginCapture />
+      <MainLayoutClient>
+        <NationalHomePage />
+      </MainLayoutClient>
+    </>
+  )
 }

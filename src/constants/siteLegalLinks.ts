@@ -47,7 +47,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
   {
     title: 'Haberler',
     links: [
-      { label: 'Ana Sayfa', href: '/feed' },
+      { label: 'Ana Sayfa', href: ROUTES.HOME },
       { label: 'Gündem', href: '/kategori/gundem' },
       { label: '3. Sayfa', href: '/kategori/asayis' },
       { label: 'Son Dakika', href: '/kategori/son-dakika' },
@@ -87,10 +87,10 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Sinema', href: '/kategori/sinema' },
       { label: 'Tiyatro', href: '/kategori/tiyatro' },
       { label: 'Konser', href: '/kategori/konser' },
-      { label: 'Teve', href: '/reels' },
-      { label: 'Keşfet', href: '/discover' },
+      { label: 'Teve', href: ROUTES.REELS },
+      { label: 'Keşfet', href: ROUTES.DISCOVER },
       { label: 'Eğitim', href: '/kategori/egitim' },
-      { label: 'Etkinlikler', href: '/events' },
+      { label: 'Etkinlikler', href: ROUTES.EVENTS },
     ],
   },
   {
@@ -100,7 +100,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
       { label: 'Bilim', href: '/kategori/bilim' },
       { label: 'Otomobil', href: '/kategori/otomobil' },
       { label: 'Meteoroloji', href: '/kategori/meteoroloji' },
-      { label: 'Hava Durumu', href: '/weather' },
+      { label: 'Hava Durumu', href: ROUTES.WEATHER },
     ],
   },
   {
@@ -119,9 +119,9 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
 
 /** Sağ sütun — hesap ve iletişim (NYT Account sütunu). */
 export const FOOTER_ACCOUNT_LINKS: readonly FooterLink[] = [
-  { label: 'Giriş Yap', href: '/login' },
-  { label: 'Kayıt Ol', href: '/register' },
-  { label: 'Hesap Ayarları', href: '/settings' },
+  { label: 'Giriş Yap', href: ROUTES.LOGIN },
+  { label: 'Kayıt Ol', href: ROUTES.REGISTER },
+  { label: 'Hesap Ayarları', href: ROUTES.SETTINGS },
   { label: 'Mobil Uygulama', href: '/uygulama' },
   { label: 'İletişim Formu', href: '/iletisim#iletisim-formu' },
 ] as const

@@ -9,7 +9,7 @@ import {
   getNewspaperNavItems,
   getSiteNavItems,
 } from '@/constants/config'
-import { ROUTES } from '@/constants/routes'
+import { isHomePathname, ROUTES } from '@/constants/routes'
 import { clearFeedRestore } from '@/lib/feed/feedRestoration'
 import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
 import { cn } from '@/lib/utils'
@@ -30,7 +30,7 @@ interface DesktopSiteNavLinksProps {
 }
 
 function isActive(pathname: string, href: string, id: string): boolean {
-  if (id === 'feed') return pathname === ROUTES.FEED
+  if (id === 'feed') return isHomePathname(pathname)
   if (id === 'feed-v2') return pathname === ROUTES.FEED_V2 || pathname.startsWith(`${ROUTES.FEED_V2}/`)
   if (id === 'yerel') return pathname === ROUTES.LOCAL || pathname.startsWith(`${ROUTES.LOCAL}/`)
   if (id === 'video' || href === ROUTES.REELS) return pathname.startsWith(ROUTES.REELS)

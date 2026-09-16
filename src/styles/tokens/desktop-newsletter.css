@@ -458,8 +458,8 @@
     text-align: center;
     font-size: 0.625rem;
     font-weight: 800;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-transform: none;
     color: rgb(17 17 17 / 0.45);
   }
 

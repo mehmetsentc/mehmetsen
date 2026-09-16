@@ -258,7 +258,7 @@ function CitySidebarInner({
                   data-accent="brand"
                 >
                   <Shield className="app-sidebar__icon" />
-                  Admin Panel
+                  Yönetim
                 </a>
               ) : null}
               <button

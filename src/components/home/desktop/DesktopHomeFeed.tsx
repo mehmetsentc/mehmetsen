@@ -28,6 +28,7 @@ import {
 import { createFeedAllocator } from '@/components/home/desktop/useFeedPool'
 import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
+import { getHomeFeedCategoryFamily } from '@/constants/config'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import {
   HOME_CATEGORY_DESKTOP_CARDS,
@@ -208,16 +209,22 @@ export function DesktopHomeFeed({
       title: getCategoryLabel(id),
       items: takePortalRail(sliceCategoryRail(categoryRails, id, 16), HOME_CATEGORY_PORTAL_FETCH),
     }))
-    const gundemItems = takePortalRail(
-      [...gundemRail, ...data.latest],
+    const asayisFamily = new Set(getHomeFeedCategoryFamily('asayis'))
+    const isAsayisItem = (item: NewsItem) =>
+      asayisFamily.has((item.category ?? '').toLowerCase())
+    const thirdPageItems = takePortalRail(
+      [
+        ...sliceCategoryRail(categoryRails, 'asayis', 16),
+        ...sliceCategoryRail(categoryRails, 'yerel-haber', 16).filter(isAsayisItem),
+      ],
       HOME_CATEGORY_PORTAL_FETCH
     )
     const yerelItems = takePortalRail(
-      sliceCategoryRail(categoryRails, 'yerel-haber', 16),
+      sliceCategoryRail(categoryRails, 'yerel-haber', 16).filter((item) => !isAsayisItem(item)),
       HOME_CATEGORY_PORTAL_FETCH
     )
-    const thirdPageItems = takePortalRail(
-      sliceCategoryRail(categoryRails, 'asayis', 16),
+    const gundemItems = takePortalRail(
+      [...gundemRail, ...data.latest],
       HOME_CATEGORY_PORTAL_FETCH
     )
     const kulturItems = takePortalRail(

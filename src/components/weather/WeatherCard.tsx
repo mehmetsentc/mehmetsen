@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
-import { Droplets, Wind, Eye, Thermometer, Sun, Sunset, Gauge, UmbrellaOff } from 'lucide-react'
-import { conditionEmoji, getEffectiveIsDay, turkishDayName } from '@/lib/weatherApi'
+import { Droplets, Wind, Eye, Sun, Sunset, Gauge } from 'lucide-react'
+import { conditionEmoji, formatAstroClockTr, getEffectiveIsDay, turkishWeatherPlaceName } from '@/lib/weatherApi'
 import type { WeatherData } from '@/types/weather'
 
 interface WeatherCardProps {
@@ -65,9 +64,9 @@ export function WeatherCard({ data }: WeatherCardProps) {
       {/* Location */}
       <div className={`mb-1 flex items-center gap-1.5 text-sm font-semibold ${textColor} opacity-80`}>
         <span>📍</span>
-        <span>{location.name}</span>
+        <span>{turkishWeatherPlaceName(location.name)}</span>
         {location.region && location.region !== location.name && (
-          <span className="opacity-60">· {location.region}</span>
+          <span className="opacity-60">· {turkishWeatherPlaceName(location.region)}</span>
         )}
       </div>
 
@@ -120,11 +119,11 @@ export function WeatherCard({ data }: WeatherCardProps) {
         <div className={`mt-4 flex items-center justify-center gap-8 border-t border-white/20 pt-4 text-sm ${textColor} opacity-80`}>
           <div className="flex items-center gap-1.5">
             <Sun className="h-4 w-4" />
-            <span>{today.astro.sunrise}</span>
+            <span>Gün doğumu {formatAstroClockTr(today.astro.sunrise)}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Sunset className="h-4 w-4" />
-            <span>{today.astro.sunset}</span>
+            <span>Gün batımı {formatAstroClockTr(today.astro.sunset)}</span>
           </div>
         </div>
       )}
