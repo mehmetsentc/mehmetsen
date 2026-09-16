@@ -11,9 +11,8 @@
  *   [Kategori chip]  ♡  ↗
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type CSSProperties, type ReactNode } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { Bookmark, BookmarkCheck, Heart, MessageCircle, Play, Share2 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -74,6 +73,29 @@ const SOURCE_BADGE_PALETTE = [
   '185 28 28', // red-700
   '55 65 81', // gray-700
 ]
+
+/** Full document load — Instagram/WebView Next soft-nav 404s after deploys. */
+function ArticleHref({
+  href,
+  className,
+  style,
+  onNavigate,
+  children,
+  'aria-label': ariaLabel,
+}: {
+  href: string
+  className?: string
+  style?: CSSProperties
+  onNavigate?: () => void
+  children: ReactNode
+  'aria-label'?: string
+}) {
+  return (
+    <a href={href} className={className} style={style} aria-label={ariaLabel} onClick={onNavigate}>
+      {children}
+    </a>
+  )
+}
 
 function sourceBadgeColor(label: string): string {
   if (label === 'NaHaber') return 'var(--color-brand)'
@@ -240,11 +262,11 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
       </div>
 
       {/* ── 2. Manşet / Başlık ── */}
-      <Link href={href} onClick={handleNavigate} className="block">
+      <ArticleHref href={href} onNavigate={handleNavigate} className="block">
         <h3 className="mb-1 line-clamp-3 text-[15px] font-bold leading-snug text-[rgb(var(--color-text))]">
           {item.title}
         </h3>
-      </Link>
+      </ArticleHref>
       <span className="mb-2 block text-[11px] font-medium text-[rgb(var(--color-muted))]">
         Kaynak:{' '}
         <span className="font-semibold" style={{ color: `rgb(${badgeColor})` }}>
@@ -260,13 +282,13 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
       )}
 
       {/* ── devamını oku butonu (manşetin hemen altında) ── */}
-      <Link
+      <ArticleHref
         href={href}
-        onClick={handleNavigate}
+        onNavigate={handleNavigate}
         className="mb-4 inline-flex items-center gap-1 text-[13px] font-semibold text-[rgb(var(--color-brand))] hover:underline"
       >
         devamını oku →
-      </Link>
+      </ArticleHref>
 
       {/* ── 4. Görsel / Video / Galeri — en altta ── */}
       {hasMedia && (
@@ -279,10 +301,10 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
                 style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 {mediaSlides.map((slide, idx) => (
-                  <Link
+                  <ArticleHref
                     key={idx}
                     href={href}
-                    onClick={handleNavigate}
+                    onNavigate={handleNavigate}
                     className="relative shrink-0 overflow-hidden rounded-xl snap-center"
                     style={{ width: 'calc(100% - 28px)' }}
                   >
@@ -303,7 +325,7 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
                         </div>
                       )}
                     </div>
-                  </Link>
+                  </ArticleHref>
                 ))}
               </div>
               {/* Sayaç badge */}
@@ -313,9 +335,9 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
             </div>
           ) : (
             /* Tek medya → tam genişlik */
-            <Link
+            <ArticleHref
               href={href}
-              onClick={handleNavigate}
+              onNavigate={handleNavigate}
               className="block overflow-hidden rounded-xl"
             >
               <div className="relative aspect-[16/9] w-full bg-black">
@@ -335,7 +357,7 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
                   </div>
                 )}
               </div>
-            </Link>
+            </ArticleHref>
           )}
         </div>
       )}
@@ -366,9 +388,9 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
           </button>
 
           {/* Yorum yap */}
-          <Link
+          <ArticleHref
             href={`${href}#yorumlar`}
-            onClick={handleNavigate}
+            onNavigate={handleNavigate}
             aria-label="Yorum yap"
             className="flex items-center gap-1 transition-colors hover:text-[rgb(var(--color-text))]"
           >
@@ -376,7 +398,7 @@ export function CityThreadCard({ item, feedItems, feedIndex, priority }: CityThr
             {item.commentsCount ? (
               <span className="text-[11px]">{item.commentsCount}</span>
             ) : null}
-          </Link>
+          </ArticleHref>
 
           {/* Paylaş */}
           <button
