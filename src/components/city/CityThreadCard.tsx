@@ -67,12 +67,12 @@ const NAHABER_LOGO = '/brand/nahaber-logo.png'
 const SOURCE_BADGE_PALETTE = [
   '37 99 235', // blue-600
   '5 150 105', // emerald-600
-  '217 119 6', // amber-600
-  '124 58 237', // violet-600
-  '219 39 119', // pink-600
-  '8 145 178', // cyan-600
-  '220 38 38', // red-600
-  '75 85 99', // gray-600
+  '146 64 14', // amber-800 — AA on newspaper paper
+  '91 33 182', // violet-800
+  '157 23 77', // pink-800
+  '14 116 144', // cyan-700
+  '185 28 28', // red-700
+  '55 65 81', // gray-700
 ]
 
 function sourceBadgeColor(label: string): string {

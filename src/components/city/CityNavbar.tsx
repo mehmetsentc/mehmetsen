@@ -46,7 +46,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
         ref={chromeRef as Ref<HTMLDivElement>}
         className={cn(
           'mobile-top-chrome is-fixed z-[100]',
-          'bg-[rgb(var(--header-brand-bg))] text-white',
+          'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
           'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
@@ -55,7 +55,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
             <button
               type="button"
               onClick={onMenuClick}
-              className="flex h-10 w-10 shrink-0 items-center justify-center text-white sm:h-11 sm:w-11"
+              className="flex h-10 w-10 shrink-0 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
               aria-label="Menü"
             >
               <Menu className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
@@ -79,7 +79,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
               <button
                 type="button"
                 onClick={() => router.push('/search')}
-                className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
+                className="flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
                 aria-label="Ara"
               >
                 <Search className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
@@ -87,11 +87,11 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
               <NotificationBell
                 variant="onBrand"
                 iconClassName="h-5 w-5 sm:h-[22px] sm:w-[22px]"
-                buttonClassName="relative flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
+                buttonClassName="relative flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
               />
               <Link
                 href={profileHref}
-                className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
+                className="flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
                 aria-label="Profil"
               >
                 <User className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />

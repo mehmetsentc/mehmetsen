@@ -84,7 +84,7 @@ export function NotificationBell({
     buttonClassName ??
     cn(
       'relative flex h-11 w-11 items-center justify-center',
-      variant === 'onBrand' ? 'text-white' : 'text-[rgb(var(--color-text))]'
+      variant === 'onBrand' ? 'text-[rgb(var(--header-onbrand))]' : 'text-[rgb(var(--color-text))]'
     )
 
   const badge =

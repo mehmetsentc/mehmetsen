@@ -102,8 +102,8 @@ function HeaderNavList({
                   ? 'px-2.5 py-3 text-[12px] font-bold uppercase tracking-wide xl:px-3'
                   : 'px-3 py-2.5 text-[13px] font-semibold xl:px-4',
                 active
-                  ? 'text-white'
-                  : 'text-white/85 hover:text-white'
+                  ? 'text-[rgb(var(--header-onbrand))]'
+                  : 'text-[rgb(var(--header-onbrand))]/85 hover:text-[rgb(var(--header-onbrand))]'
               )}
             >
               <span className="relative inline-block whitespace-nowrap">
@@ -111,7 +111,7 @@ function HeaderNavList({
                 {active ? (
                   <span
                     className={cn(
-                      'absolute left-0 right-0 bg-white',
+                      'absolute left-0 right-0 bg-[rgb(var(--header-onbrand))]',
                       isPrimary ? '-bottom-2.5 h-0.5' : '-bottom-2 h-[2px]'
                     )}
                   />

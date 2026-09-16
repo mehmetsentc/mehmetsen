@@ -32,7 +32,7 @@ function MarketRateCard({
         <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[rgb(var(--color-muted))]">
           {label}
         </span>
-        <span className={`text-[10px] font-bold ${up ? 'text-emerald-500' : 'text-red-500'}`}>
+        <span className={`text-[10px] font-bold ${up ? 'text-emerald-700' : 'text-red-700'}`}>
           {up ? '▲' : '▼'}
         </span>
       </div>
@@ -40,7 +40,7 @@ function MarketRateCard({
         {value}
       </p>
       <p
-        className={`mt-1 text-xs font-semibold tabular-nums ${up ? 'text-emerald-500' : 'text-red-500'}`}
+        className={`mt-1 text-xs font-semibold tabular-nums ${up ? 'text-emerald-700' : 'text-red-700'}`}
       >
         %{change >= 0 ? '+' : ''}
         {change.toFixed(2)}
@@ -88,8 +88,8 @@ export function DesktopMarketSidebar() {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-emerald-500" aria-hidden />
           <h3 className="text-sm font-bold text-[rgb(var(--color-text))]">Canlı Piyasalar</h3>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
             CANLI
           </span>
         </div>

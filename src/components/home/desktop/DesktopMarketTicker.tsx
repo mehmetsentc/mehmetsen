@@ -29,7 +29,7 @@ function TickerCell({ label, value, change }: TickerItem) {
       <span className="text-[12px] font-black tabular-nums text-[rgb(var(--color-text))]">
         {value}
       </span>
-      <span className={`text-[11px] font-bold tabular-nums ${up ? 'text-emerald-500' : 'text-red-500'}`}>
+      <span className={`text-[11px] font-bold tabular-nums ${up ? 'text-emerald-700' : 'text-red-700'}`}>
         {up ? '▲' : '▼'} %{Math.abs(change).toFixed(2)}
       </span>
     </span>

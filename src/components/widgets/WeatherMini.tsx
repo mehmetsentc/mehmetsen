@@ -89,7 +89,7 @@ export function WeatherMini() {
   const cityOptions = [...new Set([activeSlug, ...POPULAR_CITY_SLUGS])]
 
   return (
-    <div className="flex h-full flex-col rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 p-3 text-white">
+    <div className="flex h-full flex-col rounded-xl bg-blue-700 bg-gradient-to-br from-sky-600 to-blue-800 p-3 text-white">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-100">

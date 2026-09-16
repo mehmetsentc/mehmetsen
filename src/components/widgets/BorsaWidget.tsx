@@ -28,8 +28,8 @@ function fmtPrice(q: BistQuote): string {
 function Change({ q }: { q: BistQuote }) {
   const up = q.changePct >= 0
   const cls = up
-    ? 'text-emerald-500 dark:text-emerald-400'
-    : 'text-red-500 dark:text-red-400'
+    ? 'text-emerald-700'
+    : 'text-red-700'
   const Icon = up ? TrendingUp : TrendingDown
   const sign = up ? '+' : ''
   return (
@@ -69,7 +69,7 @@ function IndexCard({ q }: { q: BistQuote }) {
 
 function StockRow({ q, rank }: { q: BistQuote; rank: number }) {
   const up = q.changePct >= 0
-  const priceCls = up ? 'text-emerald-500' : 'text-red-500'
+  const priceCls = up ? 'text-emerald-700' : 'text-red-700'
 
   return (
     <tr className="border-b border-[rgb(var(--color-border))] last:border-0 hover:bg-[rgb(var(--color-surface))] transition-colors">
@@ -92,7 +92,7 @@ function StockRow({ q, rank }: { q: BistQuote; rank: number }) {
 
 function FxRow({ q }: { q: BistQuote }) {
   const up = q.changePct >= 0
-  const priceCls = up ? 'text-emerald-500' : 'text-red-500'
+  const priceCls = up ? 'text-emerald-700' : 'text-red-700'
   return (
     <tr className="border-b border-[rgb(var(--color-border))] last:border-0 hover:bg-[rgb(var(--color-surface))] transition-colors">
       <td className="py-2.5 pr-4 pl-3">
@@ -193,8 +193,8 @@ export function BorsaWidget() {
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-[rgb(var(--color-brand))]" />
           <span className="text-sm font-bold text-[rgb(var(--color-text))]">Canlı Piyasa Verileri</span>
-          <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+          <span className="flex items-center gap-1 rounded-full bg-emerald-700/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
             CANLI
           </span>
         </div>

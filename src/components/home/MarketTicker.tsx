@@ -49,7 +49,7 @@ function MarketCell({ label, value, change, attached = false }: MarketCellProps)
       <span
         className={cn(
           'text-[11px] font-semibold tabular-nums max-md:text-[12px]',
-          up ? 'text-emerald-500' : 'text-red-500'
+          up ? 'text-emerald-700' : 'text-red-700'
         )}
       >
         % {up ? '' : '-'}
