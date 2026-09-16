@@ -17,6 +17,7 @@ import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import type { CategoryDef } from '@/constants/config'
+import type { NewsItem } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 
 interface SubTab {
