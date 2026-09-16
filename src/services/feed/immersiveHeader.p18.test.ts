@@ -75,10 +75,13 @@ describe('immersive header Phase 1', () => {
     expect(nav).toMatch(/showBack\s*=\s*\n?\s*!isPrimaryDest/)
   })
 
-  it('keeps existing profile destination (no new identity fetch)', () => {
+  it('keeps Profil dock slot for publishers only (no consumer /profile uid fallback)', () => {
     const dock = read('src/components/layout/MobileNav.tsx')
-    expect(dock).toContain('ROUTES.PROFILE(user.username || user.uid)')
-    expect(dock).not.toContain('publisher-studio/mine')
+    expect(dock).toContain("label: 'Profil'")
+    expect(dock).toContain('header-nav-profil')
+    expect(dock).toContain('resolvePublisherProfileHref')
+    expect(dock).toContain('useMyPublishers')
+    expect(dock).not.toContain('ROUTES.PROFILE(user.username || user.uid)')
     expect(dock).not.toContain('listPublishersForUser')
   })
 

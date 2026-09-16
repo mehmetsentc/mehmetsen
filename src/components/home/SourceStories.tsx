@@ -5,10 +5,7 @@ import { Newspaper } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { StoryViewer } from '@/components/home/StoryViewer'
-import {
-  sourceStoryTour,
-  type SourceStoryGroup,
-} from '@/lib/home/sourceStories'
+import { type SourceStoryGroup } from '@/lib/home/sourceStories'
 import type { NewsItem } from '@/types/newsItem'
 
 type SourceStoriesProps = {
@@ -52,20 +49,21 @@ function StoryCard({
 }
 
 export function SourceStories({ groups }: SourceStoriesProps) {
-  const [viewerItems, setViewerItems] = useState<NewsItem[]>([])
   const [viewerOpen, setViewerOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeGroupIndex, setActiveGroupIndex] = useState(0)
+  const [activeItemIndex, setActiveItemIndex] = useState(0)
 
-  const openGroup = useCallback((items: NewsItem[], index = 0) => {
+  const openAt = useCallback((groupIndex: number, itemIndex = 0) => {
+    if (groups.length === 0) return
+    const g = Math.min(Math.max(0, groupIndex), groups.length - 1)
+    const items = groups[g]?.items ?? []
     if (items.length === 0) return
-    setViewerItems(items)
-    setActiveIndex(index)
+    setActiveGroupIndex(g)
+    setActiveItemIndex(Math.min(Math.max(0, itemIndex), items.length - 1))
     setViewerOpen(true)
-  }, [])
+  }, [groups])
 
   if (groups.length === 0) return null
-
-  const tour = sourceStoryTour(groups)
 
   return (
     <section aria-label="Kaynak hikayeleri" className="home-section" data-testid="source-stories-rail">
@@ -77,7 +75,7 @@ export function SourceStories({ groups }: SourceStoriesProps) {
           <button
             type="button"
             data-testid="source-stories-hub"
-            onClick={() => openGroup(tour, 0)}
+            onClick={() => openAt(0, 0)}
             className="relative flex h-[290px] w-[163px] flex-col items-center justify-center overflow-hidden rounded-2xl p-3 text-center shadow-brand transition-transform duration-quick ease-out-soft hover:-translate-y-0.5"
             style={{
               aspectRatio: '9 / 16',
@@ -91,7 +89,7 @@ export function SourceStories({ groups }: SourceStoriesProps) {
             </span>
           </button>
         </div>
-        {groups.map((group) => {
+        {groups.map((group, groupIndex) => {
           const cover = group.items[0]
           if (!cover) return null
           return (
@@ -99,16 +97,17 @@ export function SourceStories({ groups }: SourceStoriesProps) {
               key={group.key}
               item={cover}
               label={group.label}
-              onOpen={() => openGroup(group.items, 0)}
+              onOpen={() => openAt(groupIndex, 0)}
             />
           )
         })}
       </div>
 
       <StoryViewer
-        items={viewerItems}
+        groups={groups}
         open={viewerOpen}
-        initialIndex={activeIndex}
+        initialGroupIndex={activeGroupIndex}
+        initialIndex={activeItemIndex}
         onClose={() => setViewerOpen(false)}
       />
     </section>

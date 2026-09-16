@@ -204,6 +204,13 @@ function RouteEffects() {
       clearFeedOwnerRescue()
       return
     }
+    // Canonical /haber must never keep Feed Reader chrome lock — Navbar/Geri
+    // would stay opacity:0 under the old global CSS selector.
+    if (pathname.startsWith('/haber/') || pathname.startsWith('/post/')) {
+      document.documentElement.classList.remove('smart-feed-reader-open')
+      document.body.classList.remove('smart-feed-reader-open')
+      return
+    }
     if (pathname !== '/' && pathname !== '' && pathname !== ROUTES.FEED) return
     if (!consumeFeedOwnerRescue()) return
     document.documentElement.classList.remove('smart-feed-reader-open')

@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { Home, User, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useMyPublishers } from '@/hooks/useMyPublishers'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
 import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
@@ -14,7 +15,10 @@ import {
   resolveNewsSurface,
   resolveSharedCategoryId,
 } from '@/lib/feed/sharedCategoryRail'
-import { ROUTES } from '@/constants/routes'
+import {
+  isPublisherProfilePath,
+  resolvePublisherProfileHref,
+} from '@/lib/nav/publisherProfileNav'
 import { cn } from '@/lib/utils'
 
 interface MobileNavItem {
@@ -25,19 +29,14 @@ interface MobileNavItem {
   kind: 'home' | 'akis' | 'profil'
 }
 
-function isProfilPath(pathname: string): boolean {
-  return (
-    pathname.startsWith('/profile/') ||
-    pathname.startsWith('/u/') ||
-    pathname === ROUTES.LOGIN ||
-    pathname.startsWith(`${ROUTES.LOGIN}/`)
-  )
-}
-
-function isItemActive(pathname: string, item: MobileNavItem): boolean {
+function isItemActive(
+  pathname: string,
+  item: MobileNavItem,
+  publishers: Array<{ slug: string }>
+): boolean {
   if (item.kind === 'home') return resolveNewsSurface(pathname) === 'home'
   if (item.kind === 'akis') return resolveNewsSurface(pathname) === 'akis'
-  return isProfilPath(pathname)
+  return isPublisherProfilePath(pathname, publishers)
 }
 
 function NavSlotChrome({
@@ -103,7 +102,8 @@ const MobileNavLink = memo(function MobileNavLink({
 function MobileNavInner() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
@@ -111,13 +111,13 @@ function MobileNavInner() {
   }, [])
 
   const categoryId = resolveSharedCategoryId(pathname, searchParams.toString())
-  const profileHref =
-    hydrated && !loading && user
-      ? ROUTES.PROFILE(user.username || user.uid)
-      : ROUTES.LOGIN
+  const publisherHref =
+    hydrated && !authLoading && !publishersLoading && user && isPublisher
+      ? resolvePublisherProfileHref(publishers)
+      : null
 
-  const items = useMemo<MobileNavItem[]>(
-    () => [
+  const items = useMemo<MobileNavItem[]>(() => {
+    const base: MobileNavItem[] = [
       {
         icon: Home,
         label: 'Ana Sayfa',
@@ -132,16 +132,19 @@ function MobileNavInner() {
         testId: 'header-nav-akis',
         kind: 'akis',
       },
-      {
+    ]
+    // Profil yalnızca yayıncı üyelere — yayıncı profiline gider.
+    if (publisherHref) {
+      base.push({
         icon: User,
         label: 'Profil',
-        href: profileHref,
+        href: publisherHref,
         testId: 'header-nav-profil',
         kind: 'profil',
-      },
-    ],
-    [categoryId, profileHref]
-  )
+      })
+    }
+    return base
+  }, [categoryId, publisherHref])
 
   return (
     <nav
@@ -154,7 +157,7 @@ function MobileNavInner() {
           <MobileNavLink
             key={item.kind}
             item={item}
-            active={isItemActive(pathname, item)}
+            active={isItemActive(pathname, item, publishers)}
             pathname={pathname}
           />
         ))}

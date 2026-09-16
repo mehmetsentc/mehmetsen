@@ -7,6 +7,8 @@ import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { useAuth } from '@/hooks/useAuth'
+import { useMyPublishers } from '@/hooks/useMyPublishers'
+import { resolvePublisherProfileHref } from '@/lib/nav/publisherProfileNav'
 import { ROUTES } from '@/constants/routes'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
@@ -22,6 +24,7 @@ interface CityNavbarProps {
 export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarProps) {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
   const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
@@ -31,9 +34,9 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
   }, [])
 
   const profileHref =
-    hydrated && !loading && user
-      ? ROUTES.PROFILE(user.username || user.uid)
-      : ROUTES.LOGIN
+    hydrated && !loading && !publishersLoading && user && isPublisher
+      ? resolvePublisherProfileHref(publishers)
+      : null
 
   const navCategories = [
     { id: '__all', label: 'Hepsi', href: '/' },
@@ -89,13 +92,15 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                 iconClassName="h-5 w-5 sm:h-[22px] sm:w-[22px]"
                 buttonClassName="relative flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
               />
-              <Link
-                href={profileHref}
-                className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
-                aria-label="Profil"
-              >
-                <User className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
-              </Link>
+              {profileHref ? (
+                <Link
+                  href={profileHref}
+                  className="flex h-10 w-10 items-center justify-center text-white sm:h-11 sm:w-11"
+                  aria-label="Profil"
+                >
+                  <User className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
+                </Link>
+              ) : null}
             </div>
           </div>
         </header>

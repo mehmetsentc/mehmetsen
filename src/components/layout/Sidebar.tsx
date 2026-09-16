@@ -15,6 +15,7 @@ import {
   Bell,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useMyPublishers } from '@/hooks/useMyPublishers'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
 import { BrandLogo } from '@/components/brand/BrandLogo'
@@ -28,6 +29,10 @@ import {
 } from '@/constants/sidebarNav'
 import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
 import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
+import {
+  isPublisherProfilePath,
+  resolvePublisherProfileHref,
+} from '@/lib/nav/publisherProfileNav'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -120,8 +125,14 @@ function SidebarInner({
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
+  const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const publisherHref =
+    hydrated && !loading && !publishersLoading && user && isPublisher
+      ? resolvePublisherProfileHref(publishers)
+      : null
+  const profileActive = isPublisherProfilePath(pathname, publishers)
 
   useEffect(() => {
     setHydrated(true)
@@ -290,24 +301,19 @@ function SidebarInner({
               <Bell className="app-sidebar__icon" aria-hidden />
               <span>Bildirimler</span>
             </Link>
-            <Link
-              href={
-                hydrated && !loading && user
-                  ? ROUTES.PROFILE(user.username || user.uid)
-                  : ROUTES.LOGIN
-              }
-              onClick={closeDrawer}
-              className={cn(
-                'app-sidebar__item',
-                isItemActive(pathname, '/profile', 'profile') && 'is-active'
-              )}
-              aria-label="Profil"
-              aria-current={isItemActive(pathname, '/profile', 'profile') ? 'page' : undefined}
-              data-testid="global-nav-profile"
-            >
-              <User className="app-sidebar__icon" aria-hidden />
-              <span>Profil</span>
-            </Link>
+            {publisherHref ? (
+              <Link
+                href={publisherHref}
+                onClick={closeDrawer}
+                className={cn('app-sidebar__item', profileActive && 'is-active')}
+                aria-label="Profil"
+                aria-current={profileActive ? 'page' : undefined}
+                data-testid="global-nav-profile"
+              >
+                <User className="app-sidebar__icon" aria-hidden />
+                <span>Profil</span>
+              </Link>
+            ) : null}
           </div>
 
           <div className="app-sidebar__section">
@@ -340,15 +346,18 @@ function SidebarInner({
           {hydrated ? <SidebarThemeToggle /> : null}
           {hydrated && !loading && user ? (
             <>
-              <Link
-                href={ROUTES.PROFILE(user.username)}
-                onClick={closeDrawer}
-                className="app-sidebar__item"
-                data-accent="muted"
-              >
-                <User className="app-sidebar__icon" />
-                Profilim
-              </Link>
+              {publisherHref ? (
+                <Link
+                  href={publisherHref}
+                  onClick={closeDrawer}
+                  className="app-sidebar__item"
+                  data-accent="muted"
+                  data-testid="sidebar-publisher-profile"
+                >
+                  <User className="app-sidebar__icon" />
+                  Yayıncı profilim
+                </Link>
+              ) : null}
               <Link
                 href={ROUTES.SETTINGS}
                 onClick={closeDrawer}

@@ -14,12 +14,12 @@ export function useProfile(
   const initialProfile = options?.initialProfile ?? null
 
   const [profile, setProfile] = useState<User | null>(initialProfile)
-  const [loading, setLoading] = useState(!fromServer)
-  const [error, setError] = useState<string | null>(
-    fromServer && !initialProfile ? 'Kullanıcı bulunamadı' : null
-  )
+  const [loading, setLoading] = useState(!fromServer || !initialProfile)
+  const [error, setError] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
-  const skipFirstFetch = useRef(fromServer)
+  // Only skip the first client fetch when SSR already returned a profile.
+  // SSR miss + skip was painting permanent "Kullanıcı bulunamadı".
+  const skipFirstFetch = useRef(fromServer && Boolean(initialProfile))
   const lastUsername = useRef(username)
 
   // Profil yüklemesi auth state'ten bağımsız — sadece username değişince tekrar çalışır.

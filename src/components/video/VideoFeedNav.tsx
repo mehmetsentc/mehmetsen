@@ -4,19 +4,26 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, PlusSquare, Clapperboard, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useMyPublishers } from '@/hooks/useMyPublishers'
+import { resolvePublisherProfileHref } from '@/lib/nav/publisherProfileNav'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 
 export function VideoFeedNav() {
   const pathname = usePathname()
   const { user } = useAuth()
+  const { publishers, isPublisher } = useMyPublishers()
+  const publisherHref =
+    user && isPublisher ? resolvePublisherProfileHref(publishers) : null
 
   const items = [
     { icon: Home, href: ROUTES.FEED },
     { icon: Search, href: ROUTES.SEARCH },
     { icon: PlusSquare, href: ROUTES.POST_CREATE },
     { icon: Clapperboard, href: ROUTES.REELS },
-    { icon: User, href: user ? ROUTES.PROFILE(user.username) : ROUTES.LOGIN },
+    ...(publisherHref
+      ? [{ icon: User, href: publisherHref }]
+      : []),
   ]
 
   return (

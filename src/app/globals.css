@@ -596,13 +596,18 @@
   /* P18.3J: CommentsBottomSheet (z-120) must not compete with MobileNav (z-105) for taps */
   html.smart-feed-comments-open .mobile-bottom-nav,
   body.smart-feed-comments-open .mobile-bottom-nav,
-  html.smart-feed-reader-open .mobile-bottom-nav,
-  body.smart-feed-reader-open .mobile-bottom-nav,
-  html.smart-feed-reader-open .mobile-top-chrome,
-  body.smart-feed-reader-open .mobile-top-chrome,
+  /*
+   * Feed Reader chrome lock — ONLY while Feed V2 immersive stage is mounted.
+   * Never hide site Navbar/MobileNav on canonical /haber (newspaper) or Lift
+   * would leave readers with no Geri control if the class leaks.
+   */
+  html.smart-feed-reader-open:has(.content-main-reels) .mobile-bottom-nav,
+  body.smart-feed-reader-open:has(.content-main-reels) .mobile-bottom-nav,
+  html.smart-feed-reader-open:has(.content-main-reels) .mobile-top-chrome,
+  body.smart-feed-reader-open:has(.content-main-reels) .mobile-top-chrome,
   /* Shield sits at z-160 above Reader (z-130); hide with chrome or it paints as a brand strip over Akışa Dön. */
-  html.smart-feed-reader-open .mobile-safe-area-shield,
-  body.smart-feed-reader-open .mobile-safe-area-shield {
+  html.smart-feed-reader-open:has(.content-main-reels) .mobile-safe-area-shield,
+  body.smart-feed-reader-open:has(.content-main-reels) .mobile-safe-area-shield {
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;

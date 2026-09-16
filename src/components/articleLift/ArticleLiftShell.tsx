@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
-import { X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { pauseAllLivingVideo } from '@/lib/livingVideo/activeVideoOwner'
 import { clearLiftOrigin, focusLiftOrigin, getCurrentLiftOrigin } from '@/lib/articleLift/liftOrigin'
 import { pinLiftReaderOriginToPageState, restoreLiftReaderScrollAfterLayout } from '@/lib/articleLift/liftReaderScroll'
@@ -206,17 +206,30 @@ export function ArticleLiftShell({ articleId, children }: ArticleLiftShellProps)
         className="absolute inset-0 flex flex-col overflow-hidden bg-[rgb(var(--color-bg))] sm:inset-3 sm:rounded-2xl sm:shadow-2xl md:inset-6 lg:inset-x-[8%] lg:inset-y-6 xl:inset-x-[14%]"
         {...panelMotionProps}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3">
-          <span
-            aria-hidden
-            className="mx-auto block h-1 w-10 rounded-full bg-[rgb(var(--color-border))] sm:hidden"
-          />
+        <div
+          className="relative flex shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 pb-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
+          data-testid="article-lift-header"
+        >
           <button
             ref={closeButtonRef}
             type="button"
             onClick={close}
-            aria-label="Haberi kapat, yayıncı sayfasına dön"
-            className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-bg))] hover:text-[rgb(var(--color-text))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
+            aria-label="Geri dön"
+            data-testid="article-lift-back"
+            className="inline-flex h-11 min-w-[5.5rem] items-center justify-center gap-1.5 rounded-full bg-[rgb(var(--color-bg))] px-3 text-sm font-semibold text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] transition-colors hover:bg-[rgb(var(--color-card))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden strokeWidth={2.25} />
+            Geri
+          </button>
+          <span
+            aria-hidden
+            className="absolute left-1/2 top-[max(0.55rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.2rem))] hidden h-1 w-10 -translate-x-1/2 rounded-full bg-[rgb(var(--color-border))] sm:block"
+          />
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Haberi kapat"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-bg))] hover:text-[rgb(var(--color-text))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-brand))]"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>

@@ -14,7 +14,7 @@ import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import type { User } from '@/types/user'
 
 function normalizeUsername(username: string): string {
-  return username.trim().toLowerCase()
+  return username.trim().toLocaleLowerCase('tr-TR')
 }
 
 /**
@@ -93,7 +93,13 @@ export const userService = {
   },
 
   async getByUsername(username: string): Promise<User | null> {
-    const normalized = normalizeUsername(username)
+    const raw = username.trim()
+    const normalized = normalizeUsername(raw)
+    // Nav historically fell back to Firebase uid when username was empty.
+    if (/^[A-Za-z0-9]{20,128}$/.test(raw)) {
+      const byUid = await this.getByUid(raw)
+      if (byUid) return byUid
+    }
     const snap = await getDocs(
       query(
         collection(db, Collections.USERS),

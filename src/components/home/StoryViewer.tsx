@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
@@ -23,6 +23,12 @@ import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { formatNewsDateBbc } from '@/components/home/desktop/formatNewsDate'
+import {
+  jumpSourceStoryGroup,
+  stepSourceStoryCursor,
+  type SourceStoryCursor,
+  type SourceStoryGroup,
+} from '@/lib/home/sourceStories'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { likeService } from '@/services/likeService'
@@ -35,64 +41,96 @@ import type { NewsItem } from '@/types/newsItem'
  * StoryViewer — Tam ekran Instagram Story modu (NaHaber 2026, F3)
  *
  * Etkileşim modeli:
- *   - Tap sağ yarı → bir sonraki story
- *   - Tap sol yarı → bir önceki story
- *   - Basılı tut → progress duraklar (Instagram tarzı)
+ *   - Tap sağ yarı → bir sonraki story (kaynak bitince sonraki kaynağa)
+ *   - Tap sol yarı → bir önceki story (kaynak başında önceki kaynağın sonuna)
+ *   - Yatay swipe → kaynaklar arası geçiş (Instagram ring)
+ *   - Basılı tut → progress duraklar
  *   - Swipe-down → kapat
  *   - ←/→ klavye → nav, Esc → kapat, Space → pause/play
  *   - Auto-advance: STORY_DURATION_MS
  *
  * Backend bağlantısı: like + save + paylaş + view sayacı kayıt eder.
- *
- * Kullanım:
- *   <StoryViewer
- *     items={breakingItems}
- *     open={open}
- *     initialIndex={idx}
- *     onClose={() => setOpen(false)}
- *   />
  */
 
 const STORY_DURATION_MS = 6000
-const TICK_MS = 60 // 16fps yeterli — daha pürüzsüz ama daha CPU dostu
+const TICK_MS = 60
+const SWIPE_SOURCE_PX = 72
+const SWIPE_SOURCE_VX = 450
+const SWIPE_CLOSE_PX = 80
+const SWIPE_CLOSE_VY = 500
 
 interface StoryViewerProps {
-  items: NewsItem[]
+  /** Flat list (Son Dakika). Ignored when `groups` is non-empty. */
+  items?: NewsItem[]
+  /** Multi-source rings (Kaynak hikayeleri) — Instagram-style. */
+  groups?: SourceStoryGroup[]
   open: boolean
   initialIndex?: number
+  initialGroupIndex?: number
   onClose: () => void
 }
 
-export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryViewerProps) {
+export function StoryViewer({
+  items,
+  groups,
+  open,
+  initialIndex = 0,
+  initialGroupIndex = 0,
+  onClose,
+}: StoryViewerProps) {
   const router = useRouter()
   const { user } = useAuth()
 
-  const [index, setIndex] = useState(initialIndex)
+  const resolvedGroups = useMemo((): SourceStoryGroup[] => {
+    if (groups && groups.length > 0) return groups
+    if (items && items.length > 0) {
+      return [{ key: 'flat', label: 'Stories', items }]
+    }
+    return []
+  }, [groups, items])
+
+  const [cursor, setCursor] = useState<SourceStoryCursor>({
+    groupIndex: initialGroupIndex,
+    itemIndex: initialIndex,
+  })
   const [progress, setProgress] = useState(0)
   const [paused, setPaused] = useState(false)
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [direction, setDirection] = useState<1 | -1>(1)
 
-  const current = items[index]
-  const total = items.length
+  const currentGroup = resolvedGroups[cursor.groupIndex]
+  const currentItems = currentGroup?.items ?? []
+  const current = currentItems[cursor.itemIndex]
+  const totalInGroup = currentItems.length
+  const multiSource = resolvedGroups.length > 1
 
   // Açıkken document scroll kilitle
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    return () => {
+      document.body.style.overflow = prev
+    }
   }, [open])
 
-  // Açılışta index resetle
+  // Açılışta cursor resetle
   useEffect(() => {
-    if (open) {
-      setIndex(initialIndex)
-      setProgress(0)
-      setPaused(false)
-    }
-  }, [open, initialIndex])
+    if (!open) return
+    const g = Math.min(
+      Math.max(0, initialGroupIndex),
+      Math.max(0, resolvedGroups.length - 1)
+    )
+    const group = resolvedGroups[g]
+    const i = Math.min(
+      Math.max(0, initialIndex),
+      Math.max(0, (group?.items.length ?? 1) - 1)
+    )
+    setCursor({ groupIndex: g, itemIndex: i })
+    setProgress(0)
+    setPaused(false)
+  }, [open, initialGroupIndex, initialIndex, resolvedGroups])
 
   // View sayacı + like/save state'i her story'de yenile
   useEffect(() => {
@@ -101,7 +139,6 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
     setLiked(false)
     setSaved(false)
 
-    // İzleme sayacı (best-effort, hata sessiz)
     postService.incrementViews(current.id).catch(() => {})
 
     if (!user?.uid) return
@@ -114,17 +151,63 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
       setLiked(l)
       setSaved(s)
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [open, current?.id, user?.uid, current])
+
+  const applyCursor = useCallback(
+    (next: SourceStoryCursor | 'close', dir: 1 | -1) => {
+      if (next === 'close') {
+        onClose()
+        return
+      }
+      setDirection(dir)
+      setCursor(next)
+      setProgress(0)
+    },
+    [onClose]
+  )
+
+  const goNext = useCallback(() => {
+    applyCursor(stepSourceStoryCursor(resolvedGroups, cursor, 1), 1)
+  }, [applyCursor, resolvedGroups, cursor])
+
+  const goPrev = useCallback(() => {
+    const next = stepSourceStoryCursor(resolvedGroups, cursor, -1)
+    if (next === 'close') return
+    if (
+      next.groupIndex === cursor.groupIndex &&
+      next.itemIndex === cursor.itemIndex
+    ) {
+      setProgress(0)
+      return
+    }
+    applyCursor(next, -1)
+  }, [applyCursor, resolvedGroups, cursor])
+
+  const goNextSource = useCallback(() => {
+    const next = jumpSourceStoryGroup(resolvedGroups, cursor, 1)
+    if (next === 'noop') return
+    applyCursor(next, 1)
+  }, [applyCursor, resolvedGroups, cursor])
+
+  const goPrevSource = useCallback(() => {
+    const next = jumpSourceStoryGroup(resolvedGroups, cursor, -1)
+    if (next === 'noop' || next === 'close') {
+      setProgress(0)
+      return
+    }
+    applyCursor(next, -1)
+  }, [applyCursor, resolvedGroups, cursor])
 
   // ── Progress timer ──────────────────────────────────────────────
   useEffect(() => {
-    if (!open || paused || total === 0) return
+    if (!open || paused || totalInGroup === 0) return
     const interval = setInterval(() => {
       setProgress((p) => {
         const next = p + (TICK_MS / STORY_DURATION_MS) * 100
         if (next >= 100) {
-          // Auto-advance — yan etki tetiklemek için setTimeout
           setTimeout(() => goNext(), 0)
           return 100
         }
@@ -133,34 +216,25 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
     }, TICK_MS)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, paused, index, total])
-
-  const goNext = useCallback(() => {
-    setDirection(1)
-    setIndex((i) => {
-      if (i >= total - 1) {
-        onClose()
-        return i
-      }
-      return i + 1
-    })
-    setProgress(0)
-  }, [total, onClose])
-
-  const goPrev = useCallback(() => {
-    setDirection(-1)
-    setIndex((i) => Math.max(0, i - 1))
-    setProgress(0)
-  }, [])
+  }, [open, paused, cursor.groupIndex, cursor.itemIndex, totalInGroup])
 
   // ── Klavye nav ──────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose() }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev() }
-      else if (e.key === ' ') { e.preventDefault(); setPaused((p) => !p) }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goNext()
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goPrev()
+      } else if (e.key === ' ') {
+        e.preventDefault()
+        setPaused((p) => !p)
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -168,7 +242,10 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
 
   // ── Aksiyonlar ──────────────────────────────────────────────────
   const handleLike = useCallback(async () => {
-    if (!user) { toast.error('Beğenmek için giriş yapın'); return }
+    if (!user) {
+      toast.error('Beğenmek için giriş yapın')
+      return
+    }
     if (!current) return
     const prev = liked
     setLiked(!prev)
@@ -182,7 +259,10 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
   }, [user, current, liked])
 
   const handleSave = useCallback(async () => {
-    if (!user) { toast.error('Kaydetmek için giriş yapın'); return }
+    if (!user) {
+      toast.error('Kaydetmek için giriş yapın')
+      return
+    }
     if (!current) return
     const prev = saved
     setSaved(!prev)
@@ -223,18 +303,56 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
     router.push(newsItemDetailHref(current))
   }, [current, onClose, router])
 
-  // Swipe-down ile kapat
+  // Swipe-down → kapat; yatay swipe → kaynak değiştir
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.y > 80 || info.velocity.y > 500) onClose()
+    const ax = Math.abs(info.offset.x)
+    const ay = Math.abs(info.offset.y)
+    if (ax > ay && multiSource) {
+      if (info.offset.x <= -SWIPE_SOURCE_PX || info.velocity.x <= -SWIPE_SOURCE_VX) {
+        goNextSource()
+        return
+      }
+      if (info.offset.x >= SWIPE_SOURCE_PX || info.velocity.x >= SWIPE_SOURCE_VX) {
+        goPrevSource()
+        return
+      }
+    }
+    if (info.offset.y > SWIPE_CLOSE_PX || info.velocity.y > SWIPE_CLOSE_VY) onClose()
   }
 
-  // Tap-zone navigasyonu (sol/sağ)
-  const handleZoneClick = (zone: 'left' | 'right') => {
-    if (zone === 'left') goPrev()
+  // Tap vs drag: zones are transparent overlays that must not steal framer drag.
+  const tapRef = useRef<{ x: number; y: number; t: number } | null>(null)
+  const handleStagePointerDown = (e: ReactPointerEvent) => {
+    if ((e.target as HTMLElement | null)?.closest('[data-story-chrome]')) return
+    tapRef.current = { x: e.clientX, y: e.clientY, t: Date.now() }
+    setPaused(true)
+  }
+  const handleStagePointerUp = (e: ReactPointerEvent) => {
+    setPaused(false)
+    const start = tapRef.current
+    tapRef.current = null
+    if (!start) return
+    if ((e.target as HTMLElement | null)?.closest('[data-story-chrome]')) return
+    const dx = e.clientX - start.x
+    const dy = e.clientY - start.y
+    const dt = Date.now() - start.t
+    if (Math.hypot(dx, dy) > 14 || dt > 450) return
+    const bounds = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const mid = bounds.left + bounds.width / 2
+    if (e.clientX < mid) goPrev()
     else goNext()
   }
+  const handleStagePointerCancel = () => {
+    tapRef.current = null
+    setPaused(false)
+  }
 
-  if (typeof document === 'undefined' || !current) return null
+  if (typeof document === 'undefined' || !current || !currentGroup) return null
+
+  const sourceLabel =
+    currentGroup.key === 'flat'
+      ? formatPublicSourceLabel(current.source) || 'NaHaber'
+      : currentGroup.label
 
   return createPortal(
     <AnimatePresence>
@@ -248,79 +366,100 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
           role="dialog"
           aria-modal="true"
           aria-label="Kaynak hikayesi"
+          data-testid="story-viewer"
+          data-multi-source={multiSource ? '1' : '0'}
         >
           <motion.div
             className="relative flex h-[100dvh] w-full max-w-[100vw] sm:h-[90dvh] sm:max-w-[min(90vw,480px)] md:max-w-[min(75vw,560px)] lg:max-w-[min(55vw,640px)] flex-col overflow-hidden bg-black sm:rounded-3xl sm:shadow-2xl"
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.4 }}
+            drag
+            dragDirectionLock
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={{ left: 0.35, right: 0.35, top: 0, bottom: 0.4 }}
             onDragEnd={handleDragEnd}
+            onPointerDown={handleStagePointerDown}
+            onPointerUp={handleStagePointerUp}
+            onPointerCancel={handleStagePointerCancel}
             initial={{ y: 40, opacity: 0, scale: 0.97 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: 'spring', damping: 28, stiffness: 280, mass: 0.7 }}
+            data-testid="story-viewer-stage"
           >
-            {/* ── Progress bars (üst) — iOS status bar / notch safe-area (force ship) ── */}
+            {/* ── Top chrome: progress ALWAYS above source row, clears iOS status bar ──
+                App Store WKWebView often reports env(safe-area-inset-top)=0; floor 47px
+                (same as Feed Reader --reader-sat). Stacked layout avoids progress slipping
+                under the notch while the header still clears it. */}
             <div
-              className="absolute inset-x-0 top-0 z-30 flex gap-1.5 px-3 pt-[max(0.75rem,calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.35rem))]"
-              data-testid="story-viewer-progress"
+              className="absolute inset-x-0 top-0 z-30 flex flex-col gap-2 px-3 pb-1"
+              style={{
+                // App Store WKWebView often reports env(safe-area-inset-top)=0.
+                // Floor 47px (notch) so progress never sits under the clock.
+                paddingTop:
+                  'max(0.75rem, calc(max(var(--mobile-sat, env(safe-area-inset-top, 0px)), env(safe-area-inset-top, 0px), 47px) + 0.35rem))',
+              }}
+              data-testid="story-viewer-top-chrome"
+              data-story-chrome
             >
-              {items.map((_, i) => {
-                const fill = i < index ? 100 : i === index ? progress : 0
-                return (
-                  <div
-                    key={i}
-                    className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25"
-                  >
+              <div className="flex gap-1.5" data-testid="story-viewer-progress">
+                {currentItems.map((_, i) => {
+                  const fill =
+                    i < cursor.itemIndex ? 100 : i === cursor.itemIndex ? progress : 0
+                  return (
                     <div
-                      className="h-full bg-white transition-[width] duration-instant"
-                      style={{ width: `${fill}%` }}
-                    />
-                  </div>
-                )
-              })}
+                      key={`${currentGroup.key}-${i}`}
+                      className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/35"
+                    >
+                      <div
+                        className="h-full bg-white transition-[width] duration-instant"
+                        style={{ width: `${fill}%` }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <header
+                className="flex items-center justify-between gap-2"
+                data-testid="story-viewer-header"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Badge variant="solid" uppercase size="sm" className="shadow-lg">
+                    {sourceLabel}
+                  </Badge>
+                  <span className="shrink-0 text-2xs font-semibold text-white/70">
+                    {cursor.itemIndex + 1} / {totalInGroup}
+                    {multiSource ? (
+                      <span className="ml-1 text-white/45" data-testid="story-viewer-source-pos">
+                        · {cursor.groupIndex + 1}/{resolvedGroups.length}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label={paused ? 'Devam et' : 'Duraklat'}
+                    onClick={() => setPaused((p) => !p)}
+                    className="rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/60"
+                  >
+                    <Pause className={cn('h-4 w-4', !paused && 'opacity-60')} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Kapat"
+                    onClick={onClose}
+                    className="rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/60"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </header>
             </div>
 
-            {/* ── Header: kaynak + kapat — progress’in altında, status bar’ın altında ── */}
-            <header
-              className="absolute inset-x-0 z-30 flex items-center justify-between px-4"
-              style={{
-                top: 'max(2.75rem, calc(var(--mobile-sat, env(safe-area-inset-top, 0px)) + 1.35rem))',
-              }}
-              data-testid="story-viewer-header"
-            >
-              <div className="flex items-center gap-2">
-                <Badge variant="solid" uppercase size="sm" className="shadow-lg">
-                  {formatPublicSourceLabel(current.source) || 'NaHaber'}
-                </Badge>
-                <span className="text-2xs font-semibold text-white/70">
-                  {index + 1} / {total}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={paused ? 'Devam et' : 'Duraklat'}
-                  onClick={() => setPaused((p) => !p)}
-                  className="rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/60"
-                >
-                  <Pause className={cn('h-4 w-4', !paused && 'opacity-60')} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Kapat"
-                  onClick={onClose}
-                  className="rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/60"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </header>
-
-            {/* ── Story content (görsel + başlık) ─────────────── */}
+            {/* ── Story content ── */}
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
-                key={current.id}
+                key={`${currentGroup.key}-${current.id}`}
                 custom={direction}
                 initial={{ opacity: 0, x: direction === 1 ? 40 : -40 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -336,35 +475,14 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
                   priority
                   className="object-cover"
                 />
-                {/* Üst + alt karartma */}
                 <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/70 to-transparent" />
 
-                {/* ── Tap zones ───────────────────────────── */}
-                <button
-                  type="button"
-                  aria-label="Önceki story"
-                  onClick={() => handleZoneClick('left')}
-                  onPointerDown={() => setPaused(true)}
-                  onPointerUp={() => setPaused(false)}
-                  onPointerCancel={() => setPaused(false)}
-                  className="absolute inset-y-20 left-0 z-10 w-1/3"
-                />
-                <button
-                  type="button"
-                  aria-label="Sonraki story"
-                  onClick={() => handleZoneClick('right')}
-                  onPointerDown={() => setPaused(true)}
-                  onPointerUp={() => setPaused(false)}
-                  onPointerCancel={() => setPaused(false)}
-                  className="absolute inset-y-20 right-0 z-10 w-1/3"
-                />
-
-                {/* Görsel masaüstünde nav okları (mobile'da gizli) */}
                 <button
                   type="button"
                   onClick={goPrev}
                   aria-label="Önceki"
+                  data-story-chrome
                   className="absolute left-2 top-1/2 z-20 hidden -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/70 sm:block"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -373,12 +491,12 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
                   type="button"
                   onClick={goNext}
                   aria-label="Sonraki"
+                  data-story-chrome
                   className="absolute right-2 top-1/2 z-20 hidden -translate-y-1/2 rounded-full bg-black/50 p-2 text-white backdrop-blur-md transition-colors hover:bg-black/70 sm:block"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
 
-                {/* ── Başlık + meta (alt) ────────────────── */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-5 pb-32 sm:pb-36">
                   <h2 className="text-2xl font-black leading-[1.15] tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] sm:text-3xl">
                     {current.title}
@@ -403,8 +521,10 @@ export function StoryViewer({ items, open, initialIndex = 0, onClose }: StoryVie
               </motion.div>
             </AnimatePresence>
 
-            {/* ── Footer aksiyonları ──────────────────────── */}
-            <footer className="absolute inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3">
+            <footer
+              className="absolute inset-x-0 bottom-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3"
+              data-story-chrome
+            >
               <div className="flex items-center gap-2">
                 <Button
                   size="lg"

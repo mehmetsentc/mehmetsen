@@ -77,6 +77,66 @@ export function sourceStoryTour(groups: SourceStoryGroup[]): NewsItem[] {
     .filter((item): item is NewsItem => Boolean(item))
 }
 
+/** Cursor inside multi-source story rings (Instagram-style). */
+export type SourceStoryCursor = {
+  groupIndex: number
+  itemIndex: number
+}
+
+/**
+ * Step within / across source rings.
+ * Forward past the last ring → 'close'.
+ * Backward before the first story → stay at start ('noop' not needed; returns same cursor).
+ */
+export function stepSourceStoryCursor(
+  groups: SourceStoryGroup[],
+  cursor: SourceStoryCursor,
+  dir: 1 | -1
+): SourceStoryCursor | 'close' {
+  if (groups.length === 0) return 'close'
+  const group = groups[cursor.groupIndex]
+  if (!group || group.items.length === 0) return 'close'
+
+  if (dir === 1) {
+    if (cursor.itemIndex < group.items.length - 1) {
+      return { groupIndex: cursor.groupIndex, itemIndex: cursor.itemIndex + 1 }
+    }
+    if (cursor.groupIndex < groups.length - 1) {
+      return { groupIndex: cursor.groupIndex + 1, itemIndex: 0 }
+    }
+    return 'close'
+  }
+
+  if (cursor.itemIndex > 0) {
+    return { groupIndex: cursor.groupIndex, itemIndex: cursor.itemIndex - 1 }
+  }
+  if (cursor.groupIndex > 0) {
+    const prev = groups[cursor.groupIndex - 1]!
+    return {
+      groupIndex: cursor.groupIndex - 1,
+      itemIndex: Math.max(0, prev.items.length - 1),
+    }
+  }
+  return cursor
+}
+
+/**
+ * Horizontal swipe between sources (rings).
+ * Next past last → 'close'. Prev before first → 'noop'.
+ * Landing always starts at the first story of the target ring.
+ */
+export function jumpSourceStoryGroup(
+  groups: SourceStoryGroup[],
+  cursor: SourceStoryCursor,
+  dir: 1 | -1
+): SourceStoryCursor | 'close' | 'noop' {
+  if (groups.length === 0) return 'close'
+  const next = cursor.groupIndex + dir
+  if (next < 0) return 'noop'
+  if (next >= groups.length) return 'close'
+  return { groupIndex: next, itemIndex: 0 }
+}
+
 /** Hikaye altı kategori kartları — üst nav sırası, Tümü hariç. */
 export const MAGAZINE_INLINE_CATEGORY_ORDER: HomeCategorySlug[] = [
   'gundem',
