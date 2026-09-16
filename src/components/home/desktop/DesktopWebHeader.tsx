@@ -154,7 +154,7 @@ export function DesktopWebHeader({
             Hava Durumu
           </Link>
         </div>
-        <p className="nl-masthead-utility__edition">Dijital Gazete · Türkiye</p>
+        <p className="nl-masthead-utility__edition">Türkiye dijital gazetesi</p>
         <div className="nl-masthead-utility__right">
           <Link href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
             Hakkımızda

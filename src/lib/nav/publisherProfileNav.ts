@@ -19,7 +19,13 @@ export function isPublisherProfilePath(
   pathname: string,
   publishers?: Array<{ slug: string }> | null
 ): boolean {
-  if (pathname.startsWith('/profile/') || pathname.startsWith('/u/')) return true
+  if (
+    pathname.startsWith('/profil/') ||
+    pathname.startsWith('/profile/') ||
+    pathname.startsWith('/u/')
+  ) {
+    return true
+  }
   if (pathname.startsWith('/publisher-studio')) return true
   if (!pathname.startsWith('/publisher/')) return false
   if (!publishers || publishers.length === 0) return false

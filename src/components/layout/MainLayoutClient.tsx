@@ -21,7 +21,7 @@ import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { useSmartFeedReaderSurfaceActive } from '@/hooks/useSmartFeedReaderSurfaceActive'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
-import { isPublicRoute, ROUTES } from '@/constants/routes'
+import { isHomePathname, isPublicRoute, ROUTES } from '@/constants/routes'
 import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
@@ -211,7 +211,7 @@ function RouteEffects() {
       document.body.classList.remove('smart-feed-reader-open')
       return
     }
-    if (pathname !== '/' && pathname !== '' && pathname !== ROUTES.FEED) return
+    if (!isHomePathname(pathname)) return
     if (!consumeFeedOwnerRescue()) return
     document.documentElement.classList.remove('smart-feed-reader-open')
     document.body.classList.remove('smart-feed-reader-open')
@@ -242,8 +242,11 @@ function RouteEffects() {
 function isSlimAppShell(pathname: string): boolean {
   return (
     pathname.startsWith('/saved') ||
+    pathname.startsWith('/kaydedilenler') ||
     pathname.startsWith('/settings') ||
+    pathname.startsWith('/ayarlar') ||
     pathname.startsWith('/notifications') ||
+    pathname.startsWith('/bildirimler') ||
     pathname.startsWith('/search') ||
     pathname.startsWith('/ara') ||
     pathname.startsWith('/oyunlar')

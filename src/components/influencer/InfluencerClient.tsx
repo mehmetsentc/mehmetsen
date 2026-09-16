@@ -120,10 +120,10 @@ export function InfluencerClient({ initialPosts }: { initialPosts: Post[] }) {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-black tracking-tight text-[rgb(var(--color-text))]">
-          <span className="text-[rgb(var(--color-brand))]">⭐</span> Influencer
+          <span className="text-[rgb(var(--color-brand))]">⭐</span> Fenomenler
         </h1>
         <p className="text-xs text-[rgb(var(--color-muted))]">
-          Sosyal medya ve influencer haberleri
+          Sosyal medya ve fenomen haberleri
         </p>
       </div>
 

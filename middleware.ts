@@ -41,11 +41,14 @@ const CITY_PATH_REWRITES: Record<string, string> = {
  */
 const CITY_REDIRECT_TO_HOME = new Set([
   '/discover',
+  '/kesfet',
   '/cok-okunanlar',
   '/reels',
   '/skor',
   '/futbol-canli',
   '/influencer',
+  '/fenomenler',
+  '/etkinlikler',
   '/kategori',
 ])
 

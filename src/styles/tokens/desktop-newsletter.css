@@ -5,7 +5,7 @@
  * ───────────────────────────────────────────────────────────────────────── */
 
 .desktop-newspaper {
-  --nl-accent: var(--brand-500, 229 9 20);
+  --nl-accent: var(--color-brand, 200 9 18);
   --nl-ink: var(--color-text);
   --nl-muted: var(--color-muted);
   --nl-paper: var(--color-bg);
@@ -441,7 +441,7 @@
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: rgb(17 17 17 / 0.62);
+    color: rgb(17 17 17 / 0.78);
   }
 
   .nl-masthead-utility__left,
@@ -458,9 +458,9 @@
     text-align: center;
     font-size: 0.625rem;
     font-weight: 800;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgb(17 17 17 / 0.45);
+    letter-spacing: 0.08em;
+    text-transform: none;
+    color: rgb(17 17 17 / 0.78);
   }
 
   .nl-masthead-utility__meta {
@@ -505,7 +505,7 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;
-    color: rgb(17 17 17 / 0.55);
+    color: rgb(17 17 17 / 0.78);
   }
 
   .nl-masthead-subnav__link.is-active,
@@ -518,12 +518,15 @@
     background: rgb(246 243 236);
   }
 
-  /* Paper lock — newspaper pages stay #F6F3EC even if the user prefers dark */
-  html[data-desktop-header='newspaper'],
-  html.dark[data-desktop-header='newspaper'],
-  html[data-theme='oled'][data-desktop-header='newspaper'] {
+  /* Paper lock — newspaper pages stay #F6F3EC even if the user prefers dark.
+     Also flip chrome tokens that .dark would otherwise leave as pale-on-cream.
+     Exclude admin: CMS shares the root html attribute but must not inherit paper. */
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)),
+  html.dark[data-desktop-header='newspaper']:not(:has(.admin-shell)),
+  html[data-theme='oled'][data-desktop-header='newspaper']:not(:has(.admin-shell)) {
     --nl-paper: 246 243 236;
     --nl-ink: 17 17 17;
+    --nl-accent: 200 9 18;
     --bg-base: 246 243 236;
     --bg-subtle: 240 236 226;
     --bg-muted: 232 226 212;
@@ -534,19 +537,35 @@
     --text-secondary: 68 68 68;
     --text-tertiary: 90 90 90;
     --text-muted: 107 107 107;
+    --text-link: 200 9 18;
+    --text-onbrand: 255 255 255;
     --wordmark-na: 17 17 17;
+    --wordmark-na-onbrand: 17 17 17;
+    --wordmark-haber: 200 9 18;
     --border-subtle: 210 204 190;
     --border-default: 196 188 172;
     --nav-bar-bg: 246 243 236;
+    --nav-inactive: 71 85 105;
+    --nav-active: 200 9 18;
+    --nav-hover: 232 226 212;
+    --brand-soft: 254 232 235;
+    --color-brand: 200 9 18;
+    --color-primary: 200 9 18;
     --header-brand-bg: 246 243 236;
     --header-navy-bg: 246 243 236;
     --header-onbrand: 17 17 17;
+    --cat-yerel: 146 64 14;
   }
 
-  html[data-desktop-header='newspaper'] body,
-  html[data-desktop-header='newspaper'] .min-h-screen {
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)) body,
+  html[data-desktop-header='newspaper']:not(:has(.admin-shell)) .min-h-screen:not(.admin-shell) {
     background: rgb(246 243 236);
     color: #111;
+  }
+
+  /* City/mobile chrome sits on --header-brand-bg (now paper). Ink, not white. */
+  html[data-desktop-header='newspaper'] .mobile-top-chrome {
+    color: rgb(var(--header-onbrand));
   }
 
   .nl-masthead-brand .nl-masthead__title {

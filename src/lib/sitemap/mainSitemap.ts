@@ -16,7 +16,6 @@ export const ARTICLES_PER_PAGE = 500
 async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}${ROUTES.HOME}`,     changeFrequency: 'hourly', priority: 1 },
-    { url: `${base}${ROUTES.FEED}`,     changeFrequency: 'hourly', priority: 1 },
     { url: `${base}${ROUTES.DISCOVER}`, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${base}${ROUTES.EVENTS}`,   changeFrequency: 'daily',  priority: 0.8 },
     { url: `${base}${ROUTES.REELS}`,    changeFrequency: 'hourly', priority: 0.8 },

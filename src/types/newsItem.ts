@@ -145,6 +145,7 @@ export const HOME_FEED_SSR_RAILS: HomeCategorySlug[] = [
   'ekonomi',
   'teknoloji',
   'dunya',
+  'asayis',
 ]
 
 /** Desktop ikinci kategori satırı — lazy fetch. */

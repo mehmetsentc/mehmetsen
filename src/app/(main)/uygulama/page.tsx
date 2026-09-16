@@ -144,7 +144,7 @@ export default function AppDownloadPage() {
       {/* QR + cross-device */}
       <section className="mb-12 rounded-3xl border border-border bg-bg-card p-6 sm:p-8">
         <div className="grid items-center gap-6 sm:grid-cols-[200px_1fr]">
-          <AppDownloadQR url={`${siteUrl}/feed?utm_source=qr-app-page`} />
+          <AppDownloadQR url={`${siteUrl}/?utm_source=qr-app-page`} />
           <div>
             <h2 className="text-xl font-bold text-text-primary">
               Telefonundan açmak için QR kodu tara

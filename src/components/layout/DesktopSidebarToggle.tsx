@@ -4,18 +4,22 @@ import { PanelLeft } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUiStore } from '@/store/uiStore'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
-import { ROUTES } from '@/constants/routes'
+import { pathIs, ROUTES } from '@/constants/routes'
 
 /** Gazete header’ı olmayan slim sayfalarda yüzen menü düğmesi. */
 function needsFloatingToggle(pathname: string): boolean {
   if (pathname === ROUTES.REELS || pathname === ROUTES.VIDEO) return false
-  if (pathname.startsWith('/messages')) return false
+  if (pathIs(pathname, ROUTES.MESSAGES, '/messages')) return false
   if (pathname.startsWith('/admin')) return false
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) return false
-  return (
-    pathname.startsWith('/saved') ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/notifications')
+  if (pathIs(pathname, ROUTES.LOGIN, '/login', ROUTES.REGISTER, '/register')) return false
+  return pathIs(
+    pathname,
+    ROUTES.SAVED,
+    '/saved',
+    ROUTES.SETTINGS,
+    '/settings',
+    ROUTES.NOTIFICATIONS,
+    '/notifications'
   )
 }
 

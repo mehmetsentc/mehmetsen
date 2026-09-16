@@ -18,13 +18,13 @@ const CATEGORY_LABELS: Record<EventCategory, string> = {
 }
 
 const CATEGORY_STYLES: Record<EventCategory, string> = {
-  concert: 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
-  festival: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  party: 'bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300',
-  exhibition: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  theater: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  cinema: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-  other: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  concert: 'bg-purple-100 text-purple-800',
+  festival: 'bg-amber-100 text-amber-800',
+  party: 'bg-pink-100 text-pink-800',
+  exhibition: 'bg-emerald-100 text-emerald-800',
+  theater: 'bg-blue-100 text-blue-800',
+  cinema: 'bg-rose-100 text-rose-800',
+  other: 'bg-gray-100 text-gray-800',
 }
 
 export const EVENT_CATEGORIES: Array<{ id: EventCategory; label: string }> = (
@@ -207,22 +207,22 @@ const EVENT_TYPE_TAG_LABELS: Record<string, string> = {
 }
 
 const EVENT_TYPE_TAG_STYLES: Record<string, string> = {
-  festival: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-  bienal: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
-  'yarışma': 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-  yarismasi: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
-  konser: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
-  'panayır': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-  panayiri: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
-  'şenlik': 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200',
-  senlik: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-200',
-  spor: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
-  fuar: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200',
-  film: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',
-  sinema: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-  cinema: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-  'kültür': 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
-  kultur: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+  festival: 'bg-amber-100 text-amber-800',
+  bienal: 'bg-violet-100 text-violet-800',
+  'yarışma': 'bg-blue-100 text-blue-800',
+  yarismasi: 'bg-blue-100 text-blue-800',
+  konser: 'bg-purple-100 text-purple-800',
+  'panayır': 'bg-emerald-100 text-emerald-800',
+  panayiri: 'bg-emerald-100 text-emerald-800',
+  'şenlik': 'bg-pink-100 text-pink-800',
+  senlik: 'bg-pink-100 text-pink-800',
+  spor: 'bg-cyan-100 text-cyan-800',
+  fuar: 'bg-indigo-100 text-indigo-800',
+  film: 'bg-teal-100 text-teal-800',
+  sinema: 'bg-rose-100 text-rose-800',
+  cinema: 'bg-rose-100 text-rose-800',
+  'kültür': 'bg-orange-100 text-orange-800',
+  kultur: 'bg-orange-100 text-orange-800',
 }
 
 /** Display tags excluding Ücretsiz / halka açık (shown as separate badges). */
@@ -239,7 +239,7 @@ export function getEventTypeTagLabel(tag: string): string {
 
 export function getEventTypeTagStyle(tag: string): string {
   const key = tag.trim().toLocaleLowerCase('tr-TR')
-  return EVENT_TYPE_TAG_STYLES[key] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+  return EVENT_TYPE_TAG_STYLES[key] ?? 'bg-gray-100 text-gray-800'
 }
 
 /** Short day badge, e.g. "7 Haz" used on compact cards. */

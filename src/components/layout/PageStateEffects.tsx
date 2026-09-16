@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { getLiftReaderOrigin } from '@/lib/articleLift/liftOrigin'
+import { isHomePathname } from '@/constants/routes'
 import { usePageStateStore } from '@/store/pageStateStore'
 
 const SCROLL_SAVE_MS = 120
@@ -42,7 +43,7 @@ export function PageStateEffects() {
 
     const saved = getScroll(pathname)
     const footerDump =
-      (pathname === '/feed' || pathname === '/') && saved > 2400
+      isHomePathname(pathname) && saved > 2400
 
     // Cancel any pending restore from a previous route
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)

@@ -28,7 +28,7 @@ function isFeedV2Path(pathname: string): boolean {
 function isUnsafeExitTarget(pathname: string): boolean {
   if (!pathname.startsWith('/')) return true
   if (isFeedV2Path(pathname)) return true
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) return true
+  if (pathname.startsWith('/login') || pathname.startsWith('/giris') || pathname.startsWith('/register') || pathname.startsWith('/kayit')) return true
   if (pathname.startsWith('/api/')) return true
   return false
 }

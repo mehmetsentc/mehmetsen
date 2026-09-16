@@ -46,6 +46,7 @@ const KICKER_BY_ID: Record<string, string> = {
   yasam: 'Yaşam',
   magazin: 'Magazin',
   bilim: 'Bilim',
+  asayis: '3. Sayfa',
   'yerel-haber': 'Yakınınızda',
 }
 

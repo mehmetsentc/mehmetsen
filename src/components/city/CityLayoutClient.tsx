@@ -30,6 +30,40 @@ interface CityLayoutClientProps {
   children: React.ReactNode
 }
 
+/** Force a full load for article URLs so Instagram/WebView cannot soft-route a stale Next build into 404. */
+function CityHardArticleNavigation() {
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = (event.target as Element | null)?.closest?.('a')
+      if (!anchor || (anchor.target && anchor.target !== '_self')) return
+      const raw = anchor.getAttribute('href')
+      if (!raw) return
+
+      let path = raw
+      if (/^https?:\/\//i.test(raw)) {
+        try {
+          const url = new URL(raw)
+          if (url.origin !== window.location.origin) return
+          path = `${url.pathname}${url.search}${url.hash}`
+        } catch {
+          return
+        }
+      }
+      if (!path.startsWith('/haber/')) return
+
+      event.preventDefault()
+      window.location.assign(path)
+    }
+
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [])
+
+  return null
+}
+
 /** Scroll to category rail when landing on feed with a hash (sidebar deep links). */
 function CityCategoryHashScroll() {
   const pathname = usePathname()
@@ -141,6 +175,7 @@ export function CityLayoutClient({
               >
                 <CityCategoryProvider categories={categories} hasSpor={hasSpor}>
                   <UiEffects />
+                  <CityHardArticleNavigation />
                   <CityCategoryHashScroll />
                   <CityShell
                     displayName={displayName}

@@ -70,7 +70,7 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
 function LeadCard({ item }: { item: NewsItem }) {
   return (
     <Link href={newsItemDetailHref(item)} className="group absolute inset-0 block">
-      <div className="relative h-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
+      <div className="relative h-full overflow-hidden rounded-xl bg-[rgb(var(--text-primary))]">
         <SafeNewsImage
           src={item.imageUrl || FEED_FALLBACK_LOGO}
           alt={item.title}

@@ -37,6 +37,7 @@ describe('isPublisherProfilePath', () => {
     expect(isPublisherProfilePath('/publisher-studio/cumhuriyet', [{ slug: 'cumhuriyet' }])).toBe(
       true
     )
+    expect(isPublisherProfilePath('/profil/mehmet', [{ slug: 'cumhuriyet' }])).toBe(true)
     expect(isPublisherProfilePath('/profile/mehmet', [{ slug: 'cumhuriyet' }])).toBe(true)
     expect(isPublisherProfilePath('/publisher/other', [{ slug: 'cumhuriyet' }])).toBe(false)
   })

@@ -34,7 +34,7 @@ const SIZE = {
 interface CityBrandLockupProps {
   cityName: string
   provinceSlug: string
-  /** onBrand = white city name (dark header); default = ink city name (light surfaces) */
+  /** onBrand = --header-onbrand (navy=white, newspaper paper=ink); default = body text */
   tone?: LockupTone
   size?: LockupSize
   className?: string
@@ -68,7 +68,7 @@ export function CityBrandLockup({
         <span
           className={cn(
             'truncate text-sm font-bold',
-            onBrand ? 'text-white/90' : 'text-[rgb(var(--color-text))]'
+            onBrand ? 'text-[rgb(var(--header-onbrand))]/90' : 'text-[rgb(var(--color-text))]'
           )}
         >
           {cityName}
@@ -99,12 +99,12 @@ export function CityBrandLockup({
         <span
           className={cn(
             'min-w-0 truncate',
-            onBrand ? 'text-white' : 'text-[rgb(var(--color-text))]'
+            onBrand ? 'text-[rgb(var(--header-onbrand))]' : 'text-[rgb(var(--color-text))]'
           )}
         >
           {cityName}
         </span>
-        <span className="ml-1 shrink-0 whitespace-nowrap text-[#E50914] sm:ml-1.5">
+        <span className="ml-1 shrink-0 whitespace-nowrap text-[rgb(var(--wordmark-haber))] sm:ml-1.5">
           NaHaber
         </span>
       </span>

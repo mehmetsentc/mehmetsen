@@ -17,7 +17,7 @@ export async function GET(
 ) {
   const { path } = await ctx.params
   if (!path || path.length === 0) {
-    return NextResponse.redirect(new URL('/feed', req.url))
+    return NextResponse.redirect(new URL('/', req.url))
   }
   const joined = path.join('/')
 
@@ -25,11 +25,11 @@ export async function GET(
   // Path'i / ile birleştir ve external URL'leri engelle.
   let safePath = `/${joined.replace(/^\/+/, '')}`
 
-  // Decoded path bir external URL ise → /feed'e gönder
+  // Decoded path bir external URL ise → anasayfaya gönder
   try {
     const probe = new URL(decodeURIComponent(safePath), req.url)
     if (probe.origin !== new URL(req.url).origin) {
-      return NextResponse.redirect(new URL('/feed', req.url))
+      return NextResponse.redirect(new URL('/', req.url))
     }
     safePath = probe.pathname + probe.search
   } catch {

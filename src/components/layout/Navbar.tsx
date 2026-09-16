@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { ROUTES } from '@/constants/routes'
+import { pathIs, ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
 import { ContextRailSlot } from '@/components/layout/ContextRail'
 import { BackNavButton } from '@/components/layout/BackNavButton'
@@ -29,11 +29,11 @@ function isAra(pathname: string): boolean {
 }
 
 function isProfil(pathname: string): boolean {
-  return pathname.startsWith('/profile/') || pathname.startsWith('/u/')
+  return pathIs(pathname, '/profil', '/profile') || pathname.startsWith('/u/')
 }
 
 function isBildirim(pathname: string): boolean {
-  return pathname.startsWith(ROUTES.NOTIFICATIONS)
+  return pathIs(pathname, ROUTES.NOTIFICATIONS, '/notifications')
 }
 
 export function Navbar({ onMenuClick }: NavbarProps = {}) {
@@ -50,7 +50,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     isAra(pathname) ||
     isProfil(pathname) ||
     isBildirim(pathname) ||
-    pathname.startsWith('/messages')
+    pathIs(pathname, ROUTES.MESSAGES, '/messages')
   const showBack =
     !isPrimaryDest &&
     pathname !== ROUTES.REELS &&
@@ -63,7 +63,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       pathname !== ROUTES.VIDEO &&
       !isArticle &&
       !isProfil(pathname) &&
-      !pathname.startsWith('/messages') &&
+      !pathIs(pathname, ROUTES.MESSAGES, '/messages') &&
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/post/'))
   const fallbackChromeHeight = showContextRail

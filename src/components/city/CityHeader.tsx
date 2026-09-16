@@ -25,7 +25,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
         ref={chromeRef as Ref<HTMLElement>}
         className={cn(
           'mobile-top-chrome is-fixed z-[100]',
-          'bg-[rgb(var(--header-brand-bg))] text-white',
+          'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
           'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
@@ -46,7 +46,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
             ) : (
               <>
                 <BrandWordmark variant="onBrand" size="sm" className="font-black text-[1.35rem]" />
-                <span className="ml-2 truncate text-xs font-bold uppercase tracking-wider text-white/80">
+                <span className="ml-2 truncate text-xs font-bold uppercase tracking-wider text-[rgb(var(--header-onbrand))]/80">
                   {cityName}
                 </span>
               </>
@@ -57,7 +57,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
             <button
               type="button"
               onClick={() => router.push('/search')}
-              className="flex h-10 w-10 items-center justify-center text-white"
+              className="flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))]"
               aria-label="Ara"
             >
               <Search className="h-5 w-5" strokeWidth={2} />
@@ -65,7 +65,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
             <NotificationBell
               variant="onBrand"
               iconClassName="h-5 w-5"
-              buttonClassName="relative flex h-10 w-10 items-center justify-center text-white"
+              buttonClassName="relative flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))]"
             />
           </div>
         </div>

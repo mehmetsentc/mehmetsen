@@ -8,12 +8,16 @@ import { DesktopCategoryHero } from '@/components/home/desktop/DesktopCategoryHe
 import { CategoryLoadMore } from '@/components/category/CategoryLoadMore'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import { getCategoryAccent } from '@/constants/categoryTheme'
+import { formatNewsClockTime } from '@/components/home/desktop/formatNewsDate'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { DESKTOP_CATEGORY_FEATURED_COUNT } from '@/lib/home/desktopCategoryPortal'
 import { timelinePostToNewsItem } from '@/lib/newsItemToTimelinePost'
+import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { previousTurkeyDayFromPublishedAt } from '@/lib/turkeyCalendar'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import type { CategoryDef } from '@/constants/config'
+import type { NewsItem } from '@/types/newsItem'
 import type { TimelinePost } from '@/types/post'
 
 interface SubTab {
@@ -41,8 +45,8 @@ interface DesktopCategoryPageProps {
 }
 
 /**
- * Desktop category portal — hero + chips + 4-up cards.
- * Mobile magazine landing is unchanged.
+ * Desktop category — newspaper section: typographic head, clickable manşet,
+ * side rails, then story tiles. Mobile magazine landing is unchanged.
  */
 export function DesktopCategoryPage({
   cat,
@@ -69,9 +73,12 @@ export function DesktopCategoryPage({
     () => initialPosts.map(timelinePostToNewsItem),
     [initialPosts]
   )
-  const featured = newsItems.slice(0, DESKTOP_CATEGORY_FEATURED_COUNT)
-  const rest = newsItems.slice(DESKTOP_CATEGORY_FEATURED_COUNT)
-  const heroImage = newsItems.find((item) => item.imageUrl)?.imageUrl
+  const lead = newsItems.find((item) => item.imageUrl?.trim()) ?? newsItems[0] ?? null
+  const afterLead = newsItems.filter((item) => item.id !== lead?.id)
+  const railLeft = afterLead.slice(0, 5)
+  const railRight = afterLead.slice(5, 10)
+  const gridItems = afterLead.slice(10, 10 + DESKTOP_CATEGORY_FEATURED_COUNT)
+  const rest = afterLead.slice(10 + DESKTOP_CATEGORY_FEATURED_COUNT)
   const lastPost = initialPosts[initialPosts.length - 1]
   const initialBeforeDay = previousTurkeyDayFromPublishedAt(
     lastPost?.publishedAt == null
@@ -87,7 +94,7 @@ export function DesktopCategoryPage({
       data-testid="desktop-category-portal"
       style={{ ['--cat-accent' as string]: accent.rgb }}
     >
-      <DesktopCategoryHero title={heroTitle} categoryId={cat.id} imageUrl={heroImage} />
+      <DesktopCategoryHero title={heroTitle} categoryId={cat.id} lead={lead} />
 
       <div className="dcp-body">
         {showTabs && parentSlug ? (
@@ -114,11 +121,38 @@ export function DesktopCategoryPage({
 
         {showFeed ? (
           <>
+            {railLeft.length > 0 || railRight.length > 0 ? (
+              <section className="dcp-stage" aria-label="Manşet listesi">
+                {railLeft.length > 0 ? (
+                  <aside className="dcp-rail" aria-label="Diğer başlıklar">
+                    <ul>
+                      {railLeft.map((item) => (
+                        <li key={item.id}>
+                          <CategoryRailRow item={item} />
+                        </li>
+                      ))}
+                    </ul>
+                  </aside>
+                ) : null}
+                {railRight.length > 0 ? (
+                  <aside className="dcp-rail" aria-label="Daha fazla haber">
+                    <ul>
+                      {railRight.map((item) => (
+                        <li key={item.id}>
+                          <CategoryRailRow item={item} />
+                        </li>
+                      ))}
+                    </ul>
+                  </aside>
+                ) : null}
+              </section>
+            ) : null}
+
             <DesktopAdBanner slot={`category-${cat.id}-top`} size="large" className="mt-6" />
 
-            {featured.length > 0 ? (
+            {gridItems.length > 0 ? (
               <div className="dcp-grid" data-testid="desktop-category-featured">
-                {featured.map((item, index) => (
+                {gridItems.map((item, index) => (
                   <DesktopCategoryCard key={item.id} item={item} priority={index < 2} />
                 ))}
               </div>
@@ -145,5 +179,24 @@ export function DesktopCategoryPage({
         ) : null}
       </div>
     </div>
+  )
+}
+
+function CategoryRailRow({ item }: { item: NewsItem }) {
+  const image = item.imageUrl?.trim()
+  const clock = formatNewsClockTime(item.publishedAt ?? item.createdAt)
+
+  return (
+    <Link href={newsItemDetailHref(item)} className="dcp-row">
+      {image ? (
+        <span className="dcp-row__thumb">
+          <SafeNewsImage src={image} alt="" fill sizes="56px" className="object-cover" />
+        </span>
+      ) : null}
+      <span className="dcp-row__body">
+        {clock ? <span className="dcp-row__time">{clock}</span> : null}
+        <span className="dcp-row__title">{item.title}</span>
+      </span>
+    </Link>
   )
 }

@@ -313,8 +313,8 @@ export const SIDEBAR_TOOLS: SidebarNavItem[] = [
     : []),
   { id: 'etkinlikler', label: 'Etkinlikler', href: ROUTES.EVENTS, icon: CalendarDays, accent: 'yerel' },
   { id: 'teve', label: 'Teve', href: ROUTES.REELS, icon: Clapperboard, accent: 'magazin' },
-  { id: 'trending', label: 'Trending', href: '/kategori/trend', icon: Flame, accent: 'gundem' },
-  { id: 'influencer', label: 'Influencer', href: ROUTES.INFLUENCER, icon: Star, accent: 'magazin' },
+  { id: 'trending', label: 'Gündemdekiler', href: '/kategori/trend', icon: Flame, accent: 'gundem' },
+  { id: 'influencer', label: 'Fenomenler', href: ROUTES.INFLUENCER, icon: Star, accent: 'magazin' },
   { id: 'muzeler', label: 'Müzeler', href: ROUTES.MUZELER, icon: Building2, accent: 'kultur' },
   { id: 'hava', label: 'Hava Durumu', href: ROUTES.WEATHER, icon: Cloud, accent: 'hava' },
 ]

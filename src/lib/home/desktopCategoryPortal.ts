@@ -32,4 +32,4 @@ export function desktopCategorySlogan(categoryId: string): string {
   return DESKTOP_CATEGORY_SLOGANS[root] ?? DESKTOP_CATEGORY_SLOGANS[categoryId] ?? 'Güncel haberler'
 }
 
-export const DESKTOP_CATEGORY_FEATURED_COUNT = 4
+export const DESKTOP_CATEGORY_FEATURED_COUNT = 8

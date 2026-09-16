@@ -15,8 +15,8 @@ const SIZE_CLASS = {
   xl: 'text-[clamp(2.6rem,5vw,4rem)]',
 } as const
 
-/** Master brand red — header, masthead, sidebar must match */
-const HABER_RED = 'text-[#E50914]'
+/** Master brand red — follows --wordmark-haber (brand-600 on newspaper paper) */
+const HABER_RED = 'text-[rgb(var(--wordmark-haber))]'
 
 interface BrandWordmarkProps {
   variant?: BrandWordmarkVariant
