@@ -17,13 +17,11 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production') {
-      // Vercel'in /_logs paneline gider; Sentry/Datadog entegrasyonu eklenirse burada
-      console.error('[App Error]', {
-        message: error.message,
-        digest: error.digest,
-      })
-    }
+    console.error('[App Error]', {
+      message: error.message,
+      digest: error.digest,
+      stack: error.stack,
+    })
   }, [error])
 
   return (
@@ -39,6 +37,12 @@ export default function Error({
         Beklenmedik bir hata oluştu. Tekrar deneyebilir ya da ana sayfaya
         dönebilirsin. Sorun devam ederse ekibimize haber veririz.
       </p>
+
+      {process.env.NODE_ENV !== 'production' && error.message ? (
+        <p className="mt-3 max-w-lg break-words rounded-lg bg-black/40 px-3 py-2 font-mono text-xs text-amber-200">
+          {error.message}
+        </p>
+      ) : null}
 
       {error.digest ? (
         <p className="mt-2 font-mono text-2xs text-text-muted">

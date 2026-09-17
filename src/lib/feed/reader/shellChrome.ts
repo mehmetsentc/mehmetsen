@@ -51,8 +51,10 @@ export function isGlobalNavV2Active(): boolean {
  * Top site Navbar visibility.
  *
  * Global Nav V2:
- *   HOME / newspaper / feed-v2 → visible
- *   Reader open on feed-v2 → hidden (Reader owns chrome)
+ *   HOME / newspaper / feed-v2 → visible (keep mounted)
+ *   Reader open on feed-v2 → still mounted; CSS (smart-feed-reader-open)
+ *     hides paint/hit-testing. Unmounting here collapsed the chrome spacer
+ *     and jumped the feed ~112px on open/return.
  *   /reels → hidden
  *
  * Legacy (flag off):
@@ -62,9 +64,9 @@ export function resolveTopNavbarVisible(opts: {
   pathname: string
   readerSurfaceActive?: boolean
 }): boolean {
+  void opts.readerSurfaceActive
   if (isImmersiveVideoPathname(opts.pathname)) return false
   if (isGlobalNavV2Active()) {
-    if (isFeedV2Pathname(opts.pathname) && opts.readerSurfaceActive) return false
     return true
   }
   if (isFeedV2Pathname(opts.pathname)) return false
@@ -88,8 +90,9 @@ export function resolveMobileNavVisible(opts: {
 }
 
 /**
- * Combined site chrome helper.
- * Global Nav V2: top Navbar is the chrome authority; bottom dock is independent.
+ * Combined site chrome helper — whether chrome is painted/interactive.
+ * Global Nav V2: top Navbar stays mounted on Feed Reader for spacer stability,
+ * but painted chrome is off while Reader owns the surface (CSS + this helper).
  * Legacy: both top + bottom must be visible.
  */
 export function resolveSiteChromeVisible(opts: {
@@ -97,6 +100,7 @@ export function resolveSiteChromeVisible(opts: {
   readerSurfaceActive: boolean
 }): boolean {
   if (isGlobalNavV2Active()) {
+    if (isFeedV2Pathname(opts.pathname) && opts.readerSurfaceActive) return false
     return resolveTopNavbarVisible(opts)
   }
   return (

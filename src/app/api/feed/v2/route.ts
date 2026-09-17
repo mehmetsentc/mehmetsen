@@ -53,21 +53,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    const page = await feedService.getFeed({
-      userId: auth?.uid ?? null,
-      sessionId,
-      mode: category ? 'personal' : mode,
-      cursor,
-      limit,
-      citySlug,
-      districtSlug,
-      region,
-      refresh,
-      category,
-      surface: 'feed-v2',
-    }, { debug })
+    // Local cold DB / candidate walks can hang for minutes — fail the request
+    // so the client can leave "Akış yükleniyor…" and show retry.
+    const budgetMs = process.env.NODE_ENV === 'production' ? 20_000 : 12_000
+    const page = await Promise.race([
+      feedService.getFeed({
+        userId: auth?.uid ?? null,
+        sessionId,
+        mode: category ? 'personal' : mode,
+        cursor,
+        limit,
+        citySlug,
+        districtSlug,
+        region,
+        refresh,
+        category,
+        surface: 'feed-v2',
+      }, { debug }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('feed_timeout')), budgetMs)
+      }),
+    ])
     return NextResponse.json(page)
   } catch (err) {
+    const timedOut = err instanceof Error && err.message === 'feed_timeout'
+    if (timedOut) {
+      console.warn('[api/feed/v2] timed out', { budgetMs: process.env.NODE_ENV === 'production' ? 20_000 : 12_000, mode, category })
+      return NextResponse.json({ error: 'feed_timeout' }, { status: 504 })
+    }
     console.error('[api/feed/v2]', err)
     return NextResponse.json({ error: 'feed_unavailable' }, { status: 503 })
   }

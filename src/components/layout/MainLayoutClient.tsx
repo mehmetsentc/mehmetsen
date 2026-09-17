@@ -124,6 +124,7 @@ const LayoutShell = memo(function LayoutShell({
       data-feed-mobile-nav={showMobileNav ? 'visible' : 'hidden'}
       data-immersive-video={immersiveVideo ? '1' : '0'}
       data-header-bleed="0"
+      suppressHydrationWarning
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
       {showTopNavbar ? <MobileSafeAreaShield /> : null}
@@ -142,6 +143,7 @@ const LayoutShell = memo(function LayoutShell({
           isMobile && 'app-shell-mobile',
           isDesktop && 'app-shell-desktop'
         )}
+        suppressHydrationWarning
       >
         {showTopNavbar ? <Navbar onMenuClick={() => setMobileDrawerOpen(true)} /> : null}
 

@@ -18,8 +18,22 @@ const SW_PATH = '/sw.js'
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (isNativeApp()) return
     if (!('serviceWorker' in navigator)) return
+
+    // Dev: never let a stale SW/HMR fight Next chunks (blank page / old bundles).
+    if (process.env.NODE_ENV !== 'production') {
+      void navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) void reg.unregister()
+      })
+      if (typeof caches !== 'undefined') {
+        void caches.keys().then((keys) => {
+          for (const key of keys) void caches.delete(key)
+        })
+      }
+      return
+    }
+
+    if (isNativeApp()) return
 
     // Already controlling this origin — nothing to do
     const existing = navigator.serviceWorker.controller

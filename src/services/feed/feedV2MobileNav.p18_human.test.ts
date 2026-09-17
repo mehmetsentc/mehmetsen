@@ -65,7 +65,8 @@ describe('Feed V2 mobile category nav — Takip#2 regression', () => {
       'utf8'
     )
     expect(src).toContain('Sana Özel first')
-    expect(src).toContain('isFeedV2TabActive')
+    expect(src).toContain('tabMatchesActive')
+    expect(src).not.toContain('isFeedV2TabActive')
     expect(src).toContain("next[0]?.id !== 'personal'")
   })
 })

@@ -1,17 +1,16 @@
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
+import { Suspense } from 'react'
 import { SmartFeedClient } from '@/components/feed/smart/SmartFeedClient'
-import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
+import { FeedBootSplash } from '@/components/feed/smart/FeedBootSplash'
+import {
+  FeedV2BootFallback,
+  FeedV2RouteShell,
+} from '@/components/feed/smart/FeedV2RouteShell'
 import { hasDatabaseUrl } from '@/db'
 import { FEED_PAGINATION } from '@/lib/feed/config'
-import {
-  FEED_READER_SURFACE_CLASS,
-  FEED_V2_CHROME_CSS_VARS,
-} from '@/lib/feed/reader/feedChrome'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedService } from '@/services/feed/FeedService'
 import type { FeedPageDto } from '@/types/smartFeed'
-import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,49 +21,61 @@ export const metadata: Metadata = {
 }
 
 /**
- * SSR paints skeleton + boots first feed page so hydration is not blocked on
- * Firebase auth/profile (which previously left a 10–15s black wait).
+ * Prod: race SSR feed bootstrap against a short budget so soft-nav can paint
+ * the boot splash instead of waiting on a multi-second cold feed query.
+ * Dev: skip SSR bootstrap entirely — client fetch + splash (local DX).
  */
-export default async function FeedV2Page() {
-  const debug = process.env.NODE_ENV !== 'production'
-  let initialPage: FeedPageDto | null = null
+const FEED_V2_SSR_BOOT_MS = process.env.NODE_ENV === 'production' ? 2500 : 0
+
+async function loadInitialFeedPage(): Promise<FeedPageDto | null> {
+  if (FEED_V2_SSR_BOOT_MS <= 0) return null
+  if (!hasDatabaseUrl()) return null
+  if (!(await isSmartFeedEffectiveForUser(null))) return null
 
   try {
-    if (hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
-      initialPage = await feedService.getFeed({
+    const page = await Promise.race([
+      feedService.getFeed({
         userId: null,
         sessionId: null,
         mode: 'personal',
         limit: FEED_PAGINATION.defaultLimit,
         surface: 'feed-v2',
-      })
-    }
+      }),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), FEED_V2_SSR_BOOT_MS)
+      }),
+    ])
+    return page
   } catch (err) {
     console.warn('[feed-v2] SSR bootstrap failed', err)
+    return null
   }
+}
+
+async function FeedV2Boot({ debug }: { debug: boolean }) {
+  const initialPage = await loadInitialFeedPage()
 
   return (
-    <div
-      className="relative h-full min-h-0 w-full bg-black overflow-hidden flex justify-center select-none"
-      data-testid="smart-feed-ssr-shell"
-    >
+    <FeedV2RouteShell>
       <div
-        className={cn(
-          'relative h-full min-h-0 overflow-hidden bg-black flex flex-col',
-          FEED_READER_SURFACE_CLASS
-        )}
-        style={FEED_V2_CHROME_CSS_VARS as CSSProperties}
-        data-feed-surface="1"
-      >
-        <div
-          className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-14 bg-gradient-to-b from-black/50 to-transparent"
-          aria-hidden
-        />
-        {initialPage?.items?.length ? null : <FullscreenNewsCardSkeleton />}
-        <div className="absolute inset-0 z-30">
-          <SmartFeedClient initialPage={initialPage} debug={debug} />
-        </div>
+        className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-14 bg-gradient-to-b from-black/50 to-transparent"
+        aria-hidden
+      />
+      {initialPage?.items?.length ? null : <FeedBootSplash />}
+      <div className="absolute inset-0 z-30">
+        <SmartFeedClient initialPage={initialPage} debug={debug} />
       </div>
-    </div>
+    </FeedV2RouteShell>
+  )
+}
+
+export default function FeedV2Page() {
+  // Card debug overlay only via ?debug=1 (SmartFeedClient), not all local sessions.
+  const debug = false
+
+  return (
+    <Suspense fallback={<FeedV2BootFallback />}>
+      <FeedV2Boot debug={debug} />
+    </Suspense>
   )
 }

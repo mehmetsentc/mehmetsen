@@ -10,6 +10,8 @@ export const NO_COVER_IMAGE_REASON = 'görsel yok'
 const PLACEHOLDER_PATH_MARKERS = [
   '/brand/nahaber-logo',
   'nahaber-logo.png',
+  'nahaber-boot-mark',
+  '/brand/nahaber-boot-mark',
   'placeholder',
   '1x1',
   'pixel.gif',

@@ -5239,6 +5239,67 @@ iframe.reels-yt-frame {
 }
 
 /* Smart Feed double-tap like burst */
+/* App / route / Feed boot: NaHaber rounded N mark breathes on black. */
+@keyframes feed-boot-logo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+@keyframes feed-boot-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes feed-boot-label-fade {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.brand-boot-mark__logo,
+.feed-boot-splash__logo {
+  animation: feed-boot-logo-breathe 1.6s ease-in-out infinite;
+}
+
+.brand-boot-mark__halo,
+.feed-boot-splash__halo {
+  animation: feed-boot-halo-pulse 1.6s ease-in-out infinite;
+}
+
+.brand-boot-splash__label,
+.feed-boot-splash__label {
+  animation: feed-boot-label-fade 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-boot-mark__logo,
+  .brand-boot-mark__halo,
+  .brand-boot-splash__label,
+  .feed-boot-splash__logo,
+  .feed-boot-splash__halo,
+  .feed-boot-splash__label {
+    animation: none;
+  }
+}
+
 @keyframes smart-feed-heart-burst {
   0% {
     opacity: 0;

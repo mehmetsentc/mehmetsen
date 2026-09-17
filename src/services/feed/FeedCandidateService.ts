@@ -92,6 +92,10 @@ export type BaseQueryOpts = {
   categoryIds?: string[] | null
   /** Exclusive upper bound for older corpus windows (ISO or Date). */
   publishedBefore?: Date | string | null
+  /** Cap SQL/FS pool size (default floor is 150 — too heavy for feed-v2 first paint). */
+  maxPool?: number
+  /** Skip Firestore LEGACY_ALLOWED supplement when Postgres already returned rows. */
+  skipLegacySupplement?: boolean
 }
 
 function categoryFilterWhere(opts: BaseQueryOpts) {
@@ -116,7 +120,11 @@ function excludeIdsWhere(opts: BaseQueryOpts) {
 
 function poolLimitFor(opts: BaseQueryOpts, floor = DEFAULT_POOL_SIZE) {
   const excluded = opts.excludeArticleIds?.size ?? 0
-  return Math.max(opts.limit * 3, floor, Math.min(excluded + opts.limit * 2, 400))
+  const raw = Math.max(opts.limit * 3, floor, Math.min(excluded + opts.limit * 2, 400))
+  if (typeof opts.maxPool === 'number' && Number.isFinite(opts.maxPool) && opts.maxPool > 0) {
+    return Math.min(raw, Math.max(opts.limit, Math.floor(opts.maxPool)))
+  }
+  return raw
 }
 
 function mapRows(
@@ -637,6 +645,9 @@ export class FeedCandidateService {
   ): Promise<FeedCandidateRow[]> {
     // Fill toward the SQL pool target (not just page limit) so ranking windows stay deep.
     const target = Math.max(opts.limit, poolLimitFor(opts, Math.min(opts.limit * 2, DEFAULT_POOL_SIZE)))
+    if (opts.skipLegacySupplement) {
+      return primary.slice(0, target)
+    }
     const categoryIds = resolveOptsCategoryIds(opts)
     const primaryCats = new Set(
       primary.map((r) => String(r.category ?? '').toLowerCase()).filter(Boolean)
@@ -741,7 +752,7 @@ export class FeedCandidateService {
   }
 
   async fetchBreaking(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
-    const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
+    const poolLimit = poolLimitFor(opts, Math.max(opts.limit * 3, Math.min(DEFAULT_POOL_SIZE, opts.maxPool ?? DEFAULT_POOL_SIZE)))
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('BREAKING', { ...opts, needed: opts.limit })
     }

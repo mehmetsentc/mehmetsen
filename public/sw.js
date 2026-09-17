@@ -10,7 +10,7 @@
 importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js')
 
 // Bump when fetch/cache policy changes so clients drop stale HTML shells.
-const CACHE_VERSION = 'nahaber-v8'
+const CACHE_VERSION = 'nahaber-v9'
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',

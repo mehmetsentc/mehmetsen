@@ -6,6 +6,7 @@ import Script from 'next/script'
 declare global {
   interface Window {
     OneSignalDeferred?: ((OneSignal: OneSignalSDK) => Promise<void> | void)[]
+    __nahaberOneSignalArmed?: boolean
   }
 }
 
@@ -15,6 +16,11 @@ interface OneSignalSDK {
     requestPermission(): Promise<void>
     permission: boolean
   }
+}
+
+function isAlreadyInitializedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '')
+  return /already initialized/i.test(msg)
 }
 
 /**
@@ -33,34 +39,45 @@ export function OneSignalProvider() {
 
     const arm = () => {
       if (cancelled) return
+      // Strict Mode / idle+interact / HMR can arm twice — OneSignal throws
+      // "SDK already initialized" on a second init.
+      if (window.__nahaberOneSignalArmed) {
+        setLoadSdk(true)
+        return
+      }
+      window.__nahaberOneSignalArmed = true
       setLoadSdk(true)
       window.OneSignalDeferred = window.OneSignalDeferred || []
       window.OneSignalDeferred.push(async (OneSignal) => {
-        await OneSignal.init({
-          appId,
-          // Unified with public/sw.js (importScripts OneSignal) so PWA
-          // installability + push share one controlling worker at `/`.
-          serviceWorkerPath: '/sw.js',
-          serviceWorkerParam: { scope: '/' },
-          notifyButton: { enable: false },
-          // Soft prompt UX lives in NotificationsSoftPrompt (mobile).
-          // Keep OneSignal slidedown off to avoid double prompts.
-          promptOptions: {
-            slidedown: {
-              prompts: [
-                {
-                  type: 'push',
-                  autoPrompt: false,
-                  text: {
-                    actionMessage: 'Son dakika haberleri için bildirim almak ister misiniz?',
-                    acceptButton: 'Evet, bildir',
-                    cancelButton: 'Hayır, teşekkürler',
+        try {
+          await OneSignal.init({
+            appId,
+            // Unified with public/sw.js (importScripts OneSignal) so PWA
+            // installability + push share one controlling worker at `/`.
+            serviceWorkerPath: '/sw.js',
+            serviceWorkerParam: { scope: '/' },
+            notifyButton: { enable: false },
+            // Soft prompt UX lives in NotificationsSoftPrompt (mobile).
+            // Keep OneSignal slidedown off to avoid double prompts.
+            promptOptions: {
+              slidedown: {
+                prompts: [
+                  {
+                    type: 'push',
+                    autoPrompt: false,
+                    text: {
+                      actionMessage: 'Son dakika haberleri için bildirim almak ister misiniz?',
+                      acceptButton: 'Evet, bildir',
+                      cancelButton: 'Hayır, teşekkürler',
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-        })
+          })
+        } catch (err) {
+          if (!isAlreadyInitializedError(err)) throw err
+        }
       })
     }
 

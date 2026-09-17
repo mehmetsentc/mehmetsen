@@ -262,6 +262,60 @@ export class FeedService {
       }
     }
 
+    // Feed V2 first page: ranking pipeline fans out to ~7×150-row SQL + Firestore
+    // supplements and routinely exceeds the API budget on cold Neon. Serve a
+    // bounded Postgres-only recent/breaking window so the client leaves boot splash.
+    if (
+      ctx.surface === 'feed-v2' &&
+      !ctx.category &&
+      !cursorPayload &&
+      (ctx.mode === 'personal' || ctx.mode === 'breaking')
+    ) {
+      const pool = Math.min(Math.max(limit * 3, 24), 48)
+      const queryOpts = {
+        limit: pool,
+        cursor: null as null,
+        userId: ctx.userId,
+        citySlug: ctx.citySlug,
+        districtSlug: ctx.districtSlug,
+        region: ctx.region,
+        maxPool: pool,
+        skipLegacySupplement: true,
+      }
+      const rows =
+        ctx.mode === 'breaking'
+          ? await feedCandidateService.fetchBreaking(queryOpts)
+          : await feedCandidateService.fetchRecent(queryOpts)
+      const ranked = feedRankingV1.rankMode(ctx.mode, rows, limit)
+      if (!ranked.length) {
+        return {
+          items: [],
+          nextCursor: null,
+          hasMore: false,
+          mode: ctx.mode,
+          emptyReason: 'no_items',
+          rankingVersion: 'mix_v1_fast',
+        }
+      }
+      const articleIds = ranked.map((r) => r.articleId)
+      const [socialMap, enriched] = await Promise.all([
+        loadSocialState(ctx.userId, articleIds),
+        enrichPublisherSlugs(ranked),
+      ])
+      const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+      const last = ranked[ranked.length - 1]!
+      return {
+        items,
+        nextCursor: encodeFeedCursor({
+          publishedAt: last.publishedAt.toISOString(),
+          id: last.articleId,
+        }),
+        hasMore: ranked.length >= limit,
+        mode: ctx.mode,
+        rankingVersion: 'mix_v1_fast',
+      }
+    }
+
     const telemetryRankingVersion =
       nfRankMode === 'live' ? NFRANK_VERSION : rankingEnabled ? FEED_RANKING_VERSION : 'mix_v1'
 

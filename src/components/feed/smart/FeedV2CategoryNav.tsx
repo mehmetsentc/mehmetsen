@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import {
   buildFallbackFeedV2Tabs,
   ensurePersonalLeadTabs,
-  isFeedV2TabActive,
   type FeedV2Tab,
 } from '@/lib/feed/feedV2Tabs'
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
@@ -34,6 +33,17 @@ function isTabPayload(value: unknown): value is FeedV2Tab {
     typeof tab.label === 'string' &&
     (tab.kind === 'mode' || tab.kind === 'category')
   )
+}
+
+/** Local (no cross-module import) — avoids webpack circular TDZ / stale HMR bindings. */
+function tabMatchesActive(tab: FeedV2Tab, activeTabId: string): boolean {
+  if (tab.id === activeTabId) return true
+  if (tab.mode === 'personal' && activeTabId === 'personal') return true
+  if (tab.mode === 'local' && (activeTabId === 'local' || activeTabId === 'yerel')) return true
+  if (tab.mode === 'breaking' && (activeTabId === 'breaking' || activeTabId === 'son-dakika')) {
+    return true
+  }
+  return Boolean(tab.category && tab.category === activeTabId)
 }
 
 /**
@@ -119,7 +129,7 @@ export function FeedV2CategoryNav({
       trailing={trailing}
     >
       {tabs.map((tab) => {
-        const active = isFeedV2TabActive(tab, activeTabId)
+        const active = tabMatchesActive(tab, activeTabId)
         return (
           <button
             key={tab.id}
@@ -142,6 +152,7 @@ export function FeedV2CategoryNav({
   const wrapped = (
     <div
       data-region="category-nav"
+      data-nav-build="rail-v4-no-tabactive-import"
       data-tabs-source={tabsSource}
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-context-rail-portaled={portaled ? '1' : '0'}

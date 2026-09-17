@@ -37,12 +37,14 @@ describe('P18 shared Feed/Reader surface authority', () => {
 
   it('Feed shells + Reader outer use shared class; no md:max-w-lg tower', () => {
     const page = read('src/app/(main)/feed-v2/page.tsx')
+    const shell = read('src/components/feed/smart/FeedV2RouteShell.tsx')
     const client = read('src/components/feed/smart/SmartFeedClient.tsx')
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
     const skeleton = read('src/components/feed/smart/FullscreenNewsCardSkeleton.tsx')
     const reader = read('src/components/feed/smart/FeedArticleReader.tsx')
 
-    for (const src of [page, client, card, skeleton, reader]) {
+    expect(page).toContain('FeedV2RouteShell')
+    for (const src of [shell, client, card, skeleton, reader]) {
       expect(src).toContain('FEED_READER_SURFACE_CLASS')
       expect(src).not.toMatch(/md:max-w-lg/)
     }

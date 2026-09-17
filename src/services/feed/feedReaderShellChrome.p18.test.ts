@@ -65,13 +65,13 @@ describe('shell chrome authority', () => {
     ).toBe(false)
   })
 
-  it('Global Nav V2: Feed V2 shows top Navbar unless Reader surface active', () => {
+  it('Global Nav V2: Feed V2 keeps top Navbar mounted during Reader (no spacer jump)', () => {
     expect(
       resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
     ).toBe(true)
     expect(
       resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
-    ).toBe(false)
+    ).toBe(true)
     expect(
       resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
     ).toBe(true)

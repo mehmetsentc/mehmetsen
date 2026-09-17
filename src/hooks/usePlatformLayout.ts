@@ -10,27 +10,15 @@ const QUERIES = {
   desktop: '(min-width: 1024px)',
 } as const
 
-function detectPlatform(width: number): Platform {
-  if (width < 768) return 'mobile'
-  if (width < 1024) return 'tablet'
-  return 'desktop'
-}
-
-function readPlatform(): Platform {
-  if (typeof window === 'undefined') return 'desktop'
-  const fromDom = document.documentElement.dataset.platform as Platform | undefined
-  if (fromDom === 'mobile' || fromDom === 'tablet' || fromDom === 'desktop') {
-    return fromDom
-  }
-  return detectPlatform(window.innerWidth)
-}
-
 function applyPlatform(platform: Platform) {
   document.documentElement.dataset.platform = platform
 }
 
 export function usePlatformLayout() {
-  const [platform, setPlatform] = useState<Platform>(readPlatform)
+  // SSR always renders `desktop`. Do NOT read `window` / `data-platform` in the
+  // initial state — ThemeScript may set a different platform before hydrate and
+  // that mismatch triggers Recoverable Hydration Error (and flaky Feed mounts).
+  const [platform, setPlatform] = useState<Platform>('desktop')
 
   useEffect(() => {
     const mobile = window.matchMedia(QUERIES.mobile)

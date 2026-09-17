@@ -122,15 +122,8 @@ export function ensurePersonalLeadTabs(tabs: FeedV2Tab[]): FeedV2Tab[] {
   return [...FEED_V2_LEAD_TABS, ...unique]
 }
 
-export function isFeedV2TabActive(tab: FeedV2Tab, activeTabId: string): boolean {
-  if (tab.id === activeTabId) return true
-  if (tab.mode === 'personal' && activeTabId === 'personal') return true
-  if (tab.mode === 'local' && (activeTabId === 'local' || activeTabId === 'yerel')) return true
-  if (tab.mode === 'breaking' && (activeTabId === 'breaking' || activeTabId === 'son-dakika')) {
-    return true
-  }
-  return Boolean(tab.category && tab.category === activeTabId)
-}
+/** Re-export from leaf — never define here (circular TDZ / stale HMR). */
+export { isFeedV2TabActive } from '@/lib/feed/feedV2TabActive'
 
 export function parseFeedV2TabFromSearch(params: {
   mode?: string | null

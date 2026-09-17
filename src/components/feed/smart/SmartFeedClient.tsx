@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Inbox, CheckCircle2, RefreshCw, AlertCircle, ShieldAlert, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
-import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
+import { FeedBootSplash } from '@/components/feed/smart/FeedBootSplash'
 import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import {
@@ -168,31 +168,55 @@ async function fetchFeedPage(opts: {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(`/api/feed/v2?${params}`, {
-    headers,
-    credentials: 'include',
-    signal: opts.signal,
-  })
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as {
-      error?: string
-      reason?: string
-      authStatus?: string
-      userId?: string | null
-    }
-    const err = new Error(body.error ?? 'feed_fetch_failed') as Error & {
-      status?: number
-      reason?: string
-      authStatus?: string
-      userId?: string | null
-    }
-    err.status = res.status
-    err.reason = body.reason
-    err.authStatus = body.authStatus
-    err.userId = body.userId
-    throw err
+  const timeoutMs = 15_000
+  const timeoutCtrl = new AbortController()
+  const timer = setTimeout(() => timeoutCtrl.abort(), timeoutMs)
+  const onOuterAbort = () => timeoutCtrl.abort()
+  if (opts.signal) {
+    if (opts.signal.aborted) timeoutCtrl.abort()
+    else opts.signal.addEventListener('abort', onOuterAbort, { once: true })
   }
-  return res.json() as Promise<FeedPageDto>
+
+  try {
+    const res = await fetch(`/api/feed/v2?${params}`, {
+      headers,
+      credentials: 'include',
+      signal: timeoutCtrl.signal,
+    })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string
+        reason?: string
+        authStatus?: string
+        userId?: string | null
+      }
+      const err = new Error(body.error ?? 'feed_fetch_failed') as Error & {
+        status?: number
+        reason?: string
+        authStatus?: string
+        userId?: string | null
+      }
+      err.status = res.status
+      err.reason = body.reason
+      err.authStatus = body.authStatus
+      err.userId = body.userId
+      throw err
+    }
+    return res.json() as Promise<FeedPageDto>
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === 'AbortError'
+    if (aborted) {
+      // Caller cancelled (tab switch / unmount) — propagate as AbortError.
+      if (opts.signal?.aborted) throw err
+      const timeoutErr = new Error('feed_timeout') as Error & { status?: number }
+      timeoutErr.status = 504
+      throw timeoutErr
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+    opts.signal?.removeEventListener('abort', onOuterAbort)
+  }
 }
 
 async function postTelemetry(payload: {
@@ -961,6 +985,11 @@ export function SmartFeedClient({
             type: 'DISABLED',
             reason: typedErr?.reason,
             message: 'Akıllı akış şu anda bakımda veya geçici olarak kullanılamıyor.',
+          })
+        } else if (status === 504 || msg === 'feed_timeout') {
+          setErrorState({
+            type: 'NETWORK_ERROR',
+            message: 'Akış yanıt vermedi (zaman aşımı). Tekrar deneyin.',
           })
         } else {
           setErrorState({
@@ -2253,6 +2282,7 @@ export function SmartFeedClient({
       data-testid="smart-feed-root"
       data-feed-mounted="1"
       data-feed-session-id={feedSessionIdRef.current}
+      suppressHydrationWarning
     >
       {/* Canonical Viewport Shell — fills .content-main-reels (remaining band under chrome) */}
       <div
@@ -2303,9 +2333,9 @@ export function SmartFeedClient({
 
         {/* Viewport Content States */}
         {isLoadingFirstTime ? (
-          /* Seamless Skeleton Loader matching FullscreenNewsCard geometry */
+          /* Branded boot — NaHaber mark instead of empty black / gray bars */
           <div className="h-full min-h-0 w-full overflow-hidden" data-testid="smart-feed-skeleton-view">
-            <FullscreenNewsCardSkeleton />
+            <FeedBootSplash />
           </div>
         ) : errorState ? (
           /* Error / Auth Required / Pilot Preview State */

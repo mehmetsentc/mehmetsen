@@ -1,12 +1,6 @@
-import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
+import { BrandBootSplash } from '@/components/brand/BrandBootSplash'
 
 /** Fast shell while (main) routes stream in. */
 export default function MainLoading() {
-  return (
-    <div className="w-full space-y-4 py-2">
-      {[...Array(3)].map((_, i) => (
-        <TimelineItemSkeleton key={i} />
-      ))}
-    </div>
-  )
+  return <BrandBootSplash label="Sayfa yükleniyor…" />
 }

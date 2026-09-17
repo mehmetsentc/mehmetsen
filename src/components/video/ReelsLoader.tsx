@@ -2,13 +2,16 @@
 
 import dynamic from 'next/dynamic'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import { BrandBootSplash } from '@/components/brand/BrandBootSplash'
 
 function ReelsBootSkeleton() {
   return (
-    <div className="nl-video-boot pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black via-transparent to-black/40 p-6">
-      <p className="nl-video-boot__title text-sm font-semibold text-white/90">Video Haberler</p>
-      <p className="nl-video-boot__meta mt-1 text-xs text-white/50">Yükleniyor…</p>
-    </div>
+    <BrandBootSplash
+      className="absolute inset-0 min-h-0"
+      label="Video yükleniyor…"
+      variant="inset"
+      testId="reels-boot-splash"
+    />
   )
 }
 

@@ -31,9 +31,15 @@ describe('P18 feed-v2 live nav + card chrome', () => {
 
   it('SSR shell + category nav + discovery + mid-right social + CTA', () => {
     const page = readFileSync(join(process.cwd(), 'src/app/(main)/feed-v2/page.tsx'), 'utf8')
-    expect(page).toContain('smart-feed-ssr-shell')
+    const shell = readFileSync(
+      join(process.cwd(), 'src/components/feed/smart/FeedV2RouteShell.tsx'),
+      'utf8'
+    )
+    expect(shell).toContain('smart-feed-ssr-shell')
+    expect(page).toContain('FeedV2RouteShell')
     expect(page).toContain('feedService.getFeed')
     expect(page).toContain('initialPage')
+    expect(page).toContain('FeedBootSplash')
 
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),

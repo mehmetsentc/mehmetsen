@@ -13,7 +13,13 @@ export async function GET() {
   }
 
   try {
-    const { order, activity } = await getFeedCategoryActivity()
+    const budgetMs = process.env.NODE_ENV === 'production' ? 8_000 : 2_500
+    const { order, activity } = await Promise.race([
+      getFeedCategoryActivity(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('tabs_timeout')), budgetMs)
+      }),
+    ])
     return NextResponse.json(
       {
         tabs: buildFeedV2Tabs(order),

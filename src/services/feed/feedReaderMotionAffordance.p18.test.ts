@@ -145,8 +145,8 @@ describe('tappable RIGHT/LEFT affordances', () => {
 
 describe('page motion', () => {
   it('duration/easing within iOS-like range; underlay progress wired', () => {
-    expect(FEED_READER_DURATION_MS).toBeGreaterThanOrEqual(2800)
-    expect(FEED_READER_DURATION_MS).toBeLessThanOrEqual(3200)
+    expect(FEED_READER_DURATION_MS).toBeGreaterThanOrEqual(320)
+    expect(FEED_READER_DURATION_MS).toBeLessThanOrEqual(480)
     expect(FEED_READER_EASING).toContain('cubic-bezier')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),

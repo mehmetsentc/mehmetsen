@@ -29,18 +29,20 @@ describe('Global Nav V2', () => {
     expect(resolveMobileNavVisible({ pathname: '/admin' })).toBe(false)
   })
 
-  it('top Navbar on Ana Sayfa + Akış; hidden while Reader open on Feed V2', () => {
+  it('top Navbar stays mounted on Feed V2 during Reader (spacer-stable); paint via CSS', () => {
     expect(resolveTopNavbarVisible({ pathname: '/', readerSurfaceActive: false })).toBe(true)
     expect(resolveTopNavbarVisible({ pathname: '/feed', readerSurfaceActive: false })).toBe(true)
     expect(
       resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: false })
     ).toBe(true)
+    // Keep mounted so mobile-chrome-spacer does not collapse (~112px jump).
     expect(
       resolveTopNavbarVisible({ pathname: '/feed-v2', readerSurfaceActive: true })
-    ).toBe(false)
+    ).toBe(true)
     expect(resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: false })).toBe(
       true
     )
+    // Painted/interactive chrome still off while Reader owns the surface.
     expect(resolveSiteChromeVisible({ pathname: '/feed-v2', readerSurfaceActive: true })).toBe(
       false
     )

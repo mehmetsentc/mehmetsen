@@ -1,16 +1,11 @@
 import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 /**
- * Dinamik iOS PWA splash screen üretici.
- *
- * apple-touch-startup-image linkleri /brand/splash/iphone-14-pro-max.png
- * gibi URL'lere gelir. Bu route her cihaz için ImageResponse ile
- * markalı bir splash döndürür — static PNG dosyası tutmadan.
- *
- * Avantaj: yeni cihaz eklendiğinde sadece DEVICE_DIMENSIONS'a satır
- * ekle, görsel pipeline'a ihtiyaç yok.
+ * Dinamik iOS PWA splash — uses the rounded NaHaber N boot mark PNG.
  */
 
 type DeviceSpec = {
@@ -19,24 +14,21 @@ type DeviceSpec = {
 }
 
 const DEVICE_DIMENSIONS: Record<string, DeviceSpec> = {
-  // iPhone modelleri (portrait, fizyolojik piksel @scale)
-  'iphone-14-pro-max': { width: 1290, height: 2796 },   // 430×932 @3x
-  'iphone-14-pro':     { width: 1179, height: 2556 },   // 393×852 @3x
-  'iphone-14-plus':    { width: 1284, height: 2778 },   // 428×926 @3x
-  'iphone-14':         { width: 1170, height: 2532 },   // 390×844 @3x
-  'iphone-11-pro-max': { width: 1242, height: 2688 },   // 414×896 @3x
-  'iphone-11-pro':     { width: 1125, height: 2436 },   // 375×812 @3x
-  'iphone-11':         { width: 828,  height: 1792 },   // 414×896 @2x
-  'iphone-se':         { width: 750,  height: 1334 },   // 375×667 @2x
-  // iPad modelleri
-  'ipad-pro-12':       { width: 2048, height: 2732 },   // 1024×1366 @2x
-  'ipad-pro-11':       { width: 1668, height: 2388 },   // 834×1194 @2x
-  'ipad-air':          { width: 1640, height: 2360 },   // 820×1180 @2x
+  'iphone-14-pro-max': { width: 1290, height: 2796 },
+  'iphone-14-pro': { width: 1179, height: 2556 },
+  'iphone-14-plus': { width: 1284, height: 2778 },
+  'iphone-14': { width: 1170, height: 2532 },
+  'iphone-11-pro-max': { width: 1242, height: 2688 },
+  'iphone-11-pro': { width: 1125, height: 2436 },
+  'iphone-11': { width: 828, height: 1792 },
+  'iphone-se': { width: 750, height: 1334 },
+  'ipad-pro-12': { width: 2048, height: 2732 },
+  'ipad-pro-11': { width: 1668, height: 2388 },
+  'ipad-air': { width: 1640, height: 2360 },
 }
 
 const BRAND = {
-  bg: '#0a0a0a',
-  fg: '#dc2626',
+  bg: '#000000',
   text: '#ffffff',
   muted: '#a3a3a3',
 }
@@ -49,9 +41,14 @@ export async function GET(
   const slug = device.replace(/\.png$/i, '').toLowerCase()
   const dims = DEVICE_DIMENSIONS[slug] ?? DEVICE_DIMENSIONS['iphone-14']!
 
-  const iconSize = Math.round(dims.width * 0.32)
+  const iconSize = Math.round(dims.width * 0.34)
   const titleSize = Math.round(dims.width * 0.075)
   const tagSize = Math.round(dims.width * 0.035)
+
+  const markBytes = await readFile(
+    join(process.cwd(), 'public/brand/nahaber-boot-mark.png')
+  )
+  const markSrc = `data:image/png;base64,${markBytes.toString('base64')}`
 
   return new ImageResponse(
     (
@@ -63,33 +60,22 @@ export async function GET(
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: `radial-gradient(ellipse at center, #1a0a0a 0%, ${BRAND.bg} 70%)`,
+          background: `radial-gradient(ellipse at center, #1a0a0a 0%, ${BRAND.bg} 72%)`,
         }}
       >
-        <div
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={markSrc}
+          width={iconSize}
+          height={iconSize}
+          alt=""
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             width: iconSize,
             height: iconSize,
-            borderRadius: iconSize * 0.22,
-            background: `linear-gradient(135deg, ${BRAND.fg} 0%, #991b1b 100%)`,
-            boxShadow: '0 30px 80px rgba(220, 38, 38, 0.35)',
-            marginBottom: iconSize * 0.18,
+            borderRadius: Math.round(iconSize * 0.22),
+            marginBottom: Math.round(iconSize * 0.16),
           }}
-        >
-          <div
-            style={{
-              fontSize: iconSize * 0.42,
-              fontWeight: 900,
-              color: BRAND.text,
-              letterSpacing: '-0.04em',
-            }}
-          >
-            N
-          </div>
-        </div>
+        />
         <div
           style={{
             display: 'flex',
@@ -117,7 +103,6 @@ export async function GET(
     {
       width: dims.width,
       height: dims.height,
-      // PWA splash görseli, browser yüklenene kadar gösterilir → uzun cache
       headers: {
         'cache-control': 'public, max-age=31536000, immutable',
       },
