@@ -52,17 +52,18 @@ export const CITY_DYNAMIC_NAV_CHIP_IDS = CITY_CATEGORY_CHIPS.flatMap((chip) =>
 export interface CityBottomNavItem {
   id: string
   label: string
+  shortLabel?: string
   href: string
   iconName: 'home' | 'zap' | 'calendar' | 'trophy' | 'map-pin' | 'briefcase'
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
-  { id: 'feed', label: 'Ana Sayfa', href: '/', iconName: 'home' },
-  { id: 'akis', label: 'Akış', href: '/feed-v2', iconName: 'zap' },
-  { id: 'etkinlik', label: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
-  { id: 'is-ilanlari', label: 'İş', href: '/is-ilanlari', iconName: 'briefcase' },
-  { id: 'spor', label: 'Spor', href: '/spor', iconName: 'trophy' },
-  { id: 'ilceler', label: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
+  { id: 'feed', label: 'Ana Sayfa', shortLabel: 'Ana', href: '/', iconName: 'home' },
+  { id: 'akis', label: 'Akış', shortLabel: 'Akış', href: '/feed-v2', iconName: 'zap' },
+  { id: 'etkinlik', label: 'Etkinlik', shortLabel: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
+  { id: 'is-ilanlari', label: 'İş', shortLabel: 'İş', href: '/is-ilanlari', iconName: 'briefcase' },
+  { id: 'spor', label: 'Spor', shortLabel: 'Spor', href: '/spor', iconName: 'trophy' },
+  { id: 'ilceler', label: 'İlçeler', shortLabel: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
 ] as const
 
 /**

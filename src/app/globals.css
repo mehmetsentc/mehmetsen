@@ -85,6 +85,9 @@
     --mobile-nav-clearance: calc(
       var(--mobile-nav-pill-h) + var(--mobile-nav-float-gap) + var(--safe-bottom, 0px) + 0.75rem
     );
+    --city-mobile-nav-clearance: calc(
+      4.15rem + 1.45rem + max(env(safe-area-inset-bottom, 0px), 12px) + 0.4rem
+    );
     /* Article reader-tools FAB — sit clearly above the nav pill (single control) */
     --article-reader-fab-h: 2.75rem;
     --article-reader-fab-gap: 1.75rem;
@@ -795,6 +798,33 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     padding-inline: 0.15rem;
+  }
+
+  /* City dock: sit above the iOS home indicator and stay readable on paper + dark. */
+  .city-mobile-bottom-nav {
+    padding-bottom: max(1.45rem, calc(env(safe-area-inset-bottom, 0px) + 1.15rem));
+  }
+
+  .city-mobile-bottom-nav-pill {
+    display: flex;
+    width: min(100%, 36rem);
+    min-height: 4.15rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.1rem;
+    border-radius: 1.35rem;
+    border: 1px solid rgb(var(--color-border));
+    background: rgb(var(--color-card));
+    box-shadow: 0 10px 32px rgb(0 0 0 / 0.18);
+    padding: 0.4rem 0.45rem 0.35rem;
+    color: rgb(var(--color-text));
+  }
+
+  html.dark .city-mobile-bottom-nav-pill,
+  html[data-theme='oled'] .city-mobile-bottom-nav-pill {
+    background: rgb(var(--color-surface-elevated));
+    border-color: rgb(var(--color-border-strong));
+    box-shadow: 0 10px 32px rgb(0 0 0 / 0.45);
   }
 
   html[data-platform='mobile'] .app-shell-mobile {

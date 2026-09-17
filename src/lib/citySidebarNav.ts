@@ -72,6 +72,7 @@ export function buildCitySectionNavItems(
   }).map((item) => ({
     id: item.id,
     label: item.label,
+    shortLabel: item.shortLabel ?? item.label,
     href: item.href,
     icon: SECTION_ICONS[item.iconName],
     accent:

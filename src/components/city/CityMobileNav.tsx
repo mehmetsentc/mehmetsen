@@ -20,13 +20,15 @@ function CityMobileNavInner() {
 
   return (
     <nav
-      className="mobile-bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-[105] flex justify-center px-[var(--mobile-nav-inset-x)] pb-[calc(var(--safe-bottom,0px)+var(--mobile-nav-float-gap))] lg:hidden"
+      className="city-mobile-bottom-nav mobile-bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-[105] flex justify-center px-[var(--mobile-nav-inset-x)] lg:hidden"
       aria-label="Şehir menü"
+      data-testid="city-mobile-bottom-nav"
     >
-      <div className="mobile-bottom-nav-pill pointer-events-auto">
+      <div className="city-mobile-bottom-nav-pill pointer-events-auto">
         {items.map((item) => {
           const Icon = item.icon
           const active = isCitySectionActive(pathname, item.href)
+          const caption = item.shortLabel || item.label
           return (
             <Link
               key={item.id}
@@ -34,18 +36,28 @@ function CityMobileNavInner() {
               prefetch
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
-              className="flex flex-1 items-center justify-center touch-manipulation"
+              data-testid={`city-nav-${item.id}`}
+              className="flex min-w-0 flex-1 flex-col items-center justify-center touch-manipulation px-0.5"
             >
               <span
                 className={cn(
-                  'relative flex h-11 w-11 items-center justify-center rounded-[14px] transition-colors duration-150',
-                  active ? 'bg-white/20 text-white' : 'text-white/90'
+                  'flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150',
+                  active
+                    ? 'bg-[rgb(var(--color-brand))] text-white'
+                    : 'bg-[rgb(var(--color-surface-raised))] text-[rgb(var(--color-text))]'
                 )}
               >
-                <Icon
-                  className="h-[22px] w-[22px]"
-                  strokeWidth={active ? 2.35 : 1.85}
-                />
+                <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} />
+              </span>
+              <span
+                className={cn(
+                  'mt-0.5 max-w-full truncate text-[10px] font-semibold leading-none',
+                  active
+                    ? 'text-[rgb(var(--color-brand))]'
+                    : 'text-[rgb(var(--color-text-secondary))]'
+                )}
+              >
+                {caption}
               </span>
             </Link>
           )

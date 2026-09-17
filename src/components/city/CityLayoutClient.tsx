@@ -18,8 +18,6 @@ import { CityNavbar } from './CityNavbar'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
 import { CityFooter } from './CityFooter'
-import { GlobalBackNav } from '@/components/layout/BackNavButton'
-import { ReelsRouteTheme } from '@/components/theme/ReelsRouteTheme'
 import type { CityCategory } from '@/services/cityNewsService.server'
 import { isCityFeedPath, isCityImmersivePath } from '@/lib/cityPaths'
 
@@ -114,18 +112,10 @@ const CityShell = memo(function CityShell({
     }
   }, [isDesktop, toggleDesktopSidebar, setMobileDrawerOpen])
 
-  if (isCityImmersivePath(pathname)) {
-    return (
-      <div className="min-h-screen bg-black">
-        <ReelsRouteTheme active />
-        <GlobalBackNav />
-        {children}
-      </div>
-    )
-  }
+  const immersiveFeed = isCityImmersivePath(pathname)
 
   return (
-    <div className="min-h-screen bg-[rgb(var(--color-surface))]">
+    <div className="min-h-dvh bg-[rgb(var(--color-surface))]">
       <MobileSafeAreaShield />
       <CitySidebar
         cityName={displayName}
@@ -142,24 +132,40 @@ const CityShell = memo(function CityShell({
         onMenuClick={handleMenuClick}
       />
 
-      <PullToRefresh>
-        <div className="content-stage content-stage-newspaper">
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="content-main content-main-newspaper desktop-newspaper"
-          >
-            {children}
-          </main>
-          <div className="content-main content-main-newspaper desktop-newspaper pb-6">
-            <CityFooter
-              cityName={displayName}
-              provinceSlug={provinceSlug}
-              suppressNewsletter={suppressFooterNewsletter}
-            />
+      {immersiveFeed ? (
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="relative isolate overflow-hidden bg-black"
+          style={{
+            minHeight:
+              'calc(100dvh - var(--mobile-top-chrome-offset, 7.5rem) - var(--city-mobile-nav-clearance, 6.4rem))',
+            height:
+              'calc(100dvh - var(--mobile-top-chrome-offset, 7.5rem) - var(--city-mobile-nav-clearance, 6.4rem))',
+          }}
+        >
+          {children}
+        </main>
+      ) : (
+        <PullToRefresh>
+          <div className="content-stage content-stage-newspaper">
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="content-main content-main-newspaper desktop-newspaper"
+            >
+              {children}
+            </main>
+            <div className="content-main content-main-newspaper desktop-newspaper pb-6">
+              <CityFooter
+                cityName={displayName}
+                provinceSlug={provinceSlug}
+                suppressNewsletter={suppressFooterNewsletter}
+              />
+            </div>
           </div>
-        </div>
-      </PullToRefresh>
+        </PullToRefresh>
+      )}
 
       <Suspense fallback={null}>
         <CityMobileNav />
