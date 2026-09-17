@@ -1182,12 +1182,12 @@
   }
 
   .back-nav-btn--on-brand {
-    color: #fff;
+    color: rgb(var(--header-onbrand));
   }
 
   .back-nav-btn--on-brand:hover {
-    background: rgb(255 255 255 / 0.12);
-    color: #fff;
+    background: rgb(var(--header-onbrand) / 0.1);
+    color: rgb(var(--header-onbrand));
   }
 
   .back-nav-btn--inline {
@@ -4935,7 +4935,8 @@ iframe.reels-yt-frame {
   gap: 0.48rem;
   overflow-x: auto;
   padding: 0.95rem 0.75rem 1rem;
-  background: #2a2a2c;
+  background: rgb(var(--color-surface));
+  border-top: 1px solid rgb(var(--color-border) / 0.6);
   scrollbar-width: none;
 }
 
@@ -4950,20 +4951,30 @@ iframe.reels-yt-frame {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: #8e8e93;
+  background: rgb(var(--color-border-strong));
   touch-action: manipulation;
 }
 
 .home-featured-rail__dot.is-active {
   width: 0.45rem;
-  background: #e11d2e;
+  background: rgb(var(--color-brand));
 }
 
 .home-market-ticker--attached {
   margin-top: 0;
-  background: #161618;
-  color: #fff;
+  background: rgb(var(--color-card));
+  color: rgb(var(--color-text));
   border: 0;
+  border-top: 1px solid rgb(var(--color-border) / 0.6);
+}
+
+.dark .home-featured-rail__dots {
+  background: rgb(var(--color-card));
+}
+
+.dark .home-market-ticker--attached {
+  background: rgb(var(--color-card));
+  color: rgb(var(--color-text));
 }
 
 .home-featured-rail .home-discovery-slot--featured-rail,
@@ -5043,7 +5054,9 @@ iframe.reels-yt-frame {
   inset: auto;
   min-height: var(--home-featured-copy-h);
   padding: 0.85rem 1rem 1rem;
-  background: #000;
+  /* Light: paper/surface + ink. Dark: elevated shell (not pure black island). */
+  background: rgb(var(--color-surface));
+  border-top: 1px solid rgb(var(--color-border));
 }
 
 .home-featured-rail--headline .home-discovery-card__headline {
@@ -5051,11 +5064,16 @@ iframe.reels-yt-frame {
   font-weight: 800;
   line-height: 1.18;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: rgb(var(--color-text));
   text-shadow: none;
   text-transform: none;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+.dark .home-featured-rail--headline .home-discovery-card__copy {
+  background: rgb(var(--color-card));
+  border-top-color: rgb(var(--color-border));
 }
 
 .home-discovery-card {

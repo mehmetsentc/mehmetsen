@@ -19,7 +19,7 @@ interface FeaturedSliderProps {
 }
 
 /**
- * Homepage Öne Çıkanlar — photo + red kicker + black title band + pagination dots.
+ * Homepage Öne Çıkanlar — photo + red kicker + themed title band + pagination dots.
  * Ranking/order comes from pickHomeFeedFeaturedPins; this is presentation only.
  */
 export function FeaturedSlider({

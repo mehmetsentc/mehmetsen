@@ -22,7 +22,7 @@ function MarketCell({ label, value, change, attached = false }: MarketCellProps)
       className={cn(
         'flex min-w-0 flex-col border-r last:border-r-0',
         attached
-          ? 'gap-0.5 border-white/10 px-2 py-3'
+          ? 'gap-0.5 border-[rgb(var(--color-border))]/50 px-2 py-3'
           : 'border-[rgb(var(--color-border))] gap-0.5 px-3 py-2.5 max-md:gap-1 max-md:border-[rgb(var(--color-border))]/60 max-md:px-2.5 max-md:py-3.5'
       )}
     >
@@ -30,7 +30,7 @@ function MarketCell({ label, value, change, attached = false }: MarketCellProps)
         className={cn(
           'truncate font-bold uppercase tracking-wider',
           attached
-            ? 'text-[10px] text-white/70'
+            ? 'text-[10px] text-[rgb(var(--color-muted))]'
             : 'text-[10px] text-[rgb(var(--color-muted))] max-md:text-[11px]'
         )}
       >
@@ -40,7 +40,7 @@ function MarketCell({ label, value, change, attached = false }: MarketCellProps)
         className={cn(
           'truncate font-black tabular-nums leading-tight',
           attached
-            ? 'text-[13px] text-white'
+            ? 'text-[13px] text-[rgb(var(--color-text))]'
             : 'text-[13px] text-[rgb(var(--color-text))] max-md:text-[14px]'
         )}
       >
@@ -65,14 +65,14 @@ function MarketCellSkeleton({ label, attached }: { label: string; attached?: boo
       className={cn(
         'flex flex-col gap-1 border-r last:border-r-0',
         attached
-          ? 'border-white/10 px-2 py-3'
+          ? 'border-[rgb(var(--color-border))]/50 px-2 py-3'
           : 'border-[rgb(var(--color-border))]/60 px-2.5 py-3.5 md:px-3 md:py-2.5'
       )}
     >
       <span
         className={cn(
           'truncate text-[10px] font-bold uppercase tracking-wider',
-          attached ? 'text-white/70' : 'text-[rgb(var(--color-muted))]'
+          attached ? 'text-[rgb(var(--color-muted))]' : 'text-[rgb(var(--color-muted))]'
         )}
       >
         {label}
@@ -80,13 +80,13 @@ function MarketCellSkeleton({ label, attached }: { label: string; attached?: boo
       <span
         className={cn(
           'h-[15px] w-3/4 animate-pulse rounded',
-          attached ? 'bg-white/15' : 'bg-[rgb(var(--color-border))]'
+          attached ? 'bg-[rgb(var(--color-border))]' : 'bg-[rgb(var(--color-border))]'
         )}
       />
       <span
         className={cn(
           'h-[12px] w-1/2 animate-pulse rounded',
-          attached ? 'bg-white/10' : 'bg-[rgb(var(--color-border))]'
+          attached ? 'bg-[rgb(var(--color-border))]' : 'bg-[rgb(var(--color-border))]'
         )}
       />
     </div>

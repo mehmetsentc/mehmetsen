@@ -95,7 +95,12 @@ describe('featured manşet presentation', () => {
       /\.home-featured-rail--headline \.home-discovery-card__media \{[\s\S]*?aspect-ratio:\s*5 \/ 4/
     )
     expect(css).toContain('.home-featured-rail__dot.is-active')
-    expect(css).toMatch(/\.home-featured-rail__dots \{[\s\S]*?background:\s*#2a2a2c/)
+    expect(css).toMatch(
+      /\.home-featured-rail__dots \{[\s\S]*?background:\s*rgb\(var\(--color-surface\)\)/
+    )
+    expect(css).toMatch(
+      /\.home-featured-rail--headline \.home-discovery-card__copy \{[\s\S]*?background:\s*rgb\(var\(--color-surface\)\)/
+    )
     expect(css).toMatch(/\.home-featured-rail--headline \.home-discovery-card__kicker \{[\s\S]*?background:\s*#e11d2e/)
     expect(ticker).toContain('home-market-ticker--attached')
     expect(ticker).toContain('attached')
