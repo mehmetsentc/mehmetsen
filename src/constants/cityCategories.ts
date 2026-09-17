@@ -53,7 +53,7 @@ export interface CityBottomNavItem {
   label: string
   shortLabel?: string
   href: string
-  iconName: 'home' | 'zap' | 'calendar' | 'trophy' | 'map-pin' | 'briefcase'
+  iconName: 'zap' | 'calendar' | 'map-pin' | 'briefcase'
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
