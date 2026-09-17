@@ -3,9 +3,6 @@ import { redirect } from 'next/navigation'
 import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
-import { CityLayoutClient } from '@/components/city/CityLayoutClient'
-import { getCitySporFeedInitialData, getCityNavPresence } from '@/services/cityNewsService.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,28 +31,5 @@ export default async function SporPage() {
     redirect(ROUTES.SPOR)
   }
 
-  const cityName = getCityCategoryName(citySlug)
-  const [homeFeedData, navPresence] = await Promise.all([
-    getCitySporFeedInitialData(citySlug),
-    getCityNavPresence(citySlug),
-  ])
-  const sectionTitle = `${cityName} Spor Haberleri`
-
-  return (
-    <CityLayoutClient
-      tenantSlug={citySlug}
-      displayName={cityName}
-      provinceSlug={citySlug}
-      categories={navPresence.categories}
-      hasSpor={navPresence.hasSpor}
-    >
-      <CityFeedPageClient
-        homeFeedData={homeFeedData}
-        cityName={cityName}
-        sectionTitle={sectionTitle}
-        streamSectionLabel="Spor"
-        streamSectionHref={ROUTES.CITY_SPOR}
-      />
-    </CityLayoutClient>
-  )
+  redirect('/?category=spor')
 }

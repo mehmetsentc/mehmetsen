@@ -1,18 +1,18 @@
 'use client'
 
-import { useEffect, useState, type Ref } from 'react'
+import { Suspense, useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { useAuth } from '@/hooks/useAuth'
 import { useMyPublishers } from '@/hooks/useMyPublishers'
 import { resolvePublisherProfileHref } from '@/lib/nav/publisherProfileNav'
-import { ROUTES } from '@/constants/routes'
 import { useChromeOffset } from '@/hooks/useChromeOffset'
 import { useCityCategoryFilter } from '@/store/cityCategoryContext'
 import { CategoryNav } from '@/components/layout/CategoryNav'
+import { isCityFeedPath } from '@/lib/cityPaths'
 import { cn } from '@/lib/utils'
 
 interface CityNavbarProps {
@@ -21,13 +21,37 @@ interface CityNavbarProps {
   onMenuClick?: () => void
 }
 
+function CityFeedCategoryRail() {
+  const searchParams = useSearchParams()
+  const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
+
+  useEffect(() => {
+    setActiveCategoryId(searchParams.get('category'))
+  }, [searchParams, setActiveCategoryId])
+
+  const navCategories = [
+    { id: '__all', label: 'Hepsi', href: '/' },
+    ...categories.map((c) => ({ id: c.id, label: c.name, href: `/?category=${c.id}` })),
+  ]
+
+  return (
+    <CategoryNav
+      categories={navCategories}
+      onCategorySelect={setActiveCategoryId}
+      activeCategoryId={activeCategoryId}
+      embedded
+    />
+  )
+}
+
 export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, loading } = useAuth()
   const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
   const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
-  const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
+  const showChips = isCityFeedPath(pathname)
 
   useEffect(() => {
     setHydrated(true)
@@ -37,11 +61,6 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
     hydrated && !loading && !publishersLoading && user && isPublisher
       ? resolvePublisherProfileHref(publishers)
       : null
-
-  const navCategories = [
-    { id: '__all', label: 'Hepsi', href: '/' },
-    ...categories.map((c) => ({ id: c.id, label: c.name, href: `/?category=${c.id}` })),
-  ]
 
   return (
     <>
@@ -105,16 +124,13 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
           </div>
         </header>
 
-        {/* Category nav — ulusal site ile aynı stil (navy bar, text links) */}
-        <CategoryNav
-          categories={navCategories}
-          onCategorySelect={setActiveCategoryId}
-          activeCategoryId={activeCategoryId}
-          embedded
-        />
+        {showChips ? (
+          <Suspense fallback={null}>
+            <CityFeedCategoryRail />
+          </Suspense>
+        ) : null}
       </div>
 
-      {/* Chrome spacer — 72px brand bar + 48px category bar */}
       <div
         className="lg:hidden shrink-0"
         aria-hidden
@@ -122,7 +138,9 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
           height:
             chromeHeight > 0
               ? chromeHeight
-              : 'calc(72px + 48px + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
+              : showChips
+                ? 'calc(72px + 48px + var(--mobile-sat, env(safe-area-inset-top, 0px)))'
+                : 'calc(72px + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
         }}
       />
     </>

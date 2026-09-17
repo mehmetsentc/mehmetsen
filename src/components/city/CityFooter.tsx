@@ -50,7 +50,7 @@ function groupCategories(cats: CityCategory[]) {
    Sabit linkler
 ───────────────────────────────────────────────────────────────────────────── */
 const NEWS_STATIC = [
-  { label: 'Ana Sayfa',   href: '/' },
+  { label: 'Feed',        href: '/' },
   { label: 'Etkinlik',    href: '/etkinlik' },
   { label: 'İş İlanları', href: '/is-ilanlari' },
   { label: 'İlçeler',     href: '/ilceler' },
@@ -58,7 +58,7 @@ const NEWS_STATIC = [
 ] as const
 
 const LIFE_STATIC = [
-  { label: 'Spor', href: '/spor' },
+  { label: 'Spor', href: '/?category=spor' },
 ] as const
 
 const KURUMSAL = [

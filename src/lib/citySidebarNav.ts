@@ -1,7 +1,5 @@
 import {
-  Home,
   Calendar,
-  Trophy,
   MapPin,
   Briefcase,
   LayoutGrid,
@@ -34,10 +32,8 @@ export interface CitySidebarNavItem {
 }
 
 const SECTION_ICONS: Record<(typeof CITY_BOTTOM_NAV)[number]['iconName'], LucideIcon> = {
-  home: Home,
   zap: Zap,
   calendar: Calendar,
-  trophy: Trophy,
   'map-pin': MapPin,
   briefcase: Briefcase,
 }
@@ -76,11 +72,7 @@ export function buildCitySectionNavItems(
     href: item.href,
     icon: SECTION_ICONS[item.iconName],
     accent:
-      item.id === 'spor'
-        ? 'spor'
-        : item.id === 'etkinlik' || item.id === 'is-ilanlari'
-          ? 'yerel'
-          : 'brand',
+      item.id === 'etkinlik' || item.id === 'is-ilanlari' ? 'yerel' : 'brand',
   }))
 
   if (isDutyPharmacyCity(citySlug)) {
@@ -96,7 +88,7 @@ export function buildCityCategoryNavItems(categories: CityCategory[]): CitySideb
   return categories.map((cat) => ({
     id: cat.id,
     label: cat.name,
-    href: ROUTES.CATEGORY(cat.slug || cat.id),
+    href: `/?category=${encodeURIComponent(cat.id)}`,
     icon: getSidebarCategoryIcon(cat.id),
     accent: getSidebarCategoryAccent(cat.id),
   }))
@@ -119,7 +111,7 @@ export function buildCityHeaderNavItems(
 /** Home anchor for sidebar brand row. */
 export const CITY_SIDEBAR_HOME: CitySidebarNavItem = {
   id: 'home',
-  label: 'Ana Sayfa',
+  label: 'Feed',
   href: '/',
   icon: LayoutGrid,
   accent: 'brand',

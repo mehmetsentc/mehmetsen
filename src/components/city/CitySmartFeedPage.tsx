@@ -1,12 +1,8 @@
-import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
-import { redirect } from 'next/navigation'
 import { SmartFeedClient } from '@/components/feed/smart/SmartFeedClient'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { hasDatabaseUrl } from '@/db'
 import { FEED_PAGINATION } from '@/lib/feed/config'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { resolveTenant } from '@/lib/tenant'
 import {
   FEED_READER_SURFACE_CLASS,
   FEED_V2_CHROME_CSS_VARS,
@@ -16,38 +12,15 @@ import { feedService } from '@/services/feed/FeedService'
 import type { FeedPageDto } from '@/types/smartFeed'
 import { cn } from '@/lib/utils'
 
-export const dynamic = 'force-dynamic'
-
-export const metadata: Metadata = {
-  title: 'Akıllı Haber Akışı',
-  description: 'Tam ekran dikey haber akışı — canlı kategoriler ve keşif.',
-  robots: { index: false, follow: false },
-}
-
-/**
- * SSR paints skeleton + boots first feed page so hydration is not blocked on
- * Firebase auth/profile (which previously left a 10–15s black wait).
- */
-export default async function FeedV2Page({
-  searchParams,
+export async function CitySmartFeedPage({
+  citySlug,
+  category = null,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  citySlug: string
+  category?: string | null
 }) {
   const debug = process.env.NODE_ENV !== 'production'
   let initialPage: FeedPageDto | null = null
-  const hostCity = await getCitySlugFromHeaders()
-  const tenant = hostCity ? await resolveTenant(hostCity) : null
-  const citySlug = tenant?.provinceSlug ?? hostCity ?? null
-
-  if (citySlug) {
-    const sp = await searchParams
-    const qs = new URLSearchParams()
-    for (const [key, value] of Object.entries(sp)) {
-      if (typeof value === 'string' && value) qs.set(key, value)
-      else if (Array.isArray(value) && value[0]) qs.set(key, value[0])
-    }
-    redirect(qs.size ? `/?${qs.toString()}` : '/')
-  }
 
   try {
     if (hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
@@ -58,17 +31,19 @@ export default async function FeedV2Page({
         limit: FEED_PAGINATION.defaultLimit,
         surface: 'feed-v2',
         citySlug,
-        lockCity: Boolean(citySlug),
+        lockCity: true,
+        category,
       })
     }
   } catch (err) {
-    console.warn('[feed-v2] SSR bootstrap failed', err)
+    console.warn('[city-feed] SSR bootstrap failed', err)
   }
 
   return (
     <div
       className="relative h-full min-h-[28rem] w-full bg-black overflow-hidden flex justify-center select-none"
       data-testid="smart-feed-ssr-shell"
+      data-city-feed="1"
     >
       <div
         className={cn(
@@ -87,7 +62,7 @@ export default async function FeedV2Page({
           <SmartFeedClient
             initialPage={initialPage}
             initialCitySlug={citySlug}
-            lockCitySlug={Boolean(citySlug)}
+            lockCitySlug
             debug={debug}
           />
         </div>

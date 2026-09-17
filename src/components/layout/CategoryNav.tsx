@@ -39,7 +39,7 @@ export function CategoryNav({
   const pathname = usePathname()
 
   const shellClass = cn(
-    'lg:hidden',
+    categories ? null : 'lg:hidden',
     embedded ? 'relative z-auto' : 'sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)]'
   )
 
@@ -87,17 +87,20 @@ export function CategoryNav({
         {categories.map((cat) => {
           const isActive =
             activeCategoryId === cat.id || (activeCategoryId === null && cat.id === '__all')
+          const categoryId = cat.id === '__all' ? null : cat.id
           return (
-            <button
+            <Link
               key={cat.id}
-              type="button"
+              href={cat.href}
+              prefetch
+              scroll={false}
               data-category-chip={cat.id}
-              onClick={() => onCategorySelect?.(cat.id === '__all' ? null : cat.id)}
+              onClick={() => onCategorySelect?.(categoryId)}
               className={contextRailChipClass(isActive)}
               aria-current={isActive ? 'page' : undefined}
             >
               {cat.label}
-            </button>
+            </Link>
           )
         })}
       </ContextRail>

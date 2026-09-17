@@ -1,10 +1,17 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
-import { getCityCinemaEventsServer } from '@/services/eventService.server'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
+import { CitySmartFeedPage } from '@/components/city/CitySmartFeedPage'
+
 export const dynamic = 'force-dynamic'
+
+function readCategoryParam(
+  searchParams: { category?: string | string[] }
+): string | null {
+  const raw = searchParams.category
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return value?.trim() || null
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getActiveTenant()
@@ -46,21 +53,14 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default async function CityHomePage() {
+export default async function CityHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string | string[] }>
+}) {
   const tenant = await getActiveTenant()
   if (!tenant) return null
 
-  const cityName = getCityCategoryName(tenant.provinceSlug)
-  const [homeFeedData, cinemaEvents] = await Promise.all([
-    getCityHomeFeedInitialData(tenant.provinceSlug),
-    getCityCinemaEventsServer(tenant.provinceSlug),
-  ])
-
-  return (
-    <CityFeedPageClient
-      homeFeedData={homeFeedData}
-      cityName={cityName}
-      cinemaEvents={cinemaEvents}
-    />
-  )
+  const category = readCategoryParam(await searchParams)
+  return <CitySmartFeedPage citySlug={tenant.provinceSlug} category={category} />
 }

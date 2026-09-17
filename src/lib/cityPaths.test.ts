@@ -2,30 +2,37 @@ import { describe, expect, it } from 'vitest'
 import { isCityFeedPath, isCityImmersivePath, isCitySectionActive } from '@/lib/cityPaths'
 
 describe('city paths', () => {
-  it('treats /feed-v2 as immersive, not the magazine homepage', () => {
+  it('treats city home and /feed-v2 as the same Feed 2 surface', () => {
+    expect(isCityImmersivePath('/')).toBe(true)
     expect(isCityImmersivePath('/feed-v2')).toBe(true)
     expect(isCityImmersivePath('/feed-v2/x')).toBe(true)
-    expect(isCityFeedPath('/feed-v2')).toBe(false)
+    expect(isCityFeedPath('/feed-v2')).toBe(true)
     expect(isCityFeedPath('/')).toBe(true)
   })
 
-  it('marks Akış tab active only on feed-v2', () => {
-    expect(isCitySectionActive('/feed-v2', '/feed-v2')).toBe(true)
-    expect(isCitySectionActive('/', '/feed-v2')).toBe(false)
+  it('marks Feed tab active on home and leftover feed-v2 URLs', () => {
     expect(isCitySectionActive('/', '/')).toBe(true)
+    expect(isCitySectionActive('/feed-v2', '/')).toBe(true)
     expect(isCitySectionActive('/feed', '/')).toBe(true)
+    expect(isCitySectionActive('/etkinlik', '/')).toBe(false)
   })
 })
 
-describe('city mobile dock keeps Feed 2 visible', () => {
-  it('exposes Akış as a labeled feed-v2 item', async () => {
+describe('city mobile dock is Feed + city utilities', () => {
+  it('exposes Feed, Etkinlik, İş, İlçeler — not Ana, Akış, or Spor', async () => {
     const { CITY_BOTTOM_NAV } = await import('@/constants/cityCategories')
-    const akis = CITY_BOTTOM_NAV.find((item) => item.id === 'akis')
-    expect(akis?.href).toBe('/feed-v2')
-    expect(akis?.shortLabel || akis?.label).toBe('Akış')
+    expect(CITY_BOTTOM_NAV.map((item) => item.id)).toEqual([
+      'feed',
+      'etkinlik',
+      'is-ilanlari',
+      'ilceler',
+    ])
+    expect(CITY_BOTTOM_NAV[0]?.label).toBe('Feed')
+    expect(CITY_BOTTOM_NAV[0]?.href).toBe('/')
+    expect(CITY_BOTTOM_NAV.some((item) => item.id === 'akis' || item.id === 'spor')).toBe(false)
   })
 
-  it('city layout keeps bottom nav on immersive Akış (no chrome-less black shell)', async () => {
+  it('city layout keeps bottom nav on immersive Feed 2 (no chrome-less black shell)', async () => {
     const { readFileSync } = await import('node:fs')
     const { join } = await import('node:path')
     const src = readFileSync(join(process.cwd(), 'src/components/city/CityLayoutClient.tsx'), 'utf8')

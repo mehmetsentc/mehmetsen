@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
-import { getCityCinemaEventsServer } from '@/services/eventService.server'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
+import { CitySmartFeedPage } from '@/components/city/CitySmartFeedPage'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { NationalHomePage, nationalHomeMetadata } from '@/components/home/NationalHomePage'
 
@@ -46,24 +44,20 @@ export async function generateMetadata(): Promise<Metadata> {
  * City chrome (`CityLayoutClient`) and national chrome (`MainLayoutClient`)
  * come from `(main)/layout.tsx` — do not wrap them again here.
  */
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string | string[] }>
+}) {
   const tenant = await getActiveTenant()
   const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
   const citySlug = tenant?.provinceSlug ?? hostCitySlug
 
   if (citySlug) {
-    const displayName = getCityCategoryName(citySlug)
-    const [homeFeedData, cinemaEvents] = await Promise.all([
-      getCityHomeFeedInitialData(citySlug),
-      getCityCinemaEventsServer(citySlug),
-    ])
-    return (
-      <CityFeedPageClient
-        homeFeedData={homeFeedData}
-        cityName={displayName}
-        cinemaEvents={cinemaEvents}
-      />
-    )
+    const sp = await searchParams
+    const raw = sp.category
+    const category = (Array.isArray(raw) ? raw[0] : raw)?.trim() || null
+    return <CitySmartFeedPage citySlug={citySlug} category={category} />
   }
 
   return <NationalHomePage />

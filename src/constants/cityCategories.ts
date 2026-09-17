@@ -27,7 +27,7 @@ export const CITY_CATEGORY_CHIPS: readonly CityCategoryChip[] = [
 
 /**
  * National/meta categories that must never appear in city subdomain filter chips.
- * Section tabs (spor, etkinlik) are excluded here — they have dedicated routes.
+ * Spor stays eligible — it is a Feed 2 chip, not a dock tab.
  */
 export const CITY_DYNAMIC_NAV_EXCLUDED_IDS = new Set([
   'trend',
@@ -35,7 +35,6 @@ export const CITY_DYNAMIC_NAV_EXCLUDED_IDS = new Set([
   'yerel-haber',
   'kibris-haberleri',
   'dunya',
-  'spor',
   'etkinlikler',
 ])
 
@@ -58,25 +57,22 @@ export interface CityBottomNavItem {
 }
 
 export const CITY_BOTTOM_NAV: readonly CityBottomNavItem[] = [
-  { id: 'feed', label: 'Ana Sayfa', shortLabel: 'Ana', href: '/', iconName: 'home' },
-  { id: 'akis', label: 'Akış', shortLabel: 'Akış', href: '/feed-v2', iconName: 'zap' },
+  { id: 'feed', label: 'Feed', shortLabel: 'Feed', href: '/', iconName: 'zap' },
   { id: 'etkinlik', label: 'Etkinlik', shortLabel: 'Etkinlik', href: '/etkinlik', iconName: 'calendar' },
   { id: 'is-ilanlari', label: 'İş', shortLabel: 'İş', href: '/is-ilanlari', iconName: 'briefcase' },
-  { id: 'spor', label: 'Spor', shortLabel: 'Spor', href: '/spor', iconName: 'trophy' },
   { id: 'ilceler', label: 'İlçeler', shortLabel: 'İlçeler', href: '/ilceler', iconName: 'map-pin' },
 ] as const
 
 /**
  * Structural section pills always shown in city header / bottom nav.
- * Spor is news-backed (hidden when the city has zero spor family articles).
+ * Spor lives in Feed 2 chips, not the dock.
  */
 export const CITY_ALWAYS_VISIBLE_SECTION_IDS = new Set<string>([
   'feed',
-  'akis',
   'etkinlik',
   'is-ilanlari',
   'ilceler',
 ])
 
-/** Section id that requires at least one published city spor (+ family) item. */
+/** @deprecated Spor is a Feed 2 category chip, not a dock section. */
 export const CITY_NEWS_BACKED_SECTION_ID = 'spor' as const

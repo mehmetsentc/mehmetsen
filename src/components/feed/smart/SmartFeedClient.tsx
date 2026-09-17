@@ -1178,7 +1178,8 @@ export function SmartFeedClient({
         else params.set('mode', nextMode)
       }
       const q = params.toString()
-      router.replace(q ? `/feed-v2?${q}` : '/feed-v2', { scroll: false })
+      const feedPath = lockCitySlug ? '/' : '/feed-v2'
+      router.replace(q ? `${feedPath}?${q}` : feedPath, { scroll: false })
 
       if (nextMode === 'local' && !nextCategory) {
         const city = resolveFeedCity('local')
@@ -1201,8 +1202,21 @@ export function SmartFeedClient({
 
       void loadPage(false, null, nextMode, false, nextCategory)
     },
-    [activeTabId, items.length, loadPage, resolveFeedCity, router, searchParams]
+    [activeTabId, items.length, loadPage, lockCitySlug, resolveFeedCity, router, searchParams]
   )
+
+  useEffect(() => {
+    if (!lockCitySlug) return
+    const next = searchParams.get('category')?.trim() || null
+    if (next === category) return
+    handleTabChange({
+      id: next || 'personal',
+      kind: next ? 'category' : 'mode',
+      label: next || 'Hepsi',
+      mode: 'personal',
+      category: next ?? undefined,
+    })
+  }, [lockCitySlug, searchParams, category, handleTabChange])
 
   // Boot / auth only — must NOT depend on mode/category.
   // Tab chips call loadPage directly; including mode/category here previously
@@ -2271,8 +2285,8 @@ export function SmartFeedClient({
         data-testid="smart-feed-canonical-shell"
         data-feed-surface="1"
       >
-        {/* Top category navigation — Always mounted */}
-        <FeedV2CategoryNav
+        {/* City tenants use CityNavbar chips; hide national Feed 2 tabs. */}
+        {lockCitySlug ? null : <FeedV2CategoryNav
           activeTabId={activeTabId}
           onChange={handleTabChange}
           exitHidden={Boolean(readerSession && readerSession.progress > 0.15)}
@@ -2295,7 +2309,7 @@ export function SmartFeedClient({
               </button>
             ) : null
           }
-        />
+        />}
 
         {isTabSwitching ? (
           <div

@@ -23,15 +23,15 @@ function item(category: string): NewsItem {
 }
 
 describe('city header empty-category filter', () => {
-  it('always keeps Ana Sayfa, Etkinlik, İş İlanları, İlçeler', () => {
+  it('always keeps Feed, Etkinlik, İş, İlçeler — Eczane after İş on duty cities', () => {
     const sections = buildCitySectionNavItems({ hasSpor: false })
-    expect(sections.map((s) => s.id)).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'ilceler'])
+    expect(sections.map((s) => s.id)).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'canakkale' }).map((s) => s.id)
-    ).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
+    ).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'antalya' }).map((s) => s.id)
-    ).toEqual(['feed', 'akis', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
+    ).toEqual(['feed', 'etkinlik', 'is-ilanlari', 'nobetci-eczaneler', 'ilceler'])
     expect(
       buildCitySectionNavItems({ hasSpor: false, citySlug: 'bursa' }).map((s) => s.id)
     ).not.toContain('nobetci-eczaneler')
@@ -41,8 +41,8 @@ describe('city header empty-category filter', () => {
     expect(sections.some((s) => s.id === CITY_NEWS_BACKED_SECTION_ID)).toBe(false)
   })
 
-  it('shows Spor section only when hasSpor', () => {
-    expect(buildCitySectionNavItems({ hasSpor: true }).map((s) => s.id)).toContain('spor')
+  it('keeps Spor out of the dock even when the city has spor news', () => {
+    expect(buildCitySectionNavItems({ hasSpor: true }).map((s) => s.id)).not.toContain('spor')
     expect(buildCitySectionNavItems({ hasSpor: false }).map((s) => s.id)).not.toContain('spor')
   })
 
@@ -56,7 +56,6 @@ describe('city header empty-category filter', () => {
     )
     expect(items.map((i) => i.id)).toEqual([
       'feed',
-      'akis',
       'etkinlik',
       'is-ilanlari',
       'ilceler',
@@ -64,9 +63,9 @@ describe('city header empty-category filter', () => {
       'yerel-duyuru',
     ])
     expect(buildCityCategoryNavItems([{ id: 'yerel-duyuru', name: 'Duyuru', slug: 'yerel-duyuru' }])[0]
-      .href).toBe('/kategori/yerel-duyuru')
+      .href).toBe('/?category=yerel-duyuru')
     expect(buildCityCategoryNavItems([{ id: 'siyaset', name: 'Siyaset', slug: 'siyaset' }])[0]
-      .href).toBe('/kategori/siyaset')
+      .href).toBe('/?category=siyaset')
   })
 
   it('deriveCityNavPresenceFromPool detects spor + yerel-duyuru without empty chips', async () => {
@@ -82,7 +81,7 @@ describe('city header empty-category filter', () => {
     expect(presence.hasSpor).toBe(true)
     expect(presence.categories.map((c) => c.id)).toContain('yerel-duyuru')
     expect(presence.categories.map((c) => c.id)).toContain('siyaset')
-    expect(presence.categories.map((c) => c.id)).not.toContain('spor')
+    expect(presence.categories.map((c) => c.id)).toContain('spor')
   })
 })
 

@@ -571,7 +571,7 @@ const getCityNavPresenceCached = unstable_cache(
     const pool = await getCityNews(citySlug, CITY_CATEGORY_POOL_LIMIT)
     return deriveCityNavPresenceFromPool(pool)
   },
-  ['city-nav-presence-v1'],
+  ['city-nav-presence-v2'],
   { revalidate: 300, tags: ['city-news'] }
 )
 

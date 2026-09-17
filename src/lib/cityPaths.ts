@@ -11,10 +11,16 @@ export function normalizeCityPath(pathname: string): string {
 export function isCitySectionActive(pathname: string, href: string): boolean {
   const path = normalizeCityPath(pathname)
   if (href === '/') {
-    return path === '/' || path === '/feed' || path === '/yerel'
+    return (
+      path === '/' ||
+      path === '/feed' ||
+      path === '/yerel' ||
+      path === '/feed-v2' ||
+      path.startsWith('/feed-v2/')
+    )
   }
   if (href === '/feed-v2') {
-    return path === '/feed-v2' || path.startsWith('/feed-v2/')
+    return path === '/' || path === '/feed-v2' || path.startsWith('/feed-v2/')
   }
   return path === href || path.startsWith(`${href}/`)
 }
@@ -22,11 +28,16 @@ export function isCitySectionActive(pathname: string, href: string): boolean {
 /** Main city feed surfaces where dynamic category nav is shown. */
 export function isCityFeedPath(pathname: string): boolean {
   const path = normalizeCityPath(pathname)
-  return path === '/' || path === '/feed' || path === '/yerel'
+  return (
+    path === '/' ||
+    path === '/feed' ||
+    path === '/yerel' ||
+    path === '/feed-v2' ||
+    path.startsWith('/feed-v2/')
+  )
 }
 
-/** Immersive Akış — no city chrome (matches national /feed-v2). */
+/** City Feed 2 occupies `/` and `/feed-v2` — keep dock + chips, hide magazine footer. */
 export function isCityImmersivePath(pathname: string): boolean {
-  const path = normalizeCityPath(pathname)
-  return path === '/feed-v2' || path.startsWith('/feed-v2/')
+  return isCityFeedPath(pathname)
 }
