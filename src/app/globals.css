@@ -303,18 +303,58 @@
   /* City Feed 2: chrome floats on the card — no paper slab, no reserved band. */
   .mobile-top-chrome--overlay {
     --header-onbrand: 255 255 255;
-    background: linear-gradient(180deg, rgb(0 0 0 / 0.62) 0%, rgb(0 0 0 / 0.28) 62%, transparent 100%);
-    background-color: transparent;
+    --nahaber-context-rail-height: 2.15rem;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
     color: #fff;
     border-bottom: 0;
     box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 
   .mobile-top-chrome--overlay.is-fixed::before,
   .mobile-top-chrome--overlay.sticky::before {
-    background: transparent;
+    content: none;
+    display: none;
+    background: transparent !important;
+    height: 0 !important;
+  }
+
+  .mobile-top-chrome--overlay .feed-v2-cat-chip,
+  .mobile-top-chrome--overlay .context-rail__chip {
+    min-height: 1.7rem;
+    padding: 0.15rem 0.4rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none;
+    color: #fff;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.85);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .mobile-top-chrome--overlay .feed-v2-cat-chip.context-rail__chip--active,
+  .mobile-top-chrome--overlay .context-rail__chip--active {
+    background: transparent !important;
+    box-shadow: inset 0 -2px 0 #fff;
+    color: #fff;
+  }
+
+  .mobile-top-chrome--overlay .context-rail {
+    padding: 0 0.65rem 0.2rem;
+  }
+
+  .mobile-top-chrome--overlay .context-rail::after {
+    display: none;
+  }
+
+  .mobile-top-chrome--overlay .newspaper-layout-inner,
+  .mobile-top-chrome--overlay header {
+    color: #fff;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.7);
   }
 
   @media (max-width: 1023px) {

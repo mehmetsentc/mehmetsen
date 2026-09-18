@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Search, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CityBrandLockup } from '@/components/city/CityBrandLockup'
@@ -22,12 +22,7 @@ interface CityNavbarProps {
 }
 
 function CityFeedCategoryRail({ overlay = false }: { overlay?: boolean }) {
-  const searchParams = useSearchParams()
   const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
-
-  useEffect(() => {
-    setActiveCategoryId(searchParams.get('category'))
-  }, [searchParams, setActiveCategoryId])
 
   const navCategories = [
     { id: '__all', label: 'Hepsi', href: '/' },
@@ -71,20 +66,25 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
         className={cn(
           'mobile-top-chrome is-fixed z-[100] lg:hidden',
           overlayFeed
-            ? 'max-lg:mobile-top-chrome--overlay max-lg:text-white lg:bg-[rgb(var(--header-brand-bg))] lg:text-[rgb(var(--header-onbrand))]'
+            ? 'mobile-top-chrome--overlay text-white'
             : 'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
-          'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
+          overlayFeed
+            ? 'pt-1'
+            : 'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-[72px]">
+        <header className={overlayFeed ? 'h-11' : 'h-[72px]'}>
           <div className="newspaper-layout-inner flex h-full items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
             <button
               type="button"
               onClick={onMenuClick}
-              className="flex h-10 w-10 shrink-0 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
+              className={cn(
+                'flex shrink-0 items-center justify-center text-[rgb(var(--header-onbrand))]',
+                overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+              )}
               aria-label="Menü"
             >
-              <Menu className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
+              <Menu className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-6 sm:w-6'} strokeWidth={2} />
             </button>
 
             <Link
@@ -105,23 +105,33 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
               <button
                 type="button"
                 onClick={() => router.push('/search')}
-                className="flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
+                className={cn(
+                  'flex items-center justify-center text-[rgb(var(--header-onbrand))]',
+                  overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+                )}
                 aria-label="Ara"
               >
-                <Search className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
+                <Search className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
               </button>
               <NotificationBell
                 variant="onBrand"
-                iconClassName="h-5 w-5 sm:h-[22px] sm:w-[22px]"
-                buttonClassName="relative flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
+                iconClassName={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'}
+                buttonClassName={
+                  overlayFeed
+                    ? 'relative flex h-9 w-9 items-center justify-center text-[rgb(var(--header-onbrand))]'
+                    : 'relative flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11'
+                }
               />
               {profileHref ? (
                 <Link
                   href={profileHref}
-                  className="flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11"
+                  className={cn(
+                    'flex items-center justify-center text-[rgb(var(--header-onbrand))]',
+                    overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+                  )}
                   aria-label="Profil"
                 >
-                  <User className="h-5 w-5 sm:h-[22px] sm:w-[22px]" strokeWidth={2} />
+                  <User className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
                 </Link>
               ) : null}
             </div>

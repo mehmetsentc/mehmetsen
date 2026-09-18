@@ -8,6 +8,7 @@ import {
   getSharedRailDestinations,
   sharedRailChipLabel,
 } from '@/lib/feed/sharedCategoryRail'
+import { publishCityCategory } from '@/store/cityCategoryContext'
 import { cn } from '@/lib/utils'
 
 export interface CategoryNavItem {
@@ -92,17 +93,16 @@ export function CategoryNav({
             activeCategoryId === cat.id || (activeCategoryId === null && cat.id === '__all')
           const categoryId = cat.id === '__all' ? null : cat.id
           return (
-            <Link
+            <button
               key={cat.id}
-              href={cat.href}
-              prefetch={false}
-              scroll={false}
+              type="button"
               data-category-chip={cat.id}
-              onClick={(event) => {
-                if (!onCategorySelect) return
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-                event.preventDefault()
-                onCategorySelect(categoryId)
+              onClick={() => {
+                onCategorySelect?.(categoryId)
+                publishCityCategory(categoryId)
+                ;(
+                  window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }
+                ).__nahaberApplyCityCategory?.(categoryId)
                 const next = categoryId ? `/?category=${encodeURIComponent(categoryId)}` : '/'
                 window.history.replaceState(window.history.state, '', next)
               }}
@@ -114,7 +114,7 @@ export function CategoryNav({
               aria-current={isActive ? 'page' : undefined}
             >
               {cat.label}
-            </Link>
+            </button>
           )
         })}
       </ContextRail>

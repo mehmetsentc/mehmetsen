@@ -1,6 +1,15 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import type { CityCategory } from '@/services/cityNewsService.server'
 
 interface CityCategoryContextValue {
@@ -13,6 +22,23 @@ interface CityCategoryContextValue {
 
 const CityCategoryContext = createContext<CityCategoryContextValue | null>(null)
 
+export const CITY_CATEGORY_EVENT = 'nahaber:city-category'
+
+export function publishCityCategory(id: string | null) {
+  if (typeof window === 'undefined') return
+  const apply = (window as Window & { __nahaberApplyCityCategory?: (next: string | null) => void })
+    .__nahaberApplyCityCategory
+  apply?.(id)
+  window.dispatchEvent(
+    new CustomEvent(CITY_CATEGORY_EVENT, { detail: { categoryId: id } })
+  )
+}
+
+function categoryFromLocation(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.search).get('category')
+}
+
 export function CityCategoryProvider({
   categories,
   hasSpor = false,
@@ -23,18 +49,29 @@ export function CityCategoryProvider({
   children: ReactNode
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const bootedFromUrl = useRef(false)
+
+  useEffect(() => {
+    if (bootedFromUrl.current) return
+    bootedFromUrl.current = true
+    const fromUrl = categoryFromLocation()
+    if (fromUrl) {
+      setActiveCategoryId(fromUrl)
+      publishCityCategory(fromUrl)
+    }
+  }, [])
 
   const setCategory = useCallback((id: string | null) => {
     setActiveCategoryId(id)
+    publishCityCategory(id)
   }, [])
 
-  return (
-    <CityCategoryContext.Provider
-      value={{ categories, hasSpor, activeCategoryId, setActiveCategoryId: setCategory }}
-    >
-      {children}
-    </CityCategoryContext.Provider>
+  const value = useMemo(
+    () => ({ categories, hasSpor, activeCategoryId, setActiveCategoryId: setCategory }),
+    [categories, hasSpor, activeCategoryId, setCategory]
   )
+
+  return <CityCategoryContext.Provider value={value}>{children}</CityCategoryContext.Provider>
 }
 
 export function useCityCategoryFilter(): CityCategoryContextValue {

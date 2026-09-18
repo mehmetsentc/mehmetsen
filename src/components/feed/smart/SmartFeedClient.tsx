@@ -111,6 +111,7 @@ import { markSwipeDiscoveryLearned, readSwipeCoachDebug } from '@/lib/feed/reade
 import { readReaderReturnCoachDebug } from '@/lib/feed/reader/readerReturnCoach'
 import { ROUTES } from '@/constants/routes'
 import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type FeedV2Tab } from '@/lib/feed/feedV2Tabs'
+import { CITY_CATEGORY_EVENT, useOptionalCityCategoryFilter } from '@/store/cityCategoryContext'
 import { cn } from '@/lib/utils'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
 
@@ -248,6 +249,7 @@ export function SmartFeedClient({
   const sheetMode = presentation === 'sheet'
   const router = useRouter()
   const searchParams = useSearchParams()
+  const cityCategoryFilter = useOptionalCityCategoryFilter()
   const { user: authUser, loading: authLoading } = useAuthContext()
   const userLocation = useUserLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -369,6 +371,7 @@ export function SmartFeedClient({
   modeRef.current = mode
   const categoryRef = useRef(category)
   categoryRef.current = category
+  const lastAppliedCityCategoryRef = useRef<string | null | undefined>(undefined)
   const authUidRef = useRef<string | null>(authUser?.uid ?? null)
   authUidRef.current = authUser?.uid ?? null
   const cardHeightRef = useRef(0)
@@ -990,6 +993,8 @@ export function SmartFeedClient({
     },
     [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity, lockCitySlug]
   )
+  const loadPageRef = useRef(loadPage)
+  loadPageRef.current = loadPage
 
   const applyLocalCity = useCallback(
     (slug: string, name: string, source: 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie') => {
@@ -1121,7 +1126,7 @@ export function SmartFeedClient({
           userLocation.cityName,
           userLocation.source as 'geolocation' | 'manual' | 'profile' | 'cookie'
         )
-        void loadPage(false, null, 'local', false, null)
+        void loadPageRef.current(false, null, 'local', false, null)
         return
       }
 
@@ -1149,6 +1154,12 @@ export function SmartFeedClient({
       const nextMode = tab.mode ?? 'personal'
       const nextCategory = tab.kind === 'category' ? tab.category ?? null : null
       if (tab.id === activeTabId && items.length > 0) return
+      if (lockCitySlug) {
+        cityCategoryFilter?.setActiveCategoryId(nextCategory)
+        const nextUrl = nextCategory ? `/?category=${encodeURIComponent(nextCategory)}` : '/'
+        window.history.replaceState(window.history.state, '', nextUrl)
+        return
+      }
       clearFeedRestore()
       restoreAppliedRef.current = false
       pendingRestoreScrollRef.current = null
@@ -1178,8 +1189,7 @@ export function SmartFeedClient({
         else params.set('mode', nextMode)
       }
       const q = params.toString()
-      const feedPath = lockCitySlug ? '/' : '/feed-v2'
-      router.replace(q ? `${feedPath}?${q}` : feedPath, { scroll: false })
+      router.replace(q ? `/feed-v2?${q}` : '/feed-v2', { scroll: false })
 
       if (nextMode === 'local' && !nextCategory) {
         const city = resolveFeedCity('local')
@@ -1200,23 +1210,62 @@ export function SmartFeedClient({
         setLocationSetupOpen(false)
       }
 
-      void loadPage(false, null, nextMode, false, nextCategory)
+      void loadPageRef.current(false, null, nextMode, false, nextCategory)
     },
-    [activeTabId, items.length, loadPage, lockCitySlug, resolveFeedCity, router, searchParams]
+    [activeTabId, items.length, lockCitySlug, resolveFeedCity, router, searchParams, cityCategoryFilter]
   )
 
   useEffect(() => {
-    if (!lockCitySlug) return
-    const next = searchParams.get('category')?.trim() || null
-    if (next === category) return
-    handleTabChange({
-      id: next || 'personal',
-      kind: next ? 'category' : 'mode',
-      label: next || 'Hepsi',
-      mode: 'personal',
-      category: next ?? undefined,
-    })
-  }, [lockCitySlug, searchParams, category, handleTabChange])
+    const apply = (categoryId: string | null) => {
+      if (!lockCitySlug && !document.querySelector('[data-city-feed]')) return
+      const next = categoryId?.trim() || null
+      if (next === lastAppliedCityCategoryRef.current) return
+      lastAppliedCityCategoryRef.current = next
+      clearFeedRestore()
+      restoreAppliedRef.current = false
+      pendingRestoreScrollRef.current = null
+      setActiveTabId(next || 'personal')
+      setMode('personal')
+      setCategory(next)
+      setCursor(null)
+      cursorRef.current = null
+      setActiveIndex(0)
+      activeIndexRef.current = 0
+      setErrorState(null)
+      setLoading(true)
+      setItems([])
+      itemsRef.current = []
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0
+      }
+      const nextUrl = next ? `/?category=${encodeURIComponent(next)}` : '/'
+      window.history.replaceState(window.history.state, '', nextUrl)
+      void loadPageRef.current(false, null, 'personal', false, next)
+    }
+
+    ;(window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }).__nahaberApplyCityCategory = apply
+
+    const onCityCategory = (event: Event) => {
+      const categoryId = (event as CustomEvent<{ categoryId: string | null }>).detail?.categoryId ?? null
+      apply(categoryId)
+    }
+
+    const onChipClick = (event: MouseEvent) => {
+      const chip = (event.target as Element | null)?.closest?.('[data-category-chip]')
+      if (!chip) return
+      const raw = chip.getAttribute('data-category-chip')
+      apply(!raw || raw === '__all' ? null : raw)
+    }
+
+    window.addEventListener(CITY_CATEGORY_EVENT, onCityCategory)
+    document.addEventListener('click', onChipClick, true)
+    return () => {
+      const w = window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }
+      if (w.__nahaberApplyCityCategory === apply) delete w.__nahaberApplyCityCategory
+      window.removeEventListener(CITY_CATEGORY_EVENT, onCityCategory)
+      document.removeEventListener('click', onChipClick, true)
+    }
+  }, [lockCitySlug])
 
   // Boot / auth only — must NOT depend on mode/category.
   // Tab chips call loadPage directly; including mode/category here previously
@@ -1251,7 +1300,7 @@ export function SmartFeedClient({
         clearFeedRestore()
         // Background revalidate without blocking warm first paint / yanking to card 0.
         window.setTimeout(() => {
-          void loadPage(false, null, pending.mode, false, pending.category ?? null, true)
+          void loadPageRef.current(false, null, pending.mode, false, pending.category ?? null, true)
         }, 0)
         return
       }
@@ -1279,15 +1328,20 @@ export function SmartFeedClient({
       activeIndexRef.current === 0
     ) {
       personalizedOnceRef.current = true
-      void loadPage(false, null, 'personal', true, null)
+      void loadPageRef.current(false, null, 'personal', true, null)
       return
     }
 
     // Cold start / no SSR: fetch immediately — do not wait for auth profile.
     if (!hasCards) {
-      void loadPage(false)
+      const cityCategory =
+        lockCitySlug && typeof window !== 'undefined'
+          ? lastAppliedCityCategoryRef.current ??
+            new URLSearchParams(window.location.search).get('category')
+          : undefined
+      void loadPageRef.current(false, null, undefined, false, cityCategory ?? categoryRef.current)
     }
-  }, [authLoading, authUser?.uid, loadPage])
+  }, [authLoading, authUser?.uid, lockCitySlug])
 
   // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
   useLayoutEffect(() => {
