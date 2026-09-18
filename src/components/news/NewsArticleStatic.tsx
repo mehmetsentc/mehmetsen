@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -36,7 +36,6 @@ import {
   ARTICLE_READER_SHELL_CLASS,
   ARTICLE_READER_SHELL_TESTID,
   ARTICLE_READER_SPOT_CLASS,
-  FEED_READER_CSS_VARS,
 } from '@/lib/feed/reader/articleReaderPresentation'
 
 interface NewsArticleStaticProps {
@@ -219,7 +218,6 @@ export function NewsArticleStatic({
       articleId={post.id}
       className={ARTICLE_READER_SHELL_CLASS}
       data-testid={ARTICLE_READER_SHELL_TESTID}
-      style={FEED_READER_CSS_VARS as CSSProperties}
     >
       <nav
         aria-label="Breadcrumb"

@@ -7,6 +7,7 @@ import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
   FEED_READER_SURFACE_CLASS,
   FEED_V2_CHROME_CSS_VARS,
+  FEED_V2_SURFACE_CLASS,
 } from '@/lib/feed/reader/feedChrome'
 import { isSmartFeedEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { feedService } from '@/services/feed/FeedService'
@@ -46,12 +47,16 @@ export default async function FeedV3Page() {
 
   return (
     <div
-      className="relative h-full min-h-0 w-full bg-black overflow-hidden flex justify-center select-none"
+      className={cn(
+        'relative h-full min-h-0 w-full overflow-hidden flex justify-center select-none',
+        FEED_V2_SURFACE_CLASS
+      )}
       data-testid="smart-feed-v3-ssr-shell"
     >
       <div
         className={cn(
-          'relative h-full min-h-0 overflow-hidden bg-black flex flex-col',
+          'relative h-full min-h-0 overflow-hidden flex flex-col',
+          FEED_V2_SURFACE_CLASS,
           FEED_READER_SURFACE_CLASS
         )}
         style={FEED_V2_CHROME_CSS_VARS as CSSProperties}

@@ -6,6 +6,7 @@ import {
   ALargeSmall,
   Headphones,
   ListTree,
+  Monitor,
   Moon,
   Pause,
   Play,
@@ -229,9 +230,10 @@ export function ArticleReaderTools({
       {/* Tema */}
       <section className={cn('px-4 py-3', hasToc && 'border-b border-[rgb(var(--color-border))]')}>
         <p className="mb-2 text-xs font-semibold text-[rgb(var(--color-text-secondary))]">Tema</p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5">
           {(
             [
+              { id: 'system', label: 'Otomatik', icon: <Monitor className="h-3.5 w-3.5" /> },
               { id: 'light', label: 'Açık', icon: <Sun className="h-3.5 w-3.5" /> },
               { id: 'dark',  label: 'Koyu', icon: <Moon className="h-3.5 w-3.5" /> },
               { id: 'oled',  label: 'OLED', icon: <Moon className="h-3.5 w-3.5 fill-current" /> },

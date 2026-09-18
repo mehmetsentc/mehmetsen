@@ -62,6 +62,10 @@ export const FEED_READER_SURFACE_MAX_REM = 44
 export const FEED_READER_SURFACE_CLASS =
   'w-full max-w-[var(--feed-reader-surface-max,44rem)] md:mx-auto' as const
 
+/** Feed 2 letterbox follows site theme (light paper / dark navy). */
+export const FEED_V2_SURFACE_CLASS =
+  'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]' as const
+
 /** Expected CSS px at 16px root for desktop parity checks. */
 export function feedReaderSurfaceMaxPx(rootFontPx = 16): number {
   return FEED_READER_SURFACE_MAX_REM * rootFontPx

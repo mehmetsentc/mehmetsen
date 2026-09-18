@@ -99,6 +99,15 @@
     --article-reader-clearance: calc(
       var(--article-reader-fab-bottom) + var(--article-reader-fab-h) + 1.5rem
     );
+    /* Canonical /haber follows site theme — do not lock a dark reader skin. */
+    --reader-page-bg: rgb(var(--bg-base));
+    --reader-page-elevated: rgb(var(--bg-card));
+    --reader-page-text: rgb(var(--text-primary));
+    --reader-prose-text: rgb(var(--text-body));
+    --reader-page-muted: rgb(var(--text-tertiary));
+    --reader-page-edge: rgb(var(--border-default) / 0.45);
+    --reader-fold-shadow: rgb(0 0 0 / 0.08);
+    --reader-accent: rgb(var(--color-brand));
   }
 
   @media (min-width: 768px) {
@@ -226,6 +235,13 @@
     --color-nav-hover: var(--nav-hover);
     --color-nav-bar: var(--nav-bar-bg);
     --color-nav-bar-border: var(--nav-bar-border);
+    --reader-page-bg: #0c0c0e;
+    --reader-page-elevated: #141417;
+    --reader-page-text: #f4f1ea;
+    --reader-prose-text: #e8e6e1;
+    --reader-page-muted: #a8a29a;
+    --reader-page-edge: rgba(255, 255, 255, 0.1);
+    --reader-fold-shadow: rgba(0, 0, 0, 0.55);
   }
 
   html {
@@ -1325,12 +1341,12 @@
   }
 
   .back-nav-btn--on-brand {
-    color: #fff;
+    color: rgb(var(--header-onbrand));
   }
 
   .back-nav-btn--on-brand:hover {
-    background: rgb(255 255 255 / 0.12);
-    color: #fff;
+    background: rgb(var(--header-onbrand) / 0.12);
+    color: rgb(var(--header-onbrand));
   }
 
   .back-nav-btn--inline {

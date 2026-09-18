@@ -390,7 +390,7 @@ export function FullscreenNewsCard({
   return (
     <article
       ref={cardRef}
-      className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-black"
+      className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-[rgb(var(--color-surface))]"
       aria-label={item.headline}
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}

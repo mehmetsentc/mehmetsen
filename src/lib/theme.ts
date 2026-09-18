@@ -49,13 +49,9 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
   return preference
 }
 
-/** Akış / Reels stay dark even when the stored preference is light. */
+/** Video surfaces stay dark. Feed 2 follows the stored light / dark / system theme. */
 export function isForcedDarkPathname(pathname: string): boolean {
   return (
-    pathname === '/feed-v2' ||
-    pathname.startsWith('/feed-v2/') ||
-    pathname === '/feed-v3' ||
-    pathname.startsWith('/feed-v3/') ||
     pathname === '/reels' ||
     pathname.startsWith('/reels/') ||
     pathname === '/video' ||

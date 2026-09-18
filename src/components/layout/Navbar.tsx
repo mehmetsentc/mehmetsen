@@ -98,9 +98,9 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   }, [chromeHeight, fallbackChromeHeight])
 
   const iconIdle =
-    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white/45 transition-colors duration-150 hover:text-white/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--header-onbrand))]/70 transition-colors duration-150 hover:text-[rgb(var(--header-onbrand))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
   const iconActive =
-    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80'
+    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
   const iconBtn = iconIdle
 
   function openSubmit() {
@@ -118,11 +118,11 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         data-testid="global-header-chrome"
         className={cn(
           'mobile-top-chrome mobile-top-chrome--immersive is-fixed z-[100] lg:hidden',
-          'text-white',
+          'text-[rgb(var(--header-onbrand))]',
           'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden text-white">
+        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden text-[rgb(var(--header-onbrand))]">
           <div className="flex h-full min-w-0 items-center justify-between gap-2 px-2.5 sm:gap-2.5 sm:px-3">
             <div className="flex min-w-0 items-center gap-0.5">
               {showBack ? (

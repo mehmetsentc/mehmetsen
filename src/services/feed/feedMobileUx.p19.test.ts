@@ -20,7 +20,8 @@ describe('P19 Global Nav', () => {
   it('selected icon is brand red on transparent; idle is soft transparent', () => {
     const nav = read('src/components/layout/Navbar.tsx')
     expect(nav).toContain("text-[rgb(var(--brand-500))]")
-    expect(nav).toContain('text-white/45')
+    expect(nav).toContain('text-[rgb(var(--header-onbrand))]')
+    expect(nav).not.toContain('text-white/45')
     expect(nav).not.toContain("bg-white/20 text-white")
     expect(nav).toContain('global-nav-v2-icon-row')
     expect(nav).toContain('h-12 w-12')

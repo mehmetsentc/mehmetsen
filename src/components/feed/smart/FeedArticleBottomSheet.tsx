@@ -10,7 +10,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ExternalLink, Loader2, X } from 'lucide-react'
 import { getClientAuthToken } from '@/lib/firebase/auth'
-import { FEED_READER_CSS_VARS } from '@/lib/feed/reader/tokens'
 import {
   formatReaderCategoryLabel,
   pickFullReaderCopy,
@@ -166,7 +165,6 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
         height: viewportBox?.height ?? '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        ...FEED_READER_CSS_VARS,
       }}
     >
       <button

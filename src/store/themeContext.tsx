@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { usePathname } from 'next/navigation'
 import {
   applyThemeClass,
   DEFAULT_THEME,
@@ -28,6 +29,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [theme, setThemeState] = useState<ThemePreference>(DEFAULT_THEME)
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
 
@@ -42,6 +44,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(stored)
     syncTheme(stored)
   }, [syncTheme])
+
+  useEffect(() => {
+    syncTheme(theme)
+  }, [pathname, theme, syncTheme])
 
   useEffect(() => {
     if (theme !== 'system') return

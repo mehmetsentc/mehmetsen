@@ -115,7 +115,7 @@ const CityShell = memo(function CityShell({
   const immersiveFeed = isCityImmersivePath(pathname)
 
   return (
-    <div className={immersiveFeed ? 'min-h-dvh bg-black' : 'min-h-dvh bg-[rgb(var(--color-surface))]'}>
+    <div className="min-h-dvh bg-[rgb(var(--color-surface))]">
       <MobileSafeAreaShield />
       <CitySidebar
         cityName={displayName}
@@ -136,7 +136,7 @@ const CityShell = memo(function CityShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="isolate w-full bg-black max-lg:fixed max-lg:inset-0 max-lg:z-0 max-lg:h-dvh max-lg:overflow-hidden lg:relative lg:min-h-0 lg:overflow-visible"
+          className="isolate w-full bg-[rgb(var(--color-surface))] max-lg:fixed max-lg:inset-0 max-lg:z-0 max-lg:h-dvh max-lg:overflow-hidden lg:relative lg:min-h-0 lg:overflow-visible"
           data-city-feed-overlay="1"
         >
           {children}

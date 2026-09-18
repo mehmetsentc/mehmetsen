@@ -12,6 +12,7 @@ import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import {
   FEED_READER_SURFACE_CLASS,
   FEED_V2_CHROME_CSS_VARS,
+  FEED_V2_SURFACE_CLASS,
 } from '@/lib/feed/reader/feedChrome'
 import { captureFeedV2EntryFromReferrer } from '@/lib/feed/reader/feedV2Exit'
 import { tryLockFeedPortraitOrientation } from '@/lib/feed/reader/feedPortrait'
@@ -2334,7 +2335,10 @@ export function SmartFeedClient({
 
   return (
     <div
-      className="relative h-full min-h-0 w-full bg-black overflow-hidden flex justify-center select-none"
+      className={cn(
+        'relative h-full min-h-0 w-full overflow-hidden flex justify-center select-none',
+        FEED_V2_SURFACE_CLASS
+      )}
       data-testid="smart-feed-root"
       data-feed-mounted="1"
       data-feed-session-id={feedSessionIdRef.current}
@@ -2342,7 +2346,8 @@ export function SmartFeedClient({
       {/* Canonical Viewport Shell — fills .content-main-reels (remaining band under chrome) */}
       <div
         className={cn(
-          'relative h-full min-h-0 overflow-hidden bg-black flex flex-col',
+          'relative h-full min-h-0 overflow-hidden flex flex-col',
+          FEED_V2_SURFACE_CLASS,
           FEED_READER_SURFACE_CLASS
         )}
         style={FEED_V2_CHROME_CSS_VARS as CSSProperties}
@@ -2878,19 +2883,19 @@ export function SmartFeedClient({
             ) : null}
             {loadingMore ? (
               <div
-                className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always items-center justify-center bg-black"
+                className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always items-center justify-center bg-[rgb(var(--color-surface))]"
                 data-testid="smart-feed-loading-more"
               >
-                <Loader2 className="h-6 w-6 animate-spin text-white" />
+                <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-text))]" />
               </div>
             ) : null}
             {!hasMore && items.length > 0 ? (
-              <div className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col items-center justify-center bg-black px-6 text-center text-white">
+              <div className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col items-center justify-center bg-[rgb(var(--color-surface))] px-6 text-center text-[rgb(var(--color-text))]">
                 <div className="mb-4 rounded-full bg-white/10 p-4">
                   <CheckCircle2 className="h-8 w-8 text-emerald-400" />
                 </div>
                 <h3 className="mb-2 text-xl font-bold">Tüm haberleri gördün</h3>
-                <p className="mb-6 max-w-xs text-sm text-white/70">
+                <p className="mb-6 max-w-xs text-sm text-[rgb(var(--color-text-secondary))]">
                   Şimdilik bu kadar. Yeni gelişmeler geldikçe burada göreceksin.
                 </p>
                 <button

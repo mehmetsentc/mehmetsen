@@ -66,7 +66,6 @@ import {
   recordReaderNavTrace,
 } from '@/lib/feed/reader/navTrace'
 import {
-  FEED_READER_CSS_VARS,
   FEED_READER_DURATION_MS,
   FEED_READER_EASING,
   FEED_READER_HERO_LOAD_TIMEOUT_MS,
@@ -1048,7 +1047,6 @@ export function FeedArticleReader({
         : 'none'
 
   const styleVars = {
-    ...FEED_READER_CSS_VARS,
     // Reader enters from the RIGHT as finger swipes LEFT (progress 0→1).
     transform: reducedMotion
       ? undefined
