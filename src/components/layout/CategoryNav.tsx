@@ -28,6 +28,8 @@ interface CategoryNavProps {
    * Prevents dual-sticky desync / overscroll gaps on iOS.
    */
   embedded?: boolean
+  /** Transparent rail over a full-bleed feed card. */
+  overlay?: boolean
 }
 
 export function CategoryNav({
@@ -35,6 +37,7 @@ export function CategoryNav({
   onCategorySelect,
   activeCategoryId,
   embedded = false,
+  overlay = false,
 }: CategoryNavProps = {}) {
   const pathname = usePathname()
 
@@ -92,11 +95,22 @@ export function CategoryNav({
             <Link
               key={cat.id}
               href={cat.href}
-              prefetch
+              prefetch={false}
               scroll={false}
               data-category-chip={cat.id}
-              onClick={() => onCategorySelect?.(categoryId)}
-              className={contextRailChipClass(isActive)}
+              onClick={(event) => {
+                if (!onCategorySelect) return
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                event.preventDefault()
+                onCategorySelect(categoryId)
+                const next = categoryId ? `/?category=${encodeURIComponent(categoryId)}` : '/'
+                window.history.replaceState(window.history.state, '', next)
+              }}
+              className={
+                overlay
+                  ? cn('feed-v2-cat-chip', contextRailChipClass(isActive))
+                  : contextRailChipClass(isActive)
+              }
               aria-current={isActive ? 'page' : undefined}
             >
               {cat.label}
