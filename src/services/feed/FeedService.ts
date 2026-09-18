@@ -13,6 +13,7 @@ import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
+import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -108,7 +109,12 @@ async function resolveNfRankMode(ctx: FeedRequestContext): Promise<NfRankPipelin
   return 'off'
 }
 
-function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialState | null, debug?: boolean): FeedItemDto {
+function toDto(
+  row: FeedCandidateRow | ScoredFeedCandidate,
+  social?: FeedSocialState | null,
+  debug?: boolean,
+  fallbackCitySlug?: string | null
+): FeedItemDto {
   const scored = 'score' in row ? row : null
   const rawSlug = row.publisherSlug ?? null
   const idAsSlug =
@@ -116,6 +122,13 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
   const linkableSlug = isPublisherProfileSlug(rawSlug)
     ? rawSlug!.trim().toLowerCase()
     : idAsSlug
+  const editor = resolveFeedEditorByline({
+    authorName: row.authorName,
+    authorId: row.authorId,
+    aiEditorId: row.aiEditorId,
+    citySlug: row.citySlug || fallbackCitySlug || null,
+    publisherName: row.publisherName,
+  })
   return {
     id: row.articleId,
     type: 'article',
@@ -155,6 +168,10 @@ function toDto(row: FeedCandidateRow | ScoredFeedCandidate, social?: FeedSocialS
     scoreBreakdown: debug && scored ? scored.breakdown : undefined,
     slug: row.slug,
     tags: row.tags?.length ? row.tags.slice(0, 8) : undefined,
+    authorName: editor?.name ?? null,
+    authorSlug: editor?.slug || null,
+    authorId: editor?.authorUid || row.authorId?.trim() || null,
+    sourceName: row.sourceName?.trim() || row.publisherName?.trim() || null,
   }
 }
 
@@ -453,7 +470,7 @@ export class FeedService {
           loadSocialState(ctx.userId, articleIds),
           enrichPublisherSlugs(ordered),
         ])
-        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 
         const last = ordered[ordered.length - 1]!
         const mayHaveMore = hasMoreInSnapshot || !nextPayload.corpusExhausted
@@ -544,7 +561,7 @@ export class FeedService {
           loadSocialState(ctx.userId, articleIds),
           enrichPublisherSlugs(ranked),
         ])
-        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 
         const last = ranked[ranked.length - 1]
         const nextCursor = pipelineResult.sessionToken
@@ -611,7 +628,7 @@ export class FeedService {
         loadSocialState(ctx.userId, articleIds),
         enrichPublisherSlugs(ranked),
       ])
-      const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug))
+      const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 
       const last = ranked[ranked.length - 1]
       const nextCursor = encodeFeedCursor({

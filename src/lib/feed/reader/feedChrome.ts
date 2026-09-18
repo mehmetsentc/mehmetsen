@@ -20,7 +20,7 @@ export const FEED_V2_CHROME_CSS_VARS = {
    * card is not a black band above the pills.
    */
   '--feed-v2-bottom-clearance':
-    'calc(var(--mobile-nav-pill-h, 3rem) + var(--mobile-nav-float-gap, 1.15rem) + env(safe-area-inset-bottom, 0px) + 0.85rem)',
+    'var(--city-feed-overlay-clearance, calc(var(--mobile-nav-pill-h, 3rem) + var(--mobile-nav-float-gap, 1.15rem) + env(safe-area-inset-bottom, 0px) + 0.85rem))',
   /** Top clearance after context rail moved into site header (Global Nav V2). */
   '--feed-v2-top-clearance': '0.5rem',
   /**

@@ -126,6 +126,10 @@ function mapRows(
     publisherId: string | null
     publisherSlug: string | null
     publisherName: string | null
+    authorName?: string | null
+    authorId?: string | null
+    aiEditorId?: string | null
+    sourceName?: string | null
     publisherLogoUrl: string | null
     publisherVerified?: boolean
     headline: string
@@ -182,6 +186,10 @@ function mapRows(
       publisherId: row.publisherId,
       publisherSlug: row.publisherSlug,
       publisherName: row.publisherName || 'Kaynak',
+      authorName: row.authorName?.trim() || null,
+      authorId: row.authorId?.trim() || null,
+      aiEditorId: row.aiEditorId?.trim() || null,
+      sourceName: row.sourceName?.trim() || null,
       publisherLogoUrl: row.publisherLogoUrl,
       publisherVerified: Boolean(row.publisherVerified),
       headline: row.headline,
@@ -230,6 +238,10 @@ function baseSelect() {
     // Never coalesce news.authorId — AI editor UIDs are not followable publishers.
     publisherSlug: publishers.slug,
     publisherName: sql<string | null>`coalesce(${publishers.displayName}, ${newsSources.name}, ${news.authorDisplayName}, ${news.source}, 'Kaynak')`,
+    authorName: news.authorDisplayName,
+    authorId: news.authorId,
+    aiEditorId: news.aiEditorId,
+    sourceName: sql<string | null>`coalesce(${newsSources.name}, ${news.source})`,
     publisherLogoUrl: publishers.logoUrl,
     publisherVerified: sql<boolean>`coalesce(${publishers.verificationStatus} = 'VERIFIED', false)`,
     headline: news.title,
@@ -306,6 +318,17 @@ export class FeedCandidateService {
         null,
       publisherSlug,
       publisherName: data.sourceLabel || data.source || data.authorDisplayName || 'Kaynak',
+      authorName:
+        typeof data.authorDisplayName === 'string' && data.authorDisplayName.trim()
+          ? data.authorDisplayName.trim()
+          : null,
+      authorId: typeof data.authorId === 'string' && data.authorId.trim() ? data.authorId.trim() : null,
+      aiEditorId:
+        typeof data.aiEditorId === 'string' && data.aiEditorId.trim() ? data.aiEditorId.trim() : null,
+      sourceName:
+        (typeof data.sourceLabel === 'string' && data.sourceLabel.trim()) ||
+        (typeof data.source === 'string' && data.source.trim()) ||
+        null,
       publisherLogoUrl: data.sourceLogoUrl || null,
       publisherVerified: Boolean(data.publisherVerified || data.verified),
       headline: data.title || '',

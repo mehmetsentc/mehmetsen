@@ -15,15 +15,17 @@ import { cn } from '@/lib/utils'
 export async function CitySmartFeedPage({
   citySlug,
   category = null,
+  skipSsr = false,
 }: {
   citySlug: string
   category?: string | null
+  skipSsr?: boolean
 }) {
-  const debug = process.env.NODE_ENV !== 'production'
+  const debug = false
   let initialPage: FeedPageDto | null = null
 
   try {
-    if (hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
+    if (!skipSsr && hasDatabaseUrl() && (await isSmartFeedEffectiveForUser(null))) {
       initialPage = await feedService.getFeed({
         userId: null,
         sessionId: null,

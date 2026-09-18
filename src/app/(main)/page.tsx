@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { CitySmartFeedPage } from '@/components/city/CitySmartFeedPage'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { NationalHomePage, nationalHomeMetadata } from '@/components/home/NationalHomePage'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getActiveTenant()
   const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
   const citySlug = tenant?.provinceSlug ?? hostCitySlug
-  if (!citySlug) return nationalHomeMetadata()
+  if (!citySlug) {
+    const { nationalHomeMetadata } = await import('@/components/home/NationalHomePage')
+    return nationalHomeMetadata()
+  }
 
   const slug = tenant?.slug ?? citySlug
   const cityName = getCityCategoryName(citySlug)
@@ -57,8 +58,10 @@ export default async function Home({
     const sp = await searchParams
     const raw = sp.category
     const category = (Array.isArray(raw) ? raw[0] : raw)?.trim() || null
+    const { CitySmartFeedPage } = await import('@/components/city/CitySmartFeedPage')
     return <CitySmartFeedPage citySlug={citySlug} category={category} />
   }
 
+  const { NationalHomePage } = await import('@/components/home/NationalHomePage')
   return <NationalHomePage />
 }

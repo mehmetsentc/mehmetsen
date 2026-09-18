@@ -65,6 +65,14 @@ export interface FeedItemDto {
   articleId: string
   clusterId: string | null
   publisher: FeedPublisherDto | null
+  /** Human editor / persona byline — not the ingestion source. */
+  authorName?: string | null
+  /** Public /yazar/[slug] identity. */
+  authorSlug?: string | null
+  /** Follow target (users uid or synthetic AI author uid). */
+  authorId?: string | null
+  /** Outlet / agency shown only as an end-of-article source note. */
+  sourceName?: string | null
   headline: string
   summary: string | null
   category: string | null
@@ -127,6 +135,10 @@ export interface FeedCandidateRow {
   publisherId: string | null
   publisherSlug: string | null
   publisherName: string | null
+  authorName?: string | null
+  authorId?: string | null
+  aiEditorId?: string | null
+  sourceName?: string | null
   publisherLogoUrl: string | null
   publisherVerified?: boolean
   headline: string

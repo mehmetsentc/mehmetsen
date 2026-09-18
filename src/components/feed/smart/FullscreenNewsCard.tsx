@@ -7,6 +7,7 @@ import { Check, ChevronDown, ExternalLink, Heart, Newspaper, Zap } from 'lucide-
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
+import { EditorFollowButton } from '@/components/social/EditorFollowButton'
 import { SocialActionRail, type FeedReactionId } from '@/components/social/SocialActionRail'
 import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 import { SwipeDiscoveryCoach } from '@/components/feed/smart/SwipeDiscoveryCoach'
@@ -108,6 +109,10 @@ interface FullscreenNewsCardProps {
   showSheetOpenCoach?: boolean
   onSheetAffordanceActivate?: () => void
   /** When set, DiscoveryRail opens via Feed Reader authority instead of /haber Link. */
+  /** City Feed 2 — editor byline on the card; source stays off this surface. */
+  bylineMode?: 'publisher' | 'editor'
+  /** City mobile: photo fills the viewport; chrome floats on top. */
+  fullBleed?: boolean
   onDiscoveryArticleOpen?: (item: {
     articleId: string
     slug: string
@@ -126,6 +131,8 @@ interface FullscreenNewsCardProps {
 const MODE_NAV_CLEARANCE = 'pt-2'
 const HERO_FRAME =
   'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-neutral-950'
+const CITY_HERO_FRAME =
+  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden bg-neutral-950'
 
 const DOUBLE_TAP_MS = 280
 const TAP_MOVE_PX = 14
@@ -160,6 +167,8 @@ export function FullscreenNewsCard({
   showSheetOpenCoach = false,
   onSheetAffordanceActivate,
   onDiscoveryArticleOpen,
+  bylineMode = 'publisher',
+  fullBleed = false,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
   const [videoError, setVideoError] = useState(false)
@@ -478,7 +487,8 @@ export function FullscreenNewsCard({
 
       <div
         className={cn(
-          'relative z-10 flex min-h-0 flex-1 flex-col px-3 sm:px-4',
+          'relative z-10 flex min-h-0 flex-1 flex-col',
+          fullBleed ? 'px-0' : 'px-3 sm:px-4',
           /* Immersive Feed: no MobileNav — only safe-area / home-indicator breath */
           'pb-[var(--feed-v2-bottom-clearance)]',
           MODE_NAV_CLEARANCE,
@@ -511,15 +521,20 @@ export function FullscreenNewsCard({
           {!showVideo && hasValidImage ? (
             <div
               className={cn(
-                HERO_FRAME,
+                fullBleed ? CITY_HERO_FRAME : HERO_FRAME,
                 playMediaDolly &&
                   'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
               )}
               data-testid="smart-feed-fg-hero"
-              style={{
-                borderColor:
-                  'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
-              }}
+              data-feed-full-bleed={fullBleed ? '1' : undefined}
+              style={
+                fullBleed
+                  ? undefined
+                  : {
+                      borderColor:
+                        'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
+                    }
+              }
             >
               <Image
                 key={`fg-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
@@ -556,8 +571,9 @@ export function FullscreenNewsCard({
             </div>
           ) : showVideo ? (
             <div
-              className={HERO_FRAME}
+              className={fullBleed ? CITY_HERO_FRAME : HERO_FRAME}
               data-testid="smart-feed-fg-hero"
+              data-feed-full-bleed={fullBleed ? '1' : undefined}
               style={{
                 borderColor:
                   'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
@@ -628,7 +644,10 @@ export function FullscreenNewsCard({
           Haberi Oku + publisher stay outside nested copy scroll.
         */}
         <div
-          className="relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:pt-3"
+          className={cn(
+            'relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:pt-3',
+            fullBleed && 'px-3 sm:px-4'
+          )}
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"
         >
@@ -787,7 +806,49 @@ export function FullscreenNewsCard({
               Haberi Oku
             </button>
 
-            {item.publisher ? (
+            {bylineMode === 'editor' ? (
+              item.authorName ? (
+              <div
+                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
+                data-testid="smart-feed-editor-row"
+              >
+                {item.authorSlug ? (
+                  <Link
+                    href={ROUTES.AUTHOR(item.authorSlug)}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
+                    data-testid="smart-feed-editor-link"
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+                      {item.authorName.slice(0, 1)}
+                    </span>
+                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                      {item.authorName}
+                    </span>
+                    {timeLabel ? (
+                      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
+                        · {timeLabel}
+                      </span>
+                    ) : null}
+                  </Link>
+                ) : (
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+                      {item.authorName.slice(0, 1)}
+                    </span>
+                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                      {item.authorName}
+                    </span>
+                    {timeLabel ? (
+                      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
+                        · {timeLabel}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+                {item.authorId ? <EditorFollowButton authorUid={item.authorId} className="shrink-0" /> : null}
+              </div>
+              ) : null
+            ) : item.publisher ? (
               <div
                 className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
                 data-testid="smart-feed-publisher-row"

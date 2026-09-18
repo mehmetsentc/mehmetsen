@@ -33,7 +33,7 @@ function CityMobileNavInner() {
             <Link
               key={item.id}
               href={item.href}
-              prefetch
+              prefetch={false}
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
               data-testid={`city-nav-${item.id}`}

@@ -21,7 +21,7 @@ interface CityNavbarProps {
   onMenuClick?: () => void
 }
 
-function CityFeedCategoryRail() {
+function CityFeedCategoryRail({ overlay = false }: { overlay?: boolean }) {
   const searchParams = useSearchParams()
   const { categories, activeCategoryId, setActiveCategoryId } = useCityCategoryFilter()
 
@@ -40,6 +40,7 @@ function CityFeedCategoryRail() {
       onCategorySelect={setActiveCategoryId}
       activeCategoryId={activeCategoryId}
       embedded
+      overlay={overlay}
     />
   )
 }
@@ -50,8 +51,9 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
   const { user, loading } = useAuth()
   const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
-  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
   const showChips = isCityFeedPath(pathname)
+  const overlayFeed = showChips
+  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(!overlayFeed)
 
   useEffect(() => {
     setHydrated(true)
@@ -63,12 +65,14 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
       : null
 
   return (
-    <>
+    <div className="city-mobile-only-chrome lg:hidden">
       <div
         ref={chromeRef as Ref<HTMLDivElement>}
         className={cn(
-          'mobile-top-chrome is-fixed z-[100]',
-          'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
+          'mobile-top-chrome is-fixed z-[100] lg:hidden',
+          overlayFeed
+            ? 'max-lg:mobile-top-chrome--overlay max-lg:text-white lg:bg-[rgb(var(--header-brand-bg))] lg:text-[rgb(var(--header-onbrand))]'
+            : 'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
           'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
       >
@@ -126,23 +130,23 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
 
         {showChips ? (
           <Suspense fallback={null}>
-            <CityFeedCategoryRail />
+            <CityFeedCategoryRail overlay />
           </Suspense>
         ) : null}
       </div>
 
-      <div
-        className="lg:hidden shrink-0"
-        aria-hidden
-        style={{
-          height:
-            chromeHeight > 0
-              ? chromeHeight
-              : showChips
-                ? 'calc(72px + 48px + var(--mobile-sat, env(safe-area-inset-top, 0px)))'
+      {overlayFeed ? null : (
+        <div
+          className="shrink-0"
+          aria-hidden
+          style={{
+            height:
+              chromeHeight > 0
+                ? chromeHeight
                 : 'calc(72px + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
-        }}
-      />
-    </>
+          }}
+        />
+      )}
+    </div>
   )
 }

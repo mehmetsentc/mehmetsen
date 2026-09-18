@@ -157,6 +157,8 @@ type Props = {
     publishedAt: string
     publisherName?: string | null
   }) => void
+  /** City Feed 2 — editor in chrome; source only as an end note. */
+  bylineMode?: 'publisher' | 'editor'
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -187,6 +189,7 @@ export function FeedArticleReader({
   openSource = 'unknown',
   generation = 0,
   onOpenRelatedArticle,
+  bylineMode = 'publisher',
 }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -285,6 +288,9 @@ export function FeedArticleReader({
   const detailImage = detail?.image
   const imageCaption = detail?.imageCaption ?? null
   const publisherName = item.publisher?.name || detail?.publisher?.name || 'Kaynak'
+  const editorName = item.authorName?.trim() || null
+  const sourceNote = detail?.source?.trim() || item.sourceName?.trim() || null
+  const bylineLabel = bylineMode === 'editor' ? editorName || publisherName : publisherName
   const category = detail?.category || item.category
   const categoryLabel = formatReaderCategoryLabel(category)
   const sourceUrl = detail?.sourceUrl
@@ -1053,7 +1059,7 @@ export function FeedArticleReader({
 
   const metaBits = [
     categoryLabel,
-    publisherName,
+    bylineLabel,
     item.publishedAt
       ? new Date(item.publishedAt).toLocaleString('tr-TR', {
           day: 'numeric',
@@ -1158,7 +1164,7 @@ export function FeedArticleReader({
                 {categoryLabel || 'Haber'}
               </span>
               <span className="text-white/25"> · </span>
-              {publisherName}
+              {bylineLabel}
             </p>
           </div>
           <button
@@ -1333,28 +1339,53 @@ export function FeedArticleReader({
             </div>
           ) : null}
 
-          <aside
-            className="mt-10 rounded-lg border border-white/10 bg-[color:var(--reader-page-elevated)] p-4 text-sm"
-            data-testid="feed-reader-source"
-            aria-label="Kaynak"
-          >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
-              Kaynak
-            </p>
-            <p className="mt-1 font-medium text-[color:var(--reader-page-text)]">
-              {publisherName}
-            </p>
-            {sourceUrl ? (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1 text-[color:var(--reader-accent)] underline"
+          {bylineMode === 'editor' ? (
+            sourceNote ? (
+              <aside
+                className="mt-10 border-t border-white/10 pt-4 text-sm text-[color:var(--reader-page-muted)]"
+                data-testid="feed-reader-source"
+                aria-label="Kaynak notu"
               >
-                Kaynak bağlantısı <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            ) : null}
-          </aside>
+                <p>
+                  Kaynak:{' '}
+                  <span className="font-medium text-[color:var(--reader-page-text)]">{sourceNote}</span>
+                </p>
+                {sourceUrl ? (
+                  <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[color:var(--reader-accent)] underline"
+                  >
+                    Kaynak bağlantısı <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </aside>
+            ) : null
+          ) : (
+            <aside
+              className="mt-10 rounded-lg border border-white/10 bg-[color:var(--reader-page-elevated)] p-4 text-sm"
+              data-testid="feed-reader-source"
+              aria-label="Kaynak"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]">
+                Kaynak
+              </p>
+              <p className="mt-1 font-medium text-[color:var(--reader-page-text)]">
+                {publisherName}
+              </p>
+              {sourceUrl ? (
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-[color:var(--reader-accent)] underline"
+                >
+                  Kaynak bağlantısı <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              ) : null}
+            </aside>
+          )}
 
           {/*
             Recommendations participate in natural Reader scroll flow (not a nested

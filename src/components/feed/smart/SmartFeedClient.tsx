@@ -1319,7 +1319,10 @@ export function SmartFeedClient({
         : 0
     const innerH = typeof window !== 'undefined' ? Math.round(window.innerHeight) : 0
     const layoutH = vvH > 0 ? Math.min(vvH, innerH || vvH) : innerH
-    const measured = Math.max(0, Math.round(layoutH - top))
+    const overlayHost = el.closest('[data-city-feed-overlay="1"]')
+    const measured = overlayHost
+      ? Math.max(0, layoutH)
+      : Math.max(0, Math.round(layoutH - top))
     if (measured <= 0) return
     const prev = cardHeightRef.current
     // Ignore iOS toolbar *appearing* (height shrink) so the card does not jump.
@@ -2503,6 +2506,8 @@ export function SmartFeedClient({
                   onReact={(r) => void applyReaction(item, r)}
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
+                  bylineMode={lockCitySlug ? 'editor' : 'publisher'}
+                  fullBleed={Boolean(lockCitySlug)}
                   onReadClick={() => onRead(item, index, 'button')}
                   onCategoryClick={
                     resolveFeedV2TabForArticleCategory(item.category)
@@ -2887,6 +2892,7 @@ export function SmartFeedClient({
             feedSessionId={feedSessionIdRef.current}
             openSource={readerSession.openSource ?? 'unknown'}
             generation={readerSession.generation}
+            bylineMode={lockCitySlug ? 'editor' : 'publisher'}
             onOpenRelatedArticle={(d) => {
               const synthetic: FeedItemDto = {
                 id: d.articleId,
@@ -3139,6 +3145,8 @@ function FeedCardWithImpression(props: {
   onSwipeAffordanceActivate?: () => void
   showSheetOpenCoach?: boolean
   onSheetAffordanceActivate?: () => void
+  bylineMode?: 'publisher' | 'editor'
+  fullBleed?: boolean
   /** Haberi Oku / committed open progress — drives Feed underlay page-turn. */
   readerUnderlayProgress?: number
   /** Keep underlay CSS transition armed while progress animates to 0 on close. */

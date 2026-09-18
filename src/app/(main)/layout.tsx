@@ -1,7 +1,6 @@
-import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
-import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { ArticleLiftOriginCapture } from '@/components/articleLift/ArticleLiftOriginCapture'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { getActiveTenant } from '@/lib/tenantContext'
 import { resolveTenant } from '@/lib/tenant'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
 
@@ -20,7 +19,9 @@ export default async function MainLayout({
   // purely additive.
   modal: React.ReactNode
 }) {
-  const citySlug = await getCitySlugFromHeaders()
+  const hostCitySlug = await getCitySlugFromHeaders()
+  const activeTenant = hostCitySlug ? null : await getActiveTenant()
+  const citySlug = hostCitySlug ?? activeTenant?.provinceSlug ?? activeTenant?.slug ?? null
 
   if (citySlug) {
     // City subdomain: full city chrome (ScrollHeader + category pills).
@@ -30,6 +31,7 @@ export default async function MainLayout({
     const cityName = tenant?.displayName ?? citySlug
     const { categories, hasSpor } = await getCityNavPresence(provinceSlug)
 
+    const { CityLayoutClient } = await import('@/components/city/CityLayoutClient')
     return (
       <>
         <ArticleLiftOriginCapture />
@@ -47,6 +49,7 @@ export default async function MainLayout({
     )
   }
 
+  const { MainLayoutClient } = await import('@/components/layout/MainLayoutClient')
   return (
     <>
       <ArticleLiftOriginCapture />
