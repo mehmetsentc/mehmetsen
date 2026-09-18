@@ -192,6 +192,21 @@ export function pickAiEditorFromList(
     (hint?.citySlug ? normalizeCitySlug(hint.citySlug) : '') ||
     ''
 
+  const city = citySlug?.trim().toLowerCase() || ''
+
+  // City category desks beat national desks (Çanakkale Spor ≠ Deniz Erdem).
+  if (city && categoryId) {
+    const cityDesks = assignable.filter(
+      (e) =>
+        e.personaType === 'local_editor' &&
+        resolveEditorCitySlug(e) === city &&
+        editorManagesCategory(e, categoryId)
+    )
+    const specific = cityDesks.find((e) => e.slug !== `yerel-${city}`)
+    if (specific) return specific
+    if (cityDesks[0]) return cityDesks[0]
+  }
+
   if (input.articleFormat === 'column') {
     const withColumn = editors.filter(
       (e) =>

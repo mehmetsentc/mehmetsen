@@ -69,7 +69,7 @@ describe('P17c Feed rail presentation', () => {
     expect(slotIdx).toBeGreaterThan(scrollIdx)
     expect(actionIdx).toBeGreaterThan(slotIdx)
     expect(card).toContain('smart-feed-read-cta')
-    expect(card).toContain('pr-[3.5rem]')
+    expect(card).toContain('pr-[4.75rem]')
   })
 
   it('cadence preserved via shouldShowFeedHighlights (every 8th)', () => {

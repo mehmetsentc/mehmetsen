@@ -43,7 +43,7 @@ describe('P17 Feed V2 approved card visual', () => {
     expect(card).toContain("data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}")
     expect(card).toContain('text-white')
     expect(card).toContain('font-extrabold')
-    expect(card).toContain('pr-[3.5rem]')
+    expect(card).toContain('pr-[4.75rem]')
   })
 
   it('social inset + Haberi Oku + discovery slot order preserved', () => {

@@ -80,6 +80,7 @@ export const ROUTES = {
   NOTIFICATIONS: '/bildirimler',
   MESSAGES: '/mesajlar',
   MESSAGES_CONVERSATION: (conversationId: string) => `/mesajlar/${encodeURIComponent(conversationId)}`,
+  CONTACT: '/iletisim',
   SETTINGS: '/ayarlar',
   SETTINGS_PRIVACY: '/ayarlar/gizlilik',
   SETTINGS_NOTIFICATIONS: '/ayarlar/bildirimler',

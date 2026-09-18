@@ -30,7 +30,7 @@ describe('immersive mobile viewport geometry', () => {
     expect(card).not.toContain('aspect-[4/3]')
     expect(card).not.toContain('max-h-[min(46dvh,100%)]')
     const chrome = card.indexOf('smart-feed-bottom-chrome')
-    const flexCopy = card.slice(Math.max(0, chrome - 240), chrome + 40)
+    const flexCopy = card.slice(Math.max(0, chrome - 420), chrome + 40)
     expect(flexCopy).toContain('mt-auto flex w-full shrink-0 flex-col')
     expect(flexCopy).not.toContain('flex-1 flex-col bg-gradient')
   })

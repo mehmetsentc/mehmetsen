@@ -21,6 +21,11 @@ import {
   isExcludedFromHomepageMainSlots,
 } from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily, isYerelHomepageExcluded } from '@/constants/config'
+import { TURKISH_PROVINCES } from '@/constants/cities'
+import { findSeedEditorSpecBySlug } from '@/lib/ai/editorial/aiEditorService'
+import { findCityCategoryEditorByAuthorUid } from '@/lib/ai/editorial/seedCityCategoryEditors'
+import type { SeedEditorSpec } from '@/lib/ai/editorial/seedEditors'
+import { syntheticAiAuthorUid } from '@/types/aiEditor'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import {
   addTurkeyDays,
@@ -1150,6 +1155,66 @@ export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Po
   return getPostsByTagCached(rawTag, limitCount)
 }
 
+function publicAuthorFromSeedEditor(username: string): PublicAuthorProfile | null {
+  const spec = findSeedEditorSpecBySlug(username)
+  if (!spec) return null
+  const cityName = spec.citySlug
+    ? TURKISH_PROVINCES.find((p) => p.slug === spec.citySlug)?.name ?? spec.citySlug
+    : null
+  return {
+    uid: syntheticAiAuthorUid(spec.slug),
+    username: spec.slug,
+    displayName: spec.name,
+    photoURL: null,
+    bio: spec.bio || spec.shortBio || null,
+    website: null,
+    location: cityName,
+    department: spec.title,
+    isVerified: true,
+    postsCount: 0,
+    isAI: true,
+    aiEditorId: spec.slug,
+    coverURL: null,
+  }
+}
+
+function deskMatchesNewsCategory(spec: SeedEditorSpec, categoryId?: string | null): boolean {
+  const category = categoryId?.trim().toLowerCase()
+  if (!category) return false
+  const managed = spec.managedCategories?.length ? spec.managedCategories : spec.categoryIds
+  return managed.includes(category)
+}
+
+const getPostsByCityDeskCached = unstable_cache(
+  async (citySlug: string, deskSlug: string, limitCount: number): Promise<Post[]> => {
+    const spec = findSeedEditorSpecBySlug(deskSlug)
+    if (!spec) return []
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('citySlug', '==', citySlug)
+        .orderBy('publishedAt', 'desc')
+        .limit(Math.min(Math.max(limitCount * 4, 40), 160))
+        .get()
+
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter(
+          (post): post is Post =>
+            post !== null && deskMatchesNewsCategory(spec, post.categoryId)
+        )
+        .slice(0, limitCount)
+    } catch (error) {
+      console.warn('[newsService.server] getPostsByCityDesk failed:', error)
+      return []
+    }
+  },
+  ['posts-by-city-desk-v1'],
+  { revalidate: 1800, tags: ['author', 'city-news'] }
+)
+
 export type PublicAuthorProfile = {
   uid: string
   username: string
@@ -1209,7 +1274,9 @@ const getAuthorByUsernameCached = unstable_cache(
 export async function getAuthorByUsername(username: string): Promise<PublicAuthorProfile | null> {
   const normalized = username.trim().toLocaleLowerCase('tr-TR')
   if (!normalized) return null
-  return getAuthorByUsernameCached(normalized)
+  const fromDb = await getAuthorByUsernameCached(normalized)
+  if (fromDb) return fromDb
+  return publicAuthorFromSeedEditor(normalized)
 }
 
 /** Published news authored by a user id (for /yazar/[username]). Cached 30 min per author. */
@@ -1257,7 +1324,21 @@ const getPostsByAuthorIdCached = unstable_cache(
 export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {
   const id = authorId.trim()
   if (!id) return []
-  return getPostsByAuthorIdCached(id, limitCount)
+  const byAuthor = await getPostsByAuthorIdCached(id, limitCount)
+  const desk = findCityCategoryEditorByAuthorUid(id)
+  if (!desk?.citySlug) return byAuthor
+
+  const byDesk = await getPostsByCityDeskCached(desk.citySlug, desk.slug, limitCount)
+  const seen = new Set(byAuthor.map((post) => post.id))
+  const merged = [...byAuthor]
+  for (const post of byDesk) {
+    if (seen.has(post.id)) continue
+    seen.add(post.id)
+    merged.push(post)
+  }
+  return merged
+    .sort((a, b) => Date.parse(b.publishedAt ?? '') - Date.parse(a.publishedAt ?? ''))
+    .slice(0, limitCount)
 }
 
 /**

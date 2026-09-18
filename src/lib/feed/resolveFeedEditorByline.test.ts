@@ -24,4 +24,25 @@ describe('resolveFeedEditorByline', () => {
     expect(editor?.name).not.toMatch(/Kalem/i)
     expect(editor?.slug).toBe('yerel-canakkale')
   })
+
+  it('assigns a distinct Çanakkale category editor for spor', () => {
+    const editor = resolveFeedEditorByline({
+      authorName: 'Çanakkale Kalem',
+      publisherName: 'Çanakkale Kalem',
+      citySlug: 'canakkale',
+      categoryId: 'spor',
+    })
+    expect(editor?.name).toBe('Yiğit Anafarta')
+    expect(editor?.slug).toBe('yigit-anafarta')
+  })
+
+  it('assigns a distinct Antalya category editor for ekonomi', () => {
+    const editor = resolveFeedEditorByline({
+      authorName: 'Antalya',
+      citySlug: 'antalya',
+      categoryId: 'ekonomi',
+    })
+    expect(editor?.name).toBe('Sibel Manavgat')
+    expect(editor?.slug).toBe('sibel-manavgat')
+  })
 })

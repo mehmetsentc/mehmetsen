@@ -11,6 +11,7 @@ import { buildLocalQueries, buildCanakkaleQueries } from '@/lib/ai/editorial/loc
 import { resolveModelForEditor } from '@/lib/ai/editorial/modelRouter'
 import { SEED_AI_EDITORS } from '@/lib/ai/editorial/seedEditors'
 import { SEED_CITY_AI_EDITORS } from '@/lib/ai/editorial/seedCityEditors'
+import { SEED_CITY_CATEGORY_AI_EDITORS } from '@/lib/ai/editorial/seedCityCategoryEditors'
 import { normalizeEditorSlug } from '@/lib/ai/editorial/aiEditorService'
 import {
   DEFAULT_AI_CAPABILITIES,
@@ -131,6 +132,21 @@ describe('seed editors', () => {
     expect(SEED_CITY_AI_EDITORS.every((s) => s.personaType === 'local_editor')).toBe(true)
     expect(SEED_CITY_AI_EDITORS.every((s) => Boolean(s.citySlug))).toBe(true)
     expect(SEED_CITY_AI_EDITORS.some((s) => s.slug === 'yerel-canakkale')).toBe(true)
+  })
+
+  it('seeds unique Çanakkale and Antalya category desks', () => {
+    expect(SEED_CITY_CATEGORY_AI_EDITORS.length).toBe(20)
+    const slugs = SEED_CITY_CATEGORY_AI_EDITORS.map((s) => s.slug)
+    const names = SEED_CITY_CATEGORY_AI_EDITORS.map((s) => s.name)
+    expect(new Set(slugs).size).toBe(20)
+    expect(new Set(names).size).toBe(20)
+    expect(SEED_CITY_CATEGORY_AI_EDITORS.every((s) => s.personaType === 'local_editor')).toBe(true)
+    expect(
+      SEED_CITY_CATEGORY_AI_EDITORS.filter((s) => s.citySlug === 'canakkale').map((s) => s.slug)
+    ).toContain('yigit-anafarta')
+    expect(
+      SEED_CITY_CATEGORY_AI_EDITORS.filter((s) => s.citySlug === 'antalya').map((s) => s.slug)
+    ).toContain('sibel-manavgat')
   })
 
   it('only DRAFT_ONLY forces draft; AUTO_PUBLISH and REQUIRES_APPROVAL allow publish', () => {
@@ -264,6 +280,45 @@ describe('EditorRouter category map', () => {
         citySlug: 'canakkale',
       })?.slug
     ).toBe('yerel-canakkale')
+  })
+
+  it('routes Çanakkale spor to the city category desk, not the national sports editor', () => {
+    const sporDesk = SEED_CITY_CATEGORY_AI_EDITORS.find((s) => s.slug === 'yigit-anafarta')!
+    const editors = [
+      ...seedRosterEditors(),
+      fakeEditor({
+        id: 'id-yerel-canakkale',
+        slug: 'yerel-canakkale',
+        name: 'Çanakkale Editör',
+        personaType: 'local_editor',
+        citySlug: 'canakkale',
+        categoryIds: ['yerel-haber'],
+        managedCategories: ['yerel-haber'],
+        desk: 'Yerel · Çanakkale',
+      }),
+      fakeEditor({
+        id: `id-${sporDesk.slug}`,
+        slug: sporDesk.slug,
+        name: sporDesk.name,
+        personaType: 'local_editor',
+        citySlug: 'canakkale',
+        categoryIds: sporDesk.categoryIds,
+        managedCategories: sporDesk.managedCategories,
+        desk: sporDesk.desk,
+      }),
+    ]
+    expect(
+      pickAiEditorFromList(editors, {
+        categoryId: 'spor',
+        citySlug: 'canakkale',
+      })?.slug
+    ).toBe('yigit-anafarta')
+    expect(
+      pickAiEditorFromList(editors, {
+        categoryId: 'futbol',
+        citySlug: 'canakkale',
+      })?.slug
+    ).toBe('yigit-anafarta')
   })
 
   it('excludes internal agents from news auto-routing', () => {

@@ -181,8 +181,8 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
     ''
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
-  // Author — real person when CMS/user byline exists; otherwise NaHaber org.
-  const bylineName = post.authorDisplayName?.trim()
+  // Author — city category AI editor or CMS byline; otherwise NaHaber org.
+  const bylineName = getArticleBylineName(post)
   const bylineSlug = post.authorUsername?.trim()
   const isPersonAuthor =
     Boolean(bylineName) &&

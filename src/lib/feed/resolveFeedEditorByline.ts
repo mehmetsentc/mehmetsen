@@ -1,4 +1,5 @@
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { findCityCategoryEditorSpec } from '@/lib/ai/editorial/seedCityCategoryEditors'
 import { SEED_CITY_AI_EDITORS } from '@/lib/ai/editorial/seedCityEditors'
 import { SEED_AI_EDITORS } from '@/lib/ai/editorial/seedEditors'
 import { syntheticAiAuthorUid } from '@/types/aiEditor'
@@ -40,7 +41,14 @@ export function isSourceLikeName(
   return /(gazete|ajans|kaynak|\.com|\.net|haberleri)/i.test(n)
 }
 
-function findSeedEditor(opts: { aiEditorId?: string | null; citySlug?: string | null }) {
+function findSeedEditor(opts: {
+  aiEditorId?: string | null
+  citySlug?: string | null
+  categoryId?: string | null
+}) {
+  const desk = findCityCategoryEditorSpec(opts.citySlug, opts.categoryId)
+  if (desk) return desk
+
   const all = [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS]
   const rawId = opts.aiEditorId?.trim()
   if (rawId) {
@@ -61,19 +69,22 @@ export function resolveFeedEditorByline(opts: {
   authorId?: string | null
   aiEditorId?: string | null
   citySlug?: string | null
+  categoryId?: string | null
   publisherName?: string | null
 }): { name: string; slug: string; authorUid: string } | null {
+  const desk = findCityCategoryEditorSpec(opts.citySlug, opts.categoryId)
   const seed = findSeedEditor(opts)
   const rawName = opts.authorName?.trim() || null
-  const useSeedName = !rawName || isSourceLikeName(rawName, opts.publisherName)
+  const useSeedName = Boolean(desk) || !rawName || isSourceLikeName(rawName, opts.publisherName)
 
   if (seed) {
     const existingId = opts.authorId?.trim() || ''
     return {
       name: useSeedName ? seed.name : rawName!,
       slug: seed.slug,
-      authorUid:
-        !useSeedName && existingId
+      authorUid: desk
+        ? syntheticAiAuthorUid(seed.slug)
+        : !useSeedName && existingId
           ? existingId
           : existingId.startsWith('ai_editor_')
             ? existingId

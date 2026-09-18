@@ -645,8 +645,9 @@ export function FullscreenNewsCard({
         */}
         <div
           className={cn(
-            'relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pr-[3.5rem] pt-2.5 sm:pt-3',
-            fullBleed && 'px-3 sm:px-4'
+            'relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pt-2.5 sm:pt-3',
+            /* Keep right pad after full-bleed pl — px-* would wipe the social-rail gutter. */
+            fullBleed ? 'pl-3 pr-[4.75rem] sm:pl-4' : 'pr-[4.75rem]'
           )}
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"

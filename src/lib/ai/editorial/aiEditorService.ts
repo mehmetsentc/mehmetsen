@@ -14,10 +14,17 @@ import {
 } from '@/types/aiEditor'
 import { defaultModelAssignmentsForSeed, SEED_AI_EDITORS, type SeedEditorSpec } from './seedEditors'
 import { SEED_CITY_AI_EDITORS } from './seedCityEditors'
+import { SEED_CITY_CATEGORY_AI_EDITORS } from './seedCityCategoryEditors'
 
-/** National personas + 81 city local editors. */
+/** National personas + 81 city local editors + Çanakkale/Antalya category desks. */
 export function allSeedEditorSpecs(): SeedEditorSpec[] {
-  return [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS]
+  return [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS, ...SEED_CITY_CATEGORY_AI_EDITORS]
+}
+
+export function findSeedEditorSpecBySlug(slug?: string | null): SeedEditorSpec | null {
+  const key = slug?.trim().toLowerCase()
+  if (!key) return null
+  return allSeedEditorSpecs().find((spec) => spec.slug === key) ?? null
 }
 
 export function normalizeEditorSlug(raw: string): string {

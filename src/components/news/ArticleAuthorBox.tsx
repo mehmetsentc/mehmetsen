@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { User } from 'lucide-react'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { getArticleBylineName, getPostPublicSource } from '@/lib/postUtils'
+import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
 import { ROUTES } from '@/constants/routes'
 import type { Post } from '@/types/post'
 
@@ -11,21 +12,29 @@ interface ArticleAuthorBoxProps {
   post: Post
 }
 
-function hasPublicAuthorProfile(post: Post): boolean {
+function resolvePublicAuthorSlug(post: Post): string | null {
+  const editor = resolveFeedEditorByline({
+    authorName: post.authorDisplayName,
+    authorId: post.authorId,
+    aiEditorId: post.aiEditorId,
+    citySlug: post.citySlug,
+    categoryId: post.categoryId,
+    publisherName: post.source,
+  })
+  if (editor?.slug) return editor.slug
   const username = post.authorUsername?.trim()
-  if (!username || username === 'nahaber') return false
-  // Syndicated/RSS often stores agency names in `author` — those are not profile slugs.
-  if (/\s/.test(username) || username.length < 2 || username.length > 40) return false
-  if (!post.authorId || post.authorId === 'nahaber') return false
-  return true
+  if (!username || username === 'nahaber') return null
+  if (/\s/.test(username) || username.length < 2 || username.length > 40) return null
+  if (!post.authorId || post.authorId === 'nahaber') return null
+  return username
 }
 
 export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
   const byline = getArticleBylineName(post)
   const publicSource = getPostPublicSource(post)
   const category = getCategoryLabel(post.categoryId)
-  const showProfile = hasPublicAuthorProfile(post)
-  const href = showProfile ? ROUTES.AUTHOR(post.authorUsername.trim()) : null
+  const authorSlug = resolvePublicAuthorSlug(post)
+  const href = authorSlug ? ROUTES.AUTHOR(authorSlug) : null
 
   const avatar = (
     <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">

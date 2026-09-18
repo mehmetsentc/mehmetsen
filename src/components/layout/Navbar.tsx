@@ -44,6 +44,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   const isHomeFeed = resolveNewsSurface(pathname) === 'home'
   const isArticle = pathname.startsWith('/haber/')
   const isFeedV2 = isAkis(pathname)
+  const overlayFeed = isFeedV2
   const isPrimaryDest =
     isHomeFeed ||
     isFeedV2 ||
@@ -55,7 +56,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     !isPrimaryDest &&
     pathname !== ROUTES.REELS &&
     pathname !== ROUTES.VIDEO
-  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
+  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(!overlayFeed)
 
   const showContextRail =
     isFeedV2 ||
@@ -79,6 +80,13 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
+    if (overlayFeed) {
+      root.setAttribute('data-feed-overlay-chrome', '1')
+      root.style.setProperty('--mobile-top-chrome-offset', '0px')
+      return () => {
+        root.removeAttribute('data-feed-overlay-chrome')
+      }
+    }
     const mq = window.matchMedia('(max-width: 1023px)')
     const apply = () => {
       if (!mq.matches) {
@@ -95,12 +103,14 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       mq.removeEventListener('change', apply)
       root.style.removeProperty('--mobile-top-chrome-offset')
     }
-  }, [chromeHeight, fallbackChromeHeight])
+  }, [overlayFeed, chromeHeight, fallbackChromeHeight])
 
-  const iconIdle =
-    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--header-onbrand))]/70 transition-colors duration-150 hover:text-[rgb(var(--header-onbrand))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
-  const iconActive =
-    'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
+  const iconIdle = overlayFeed
+    ? 'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white drop-shadow-[0_1px_6px_rgb(0_0_0_/_0.85)]'
+    : 'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--header-onbrand))]/70 transition-colors duration-150 hover:text-[rgb(var(--header-onbrand))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
+  const iconActive = overlayFeed
+    ? 'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white drop-shadow-[0_1px_6px_rgb(0_0_0_/_0.85)]'
+    : 'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
   const iconBtn = iconIdle
 
   function openSubmit() {
@@ -116,13 +126,25 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       <div
         ref={chromeRef as Ref<HTMLDivElement>}
         data-testid="global-header-chrome"
+        data-feed-overlay-chrome={overlayFeed ? '1' : undefined}
         className={cn(
-          'mobile-top-chrome mobile-top-chrome--immersive is-fixed z-[100] lg:hidden',
-          'text-[rgb(var(--header-onbrand))]',
-          'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
+          'mobile-top-chrome is-fixed z-[100] lg:hidden',
+          overlayFeed
+            ? 'mobile-top-chrome--overlay text-white'
+            : 'mobile-top-chrome--immersive text-[rgb(var(--header-onbrand))]',
+          overlayFeed
+            ? 'pt-0.5'
+            : 'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
-        <header className="h-[var(--nahaber-header-row-height,3.85rem)] overflow-x-hidden text-[rgb(var(--header-onbrand))]">
+        <header
+          className={cn(
+            'overflow-x-hidden',
+            overlayFeed
+              ? 'h-8 text-white'
+              : 'h-[var(--nahaber-header-row-height,3.85rem)] text-[rgb(var(--header-onbrand))]'
+          )}
+        >
           <div className="flex h-full min-w-0 items-center justify-between gap-2 px-2.5 sm:gap-2.5 sm:px-3">
             <div className="flex min-w-0 items-center gap-0.5">
               {showBack ? (
@@ -134,7 +156,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 className={iconBtn}
                 aria-label="Menüyü aç"
               >
-                <Menu className="h-6 w-6" strokeWidth={1.75} />
+                <Menu className={overlayFeed ? 'h-4 w-4' : 'h-6 w-6'} strokeWidth={overlayFeed ? 2 : 1.75} />
               </button>
 
               <Link
@@ -144,8 +166,12 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               >
                 <BrandWordmark
                   variant="onBrand"
-                  size="md"
-                  className="font-extrabold !text-[1.28rem] min-[400px]:!text-[1.42rem] sm:!text-[1.55rem]"
+                  size={overlayFeed ? 'sm' : 'md'}
+                  className={
+                    overlayFeed
+                      ? 'font-extrabold !text-[1.05rem] drop-shadow-[0_1px_6px_rgb(0_0_0_/_0.85)]'
+                      : 'font-extrabold !text-[1.28rem] min-[400px]:!text-[1.42rem] sm:!text-[1.55rem]'
+                  }
                 />
               </Link>
             </div>
@@ -163,7 +189,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 data-testid="header-nav-ara"
                 data-nav-active={isAra(pathname) ? '1' : '0'}
               >
-                <Search className="h-5 w-5" strokeWidth={isAra(pathname) ? 2.35 : 1.6} />
+                <Search className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={isAra(pathname) ? 2.35 : 1.6} />
               </Link>
               <button
                 type="button"
@@ -172,7 +198,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 data-testid="header-action-plus"
                 onClick={openSubmit}
               >
-                <Plus className="h-5 w-5" strokeWidth={1.6} />
+                <Plus className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5'} strokeWidth={1.6} />
               </button>
               <HeaderMoreMenu
                 isBildirim={isBildirim(pathname)}
@@ -190,7 +216,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         aria-hidden
         data-testid="mobile-chrome-spacer"
         style={{
-          height: chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
+          height: overlayFeed ? 0 : chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
         }}
       />
       {submitOpen ? <SubmitNewsModal onClose={() => setSubmitOpen(false)} /> : null}

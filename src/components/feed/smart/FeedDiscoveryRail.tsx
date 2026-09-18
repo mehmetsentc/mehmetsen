@@ -344,7 +344,7 @@ export function FeedDiscoveryRail({
           {items.map((item) => {
             const skin = resolveFeedCardSkin(item.category)
             const catLabel = formatReaderCategoryLabel(item.category)
-            // ~2.2 cards in the social-safe content width (pr-[3.5rem] on chrome).
+            // ~2.2 cards in the social-safe content width (pr-[4.75rem] on chrome).
             const className = cn(
               'relative flex w-[calc((100%-1.25rem)/2.2)] shrink-0 snap-start flex-col overflow-hidden',
               'rounded-xl border border-white/12 bg-black/55 text-left shadow-[0_8px_24px_rgba(0,0,0,0.35)]',

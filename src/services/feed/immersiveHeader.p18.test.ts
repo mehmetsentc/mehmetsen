@@ -14,6 +14,8 @@ describe('immersive header Phase 1', () => {
     const nav = read('src/components/layout/Navbar.tsx')
     const css = read('src/app/globals.css')
     expect(nav).toContain('mobile-top-chrome--immersive')
+    expect(nav).toContain('mobile-top-chrome--overlay')
+    expect(nav).toContain('data-feed-overlay-chrome')
     expect(nav).not.toContain('bg-[rgb(var(--header-brand-bg))]')
     expect(css).toContain('.mobile-top-chrome--immersive')
     expect(css).toContain('--nahaber-header-row-height')

@@ -61,21 +61,25 @@ describe('Profil gate wiring', () => {
     expect(hook).not.toContain("fromServer && !initialProfile ? 'Kullanıcı bulunamadı'")
   })
 
-  it('ProfilePageClient gates non-publishers and redirects own profile', () => {
+  it('ProfilePageClient shows the user profile without a publisher gate', () => {
     const page = read('src/components/profile/ProfilePageClient.tsx')
-    expect(page).toContain('useMyPublishers')
-    expect(page).toContain('Yayıncı profili gerekli')
-    expect(page).toContain('Profil yalnızca yayıncılara açık')
-    expect(page).toContain('resolvePublisherProfileHref')
-    expect(page).toContain('router.replace')
+    expect(page).toContain('ProfileHeader')
+    expect(page).not.toContain('Yayıncı profili gerekli')
+    expect(page).not.toContain('Profil yalnızca yayıncılara açık')
+    expect(page).not.toContain('useMyPublishers')
   })
 
-  it('Sidebar hides consumer Profilim; publishers get Yayıncı profilim', () => {
+  it('Sidebar keeps reader Profilim and optional Yayıncı profilim', () => {
     const side = read('src/components/layout/Sidebar.tsx')
     expect(side).toContain('useMyPublishers')
     expect(side).toContain('Yayıncı profilim')
-    expect(side).not.toContain('ROUTES.PROFILE(user.username || user.uid)')
-    expect(side).not.toContain('ROUTES.PROFILE(user.username)')
+    expect(side).toContain('ROUTES.PROFILE(user.username || user.uid)')
+  })
+
+  it('City sidebar opens the reader profile, not the publisher gate', () => {
+    const side = read('src/components/city/CitySidebar.tsx')
+    expect(side).toContain('ROUTES.PROFILE(user.username || user.uid)')
+    expect(side).toContain('Yayıncı profilim')
   })
 
   it('useMyPublishers loads memberships without studio filter', () => {

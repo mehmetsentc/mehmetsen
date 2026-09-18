@@ -127,6 +127,7 @@ function toDto(
     authorId: row.authorId,
     aiEditorId: row.aiEditorId,
     citySlug: row.citySlug || fallbackCitySlug || null,
+    categoryId: row.category,
     publisherName: row.publisherName,
   })
   return {

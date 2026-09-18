@@ -346,6 +346,16 @@ function SidebarInner({
           {hydrated ? <SidebarThemeToggle /> : null}
           {hydrated && !loading && user ? (
             <>
+              <Link
+                href={ROUTES.PROFILE(user.username || user.uid)}
+                onClick={closeDrawer}
+                className="app-sidebar__item"
+                data-accent="muted"
+                data-testid="sidebar-account-profile"
+              >
+                <User className="app-sidebar__icon" />
+                Profilim
+              </Link>
               {publisherHref ? (
                 <Link
                   href={publisherHref}

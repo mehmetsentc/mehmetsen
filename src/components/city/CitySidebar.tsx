@@ -13,8 +13,10 @@ import {
   Plus,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useMyPublishers } from '@/hooks/useMyPublishers'
 import { isAdminUser } from '@/lib/admin'
 import { ROUTES } from '@/constants/routes'
+import { resolvePublisherProfileHref } from '@/lib/nav/publisherProfileNav'
 import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
@@ -54,6 +56,7 @@ function NavLink({
   return (
     <Link
       href={item.href}
+      prefetch={false}
       onClick={() => onNavigate?.()}
       data-accent={item.accent}
       className={cn('app-sidebar__item', active && 'is-active')}
@@ -77,10 +80,15 @@ function CitySidebarInner({
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout, loading } = useAuth()
+  const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const { categories, hasSpor } = useCityCategoryFilter()
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [submitOpen, setSubmitOpen] = useState(false)
+  const publisherHref =
+    hydrated && !loading && !publishersLoading && user && isPublisher
+      ? resolvePublisherProfileHref(publishers)
+      : null
 
   const sectionItems = buildCitySectionNavItems({ hasSpor, citySlug: provinceSlug })
   const categoryItems = buildCityCategoryNavItems(categories)
@@ -236,10 +244,23 @@ function CitySidebarInner({
                 onClick={closeDrawer}
                 className="app-sidebar__item"
                 data-accent="muted"
+                data-testid="city-sidebar-account-profile"
               >
                 <User className="app-sidebar__icon" />
                 Profilim
               </Link>
+              {publisherHref ? (
+                <Link
+                  href={publisherHref}
+                  onClick={closeDrawer}
+                  className="app-sidebar__item"
+                  data-accent="muted"
+                  data-testid="city-sidebar-publisher-profile"
+                >
+                  <User className="app-sidebar__icon" />
+                  Yayıncı profilim
+                </Link>
+              ) : null}
               <Link
                 href={ROUTES.SETTINGS}
                 onClick={closeDrawer}

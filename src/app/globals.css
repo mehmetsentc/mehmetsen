@@ -5686,7 +5686,9 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
  * @layer components cannot paint a cream slab over the photo.
  */
 html[data-city-overlay-chrome='1'],
-html[data-city-overlay-chrome='1'] :root {
+html[data-city-overlay-chrome='1'] :root,
+html[data-feed-overlay-chrome='1'],
+html[data-feed-overlay-chrome='1'] :root {
   --mobile-top-chrome-offset: 0px;
   --header-brand-bg: 0 0 0;
   --header-onbrand: 255 255 255;
@@ -5697,6 +5699,9 @@ html[data-city-overlay-chrome='1'] :root {
 html[data-city-overlay-chrome='1'] .mobile-top-chrome,
 html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
 .mobile-top-chrome[data-city-overlay-chrome='1'],
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome,
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
+.mobile-top-chrome[data-feed-overlay-chrome='1'],
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed {
   --header-onbrand: 255 255 255;
@@ -5720,6 +5725,10 @@ html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed::before,
 html[data-city-overlay-chrome='1'] .mobile-top-chrome.sticky::before,
 .mobile-top-chrome[data-city-overlay-chrome='1'].is-fixed::before,
 .mobile-top-chrome[data-city-overlay-chrome='1'].sticky::before,
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.is-fixed::before,
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.sticky::before,
+.mobile-top-chrome[data-feed-overlay-chrome='1'].is-fixed::before,
+.mobile-top-chrome[data-feed-overlay-chrome='1'].sticky::before,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed::before,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.sticky::before {
   content: none !important;
@@ -5729,6 +5738,7 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.sticky::before
 }
 
 html[data-city-overlay-chrome='1'] .mobile-safe-area-shield,
+html[data-feed-overlay-chrome='1'] .mobile-safe-area-shield,
 html:has([data-city-feed-overlay='1']) .mobile-safe-area-shield {
   background: transparent !important;
   background-color: transparent !important;
@@ -5738,6 +5748,10 @@ html[data-city-overlay-chrome='1'] .context-rail__chip,
 html[data-city-overlay-chrome='1'] .feed-v2-cat-chip,
 .mobile-top-chrome[data-city-overlay-chrome='1'] .context-rail__chip,
 .mobile-top-chrome[data-city-overlay-chrome='1'] .feed-v2-cat-chip,
+html[data-feed-overlay-chrome='1'] .context-rail__chip,
+html[data-feed-overlay-chrome='1'] .feed-v2-cat-chip,
+.mobile-top-chrome[data-feed-overlay-chrome='1'] .context-rail__chip,
+.mobile-top-chrome[data-feed-overlay-chrome='1'] .feed-v2-cat-chip,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail__chip,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .feed-v2-cat-chip {
   min-height: 1.35rem !important;
@@ -5753,6 +5767,7 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .feed-v2-cat-c
 }
 
 html[data-city-overlay-chrome='1'] .context-rail__chip--active,
+html[data-feed-overlay-chrome='1'] .context-rail__chip--active,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail__chip--active {
   background: transparent !important;
   box-shadow: inset 0 -2px 0 #fff !important;
@@ -5760,12 +5775,24 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail_
 }
 
 html[data-city-overlay-chrome='1'] .context-rail,
+html[data-feed-overlay-chrome='1'] .context-rail,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail {
   padding: 0 0.5rem 0.15rem !important;
 }
 
 html[data-city-overlay-chrome='1'] .context-rail::after,
+html[data-feed-overlay-chrome='1'] .context-rail::after,
 html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail::after {
   display: none !important;
   background: none !important;
+}
+
+@media (max-width: 1023px) {
+  html[data-feed-overlay-chrome='1'] .content-main-reels {
+    --mobile-top-chrome-offset: 0px;
+    --feed-card-h: 100dvh;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
 }
