@@ -188,6 +188,17 @@ describe('Phase 4E Ham Haber event-primary clutter filter', () => {
     expect(ACTIVE_EDITORIAL_STATUSES).not.toContain('PUBLISHED')
   })
 
+  it('hides same-source exact duplicates from the default active Ham Haberler queue', () => {
+    const duplicate = {
+      clusterId: null,
+      clusterRole: null,
+      isExactDuplicate: true,
+      editorialStatus: 'NEW',
+    } as RawArticleRecord
+    expect(matchesRawArticleQuery(duplicate, { queue: 'active' })).toBe(false)
+    expect(matchesRawArticleQuery(duplicate, { queue: 'active', status: 'duplicate' })).toBe(true)
+  })
+
   it('shows SUPPORTING on active queue by default (eventPrimaryOnly unset)', () => {
     const supporting = {
       clusterId: 'c1',

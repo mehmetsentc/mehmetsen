@@ -1,5 +1,10 @@
 import { normalizeArticleUrl, urlHashFor } from './url/normalize'
 import { laneFromDiscoveryType, mergeDiscoveryLanes, type DiscoveryLane } from './discovery/lanes'
+import {
+  mergeIdentityMetadata,
+  titleHashForHint,
+  titleHintQualifiesForMemory,
+} from './discovery/articleIdentity'
 import type { CrawlerStore } from './store/types'
 import { isGuidEarlyDedupEnabled } from './enabled'
 
@@ -74,6 +79,31 @@ export async function ingestDiscoveredArticle(
   const existing = await store.getDiscoveredByHash(urlHash)
   const publishedAtHint = parsePublishedAt(input.publishedAtHint)
   const imageCandidate = input.discoveryPrimaryImageCandidate?.trim() || null
+  const titleHint = input.titleHint?.trim() || null
+  const titleHash = titleHint && titleHintQualifiesForMemory(titleHint) ? titleHashForHint(titleHint) : null
+
+  if (!existing && titleHash) {
+    const byTitle = await store.findDiscoveredBySourceTitleHash(input.sourceId, titleHash)
+    if (byTitle) {
+      const lanes = mergeDiscoveryLanes(byTitle.discoveryLanes, discoveryLane)
+      await store.updateDiscoveredUrl(byTitle.id, {
+        discoveryLanes: lanes,
+        titleHint: byTitle.titleHint || titleHint,
+        guid: byTitle.guid || input.guid || null,
+        discoveryPrimaryImageCandidate: byTitle.discoveryPrimaryImageCandidate || imageCandidate,
+        rssDescription: byTitle.rssDescription || input.rssDescription || null,
+        feedMetadata: mergeIdentityMetadata(byTitle.feedMetadata, { titleHash }),
+        publishedAtHint: byTitle.publishedAtHint || publishedAtHint,
+      })
+      return {
+        status: 'duplicate',
+        normalizedUrl: normalized,
+        urlHash,
+        discoveryLanes: lanes,
+        ...base,
+      }
+    }
+  }
 
   if (existing) {
     // Permanent URL memory: refresh provenance metadata only. Never reset
@@ -81,11 +111,11 @@ export async function ingestDiscoveredArticle(
     const lanes = mergeDiscoveryLanes(existing.discoveryLanes, discoveryLane)
     await store.updateDiscoveredUrl(existing.id, {
       discoveryLanes: lanes,
-      titleHint: existing.titleHint || input.titleHint || null,
+      titleHint: existing.titleHint || titleHint,
       guid: existing.guid || input.guid || null,
       discoveryPrimaryImageCandidate: existing.discoveryPrimaryImageCandidate || imageCandidate,
       rssDescription: existing.rssDescription || input.rssDescription || null,
-      feedMetadata: existing.feedMetadata || input.feedMetadata || null,
+      feedMetadata: mergeIdentityMetadata(existing.feedMetadata || input.feedMetadata, { titleHash }),
       publishedAtHint: existing.publishedAtHint || publishedAtHint,
     })
     return {
@@ -112,10 +142,10 @@ export async function ingestDiscoveredArticle(
       const lanes = mergeDiscoveryLanes(byGuid.discoveryLanes, discoveryLane)
       await store.updateDiscoveredUrl(byGuid.id, {
         discoveryLanes: lanes,
-        titleHint: byGuid.titleHint || input.titleHint || null,
+        titleHint: byGuid.titleHint || titleHint,
         discoveryPrimaryImageCandidate: byGuid.discoveryPrimaryImageCandidate || imageCandidate,
         rssDescription: byGuid.rssDescription || input.rssDescription || null,
-        feedMetadata: byGuid.feedMetadata || input.feedMetadata || null,
+        feedMetadata: mergeIdentityMetadata(byGuid.feedMetadata || input.feedMetadata, { titleHash }),
         publishedAtHint: byGuid.publishedAtHint || publishedAtHint,
       })
       return {
@@ -136,11 +166,11 @@ export async function ingestDiscoveredArticle(
     publishedAtHint,
     discoveryLane,
     discoveryLanes: [discoveryLane],
-    titleHint: input.titleHint ?? null,
+    titleHint,
     guid: input.guid ?? null,
     discoveryPrimaryImageCandidate: imageCandidate,
     rssDescription: input.rssDescription ?? null,
-    feedMetadata: input.feedMetadata ?? null,
+    feedMetadata: mergeIdentityMetadata(input.feedMetadata, { titleHash }),
   })
 
   if (result === 'duplicate') {

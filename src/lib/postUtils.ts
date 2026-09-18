@@ -109,6 +109,17 @@ export function formatCount(count: number): string {
   return String(count)
 }
 
+/** Feed 2 rail — hide like/comment/share numbers until social proof is real. */
+export const FEED_SOCIAL_COUNT_MIN = 20
+
+export function formatVisibleSocialCount(
+  count: number,
+  min = FEED_SOCIAL_COUNT_MIN
+): string {
+  if (!Number.isFinite(count) || count < min) return ''
+  return formatCount(count)
+}
+
 const INGESTION_TAG =
   '(?:scraper|rss|feed|ingest|worker|crawler|bot|harvester|sync)'
 

@@ -5,7 +5,7 @@ import { LikeButton as BaseLikeButton } from '@/components/post/LikeButton'
 import { SaveButton as BaseSaveButton } from '@/components/post/SaveButton'
 import { ShareButton as BaseShareButton } from '@/components/post/ShareButton'
 import { MessageCircle } from 'lucide-react'
-import { formatCount } from '@/lib/postUtils'
+import { formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 
 export const FEED_REACTION_OPTIONS = [
@@ -28,6 +28,7 @@ interface SocialActionRailProps {
   likeCount: number
   commentCount: number
   saveCount?: number
+  shareCount?: number
   reaction?: string | null
   onToggleLike: () => void
   /** Long-press reaction — additive; does not invent fake counts. */
@@ -52,6 +53,7 @@ export function SocialActionRail({
   likeCount,
   commentCount,
   saveCount = 0,
+  shareCount = 0,
   reaction,
   onToggleLike,
   onReact,
@@ -87,6 +89,8 @@ export function SocialActionRail({
 
   const activeReaction = FEED_REACTION_OPTIONS.find((r) => r.id === reaction)
   const likeEmoji = liked && activeReaction && activeReaction.id !== 'LIKE' ? activeReaction.emoji : null
+  const likeLabel = formatVisibleSocialCount(Math.max(0, likeCount))
+  const commentLabel = formatVisibleSocialCount(commentCount)
 
   return (
     <div
@@ -176,9 +180,11 @@ export function SocialActionRail({
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-xl backdrop-blur-sm sm:h-12 sm:w-12">
               {likeEmoji}
             </span>
-            <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
-              {formatCount(Math.max(0, likeCount))}
-            </span>
+            {likeLabel ? (
+              <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
+                {likeLabel}
+              </span>
+            ) : null}
           </button>
         ) : (
           <BaseLikeButton
@@ -206,9 +212,11 @@ export function SocialActionRail({
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm sm:h-12 sm:w-12">
           <MessageCircle className="h-6 w-6" strokeWidth={2.25} />
         </span>
-        <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
-          {formatCount(commentCount)}
-        </span>
+        {commentLabel ? (
+          <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
+            {commentLabel}
+          </span>
+        ) : null}
       </button>
       <BaseSaveButton
         saved={saved}
@@ -217,7 +225,14 @@ export function SocialActionRail({
         loading={saveLoading}
         variant="overlay"
       />
-      <BaseShareButton postId={articleId} slug={slug} title={title} text={summary} variant="overlay" />
+      <BaseShareButton
+        postId={articleId}
+        slug={slug}
+        title={title}
+        text={summary}
+        variant="overlay"
+        count={shareCount}
+      />
     </div>
   )
 }

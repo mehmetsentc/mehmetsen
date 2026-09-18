@@ -177,6 +177,10 @@ export class MemoryCrawlerStore implements CrawlerStore {
     return 'inserted'
   }
 
+  async getDiscoveredById(id: string): Promise<DiscoveredUrlRecord | null> {
+    return this.urls.get(id) ?? null
+  }
+
   async getDiscoveredByHash(urlHash: string): Promise<DiscoveredUrlRecord | null> {
     const id = this.urlsByHash.get(urlHash)
     return id ? this.urls.get(id) ?? null : null
@@ -184,6 +188,26 @@ export class MemoryCrawlerStore implements CrawlerStore {
 
   async getDiscoveredBySourceAndGuid(sourceId: string, guid: string): Promise<DiscoveredUrlRecord | null> {
     return [...this.urls.values()].find((u) => u.sourceId === sourceId && u.guid === guid) ?? null
+  }
+
+  async findDiscoveredBySourceContentHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null> {
+    return (
+      [...this.urls.values()].find((u) => {
+        if (u.sourceId !== sourceId) return false
+        const stored = u.feedMetadata?.contentHash
+        return typeof stored === 'string' && stored === hash
+      }) ?? null
+    )
+  }
+
+  async findDiscoveredBySourceTitleHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null> {
+    return (
+      [...this.urls.values()].find((u) => {
+        if (u.sourceId !== sourceId) return false
+        const stored = u.feedMetadata?.titleHash
+        return typeof stored === 'string' && stored === hash
+      }) ?? null
+    )
   }
 
   async listPendingFetch(limit: number): Promise<DiscoveredUrlRecord[]> {

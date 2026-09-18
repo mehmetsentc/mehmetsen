@@ -44,6 +44,8 @@ describe('P18.3L social counter wiring', () => {
     expect(rail).toContain('saveCount')
     expect(rail).not.toMatch(/count=\{0\}/)
     expect(rail).toContain('count={saveCount}')
+    expect(rail).toContain('formatVisibleSocialCount')
+    expect(rail).toContain('shareCount')
   })
 
   it('repository counts from social tables including saveCount; batch includes saveCount', () => {

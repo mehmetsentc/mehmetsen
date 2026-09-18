@@ -1,3 +1,4 @@
+import { persistDiscoveryArticleIdentity, mergeIdentityMetadata } from './articleIdentity'
 import { urlHashFor } from '../url/normalize'
 import type { CrawlerStore } from '../store/types'
 import type { CrawlerLogicalQueue, CrawlerUrlStatus, RawArticleRecord } from '../types'
@@ -16,16 +17,25 @@ export async function rememberDiscoveryIdentity(
   store: CrawlerStore,
   article: Pick<
     RawArticleRecord,
-    'sourceId' | 'discoveredUrlId' | 'originalUrl' | 'normalizedUrl' | 'canonicalUrl' | 'urlHash'
+    | 'sourceId'
+    | 'discoveredUrlId'
+    | 'originalUrl'
+    | 'normalizedUrl'
+    | 'canonicalUrl'
+    | 'urlHash'
+    | 'contentHash'
+    | 'titleHash'
   >
 ): Promise<void> {
   const normalized = article.normalizedUrl || article.canonicalUrl || article.originalUrl
   if (!normalized) return
   const urlHash = article.urlHash || urlHashFor(normalized)
+  const identity = { contentHash: article.contentHash, titleHash: article.titleHash }
   const patch = { status: DISCOVERY_MEMORY_STATUS, logicalQueue: DISCOVERY_MEMORY_QUEUE }
 
   if (article.discoveredUrlId) {
     await store.updateDiscoveredUrl(article.discoveredUrlId, patch)
+    await persistDiscoveryArticleIdentity(store, article.discoveredUrlId, identity)
     return
   }
 
@@ -34,6 +44,7 @@ export async function rememberDiscoveryIdentity(
     if (FETCHABLE.includes(existing.status)) {
       await store.updateDiscoveredUrl(existing.id, patch)
     }
+    await persistDiscoveryArticleIdentity(store, existing.id, identity)
     return
   }
 
@@ -44,5 +55,6 @@ export async function rememberDiscoveryIdentity(
     urlHash,
     status: DISCOVERY_MEMORY_STATUS,
     logicalQueue: DISCOVERY_MEMORY_QUEUE,
+    feedMetadata: mergeIdentityMetadata(null, identity),
   })
 }

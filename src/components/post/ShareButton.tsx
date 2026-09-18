@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Share2 } from 'lucide-react'
+import { formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 import { buildPostShareUrl } from '@/lib/shareUtils'
 import { ShareMenu } from '@/components/post/ShareMenu'
@@ -14,6 +15,7 @@ interface ShareButtonProps {
   /** Optional body excerpt; combined with title for copy / native / social share text. */
   text?: string
   variant?: 'default' | 'overlay' | 'inline' | 'reels'
+  count?: number
   onShared?: () => void
 }
 
@@ -23,12 +25,14 @@ export function ShareButton({
   title,
   text,
   variant = 'overlay',
+  count = 0,
   onShared,
 }: ShareButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const isOverlay = variant === 'overlay'
   const isInline = variant === 'inline'
   const isReels = variant === 'reels'
+  const countLabel = isOverlay || isReels ? formatVisibleSocialCount(count) : ''
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -71,14 +75,20 @@ export function ShareButton({
             >
               <Share2 className="h-6 w-6" />
             </span>
-            <span
-              className={cn(
-                'text-[11px] font-bold sm:text-xs',
-                isOverlay ? 'text-white drop-shadow' : 'text-gray-600 dark:text-gray-400'
-              )}
-            >
-              Paylaş
-            </span>
+            {countLabel ? (
+              <span
+                className={cn(
+                  'text-[11px] font-bold sm:text-xs',
+                  isOverlay ? 'text-white drop-shadow' : 'text-gray-600 dark:text-gray-400'
+                )}
+              >
+                {countLabel}
+              </span>
+            ) : !isOverlay ? (
+              <span className="text-[11px] font-bold text-gray-600 sm:text-xs dark:text-gray-400">
+                Paylaş
+              </span>
+            ) : null}
           </>
         )}
       </button>

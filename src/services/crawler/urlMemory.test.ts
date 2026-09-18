@@ -341,6 +341,72 @@ describe('permanent URL memory after raw delete', () => {
     )
   })
 
+  it('TEST 7 — delete then same source + same title on a new URL stays out of Ham Haberler', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await makeSource(store, 'Haberturk')
+    const title = '97 yasindaki Yusuf Celik hayatini kaybetti'
+    const first = await ingestDiscoveredArticle(store, {
+      discoveryType: 'RSS',
+      sourceId: source.id,
+      originalUrl: 'https://haberturk.example.com/kaza-1',
+      titleHint: title,
+    })
+    expect(first.status).toBe('inserted')
+    const discovered = await store.getDiscoveredByHash(first.urlHash!)
+    const raw = await store.insertRawArticle(
+      rawInput(source, title, {
+        discoveredUrlId: discovered!.id,
+        originalUrl: 'https://haberturk.example.com/kaza-1',
+        normalizedUrl: 'https://haberturk.example.com/kaza-1',
+        titleHash: 't-memory',
+        contentHash: 'c-memory',
+      })
+    )
+    const del = await runArticleBulk({ store, actor: admin, op: 'delete', ids: [raw.id] })
+    if ('error' in del) throw new Error(del.error)
+
+    const again = await ingestDiscoveredArticle(store, {
+      discoveryType: 'RSS',
+      sourceId: source.id,
+      originalUrl: 'https://haberturk.example.com/kaza-1-yeniden',
+      titleHint: title,
+    })
+    expect(again.status).toBe('duplicate')
+    expect([...store.articles.values()].filter((a) => a.editorialStatus === 'NEW' && a.id !== raw.id)).toHaveLength(0)
+  })
+
+  it('TEST 8 — approve/publish does not recreate a NEW inbox row for the same article', async () => {
+    const store = new MemoryCrawlerStore()
+    const source = await makeSource(store, 'Cumhuriyet')
+    const url = 'https://cumhuriyet.example.com/seen-story'
+    const ingested = await ingestDiscoveredArticle(store, {
+      discoveryType: 'RSS',
+      sourceId: source.id,
+      originalUrl: url,
+      titleHint: 'Ulusal Mahkeme karari aciklandi',
+    })
+    const discovered = await store.getDiscoveredByHash(ingested.urlHash!)
+    const raw = await store.insertRawArticle(
+      rawInput(source, 'Ulusal Mahkeme karari aciklandi', {
+        discoveredUrlId: discovered!.id,
+        originalUrl: url,
+        normalizedUrl: url,
+        contentHash: 'published-same',
+        titleHash: 'published-title',
+      })
+    )
+    await store.updateRawArticle(raw.id, { editorialStatus: 'PUBLISHED', editorialNewsId: 'news_ok' })
+
+    const rediscover = await ingestDiscoveredArticle(store, {
+      discoveryType: 'RSS',
+      sourceId: source.id,
+      originalUrl: 'https://cumhuriyet.example.com/seen-story-amp',
+      titleHint: 'Ulusal Mahkeme karari aciklandi',
+    })
+    expect(rediscover.status).toBe('duplicate')
+    expect([...store.articles.values()].filter((a) => a.editorialStatus === 'NEW')).toHaveLength(0)
+  })
+
   it('raw row without discoveredUrlId still leaves a URL tombstone after hard delete', async () => {
     const store = new MemoryCrawlerStore()
     const source = await makeSource(store, 'OrphanLink')

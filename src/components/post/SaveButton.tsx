@@ -1,7 +1,7 @@
 'use client'
 
 import { Bookmark } from 'lucide-react'
-import { formatCount } from '@/lib/postUtils'
+import { formatCount, formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 
 interface SaveButtonProps {
@@ -22,6 +22,7 @@ export function SaveButton({
   const isOverlay = variant === 'overlay'
   const isReels = variant === 'reels'
   const isInline = variant === 'inline'
+  const countLabel = isOverlay || isReels ? formatVisibleSocialCount(count) : formatCount(count)
 
   if (isInline) {
     return (
@@ -72,7 +73,7 @@ export function SaveButton({
           <Bookmark className={cn('h-6 w-6 transition-transform duration-150', saved ? '!fill-amber-400 !text-amber-400 scale-110' : 'text-white')} />
         </span>
       )}
-      {!isReels && (
+      {!isReels && countLabel ? (
         <span
           className={cn(
             'text-[11px] font-bold tabular-nums sm:text-xs',
@@ -81,9 +82,9 @@ export function SaveButton({
               : 'text-gray-600 dark:text-gray-400'
           )}
         >
-          {formatCount(count)}
+          {countLabel}
         </span>
-      )}
+      ) : null}
     </button>
   )
 }

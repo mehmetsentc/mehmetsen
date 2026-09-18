@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatPublicSourceLabel, getPostDetailHref, isReelsVideoPost } from '@/lib/postUtils'
+import {
+  FEED_SOCIAL_COUNT_MIN,
+  formatPublicSourceLabel,
+  formatVisibleSocialCount,
+  getPostDetailHref,
+  isReelsVideoPost,
+} from '@/lib/postUtils'
 import type { Post } from '@/types/post'
 
 function basePost(overrides: Partial<Post> = {}): Post {
@@ -39,6 +45,16 @@ function basePost(overrides: Partial<Post> = {}): Post {
     ...overrides,
   } as Post
 }
+
+describe('formatVisibleSocialCount', () => {
+  it('hides Feed 2 counts below the social-proof floor', () => {
+    expect(FEED_SOCIAL_COUNT_MIN).toBe(20)
+    expect(formatVisibleSocialCount(0)).toBe('')
+    expect(formatVisibleSocialCount(19)).toBe('')
+    expect(formatVisibleSocialCount(20)).toBe('20')
+    expect(formatVisibleSocialCount(1500)).toBe('1.5K')
+  })
+})
 
 describe('formatPublicSourceLabel', () => {
   it('strips internal ingestion labels from public attribution', () => {

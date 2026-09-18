@@ -446,6 +446,11 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     }
   }
 
+  async getDiscoveredById(id: string): Promise<DiscoveredUrlRecord | null> {
+    const rows = await this.db().select().from(discoveredArticleUrls).where(eq(discoveredArticleUrls.id, id)).limit(1)
+    return rows[0] ? mapUrl(rows[0]) : null
+  }
+
   async getDiscoveredByHash(urlHash: string): Promise<DiscoveredUrlRecord | null> {
     const rows = await this.db()
       .select()
@@ -460,6 +465,34 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .select()
       .from(discoveredArticleUrls)
       .where(and(eq(discoveredArticleUrls.sourceId, sourceId), eq(discoveredArticleUrls.guid, guid)))
+      .limit(1)
+    return rows[0] ? mapUrl(rows[0]) : null
+  }
+
+  async findDiscoveredBySourceContentHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(discoveredArticleUrls)
+      .where(
+        and(
+          eq(discoveredArticleUrls.sourceId, sourceId),
+          sql`${discoveredArticleUrls.feedMetadata}->>'contentHash' = ${hash}`
+        )
+      )
+      .limit(1)
+    return rows[0] ? mapUrl(rows[0]) : null
+  }
+
+  async findDiscoveredBySourceTitleHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null> {
+    const rows = await this.db()
+      .select()
+      .from(discoveredArticleUrls)
+      .where(
+        and(
+          eq(discoveredArticleUrls.sourceId, sourceId),
+          sql`${discoveredArticleUrls.feedMetadata}->>'titleHash' = ${hash}`
+        )
+      )
       .limit(1)
     return rows[0] ? mapUrl(rows[0]) : null
   }
@@ -1292,6 +1325,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (query.hasImage === true) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') <> ''`)
     if (query.hasImage === false) parts.push(sql`coalesce(${rawArticles.mainImageUrl}, '') = ''`)
     if (query.status === 'duplicate') parts.push(eq(rawArticles.isExactDuplicate, 1))
+    else if ((query.queue || 'active') === 'active' && !query.editorialStatus && query.status !== 'extracted' && query.status !== 'failed') {
+      parts.push(eq(rawArticles.isExactDuplicate, 0))
+    }
     if (query.status === 'extracted') {
       parts.push(eq(rawArticles.isExactDuplicate, 0))
       parts.push(sql`${rawArticles.qualityStatus} <> 'FAILED'`)

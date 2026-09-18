@@ -262,6 +262,7 @@ export interface CrawlerStore {
   countDueSources(now: Date): Promise<number>
 
   insertDiscoveredUrl(input: InsertDiscoveredUrlInput): Promise<'inserted' | 'duplicate'>
+  getDiscoveredById(id: string): Promise<DiscoveredUrlRecord | null>
   getDiscoveredByHash(urlHash: string): Promise<DiscoveredUrlRecord | null>
   listPendingFetch(limit: number): Promise<DiscoveredUrlRecord[]>
   updateDiscoveredUrl(
@@ -317,6 +318,13 @@ export interface CrawlerStore {
    * uniqueness constraint — GUIDs are only guaranteed unique within one feed/publisher).
    */
   getDiscoveredBySourceAndGuid(sourceId: string, guid: string): Promise<DiscoveredUrlRecord | null>
+  /**
+   * Durable same-source identity after the raw row is deleted. Hashes live on
+   * discovered_article_urls.feed_metadata so Ham Haberler delete/approve cannot
+   * reopen the same publisher article under a rewritten URL.
+   */
+  findDiscoveredBySourceContentHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null>
+  findDiscoveredBySourceTitleHash(sourceId: string, hash: string): Promise<DiscoveredUrlRecord | null>
   recentClusters(countryCode: string | null, since: Date): Promise<
     Array<NewsClusterRecord & { representativeTitle?: string | null; representativeSimhash?: string | null }>
   >

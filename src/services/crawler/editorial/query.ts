@@ -150,6 +150,7 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
   if (query.status === 'duplicate' && !article.isExactDuplicate) return false
   if (query.status === 'extracted' && (article.isExactDuplicate || article.qualityStatus === 'FAILED')) return false
   if (query.status === 'failed' && article.qualityStatus !== 'FAILED') return false
+  if (shouldHideExactDuplicateFromActiveQueue(article, query)) return false
   if (shouldHideSupportingFromPrimaryQueue(article, query)) return false
   const when = article.publishedAt || article.fetchedAt
   if (query.dateFrom && when && when < query.dateFrom) return false
@@ -160,6 +161,17 @@ export function matchesRawArticleQuery(article: RawArticleRecord, query: RawArti
     if (!title.includes(q)) return false
   }
   return true
+}
+
+/** Same-source exact duplicates stay out of the default Ham Haberler aktif kuyruğu. */
+export function shouldHideExactDuplicateFromActiveQueue(
+  article: Pick<RawArticleRecord, 'isExactDuplicate'>,
+  query: Pick<RawArticleListQuery, 'queue' | 'status' | 'editorialStatus'>
+): boolean {
+  if (!article.isExactDuplicate) return false
+  if (query.status === 'duplicate') return false
+  if (query.editorialStatus) return false
+  return (query.queue || 'active') === 'active'
 }
 
 /** Phase 4E — supporting evidence stays in cluster detail, not primary Ham Haber clutter. */

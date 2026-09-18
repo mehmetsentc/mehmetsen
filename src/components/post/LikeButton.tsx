@@ -1,7 +1,7 @@
 'use client'
 
 import { Heart } from 'lucide-react'
-import { formatCount } from '@/lib/postUtils'
+import { formatCount, formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 
 interface LikeButtonProps {
@@ -23,6 +23,7 @@ export function LikeButton({
   const isOverlay = variant === 'overlay'
   const isReels = variant === 'reels'
   const isInline = variant === 'inline'
+  const countLabel = isOverlay || isReels ? formatVisibleSocialCount(safeCount) : formatCount(safeCount)
 
   if (isInline) {
     return (
@@ -83,19 +84,21 @@ export function LikeButton({
           />
         </span>
       )}
-      <span
-        className={cn(
-          'text-[11px] font-bold tabular-nums sm:text-xs',
-          liked && (isOverlay || isReels) ? 'text-rose-400 drop-shadow' : null,
-          !liked && (isOverlay || isReels)
-            ? 'text-white drop-shadow'
-            : !liked
-              ? 'text-gray-600 dark:text-gray-400'
-              : 'text-rose-500'
-        )}
-      >
-        {formatCount(safeCount)}
-      </span>
+      {countLabel ? (
+        <span
+          className={cn(
+            'text-[11px] font-bold tabular-nums sm:text-xs',
+            liked && (isOverlay || isReels) ? 'text-rose-400 drop-shadow' : null,
+            !liked && (isOverlay || isReels)
+              ? 'text-white drop-shadow'
+              : !liked
+                ? 'text-gray-600 dark:text-gray-400'
+                : 'text-rose-500'
+          )}
+        >
+          {countLabel}
+        </span>
+      ) : null}
     </button>
   )
 }

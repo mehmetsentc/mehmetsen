@@ -19,6 +19,7 @@ import { runMediaTick } from '../extract/mediaWorker'
 import { extractEditorialImages } from '../extract/images'
 import { persistArticleImages, recordImageMetrics } from '../extract/persistMedia'
 import { logCrawler } from '../log'
+import { persistDiscoveryArticleIdentity } from '../discovery/articleIdentity'
 import { hostnameOf, normalizeArticleUrl, urlHashFor } from '../url/normalize'
 import type { HostLookup } from '../url/ssrf'
 import { DrizzleCrawlerStore, canUseDrizzleCrawlerStore } from '../store/drizzle'
@@ -324,6 +325,12 @@ export async function runCrawlerTick(opts?: {
     // since canonical URL is a publisher-page identity, not a text identity.
     const near = await store.recentRawForNearDup(source.id, limits.nearDupMaxCandidates, now)
     const existingNorm = await store.getDiscoveredByHash(item.urlHash)
+    const rememberedContent = hashes.contentHash
+      ? await store.findDiscoveredBySourceContentHash(source.id, hashes.contentHash)
+      : null
+    const rememberedTitle = hashes.titleHash
+      ? await store.findDiscoveredBySourceTitleHash(source.id, hashes.titleHash)
+      : null
     const dup = evaluateExactDuplicate({
       canonicalUrl: canonical,
       bodyText: extracted.articleBodyText,
@@ -332,10 +339,12 @@ export async function runCrawlerTick(opts?: {
       existingByNormalizedUrl: existingNorm && existingNorm.id !== item.id ? existingNorm.id : null,
       existingByCanonicalUrl: canonical ? (await store.findRawByCanonicalUrl(canonical))?.id ?? null : null,
       existingByContentHash: hashes.contentHash
-        ? (await store.findRawByContentHash(source.id, hashes.contentHash))?.id ?? null
+        ? (await store.findRawByContentHash(source.id, hashes.contentHash))?.id ??
+          (rememberedContent && rememberedContent.id !== item.id ? rememberedContent.id : null)
         : null,
       existingByTitleHash: hashes.titleHash
-        ? (await store.findRawByTitleHash(source.id, hashes.titleHash))?.id ?? null
+        ? (await store.findRawByTitleHash(source.id, hashes.titleHash))?.id ??
+          (rememberedTitle && rememberedTitle.id !== item.id ? rememberedTitle.id : null)
         : null,
       nearCandidates: near,
     })
@@ -372,6 +381,38 @@ export async function runCrawlerTick(opts?: {
     if (images.rssImageAgreement === 'agreed') await store.incrementMetric('rss_image_agreed', 1, now)
     if (images.rssImageAgreement === 'conflict') await store.incrementMetric('rss_image_conflict', 1, now)
 
+    await persistDiscoveryArticleIdentity(store, item.id, {
+      contentHash: hashes.contentHash,
+      titleHash: hashes.titleHash,
+    })
+
+    if (dup) {
+      duplicates += 1
+      await store.incrementMetric('duplicates_removed', 1, now)
+      await store.updateDiscoveredUrl(item.id, {
+        status: 'DUPLICATE',
+        canonicalUrl: canonical,
+        logicalQueue: 'FAILED_QUEUE',
+        failureReason: dup.reason,
+        etag: fetched.etag,
+        lastModified: fetched.lastModified,
+      })
+      await store.updateSource(source.id, {
+        articlesFetched: source.articlesFetched + 1,
+        extractionSuccessRate: blendRate(source.extractionSuccessRate, success),
+      })
+      logCrawler({
+        sourceId: source.id,
+        url: hostnameOf(item.normalizedUrl) ? item.normalizedUrl : undefined,
+        stage: 'extract',
+        durationMs: fetched.durationMs,
+        httpStatus: fetched.status,
+        extractionMethod: extracted.extractionMethod,
+        confidence: extracted.extractionConfidence,
+      })
+      continue
+    }
+
     const raw = await store.insertRawArticle({
       sourceId: source.id,
       discoveredUrlId: item.id,
@@ -405,8 +446,8 @@ export async function runCrawlerTick(opts?: {
       httpStatus: fetched.status,
       fetchDurationMs: fetched.durationMs,
       fetchedAt: now,
-      isExactDuplicate: Boolean(dup),
-      duplicateOfId: dup?.existingId ?? null,
+      isExactDuplicate: false,
+      duplicateOfId: null,
       qualityStatus: quality.status,
       qualityGateReasons: quality.reasons,
       rssSnippetUsedAsBody: false,
@@ -424,34 +465,21 @@ export async function runCrawlerTick(opts?: {
       await store.incrementMetric('image_extraction_failed', 1, now)
     }
 
-    if (dup) {
-      duplicates += 1
-      await store.incrementMetric('duplicates_removed', 1, now)
-      await store.updateDiscoveredUrl(item.id, {
-        status: 'DUPLICATE',
-        canonicalUrl: canonical,
-        logicalQueue: 'FAILED_QUEUE',
-        failureReason: dup.reason,
-        etag: fetched.etag,
-        lastModified: fetched.lastModified,
-      })
-    } else {
-      await store.updateDiscoveredUrl(item.id, {
-        status: quality.status === 'LOW_CONFIDENCE' ? 'LOW_CONFIDENCE' : quality.excludeFromCluster ? 'FAILED' : 'EXTRACTED',
-        canonicalUrl: canonical,
-        logicalQueue: quality.excludeFromCluster ? 'FAILED_QUEUE' : 'CLUSTER_QUEUE',
-        failureReason: quality.excludeFromCluster ? quality.status : null,
-        etag: fetched.etag,
-        lastModified: fetched.lastModified,
-      })
-    }
+    await store.updateDiscoveredUrl(item.id, {
+      status: quality.status === 'LOW_CONFIDENCE' ? 'LOW_CONFIDENCE' : quality.excludeFromCluster ? 'FAILED' : 'EXTRACTED',
+      canonicalUrl: canonical,
+      logicalQueue: quality.excludeFromCluster ? 'FAILED_QUEUE' : 'CLUSTER_QUEUE',
+      failureReason: quality.excludeFromCluster ? quality.status : null,
+      etag: fetched.etag,
+      lastModified: fetched.lastModified,
+    })
 
     const dispatch = dispatchCrawlerArticleToNewsroom({ articleId: raw.id, sourceId: source.id })
     if (dispatch.dispatched) {
       await store.incrementMetric('ai_requests', 1, now)
     }
 
-    if (!dup && !quality.excludeFromCluster) {
+    if (!quality.excludeFromCluster) {
       await store.updateRawArticle(raw.id, { clusterStatus: 'PENDING' })
     } else {
       await store.updateRawArticle(raw.id, { clusterStatus: 'SKIPPED' })
@@ -462,7 +490,7 @@ export async function runCrawlerTick(opts?: {
       : false
     const gate = evaluateAiCandidate({
       source,
-      article: { ...raw, isExactDuplicate: Boolean(dup) },
+      article: raw,
       clusterHasBetterEligible: false,
       cacheHit,
       now,
