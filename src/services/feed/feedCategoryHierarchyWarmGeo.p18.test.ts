@@ -1,5 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
+import {
+  resolveCategoryFilterIds,
+  resolveLockedCityCategoryFilterIds,
+} from '@/lib/feed/resolveCategoryFilterIds'
 import {
   clearFeedRestore,
   clearFeedRestoreForFeedV2Nav,
@@ -27,6 +30,26 @@ describe('P18 category hierarchy expand', () => {
 
   it('leaf Futbol stays leaf-only', () => {
     expect(resolveCategoryFilterIds('futbol')).toEqual(['futbol'])
+  })
+
+  it('city-locked Spor includes national branches and yerel mirrors', () => {
+    const ids = resolveLockedCityCategoryFilterIds('spor')
+    expect(ids).toEqual(expect.arrayContaining([
+      'spor',
+      'futbol',
+      'basketbol',
+      'voleybol',
+      'yerel-spor',
+      'yerel-futbol',
+      'yerel-basketbol',
+      'yerel-voleybol',
+    ]))
+    const feed = readFileSync(
+      join(process.cwd(), 'src/services/feed/FeedService.ts'),
+      'utf8'
+    )
+    expect(feed).toContain('resolveLockedCityCategoryFilterIds')
+    expect(feed).toContain('isCityLockedFeed(ctx)')
   })
 
   it('FS category fill uses per-category quota (no parent starve)', () => {

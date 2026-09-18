@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   EDITOR_AI_STALE_PROCESSING_MS,
   WORKER_BATCH_SIZE,
   WORKER_CONCURRENCY,
   processEditorAiQueue,
+  resolveEditorAiFollowUpStatus,
 } from './editorQueueWorker'
 import type { DrizzleCrawlerStore } from '../store/drizzle'
 import * as aiPublishModule from './aiPublish'
@@ -19,6 +20,14 @@ function mockStore(overrides: Partial<DrizzleCrawlerStore> = {}): DrizzleCrawler
 }
 
 describe('processEditorAiQueue', () => {
+  beforeEach(() => {
+    vi.stubEnv('MANUAL_EDITOR_AI_ENABLED', 'true')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('recovers stale AI_PROCESSING before claiming new work', async () => {
     const store = mockStore({
       recoverStaleEditorAiProcessing: vi.fn().mockResolvedValue(3),
@@ -66,17 +75,19 @@ describe('processEditorAiQueue', () => {
     expect(result.skipped).toBe(1)
     expect(result.failed).toBe(1)
 
-    // Verify skipped item records reason
+    // Skip/fail must not bounce back to Ham Haberler (NEW)
     expect(store.updateRawArticle).toHaveBeenCalledWith('raw_2', expect.objectContaining({
-      editorialStatus: 'NEW',
+      editorialStatus: 'AI_QUEUED',
       aiSkipReason: 'Atlandı: Görsel yok',
     }))
-
-    // Verify failed item records error
     expect(store.updateRawArticle).toHaveBeenCalledWith('raw_3', expect.objectContaining({
-      editorialStatus: 'NEW',
+      editorialStatus: 'AI_QUEUED',
       aiSkipReason: 'AI network timeout',
     }))
+    expect(store.updateRawArticle).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ editorialStatus: 'NEW' })
+    )
 
     publishSpy.mockRestore()
   })
@@ -85,5 +96,20 @@ describe('processEditorAiQueue', () => {
     expect(WORKER_BATCH_SIZE).toBe(12)
     expect(WORKER_CONCURRENCY).toBe(4)
     expect(EDITOR_AI_STALE_PROCESSING_MS).toBe(3 * 60 * 1000)
+  })
+
+  it('never maps editor-approved follow-up back to NEW', () => {
+    expect(resolveEditorAiFollowUpStatus('draft')).toBeNull()
+    expect(resolveEditorAiFollowUpStatus('published')).toBeNull()
+    expect(resolveEditorAiFollowUpStatus('skipped', 'Atlandı: Görsel yok')).toBe('AI_QUEUED')
+    expect(resolveEditorAiFollowUpStatus('skipped', 'Atlandı: Tanıtım / kanal paylaşımı içeriği')).toBe(
+      'REJECTED'
+    )
+    expect(resolveEditorAiFollowUpStatus('skipped', 'Bu haber zaten taslakta (Onay Bekliyor)')).toBe(
+      'DRAFT'
+    )
+    expect(resolveEditorAiFollowUpStatus('error', 'AI network timeout')).toBe('AI_QUEUED')
+    expect(resolveEditorAiFollowUpStatus('thrown', 'AI network timeout')).toBe('AI_QUEUED')
+    expect(resolveEditorAiFollowUpStatus('skipped', 'already_published')).toBe('PUBLISHED')
   })
 })

@@ -72,6 +72,18 @@ describe('P17c Feed rail presentation', () => {
     expect(card).toContain('pr-[4.75rem]')
   })
 
+  it('city tenants lock highlights to that province only', () => {
+    const rail = read('src/components/feed/smart/FeedDiscoveryRail.tsx')
+    const api = read('src/app/api/feed/v2/rails/route.ts')
+    expect(rail).toContain('useCityTenant')
+    expect(rail).toContain("params.set('lockCity', '1')")
+    expect(rail).toContain('filterRailItemsForCity')
+    expect(api).toContain('getCitySlugFromHeaders')
+    expect(api).toContain('fetchLocal')
+    expect(api).toContain('filterRailItemsForCity')
+    expect(api).toContain('lockCity')
+  })
+
   it('cadence preserved via shouldShowFeedHighlights (every 8th)', () => {
     const client = read('src/components/feed/smart/SmartFeedClient.tsx')
     expect(client).toContain('shouldShowFeedHighlights')

@@ -248,6 +248,17 @@ export async function publishRawArticleWithAi(opts: {
           }
         }
         if (result.newsId) {
+          await syncCrawlerEditorial({
+            rawArticleId: opts.rawArticleId,
+            newsId: result.newsId,
+            status: code === 'already_drafted' ? 'draft' : 'published',
+          }).catch(() => {})
+          if (code === 'already_drafted') {
+            await opts.store.updateRawArticle(opts.rawArticleId, {
+              editorialNewsId: result.newsId,
+              editorialStatus: 'DRAFT',
+            }).catch(() => {})
+          }
           return {
             rawArticleId: opts.rawArticleId,
             outcome: code === 'already_drafted' ? 'draft' : 'already_published',

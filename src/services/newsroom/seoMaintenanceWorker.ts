@@ -48,6 +48,11 @@ function isPipelineSourcedDraft(data: Record<string, unknown>): boolean {
   return false
 }
 
+/** Human "AI için onayla" drafts stay in Onay Bekliyor even without a cover. */
+function isEditorApprovedDraft(data: Record<string, unknown>): boolean {
+  return data.editorAiApproved === true
+}
+
 export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
   const started = Date.now()
   const result: SeoMaintenanceResult = {
@@ -164,6 +169,7 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
       for (const doc of draftsSnap.docs) {
         const data = doc.data()
         const contentLen = (String(data.description || '') + String(data.content || '')).length
+        if (isEditorApprovedDraft(data as Record<string, unknown>)) continue
         if (contentLen < THIN_CONTENT_CHARS) {
           batch.delete(doc.ref)
           result.thinDraftsRemoved++
@@ -188,6 +194,7 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
       for (const doc of noImageSnap.docs) {
         const data = doc.data() as Record<string, unknown>
         if (!isPipelineSourcedDraft(data)) continue
+        if (isEditorApprovedDraft(data)) continue
         if (hasUsableCoverImage(resolveCoverImageUrl(data))) continue
         batch.update(doc.ref, {
           draftStatus: 'rejected',
@@ -217,6 +224,7 @@ export async function runSeoMaintenanceWorker(): Promise<SeoMaintenanceResult> {
       for (const doc of pendingNewsSnap.docs) {
         const data = doc.data() as Record<string, unknown>
         if (!isPipelineSourcedDraft(data)) continue
+        if (isEditorApprovedDraft(data)) continue
         if (hasUsableCoverImage(resolveCoverImageUrl(data))) continue
         batch.update(doc.ref, {
           status: 'archived',

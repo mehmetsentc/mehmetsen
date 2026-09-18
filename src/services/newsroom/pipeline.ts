@@ -745,9 +745,10 @@ export async function processNewsroomArticle(
     }
 
     // ── COVER IMAGE GATE ─────────────────────────────────────────────────────
-    // Kaynak/RSS/scraper/AI pipeline: görselsiz haber yayınlanmaz ve Onay Bekliyor'a düşmez.
-    // Admin CMS manuel oluşturma bu fonksiyonu kullanmaz.
-    if (!hasUsableCoverImage(workingInput.imageUrl)) {
+    // Automated RSS/scraper: görselsiz haber yayınlanmaz ve Onay Bekliyor'a düşmez.
+    // Editor AI onayla: kapak yoksa da taslağa düşer (editör görseli sonra ekler).
+    const missingCover = !hasUsableCoverImage(workingInput.imageUrl)
+    if (missingCover && !editorApproved) {
       console.warn(
         `[newsroom/pipeline] cover gate: ${NO_COVER_IMAGE_REASON} → atlandı: ${workingInput.sourceUrl?.slice(0, 100)}`
       )
@@ -770,6 +771,11 @@ export async function processNewsroomArticle(
         }
       }
       return { outcome: 'skipped', skipReason: NO_COVER_IMAGE_REASON }
+    }
+    if (missingCover && editorApproved) {
+      console.warn(
+        `[newsroom/pipeline] cover gate: ${NO_COVER_IMAGE_REASON} — editör onayı, Onay Bekliyor'a devam: ${workingInput.sourceUrl?.slice(0, 100)}`
+      )
     }
 
     // ── QUALITY GATE ────────────────────────────────────────────────────────
@@ -1086,10 +1092,17 @@ export async function processNewsroomArticle(
       })
     }
 
-    // Gate keeper skip kararı → haber atlanır
-    if (!workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip') {
+    // Gate keeper skip kararı → otomatik yol atlar; editör onayı taslağa düşer.
+    const gateSkipHold =
+      !workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip' && editorApproved
+    if (!workingInput.skipAiRewrite && rewrittenRaw.gateDecision === 'skip' && !editorApproved) {
       console.warn(`[pipeline] gate keeper skip: ${workingInput.sourceUrl?.slice(0, 80)}`)
       return { outcome: 'skipped', skipReason: 'gate_skip' }
+    }
+    if (gateSkipHold) {
+      console.warn(
+        `[pipeline] gate keeper skip — editör onayı, taslağa devam: ${workingInput.sourceUrl?.slice(0, 80)}`
+      )
     }
 
     // AiRewriteResult uyumluluğu için tip cast
@@ -1664,8 +1677,14 @@ export async function processNewsroomArticle(
         ) {
           const rejectDetail =
             chiefEditorResult.issues.join('; ') || chiefEditorResult.categoryReason || 'ai_rejected'
-          console.warn(`[newsroom/chiefEditor] rejected: ${rejectDetail}`)
-          return { outcome: 'skipped', skipReason: `ai_rejected:${rejectDetail.slice(0, 120)}` }
+          if (editorApproved) {
+            console.warn(
+              `[newsroom/chiefEditor] rejected — editör onayı, taslağa devam: ${rejectDetail}`
+            )
+          } else {
+            console.warn(`[newsroom/chiefEditor] rejected: ${rejectDetail}`)
+            return { outcome: 'skipped', skipReason: `ai_rejected:${rejectDetail.slice(0, 120)}` }
+          }
         }
 
         if (
@@ -2026,11 +2045,14 @@ export async function processNewsroomArticle(
       researchSources: workingInput.researchSources ?? [],
       readingTimeMinutes,
       draftStatus: 'pending_review' as const,
+      editorAiApproved: editorApproved,
       moderationReasons: [
         ...(moderation.decision === 'review' ? moderation.reasons : []),
         ...(incompleteText ? ['incomplete_text'] : []),
         ...(personaRequiresApproval ? ['ai_editor_requires_approval'] : []),
         ...(chiefEditorHold ? ['chief_editor_hold'] : []),
+        ...(missingCover ? ['missing_cover'] : []),
+        ...(gateSkipHold ? ['gate_skip_hold'] : []),
         ...(chiefEditorResult?.issues ?? []),
       ],
       aiGenerated: true,

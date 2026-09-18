@@ -1,4 +1,4 @@
-import { DEFAULT_CATEGORIES, getSubcategories } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getCategoryFamily, getSubcategories } from '@/constants/config'
 
 /**
  * Expand a Feed V2 category chip id into itself + all taxonomy descendants
@@ -24,4 +24,14 @@ export function resolveCategoryFilterIds(categoryId: string): string[] {
     }
   }
   return out
+}
+
+/**
+ * City-locked feeds also include getCategoryFamily mirrors so parent chips
+ * (Spor, Ekonomi, …) match the yerel-* ids those desks actually publish.
+ */
+export function resolveLockedCityCategoryFilterIds(categoryId: string): string[] {
+  const raw = categoryId.trim().toLowerCase()
+  if (!raw) return []
+  return [...new Set([...resolveCategoryFilterIds(raw), ...getCategoryFamily(raw)])]
 }

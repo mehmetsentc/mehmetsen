@@ -11,7 +11,10 @@ import { NFRANK_VERSION } from '@/lib/feed/nfRankConfig'
 import { isNfRankShadowEnabled } from '@/lib/feed/featureFlag'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
-import { resolveCategoryFilterIds } from '@/lib/feed/resolveCategoryFilterIds'
+import {
+  resolveCategoryFilterIds,
+  resolveLockedCityCategoryFilterIds,
+} from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
 import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
 import type {
@@ -307,7 +310,11 @@ export class FeedService {
         cursorPayload?.publishedAt && cursorPayload?.id
           ? { publishedAt: cursorPayload.publishedAt, id: cursorPayload.id }
           : null
-      const categoryIds = ctx.category ? resolveCategoryFilterIds(ctx.category) : null
+      const categoryIds = ctx.category
+        ? isCityLockedFeed(ctx)
+          ? resolveLockedCityCategoryFilterIds(ctx.category)
+          : resolveCategoryFilterIds(ctx.category)
+        : null
       const candidateOpts = {
         limit: limit * 3,
         cursor: timeCursor,

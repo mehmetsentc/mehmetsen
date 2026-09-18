@@ -8,7 +8,9 @@ import { getClientAuthToken } from '@/lib/firebase/auth'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { postTelemetryQuiet } from '@/lib/feed/feedTelemetryQuiet'
 import { formatFeedHighlightsHeading } from '@/lib/feed/feedHighlightsHeading'
+import { filterRailItemsForCity } from '@/lib/feed/scopeFeedRailsToCity'
 import { formatReaderCategoryLabel } from '@/lib/feed/reader/presentationCopy'
+import { useCityTenant } from '@/store/cityTenantContext'
 import { ChevronRight } from 'lucide-react'
 
 export interface DiscoveryRailItem {
@@ -17,6 +19,7 @@ export interface DiscoveryRailItem {
   headline: string
   image: string | null
   category: string | null
+  citySlug?: string | null
   publishedAt: string
   publisherName?: string | null
 }
@@ -61,6 +64,8 @@ interface FeedDiscoveryRailProps {
    * Used by canonical /haber so related posts remain when rails cannot load.
    */
   fallback?: ReactNode
+  /** City tenant lock — highlights stay on that province only. */
+  citySlug?: string | null
 }
 
 /**
@@ -76,6 +81,7 @@ export function FeedDiscoveryRail({
   onSeeAll,
   variant = 'feed',
   fallback = null,
+  citySlug: citySlugProp = null,
 }: FeedDiscoveryRailProps) {
   const [items, setItems] = useState<DiscoveryRailItem[]>([])
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>('idle')
@@ -84,6 +90,8 @@ export function FeedDiscoveryRail({
   const excludeRef = useRef(excludeIds)
   excludeRef.current = excludeIds
   const isReader = variant === 'reader'
+  const tenant = useCityTenant()
+  const lockedCitySlug = tenant?.provinceSlug ?? citySlugProp ?? null
 
   useEffect(() => {
     let cancelled = false
@@ -93,7 +101,13 @@ export function FeedDiscoveryRail({
         const headers: Record<string, string> = {}
         const token = await getClientAuthToken()
         if (token) headers.Authorization = `Bearer ${token}`
-        const qs = category ? `?category=${encodeURIComponent(category)}` : ''
+        const params = new URLSearchParams()
+        if (category) params.set('category', category)
+        if (lockedCitySlug) {
+          params.set('city', lockedCitySlug)
+          params.set('lockCity', '1')
+        }
+        const qs = params.toString() ? `?${params.toString()}` : ''
         const res = await fetch(`/api/feed/v2/rails${qs}`, { headers, credentials: 'include' })
         if (!res.ok) {
           if (!cancelled) setLoadState('error')
@@ -103,7 +117,10 @@ export function FeedDiscoveryRail({
           featured?: DiscoveryRailItem[]
           popular?: DiscoveryRailItem[]
         }
-        const merged = [...(data.featured ?? []), ...(data.popular ?? [])]
+        const merged = filterRailItemsForCity(
+          [...(data.featured ?? []), ...(data.popular ?? [])],
+          lockedCitySlug
+        )
         const seen = new Set<string>()
         const filtered: DiscoveryRailItem[] = []
         const exclude = excludeRef.current
@@ -136,7 +153,7 @@ export function FeedDiscoveryRail({
     return () => {
       cancelled = true
     }
-  }, [category, isReader])
+  }, [category, isReader, lockedCitySlug])
 
   useEffect(() => {
     const el = rootRef.current

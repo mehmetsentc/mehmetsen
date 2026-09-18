@@ -3,17 +3,54 @@
  *
  * Called by /api/cron/newsroom/editor-ai-queue every minute.
  * Picks up AI_QUEUED articles, marks them AI_PROCESSING, then runs the
- * newsroom pipeline for each. On failure, marks them back to NEW so they
- * can be retried or rejected manually.
+ * newsroom pipeline for each. Editor-approved items must never bounce
+ * back to Ham Haberler (NEW) — retries stay AI_QUEUED; junk stays REJECTED.
  */
 import { DrizzleCrawlerStore } from '../store/drizzle'
-import { publishRawArticleWithAi } from './aiPublish'
+import { publishRawArticleWithAi, type AiPublishOutcome } from './aiPublish'
 import { isManualEditorAiEnabled } from '../automatedAiPolicy'
 import { runWithAiUsageContext } from '@/lib/ai/usage/context'
+import type { CrawlerEditorialStatus } from '../types'
 
 /** Process up to 12 articles per cron tick with concurrency 4. */
 export const WORKER_BATCH_SIZE = 12
 export const WORKER_CONCURRENCY = 4
+
+/**
+ * Follow-up editorial status after an editor-approved AI attempt.
+ * `null` = publishRawArticleWithAi already wrote the row (draft / published).
+ * Never returns NEW — that dumps the item back into Ham Haberler.
+ */
+export function resolveEditorAiFollowUpStatus(
+  outcome: AiPublishOutcome | 'thrown',
+  error?: string | null
+): CrawlerEditorialStatus | null {
+  if (
+    outcome === 'published' ||
+    outcome === 'updated' ||
+    outcome === 'already_published' ||
+    outcome === 'draft'
+  ) {
+    return null
+  }
+
+  const msg = (error || '').toLowerCase()
+  if (outcome === 'skipped') {
+    if (msg.includes('already_published') || msg.includes('zaten yayınlanmış')) return 'PUBLISHED'
+    if (msg.includes('already_drafted') || msg.includes('zaten taslak')) return 'DRAFT'
+    if (
+      msg.includes('promotional') ||
+      msg.includes('tanıtım') ||
+      msg.includes('live_broadcast') ||
+      msg.includes('canlı yayın')
+    ) {
+      return 'REJECTED'
+    }
+    return 'AI_QUEUED'
+  }
+
+  return 'AI_QUEUED'
+}
 
 /** Editor AI cron maxDuration is 300s; recover leases older than 3 minutes. */
 export const EDITOR_AI_STALE_PROCESSING_MS = 3 * 60 * 1000
@@ -93,30 +130,39 @@ export async function processEditorAiQueue(
         } else if (item.outcome === 'skipped') {
           result.skipped += 1
           const skipReason = item.error || 'Atlandı: kriterler karşılanmadı'
-          await store.updateRawArticle(article.id, {
-            editorialStatus: 'NEW',
-            aiSkipReason: skipReason.slice(0, 80),
-            rejectionNote: skipReason,
-          }).catch(() => {})
+          const editorialStatus = resolveEditorAiFollowUpStatus(item.outcome, skipReason)
+          if (editorialStatus) {
+            await store.updateRawArticle(article.id, {
+              editorialStatus,
+              aiSkipReason: skipReason.slice(0, 80),
+              rejectionNote: skipReason,
+            }).catch(() => {})
+          }
         } else {
-          // 'error' or 'locked'
+          // 'error' or 'locked' — retry in AI Kuyruğu, not Ham Haberler
           result.failed += 1
           const failReason = item.error || 'AI üretim hatası'
-          await store.updateRawArticle(article.id, {
-            editorialStatus: 'NEW',
-            aiSkipReason: failReason.slice(0, 80),
-            rejectionNote: failReason,
-          }).catch(() => {})
+          const editorialStatus = resolveEditorAiFollowUpStatus(item.outcome, failReason)
+          if (editorialStatus) {
+            await store.updateRawArticle(article.id, {
+              editorialStatus,
+              aiSkipReason: failReason.slice(0, 80),
+              rejectionNote: failReason,
+            }).catch(() => {})
+          }
         }
       } catch (err) {
         result.failed += 1
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error(`[editorQueueWorker] article ${article.id} failed:`, errMsg)
-        await store.updateRawArticle(article.id, {
-          editorialStatus: 'NEW',
-          aiSkipReason: errMsg.slice(0, 80),
-          rejectionNote: errMsg,
-        }).catch(() => {})
+        const editorialStatus = resolveEditorAiFollowUpStatus('thrown', errMsg)
+        if (editorialStatus) {
+          await store.updateRawArticle(article.id, {
+            editorialStatus,
+            aiSkipReason: errMsg.slice(0, 80),
+            rejectionNote: errMsg,
+          }).catch(() => {})
+        }
       }
     }
   })

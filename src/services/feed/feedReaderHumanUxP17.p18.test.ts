@@ -187,7 +187,7 @@ describe('P17 Reader recommendations layout', () => {
 
   it('22: contextual category request remains intact', () => {
     const rail = read('src/components/feed/smart/FeedDiscoveryRail.tsx')
-    expect(rail).toContain('?category=')
+    expect(rail).toContain("params.set('category', category)")
     expect(rail).toContain('/api/feed/v2/rails')
     const reader = read('src/components/feed/smart/FeedArticleReader.tsx')
     expect(reader).toContain('category={item.category}')

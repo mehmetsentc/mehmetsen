@@ -96,7 +96,7 @@ describe('P17b Reader recommendation editorial polish', () => {
   it('19-21: comments / share / history not touched by this polish', () => {
     const rail = read('src/components/feed/smart/FeedDiscoveryRail.tsx')
     expect(rail).toContain('/api/feed/v2/rails')
-    expect(rail).toContain('?category=')
+    expect(rail).toContain("params.set('category', category)")
     // No blanket section gesture block.
     expect(rail).toContain("isReader ? {} : { 'data-no-reader-gesture': '1' }")
     const share = read('src/components/feed/smart/FeedArticleReader.tsx')

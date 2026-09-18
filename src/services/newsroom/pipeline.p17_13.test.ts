@@ -59,6 +59,13 @@ describe('P17.13 manual AI editorial review safety', () => {
     expect(src).toMatch(/const needsDraft[\s\S]*editorApproved/)
   })
 
+  it('editor-approved cover and gate skips continue to Onay Bekliyor', () => {
+    const src = readFileSync(join(process.cwd(), 'src/services/newsroom/pipeline.ts'), 'utf8')
+    expect(src).toMatch(/missingCover && !editorApproved/)
+    expect(src).toMatch(/gateDecision === 'skip' && !editorApproved/)
+    expect(src).toMatch(/editorAiApproved: editorApproved/)
+  })
+
   it('editor-approved manual AI does not call publishFromPipeline', async () => {
     const db = mockDb()
     const input = {
@@ -69,6 +76,7 @@ describe('P17.13 manual AI editorial review safety', () => {
       originalTitle: 'Uzun başlık haber test',
       originalSummary: 'Özet metni',
       originalContent: 'x'.repeat(600),
+      imageUrl: 'https://example.com/cover.jpg',
       rssFingerprint: 'p17-13-manual-draft',
     }
 
