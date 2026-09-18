@@ -112,8 +112,17 @@ export function CityBrandLockup({
         >
           {cityName}
         </span>
-        <span className="ml-1 shrink-0 whitespace-nowrap text-[rgb(var(--wordmark-haber))] sm:ml-1.5">
-          NaHaber
+        <span className="ml-1 shrink-0 whitespace-nowrap sm:ml-1.5">
+          <span
+            className={
+              onBrand
+                ? 'text-[rgb(var(--wordmark-na-onbrand))]'
+                : 'text-[rgb(var(--wordmark-na))]'
+            }
+          >
+            Na
+          </span>
+          <span className="text-[rgb(var(--wordmark-haber-onbrand))]">Haber</span>
         </span>
       </span>
     </span>

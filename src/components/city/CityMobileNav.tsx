@@ -41,10 +41,10 @@ function CityMobileNavInner() {
             >
               <span
                 className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150',
+                  'city-mobile-bottom-nav-icon flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150',
                   active
-                    ? 'bg-[rgb(var(--color-brand))] text-white'
-                    : 'bg-[rgb(var(--color-surface-raised))] text-[rgb(var(--color-text))]'
+                    ? 'city-mobile-bottom-nav-icon--active bg-white/20 text-white'
+                    : 'bg-transparent text-white/80'
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.4 : 2} />
@@ -52,9 +52,7 @@ function CityMobileNavInner() {
               <span
                 className={cn(
                   'mt-0.5 max-w-full truncate text-[10px] font-semibold leading-none',
-                  active
-                    ? 'text-[rgb(var(--color-brand))]'
-                    : 'text-[rgb(var(--color-text-secondary))]'
+                  active ? 'text-white' : 'text-white/55'
                 )}
               >
                 {caption}

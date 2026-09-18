@@ -169,6 +169,14 @@ describe('surfaces reuse magazine language except Akış and desktop', () => {
     expect(client).toContain('lg:hidden')
   })
 
+  it('desktop category columns use the homepage newspaper width, not a 72rem inset', () => {
+    const css = read('src/styles/tokens/desktop-category-portal.css')
+    expect(css).toContain('.dcp-page')
+    expect(css).toContain('max-width: none')
+    expect(css).not.toMatch(/max-width:\s*72rem/)
+    expect(read('src/components/category/CategoryPageClient.tsx')).toContain('hidden w-full lg:block')
+  })
+
   it('desktop category page uses the portal hero, not magazine stories', () => {
     const desktop = read('src/components/home/desktop/DesktopCategoryPage.tsx')
     expect(desktop).toContain('DesktopCategoryHero')

@@ -79,7 +79,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
             ? 'mobile-top-chrome--overlay text-white'
             : 'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
           overlayFeed
-            ? 'pt-0.5'
+            ? 'pt-[calc(var(--mobile-sat,env(safe-area-inset-top,0px))+0.7rem)]'
             : 'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
         style={
@@ -88,7 +88,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
             : undefined
         }
       >
-        <header className={overlayFeed ? 'h-8' : 'h-[72px]'}>
+        <header className={overlayFeed ? 'h-9' : 'h-[72px]'}>
           <div className="newspaper-layout-inner flex h-full items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
             <button
               type="button"

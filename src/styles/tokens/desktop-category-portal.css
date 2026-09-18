@@ -1,6 +1,7 @@
 /* Desktop category newspaper — lg+ only; mobile magazine landing untouched. */
 .dcp-page {
   width: 100%;
+  max-width: none;
   padding-bottom: 3rem;
   color: #111827;
 }
@@ -10,9 +11,10 @@
 }
 
 .dcp-head {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1.15rem 1.75rem 0.85rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1.15rem 0 0.85rem;
   border-bottom: 3px solid rgb(var(--cat-accent, 225 29 72));
 }
 
@@ -45,9 +47,10 @@
 }
 
 .dcp-lead {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1rem 1.75rem 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1rem 0 0;
 }
 
 .dcp-lead__media {
@@ -134,9 +137,9 @@
 
 .dcp-body {
   width: 100%;
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 1.1rem 1.75rem 0;
+  max-width: none;
+  margin: 0;
+  padding: 1.1rem 0 0;
 }
 
 .dcp-stage {

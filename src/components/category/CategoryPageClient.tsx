@@ -114,7 +114,7 @@ export function CategoryPageClient({
       </div>
 
       {/* Desktop — newspaper section head + clickable manşet (mobile magazine untouched) */}
-      <div className="hidden lg:block">
+      <div className="hidden w-full lg:block">
         <AdSlotProvider page="category" categoryId={cat.id}>
           <DesktopCategoryPage
             cat={cat}

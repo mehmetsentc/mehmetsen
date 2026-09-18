@@ -319,7 +319,10 @@
   /* City Feed 2: chrome floats on the card — no paper slab, no reserved band. */
   .mobile-top-chrome--overlay {
     --header-onbrand: 255 255 255;
-    --nahaber-context-rail-height: 2.15rem;
+    --wordmark-haber: var(--brand-500);
+    --wordmark-haber-onbrand: var(--brand-500);
+    --nahaber-header-row-height: 2.25rem;
+    --nahaber-context-rail-height: 2.55rem;
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
@@ -360,7 +363,7 @@
   }
 
   .mobile-top-chrome--overlay .context-rail {
-    padding: 0 0.65rem 0.2rem;
+    padding: 0.85rem 0.65rem 0.25rem;
   }
 
   .mobile-top-chrome--overlay .context-rail::after {
@@ -931,23 +934,25 @@
   .city-mobile-bottom-nav-pill {
     display: flex;
     width: min(100%, 36rem);
-    min-height: 4.15rem;
+    min-height: 3.55rem;
     align-items: center;
     justify-content: space-between;
     gap: 0.1rem;
-    border-radius: 1.35rem;
-    border: 1px solid rgb(var(--color-border));
-    background: rgb(var(--color-card));
-    box-shadow: 0 10px 32px rgb(0 0 0 / 0.18);
-    padding: 0.4rem 0.45rem 0.35rem;
-    color: rgb(var(--color-text));
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background: rgb(12 12 16 / 0.38);
+    box-shadow: 0 8px 28px rgb(0 0 0 / 0.28);
+    -webkit-backdrop-filter: blur(22px) saturate(1.35);
+    backdrop-filter: blur(22px) saturate(1.35);
+    padding: 0.35rem 0.7rem 0.3rem;
+    color: #fff;
   }
 
   html.dark .city-mobile-bottom-nav-pill,
   html[data-theme='oled'] .city-mobile-bottom-nav-pill {
-    background: rgb(var(--color-surface-elevated));
-    border-color: rgb(var(--color-border-strong));
-    box-shadow: 0 10px 32px rgb(0 0 0 / 0.45);
+    background: rgb(12 12 16 / 0.42);
+    border-color: rgb(255 255 255 / 0.2);
+    box-shadow: 0 8px 28px rgb(0 0 0 / 0.4);
   }
 
   html[data-platform='mobile'] .app-shell-mobile {
@@ -5686,7 +5691,15 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
  * @layer components cannot paint a cream slab over the photo.
  */
 html[data-city-overlay-chrome='1'],
-html[data-city-overlay-chrome='1'] :root,
+html[data-city-overlay-chrome='1'] :root {
+  --mobile-top-chrome-offset: 0px;
+  --header-brand-bg: 0 0 0;
+  --header-onbrand: 255 255 255;
+  --wordmark-na-onbrand: 255 255 255;
+  --wordmark-haber: var(--brand-500);
+  --wordmark-haber-onbrand: var(--brand-500);
+}
+
 html[data-feed-overlay-chrome='1'],
 html[data-feed-overlay-chrome='1'] :root {
   --mobile-top-chrome-offset: 0px;
@@ -5698,12 +5711,30 @@ html[data-feed-overlay-chrome='1'] :root {
 
 html[data-city-overlay-chrome='1'] .mobile-top-chrome,
 html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
-.mobile-top-chrome[data-city-overlay-chrome='1'],
+.mobile-top-chrome[data-city-overlay-chrome='1'] {
+  --header-onbrand: 255 255 255;
+  --wordmark-na-onbrand: 255 255 255;
+  --wordmark-haber: var(--brand-500);
+  --wordmark-haber-onbrand: var(--brand-500);
+  --nahaber-header-row-height: 2.25rem;
+  --nahaber-context-rail-height: 2.55rem;
+  color: #fff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-transform: none !important;
+  transform: none !important;
+}
+
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome,
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
 .mobile-top-chrome[data-feed-overlay-chrome='1'],
-html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay,
-html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed {
+html[data-desktop-header='newspaper']:not([data-city-overlay-chrome='1']) .mobile-top-chrome--overlay,
+html[data-desktop-header='newspaper']:not([data-city-overlay-chrome='1']) .mobile-top-chrome--overlay.is-fixed {
   --header-onbrand: 255 255 255;
   --wordmark-na-onbrand: 255 255 255;
   --wordmark-haber: 255 255 255;
@@ -5719,6 +5750,16 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed {
   backdrop-filter: none !important;
   -webkit-transform: none !important;
   transform: none !important;
+}
+
+html[data-desktop-header='newspaper'][data-city-overlay-chrome='1'] .mobile-top-chrome--overlay,
+html[data-desktop-header='newspaper'][data-city-overlay-chrome='1'] .mobile-top-chrome--overlay.is-fixed,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay[data-city-overlay-chrome='1'],
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay[data-city-overlay-chrome='1'].is-fixed {
+  --wordmark-haber: var(--brand-500);
+  --wordmark-haber-onbrand: var(--brand-500);
+  --nahaber-header-row-height: 2.25rem;
+  --nahaber-context-rail-height: 2.55rem;
 }
 
 html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed::before,
@@ -5775,8 +5816,12 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail_
 }
 
 html[data-city-overlay-chrome='1'] .context-rail,
+.mobile-top-chrome[data-city-overlay-chrome='1'] .context-rail {
+  padding: 0.85rem 0.5rem 0.25rem !important;
+}
+
 html[data-feed-overlay-chrome='1'] .context-rail,
-html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail {
+html[data-desktop-header='newspaper']:not([data-city-overlay-chrome='1']) .mobile-top-chrome--overlay .context-rail {
   padding: 0 0.5rem 0.15rem !important;
 }
 

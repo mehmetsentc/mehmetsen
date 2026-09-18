@@ -47,7 +47,7 @@ export function DesktopCategoryHero({
               alt={lead.title}
               fill
               priority
-              sizes="(min-width: 1280px) 720px, 60vw"
+              sizes="(min-width: 1440px) 1440px, (min-width: 1024px) 1280px, 100vw"
               className="object-cover"
             />
             <span className="dcp-lead__shade" aria-hidden />
