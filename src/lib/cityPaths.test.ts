@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { isCityFeedPath, isCityImmersivePath, isCitySectionActive } from '@/lib/cityPaths'
 
 describe('city paths', () => {
-  it('treats city home and /feed-v2 as the same Feed 2 surface', () => {
+  it('treats city home and /feed-v2 as the same Feed 2 surface on mobile paths', () => {
     expect(isCityImmersivePath('/')).toBe(true)
     expect(isCityImmersivePath('/feed-v2')).toBe(true)
     expect(isCityImmersivePath('/feed-v2/x')).toBe(true)
     expect(isCityFeedPath('/feed-v2')).toBe(true)
     expect(isCityFeedPath('/')).toBe(true)
+    expect(isCityFeedPath('/city-site')).toBe(true)
+    expect(isCityFeedPath('/city-site/')).toBe(true)
+    expect(isCityFeedPath(null)).toBe(true)
   })
 
   it('marks Feed tab active on home and leftover feed-v2 URLs', () => {

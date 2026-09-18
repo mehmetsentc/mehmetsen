@@ -24,11 +24,16 @@ const CityCategoryContext = createContext<CityCategoryContextValue | null>(null)
 
 export const CITY_CATEGORY_EVENT = 'nahaber:city-category'
 
+type CityCategoryWindow = Window & {
+  __nahaberApplyCityCategory?: (next: string | null) => void
+  __nahaberPendingCityCategory?: string | null
+}
+
 export function publishCityCategory(id: string | null) {
   if (typeof window === 'undefined') return
-  const apply = (window as Window & { __nahaberApplyCityCategory?: (next: string | null) => void })
-    .__nahaberApplyCityCategory
-  apply?.(id)
+  const w = window as CityCategoryWindow
+  w.__nahaberPendingCityCategory = id
+  w.__nahaberApplyCityCategory?.(id)
   window.dispatchEvent(
     new CustomEvent(CITY_CATEGORY_EVENT, { detail: { categoryId: id } })
   )

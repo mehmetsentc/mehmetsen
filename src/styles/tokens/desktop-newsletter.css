@@ -460,26 +460,34 @@ html[data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:h
   color: rgb(var(--text-primary));
 }
 
-html[data-desktop-header='newspaper'] .mobile-top-chrome {
+html[data-desktop-header='newspaper'] .mobile-top-chrome:not(.mobile-top-chrome--overlay) {
   color: rgb(var(--header-onbrand));
   background-color: rgb(var(--header-brand-bg));
 }
 
-html[data-desktop-header='newspaper']:not(.dark) .mobile-top-chrome {
+html[data-desktop-header='newspaper']:not(.dark) .mobile-top-chrome:not(.mobile-top-chrome--overlay) {
   border-bottom: 1px solid rgb(17 17 17 / 0.12);
 }
 
-html[data-desktop-header='newspaper']:not(.dark) .context-rail__chip,
-html[data-desktop-header='newspaper']:not(.dark) .context-rail__chip--active {
+html[data-desktop-header='newspaper']:not(.dark)
+  .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+  .context-rail__chip,
+html[data-desktop-header='newspaper']:not(.dark)
+  .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+  .context-rail__chip--active {
   color: rgb(var(--header-onbrand)) !important;
   text-shadow: none;
 }
 
-html[data-desktop-header='newspaper']:not(.dark) .context-rail__chip--active {
+html[data-desktop-header='newspaper']:not(.dark)
+  .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+  .context-rail__chip--active {
   box-shadow: inset 0 -2px 0 rgb(var(--color-brand));
 }
 
-html[data-desktop-header='newspaper']:not(.dark) .context-rail::after {
+html[data-desktop-header='newspaper']:not(.dark)
+  .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+  .context-rail::after {
   background: linear-gradient(90deg, transparent, rgb(var(--header-brand-bg)));
 }
 

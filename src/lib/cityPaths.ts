@@ -1,10 +1,11 @@
 /** Normalize pathname for city tenant routing (middleware rewrites + aliases). */
 export function normalizeCityPath(pathname: string): string {
-  if (pathname.startsWith('/city-site')) {
-    const rest = pathname.slice('/city-site'.length)
+  const raw = pathname.trim() || '/'
+  if (raw === '/city-site' || raw.startsWith('/city-site/')) {
+    const rest = raw.slice('/city-site'.length)
     return rest || '/'
   }
-  return pathname
+  return raw
 }
 
 /** Whether a city section tab (Ana Feed, Etkinlik, Spor, İlçeler) is active. */
@@ -26,8 +27,8 @@ export function isCitySectionActive(pathname: string, href: string): boolean {
 }
 
 /** Main city feed surfaces where dynamic category nav is shown. */
-export function isCityFeedPath(pathname: string): boolean {
-  const path = normalizeCityPath(pathname)
+export function isCityFeedPath(pathname: string | null | undefined): boolean {
+  const path = normalizeCityPath(pathname || '/')
   return (
     path === '/' ||
     path === '/feed' ||
@@ -37,7 +38,7 @@ export function isCityFeedPath(pathname: string): boolean {
   )
 }
 
-/** City Feed 2 occupies `/` and `/feed-v2` — keep dock + chips, hide magazine footer. */
+/** City Feed 2 occupies `/` and `/feed-v2` on mobile — desktop keeps newspaper home. */
 export function isCityImmersivePath(pathname: string): boolean {
   return isCityFeedPath(pathname)
 }

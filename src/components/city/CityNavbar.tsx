@@ -42,7 +42,7 @@ function CityFeedCategoryRail({ overlay = false }: { overlay?: boolean }) {
 
 export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarProps) {
   const router = useRouter()
-  const pathname = usePathname()
+  const pathname = usePathname() || '/'
   const { user, loading } = useAuth()
   const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
@@ -54,6 +54,15 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
     setHydrated(true)
   }, [])
 
+  useEffect(() => {
+    if (!overlayFeed) return
+    const root = document.documentElement
+    root.setAttribute('data-city-overlay-chrome', '1')
+    return () => {
+      root.removeAttribute('data-city-overlay-chrome')
+    }
+  }, [overlayFeed])
+
   const profileHref =
     hydrated && !loading && !publishersLoading && user && isPublisher
       ? resolvePublisherProfileHref(publishers)
@@ -63,28 +72,34 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
     <div className="city-mobile-only-chrome lg:hidden">
       <div
         ref={chromeRef as Ref<HTMLDivElement>}
+        data-city-overlay-chrome={overlayFeed ? '1' : undefined}
         className={cn(
           'mobile-top-chrome is-fixed z-[100] lg:hidden',
           overlayFeed
             ? 'mobile-top-chrome--overlay text-white'
             : 'bg-[rgb(var(--header-brand-bg))] text-[rgb(var(--header-onbrand))]',
           overlayFeed
-            ? 'pt-1'
+            ? 'pt-0.5'
             : 'pt-[var(--mobile-sat,env(safe-area-inset-top,0px))]'
         )}
+        style={
+          overlayFeed
+            ? { background: 'transparent', backgroundColor: 'transparent', borderBottom: '0' }
+            : undefined
+        }
       >
-        <header className={overlayFeed ? 'h-11' : 'h-[72px]'}>
+        <header className={overlayFeed ? 'h-8' : 'h-[72px]'}>
           <div className="newspaper-layout-inner flex h-full items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
             <button
               type="button"
               onClick={onMenuClick}
               className={cn(
                 'flex shrink-0 items-center justify-center text-[rgb(var(--header-onbrand))]',
-                overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+                overlayFeed ? 'h-8 w-8' : 'h-10 w-10 sm:h-11 sm:w-11'
               )}
               aria-label="Menü"
             >
-              <Menu className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-6 sm:w-6'} strokeWidth={2} />
+              <Menu className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5 sm:h-6 sm:w-6'} strokeWidth={2} />
             </button>
 
             <Link
@@ -96,7 +111,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                 cityName={cityName}
                 provinceSlug={provinceSlug}
                 tone="onBrand"
-                size="sm"
+                size={overlayFeed ? 'xs' : 'sm'}
                 priority
               />
             </Link>
@@ -107,18 +122,18 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                 onClick={() => router.push('/search')}
                 className={cn(
                   'flex items-center justify-center text-[rgb(var(--header-onbrand))]',
-                  overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+                  overlayFeed ? 'h-8 w-8' : 'h-10 w-10 sm:h-11 sm:w-11'
                 )}
                 aria-label="Ara"
               >
-                <Search className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
+                <Search className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
               </button>
               <NotificationBell
                 variant="onBrand"
-                iconClassName={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'}
+                iconClassName={overlayFeed ? 'h-4 w-4' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'}
                 buttonClassName={
                   overlayFeed
-                    ? 'relative flex h-9 w-9 items-center justify-center text-[rgb(var(--header-onbrand))]'
+                    ? 'relative flex h-8 w-8 items-center justify-center text-[rgb(var(--header-onbrand))]'
                     : 'relative flex h-10 w-10 items-center justify-center text-[rgb(var(--header-onbrand))] sm:h-11 sm:w-11'
                 }
               />
@@ -127,11 +142,11 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                   href={profileHref}
                   className={cn(
                     'flex items-center justify-center text-[rgb(var(--header-onbrand))]',
-                    overlayFeed ? 'h-9 w-9' : 'h-10 w-10 sm:h-11 sm:w-11'
+                    overlayFeed ? 'h-8 w-8' : 'h-10 w-10 sm:h-11 sm:w-11'
                   )}
                   aria-label="Profil"
                 >
-                  <User className={overlayFeed ? 'h-5 w-5' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
+                  <User className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5 sm:h-[22px] sm:w-[22px]'} strokeWidth={2} />
                 </Link>
               ) : null}
             </div>

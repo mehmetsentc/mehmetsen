@@ -5664,3 +5664,92 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
     --layout-newspaper-max: 1440px;
   }
 }
+
+/*
+ * City Feed 2 overlay chrome — UNLAYERED so newspaper tokens and
+ * @layer components cannot paint a cream slab over the photo.
+ */
+html[data-city-overlay-chrome='1'],
+html[data-city-overlay-chrome='1'] :root {
+  --mobile-top-chrome-offset: 0px;
+  --header-brand-bg: 0 0 0;
+  --header-onbrand: 255 255 255;
+  --wordmark-na-onbrand: 255 255 255;
+  --wordmark-haber: 255 255 255;
+}
+
+html[data-city-overlay-chrome='1'] .mobile-top-chrome,
+html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
+.mobile-top-chrome[data-city-overlay-chrome='1'],
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed {
+  --header-onbrand: 255 255 255;
+  --wordmark-na-onbrand: 255 255 255;
+  --wordmark-haber: 255 255 255;
+  --nahaber-header-row-height: 2rem;
+  --nahaber-context-rail-height: 1.55rem;
+  color: #fff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-transform: none !important;
+  transform: none !important;
+}
+
+html[data-city-overlay-chrome='1'] .mobile-top-chrome.is-fixed::before,
+html[data-city-overlay-chrome='1'] .mobile-top-chrome.sticky::before,
+.mobile-top-chrome[data-city-overlay-chrome='1'].is-fixed::before,
+.mobile-top-chrome[data-city-overlay-chrome='1'].sticky::before,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.is-fixed::before,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay.sticky::before {
+  content: none !important;
+  display: none !important;
+  background: transparent !important;
+  height: 0 !important;
+}
+
+html[data-city-overlay-chrome='1'] .mobile-safe-area-shield,
+html:has([data-city-feed-overlay='1']) .mobile-safe-area-shield {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html[data-city-overlay-chrome='1'] .context-rail__chip,
+html[data-city-overlay-chrome='1'] .feed-v2-cat-chip,
+.mobile-top-chrome[data-city-overlay-chrome='1'] .context-rail__chip,
+.mobile-top-chrome[data-city-overlay-chrome='1'] .feed-v2-cat-chip,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail__chip,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .feed-v2-cat-chip {
+  min-height: 1.35rem !important;
+  padding: 0.1rem 0.35rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.85) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-city-overlay-chrome='1'] .context-rail__chip--active,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail__chip--active {
+  background: transparent !important;
+  box-shadow: inset 0 -2px 0 #fff !important;
+  color: #fff !important;
+}
+
+html[data-city-overlay-chrome='1'] .context-rail,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail {
+  padding: 0 0.5rem 0.15rem !important;
+}
+
+html[data-city-overlay-chrome='1'] .context-rail::after,
+html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail::after {
+  display: none !important;
+  background: none !important;
+}

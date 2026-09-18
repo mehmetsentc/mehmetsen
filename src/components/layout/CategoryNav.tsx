@@ -97,14 +97,11 @@ export function CategoryNav({
               key={cat.id}
               type="button"
               data-category-chip={cat.id}
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
                 onCategorySelect?.(categoryId)
                 publishCityCategory(categoryId)
-                ;(
-                  window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }
-                ).__nahaberApplyCityCategory?.(categoryId)
-                const next = categoryId ? `/?category=${encodeURIComponent(categoryId)}` : '/'
-                window.history.replaceState(window.history.state, '', next)
               }}
               className={
                 overlay

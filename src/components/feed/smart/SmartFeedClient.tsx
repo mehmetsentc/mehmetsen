@@ -1215,7 +1215,7 @@ export function SmartFeedClient({
     [activeTabId, items.length, lockCitySlug, resolveFeedCity, router, searchParams, cityCategoryFilter]
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const apply = (categoryId: string | null) => {
       if (!lockCitySlug && !document.querySelector('[data-city-feed]')) return
       const next = categoryId?.trim() || null
@@ -1243,24 +1243,31 @@ export function SmartFeedClient({
       void loadPageRef.current(false, null, 'personal', false, next)
     }
 
-    ;(window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }).__nahaberApplyCityCategory = apply
+    const w = window as Window & {
+      __nahaberApplyCityCategory?: (id: string | null) => void
+      __nahaberPendingCityCategory?: string | null
+    }
+    w.__nahaberApplyCityCategory = apply
 
     const onCityCategory = (event: Event) => {
       const categoryId = (event as CustomEvent<{ categoryId: string | null }>).detail?.categoryId ?? null
       apply(categoryId)
     }
 
-    const onChipClick = (event: MouseEvent) => {
+    const onChipClick = (event: Event) => {
       const chip = (event.target as Element | null)?.closest?.('[data-category-chip]')
       if (!chip) return
       const raw = chip.getAttribute('data-category-chip')
       apply(!raw || raw === '__all' ? null : raw)
     }
 
+    if ('__nahaberPendingCityCategory' in w) {
+      apply(w.__nahaberPendingCityCategory ?? null)
+    }
+
     window.addEventListener(CITY_CATEGORY_EVENT, onCityCategory)
     document.addEventListener('click', onChipClick, true)
     return () => {
-      const w = window as Window & { __nahaberApplyCityCategory?: (id: string | null) => void }
       if (w.__nahaberApplyCityCategory === apply) delete w.__nahaberApplyCityCategory
       window.removeEventListener(CITY_CATEGORY_EVENT, onCityCategory)
       document.removeEventListener('click', onChipClick, true)

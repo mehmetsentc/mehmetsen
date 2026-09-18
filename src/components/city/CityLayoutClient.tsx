@@ -95,7 +95,7 @@ const CityShell = memo(function CityShell({
   provinceSlug: string
   children: React.ReactNode
 }) {
-  const pathname = usePathname()
+  const pathname = usePathname() || '/'
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
   const { isDesktop } = usePlatformLayout()
   const drawerOpen = useUiStore((s) => s.mobileDrawerOpen)
