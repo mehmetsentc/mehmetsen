@@ -58,8 +58,8 @@ export default async function Home({
     const sp = await searchParams
     const raw = sp.category
     const category = (Array.isArray(raw) ? raw[0] : raw)?.trim() || null
-    const { CitySmartFeedPage } = await import('@/components/city/CitySmartFeedPage')
-    return <CitySmartFeedPage citySlug={citySlug} category={category} />
+    const { CityAdaptiveHome } = await import('@/components/city/CityAdaptiveHome')
+    return <CityAdaptiveHome citySlug={citySlug} category={category} />
   }
 
   const { NationalHomePage } = await import('@/components/home/NationalHomePage')

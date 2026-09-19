@@ -20,6 +20,7 @@ export function DesktopThemeToggle({
     <button
       type="button"
       aria-label={isDark ? 'Açık temaya geç' : 'Koyu temaya geç'}
+      data-testid="desktop-theme-toggle"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className={cn(
         'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',

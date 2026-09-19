@@ -11,6 +11,7 @@ export function resolveCityCategoryRoute(
 ): { categoryId: string; label: string } | null {
   const raw = id.trim().toLowerCase()
   if (!raw) return null
+  if (raw === 'video') return { categoryId: 'video', label: 'Video' }
 
   const chip = CITY_CATEGORY_CHIPS.find(
     (c) => c.categoryId === raw || (c.id === raw && c.categoryId)

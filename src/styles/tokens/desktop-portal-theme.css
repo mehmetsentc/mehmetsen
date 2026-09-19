@@ -1,0 +1,114 @@
+/**
+ * Desktop newspaper portal — surfaces follow global light / dark / oled tokens.
+ * Hardcoded paper (#fff, #111827) is not allowed here.
+ */
+
+.desktop-portal-home,
+.city-desktop-portal,
+.city-desktop-newspaper-page,
+.desktop-web-header--portal {
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-text));
+}
+
+.desktop-web-header--portal,
+.desktop-portal-breaking,
+.desktop-portal-cat,
+.desktop-portal-tile {
+  background: rgb(var(--color-card));
+  color: rgb(var(--color-text));
+  border-color: rgb(var(--color-border));
+}
+
+.desktop-portal-utility {
+  background: rgb(var(--color-surface-elevated));
+  border-bottom-color: rgb(var(--color-border));
+}
+
+.desktop-portal-utility__meta,
+.desktop-portal-utility__link,
+.desktop-portal-masthead__tagline,
+.desktop-portal-cat__dek,
+.desktop-portal-more,
+.desktop-portal-rail__blurb,
+.desktop-portal-rail__rank,
+.desktop-portal-manset__time,
+.desktop-portal-pulse__wx {
+  color: rgb(var(--color-text-secondary));
+}
+
+.desktop-portal-utility__link:hover {
+  color: rgb(var(--color-text));
+}
+
+.desktop-portal-breaking {
+  border-bottom-color: rgb(var(--color-border));
+}
+
+.desktop-portal-breaking__story,
+.desktop-portal-cat__title,
+.desktop-portal-extra a,
+.desktop-portal-pulse__val,
+.desktop-portal-manset__title,
+.desktop-portal-rail__name,
+.desktop-portal-video__title {
+  color: rgb(var(--color-text));
+}
+
+.desktop-portal-breaking__controls button {
+  background: rgb(var(--color-card));
+  border-color: rgb(var(--color-border));
+  color: rgb(var(--color-text));
+}
+
+.desktop-portal-band,
+.desktop-portal-manset__row,
+.desktop-portal-rail__row,
+.desktop-portal-extra li,
+.desktop-portal-pulse__row {
+  border-color: rgb(var(--color-border));
+}
+
+.desktop-portal-cat__media,
+.desktop-portal-manset__thumb,
+.desktop-portal-rail__avatar,
+.desktop-portal-photos__card {
+  background: rgb(var(--color-surface-raised));
+}
+
+.desktop-portal-rail__avatar--fallback {
+  color: rgb(var(--color-text));
+}
+
+.city-masthead-ink {
+  color: rgb(var(--color-text)) !important;
+}
+
+.city-masthead-brand {
+  color: rgb(var(--brand-500)) !important;
+}
+
+html:not(.dark):not([data-theme='oled']) .desktop-portal-nav {
+  background: rgb(var(--header-navy-bg));
+  color: rgb(var(--header-onbrand));
+}
+
+html.dark .desktop-portal-nav,
+html[data-theme='oled'] .desktop-portal-nav {
+  background: rgb(var(--bg-muted));
+  color: rgb(var(--text-primary));
+}
+
+html.dark .desktop-portal-nav__link,
+html[data-theme='oled'] .desktop-portal-nav__link,
+html.dark .desktop-portal-nav__home,
+html[data-theme='oled'] .desktop-portal-nav__home,
+html.dark .desktop-portal-nav__search,
+html[data-theme='oled'] .desktop-portal-nav__search {
+  color: rgb(var(--text-primary));
+}
+
+html.dark .desktop-portal-nav__link:hover,
+html[data-theme='oled'] .desktop-portal-nav__link:hover {
+  background: rgb(var(--bg-subtle));
+}

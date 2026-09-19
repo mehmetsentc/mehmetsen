@@ -5,7 +5,7 @@ import { DEFAULT_CATEGORIES, getSubcategories, getHomeFeedCategoryFamily, getPar
 import { getCityCategoryName } from '@/constants/cities'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
+import { CityNewspaperCategoryPage } from '@/components/city/CityNewspaperCategoryPage'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -378,12 +378,10 @@ export default async function CategoryPage({ params }: Props) {
     const cityName = getCityCategoryName(citySlug)
     const homeFeedData = await getCityCategoryFeedInitialData(citySlug, resolved.categoryId)
     return (
-      <CityFeedPageClient
+      <CityNewspaperCategoryPage
         homeFeedData={homeFeedData}
         cityName={cityName}
         sectionTitle={`${cityName} ${resolved.label} Haberleri`}
-        streamSectionLabel={resolved.label}
-        streamSectionHref={ROUTES.CATEGORY(resolved.categoryId)}
       />
     )
   }

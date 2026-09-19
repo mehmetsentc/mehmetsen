@@ -18,6 +18,8 @@ import { CityNavbar } from './CityNavbar'
 import { CityMobileNav } from './CityMobileNav'
 import { CitySidebar } from './CitySidebar'
 import { CityFooter } from './CityFooter'
+import { CityDesktopNewspaperHeader } from './CityDesktopNewspaperHeader'
+import { CityMobileFeedSlot } from './CityMobileFeedSlot'
 import type { CityCategory } from '@/services/cityNewsService.server'
 import { isCityFeedPath, isCityImmersivePath } from '@/lib/cityPaths'
 
@@ -112,6 +114,10 @@ const CityShell = memo(function CityShell({
     }
   }, [isDesktop, toggleDesktopSidebar, setMobileDrawerOpen])
 
+  useEffect(() => {
+    setDesktopSidebarOpen(false)
+  }, [setDesktopSidebarOpen])
+
   const immersiveFeed = isCityImmersivePath(pathname)
 
   return (
@@ -126,11 +132,13 @@ const CityShell = memo(function CityShell({
         onDesktopClose={() => setDesktopSidebarOpen(false)}
       />
 
-      <CityNavbar
-        cityName={displayName}
-        provinceSlug={provinceSlug}
-        onMenuClick={handleMenuClick}
-      />
+      <div className="lg:hidden">
+        <CityNavbar
+          cityName={displayName}
+          provinceSlug={provinceSlug}
+          onMenuClick={handleMenuClick}
+        />
+      </div>
 
       {immersiveFeed ? (
         <main
@@ -139,7 +147,11 @@ const CityShell = memo(function CityShell({
           className="isolate w-full bg-[rgb(var(--color-surface))] max-lg:fixed max-lg:inset-0 max-lg:z-0 max-lg:h-dvh max-lg:overflow-hidden lg:relative lg:min-h-0 lg:overflow-visible"
           data-city-feed-overlay="1"
         >
+          <div className="hidden lg:block">
+            <CityDesktopNewspaperHeader cityName={displayName} />
+          </div>
           {children}
+          <CityMobileFeedSlot citySlug={provinceSlug} enabled={immersiveFeed} />
         </main>
       ) : (
         <PullToRefresh>
@@ -149,9 +161,12 @@ const CityShell = memo(function CityShell({
               tabIndex={-1}
               className="content-main content-main-newspaper desktop-newspaper"
             >
+              <div className="hidden lg:block">
+                <CityDesktopNewspaperHeader cityName={displayName} />
+              </div>
               {children}
             </main>
-            <div className="content-main content-main-newspaper desktop-newspaper pb-6">
+            <div className="content-main content-main-newspaper desktop-newspaper pb-6 lg:hidden">
               <CityFooter
                 cityName={displayName}
                 provinceSlug={provinceSlug}

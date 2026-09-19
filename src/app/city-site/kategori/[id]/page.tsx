@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCityCategoryName } from '@/constants/cities'
-import { ROUTES } from '@/constants/routes'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
 import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
+import { CityNewspaperCategoryPage } from '@/components/city/CityNewspaperCategoryPage'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,12 +64,10 @@ export default async function CityCategoryPage({ params }: PageProps) {
   const sectionTitle = `${cityName} ${resolved.label} Haberleri`
 
   return (
-    <CityFeedPageClient
+    <CityNewspaperCategoryPage
       homeFeedData={homeFeedData}
       cityName={cityName}
       sectionTitle={sectionTitle}
-      streamSectionLabel={resolved.label}
-      streamSectionHref={ROUTES.CATEGORY(resolved.categoryId)}
     />
   )
 }

@@ -26,4 +26,13 @@ describe('resolveCityCategoryRoute', () => {
   it('returns null for unknown id', () => {
     expect(resolveCityCategoryRoute('not-a-real-category')).toBeNull()
   })
+
+  it('resolves every desktop newspaper nav slug', async () => {
+    const { CITY_NEWSPAPER_NAV } = await import('@/lib/cityNewspaperNav')
+    for (const item of CITY_NEWSPAPER_NAV) {
+      if (item.href === '/') continue
+      const slug = item.href.replace('/kategori/', '')
+      expect(resolveCityCategoryRoute(slug), item.href).not.toBeNull()
+    }
+  })
 })

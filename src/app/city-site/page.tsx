@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { getCityCategoryName } from '@/constants/cities'
-import { CitySmartFeedPage } from '@/components/city/CitySmartFeedPage'
+import { CityAdaptiveHome } from '@/components/city/CityAdaptiveHome'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,5 +62,5 @@ export default async function CityHomePage({
   if (!tenant) return null
 
   const category = readCategoryParam(await searchParams)
-  return <CitySmartFeedPage citySlug={tenant.provinceSlug} category={category} />
+  return <CityAdaptiveHome citySlug={tenant.provinceSlug} category={category} />
 }

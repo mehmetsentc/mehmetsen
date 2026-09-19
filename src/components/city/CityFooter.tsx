@@ -119,7 +119,7 @@ function CategoryLinks({ cats }: { cats: CityCategory[] }) {
     <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
       {cats.map((cat) => (
         <li key={cat.id}>
-          <Link href={`/kategori/${cat.slug || cat.id}`} className={linkClass}>
+          <Link href={`/kategori/${cat.slug || cat.id}`} prefetch={false} className={linkClass}>
             {cat.name}
           </Link>
         </li>
@@ -181,6 +181,7 @@ function QuietCategoryLinks({ items }: { items: SimpleLink[] }) {
             ) : null}
             <Link
               href={l.href}
+              prefetch={false}
               className="text-[13px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
             >
               {l.label}

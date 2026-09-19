@@ -10,7 +10,8 @@ import { getCityDistrictFeedInitialData } from '@/services/cityNewsService.serve
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
 import { isDutyPharmacyCity } from '@/lib/dutyPharmacies/constants'
 import { filterDutyPharmacyGroups } from '@/lib/dutyPharmacies/officialDistrict'
-import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
+import { CityDutyPharmacyStrip } from '@/components/city/CityDutyPharmacyStrip'
+import { CityNewspaperCategoryPage } from '@/components/city/CityNewspaperCategoryPage'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,12 +57,19 @@ export default async function CityDistrictPage({ params }: PageProps) {
     : []
 
   return (
-    <CityFeedPageClient
-      homeFeedData={homeFeedData}
-      cityName={cityName}
-      districtName={district.name}
-      districtSlug={slug}
-      dutyPharmacyGroups={dutyPharmacyGroups}
-    />
+    <>
+      {dutyPharmacyGroups.length > 0 ? (
+        <CityDutyPharmacyStrip
+          districtName={district.name}
+          districtSlug={slug}
+          groups={dutyPharmacyGroups}
+        />
+      ) : null}
+      <CityNewspaperCategoryPage
+        homeFeedData={homeFeedData}
+        cityName={cityName}
+        sectionTitle={`${district.name} Haberleri`}
+      />
+    </>
   )
 }
