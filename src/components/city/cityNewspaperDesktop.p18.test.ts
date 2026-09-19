@@ -24,7 +24,19 @@ describe('city desktop newspaper split', () => {
     const layout = read('src/components/city/CityLayoutClient.tsx')
     expect(layout).toContain('CityDesktopNewspaperHeader')
     expect(layout).toMatch(/lg:hidden[\s\S]{0,80}CityNavbar/)
-    expect(layout).toContain('lg:relative lg:min-h-0 lg:overflow-visible')
+    expect(layout).toContain('data-city-desktop="1"')
+    expect(layout).toContain('content-stage-newspaper')
+    expect(layout).toContain('lg:hidden max-lg:fixed')
+  })
+
+  it('keeps homepage and category pages on the same newspaper column', () => {
+    const layout = read('src/components/city/CityLayoutClient.tsx')
+    const rsc = read('src/components/city/CityDesktopNewspaperRsc.tsx')
+    const header = read('src/components/city/CityDesktopNewspaperHeader.tsx')
+    expect(layout).toContain('content-main-newspaper')
+    expect(rsc).not.toContain('content-stage-newspaper')
+    expect(header).toContain('city-masthead-lockup')
+    expect(header).not.toContain('formatNewsDateLong')
   })
 
   it('city-site category pages do not import HomeFeed or SmartFeed', () => {

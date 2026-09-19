@@ -31,7 +31,8 @@ export function CityNewspaperCategoryPage({
   const items = uniqueNews([
     ...(homeFeedData.featured ?? []),
     ...(homeFeedData.latest ?? []),
-  ]).slice(0, 36)
+    ...Object.values(homeFeedData.categoryRails ?? {}).flat(),
+  ]).slice(0, 48)
   const heading = sectionTitle ?? `${cityName} Haberleri`
 
   return (

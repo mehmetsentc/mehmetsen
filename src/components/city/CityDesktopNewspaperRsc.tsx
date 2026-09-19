@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { formatNewsClockTime } from '@/components/home/desktop/formatNewsDate'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { CityNewspaperFooter } from '@/components/city/CityNewspaperFooter'
 import { getCategoryAccentColor } from '@/lib/categoryAccent'
@@ -44,7 +43,7 @@ function PortalLeadColumn({
   accent: string
   items: NewsItem[]
 }) {
-  const lead = items.find(hasImage)
+  const lead = items.find(hasImage) ?? items[0] ?? null
   const rest = items.filter((item) => item.id !== lead?.id).slice(0, 9)
   if (!lead && rest.length === 0) return null
 
@@ -55,9 +54,11 @@ function PortalLeadColumn({
       </Link>
       {lead ? (
         <>
-          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
-            <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
-          </Link>
+          {hasImage(lead) ? (
+            <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
+              <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
+            </Link>
+          ) : null}
           <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
             {lead.title}
           </Link>
@@ -87,21 +88,21 @@ export function CityDesktopNewspaperRsc({
 }) {
   const portal = buildCityPortalHomeProps(data)
   const hero = portal.heroSlides[0] ?? null
-  const gundem = portal.gundemItems.filter(hasImage).slice(0, 10)
+  const gundem = portal.gundemItems.slice(0, 10)
   const yerel = portal.yerelItems
   const thirdPage = portal.thirdPageItems
   const kultur = portal.kulturItems
   const saglik = portal.saglikItems
   const turizm = portal.turizmItems
   const yasam = portal.yasamItems
-  const magazin = portal.magazinItems.filter(hasImage)
-  const videos = portal.videoItems.filter(hasImage)
+  const magazin = portal.magazinItems
+  const videos = portal.videoItems
 
   return (
-    <div className="content-stage content-stage-newspaper city-desktop-portal" data-city-portal="1">
     <div
-      className="content-main content-main-newspaper desktop-newspaper city-desktop-newspaper-page desktop-portal-home w-full"
+      className="city-desktop-newspaper-page desktop-portal-home w-full"
       data-testid="desktop-portal-home"
+      data-city-portal="1"
     >
       <h1 className="sr-only">{cityName} Haberleri — NaHaber</h1>
 
@@ -109,28 +110,27 @@ export function CityDesktopNewspaperRsc({
         <aside className="desktop-portal-manset" aria-label="Günün manşetleri">
           <h2 className="desktop-portal-kicker">Günün manşetleri</h2>
           <ul className="desktop-portal-manset__list">
-            {portal.mansetItems.map((item) => {
-              const clock = formatNewsClockTime(item.publishedAt ?? item.createdAt)
-              return (
-                <li key={item.id}>
-                  <Link href={newsItemDetailHref(item)} className="desktop-portal-manset__row">
-                    <span className="desktop-portal-manset__thumb">
-                      {hasImage(item) ? (
-                        <SafeNewsImage
-                          src={item.imageUrl}
-                          alt=""
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
-                      ) : null}
-                    </span>
-                    {clock ? <span className="desktop-portal-manset__time">{clock}</span> : null}
-                    <span className="desktop-portal-manset__title">{item.title}</span>
-                  </Link>
-                </li>
-              )
-            })}
+            {portal.mansetItems.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={newsItemDetailHref(item)}
+                  className="desktop-portal-manset__row desktop-portal-manset__row--thumb"
+                >
+                  <span className="desktop-portal-manset__thumb">
+                    {hasImage(item) ? (
+                      <SafeNewsImage
+                        src={item.imageUrl}
+                        alt=""
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    ) : null}
+                  </span>
+                  <span className="desktop-portal-manset__title">{item.title}</span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </aside>
 
@@ -199,7 +199,7 @@ export function CityDesktopNewspaperRsc({
             <PortalLeadColumn
               key={card.id}
               title={card.title}
-              href={`/kategori/${card.id === 'dunya' ? 'dunya' : card.id}`}
+              href={card.href}
               accent={PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)}
               items={card.items}
             />
@@ -213,9 +213,11 @@ export function CityDesktopNewspaperRsc({
           <div className="desktop-portal-rail-x">
             {gundem.map((item) => (
               <article key={item.id} className="desktop-portal-tile">
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                  <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
-                </Link>
+                {hasImage(item) ? (
+                  <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
+                  </Link>
+                ) : null}
                 <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
                   {item.title}
                 </Link>
@@ -255,7 +257,9 @@ export function CityDesktopNewspaperRsc({
             {videos.map((item) => (
               <article key={item.id} className="desktop-portal-video-tile">
                 <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                  <SafeNewsImage src={item.imageUrl} alt="" fill sizes="240px" className="object-cover" />
+                  {hasImage(item) ? (
+                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="240px" className="object-cover" />
+                  ) : null}
                   <span className="desktop-portal-video__play" aria-hidden>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M8 5v14l11-7-11-7Z" />
@@ -323,9 +327,11 @@ export function CityDesktopNewspaperRsc({
           <div className="desktop-portal-rail-x">
             {magazin.map((item) => (
               <article key={item.id} className="desktop-portal-tile">
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                  <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
-                </Link>
+                {hasImage(item) ? (
+                  <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
+                  </Link>
+                ) : null}
                 <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
                   {item.title}
                 </Link>
@@ -362,7 +368,6 @@ export function CityDesktopNewspaperRsc({
       </section>
 
       <CityNewspaperFooter cityName={cityName} />
-    </div>
     </div>
   )
 }

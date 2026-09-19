@@ -835,7 +835,7 @@ function buildCityFeedFromPool(
     featured: slimNewsItemsForFeed(
       bucketCityFeatured(scopedPool, citySlug, HOME_FEATURED_LIMIT, scopedPins)
     ),
-    latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 16)),
+    latest: slimNewsItemsForFeed(rankFeedHotAware(nonBreaking, now).slice(0, 48)),
     trending: slimNewsItemsForFeed(trending),
     trendFeed: slimNewsItemsForFeed(pickTrendFeed(nonBreaking, 12, now)),
     mostRead: slimNewsItemsForFeed(mostRead),
@@ -846,7 +846,7 @@ function buildCityFeedFromPool(
 const getCityHomeFeedCached = unstable_cache(
   async (citySlug: string): Promise<HomeFeedInitialData> => {
     const [pool, featuredPinned] = await Promise.all([
-      getCityNews(citySlug, 60),
+      getCityNews(citySlug, 100),
       fetchCityFeaturedNews(citySlug, HOME_FEATURED_LIMIT),
     ])
     if (pool.length === 0 && featuredPinned.length === 0) return EMPTY_HOME_FEED
@@ -857,7 +857,7 @@ const getCityHomeFeedCached = unstable_cache(
 
     return buildCityFeedFromPool(pool, citySlug, railCategoryIds, bucketCityCategoryRails, featuredPinned)
   },
-  ['city-home-feed-v9'],
+  ['city-home-feed-v10'],
   { revalidate: 120, tags: ['city-news'] }
 )
 
@@ -906,7 +906,7 @@ const getCityCategoryFeedCached = unstable_cache(
     const pool = await getCityNewsByCategory(citySlug, categoryId, 60)
     return buildCityFeedFromPool(pool, citySlug, [categoryId])
   },
-  ['city-category-feed-v3'],
+  ['city-category-feed-v4'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

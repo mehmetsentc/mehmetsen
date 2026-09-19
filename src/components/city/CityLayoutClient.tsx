@@ -121,7 +121,7 @@ const CityShell = memo(function CityShell({
   const immersiveFeed = isCityImmersivePath(pathname)
 
   return (
-    <div className="min-h-dvh bg-[rgb(var(--color-surface))]">
+    <div className="min-h-dvh bg-[rgb(var(--color-surface))]" data-city-desktop="1">
       <MobileSafeAreaShield />
       <CitySidebar
         cityName={displayName}
@@ -141,18 +141,24 @@ const CityShell = memo(function CityShell({
       </div>
 
       {immersiveFeed ? (
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="isolate w-full bg-[rgb(var(--color-surface))] max-lg:fixed max-lg:inset-0 max-lg:z-0 max-lg:h-dvh max-lg:overflow-hidden lg:relative lg:min-h-0 lg:overflow-visible"
-          data-city-feed-overlay="1"
-        >
+        <>
           <div className="hidden lg:block">
-            <CityDesktopNewspaperHeader cityName={displayName} />
+            <div className="content-stage content-stage-newspaper">
+              <div className="content-main content-main-newspaper desktop-newspaper">
+                <CityDesktopNewspaperHeader cityName={displayName} />
+                {children}
+              </div>
+            </div>
           </div>
-          {children}
-          <CityMobileFeedSlot citySlug={provinceSlug} enabled={immersiveFeed} />
-        </main>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="isolate w-full bg-[rgb(var(--color-surface))] lg:hidden max-lg:fixed max-lg:inset-0 max-lg:z-0 max-lg:h-dvh max-lg:overflow-hidden"
+            data-city-feed-overlay="1"
+          >
+            <CityMobileFeedSlot citySlug={provinceSlug} enabled={immersiveFeed} />
+          </main>
+        </>
       ) : (
         <PullToRefresh>
           <div className="content-stage content-stage-newspaper">

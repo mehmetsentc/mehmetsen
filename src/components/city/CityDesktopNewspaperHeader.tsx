@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
-import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import {
   CityDesktopMenuButton,
   CityDesktopThemeButton,
@@ -39,7 +38,6 @@ export function CityDesktopNewspaperHeader({
         <div className="desktop-web-header__inner desktop-portal-utility__inner">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <CityDesktopMenuButton />
-            <p className="desktop-portal-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
             <Link href={ROUTES.WEATHER} className="desktop-portal-utility__link">
               Hava Durumu
             </Link>
@@ -83,14 +81,16 @@ export function CityDesktopNewspaperHeader({
             className="desktop-portal-masthead__brand city-portal-masthead-brand no-underline"
             aria-label={`${cityName} NaHaber`}
           >
-            <span className="city-masthead-city font-serif font-black leading-none tracking-tight">
-              {cityName}
+            <span className="city-masthead-lockup">
+              <span className="city-masthead-city font-serif font-black leading-none tracking-tight">
+                {cityName}
+              </span>
+              <BrandWordmark
+                variant="default"
+                size="lg"
+                className="nl-masthead__title city-masthead-title font-serif font-black"
+              />
             </span>
-            <BrandWordmark
-              variant="default"
-              size="xl"
-              className="nl-masthead__title city-masthead-title font-serif font-black"
-            />
           </Link>
         </div>
       </div>

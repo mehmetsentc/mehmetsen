@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Check, ChevronDown, ExternalLink, Heart, Newspaper, Zap } from 'lucide-react'
@@ -18,6 +18,7 @@ import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
 import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
+import { useFeedCardTapGestures } from '@/lib/feed/reader/useFeedCardTapGestures'
 import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import { SmartFeedCardVideo } from '@/components/feed/smart/SmartFeedCardVideo'
 import type { FeedItemDto } from '@/types/smartFeed'
@@ -134,9 +135,6 @@ const HERO_FRAME =
 const CITY_HERO_FRAME =
   'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden bg-neutral-950'
 
-const DOUBLE_TAP_MS = 280
-const TAP_MOVE_PX = 14
-
 export function FullscreenNewsCard({
   item,
   isActive,
@@ -181,9 +179,6 @@ export function FullscreenNewsCard({
   const [motionOk, setMotionOk] = useState(true)
   const [swipeCoachNudgePx, setSwipeCoachNudgePx] = useState(0)
 
-  const lastTapRef = useRef(0)
-  const tapOriginRef = useRef<{ x: number; y: number } | null>(null)
-  const movedRef = useRef(false)
   const likedRef = useRef(liked)
   likedRef.current = liked
   const typeTimerRef = useRef<number | null>(null)
@@ -312,41 +307,10 @@ export function FullscreenNewsCard({
     [onToggleLike]
   )
 
-  const onTapZonePointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    movedRef.current = false
-    tapOriginRef.current = { x: e.clientX, y: e.clientY }
-  }, [])
-
-  const onTapZonePointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
-    const origin = tapOriginRef.current
-    if (!origin) return
-    if (
-      Math.abs(e.clientX - origin.x) > TAP_MOVE_PX ||
-      Math.abs(e.clientY - origin.y) > TAP_MOVE_PX
-    ) {
-      movedRef.current = true
-    }
-  }, [])
-
-  const onTapZonePointerUp = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (movedRef.current) {
-        lastTapRef.current = 0
-        tapOriginRef.current = null
-        return
-      }
-      const now = Date.now()
-      if (now - lastTapRef.current < DOUBLE_TAP_MS) {
-        lastTapRef.current = 0
-        triggerDoubleTapLike(e.clientX, e.clientY, e.currentTarget)
-      } else {
-        lastTapRef.current = now
-      }
-      tapOriginRef.current = null
-    },
-    [triggerDoubleTapLike]
-  )
+  const tapGestures = useFeedCardTapGestures({
+    onSingleTap: onReadClick,
+    onDoubleTapLike: triggerDoubleTapLike,
+  })
 
   const publisherBlock = item.publisher ? (
     <>
@@ -496,6 +460,8 @@ export function FullscreenNewsCard({
           FEED_READER_SURFACE_CLASS,
           'feed-v2-card-chrome'
         )}
+        data-testid="smart-feed-tap-surface"
+        {...tapGestures}
       >
         {showSheetOpenCoach ? (
           <SheetOpenCoach active={isActive} onActivate={onSheetAffordanceActivate} />
@@ -511,13 +477,6 @@ export function FullscreenNewsCard({
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
           data-feed-hero-flex="1"
-          onPointerDown={onTapZonePointerDown}
-          onPointerMove={onTapZonePointerMove}
-          onPointerUp={onTapZonePointerUp}
-          onPointerCancel={() => {
-            lastTapRef.current = 0
-            tapOriginRef.current = null
-          }}
         >
           {!showVideo && hasValidImage ? (
             <div
@@ -662,7 +621,10 @@ export function FullscreenNewsCard({
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div className="min-w-0" data-testid="smart-feed-copy-preview">
+            <div
+              className="min-w-0"
+              data-testid="smart-feed-copy-preview"
+            >
               <div className="flex flex-wrap items-center gap-1.5">
                 {cat ? (
                   <span
