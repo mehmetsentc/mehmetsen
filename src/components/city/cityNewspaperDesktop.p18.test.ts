@@ -36,6 +36,7 @@ describe('city desktop newspaper split', () => {
     expect(layout).toContain('content-main-newspaper')
     expect(rsc).not.toContain('content-stage-newspaper')
     expect(rsc).toContain('PortalScrollRail')
+    expect(rsc).toContain('packNewspaperCategoryLayout')
     expect(rsc).not.toContain('desktop-portal-split')
     expect(header).toContain('city-masthead-lockup')
     expect(header).not.toContain('formatNewsDateLong')

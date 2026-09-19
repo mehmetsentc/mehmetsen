@@ -3504,6 +3504,14 @@
     align-items: stretch;
   }
 
+  .desktop-portal-cats[data-cols='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .desktop-portal-cats[data-cols='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .desktop-portal-band {
     margin-bottom: 1.5rem;
     padding-top: 1.15rem;
@@ -3780,7 +3788,7 @@
 
   @media (max-width: 1279px) {
     .desktop-portal-stage,
-    .desktop-portal-cats,
+    .desktop-portal-cats:not([data-cols]),
     .desktop-portal-bottom,
     .desktop-portal-grid-4,
     .desktop-portal-videos,

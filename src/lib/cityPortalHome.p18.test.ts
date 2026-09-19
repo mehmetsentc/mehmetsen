@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildCityPortalHomeProps, CITY_PORTAL_CATEGORIES } from '@/lib/cityPortalHome'
+import {
+  buildCityPortalHomeProps,
+  CITY_PORTAL_CATEGORIES,
+  packNewspaperCategoryLayout,
+} from '@/lib/cityPortalHome'
 import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
 function item(id: string, category: string, image = true): NewsItem {
@@ -53,5 +57,27 @@ describe('city portal home fill', () => {
     expect(portal.categoryCards.find((card) => card.id === 'turizm')).toBeUndefined()
     const asayis = portal.categoryCards.find((card) => card.id === 'asayis')
     expect(asayis?.items.some((entry) => entry.id === 'crash') ?? false).toBe(false)
+  })
+
+  it('fills a leftover Kültür row from the next rails instead of leaving a hole', () => {
+    const columns = ['asayis', 'siyaset', 'ekonomi', 'spor', 'kultur'].map((id) => ({ id }))
+    const rails = ['yasam', 'egitim'].map((id) => ({ id }))
+    const packed = packNewspaperCategoryLayout(columns, rails)
+    expect(packed.gridCards.map((card) => card.id)).toEqual([
+      'asayis',
+      'siyaset',
+      'ekonomi',
+      'spor',
+    ])
+    expect(packed.leftoverGrid.map((card) => card.id)).toEqual(['kultur', 'yasam', 'egitim'])
+    expect(packed.leftoverRails).toEqual([])
+    expect(packed.restRails).toEqual([])
+  })
+
+  it('turns a lone leftover column into a rail', () => {
+    const packed = packNewspaperCategoryLayout([{ id: 'kultur' }], [])
+    expect(packed.gridCards).toEqual([])
+    expect(packed.leftoverGrid).toEqual([])
+    expect(packed.leftoverRails.map((card) => card.id)).toEqual(['kultur'])
   })
 })

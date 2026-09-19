@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { CityNewspaperFooter } from '@/components/city/CityNewspaperFooter'
 import { getCategoryAccentColor } from '@/lib/categoryAccent'
-import { buildCityPortalHomeProps } from '@/lib/cityPortalHome'
+import { buildCityPortalHomeProps, packNewspaperCategoryLayout } from '@/lib/cityPortalHome'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
@@ -108,6 +108,32 @@ function PortalLeadColumn({
   )
 }
 
+function CategoryColumnGrid({
+  cards,
+  cols,
+}: {
+  cards: ReturnType<typeof buildCityPortalHomeProps>['categoryCards']
+  cols?: number
+}) {
+  return (
+    <section
+      className="desktop-portal-cats"
+      data-cols={cols && cols !== 4 ? cols : undefined}
+      aria-label="Kategoriler"
+    >
+      {cards.map((card) => (
+        <PortalLeadColumn
+          key={card.id}
+          title={card.title}
+          href={card.href}
+          accent={PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)}
+          items={card.items}
+        />
+      ))}
+    </section>
+  )
+}
+
 export function CityDesktopNewspaperRsc({
   cityName,
   citySlug: _citySlug,
@@ -119,8 +145,10 @@ export function CityDesktopNewspaperRsc({
 }) {
   const portal = buildCityPortalHomeProps(data)
   const hero = portal.heroSlides[0] ?? null
-  const columnCards = portal.categoryCards.filter((card) => card.layout === 'column')
-  const railCards = portal.categoryCards.filter((card) => card.layout === 'rail')
+  const packed = packNewspaperCategoryLayout(
+    portal.categoryCards.filter((card) => card.layout === 'column'),
+    portal.categoryCards.filter((card) => card.layout === 'rail')
+  )
   const videos = portal.videoItems
 
   return (
@@ -218,21 +246,19 @@ export function CityDesktopNewspaperRsc({
         ) : null}
       </section>
 
-      {columnCards.length > 0 ? (
-        <section className="desktop-portal-cats" aria-label="Kategoriler">
-          {columnCards.map((card) => (
-            <PortalLeadColumn
-              key={card.id}
-              title={card.title}
-              href={card.href}
-              accent={PORTAL_CATEGORY_ACCENTS[card.id] ?? getCategoryAccentColor(card.id)}
-              items={card.items}
-            />
-          ))}
-        </section>
+      {packed.gridCards.length > 0 ? (
+        <CategoryColumnGrid cards={packed.gridCards} />
       ) : null}
 
-      {railCards.map((card) => (
+      {packed.leftoverGrid.length > 0 ? (
+        <CategoryColumnGrid cards={packed.leftoverGrid} cols={packed.leftoverGrid.length} />
+      ) : null}
+
+      {packed.leftoverRails.map((card) => (
+        <PortalScrollRail key={card.id} title={card.title} href={card.href} items={card.items} />
+      ))}
+
+      {packed.restRails.map((card) => (
         <PortalScrollRail key={card.id} title={card.title} href={card.href} items={card.items} />
       ))}
 

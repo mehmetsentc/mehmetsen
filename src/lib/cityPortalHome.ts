@@ -23,6 +23,30 @@ export const CITY_PORTAL_CATEGORIES = [
   { id: 'magazin', title: 'Magazin', href: '/kategori/magazin', keys: ['magazin', 'yerel-magazin'], layout: 'rail' },
 ] as const
 
+export const NEWSPAPER_COLUMN_ROW = 4
+
+/** Keep 4-up rows full. A leftover single card becomes a rail; 2–3 leftovers stretch. */
+export function packNewspaperCategoryLayout<T>(columns: T[], rails: T[]) {
+  const remainder = columns.length % NEWSPAPER_COLUMN_ROW
+  if (remainder === 0) {
+    return { gridCards: columns, leftoverGrid: [] as T[], leftoverRails: [] as T[], restRails: rails }
+  }
+
+  const need = NEWSPAPER_COLUMN_ROW - remainder
+  const borrowed = rails.slice(0, need)
+  const restRails = rails.slice(borrowed.length)
+  const packed = [...columns, ...borrowed]
+  const fullCount = Math.floor(packed.length / NEWSPAPER_COLUMN_ROW) * NEWSPAPER_COLUMN_ROW
+  const gridCards = packed.slice(0, fullCount)
+  const leftover = packed.slice(fullCount)
+
+  if (leftover.length <= 1) {
+    return { gridCards, leftoverGrid: [] as T[], leftoverRails: leftover, restRails }
+  }
+
+  return { gridCards, leftoverGrid: leftover, leftoverRails: [] as T[], restRails }
+}
+
 function hasImage(item: NewsItem): item is NewsItem & { imageUrl: string } {
   return Boolean(item.imageUrl?.trim())
 }
