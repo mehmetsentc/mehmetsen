@@ -11,6 +11,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import type { NewsItem } from '@/types/newsItem'
 import {
+  HOME_CATEGORY_PORTAL_FETCH,
   HOME_CATEGORY_RAIL_FETCH,
   HOME_CATEGORY_RAIL_GUNDEM_FETCH,
   HOME_CATEGORY_RAILS,
@@ -855,9 +856,15 @@ const getCityHomeFeedCached = unstable_cache(
     // All non-empty city categories (incl. yerel-only chips like yerel-duyuru).
     const railCategoryIds = cityCategories.map((c) => c.id)
 
-    return buildCityFeedFromPool(pool, citySlug, railCategoryIds, bucketCityCategoryRails, featuredPinned)
+    return buildCityFeedFromPool(
+      pool,
+      citySlug,
+      railCategoryIds,
+      (items, ids) => bucketCityCategoryRails(items, ids, HOME_CATEGORY_PORTAL_FETCH),
+      featuredPinned
+    )
   },
-  ['city-home-feed-v10'],
+  ['city-home-feed-v11'],
   { revalidate: 120, tags: ['city-news'] }
 )
 

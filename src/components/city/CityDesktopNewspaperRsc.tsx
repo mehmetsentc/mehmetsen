@@ -32,6 +32,37 @@ function PortalBandHead({ title, href, more }: { title: string; href: string; mo
   )
 }
 
+function PortalScrollRail({
+  title,
+  href,
+  items,
+}: {
+  title: string
+  href: string
+  items: NewsItem[]
+}) {
+  if (items.length === 0) return null
+  return (
+    <section className="desktop-portal-band" aria-label={title}>
+      <PortalBandHead title={title} href={href} more="Tümü" />
+      <div className="desktop-portal-rail-x">
+        {items.map((item) => (
+          <article key={item.id} className="desktop-portal-tile">
+            {hasImage(item) ? (
+              <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+                <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
+              </Link>
+            ) : null}
+            <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
+              {item.title}
+            </Link>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function PortalLeadColumn({
   title,
   href,
@@ -88,14 +119,8 @@ export function CityDesktopNewspaperRsc({
 }) {
   const portal = buildCityPortalHomeProps(data)
   const hero = portal.heroSlides[0] ?? null
-  const gundem = portal.gundemItems.slice(0, 10)
-  const yerel = portal.yerelItems
-  const thirdPage = portal.thirdPageItems
-  const kultur = portal.kulturItems
-  const saglik = portal.saglikItems
-  const turizm = portal.turizmItems
-  const yasam = portal.yasamItems
-  const magazin = portal.magazinItems
+  const columnCards = portal.categoryCards.filter((card) => card.layout === 'column')
+  const railCards = portal.categoryCards.filter((card) => card.layout === 'rail')
   const videos = portal.videoItems
 
   return (
@@ -193,9 +218,9 @@ export function CityDesktopNewspaperRsc({
         ) : null}
       </section>
 
-      {portal.categoryCards.length > 0 ? (
+      {columnCards.length > 0 ? (
         <section className="desktop-portal-cats" aria-label="Kategoriler">
-          {portal.categoryCards.map((card) => (
+          {columnCards.map((card) => (
             <PortalLeadColumn
               key={card.id}
               title={card.title}
@@ -207,138 +232,12 @@ export function CityDesktopNewspaperRsc({
         </section>
       ) : null}
 
-      {gundem.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Gündem">
-          <PortalBandHead title="Gündem" href="/kategori/gundem" more="Tümü" />
-          <div className="desktop-portal-rail-x">
-            {gundem.map((item) => (
-              <article key={item.id} className="desktop-portal-tile">
-                {hasImage(item) ? (
-                  <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
-                  </Link>
-                ) : null}
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
-                  {item.title}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {yerel.length > 0 || thirdPage.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Yerel ve 3. Sayfa">
-          <div className="desktop-portal-split">
-            {yerel.length > 0 ? (
-              <PortalLeadColumn
-                title="Yerel"
-                href="/kategori/yerel-haber"
-                accent={getCategoryAccentColor('yerel-haber')}
-                items={yerel}
-              />
-            ) : null}
-            {thirdPage.length > 0 ? (
-              <PortalLeadColumn
-                title="3. Sayfa"
-                href="/kategori/asayis"
-                accent={getCategoryAccentColor('asayis')}
-                items={thirdPage}
-              />
-            ) : null}
-          </div>
-        </section>
-      ) : null}
+      {railCards.map((card) => (
+        <PortalScrollRail key={card.id} title={card.title} href={card.href} items={card.items} />
+      ))}
 
       {videos.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Video">
-          <PortalBandHead title="Video" href="/kategori/video" more="Tüm videolar" />
-          <div className="desktop-portal-rail-x">
-            {videos.map((item) => (
-              <article key={item.id} className="desktop-portal-video-tile">
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                  {hasImage(item) ? (
-                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="240px" className="object-cover" />
-                  ) : null}
-                  <span className="desktop-portal-video__play" aria-hidden>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7-11-7Z" />
-                    </svg>
-                  </span>
-                </Link>
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
-                  {item.title}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {kultur.length > 0 || saglik.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Kültür ve sağlık">
-          <div className="desktop-portal-split">
-            {kultur.length > 0 ? (
-              <PortalLeadColumn
-                title="Kültür"
-                href="/kategori/kultur"
-                accent={getCategoryAccentColor('kultur')}
-                items={kultur}
-              />
-            ) : null}
-            {saglik.length > 0 ? (
-              <PortalLeadColumn
-                title="Sağlık"
-                href="/kategori/saglik"
-                accent={getCategoryAccentColor('saglik')}
-                items={saglik}
-              />
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {turizm.length > 0 || yasam.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Turizm ve yaşam">
-          <div className="desktop-portal-split">
-            {turizm.length > 0 ? (
-              <PortalLeadColumn
-                title="Turizm"
-                href="/kategori/turizm"
-                accent={getCategoryAccentColor('turizm')}
-                items={turizm}
-              />
-            ) : null}
-            {yasam.length > 0 ? (
-              <PortalLeadColumn
-                title="Yaşam"
-                href="/kategori/yasam"
-                accent={getCategoryAccentColor('yasam')}
-                items={yasam}
-              />
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {magazin.length > 0 ? (
-        <section className="desktop-portal-band" aria-label="Magazin">
-          <PortalBandHead title="Magazin" href="/kategori/magazin" more="Tümü" />
-          <div className="desktop-portal-rail-x">
-            {magazin.map((item) => (
-              <article key={item.id} className="desktop-portal-tile">
-                {hasImage(item) ? (
-                  <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
-                    <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
-                  </Link>
-                ) : null}
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
-                  {item.title}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
+        <PortalScrollRail title="Video" href="/kategori/video" items={videos} />
       ) : null}
 
       <section

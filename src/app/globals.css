@@ -3498,7 +3498,7 @@
 
   .desktop-portal-cats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.85rem;
     margin-bottom: 1.35rem;
     align-items: stretch;
@@ -5667,14 +5667,16 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   .city-masthead-lockup {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.28em;
+    gap: 0.22em;
     white-space: nowrap;
   }
 
   .city-masthead-title,
-  .city-masthead-city {
-    font-size: clamp(2.05rem, 3.4vw, 3.05rem);
-    line-height: 1;
+  .city-masthead-city,
+  .city-masthead-lockup .city-masthead-title,
+  .city-masthead-lockup .city-masthead-title span {
+    font-size: clamp(2.35rem, 3.8vw, 3.4rem) !important;
+    line-height: 1 !important;
     letter-spacing: -0.03em;
   }
 
@@ -5708,6 +5710,30 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   html:has([data-city-feed-overlay='1']) {
     --layout-newspaper-max: 1440px;
   }
+}
+
+/* City desktop nav must stay navy + white; newspaper tokens turn navy-bg cream. */
+html:has([data-city-desktop='1']) .desktop-portal-nav,
+[data-city-desktop='1'] .desktop-portal-nav {
+  background: #111827 !important;
+  color: #fff !important;
+}
+
+html:has([data-city-desktop='1']) .desktop-portal-nav__link,
+html:has([data-city-desktop='1']) .desktop-portal-nav__search,
+[data-city-desktop='1'] .desktop-portal-nav__link,
+[data-city-desktop='1'] .desktop-portal-nav__search {
+  color: #fff !important;
+}
+
+html:has([data-city-desktop='1']) .city-masthead-city,
+html:has([data-city-desktop='1']) .city-masthead-title,
+html:has([data-city-desktop='1']) .city-masthead-title span,
+[data-city-desktop='1'] .city-masthead-city,
+[data-city-desktop='1'] .city-masthead-title,
+[data-city-desktop='1'] .city-masthead-title span {
+  font-size: clamp(2.35rem, 3.8vw, 3.4rem) !important;
+  line-height: 1 !important;
 }
 
 /*

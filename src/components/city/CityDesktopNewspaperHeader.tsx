@@ -88,7 +88,7 @@ export function CityDesktopNewspaperHeader({
               <BrandWordmark
                 variant="default"
                 size="lg"
-                className="nl-masthead__title city-masthead-title font-serif font-black"
+                className="city-masthead-title font-serif font-black"
               />
             </span>
           </Link>

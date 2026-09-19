@@ -35,8 +35,15 @@ describe('city desktop newspaper split', () => {
     const header = read('src/components/city/CityDesktopNewspaperHeader.tsx')
     expect(layout).toContain('content-main-newspaper')
     expect(rsc).not.toContain('content-stage-newspaper')
+    expect(rsc).toContain('PortalScrollRail')
+    expect(rsc).not.toContain('desktop-portal-split')
     expect(header).toContain('city-masthead-lockup')
     expect(header).not.toContain('formatNewsDateLong')
+    expect(header).not.toContain('nl-masthead__title')
+    const css = read('src/app/globals.css')
+    expect(css).toContain("html:has([data-city-desktop='1']) .desktop-portal-nav")
+    expect(css).toContain('background: #111827 !important')
+    expect(css).toContain('.city-masthead-title span')
   })
 
   it('city-site category pages do not import HomeFeed or SmartFeed', () => {

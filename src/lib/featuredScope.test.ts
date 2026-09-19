@@ -221,7 +221,7 @@ describe('featuredScope', () => {
     const src = readFileSync(join(process.cwd(), 'src/services/cityNewsService.server.ts'), 'utf8')
     expect(src).toContain('function isCityTenantStory')
     expect(src).toContain('scopedPool')
-    expect(src).toContain('city-home-feed-v10')
+    expect(src).toContain('city-home-feed-v11')
   })
 
   it('city homepage carousel keeps localFeatured pins that are not nationally featured', () => {
