@@ -142,9 +142,11 @@ describe('canonical share URLs (Feed V2 / Reader)', () => {
 
   it('Facebook / X / WhatsApp builders embed canonical URL', () => {
     const canonical = buildPostShareUrl(sample)
-    const fb = buildFacebookShareUrl(canonical, 'Turizm')
-    expect(fb).toContain('facebook.com')
-    expect(fb).toContain(encodeURIComponent(canonical).slice(0, 40))
+    const fb = buildFacebookShareUrl(canonical, 'Turizm '.repeat(80))
+    expect(fb).toBe(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`)
+    expect(fb).not.toContain('dialog/share')
+    expect(fb).not.toContain('app_id')
+    expect(fb).not.toContain('quote=')
     expect(fb).not.toContain('display=popup')
 
     const x = SHARE_PLATFORMS.find((p) => p.id === 'x')!.getAction(canonical, 'Turizm')
@@ -162,9 +164,10 @@ describe('canonical share URLs (Feed V2 / Reader)', () => {
     }
   })
 
-  it('ShareMenu opens without sized popup features; copy uses canonical URL', () => {
+  it('ShareMenu opens share apps via real links, not window.open popups', () => {
     const menu = read('src/components/post/ShareMenu.tsx')
-    expect(menu).toContain("window.open(action.href, '_blank', 'noopener,noreferrer')")
+    expect(menu).toContain("target={inFacebookWebView && facebookHref ? '_self' : '_blank'}")
+    expect(menu).not.toContain('window.open')
     expect(menu).not.toContain('width=600,height=400')
     expect(menu).toContain('await navigator.clipboard.writeText(url)')
     expect(menu).toContain("name !== 'AbortError'")

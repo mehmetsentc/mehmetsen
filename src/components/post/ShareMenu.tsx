@@ -6,12 +6,7 @@ import { X, Link2, Share2, Mail, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { postService } from '@/services/postService'
 import { socialApi } from '@/lib/social/clientApi'
-import {
-  SHARE_PLATFORMS,
-  buildShareText,
-  isLocalhostOrigin,
-  type SharePlatform,
-} from '@/lib/shareUtils'
+import { SHARE_PLATFORMS, buildShareText, type SharePlatform } from '@/lib/shareUtils'
 
 interface ShareMenuProps {
   open: boolean
@@ -151,33 +146,13 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
         }
         return
       }
-
-      if (platform.id === 'facebook' && isLocalhostOrigin(url)) {
-        toast(
-          'Facebook localhost adreslerini önizleyemez. Canlı önizleme için NEXT_PUBLIC_APP_URL değerini HTTPS production adresinize ayarlayın.',
-          { duration: 6000, icon: 'ℹ️' }
-        )
-      }
-
-      recordShare()
-      // Open in a new tab without sized popup features — iOS Safari often blocks
-      // feature-string popups even inside a click handler.
-      const opened = window.open(action.href, '_blank', 'noopener,noreferrer')
-      if (!opened) {
-        // Last-resort same-gesture navigation via temporary anchor (preserves tab).
-        const a = document.createElement('a')
-        a.href = action.href
-        a.target = '_blank'
-        a.rel = 'noopener noreferrer'
-        a.style.display = 'none'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-      }
-      onClose()
     },
     [url, title, shareText, onClose, recordShare]
   )
+
+  const inFacebookWebView =
+    typeof navigator !== 'undefined' &&
+    /FBAN|FBAV|FB_IAB|FB4A|FBIOS|Instagram/i.test(navigator.userAgent)
 
   if (!open || !mounted) return null
 
@@ -220,24 +195,54 @@ export function ShareMenu({ open, onClose, title, text, url, postId, onShared }:
         </div>
 
         <div className="grid grid-cols-4 gap-3 px-4 py-5 sm:grid-cols-4">
-          {visiblePlatforms.map((platform) => (
-            <button
-              key={platform.id}
-              type="button"
-              onClick={() => handlePlatform(platform)}
-              className="group flex flex-col items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[rgb(var(--color-surface))]"
-            >
-              <span
-                className="flex h-12 w-12 items-center justify-center rounded-full shadow-sm transition-transform group-active:scale-95"
-                style={{ backgroundColor: platform.color }}
+          {visiblePlatforms.map((platform) => {
+            const action = platform.getAction(url, shareText)
+            const className =
+              'group flex flex-col items-center gap-2 rounded-xl p-2 transition-colors hover:bg-[rgb(var(--color-surface))]'
+            const icon = (
+              <>
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full shadow-sm transition-transform group-active:scale-95"
+                  style={{ backgroundColor: platform.color }}
+                >
+                  <ShareIcon platform={platform} />
+                </span>
+                <span className="text-center text-[11px] font-medium leading-tight text-[rgb(var(--color-text))]">
+                  {platform.label}
+                </span>
+              </>
+            )
+
+            if (action.type === 'link') {
+              const facebookHref = action.href.includes('facebook.com')
+              return (
+                <a
+                  key={platform.id}
+                  href={action.href}
+                  target={inFacebookWebView && facebookHref ? '_self' : '_blank'}
+                  rel="noopener noreferrer"
+                  className={className}
+                  onClick={() => {
+                    recordShare()
+                    onClose()
+                  }}
+                >
+                  {icon}
+                </a>
+              )
+            }
+
+            return (
+              <button
+                key={platform.id}
+                type="button"
+                onClick={() => handlePlatform(platform)}
+                className={className}
               >
-                <ShareIcon platform={platform} />
-              </span>
-              <span className="text-center text-[11px] font-medium leading-tight text-[rgb(var(--color-text))]">
-                {platform.label}
-              </span>
-            </button>
-          ))}
+                {icon}
+              </button>
+            )
+          })}
         </div>
 
         <div className="border-t border-[rgb(var(--color-border))] px-4 py-3">

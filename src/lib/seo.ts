@@ -102,30 +102,13 @@ export function buildShareText(title: string, excerpt?: string): string {
 }
 
 /**
- * Facebook link previews require a publicly crawlable URL with OG tags.
- * localhost / 127.0.0.1 cannot be fetched by Facebook's crawler — the composer
- * stays empty and "İleri" stays disabled. Set NEXT_PUBLIC_APP_URL to your HTTPS
- * production domain for working previews (even when developing locally).
+ * Consumer Facebook share. Always use sharer.php?u= — dialog/share needs a
+ * configured app_id + allowed domain, otherwise Facebook opens but the article
+ * never lands in the composer. Do not append quote/text: long quotes disable
+ * "İleri" on current Facebook builds.
  */
-export function buildFacebookShareUrl(shareUrl: string, shareText?: string): string {
-  const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim()
-  const text = shareText?.trim()
-
-  if (appId) {
-    const params = new URLSearchParams({
-      app_id: appId,
-      href: shareUrl,
-      // Top-level / new-tab handoff — sized "popup" display is often blocked on iOS Safari.
-      display: 'page',
-    })
-    if (text) params.set('quote', text)
-    return `https://www.facebook.com/dialog/share?${params.toString()}`
-  }
-
-  const params = new URLSearchParams({ u: shareUrl })
-  // quote is ignored by most modern FB builds but harmless for legacy clients
-  if (text) params.set('quote', text)
-  return `https://www.facebook.com/sharer/sharer.php?${params.toString()}`
+export function buildFacebookShareUrl(shareUrl: string, _shareText?: string): string {
+  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
 }
 
 /** Build a dynamic OG image URL for category/collection pages via /api/og. */

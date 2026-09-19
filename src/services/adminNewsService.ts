@@ -89,16 +89,20 @@ export interface AdminNewsItem extends Post {
   socialPublished?: boolean
   /** IG/FB hikâye olarak paylaşılmış mı */
   storyPublished?: boolean
+  /** CMS “Genelde öne çıkan” pin time — tab sort */
+  featuredAtMs?: number
 }
 
 function withSocialFlags(post: Post, data: Record<string, unknown>, adminSource: AdminNewsSource): AdminNewsItem {
   return {
     ...post,
+    featured: data.featured === true,
     adminSource,
     socialPublished: data.socialPublished === true,
     storyPublished: data.storyPublished === true,
     needsReview: data.needsReview === true || post.needsReview === true,
     aiAutoPublished: data.aiAutoPublished === true || post.aiAutoPublished === true,
+    featuredAtMs: timestampToMs(data.featuredAt) || timestampToMs(data.updatedAt) || 0,
   }
 }
 
@@ -218,7 +222,7 @@ function adminNewsDocToPost(id: string, data: NewsDocument): Post {
     sharesCount: data.sharesCount ?? 0,
     viewsCount: data.viewsCount ?? 0,
     isEditorPick: data.featured === true || data.isEditorPick === true,
-    featured: data.featured === true || data.isEditorPick === true,
+    featured: data.featured === true,
     localFeatured: data.localFeatured === true,
     isTrending: false,
     publishedAt: null,
@@ -324,6 +328,13 @@ function mapAdminNewsDocs(
 
   if (sort === 'views') {
     posts.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+  } else if (filter === 'featured' || filter === 'local-featured') {
+    posts.sort((a, b) => {
+      const aPin = a.featuredAtMs || Date.parse(a.createdAt) || 0
+      const bPin = b.featuredAtMs || Date.parse(b.createdAt) || 0
+      if (aPin !== bPin) return bPin - aPin
+      return (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
+    })
   } else {
     posts.sort((a, b) => {
       const aMs = Date.parse(a.createdAt) || 0
@@ -347,7 +358,8 @@ export const adminNewsService = {
     citySlug?: string,
     sort: AdminNewsSort = 'date'
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
-    const pageSize = limitOverride ?? PAGE_SIZE
+    const pinTab = filter === 'featured' || filter === 'local-featured'
+    const pageSize = pinTab && !limitOverride ? 500 : (limitOverride ?? PAGE_SIZE)
     if (filter === 'pending') {
       return listPendingQueue(lastDoc, sort)
     }
@@ -359,7 +371,6 @@ export const adminNewsService = {
     if (filter === 'duplicate') {
       return listDuplicateNews(lastDoc, categoryId, limitOverride, citySlug, sort)
     }
-
     const status = statusConstraint(filter)
     const filterConstraints: QueryConstraint[] = []
     if (filter === 'featured') filterConstraints.push(where('featured', '==', true))
@@ -395,6 +406,13 @@ export const adminNewsService = {
             [orderBy('viewsCount', 'desc'), limit(viewsOverFetch)],
             [limit(viewsOverFetch)],
           ]
+        : pinTab
+          ? [
+              // No orderBy — missing featuredAt/createdAt must not drop a just-pinned story.
+              [...filterConstraints, limit(pageSize)],
+              [...filterConstraints, orderBy('featuredAt', 'desc'), limit(pageSize)],
+              [...filterConstraints, orderBy('updatedAt', 'desc'), limit(pageSize)],
+            ]
         : [
             [
               ...filterConstraints,
@@ -450,7 +468,7 @@ export const adminNewsService = {
             /* featured merge is best-effort for legacy yerel pins */
           }
         }
-        const posts = allFiltered.slice(0, pageSize)
+        const posts = pinTab ? allFiltered : allFiltered.slice(0, pageSize)
         // Empty ordered query ≠ "no drafts" — try next attempt while filter is set.
         const hasServerFilter = !!(
           status ||
@@ -461,10 +479,10 @@ export const adminNewsService = {
           categoryId
         )
         if (posts.length === 0 && hasServerFilter && !isLast) continue
-        // Classic cursor pagination only when Firestore already ordered by viewsCount;
-        // over-fetch fallbacks are a single ranked page (same as search/city bulk).
-        const hasMore =
-          sort === 'views'
+        // Pin tabs over-fetch a single page so newly starred older stories stay visible.
+        const hasMore = pinTab
+          ? false
+          : sort === 'views'
             ? isViewsOrderedAttempt && posts.length >= pageSize && snap.docs.length >= pageSize
             : posts.length >= pageSize
         return {

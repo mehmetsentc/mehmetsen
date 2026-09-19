@@ -1656,6 +1656,8 @@ function AdminNewsDesktopPage() {
       const sort = sortByRef.current
       const bulkLimit =
         filter === 'duplicate' ||
+        filter === 'featured' ||
+        filter === 'local-featured' ||
         searchTerm.trim() ||
         citySlugFilter ||
         sort === 'views' ||
