@@ -81,7 +81,7 @@ export function CityNewspaperServiceCards({
 
   if (!weather && !rates) return null
 
-  const isDay = weather ? getEffectiveIsDay(weather, nowMs) : true
+  const isDay = weather ? getEffectiveIsDay(weather, nowMs) : 1
   const emoji = weather
     ? conditionEmoji(weather.current.condition.code, isDay, weather.current.condition.icon)
     : '•'
