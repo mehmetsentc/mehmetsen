@@ -1,5 +1,6 @@
 import { getCityCategoryName } from '@/constants/cities'
 import { getCityHomeFeedInitialData } from '@/services/cityNewsService.server'
+import { getCityEventsServer } from '@/services/eventService.server'
 import { CityDesktopBreakingSync } from '@/components/city/CityDesktopBreakingSync'
 import { CityDesktopNewspaperRsc } from '@/components/city/CityDesktopNewspaperRsc'
 
@@ -14,7 +15,10 @@ export async function CityAdaptiveHome({
   citySlug: string
   category?: string | null
 }) {
-  const homeFeedData = await getCityHomeFeedInitialData(citySlug)
+  const [homeFeedData, events] = await Promise.all([
+    getCityHomeFeedInitialData(citySlug),
+    getCityEventsServer(citySlug, 'upcoming', 10),
+  ])
   const cityName = getCityCategoryName(citySlug)
   const breakingItems =
     homeFeedData.breaking.length > 0 ? homeFeedData.breaking : homeFeedData.latest
@@ -22,7 +26,12 @@ export async function CityAdaptiveHome({
   return (
     <div className="hidden lg:block" data-city-desktop-newspaper="1">
       <CityDesktopBreakingSync breakingItems={breakingItems} />
-      <CityDesktopNewspaperRsc cityName={cityName} citySlug={citySlug} data={homeFeedData} />
+      <CityDesktopNewspaperRsc
+        cityName={cityName}
+        citySlug={citySlug}
+        data={homeFeedData}
+        events={events}
+      />
     </div>
   )
 }

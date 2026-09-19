@@ -3512,6 +3512,151 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .desktop-portal-service {
+    display: grid;
+    grid-template-columns: minmax(12rem, 15.5rem) minmax(0, 1fr);
+    gap: 0.85rem;
+    margin: 0 0 1.35rem;
+    align-items: stretch;
+  }
+
+  .desktop-portal-service:not(:has(.desktop-portal-weather-card)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .desktop-portal-weather-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 8.5rem;
+    padding: 0.9rem 1rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(145deg, #0284c7 0%, #1d4ed8 100%);
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .desktop-portal-weather-card__kicker {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.82;
+  }
+
+  .desktop-portal-weather-card__city {
+    margin: 0.15rem 0 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .desktop-portal-weather-card__row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    margin-top: auto;
+  }
+
+  .desktop-portal-weather-card__emoji {
+    font-size: 1.7rem;
+    line-height: 1;
+  }
+
+  .desktop-portal-weather-card__temp {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .desktop-portal-weather-card__cond {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    opacity: 0.88;
+  }
+
+  .desktop-portal-service__fx {
+    display: flex;
+    gap: 0.75rem;
+    min-width: 0;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.15rem;
+  }
+
+  .desktop-portal-fx-card {
+    flex: 1 1 8.5rem;
+    min-width: 8.5rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid rgb(var(--color-border));
+    border-radius: 0.75rem;
+    background: rgb(var(--color-card));
+    scroll-snap-align: start;
+  }
+
+  .desktop-portal-fx-card__label {
+    margin: 0;
+    color: rgb(var(--color-muted));
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .desktop-portal-fx-card__value {
+    margin: 0.4rem 0 0;
+    color: rgb(var(--color-text));
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-fx-card__change {
+    margin: 0.3rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .desktop-portal-fx-card__change.is-up {
+    color: #059669;
+  }
+
+  .desktop-portal-fx-card__change.is-down {
+    color: #dc2626;
+  }
+
+  .desktop-portal-event__date {
+    position: absolute;
+    left: 0.55rem;
+    top: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 2.4rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.4rem;
+    background: rgb(var(--color-surface) / 0.94);
+    color: rgb(var(--color-text));
+    line-height: 1;
+  }
+
+  .desktop-portal-event__date strong {
+    font-size: 0.92rem;
+    font-weight: 900;
+  }
+
+  .desktop-portal-event__date em {
+    font-size: 0.62rem;
+    font-style: normal;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgb(var(--color-muted));
+  }
+
   .desktop-portal-band {
     margin-bottom: 1.5rem;
     padding-top: 1.15rem;
@@ -3794,6 +3939,10 @@
     .desktop-portal-videos,
     .desktop-portal-split {
       grid-template-columns: 1fr 1fr;
+    }
+
+    .desktop-portal-service {
+      grid-template-columns: 1fr;
     }
 
     .desktop-portal-hero {

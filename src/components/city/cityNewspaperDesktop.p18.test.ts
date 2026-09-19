@@ -37,6 +37,8 @@ describe('city desktop newspaper split', () => {
     expect(rsc).not.toContain('content-stage-newspaper')
     expect(rsc).toContain('PortalScrollRail')
     expect(rsc).toContain('packNewspaperCategoryLayout')
+    expect(rsc).toContain('CityNewspaperServiceCards')
+    expect(rsc).toContain('CityNewspaperEventsRail')
     expect(rsc).not.toContain('desktop-portal-split')
     expect(header).toContain('city-masthead-lockup')
     expect(header).not.toContain('formatNewsDateLong')
@@ -57,6 +59,17 @@ describe('city desktop newspaper split', () => {
     expect(kategori).not.toContain('CityFeedPageClient')
     expect(categoryPage).not.toContain("from '@/components/home/HomeFeed'")
     expect(categoryPage).not.toContain('SmartFeedClient')
+  })
+
+  it('locks homepage weather to the tenant city and loads city events', () => {
+    const weather = read('src/components/city/CityNewspaperServiceCards.tsx')
+    const home = read('src/components/city/CityAdaptiveHome.tsx')
+    expect(weather).toContain('buildWeatherQuery(citySlug)')
+    expect(weather).toContain('data-city-weather={citySlug}')
+    expect(weather).not.toContain('POPULAR_CITY_SLUGS')
+    expect(weather).not.toContain('useUserLocation')
+    expect(weather).toContain('/api/finance/rates')
+    expect(home).toContain("getCityEventsServer(citySlug, 'upcoming', 10)")
   })
 
   it('newspaper nav slugs resolve to city category pages', async () => {

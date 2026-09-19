@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
+import { CityNewspaperEventsRail } from '@/components/city/CityNewspaperEventsRail'
 import { CityNewspaperFooter } from '@/components/city/CityNewspaperFooter'
+import { CityNewspaperServiceCards } from '@/components/city/CityNewspaperServiceCards'
 import { getCategoryAccentColor } from '@/lib/categoryAccent'
 import { buildCityPortalHomeProps, packNewspaperCategoryLayout } from '@/lib/cityPortalHome'
 import { newsItemCategoryLabel, newsItemDetailHref } from '@/lib/newsItemUtils'
+import type { NaEvent } from '@/types/event'
 import type { HomeFeedInitialData, NewsItem } from '@/types/newsItem'
 
 const PORTAL_CATEGORY_ACCENTS: Record<string, string> = {
@@ -136,12 +139,14 @@ function CategoryColumnGrid({
 
 export function CityDesktopNewspaperRsc({
   cityName,
-  citySlug: _citySlug,
+  citySlug,
   data,
+  events = [],
 }: {
   cityName: string
   citySlug: string
   data: HomeFeedInitialData
+  events?: NaEvent[]
 }) {
   const portal = buildCityPortalHomeProps(data)
   const hero = portal.heroSlides[0] ?? null
@@ -245,6 +250,9 @@ export function CityDesktopNewspaperRsc({
           </aside>
         ) : null}
       </section>
+
+      <CityNewspaperServiceCards citySlug={citySlug} cityName={cityName} />
+      <CityNewspaperEventsRail cityName={cityName} events={events} />
 
       {packed.gridCards.length > 0 ? (
         <CategoryColumnGrid cards={packed.gridCards} />
