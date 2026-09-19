@@ -12,9 +12,9 @@ import { isManualEditorAiEnabled } from '../automatedAiPolicy'
 import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 import type { CrawlerEditorialStatus } from '../types'
 
-/** Process up to 12 articles per cron tick with concurrency 4. */
-export const WORKER_BATCH_SIZE = 12
-export const WORKER_CONCURRENCY = 4
+/** Smaller parallel DeepSeek stampede — 4 concurrent writer+QA calls burned quota without publishing. */
+export const WORKER_BATCH_SIZE = 8
+export const WORKER_CONCURRENCY = 2
 
 /**
  * Follow-up editorial status after an editor-approved AI attempt.
@@ -52,8 +52,8 @@ export function resolveEditorAiFollowUpStatus(
   return 'AI_QUEUED'
 }
 
-/** Editor AI cron maxDuration is 300s; recover leases older than 3 minutes. */
-export const EDITOR_AI_STALE_PROCESSING_MS = 3 * 60 * 1000
+/** Cron maxDuration is 300s. Recover only after the wall clock so in-flight DeepSeek jobs are not stolen. */
+export const EDITOR_AI_STALE_PROCESSING_MS = 6 * 60 * 1000
 
 export interface EditorQueueWorkerResult {
   claimed: number

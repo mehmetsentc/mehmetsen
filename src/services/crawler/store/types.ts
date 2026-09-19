@@ -213,6 +213,8 @@ export interface RawArticleQueueCounts {
   rejected: number
   archived: number
   aiQueue: number
+  /** Exact duplicates excluded from the default Aktif kuyruk list. */
+  hiddenDuplicates: number
 }
 
 export interface RawArticleListResult {

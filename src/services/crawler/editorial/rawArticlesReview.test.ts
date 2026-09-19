@@ -15,6 +15,7 @@ describe('raw article review queue tab', () => {
       rejected: 0,
       archived: 0,
       aiQueue: 0,
+      hiddenDuplicates: 0,
     })
   })
 })

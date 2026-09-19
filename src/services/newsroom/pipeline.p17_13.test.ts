@@ -59,6 +59,19 @@ describe('P17.13 manual AI editorial review safety', () => {
     expect(src).toMatch(/const needsDraft[\s\S]*editorApproved/)
   })
 
+  it('does not hard-discard editor-approved items on DeepSeek fact-check failure', () => {
+    const src = readFileSync(join(process.cwd(), 'src/services/newsroom/pipeline.ts'), 'utf8')
+    expect(src).toMatch(/factCheckFailedBadly:\s*editorApproved \? false : factCheckFailedBadly/)
+    expect(src).toMatch(/editorApproved && \(bodyTooShort \|\| incompleteText \|\| factCheckFailedBadly\)/)
+  })
+
+  it('editor-approved path skips paid rewrite loop, DeepSeek fact-check, and chief editor', () => {
+    const src = readFileSync(join(process.cwd(), 'src/services/newsroom/pipeline.ts'), 'utf8')
+    expect(src).toMatch(/!editorApproved &&\s*\n\s*NEWSROOM_REWRITE_MAX_RETRIES/)
+    expect(src).toMatch(/heuristicOnly:\s*editorApproved/)
+    expect(src).toMatch(/if \(!workingInput\.skipAiRewrite && !editorApproved\)/)
+  })
+
   it('editor-approved cover and gate skips continue to Onay Bekliyor', () => {
     const src = readFileSync(join(process.cwd(), 'src/services/newsroom/pipeline.ts'), 'utf8')
     expect(src).toMatch(/missingCover && !editorApproved/)

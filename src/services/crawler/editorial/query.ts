@@ -61,17 +61,20 @@ export function parseSortOrder(value: string | null): SortOrder {
 
 export function queueCountsFromStatuses(
   counts: Record<string, number>,
-  reviewCount = 0
+  reviewCount = 0,
+  activeExactDuplicates = 0
 ): RawArticleQueueCounts {
-  const active = ACTIVE_EDITORIAL_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
+  const activeAll = ACTIVE_EDITORIAL_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
+  const hiddenDuplicates = Math.min(Math.max(0, activeExactDuplicates), activeAll)
   const aiQueue = AI_QUEUED_STATUSES.reduce((sum, key) => sum + (counts[key] || 0), 0)
   return {
-    active,
+    active: activeAll - hiddenDuplicates,
     published: counts.PUBLISHED || 0,
     review: reviewCount,
     rejected: counts.REJECTED || 0,
     archived: counts.ARCHIVED || 0,
     aiQueue,
+    hiddenDuplicates,
   }
 }
 

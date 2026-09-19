@@ -1171,6 +1171,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     const pageSize = clampPageSize(query.pageSize)
     const filters = this.rawArticleFilters(query)
     const order = this.rawArticleOrder(query)
+    const breakdown = await this.editorialStatusBreakdown()
 
     const countRows = await this.db()
       .select({ n: sql<number>`count(*)::int` })
@@ -1253,7 +1254,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         summary,
         sources,
         groups,
-        queueCounts: queueCountsFromStatuses(await this.countEditorialStatuses()),
+        queueCounts: queueCountsFromStatuses(breakdown.counts, 0, breakdown.activeExactDuplicates),
       }
     }
 
@@ -1268,7 +1269,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .limit(pageSize)
       .offset((page - 1) * pageSize)
     const articles: RawArticleListRow[] = rows.map((r) => ({ ...mapRaw(r.article), sourceName: r.sourceName }))
-    const queueCounts = queueCountsFromStatuses(await this.countEditorialStatuses())
+    const queueCounts = queueCountsFromStatuses(breakdown.counts, 0, breakdown.activeExactDuplicates)
     return { articles, total, page, pageSize, totalPages, summary, sources, queueCounts }
   }
 
@@ -1422,17 +1423,31 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     }))
   }
 
-  async countEditorialStatuses(): Promise<Record<string, number>> {
+  private async editorialStatusBreakdown(): Promise<{
+    counts: Record<string, number>
+    activeExactDuplicates: number
+  }> {
     const rows = await this.db()
       .select({
         status: rawArticles.editorialStatus,
         n: sql<number>`count(*)::int`,
+        dups: sql<number>`count(*) filter (where ${rawArticles.isExactDuplicate} = 1)::int`,
       })
       .from(rawArticles)
       .groupBy(rawArticles.editorialStatus)
-    const out: Record<string, number> = {}
-    for (const row of rows) out[row.status] = row.n
-    return out
+    const counts: Record<string, number> = {}
+    let activeExactDuplicates = 0
+    for (const row of rows) {
+      counts[row.status] = row.n
+      if ((ACTIVE_EDITORIAL_STATUSES as string[]).includes(row.status)) {
+        activeExactDuplicates += row.dups
+      }
+    }
+    return { counts, activeExactDuplicates }
+  }
+
+  async countEditorialStatuses(): Promise<Record<string, number>> {
+    return (await this.editorialStatusBreakdown()).counts
   }
 
   async countClusterEditorialDecisions(): Promise<Record<string, number>> {

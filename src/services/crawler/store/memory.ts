@@ -24,7 +24,7 @@ import type {
 } from './types'
 import { newCrawlerId } from './types'
 import { clusterDefaults } from '../cluster/defaults'
-import { matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, queueCountsFromStatuses, sortRawArticleRows, type ClusterListQuery } from '../editorial/query'
+import { ACTIVE_EDITORIAL_STATUSES, matchesClusterQuery, matchesRawArticleQuery, paginateRawArticles, queueCountsFromStatuses, sortRawArticleRows, type ClusterListQuery } from '../editorial/query'
 import { funnelFromClusters, tabCountsFromClusters } from '../editorial/controlPlane'
 import { defaultOpsState, type CrawlerOpsState } from '../ops/opsState'
 import type { CmsNewsRef } from '../ops/protectedSet'
@@ -499,7 +499,11 @@ export class MemoryCrawlerStore implements CrawlerStore {
     const rows = filtered.map((a) => ({ ...a, sourceName: sources.get(a.sourceId) || a.sourceId }))
     const sorted = sortRawArticleRows(rows, query)
     const page = paginateRawArticles(sorted, query)
-    page.queueCounts = queueCountsFromStatuses(await this.countEditorialStatuses())
+    const statuses = await this.countEditorialStatuses()
+    const activeExactDuplicates = [...this.articles.values()].filter(
+      (a) => ACTIVE_EDITORIAL_STATUSES.includes(a.editorialStatus) && a.isExactDuplicate
+    ).length
+    page.queueCounts = queueCountsFromStatuses(statuses, 0, activeExactDuplicates)
     return page
   }
 

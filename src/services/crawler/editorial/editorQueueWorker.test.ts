@@ -93,9 +93,9 @@ describe('processEditorAiQueue', () => {
   })
 
   it('exposes safe batch size and concurrency constants', () => {
-    expect(WORKER_BATCH_SIZE).toBe(12)
-    expect(WORKER_CONCURRENCY).toBe(4)
-    expect(EDITOR_AI_STALE_PROCESSING_MS).toBe(3 * 60 * 1000)
+    expect(WORKER_BATCH_SIZE).toBe(8)
+    expect(WORKER_CONCURRENCY).toBe(2)
+    expect(EDITOR_AI_STALE_PROCESSING_MS).toBe(6 * 60 * 1000)
   })
 
   it('never maps editor-approved follow-up back to NEW', () => {

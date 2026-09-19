@@ -983,8 +983,10 @@ export async function processNewsroomArticle(
     const optimizedRetry = isOptimizedStage1RetryCohort()
 
     // Düşük gate / kısa / yarım gövde → yeniden yazım (onay kuyruğuna yarım haber basmamak için)
+    // Editör AI onayla: ekstra DeepSeek turu yok — maliyet + kuyruk beklemesi.
     if (
       !workingInput.skipAiRewrite &&
+      !editorApproved &&
       NEWSROOM_REWRITE_MAX_RETRIES > 0 &&
       rewrittenRaw.gateDecision !== 'skip'
     ) {
@@ -1149,14 +1151,17 @@ export async function processNewsroomArticle(
       }
     }
 
-    const factCheck = await factChecker.check({
-      sourceLabel: workingInput.sourceLabel,
-      sourceUrl: workingInput.sourceUrl,
-      originalTitle: workingInput.originalTitle,
-      originalSummary: workingInput.originalSummary,
-      originalContent: workingInput.originalContent,
-      rewritten,
-    })
+    const factCheck = await factChecker.check(
+      {
+        sourceLabel: workingInput.sourceLabel,
+        sourceUrl: workingInput.sourceUrl,
+        originalTitle: workingInput.originalTitle,
+        originalSummary: workingInput.originalSummary,
+        originalContent: workingInput.originalContent,
+        rewritten,
+      },
+      { heuristicOnly: editorApproved }
+    )
 
     if (isCmsFeatureEnabled('aiNewsroomEnabled')) {
       void recordPipelineStageTask({
@@ -1597,7 +1602,7 @@ export async function processNewsroomArticle(
 
     // ── AI ANA EDİTÖR — rewrite sonrası nihai kategori + yayın kararı ─────────
     let chiefEditorResult: ChiefEditorResult | null = null
-    if (!workingInput.skipAiRewrite) {
+    if (!workingInput.skipAiRewrite && !editorApproved) {
       let recentTitles: string[] = []
       try {
         const recentSnap = await db
@@ -1929,11 +1934,12 @@ export async function processNewsroomArticle(
     }
 
     // Worthless copy → skip (delete from queue). Do not park in Onay Bekliyor.
-    // Editor AI onayla: kısa/kesik gövde atlanmaz — taslak/onay akışına bırakılır.
+    // Editor AI onayla: kısa/kesik gövde ve DeepSeek doğrulama düşüğü atlanmaz —
+    // taslak/onay akışına bırakılır (kuyrukta sonsuz retry olmasın).
     const discardReason = qualityDiscardReason({
       bodyTooShort: editorApproved ? false : bodyTooShort,
       incompleteText: editorApproved ? false : incompleteText,
-      factCheckFailedBadly,
+      factCheckFailedBadly: editorApproved ? false : factCheckFailedBadly,
     })
     if (discardReason) {
       const skipReason = qualityDiscardSkipReason(discardReason)
@@ -1947,7 +1953,8 @@ export async function processNewsroomArticle(
     // Yalnızca DRAFT_ONLY persona veya düşük güven / gate / moderasyon / chief editor → taslak.
     // NEWSROOM_AUTO_PUBLISH_ENABLED=false ise hiçbir şey otomatik yayınlanmaz.
     // Editör AI onayla + kısa/kesik AI çıktısı → atlama yok, taslağa düşür.
-    const editorSoftQualityHold = editorApproved && (bodyTooShort || incompleteText)
+    const editorSoftQualityHold =
+      editorApproved && (bodyTooShort || incompleteText || factCheckFailedBadly)
     const needsDraft =
       !NEWSROOM_AUTO_PUBLISH_ENABLED ||
       editorApproved ||

@@ -179,8 +179,9 @@ Yeniden yazılmış metin: ${input.rewritten.description.slice(0, 2500)}`,
 }
 
 export const factChecker = {
-  async check(input: FactCheckInput): Promise<FactCheckResult> {
+  async check(input: FactCheckInput, opts?: { heuristicOnly?: boolean }): Promise<FactCheckResult> {
     try {
+      if (opts?.heuristicOnly) return heuristicFactCheck(input)
       return await deepSeekFactCheck(input)
     } catch (error) {
       console.error('[factChecker] failed, heuristic fallback:', error)

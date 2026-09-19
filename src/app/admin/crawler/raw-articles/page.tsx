@@ -65,6 +65,7 @@ interface ArticleRow {
   qualityStatus: string
   editorialStatus: CrawlerEditorialStatus
   editorialNewsId: string | null
+  aiSkipReason?: string | null
   clusterId: string | null
   clusterArticleCount?: number | null
   clusterUniqueSourceCount?: number | null
@@ -96,7 +97,15 @@ interface ListResponse {
     duplicates: number
   }
   sources?: Array<{ sourceId: string; sourceName: string; articleCount: number }>
-  queueCounts?: { active: number; published: number; review: number; rejected: number; archived: number; aiQueue: number }
+  queueCounts?: {
+    active: number
+    published: number
+    review: number
+    rejected: number
+    archived: number
+    aiQueue: number
+    hiddenDuplicates?: number
+  }
   error?: string
 }
 
@@ -727,6 +736,11 @@ function CrawlerArticlesInner() {
                 <td className="px-3 py-2">{crawlerStatusLabel(row)}</td>
                 <td className="px-3 py-2">
                   {EDITORIAL_STATUS_LABELS[row.editorialStatus] || row.editorialStatus}
+                  {row.aiSkipReason ? (
+                    <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-200" title={row.aiSkipReason}>
+                      {row.aiSkipReason}
+                    </span>
+                  ) : null}
                   {row.reviewMeta?.needsReview ? (
                     <span className="ml-1 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
                       İnceleme
@@ -790,6 +804,15 @@ function CrawlerArticlesInner() {
         onSelect={(sourceId) => setParam({ source: sourceId }, true)}
       />
       {filterBar}
+      {queue === 'active' && (data?.queueCounts?.hiddenDuplicates || 0) > 0 ? (
+        <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+          {(data?.queueCounts?.hiddenDuplicates || 0).toLocaleString('tr-TR')} mükerrer kayıt gizlendi — görmek için Durum:{' '}
+          <button type="button" className="underline" onClick={() => setParam({ status: 'duplicate' }, true)}>
+            Mükerrer
+          </button>
+          .
+        </p>
+      ) : null}
       {count > 0 && queue === 'active' ? (
         <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
           Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI için onayla</strong> — İncelemeye Al ve AI Adayı yalnızca
