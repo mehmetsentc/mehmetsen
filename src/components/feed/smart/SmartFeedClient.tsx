@@ -77,7 +77,9 @@ import {
 } from '@/lib/feed/reader/swipeEventHud'
 import {
   appendSwipeLifecycleRing,
+  FEED_READER_REOPEN_LOCK_MS,
   formatSwipeLifecycleRing,
+  isFeedReaderReopenLocked,
   shouldIgnoreFeedOpenCancel,
   type SwipeLifecycleEvent,
 } from '@/lib/feed/reader/swipeLifecycle'
@@ -358,6 +360,10 @@ export function SmartFeedClient({
   const feedGestureCommitLockRef = useRef<string | null>(null)
   /** Bumped on Reader close / failed open — card surfaces reset stale drag listeners. */
   const [feedGestureEpoch, setFeedGestureEpoch] = useState(0)
+  /** Until this timestamp, leftover horizontal motion must not reopen Reader. */
+  const readerReopenLockUntilRef = useRef(0)
+  const readerReopenUnlockTimerRef = useRef<number | null>(null)
+  const [feedOpenLocked, setFeedOpenLocked] = useState(false)
   const swipeLifecycleRef = useRef<string[]>([])
   const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
   const [readerCapabilityReady, setReaderCapabilityReady] = useState(false)
@@ -1874,8 +1880,47 @@ export function SmartFeedClient({
     readerCancelGenRef.current += 1
   }, [])
 
+  const armReaderReopenLock = useCallback(() => {
+    readerReopenLockUntilRef.current = Date.now() + FEED_READER_REOPEN_LOCK_MS
+    setFeedOpenLocked(true)
+    if (readerReopenUnlockTimerRef.current != null) {
+      window.clearTimeout(readerReopenUnlockTimerRef.current)
+    }
+    readerReopenUnlockTimerRef.current = window.setTimeout(() => {
+      readerReopenUnlockTimerRef.current = null
+      if (
+        !isFeedReaderReopenLocked({
+          untilMs: readerReopenLockUntilRef.current,
+          nowMs: Date.now(),
+        })
+      ) {
+        setFeedOpenLocked(false)
+      }
+    }, FEED_READER_REOPEN_LOCK_MS + 16)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (readerReopenUnlockTimerRef.current != null) {
+        window.clearTimeout(readerReopenUnlockTimerRef.current)
+        readerReopenUnlockTimerRef.current = null
+      }
+    }
+  }, [])
+
   const openReader = useCallback(
     (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean; openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown' }) => {
+      if (
+        isFeedReaderReopenLocked({
+          untilMs: readerReopenLockUntilRef.current,
+          nowMs: Date.now(),
+        })
+      ) {
+        feedGestureCommitLockRef.current = null
+        pushSwipeLifecycle('FEED_OPEN_FAIL')
+        pushSwipeLifecycle('CANCEL_REASON=reopen_lock')
+        return
+      }
       // Exactly one commit per article open — ignore double Haberi Oku / duplicate gesture commit.
       if (readerOpenGuardRef.current === item.articleId) {
         // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
@@ -2053,6 +2098,17 @@ export function SmartFeedClient({
     action: 'button' | 'gesture' | 'swipe_affordance' = 'button'
   ) => {
     void (async () => {
+      if (
+        isFeedReaderReopenLocked({
+          untilMs: readerReopenLockUntilRef.current,
+          nowMs: Date.now(),
+        })
+      ) {
+        feedGestureCommitLockRef.current = null
+        pushSwipeLifecycle('FEED_OPEN_FAIL')
+        pushSwipeLifecycle('CANCEL_REASON=reopen_lock')
+        return
+      }
       // Feed V3: Haberi Oku / up affordance / up swipe → bottom sheet (stay on feed).
       if (sheetMode) {
         const guestSeen = readGuestSeen()
@@ -2516,7 +2572,8 @@ export function SmartFeedClient({
             className={cn(
               'h-full min-h-0 w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
               isTabSwitching && 'opacity-55',
-              feedScrollLocked && 'overflow-hidden touch-none'
+              feedScrollLocked && 'overflow-hidden touch-none',
+              feedOpenLocked && 'pointer-events-none'
             )}
             style={
               {
@@ -2585,7 +2642,7 @@ export function SmartFeedClient({
                   }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    !sheetMode && isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed && !feedOpenLocked
                       ? (g) => {
                           if (showReaderDebug) {
                             const classified = classifyFeedOpenGestureDecision(g)
@@ -2622,7 +2679,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onOpenReaderProgress={
-                    !sheetMode && isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed && !feedOpenLocked
                       ? (progress) => {
                           clearReaderOpenRamp()
                           setReaderSession((s) => {
@@ -2651,7 +2708,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onOpenReaderCancel={
-                    !sheetMode && isActive && !readerSession?.committed
+                    !sheetMode && isActive && !readerSession?.committed && !feedOpenLocked
                       ? () => {
                           if (
                             shouldIgnoreFeedOpenCancel({
@@ -3010,6 +3067,7 @@ export function SmartFeedClient({
               clearReaderOpenRamp()
               feedGestureCommitLockRef.current = null
               readerOpenGuardRef.current = null
+              armReaderReopenLock()
               setReaderSession(null)
               setFeedGestureEpoch((e) => e + 1)
               pushSwipeLifecycle('READER_CLOSE_FINISH')

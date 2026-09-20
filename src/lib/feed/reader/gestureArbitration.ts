@@ -107,10 +107,13 @@ export function shouldCompleteTransition(opts: {
   /** positive velocity in the completing direction */
   completeVelocity?: number
   completeProgress?: number
+  /** Override default hard-complete (Reader→Feed uses a slightly lower bar). */
+  hardCompleteProgress?: number
 }): boolean {
   const completeVelocity = opts.completeVelocity ?? READER_GESTURE.completeVelocity
   const completeProgress = opts.completeProgress ?? READER_GESTURE.completePx / 320
-  if (opts.progress >= READER_GESTURE.hardCompleteProgress) return true
+  const hardCompleteProgress = opts.hardCompleteProgress ?? READER_GESTURE.hardCompleteProgress
+  if (opts.progress >= hardCompleteProgress) return true
   if (opts.progress >= completeProgress && opts.velocityX >= completeVelocity) return true
   if (
     opts.velocityX >= completeVelocity * READER_GESTURE.flickVelocityFactor &&

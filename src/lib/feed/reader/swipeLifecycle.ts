@@ -4,6 +4,10 @@
  */
 
 export const FEED_READER_RETURN_GESTURE_ARM_MS = 350
+/** After Reader close, block leftover horizontal opens of the next card. */
+export const FEED_READER_REOPEN_LOCK_MS = 400
+/** Close commit: visible peek of feed should finish, not snap the article back. */
+export const FEED_READER_CLOSE_HARD_COMPLETE = 0.26
 export const SWIPE_LIFECYCLE_RING_MAX = 28
 
 export type SwipeLifecycleEvent =
@@ -43,6 +47,15 @@ export function isReaderReturnGestureArmed(opts: {
   if (opts.committedAtMs == null || !Number.isFinite(opts.committedAtMs)) return false
   const arm = opts.armMs ?? FEED_READER_RETURN_GESTURE_ARM_MS
   return opts.nowMs - opts.committedAtMs >= arm
+}
+
+/** Feed open is blocked until `untilMs` — leftover swipe after close. */
+export function isFeedReaderReopenLocked(opts: {
+  untilMs: number | null | undefined
+  nowMs: number
+}): boolean {
+  if (opts.untilMs == null || !Number.isFinite(opts.untilMs)) return false
+  return opts.nowMs < opts.untilMs
 }
 
 export function appendSwipeLifecycleRing(

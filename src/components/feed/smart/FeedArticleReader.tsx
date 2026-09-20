@@ -28,6 +28,7 @@ import {
 } from '@/lib/feed/reader/gestureArbitration'
 import { isStandaloneDisplayMode } from '@/lib/feed/reader/feedPortrait'
 import {
+  FEED_READER_CLOSE_HARD_COMPLETE,
   FEED_READER_RETURN_GESTURE_ARM_MS,
   isReaderReturnGestureArmed,
 } from '@/lib/feed/reader/swipeLifecycle'
@@ -986,6 +987,7 @@ export function FeedArticleReader({
     const complete = shouldCompleteTransition({
       progress: closeProgress,
       velocityX: Math.max(0, velocity),
+      hardCompleteProgress: FEED_READER_CLOSE_HARD_COMPLETE,
     })
     if (complete) {
       recordReaderNavTrace({

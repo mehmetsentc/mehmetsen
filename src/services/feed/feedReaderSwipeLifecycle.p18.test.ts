@@ -6,8 +6,11 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  FEED_READER_CLOSE_HARD_COMPLETE,
+  FEED_READER_REOPEN_LOCK_MS,
   FEED_READER_RETURN_GESTURE_ARM_MS,
   appendSwipeLifecycleRing,
+  isFeedReaderReopenLocked,
   isReaderReturnGestureArmed,
   shouldIgnoreFeedOpenCancel,
 } from '@/lib/feed/reader/swipeLifecycle'
@@ -32,6 +35,15 @@ describe('swipe lifecycle isolation helpers', () => {
         articleId: 'a1',
       })
     ).toBe(false)
+  })
+
+  it('blocks Feed reopen until the close lock expires', () => {
+    const until = 2_000
+    expect(isFeedReaderReopenLocked({ untilMs: until, nowMs: until - 1 })).toBe(true)
+    expect(isFeedReaderReopenLocked({ untilMs: until, nowMs: until })).toBe(false)
+    expect(isFeedReaderReopenLocked({ untilMs: null, nowMs: until })).toBe(false)
+    expect(FEED_READER_REOPEN_LOCK_MS).toBe(400)
+    expect(FEED_READER_CLOSE_HARD_COMPLETE).toBeLessThan(0.32)
   })
 
   it('Reader return gesture arms only after settle window', () => {
@@ -115,5 +127,13 @@ describe('lifecycle wiring contracts', () => {
     expect(client).toContain('feed-swipe-event-hud')
     expect(client).toContain('pushSwipeLifecycle')
     expect(client).toContain('lifecycle:')
+  })
+
+  it('arms a reopen lock after Reader close so leftover swipe cannot open the next card', () => {
+    expect(client).toContain('armReaderReopenLock')
+    expect(client).toContain('FEED_READER_REOPEN_LOCK_MS')
+    expect(client).toContain('CANCEL_REASON=reopen_lock')
+    expect(client).toContain('feedOpenLocked')
+    expect(reader).toContain('FEED_READER_CLOSE_HARD_COMPLETE')
   })
 })

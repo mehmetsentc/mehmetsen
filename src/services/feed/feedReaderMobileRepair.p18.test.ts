@@ -28,6 +28,14 @@ describe('Feed Reader mobile swipe repair contracts', () => {
     expect(shouldCompleteTransition({ progress: 0.32, velocityX: 0 })).toBe(true)
     expect(shouldCompleteTransition({ progress: 0.23, velocityX: 0.45 })).toBe(true)
     expect(shouldCompleteTransition({ progress: 0.1, velocityX: 0 })).toBe(false)
+    expect(
+      shouldCompleteTransition({
+        progress: 0.26,
+        velocityX: 0,
+        hardCompleteProgress: 0.26,
+      })
+    ).toBe(true)
+    expect(shouldCompleteTransition({ progress: 0.26, velocityX: 0 })).toBe(false)
     expect(FEED_READER_DURATION_MS).toBeGreaterThanOrEqual(2800)
     expect(FEED_READER_DURATION_MS).toBeLessThanOrEqual(3200)
   })
