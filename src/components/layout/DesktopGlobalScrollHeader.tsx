@@ -34,16 +34,21 @@ export function DesktopGlobalScrollHeader({
   const pathname = usePathname()
   const { config } = useScrollHeaderContext()
   const [localTenant] = useState(() => readLocalCityTenant())
+  const resolvedTenant =
+    localTenant ??
+    (cityName && provinceSlug
+      ? { slug: provinceSlug, displayName: cityName, provinceSlug }
+      : null)
 
   if (!shouldShowGlobalScrollHeader(pathname)) return null
 
-  if (localTenant) {
+  if (resolvedTenant) {
     return (
-      <CityTenantProvider tenant={localTenant}>
+      <CityTenantProvider tenant={resolvedTenant}>
         <CityDesktopNewspaperHeader
-          cityName={localTenant.displayName}
-          tenantSlug={localTenant.slug}
-          provinceSlug={localTenant.provinceSlug}
+          cityName={resolvedTenant.displayName}
+          tenantSlug={resolvedTenant.slug}
+          provinceSlug={resolvedTenant.provinceSlug}
           breakingItems={config.breakingItems}
         />
       </CityTenantProvider>
@@ -57,8 +62,6 @@ export function DesktopGlobalScrollHeader({
         showBreaking={config.showBreaking}
         subcategories={config.subcategories}
         tabParent={config.tabParent}
-        cityName={cityName}
-        provinceSlug={provinceSlug}
       />
     </div>
   )
