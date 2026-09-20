@@ -1,22 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { BrandWordmark } from '@/components/brand/BrandWordmark'
 import { getCityLogoPath } from '@/lib/cityBrand'
 import { cn } from '@/lib/utils'
 
 type LockupTone = 'onBrand' | 'default'
-type LockupSize = 'xs' | 'sm' | 'md'
+type LockupSize = 'sm' | 'md' | 'xl'
 
 const SIZE = {
-  /** Transparent city Feed 2 overlay — stay out of the photo. */
-  xs: {
-    logo: 'h-6 w-6',
-    textH: 'h-6',
-    px: 24,
-    text: 'text-[0.92rem]',
-    gap: 'gap-1.5',
-  },
   /**
    * Header bars — logo + wordmark.
    * Mobile: slightly smaller type + tighter gap so "… NaHaber" fits beside
@@ -36,6 +27,14 @@ const SIZE = {
     px: 32,
     text: 'text-lg',
     gap: 'gap-3.5',
+  },
+  /** Newspaper masthead — type size comes from .nl-masthead__title */
+  xl: {
+    logo: 'h-12 w-12 sm:h-14 sm:w-14',
+    textH: 'h-auto',
+    px: 56,
+    text: '',
+    gap: 'gap-3 sm:gap-4',
   },
 } as const
 
@@ -65,21 +64,26 @@ export function CityBrandLockup({
   const s = SIZE[size]
   const onBrand = tone === 'onBrand'
 
-  if (!logoSrc) {
+  if (!logoSrc || size === 'xl') {
     return (
-      <span className={cn('flex min-w-0 items-center gap-2', className)}>
-        <BrandWordmark
-          variant={onBrand ? 'onBrand' : 'default'}
-          size={size === 'md' ? 'md' : 'sm'}
-          className="font-black"
-        />
+      <span
+        className={cn(
+          'inline-flex min-w-0 max-w-full items-center font-black leading-none tracking-tight',
+          s.textH,
+          s.text,
+          className
+        )}
+      >
         <span
           className={cn(
-            'truncate text-sm font-bold',
-            onBrand ? 'text-[rgb(var(--header-onbrand))]/90' : 'text-[rgb(var(--color-text))]'
+            'min-w-0 truncate',
+            onBrand ? 'text-[rgb(var(--header-onbrand))]' : 'text-[rgb(var(--color-text))]'
           )}
         >
           {cityName}
+        </span>
+        <span className="ml-1 shrink-0 whitespace-nowrap text-[rgb(var(--wordmark-haber))] sm:ml-1.5">
+          NaHaber
         </span>
       </span>
     )
@@ -112,17 +116,8 @@ export function CityBrandLockup({
         >
           {cityName}
         </span>
-        <span className="ml-1 shrink-0 whitespace-nowrap sm:ml-1.5">
-          <span
-            className={
-              onBrand
-                ? 'text-[rgb(var(--wordmark-na-onbrand))]'
-                : 'text-[rgb(var(--wordmark-na))]'
-            }
-          >
-            Na
-          </span>
-          <span className="text-[rgb(var(--wordmark-haber-onbrand))]">Haber</span>
+        <span className="ml-1 shrink-0 whitespace-nowrap text-[rgb(var(--wordmark-haber))] sm:ml-1.5">
+          NaHaber
         </span>
       </span>
     </span>

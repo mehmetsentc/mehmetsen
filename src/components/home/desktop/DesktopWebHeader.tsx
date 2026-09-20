@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, PanelLeftClose, Search } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import { DesktopBreakingTicker } from '@/components/home/desktop/DesktopBreakingTicker'
 import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopSiteNavLinks } from '@/components/home/desktop/DesktopSiteNavLinks'
@@ -11,8 +13,15 @@ import { formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/uiStore'
+import { useCityTenant } from '@/store/cityTenantContext'
+import { readLocalCityTenant } from '@/lib/tenant'
+import { withCityTenantHref } from '@/lib/cityNewspaperNav'
 import type { CategoryDef } from '@/constants/config'
 import type { NewsItem } from '@/types/newsItem'
+
+function readQueryCityTenant() {
+  return readLocalCityTenant()
+}
 
 function HeaderSidebarToggle({ compact }: { compact?: boolean }) {
   const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
@@ -51,6 +60,8 @@ interface DesktopWebHeaderProps {
   tabParent?: CategoryDef | null
   className?: string
   variant?: 'full' | 'compact'
+  cityName?: string
+  provinceSlug?: string
 }
 
 function SubcategoryTabs({
@@ -100,7 +111,20 @@ export function DesktopWebHeader({
   tabParent,
   className,
   variant = 'full',
+  cityName,
+  provinceSlug,
 }: DesktopWebHeaderProps) {
+  const contextTenant = useCityTenant()
+  const [queryTenant] = useState(() => readQueryCityTenant())
+  const propTenant =
+    cityName && provinceSlug
+      ? { slug: provinceSlug, displayName: cityName, provinceSlug }
+      : null
+  const cityTenant = propTenant ?? contextTenant ?? queryTenant
+  const homeHref = cityTenant ? withCityTenantHref('/', cityTenant.slug) : ROUTES.FEED
+  const editionLabel = cityTenant
+    ? `${cityTenant.displayName} dijital gazetesi`
+    : 'Dijital Gazete · Türkiye'
   const showSubTabs = Boolean(subcategories && subcategories.length > 0 && tabParent)
 
   if (variant === 'compact') {
@@ -116,11 +140,21 @@ export function DesktopWebHeader({
         <div className="nl-masthead-compact">
           <HeaderSidebarToggle compact />
           <Link
-            href={ROUTES.FEED}
+            href={homeHref}
             className="flex items-center pr-3"
-            aria-label="NaHaber Ana Sayfa"
+            aria-label={cityTenant ? `${cityTenant.displayName} NaHaber Ana Sayfa` : 'NaHaber Ana Sayfa'}
           >
-            <BrandWordmark variant="default" size="sm" showDotCom className="font-serif font-bold" />
+            {cityTenant ? (
+              <CityBrandLockup
+                cityName={cityTenant.displayName}
+                provinceSlug={cityTenant.provinceSlug}
+                tone="default"
+                size="sm"
+                className="font-serif"
+              />
+            ) : (
+              <BrandWordmark variant="default" size="sm" showDotCom className="font-serif font-bold" />
+            )}
           </Link>
           <nav className="min-w-0 flex-1 overflow-x-auto scrollbar-hide" aria-label="Haber kategorileri">
             <DesktopSiteNavLinks variant="header-newspaper" className="justify-start" />
@@ -149,12 +183,14 @@ export function DesktopWebHeader({
       <div className="nl-masthead-utility">
         <div className="nl-masthead-utility__left">
           <HeaderSidebarToggle />
-          <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
+          {cityTenant ? null : (
+            <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
+          )}
           <Link href={ROUTES.WEATHER} className="nl-masthead-utility__meta hover:underline">
             Hava Durumu
           </Link>
         </div>
-        <p className="nl-masthead-utility__edition">Türkiye dijital gazetesi</p>
+        <p className="nl-masthead-utility__edition">{editionLabel}</p>
         <div className="nl-masthead-utility__right">
           <Link href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
             Hakkımızda
@@ -190,17 +226,28 @@ export function DesktopWebHeader({
       </div>
 
       <Link
-        href={ROUTES.FEED}
+        href={homeHref}
         className="nl-masthead-brand block no-underline"
-        aria-label="NaHaber Ana Sayfa"
+        aria-label={cityTenant ? `${cityTenant.displayName} NaHaber Ana Sayfa` : 'NaHaber Ana Sayfa'}
         itemProp="url"
       >
-        <BrandWordmark
-          variant="default"
-          size="xl"
-          showDotCom
-          className="nl-masthead__title font-serif font-black"
-        />
+        {cityTenant ? (
+          <CityBrandLockup
+            cityName={cityTenant.displayName}
+            provinceSlug={cityTenant.provinceSlug}
+            tone="default"
+            size="xl"
+            className="nl-masthead__title justify-center font-serif font-black"
+            priority
+          />
+        ) : (
+          <BrandWordmark
+            variant="default"
+            size="xl"
+            showDotCom
+            className="nl-masthead__title font-serif font-black"
+          />
+        )}
       </Link>
 
       <hr className="nl-rule-thick mb-0" />

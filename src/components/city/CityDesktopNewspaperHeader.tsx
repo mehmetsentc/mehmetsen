@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { BrandWordmark } from '@/components/brand/BrandWordmark'
+import { CityBrandLockup } from '@/components/city/CityBrandLockup'
 import {
   CityDesktopMenuButton,
   CityDesktopThemeButton,
 } from '@/components/city/CityDesktopHeaderChrome'
-import { CITY_NEWSPAPER_NAV } from '@/lib/cityNewspaperNav'
+import { CITY_NEWSPAPER_NAV, withCityTenantHref } from '@/lib/cityNewspaperNav'
+import { useCityTenant } from '@/store/cityTenantContext'
 import { ROUTES } from '@/constants/routes'
 import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -19,17 +20,25 @@ const SOCIAL = [
 
 export function CityDesktopNewspaperHeader({
   cityName,
+  tenantSlug: tenantSlugProp,
+  provinceSlug: provinceSlugProp,
   breakingItems = [],
 }: {
   cityName: string
+  tenantSlug?: string
+  provinceSlug?: string
   breakingItems?: NewsItem[]
 }) {
   const { config } = useScrollHeaderContext()
+  const cityTenant = useCityTenant()
+  const tenantSlug = tenantSlugProp || cityTenant?.slug
+  const provinceSlug = provinceSlugProp || cityTenant?.provinceSlug || cityName.toLowerCase()
+  const homeHref = withCityTenantHref('/', tenantSlug)
   const breaking = breakingItems[0] ?? config.breakingItems?.[0]
 
   return (
     <header
-      className="desktop-web-header desktop-web-header--portal mb-5 w-full max-w-none"
+      className="desktop-web-header desktop-web-header--portal mb-5 hidden w-full max-w-none lg:block"
       itemScope
       itemType="https://schema.org/WPHeader"
       data-testid="desktop-portal-header"
@@ -38,7 +47,7 @@ export function CityDesktopNewspaperHeader({
         <div className="desktop-web-header__inner desktop-portal-utility__inner">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <CityDesktopMenuButton />
-            <Link href={ROUTES.WEATHER} className="desktop-portal-utility__link">
+            <Link href={withCityTenantHref(ROUTES.WEATHER, tenantSlug)} className="desktop-portal-utility__link">
               Hava Durumu
             </Link>
             <span className="desktop-portal-utility__meta hidden xl:inline">
@@ -64,12 +73,6 @@ export function CityDesktopNewspaperHeader({
               </a>
             ))}
             <CityDesktopThemeButton />
-            <Link href={ROUTES.SEARCH} className="desktop-portal-utility__link" aria-label="Haber ara">
-              Ara
-            </Link>
-            <Link href={ROUTES.LOGIN} className="desktop-portal-utility__link">
-              Giriş Yap
-            </Link>
           </div>
         </div>
       </div>
@@ -77,18 +80,18 @@ export function CityDesktopNewspaperHeader({
       <div className="desktop-portal-masthead">
         <div className="desktop-web-header__inner desktop-portal-masthead__inner city-portal-masthead-inner">
           <Link
-            href="/"
+            href={homeHref}
             className="desktop-portal-masthead__brand city-portal-masthead-brand no-underline"
             aria-label={`${cityName} NaHaber`}
           >
             <span className="city-masthead-lockup">
-              <span className="city-masthead-city font-serif font-black leading-none tracking-tight">
-                {cityName}
-              </span>
-              <BrandWordmark
-                variant="default"
-                size="lg"
-                className="city-masthead-title font-serif font-black"
+              <CityBrandLockup
+                cityName={cityName}
+                provinceSlug={provinceSlug}
+                tone="default"
+                size="xl"
+                className="city-masthead-title justify-center font-serif font-black"
+                priority
               />
             </span>
           </Link>
@@ -101,7 +104,7 @@ export function CityDesktopNewspaperHeader({
             {CITY_NEWSPAPER_NAV.map((item) => (
               <li key={item.id}>
                 <Link
-                  href={item.href}
+                  href={withCityTenantHref(item.href, tenantSlug)}
                   prefetch={false}
                   className="desktop-portal-nav__link"
                   title={`${item.label} haberleri`}
@@ -123,7 +126,7 @@ export function CityDesktopNewspaperHeader({
       {breaking ? (
         <div className="desktop-portal-breaking" aria-label="Son dakika">
           <div className="desktop-web-header__inner desktop-portal-breaking__inner flex items-center">
-            <Link href="/kategori/son-dakika" className="desktop-portal-breaking__label">
+            <Link href={withCityTenantHref('/kategori/son-dakika', tenantSlug)} className="desktop-portal-breaking__label">
               Son dakika
             </Link>
             <Link href={newsItemDetailHref(breaking)} className="desktop-portal-breaking__story">

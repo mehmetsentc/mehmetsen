@@ -89,10 +89,12 @@ function CityCategoryHashScroll() {
 }
 
 const CityShell = memo(function CityShell({
+  tenantSlug,
   displayName,
   provinceSlug,
   children,
 }: {
+  tenantSlug: string
   displayName: string
   provinceSlug: string
   children: React.ReactNode
@@ -145,7 +147,11 @@ const CityShell = memo(function CityShell({
           <div className="hidden lg:block">
             <div className="content-stage content-stage-newspaper">
               <div className="content-main content-main-newspaper desktop-newspaper">
-                <CityDesktopNewspaperHeader cityName={displayName} />
+                <CityDesktopNewspaperHeader
+                  cityName={displayName}
+                  tenantSlug={tenantSlug}
+                  provinceSlug={provinceSlug}
+                />
                 {children}
               </div>
             </div>
@@ -168,7 +174,11 @@ const CityShell = memo(function CityShell({
               className="content-main content-main-newspaper desktop-newspaper"
             >
               <div className="hidden lg:block">
-                <CityDesktopNewspaperHeader cityName={displayName} />
+                <CityDesktopNewspaperHeader
+                  cityName={displayName}
+                  tenantSlug={tenantSlug}
+                  provinceSlug={provinceSlug}
+                />
               </div>
               {children}
             </main>
@@ -212,6 +222,7 @@ export function CityLayoutClient({
                   <CityHardArticleNavigation />
                   <CityCategoryHashScroll />
                   <CityShell
+                    tenantSlug={tenantSlug}
                     displayName={displayName}
                     provinceSlug={provinceSlug}
                   >

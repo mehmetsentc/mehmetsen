@@ -24,15 +24,43 @@ export async function getActiveTenant(): Promise<ActiveTenant | null> {
     const province = h.get(TENANT_PROVINCE_HEADER)
     if (slug && province) return { slug, provinceSlug: province }
 
-    // 2. Cookie fallback — middleware bakes tenant into Cookie header so
+    // 2. Dev query — check every URL-like header. An empty next-url (`/`)
+    // must not hide `?tenant=` on the referer or invoke query.
+    const { getHardcodedTenant } = await import('./tenant')
+    const urlCandidates = [
+      h.get('next-url'),
+      h.get('x-url'),
+      h.get('referer'),
+      h.get('x-invoke-query') ? `/?${decodeURIComponent(h.get('x-invoke-query') || '')}` : null,
+    ]
+    for (const rawUrl of urlCandidates) {
+      if (!rawUrl) continue
+      try {
+        const queryTenant = rawUrl.includes('=') && !rawUrl.includes('://') && !rawUrl.startsWith('/')
+          ? new URLSearchParams(rawUrl).get('tenant')
+          : new URL(rawUrl, 'http://localhost').searchParams.get('tenant')
+        if (queryTenant) {
+          const fromQuery = getHardcodedTenant(queryTenant.toLowerCase())
+          if (fromQuery) return { slug: fromQuery.slug, provinceSlug: fromQuery.provinceSlug }
+        }
+      } catch {
+        /* ignore invalid url */
+      }
+    }
+
+    // 3. Cookie fallback — middleware bakes tenant into Cookie header so
     // server components can resolve the tenant reliably even when x-header
     // forwarding is dropped on the Next.js 15 edge→serverless boundary.
     const c = await cookies()
     const cookieSlug = c.get(TENANT_COOKIE)?.value
     const cookieProvince = c.get(TENANT_PROVINCE_COOKIE)?.value
-    if (cookieSlug && cookieProvince) return { slug: cookieSlug, provinceSlug: cookieProvince }
+    if (cookieSlug) {
+      const fromCookie = getHardcodedTenant(cookieSlug.toLowerCase())
+      if (fromCookie) return { slug: fromCookie.slug, provinceSlug: fromCookie.provinceSlug }
+      if (cookieProvince) return { slug: cookieSlug, provinceSlug: cookieProvince }
+    }
 
-    // 3. Direct host detection — middleware-independent fallback.
+    // 4. Direct host detection — middleware-independent fallback.
     // If middleware didn't run (e.g. build mismatch, edge config issue),
     // we can still detect the city subdomain from the Host header.
     // Prefer x-forwarded-host (Vercel proxy) over host (may be internal).

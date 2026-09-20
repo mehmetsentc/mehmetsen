@@ -21,6 +21,18 @@ export function ServiceWorkerRegister() {
     if (isNativeApp()) return
     if (!('serviceWorker' in navigator)) return
 
+    const host = window.location.hostname
+    const localDev = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost')
+    if (localDev) {
+      void Promise.all([
+        navigator.serviceWorker.getRegistrations().then((regs) =>
+          Promise.all(regs.map((reg) => reg.unregister()))
+        ),
+        caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
+      ])
+      return
+    }
+
     // Already controlling this origin — nothing to do
     const existing = navigator.serviceWorker.controller
     if (existing?.scriptURL?.endsWith(SW_PATH)) return

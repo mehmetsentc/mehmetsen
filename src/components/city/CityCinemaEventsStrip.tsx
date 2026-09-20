@@ -10,7 +10,7 @@ interface CityCinemaEventsStripProps {
   events: NaEvent[]
   cityName?: string
   /** Desktop newspaper layout — wider cards, section divider spacing */
-  variant?: 'mobile' | 'desktop'
+  variant?: 'mobile' | 'desktop' | 'newspaper'
 }
 
 export function CityCinemaEventsStrip({
@@ -85,9 +85,29 @@ export function CityCinemaEventsStrip({
     </div>
   )
 
+  if (variant === 'newspaper') {
+    return (
+      <section className="desktop-portal-band desktop-portal-events" aria-label="Etkinlikler">
+        <div className="desktop-portal-bottom__head">
+          <h2 className="desktop-portal-kicker">Etkinlikler</h2>
+          <Link href={ROUTES.CITY_EVENTS} className="desktop-portal-more">
+            Tümü
+          </Link>
+        </div>
+        <div className="desktop-portal-rail-x" aria-label="Etkinlikler" data-no-category-swipe>
+          {events.map((event) => (
+            <div key={event.id}>
+              <CityEventGridCard event={event} compact />
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
   if (variant === 'desktop') {
     return (
-      <section aria-label="Sinema">
+      <section className="lg:hidden" aria-label="Sinema">
         {header}
         {strip}
       </section>
@@ -95,7 +115,10 @@ export function CityCinemaEventsStrip({
   }
 
   return (
-    <section className="home-section max-md:!mb-6 max-md:!mt-5 max-md:!px-0" aria-label="Sinema">
+    <section
+      className="home-section max-md:!mb-6 max-md:!mt-5 max-md:!px-0 lg:hidden"
+      aria-label="Sinema"
+    >
       {header}
       {strip}
     </section>

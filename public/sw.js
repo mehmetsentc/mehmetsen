@@ -11,6 +11,11 @@ importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js')
 
 // Bump when fetch/cache policy changes so clients drop stale HTML shells.
 const CACHE_VERSION = 'nahaber-v8'
+const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1'])
+
+function isLocalDev() {
+  return LOCAL_DEV_HOSTS.has(self.location.hostname)
+}
 const STATIC_CACHE = [
   '/offline',
   '/favicon.ico',
@@ -22,6 +27,10 @@ const STATIC_CACHE = [
 
 // ── Install ───────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
+  if (isLocalDev()) {
+    self.skipWaiting()
+    return
+  }
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => cache.addAll(STATIC_CACHE))
   )
@@ -31,9 +40,11 @@ self.addEventListener('install', (event) => {
 // ── Activate ──────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys()
+      const stale = isLocalDev() ? keys : keys.filter((k) => k !== CACHE_VERSION)
+      await Promise.all(stale.map((k) => caches.delete(k)))
+    })()
   )
   self.clients.claim()
 })
@@ -91,17 +102,15 @@ self.addEventListener('notificationclick', (event) => {
 
 // ── Fetch (network-first, cache fallback, offline page) ──────────────────
 self.addEventListener('fetch', (event) => {
+  if (isLocalDev()) return
   // Only cache same-origin GET requests
   if (event.request.method !== 'GET') return
   if (!event.request.url.startsWith(self.location.origin)) return
 
-  // Never intercept/cache dynamic API responses (weather, finance rates, etc.).
-  // These must always hit the network so the data stays current — serving a
-  // stale cached API response (e.g. last night's weather) is worse than a
-  // transient failure. Let the browser handle them with their own Cache-Control.
   const requestPath = new URL(event.request.url).pathname
-  if (requestPath.startsWith('/api/')) return
+  // Dev chunks keep a stable /_next/static/chunks/app/page.js URL — never cache them.
   if (requestPath.startsWith('/_next/')) return
+  if (requestPath.startsWith('/api/')) return
 
   const isNavigation =
     event.request.mode === 'navigate' ||

@@ -1,3 +1,14 @@
+/** Keep `?tenant=` on localhost so category clicks stay on the city site. */
+export function withCityTenantHref(href: string, tenantSlug?: string | null) {
+  if (!tenantSlug) return href
+  const [path, hash = ''] = href.split('#')
+  const [pathname, existing = ''] = path.split('?')
+  const params = new URLSearchParams(existing)
+  params.set('tenant', tenantSlug)
+  const query = params.toString()
+  return `${pathname}?${query}${hash ? `#${hash}` : ''}`
+}
+
 /** Same 12 links as national NEWSPAPER_NAV — city /kategori rewrites only. */
 export const CITY_NEWSPAPER_NAV = [
   { id: 'feed', label: 'Ana Sayfa', href: '/' },

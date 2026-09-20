@@ -38,6 +38,16 @@ export function getHardcodedTenant(slug: string): CityTenant | null {
   return HARDCODED_TENANTS[slug] ?? null
 }
 
+/** Localhost preview: `?tenant=` or the city cookie set by CityTenantProvider. */
+export function readLocalCityTenant(): CityTenant | null {
+  if (typeof window === 'undefined') return null
+  const query = new URLSearchParams(window.location.search).get('tenant')
+  if (query) return getHardcodedTenant(query.toLowerCase())
+  const match = document.cookie.match(/(?:^|; )nahaber_tenant=([^;]+)/)
+  const slug = match?.[1] ? decodeURIComponent(match[1]).toLowerCase() : ''
+  return slug ? getHardcodedTenant(slug) : null
+}
+
 const NATIONAL_HOSTS = new Set([
   'nahaber.com',
   'www.nahaber.com',
@@ -149,6 +159,14 @@ export async function resolveTenantFromRequest(
   const tenantParam = request.nextUrl.searchParams.get('tenant')
   if (tenantParam) {
     return resolveTenantEdgeSafe(tenantParam.toLowerCase())
+  }
+
+  // 3. Local preview: keep the city after /?tenant=… when the query drops
+  // on in-site clicks like /kategori/dunya.
+  const host = hostname.split(':')[0].toLowerCase()
+  if (host === '127.0.0.1' || host === 'localhost') {
+    const cookieSlug = request.cookies.get(TENANT_COOKIE)?.value
+    if (cookieSlug) return resolveTenantEdgeSafe(cookieSlug)
   }
 
   return null

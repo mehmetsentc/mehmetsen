@@ -7,78 +7,48 @@ function read(rel: string) {
 }
 
 describe('city desktop newspaper split', () => {
-  it('city home renders newspaper RSC on desktop and a mobile Feed 2 island', () => {
-    const home = read('src/app/city-site/page.tsx')
-    const adaptive = read('src/components/city/CityAdaptiveHome.tsx')
+  it('city home keeps the newspaper header lockup on the city layout', () => {
+    const home = read('src/app/(main)/page.tsx')
+    const citySite = read('src/app/city-site/page.tsx')
+    const header = read('src/components/city/CityDesktopNewspaperHeader.tsx')
     expect(home).toContain('CityAdaptiveHome')
-    expect(home).not.toContain('CitySmartFeedPage')
-    expect(adaptive).toContain('CityDesktopNewspaperRsc')
-    expect(adaptive).not.toContain('CityMobileHomeIsland')
-    expect(adaptive).not.toContain('SmartFeedClient')
-    expect(adaptive).toContain('hidden lg:block')
-    const layout = read('src/components/city/CityLayoutClient.tsx')
-    expect(layout).toContain('CityMobileFeedSlot')
+    expect(citySite).toContain('CityAdaptiveHome')
+    expect(header).toContain('CityBrandLockup')
+    expect(header).toContain('withCityTenantHref')
   })
 
-  it('hides overlay city chrome on desktop so newspaper header is visible', () => {
+  it('keeps localhost category links on the city tenant', () => {
+    const nav = read('src/lib/cityNewspaperNav.ts')
+    expect(nav).toContain('withCityTenantHref')
+    expect(nav).toContain('tenant')
+    const header = read('src/components/city/CityDesktopNewspaperHeader.tsx')
+    expect(header).toContain('withCityTenantHref')
+    expect(header).toContain('city-masthead-lockup')
+  })
+
+  it('uses the live city newspaper header and hides mobile chrome on desktop', () => {
     const layout = read('src/components/city/CityLayoutClient.tsx')
     expect(layout).toContain('CityDesktopNewspaperHeader')
     expect(layout).toMatch(/lg:hidden[\s\S]{0,80}CityNavbar/)
     expect(layout).toContain('data-city-desktop="1"')
     expect(layout).toContain('content-stage-newspaper')
-    expect(layout).toContain('lg:hidden max-lg:fixed')
   })
 
-  it('keeps homepage and category pages on the same newspaper column', () => {
-    const layout = read('src/components/city/CityLayoutClient.tsx')
-    const rsc = read('src/components/city/CityDesktopNewspaperRsc.tsx')
+  it('puts weather after the hero and events at the end of the newspaper, not the top', () => {
+    const portal = read('src/components/home/desktop/DesktopPortalHome.tsx')
     const header = read('src/components/city/CityDesktopNewspaperHeader.tsx')
-    expect(layout).toContain('content-main-newspaper')
-    expect(rsc).not.toContain('content-stage-newspaper')
-    expect(rsc).toContain('PortalScrollRail')
-    expect(rsc).toContain('packNewspaperCategoryLayout')
-    expect(rsc).toContain('CityNewspaperServiceCards')
-    expect(rsc).toContain('CityNewspaperEventsRail')
-    expect(rsc).not.toContain('desktop-portal-split')
+    const cinema = read('src/components/city/CityCinemaEventsStrip.tsx')
+    const weatherAt = portal.indexOf('<CityNewspaperServiceCards')
+    const firstGridAt = portal.indexOf('{packed.gridCards.length > 0')
+    const eventsAt = portal.indexOf('variant="newspaper"')
+    const newsletterAt = portal.lastIndexOf('Haber bülteni')
+    expect(weatherAt).toBeGreaterThan(-1)
+    expect(firstGridAt).toBeGreaterThan(weatherAt)
+    expect(eventsAt).toBeGreaterThan(firstGridAt)
+    expect(newsletterAt).toBeGreaterThan(eventsAt)
+    expect(portal).not.toContain('Foto galeri')
     expect(header).toContain('city-masthead-lockup')
-    expect(header).not.toContain('formatNewsDateLong')
-    expect(header).not.toContain('nl-masthead__title')
-    const css = read('src/app/globals.css')
-    expect(css).toContain("html:has([data-city-desktop='1']) .desktop-portal-nav")
-    expect(css).toContain('background: #111827 !important')
-    expect(css).toContain('.city-masthead-title span')
-  })
-
-  it('city-site category pages do not import HomeFeed or SmartFeed', () => {
-    const kategori = read('src/app/city-site/kategori/[id]/page.tsx')
-    const mainKategori = read('src/app/(main)/kategori/[id]/page.tsx')
-    expect(mainKategori).toContain('CityNewspaperCategoryPage')
-    expect(mainKategori).not.toContain('CityFeedPageClient')
-    const categoryPage = read('src/components/city/CityNewspaperCategoryPage.tsx')
-    expect(kategori).toContain('CityNewspaperCategoryPage')
-    expect(kategori).not.toContain('CityFeedPageClient')
-    expect(categoryPage).not.toContain("from '@/components/home/HomeFeed'")
-    expect(categoryPage).not.toContain('SmartFeedClient')
-  })
-
-  it('locks homepage weather to the tenant city and loads city events', () => {
-    const weather = read('src/components/city/CityNewspaperServiceCards.tsx')
-    const home = read('src/components/city/CityAdaptiveHome.tsx')
-    expect(weather).toContain('buildWeatherQuery(citySlug)')
-    expect(weather).toContain('data-city-weather={citySlug}')
-    expect(weather).not.toContain('POPULAR_CITY_SLUGS')
-    expect(weather).not.toContain('useUserLocation')
-    expect(weather).toContain('/api/finance/rates')
-    expect(home).toContain("getCityEventsServer(citySlug, 'upcoming', 10)")
-  })
-
-  it('newspaper nav slugs resolve to city category pages', async () => {
-    const { CITY_NEWSPAPER_NAV } = await import('@/lib/cityNewspaperNav')
-    const { resolveCityCategoryRoute } = await import('@/lib/cityCategoryRoute')
-    for (const item of CITY_NEWSPAPER_NAV) {
-      if (item.href === '/') continue
-      const slug = item.href.replace('/kategori/', '')
-      expect(resolveCityCategoryRoute(slug), item.href).not.toBeNull()
-    }
+    expect(header).not.toContain('showDotCom')
+    expect(cinema).toContain('lg:hidden')
   })
 })

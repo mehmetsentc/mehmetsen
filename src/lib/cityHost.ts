@@ -27,3 +27,18 @@ export async function getCitySlugFromHeaders(): Promise<string | null> {
   const h = await headers()
   return getCitySlugFromHost(h.get('x-forwarded-host') || h.get('host') || '')
 }
+
+/** Host city, or localhost `?tenant=` / city cookie used for local preview. */
+export async function getResolvedCitySlug(): Promise<string | null> {
+  const fromHost = await getCitySlugFromHeaders()
+  if (fromHost) return fromHost
+
+  const { headers } = await import('next/headers')
+  const h = await headers()
+  const host = (h.get('x-forwarded-host') || h.get('host') || '').split(':')[0].toLowerCase()
+  if (host !== '127.0.0.1' && host !== 'localhost') return null
+
+  const { getActiveTenant } = await import('@/lib/tenantContext')
+  const tenant = await getActiveTenant()
+  return tenant?.provinceSlug ?? null
+}

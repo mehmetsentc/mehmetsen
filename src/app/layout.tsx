@@ -6,6 +6,7 @@ import { AuthProvider } from '@/components/auth/AuthProvider'
 import { LanguageProvider } from '@/store/languageContext'
 import { ThemeProvider } from '@/store/themeContext'
 import { ThemeScript } from '@/components/theme/ThemeScript'
+import { CityPreviewScript } from '@/components/layout/CityPreviewScript'
 import { PlatformScript } from '@/components/layout/PlatformScript'
 import { NativeShellMark } from '@/components/layout/NativeShellMark'
 import { AnalyticsTracker } from '@/components/layout/AnalyticsTracker'
@@ -286,6 +287,7 @@ gtag('consent','default',{
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
         <ThemeScript />
+        <CityPreviewScript />
         <PlatformScript />
         <NativeShellMark />
         <OneSignalProvider />

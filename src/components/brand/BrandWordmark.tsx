@@ -55,6 +55,7 @@ export function BrandWordmark({
       <span className={HABER_RED}>Haber</span>
       {showDotCom ? (
         <span
+          data-brand-dotcom=""
           className={cn(
             'text-[0.55em] font-semibold',
             onBrand
