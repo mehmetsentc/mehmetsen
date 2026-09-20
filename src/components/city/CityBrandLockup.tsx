@@ -5,9 +5,17 @@ import { getCityLogoPath } from '@/lib/cityBrand'
 import { cn } from '@/lib/utils'
 
 type LockupTone = 'onBrand' | 'default'
-type LockupSize = 'sm' | 'md' | 'xl'
+type LockupSize = 'xs' | 'sm' | 'md' | 'xl'
 
 const SIZE = {
+  /** Transparent city Feed 2 overlay — stay out of the photo. */
+  xs: {
+    logo: 'h-6 w-6',
+    textH: 'h-6',
+    px: 24,
+    text: 'text-[0.92rem]',
+    gap: 'gap-1.5',
+  },
   /**
    * Header bars — logo + wordmark.
    * Mobile: slightly smaller type + tighter gap so "… NaHaber" fits beside
