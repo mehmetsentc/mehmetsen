@@ -6,8 +6,9 @@ import {
   CityDesktopMenuButton,
   CityDesktopThemeButton,
 } from '@/components/city/CityDesktopHeaderChrome'
-import { CITY_NEWSPAPER_NAV, withCityTenantHref } from '@/lib/cityNewspaperNav'
+import { buildCityNewspaperNav, withCityTenantHref } from '@/lib/cityNewspaperNav'
 import { useCityTenant } from '@/store/cityTenantContext'
+import { useOptionalCityCategoryFilter } from '@/store/cityCategoryContext'
 import { ROUTES } from '@/constants/routes'
 import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
@@ -31,9 +32,13 @@ export function CityDesktopNewspaperHeader({
 }) {
   const { config } = useScrollHeaderContext()
   const cityTenant = useCityTenant()
+  const cityCategories = useOptionalCityCategoryFilter()
   const tenantSlug = tenantSlugProp || cityTenant?.slug
   const provinceSlug = provinceSlugProp || cityTenant?.provinceSlug || cityName.toLowerCase()
   const homeHref = withCityTenantHref('/', tenantSlug)
+  const navItems = buildCityNewspaperNav(cityCategories?.categories, {
+    hasSpor: cityCategories?.hasSpor,
+  })
   const breaking = breakingItems[0] ?? config.breakingItems?.[0]
 
   return (
@@ -101,7 +106,7 @@ export function CityDesktopNewspaperHeader({
       <nav className="desktop-portal-nav city-portal-nav-sticky" aria-label="Haber kategorileri">
         <div className="desktop-web-header__inner desktop-portal-nav__inner">
           <ul className="desktop-portal-nav__list">
-            {CITY_NEWSPAPER_NAV.map((item) => (
+            {navItems.map((item) => (
               <li key={item.id}>
                 <Link
                   href={withCityTenantHref(item.href, tenantSlug)}

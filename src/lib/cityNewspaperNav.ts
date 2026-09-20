@@ -1,3 +1,11 @@
+import { CITY_CATEGORY_CHIPS } from '@/constants/cityCategories'
+
+export type CityNewspaperNavItem = {
+  id: string
+  label: string
+  href: string
+}
+
 /** Keep `?tenant=` on localhost so category clicks stay on the city site. */
 export function withCityTenantHref(href: string, tenantSlug?: string | null) {
   if (!tenantSlug) return href
@@ -9,18 +17,38 @@ export function withCityTenantHref(href: string, tenantSlug?: string | null) {
   return `${pathname}?${query}${hash ? `#${hash}` : ''}`
 }
 
-/** Same 12 links as national NEWSPAPER_NAV — city /kategori rewrites only. */
-export const CITY_NEWSPAPER_NAV = [
-  { id: 'feed', label: 'Ana Sayfa', href: '/' },
-  { id: 'gundem', label: 'Gündem', href: '/kategori/gundem' },
-  { id: 'yerel', label: 'Yerel', href: '/kategori/yerel-haber' },
-  { id: 'asayis', label: '3. Sayfa', href: '/kategori/asayis' },
-  { id: 'dunya', label: 'Dünya', href: '/kategori/dunya' },
-  { id: 'siyaset', label: 'Siyaset', href: '/kategori/siyaset' },
-  { id: 'ekonomi', label: 'Ekonomi', href: '/kategori/ekonomi' },
-  { id: 'spor', label: 'Spor', href: '/kategori/spor' },
-  { id: 'teknoloji', label: 'Teknoloji', href: '/kategori/teknoloji' },
-  { id: 'kultur', label: 'Kültür', href: '/kategori/kultur' },
-  { id: 'saglik', label: 'Sağlık', href: '/kategori/saglik' },
-  { id: 'video', label: 'Video', href: '/kategori/video' },
-] as const
+const CITY_NEWSPAPER_HOME: CityNewspaperNavItem = {
+  id: 'feed',
+  label: 'Ana Sayfa',
+  href: '/',
+}
+
+/** Çanakkale / Antalya local chips — no national Dünya / Teknoloji / Video. */
+export const CITY_NEWSPAPER_NAV: CityNewspaperNavItem[] = [
+  CITY_NEWSPAPER_HOME,
+  ...CITY_CATEGORY_CHIPS.filter((chip) => chip.categoryId).map((chip) => ({
+    id: chip.id,
+    label: chip.label,
+    href: `/kategori/${chip.categoryId}`,
+  })),
+]
+
+/** Prefer categories the city actually publishes; fall back to the local chip set. */
+export function buildCityNewspaperNav(
+  categories?: { id: string; name: string; slug?: string }[] | null,
+  options?: { hasSpor?: boolean }
+): CityNewspaperNavItem[] {
+  if (!categories?.length) return CITY_NEWSPAPER_NAV
+  const items: CityNewspaperNavItem[] = [
+    CITY_NEWSPAPER_HOME,
+    ...categories.map((category) => ({
+      id: category.id,
+      label: category.name,
+      href: `/kategori/${category.slug || category.id}`,
+    })),
+  ]
+  if (options?.hasSpor && !items.some((item) => item.id === 'spor')) {
+    items.push({ id: 'spor', label: 'Spor', href: '/kategori/spor' })
+  }
+  return items
+}
