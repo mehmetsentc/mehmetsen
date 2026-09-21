@@ -181,6 +181,13 @@ describe('occurrence cron safety helpers', () => {
     expect(source).not.toMatch(/markRemovedEvents|markPastEvents/)
   })
 
+  it('skips recurring BiletimGO discovery until biletimo.com authority is proven', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/services/eventProviders/occurrenceCron.ts'), 'utf8')
+    expect(source).toContain('OCCURRENCE_CRON_INCLUDES_BILETIMGO')
+    expect(source).toContain("goStatus = 'CONFIG_UNAVAILABLE'")
+    expect(source).not.toMatch(/markRemovedEvents|markPastEvents/)
+  })
+
   it('keeps presentation reconciliation EXACT/HIGH collapse rules', () => {
     const left = event({
       id: 'biletix_a',

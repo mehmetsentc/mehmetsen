@@ -20,7 +20,7 @@ function env(flags: { occurrence?: boolean; write?: boolean; kill?: boolean; cro
     EVENTS_OCCURRENCE_WRITE: flags.write ? 'true' : 'false',
     EVENTS_OCCURRENCE_WRITE_KILL: flags.kill ? 'true' : 'false',
     ...(flags.cronMode ? { EVENTS_OCCURRENCE_CRON_MODE: flags.cronMode } : {}),
-  }
+  } as NodeJS.ProcessEnv
 }
 
 describe('event sync route state machine', () => {
@@ -82,9 +82,9 @@ describe('event sync route state machine', () => {
     expect(allowWriteFromHttpRequest(params, body)).toBe(false)
   })
 
-  it('includes BiletimGO on the occurrence path without requiring BILETIMGO_ENABLED', () => {
+  it('does not require BILETIMGO_ENABLED and keeps recurring BiletimGO discovery blocked', () => {
     expect(OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED).toBe(false)
-    expect(OCCURRENCE_CRON_INCLUDES_BILETIMGO).toBe(true)
+    expect(OCCURRENCE_CRON_INCLUDES_BILETIMGO).toBe(false)
   })
 
   it('forces scheduled occurrence discovery onto Biletix city_partition', () => {
@@ -113,6 +113,13 @@ describe('event sync route state machine', () => {
         biletix: 'SUCCESS',
         bubilet: 'SUCCESS',
         biletimgo: 'SUCCESS',
+      })
+    ).toBe('SUCCESS')
+    expect(
+      classifyOccurrenceRunHealth({
+        biletix: 'SUCCESS',
+        bubilet: 'SUCCESS',
+        biletimgo: 'CONFIG_UNAVAILABLE',
       })
     ).toBe('SUCCESS')
     expect(

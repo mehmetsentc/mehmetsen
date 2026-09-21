@@ -26,7 +26,11 @@ import {
 } from '@/services/eventProviders/biletixDiscovery'
 import type { NaEvent } from '@/types/event'
 import type { ProviderHealthStatus } from '@/services/eventProviders/types'
-import type { EventSyncRouteState, OccurrenceRunHealth } from '@/lib/eventSyncRoutePolicy'
+import {
+  OCCURRENCE_CRON_INCLUDES_BILETIMGO,
+  type EventSyncRouteState,
+  type OccurrenceRunHealth,
+} from '@/lib/eventSyncRoutePolicy'
 import {
   type OccurrenceCheckpoint,
   type OccurrenceCheckpointStore,
@@ -340,6 +344,15 @@ export async function runOccurrenceCron(
 
   const batches = planProviderBatches({ slugs, rotatedBubilet: cities })
   checkpoint = markProviderExhausted(checkpoint, batches)
+  if (!OCCURRENCE_CRON_INCLUDES_BILETIMGO && !checkpoint.biletimgo.completed) {
+    checkpoint = {
+      ...checkpoint,
+      biletimgo: advanceProviderCursor(checkpoint.biletimgo, {
+        nextIndex: 1,
+        completed: true,
+      }),
+    }
+  }
 
   const cityHealth: Record<string, number> = {
     SUCCESS: 0,
@@ -377,7 +390,9 @@ export async function runOccurrenceCron(
   let goRawListing = 0
   let goUniqueIds = 0
   let goDetailsAvoided = 0
-  let goStatus: ProviderHealthStatus = 'EMPTY'
+  let goStatus: ProviderHealthStatus | 'CONFIG_UNAVAILABLE' = OCCURRENCE_CRON_INCLUDES_BILETIMGO
+    ? 'EMPTY'
+    : 'CONFIG_UNAVAILABLE'
   const processedUnits: OccurrenceWorkUnit[] = []
   const existing: NaEvent[] = []
   const citiesProcessed = new Set<string>()
@@ -474,6 +489,10 @@ export async function runOccurrenceCron(
   }
 
   async function processBiletimgo(citySlugs: string[]) {
+    if (!OCCURRENCE_CRON_INCLUDES_BILETIMGO) {
+      goStatus = 'CONFIG_UNAVAILABLE'
+      return
+    }
     const dbStarted = Date.now()
     const goExisting = await loadExisting({ sources: ['biletimgo'] })
     timings.existingDbMs += Date.now() - dbStarted
