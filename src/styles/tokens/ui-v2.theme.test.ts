@@ -27,4 +27,10 @@ describe('UI-V2 theme tokens', () => {
     expect(css).toContain('--wordmark-na-onbrand: var(--nah-header-on)')
     expect(css).toContain('color: rgb(var(--nah-text))')
   })
+
+  it('keeps a frosted dock frame that beats the later transparent globals pill', () => {
+    expect(css).toContain('html:not(:has(.admin-shell)) .mobile-bottom-nav-pill')
+    expect(css).toContain('backdrop-filter: blur(22px) saturate(1.45)')
+    expect(css).toContain('background: rgb(var(--nah-dock) / 0.68)')
+  })
 })
