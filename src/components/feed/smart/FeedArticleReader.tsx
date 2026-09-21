@@ -551,6 +551,9 @@ export function FeedArticleReader({
       closingRef.current = true
       setCoachClosing(true)
       closeReasonRef.current = reason
+      // Unlock Feed snap-scroll at close start — waiting until finishCloseUi
+      // left overflow-hidden + touch-none for the whole close duration.
+      onLockFeedScroll?.(false)
       onCloseBegin?.()
 
       const openId = readerOpenIdRef.current
@@ -633,7 +636,7 @@ export function FeedArticleReader({
       if (reducedMotion) runCloseAnim()
       else requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))
     },
-    [committed, feedSessionId, finishCloseUi, generation, item.articleId, item.category, onCloseBegin, reducedMotion, syncVisualProgress]
+    [committed, feedSessionId, finishCloseUi, generation, item.articleId, item.category, onCloseBegin, onLockFeedScroll, reducedMotion, syncVisualProgress]
   )
 
   const beginCloseRef = useRef(beginClose)

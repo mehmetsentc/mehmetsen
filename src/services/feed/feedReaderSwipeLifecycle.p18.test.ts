@@ -158,4 +158,11 @@ describe('lifecycle wiring contracts', () => {
     expect(reader).toContain('onCloseBegin?.()')
     expect(reader).toContain('FEED_READER_CLOSE_HARD_COMPLETE')
   })
+
+  it('return-to-feed never freezes snap scroll with pointer-events-none', () => {
+    expect(client).not.toMatch(/feedOpenLocked && 'pointer-events-none'/)
+    expect(client).toContain('setFeedScrollLocked(false)')
+    expect(reader).toMatch(/onLockFeedScroll\?\.\(false\)/)
+    expect(reader).toContain('Unlock Feed snap-scroll at close start')
+  })
 })

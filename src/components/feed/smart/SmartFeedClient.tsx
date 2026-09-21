@@ -1892,6 +1892,7 @@ export function SmartFeedClient({
         untilMs: now + FEED_READER_SAME_ARTICLE_REOPEN_MS,
       }
     }
+    // Logic gate only — never paint pointer-events-none on the snap scroller.
     setFeedOpenLocked(true)
     if (readerReopenUnlockTimerRef.current != null) {
       window.clearTimeout(readerReopenUnlockTimerRef.current)
@@ -2594,8 +2595,10 @@ export function SmartFeedClient({
             className={cn(
               'h-full min-h-0 w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
               isTabSwitching && 'opacity-55',
-              feedScrollLocked && 'overflow-hidden touch-none',
-              feedOpenLocked && 'pointer-events-none'
+              // Only while Reader is committed/open. Close must unlock immediately —
+              // never pointer-events-none here: reopen lock is a logic gate, not a
+              // 1–5s freeze of vertical snap scroll.
+              feedScrollLocked && 'overflow-hidden touch-none'
             )}
             style={
               {
@@ -3084,6 +3087,7 @@ export function SmartFeedClient({
               })
             }}
             onCloseBegin={() => {
+              setFeedScrollLocked(false)
               armReaderReopenLock(readerSession.item.articleId)
               pushSwipeLifecycle('READER_CLOSE_BEGIN')
             }}
@@ -3093,6 +3097,7 @@ export function SmartFeedClient({
               clearReaderOpenRamp()
               feedGestureCommitLockRef.current = null
               readerOpenGuardRef.current = null
+              setFeedScrollLocked(false)
               armReaderReopenLock(closedId)
               setReaderSession(null)
               setFeedGestureEpoch((e) => e + 1)
