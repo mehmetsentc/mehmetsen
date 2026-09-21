@@ -27,4 +27,11 @@ describe('theme', () => {
     expect(src).toContain("pref = localStorage.getItem")
     expect(src).toContain("'system'")
   })
+
+  it('syncs browser chrome theme-color with the existing preference', () => {
+    const src = readFileSync(join(process.cwd(), 'src/lib/theme.ts'), 'utf8')
+    expect(src).toContain("setAttribute('name', 'theme-color')")
+    expect(src).toContain('#faf7f3')
+    expect(src).toContain('#080a10')
+  })
 })

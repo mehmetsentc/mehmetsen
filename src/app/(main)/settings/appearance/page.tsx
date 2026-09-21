@@ -40,7 +40,7 @@ export default function AppearanceSettingsPage() {
             </span>
             <span className="settings-item-label flex-1">{t(labelKey)}</span>
             {theme === id && (
-              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+              <span className="text-xs font-semibold text-[rgb(var(--color-brand))]">
                 Seçili
               </span>
             )}
@@ -63,7 +63,7 @@ export default function AppearanceSettingsPage() {
               <span className="settings-item-icon text-lg">{flag}</span>
               <span className="settings-item-label flex-1">{name}</span>
               {language === lang && (
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                <span className="text-xs font-semibold text-[rgb(var(--color-brand))]">
                   Seçili
                 </span>
               )}

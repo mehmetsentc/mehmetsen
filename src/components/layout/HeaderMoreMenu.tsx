@@ -82,7 +82,7 @@ export function HeaderMoreMenu({
   }, [open, syncPos])
 
   const itemClass =
-    'flex min-h-11 w-full items-center gap-3 px-3.5 text-left text-[0.9rem] font-medium text-white/92 touch-manipulation'
+    'flex min-h-11 w-full items-center gap-3 px-3.5 text-left text-[0.9rem] font-medium text-[rgb(var(--color-text))] touch-manipulation'
 
   const panel =
     open && typeof document !== 'undefined'

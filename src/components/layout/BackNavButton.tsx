@@ -39,6 +39,7 @@ interface BackNavButtonProps {
   fallbackHref?: string
   /** Force light-on-dark styling (reels). */
   tone?: 'auto' | 'dark' | 'light'
+  label?: string
 }
 
 /**
@@ -48,6 +49,7 @@ export function BackNavButton({
   className,
   fallbackHref,
   tone = 'auto',
+  label,
 }: BackNavButtonProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -92,6 +94,7 @@ export function BackNavButton({
       )}
     >
       <ArrowLeft className="h-5 w-5" strokeWidth={2.25} />
+      {label ? <span>{label}</span> : null}
     </button>
   )
 }

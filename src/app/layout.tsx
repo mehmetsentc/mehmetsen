@@ -268,6 +268,8 @@ gtag('consent','default',{
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content={appName} />
         {/* Microsoft tile (Windows Start menüsüne pin'leme) */}
+        <meta name="theme-color" content="#faf7f3" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="msapplication-TileColor" content="#dc2626" />
         <meta name="msapplication-tap-highlight" content="no" />
         {/* iOS Safari kaydırma bounce'unu PWA modunda kapatır */}

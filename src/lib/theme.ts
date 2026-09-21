@@ -72,4 +72,31 @@ export function applyThemeClass(resolved: ResolvedTheme): void {
   } else {
     root.removeAttribute('data-theme')
   }
+  syncBrowserChrome(forcedDark ? 'dark' : resolved)
+}
+
+const THEME_COLOR: Record<ResolvedTheme, string> = {
+  light: '#faf7f3',
+  dark: '#080a10',
+  oled: '#000000',
+}
+
+function syncBrowserChrome(resolved: ResolvedTheme): void {
+  if (typeof document === 'undefined') return
+  const color = THEME_COLOR[resolved]
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', color)
+
+  let status = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+  if (!status) {
+    status = document.createElement('meta')
+    status.setAttribute('name', 'apple-mobile-web-app-status-bar-style')
+    document.head.appendChild(status)
+  }
+  status.setAttribute('content', resolved === 'light' ? 'default' : 'black-translucent')
 }

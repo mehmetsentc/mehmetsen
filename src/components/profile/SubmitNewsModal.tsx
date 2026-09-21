@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { storageService } from '@/services/storageService'
 import { useAuth } from '@/hooks/useAuth'
 import { auth } from '@/lib/firebase/auth'
+import { MobileSubpageHeader } from '@/components/layout/MobileSubpageHeader'
 
 type Step = 1 | 2 | 3
 
@@ -129,26 +130,14 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
     >
       <div className="flex h-full w-full max-w-lg flex-col border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] sm:h-auto sm:max-h-[min(92vh,820px)] sm:rounded-2xl">
         {/* Header */}
-        <div className="shrink-0 border-b border-[rgb(var(--color-border))] px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] sm:rounded-t-2xl">
-          <div className="mb-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgb(var(--color-border))] text-[rgb(var(--color-text))] active:opacity-70"
-              aria-label="Kapat"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <h2 id="submit-news-title" className="truncate text-base font-bold text-[rgb(var(--color-text))]">
-                Haber Gönder
-              </h2>
-              <p className="truncate text-[11px] text-[rgb(var(--color-muted))]">
-                3 adımda tamamla · Editör onayı sonrası yayınlanır
-              </p>
-            </div>
-            <div className="w-9" />
-          </div>
+        <div className="shrink-0 border-b border-[rgb(var(--color-border))] px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:rounded-t-2xl">
+          <MobileSubpageHeader
+            title="Haber Gönder"
+            titleId="submit-news-title"
+            subtitle="3 adımda tamamla · Editör onayı sonrası yayınlanır"
+            onBack={step > 1 && !submitted ? () => setStep((s) => (s - 1) as Step) : onClose}
+            onClose={onClose}
+          />
 
           {/* Stepper */}
           <ol className="grid grid-cols-3 gap-1.5" aria-label="Gönderim adımları">
@@ -192,9 +181,9 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3">
           {step === 1 && !submitted && (
-            <div className="space-y-5">
+            <div className="flex min-h-full flex-col gap-3">
               <StepIntro
                 kicker="Adım 1 / 3"
                 title="Fotoğraf veya video ekle"
@@ -223,11 +212,11 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid min-h-[11rem] flex-1 grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => imgRef.current?.click()}
-                    className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-8 text-[rgb(var(--color-muted))] transition hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))] active:scale-[0.97]"
+                    className="flex min-h-[10.5rem] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-5 text-[rgb(var(--color-text-secondary,var(--color-muted)))] transition hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))] active:scale-[0.97]"
                   >
                     <ImageIcon className="h-8 w-8" />
                     <span className="text-xs font-semibold">Görsel Ekle</span>
@@ -236,7 +225,7 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
                   <button
                     type="button"
                     onClick={() => vidRef.current?.click()}
-                    className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-8 text-[rgb(var(--color-muted))] transition hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))] active:scale-[0.97]"
+                    className="flex min-h-[10.5rem] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] py-5 text-[rgb(var(--color-text-secondary,var(--color-muted)))] transition hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))] active:scale-[0.97]"
                   >
                     <Video className="h-8 w-8" />
                     <span className="text-xs font-semibold">Video Ekle</span>
@@ -429,9 +418,9 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
 
 function StepIntro({ kicker, title, body }: { kicker: string; title: string; body: string }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <p className="text-[11px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">{kicker}</p>
-      <h3 className="text-lg font-bold text-[rgb(var(--color-text))]">{title}</h3>
+      <h3 className="text-base font-bold text-[rgb(var(--color-text))]">{title}</h3>
       <p className="text-sm leading-relaxed text-[rgb(var(--color-muted))]">{body}</p>
     </div>
   )

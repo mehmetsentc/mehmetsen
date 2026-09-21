@@ -25,6 +25,11 @@ export function ThemeScript() {
         if (forceDark || resolved !== 'light') root.classList.add('dark');
         else root.classList.remove('dark');
         if (resolved === 'oled') root.setAttribute('data-theme', 'oled');
+        var chrome = forceDark ? 'dark' : resolved;
+        var themeColor = chrome === 'light' ? '#faf7f3' : chrome === 'oled' ? '#000000' : '#080a10';
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name','theme-color'); document.head.appendChild(meta); }
+        meta.setAttribute('content', themeColor);
         var w = window.innerWidth;
         root.setAttribute('data-platform', w >= 1024 ? 'desktop' : w >= 768 ? 'tablet' : 'mobile');
         var newspaper = !(

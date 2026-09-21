@@ -244,7 +244,7 @@ export function PWAInstallPrompt() {
               type="button"
               onClick={dismiss}
               aria-label="Kapat"
-              className="absolute right-2 top-2 rounded-full p-1 text-white/50"
+              className="absolute right-2 top-2 rounded-full p-1 text-[rgb(var(--color-muted))]"
             >
               <X className="h-4 w-4" />
             </button>
@@ -254,15 +254,15 @@ export function PWAInstallPrompt() {
                 N
               </span>
             </div>
-            <h2 className="text-center text-xl font-extrabold text-white">
+            <h2 className="text-center text-xl font-extrabold text-[rgb(var(--color-text))]">
               NaHaber&apos;i telefonuna ekle
             </h2>
-            <p className="mt-2 text-center text-sm leading-relaxed text-white/65">
+            <p className="mt-2 text-center text-sm leading-relaxed text-[rgb(var(--color-muted))]">
               {isIOS
                 ? guide.summary
                 : 'Haberler tek dokunuş uzağında. Daha hızlı, daha pratik, senin için.'}
             </p>
-            <ul className="mt-4 space-y-1.5 text-sm text-white/80">
+            <ul className="mt-4 space-y-1.5 text-sm text-[rgb(var(--color-text))]">
               <li>Ana ekranda NaHaber ikonu</li>
               <li>Tek dokunuşla açılış</li>
               <li>Daha hızlı ve akıcı deneyim</li>
@@ -275,7 +275,7 @@ export function PWAInstallPrompt() {
                   {isIOS ? <Share className="mr-2 inline h-4 w-4" /> : <Download className="mr-2 inline h-4 w-4" />}
                   NaHaber&apos;i Ana Ekrana Ekle
                 </button>
-                <Button variant="ghost" size="sm" onClick={dismiss} className="w-full text-white/60">
+                <Button variant="ghost" size="sm" onClick={dismiss} className="w-full text-[rgb(var(--color-muted))]">
                   Şimdi değil
                 </Button>
               </div>

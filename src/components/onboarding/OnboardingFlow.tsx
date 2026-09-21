@@ -18,6 +18,7 @@ import { CITY_CATEGORIES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { consumeReturnPath } from '@/lib/auth/returnTo'
 import { InterestPicker } from '@/components/onboarding/InterestPicker'
+import { MobileSubpageHeader } from '@/components/layout/MobileSubpageHeader'
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -242,6 +243,11 @@ export function OnboardingFlow() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[rgb(var(--color-surface))] px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-8 shadow-sm">
+        <MobileSubpageHeader
+          title="Profilini tamamla"
+          onBack={step > 1 ? () => setStep((s) => (s === 1 ? 1 : ((s - 1) as typeof s))) : undefined}
+          fallbackHref={ROUTES.HOME}
+        />
         <div className="mb-6 flex justify-center">
           <BrandLogo size="lg" priority />
         </div>

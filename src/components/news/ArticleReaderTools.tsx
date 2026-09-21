@@ -233,7 +233,7 @@ export function ArticleReaderTools({
         <div className="grid grid-cols-4 gap-1.5">
           {(
             [
-              { id: 'system', label: 'Otomatik', icon: <Monitor className="h-3.5 w-3.5" /> },
+              { id: 'system', label: 'Sistem', icon: <Monitor className="h-3.5 w-3.5" /> },
               { id: 'light', label: 'Açık', icon: <Sun className="h-3.5 w-3.5" /> },
               { id: 'dark',  label: 'Koyu', icon: <Moon className="h-3.5 w-3.5" /> },
               { id: 'oled',  label: 'OLED', icon: <Moon className="h-3.5 w-3.5 fill-current" /> },

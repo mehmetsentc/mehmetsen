@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, ChevronLeft, Loader2 } from 'lucide-react'
+import { Camera, Check, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -13,6 +12,7 @@ import { userService } from '@/services/userService'
 import { storageService } from '@/services/storageService'
 import { CITY_CATEGORIES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
+import { MobileSubpageHeader } from '@/components/layout/MobileSubpageHeader'
 
 // ── Sabit listeler (onboarding ile aynı) ─────────────────────────────────────
 const NEWS_CATEGORIES = [
@@ -213,24 +213,20 @@ export default function SettingsProfilePage() {
 
   return (
     <div className="ui-v2-screen min-h-screen pb-8">
-      <header className="flex items-center justify-between px-3 py-3">
-        <Link
-          href={ROUTES.PROFILE(user.username || user.uid)}
-          className="inline-flex items-center gap-1 text-sm font-bold text-white"
-          aria-label="Geri"
-        >
-          <ChevronLeft className="h-5 w-5" />
-          Profil Düzenle
-        </Link>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving}
-          className="text-sm font-extrabold text-[rgb(var(--nah-red))] disabled:opacity-50"
-        >
-          {saving ? '...' : 'Kaydet'}
-        </button>
-      </header>
+      <MobileSubpageHeader
+        title="Profil Düzenle"
+        fallbackHref={ROUTES.PROFILE(user.username || user.uid)}
+        trailing={
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="px-2 text-sm font-extrabold text-[rgb(var(--nah-red))] disabled:opacity-50"
+          >
+            {saving ? '...' : 'Kaydet'}
+          </button>
+        }
+      />
 
       <div className="space-y-6 px-4 pt-2">
 
