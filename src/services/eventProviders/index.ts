@@ -1,11 +1,12 @@
 import type { EventProvider } from './types'
 import { biletixProvider } from './biletix'
 import { biletinoProvider } from './biletino'
+import { biletimgoProvider } from './biletimgo'
 import { bubiletProvider } from './bubilet'
 import { genericProvider } from './genericProvider'
 import { ticketmasterProvider } from './ticketmaster'
 
-export type { EventProvider, EventProviderParams } from './types'
+export type { EventProvider, EventProviderParams, ProviderDiagnostics, ProviderFetchResult } from './types'
 
 /**
  * Registered ticket-platform adapters.
@@ -23,6 +24,8 @@ export type { EventProvider, EventProviderParams } from './types'
  *                (dates, venue, geo coordinates, image, ticket URL).
  *
  * BEST-EFFORT / opt-in:
+ *   - biletimgo — public HTML calendar + detail. Disabled until
+ *                `BILETIMGO_ENABLED=true`. robots.txt disallows `/api/`.
  *   - biletino — behind Cloudflare (HTTP 403 for plain requests). Disabled by
  *                default; enable with `BILETINO_ENABLED=true` + a reachable
  *                `BILETINO_BASE_URL` (e.g. a proxy/partner endpoint).
@@ -40,6 +43,7 @@ export const eventProviders: EventProvider[] = [
   ticketmasterProvider, // preferred: official API, same data as Biletix
   biletixProvider,
   bubiletProvider,
+  biletimgoProvider, // opt-in only — not enabled in production cron
   biletinoProvider,
   genericProvider,
 ]

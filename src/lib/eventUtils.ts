@@ -91,6 +91,8 @@ export const EVENT_IMAGE_ALLOWED_HOSTS: readonly string[] = [
   'cdn.bubilet.com.tr',
   'www.bubilet.com.tr',
   'bubilet.com.tr',
+  'www.biletimgo.com',
+  'biletimgo.com',
   'www.paribucineverse.com',
   'paribucineverse.com',
 ]
