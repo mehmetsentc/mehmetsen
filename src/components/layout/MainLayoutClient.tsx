@@ -117,7 +117,10 @@ const LayoutShell = memo(function LayoutShell({
   return (
     <ContextRailSlotProvider>
     <div
-      className="min-h-screen bg-[rgb(var(--color-surface))]"
+      className={cn(
+        'min-h-screen bg-[rgb(var(--color-surface))]',
+        isMobile && 'ui-v2-mobile'
+      )}
       data-platform={platform}
       data-global-nav-v2={globalNavV2 ? '1' : '0'}
       data-feed-shell-chrome={showTopNavbar || showMobileNav ? 'visible' : 'hidden'}

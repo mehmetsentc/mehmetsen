@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input'
 import { CITY_CATEGORIES } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { consumeReturnPath } from '@/lib/auth/returnTo'
+import { InterestPicker } from '@/components/onboarding/InterestPicker'
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -361,17 +362,11 @@ export function OnboardingFlow() {
           {/* ── ADIM 3: Haber kategorisi tercihleri ── */}
           {step === 3 && (
             <>
-              <div className="flex flex-wrap gap-2">
-                {NEWS_CATEGORIES.map((cat) => (
-                  <SelectChip
-                    key={cat.id}
-                    emoji={cat.emoji}
-                    label={cat.label}
-                    selected={selectedCategories.includes(cat.id)}
-                    onToggle={() => toggleCategory(cat.id)}
-                  />
-                ))}
-              </div>
+              <InterestPicker
+                options={NEWS_CATEGORIES.map((cat) => ({ id: cat.id, label: cat.label }))}
+                selected={selectedCategories}
+                onToggle={toggleCategory}
+              />
               {selectedCategories.length > 0 && (
                 <p className="text-xs text-[rgb(var(--color-muted))]">
                   {selectedCategories.length} kategori seçildi
@@ -380,7 +375,7 @@ export function OnboardingFlow() {
 
               <div className="flex gap-3">
                 <Button type="button" variant="secondary" onClick={() => setStep(2)} className="flex-1">Geri</Button>
-                <Button type="button" onClick={handleNext} className="flex-1">Devam</Button>
+                <Button type="button" onClick={handleNext} className="flex-1">Devam Et</Button>
               </div>
               <button type="button" onClick={handleNext} className="w-full text-center text-sm font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]">
                 Şimdilik geç

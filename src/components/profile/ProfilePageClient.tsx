@@ -9,8 +9,6 @@ import { ProfileHeader } from './ProfileHeader'
 import { ProfileTabs } from './ProfileTabs'
 import { ProfileCompleteModal } from './ProfileCompleteModal'
 import { ProfileBadges } from './ProfileBadges'
-import { ProfileReadingStats } from './ProfileReadingStats'
-import { ProfileMostRead } from './ProfileMostRead'
 import { ROUTES } from '@/constants/routes'
 import { Button } from '@/components/ui/Button'
 import type { User } from '@/types/user'
@@ -34,7 +32,6 @@ export function ProfilePageClient({
     { initialProfile, fromServer: true }
   )
 
-  // Race recovery: auth username ready before Firestore doc exists.
   useEffect(() => {
     if (profile || loading || authLoading || !authUser) return
     if (authUser.username !== username && authUser.uid !== username) return
@@ -44,19 +41,19 @@ export function ProfilePageClient({
 
   if (authLoading || loading) {
     return (
-      <div className="profile-page-shell flex min-h-[50vh] flex-col items-center justify-center gap-3 py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="text-sm text-[rgb(var(--color-muted))]">Profil yükleniyor...</p>
+      <div className="profile-page-shell ui-v2-screen flex min-h-[50vh] flex-col items-center justify-center gap-3 py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-[rgb(var(--nah-red))]" />
+        <p className="text-sm text-[rgb(var(--nah-text-muted))]">Profil yükleniyor...</p>
       </div>
     )
   }
 
   if (error || !profile) {
     return (
-      <div className="profile-page-shell py-8">
-        <div className="profile-card flex min-h-[50vh] flex-col items-center justify-center gap-4 border-dashed p-8 text-center">
-          <p className="text-lg font-semibold text-[rgb(var(--color-text))]">Kullanıcı bulunamadı</p>
-          <p className="max-w-sm text-sm text-[rgb(var(--color-muted))]">
+      <div className="profile-page-shell ui-v2-screen py-8">
+        <div className="mx-4 flex min-h-[50vh] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/15 p-8 text-center">
+          <p className="text-lg font-semibold text-white">Kullanıcı bulunamadı</p>
+          <p className="max-w-sm text-sm text-[rgb(var(--nah-text-muted))]">
             @{username} geçerli bir profil değil veya henüz kayıt tamamlanmamış.
           </p>
           <Link href={ROUTES.FEED}>
@@ -67,10 +64,10 @@ export function ProfilePageClient({
     )
   }
 
-  const isOwnProfile = Boolean(authUser && (authUser.uid === profile.uid || authUser.username === username))
+  const isOwnProfile = Boolean(authUser && authUser.uid === profile.uid)
 
   return (
-    <div className="profile-page-shell w-full space-y-2 pb-6">
+    <div className="profile-page-shell ui-v2-screen w-full pb-8">
       {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
 
       <ProfileHeader
@@ -83,17 +80,15 @@ export function ProfilePageClient({
         }}
       />
 
-      <div className="profile-page-section">
+      <div className="space-y-3 pb-3">
         <ProfileBadges user={profile} />
-        <ProfileReadingStats userId={profile.uid} isOwnProfile={isOwnProfile} />
       </div>
-
-      {initialPosts.length > 0 && <ProfileMostRead posts={initialPosts} />}
 
       <ProfileTabs
         userId={profile.uid}
         username={profile.username}
         isOwnProfile={isOwnProfile}
+        user={profile}
         initialPosts={initialPosts}
       />
     </div>

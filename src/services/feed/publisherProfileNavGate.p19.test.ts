@@ -46,12 +46,10 @@ describe('isPublisherProfilePath', () => {
 })
 
 describe('Profil gate wiring', () => {
-  it('MobileNav shows Profil only via publisher href helper', () => {
+  it('MobileNav shows reader Profil via username or exact Firebase uid', () => {
     const dock = read('src/components/layout/MobileNav.tsx')
-    expect(dock).toContain('useMyPublishers')
-    expect(dock).toContain('resolvePublisherProfileHref')
-    expect(dock).toContain('publisherHref')
-    expect(dock).not.toContain('ROUTES.PROFILE(user.username || user.uid)')
+    expect(dock).toContain('header-nav-profil')
+    expect(dock).toContain('ROUTES.PROFILE(user.username || user.uid)')
     expect(dock).not.toContain('listPublishersForUser')
   })
 

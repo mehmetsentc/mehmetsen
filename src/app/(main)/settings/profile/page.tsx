@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Check, Loader2 } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { SettingsHeader } from '@/components/settings/SettingsHeader'
+import Link from 'next/link'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -96,6 +96,7 @@ export default function SettingsProfilePage() {
 
   // Profil alanları
   const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
   const [location, setLocation] = useState('')
   const [website, setWebsite] = useState('')
@@ -116,6 +117,7 @@ export default function SettingsProfilePage() {
   useEffect(() => {
     if (!user) return
     setDisplayName(user.displayName ?? '')
+    setUsername(user.username ?? '')
     setBio(user.bio ?? '')
     setLocation(user.location ?? '')
     setWebsite(user.website ?? '')
@@ -166,8 +168,17 @@ export default function SettingsProfilePage() {
         return
       }
 
+      const nextUsername = username.trim().toLowerCase().replace(/^@/, '')
+      if (nextUsername && nextUsername !== user.username) {
+        const available = await userService.isUsernameAvailable(nextUsername)
+        if (!available) {
+          toast.error('Bu kullanıcı adı alınmış')
+          return
+        }
+      }
       await userService.updateProfile(user.uid, {
         displayName: trimmedDisplayName,
+        ...(nextUsername && nextUsername !== user.username ? { username: nextUsername } : {}),
         bio: bio.trim() || null,
         location: location.trim() || null,
         website: website.trim() || null,
@@ -201,10 +212,27 @@ export default function SettingsProfilePage() {
   }
 
   return (
-    <div className="pb-8">
-      <SettingsHeader title="Profil ve İlgi Alanları" backHref={ROUTES.SETTINGS} />
+    <div className="ui-v2-screen min-h-screen pb-8">
+      <header className="flex items-center justify-between px-3 py-3">
+        <Link
+          href={ROUTES.PROFILE(user.username || user.uid)}
+          className="inline-flex items-center gap-1 text-sm font-bold text-white"
+          aria-label="Geri"
+        >
+          <ChevronLeft className="h-5 w-5" />
+          Profil Düzenle
+        </Link>
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="text-sm font-extrabold text-[rgb(var(--nah-red))] disabled:opacity-50"
+        >
+          {saving ? '...' : 'Kaydet'}
+        </button>
+      </header>
 
-      <div className="space-y-6 px-4 pt-4">
+      <div className="space-y-6 px-4 pt-2">
 
         {/* ── Avatar ── */}
         <section className="flex flex-col items-center gap-3 py-2">
@@ -238,46 +266,54 @@ export default function SettingsProfilePage() {
         {/* ── Temel profil bilgileri ── */}
         <section>
           <SectionTitle>Profil Bilgileri</SectionTitle>
-          <div className="space-y-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[rgb(var(--color-muted))]">Ad Soyad</label>
-              <Input
+          <div className="px-1">
+            <label className="nah-field">
+              <span className="w-28 shrink-0 text-sm text-white/55">Ad Soyad</span>
+              <input
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 placeholder="Adın Soyadın"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[rgb(var(--color-muted))]">Biyografi</label>
-              <textarea
-                rows={3}
-                value={bio}
-                onChange={e => setBio(e.target.value)}
-                placeholder="Kendinden kısaca bahset..."
-                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+            </label>
+            <label className="nah-field">
+              <span className="w-28 shrink-0 text-sm text-white/55">Kullanıcı Adı</span>
+              <input
+                value={username}
+                onChange={e => setUsername(e.target.value.replace(/^@/, ''))}
+                placeholder="kullaniciadi"
+                autoCapitalize="none"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[rgb(var(--color-muted))]">Şehir</label>
+            </label>
+            <label className="nah-field">
+              <span className="w-28 shrink-0 text-sm text-white/55">Konum</span>
               <select
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2 text-sm text-[rgb(var(--color-text))] focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-transparent text-sm text-white outline-none"
               >
                 <option value="">Şehir seçin</option>
                 {CITY_CATEGORIES.map(city => (
                   <option key={city.id} value={city.name}>{city.name}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-[rgb(var(--color-muted))]">Web Sitesi</label>
-              <Input
+            </label>
+            <label className="nah-field items-start">
+              <span className="w-28 shrink-0 pt-1 text-sm text-white/55">Hakkımda</span>
+              <textarea
+                rows={3}
+                value={bio}
+                onChange={e => setBio(e.target.value)}
+                placeholder="Kendinden kısaca bahset..."
+              />
+            </label>
+            <label className="nah-field">
+              <span className="w-28 shrink-0 text-sm text-white/55">Web Sitesi</span>
+              <input
                 value={website}
                 onChange={e => setWebsite(e.target.value)}
                 placeholder="ornek.com"
               />
-            </div>
+            </label>
           </div>
         </section>
 

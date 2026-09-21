@@ -88,7 +88,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
             : undefined
         }
       >
-        <header className={overlayFeed ? 'h-9' : 'h-[72px]'}>
+        <header className={overlayFeed ? 'h-8' : 'h-[var(--nah-header-height,3.5rem)]'}>
           <div className="newspaper-layout-inner flex h-full items-center gap-0.5 px-1 sm:gap-1 sm:px-0">
             <button
               type="button"
@@ -168,7 +168,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
             height:
               chromeHeight > 0
                 ? chromeHeight
-                : 'calc(72px + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
+                : 'calc(var(--nah-header-height, 3.5rem) + var(--mobile-sat, env(safe-area-inset-top, 0px)))',
           }}
         />
       )}

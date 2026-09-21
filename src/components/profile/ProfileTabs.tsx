@@ -3,20 +3,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
-import { Grid3X3, Clapperboard, Bookmark, Heart, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { postService } from '@/services/postService'
 import { saveService } from '@/services/saveService'
 import { likeService } from '@/services/likeService'
-import { ProfileMasonryFeed } from './ProfileMasonryFeed'
+import { ProfileContentGrid } from './ProfileContentGrid'
+import { ProfileAboutPanel } from './ProfileAboutPanel'
 import type { Post } from '@/types/post'
+import type { User } from '@/types/user'
 
-type Tab = 'posts' | 'reels' | 'saved' | 'liked'
+type Tab = 'posts' | 'liked' | 'saved' | 'about' | 'reels'
 
 interface ProfileTabsProps {
   userId: string
   username: string
   isOwnProfile: boolean
+  user: User
   initialTab?: Tab
   initialPosts?: Post[]
 }
@@ -25,31 +28,37 @@ export function ProfileTabs({
   userId,
   username,
   isOwnProfile,
+  user,
   initialTab = 'posts',
   initialPosts = [],
 }: ProfileTabsProps) {
   const [activeTab, setActiveTab] = usePageState<Tab>(PAGE_STATE_KEYS.profileTab, initialTab)
-  const seedOk = activeTab === 'posts' && initialPosts.length > 0
+  const resolvedTab = activeTab === 'reels' ? 'posts' : activeTab
+  const seedOk = resolvedTab === 'posts' && initialPosts.length > 0
   const [posts, setPosts] = useState<Post[]>(() => (seedOk ? initialPosts : []))
   const [loading, setLoading] = useState(!seedOk)
   const seededPostsRef = useRef(seedOk)
 
-  const tabs: { id: Tab; label: string; icon: typeof Grid3X3; private?: boolean }[] = [
-    { id: 'posts', label: 'Gönderiler', icon: Grid3X3 },
-    { id: 'reels', label: 'Videolar', icon: Clapperboard },
-    { id: 'saved', label: 'Kaydedilenler', icon: Bookmark, private: true },
-    { id: 'liked', label: 'Beğenilenler', icon: Heart, private: true },
+  const tabs: { id: Exclude<Tab, 'reels'>; label: string; private?: boolean }[] = [
+    { id: 'posts', label: 'Paylaşılan' },
+    { id: 'liked', label: 'Beğenilen', private: true },
+    { id: 'saved', label: 'Kaydedilen', private: true },
+    { id: 'about', label: 'Hakkında' },
   ]
 
   const loadTab = useCallback(async () => {
-    if ((activeTab === 'saved' || activeTab === 'liked') && !isOwnProfile) {
+    if (resolvedTab === 'about') {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+    if ((resolvedTab === 'saved' || resolvedTab === 'liked') && !isOwnProfile) {
       setPosts([])
       setLoading(false)
       return
     }
 
-    // SSR seeded posts: skip first posts-tab fetch to avoid LCP waterfall.
-    if (activeTab === 'posts' && seededPostsRef.current) {
+    if (resolvedTab === 'posts' && seededPostsRef.current) {
       seededPostsRef.current = false
       setLoading(false)
       return
@@ -57,16 +66,13 @@ export function ProfileTabs({
 
     setLoading(true)
     try {
-      if (activeTab === 'posts') {
+      if (resolvedTab === 'posts') {
         const result = await postService.getNewsByAuthor(username)
         setPosts(result.posts)
-      } else if (activeTab === 'reels') {
-        const result = await postService.getNewsByAuthor(username, { videosOnly: true })
-        setPosts(result.posts)
-      } else if (activeTab === 'saved') {
+      } else if (resolvedTab === 'saved') {
         const ids = await saveService.getSavedPostIds(userId)
         setPosts(await postService.getNewsByIds(ids))
-      } else if (activeTab === 'liked') {
+      } else if (resolvedTab === 'liked') {
         const ids = await likeService.getLikedPostIds(userId)
         setPosts(await postService.getNewsByIds(ids))
       }
@@ -76,50 +82,52 @@ export function ProfileTabs({
     } finally {
       setLoading(false)
     }
-  }, [activeTab, username, userId, isOwnProfile])
+  }, [resolvedTab, username, userId, isOwnProfile])
 
   useEffect(() => {
     loadTab()
   }, [loadTab])
 
-  const emptyMessages: Record<Tab, string> = {
+  const emptyMessages: Record<Exclude<Tab, 'reels' | 'about'>, string> = {
     posts: 'Henüz haber paylaşılmamış',
-    reels: 'Henüz video paylaşılmamış',
     saved: 'Kaydedilen içerik yok',
     liked: 'Beğenilen içerik yok',
   }
 
   return (
-    <div>
-      <div className="profile-tabs-bar">
-        {tabs.map(({ id, label, icon: Icon, private: isPrivate }) => {
-          const locked = isPrivate && !isOwnProfile
+    <div className="px-3 pb-8">
+      <div className="nah-pill-tabs" role="tablist" aria-label="Profil içerikleri">
+        {tabs.map(({ id, label, private: isPrivate }) => {
+          const locked = Boolean(isPrivate && !isOwnProfile)
           return (
             <button
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
               aria-label={label}
-              title={label}
-              className={cn(
-                'profile-tab',
-                activeTab === id && 'profile-tab-active',
-                locked && 'opacity-60'
-              )}
+              className={cn(resolvedTab === id && 'is-active', locked && 'opacity-60')}
             >
-              <Icon className="h-4 w-4" />
+              {label}
             </button>
           )
         })}
       </div>
 
-      {(activeTab === 'saved' || activeTab === 'liked') && !isOwnProfile ? (
+      {resolvedTab === 'about' ? (
+        <ProfileAboutPanel user={user} />
+      ) : (resolvedTab === 'saved' || resolvedTab === 'liked') && !isOwnProfile ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-          <Lock className="profile-empty-icon h-8 w-8" />
-          <p className="text-sm text-[rgb(var(--color-muted))]">Bu sekme yalnızca profil sahibine görünür</p>
+          <Lock className="h-8 w-8 text-white/25" />
+          <p className="text-sm text-[rgb(var(--nah-text-muted))]">Bu sekme yalnızca profil sahibine görünür</p>
         </div>
       ) : (
-        <ProfileMasonryFeed posts={posts} loading={loading} emptyMessage={emptyMessages[activeTab]} />
+        <div className="mt-3">
+          <ProfileContentGrid
+            posts={posts}
+            loading={loading}
+            emptyMessage={emptyMessages[resolvedTab]}
+          />
+        </div>
       )}
     </div>
   )

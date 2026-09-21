@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Download, Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { isNativeApp, isPwaStandaloneDisplay } from '@/lib/platform'
+import { InstallSuccess } from '@/components/pwa/InstallSuccess'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -118,6 +119,7 @@ export function PWAInstallPrompt() {
   const [iosBrowser, setIOSBrowser] = useState<IOSBrowser>(null)
   const [installed, setInstalled] = useState(false)
   const [iosGuideOpen, setIOSGuideOpen] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const hasDismissedRef = useRef(false)
 
   const isPwaHome = isPwaPromptPath(pathname)
@@ -152,6 +154,7 @@ export function PWAInstallPrompt() {
     const onInstalled = () => {
       setInstalled(true)
       setVisible(false)
+      setShowSuccess(true)
     }
 
     window.addEventListener('beforeinstallprompt', onPrompt)
@@ -188,6 +191,7 @@ export function PWAInstallPrompt() {
       const choice = await deferred.userChoice
       if (choice.outcome === 'accepted') {
         setInstalled(true)
+        setShowSuccess(true)
         try {
           window.dispatchEvent(new CustomEvent('pwa:installed', { detail: { source: 'prompt' } }))
         } catch {
@@ -216,65 +220,63 @@ export function PWAInstallPrompt() {
     setIOSGuideOpen(true)
   }, [isIOS, deferred, install])
 
-  if (installed) return null
+  if (installed && !showSuccess) return null
 
   const guide = iosGuide(iosBrowser)
   const canNativeInstall = !isIOS && !!deferred
 
   return (
+    <>
+    {showSuccess ? <InstallSuccess onContinue={() => setShowSuccess(false)} /> : null}
     <AnimatePresence>
-      {visible && (
+      {visible && !showSuccess && (
         <motion.div
           initial={{ y: 64, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 64, opacity: 0 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-x-3 bottom-3 z-banner sm:left-auto sm:right-4 sm:w-[380px]"
+          className="fixed inset-0 z-[410] flex items-end justify-center bg-black/65 px-4 pb-8 sm:items-center"
           role="dialog"
           aria-label="NaHaber ana ekrana ekle"
         >
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-bg-card/95 p-4 shadow-2xl backdrop-blur-xl">
+          <div className="nah-install-modal relative w-full overflow-hidden p-5">
             <button
               type="button"
               onClick={dismiss}
               aria-label="Kapat"
-              className="absolute right-2 top-2 rounded-full p-1 text-text-tertiary transition-colors hover:bg-bg-subtle"
+              className="absolute right-2 top-2 rounded-full p-1 text-white/50"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex items-start gap-3 pr-6">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500">
-                {isIOS ? <Share className="h-6 w-6" /> : <Download className="h-6 w-6" />}
+            <div className="mx-auto mb-4 flex h-[7.5rem] w-[4.4rem] items-center justify-center rounded-[1.6rem] border border-white/10 bg-black">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgb(var(--nah-red))] text-lg font-black text-white">
+                N
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-text-primary">
-                  NaHaber&apos;ı ana ekranına ekle
-                </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-text-tertiary">
-                  {isIOS
-                    ? guide.summary
-                    : canNativeInstall
-                      ? 'Tek dokunuşla yükle — daha hızlı erişim.'
-                      : 'Tarayıcı menüsünden ana ekrana ekleyebilirsin.'}
-                </p>
-              </div>
             </div>
+            <h2 className="text-center text-xl font-extrabold text-white">
+              NaHaber&apos;i telefonuna ekle
+            </h2>
+            <p className="mt-2 text-center text-sm leading-relaxed text-white/65">
+              {isIOS
+                ? guide.summary
+                : 'Haberler tek dokunuş uzağında. Daha hızlı, daha pratik, senin için.'}
+            </p>
+            <ul className="mt-4 space-y-1.5 text-sm text-white/80">
+              <li>Ana ekranda NaHaber ikonu</li>
+              <li>Tek dokunuşla açılış</li>
+              <li>Daha hızlı ve akıcı deneyim</li>
+              <li>Kişiselleştirilmiş haber akışı</li>
+            </ul>
 
             {(canNativeInstall || isIOS) && (
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={dismiss}>
+              <div className="mt-5 space-y-2">
+                <button type="button" className="nah-cta" onClick={onPrimary}>
+                  {isIOS ? <Share className="mr-2 inline h-4 w-4" /> : <Download className="mr-2 inline h-4 w-4" />}
+                  NaHaber&apos;i Ana Ekrana Ekle
+                </button>
+                <Button variant="ghost" size="sm" onClick={dismiss} className="w-full text-white/60">
                   Şimdi değil
-                </Button>
-                <Button
-                  variant="solid"
-                  size="sm"
-                  onClick={onPrimary}
-                  leftIcon={
-                    isIOS ? <Share className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />
-                  }
-                >
-                  Ana ekrana ekle
                 </Button>
               </div>
             )}
@@ -316,5 +318,6 @@ export function PWAInstallPrompt() {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }

@@ -37,7 +37,7 @@ function CityMobileNavInner() {
               aria-label={item.label}
               aria-current={active ? 'page' : undefined}
               data-testid={`city-nav-${item.id}`}
-              className="flex min-w-0 flex-1 flex-col items-center justify-center touch-manipulation px-0.5"
+              className={cn('nah-nav-slot touch-manipulation px-0.5', active && 'is-active')}
             >
               <span
                 className={cn(
@@ -51,7 +51,7 @@ function CityMobileNavInner() {
               </span>
               <span
                 className={cn(
-                  'mt-0.5 max-w-full truncate text-[10px] font-semibold leading-none',
+                  'nah-nav-slot__label mt-0.5',
                   active ? 'text-white' : 'text-white/55'
                 )}
               >

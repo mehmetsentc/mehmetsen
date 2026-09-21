@@ -22,6 +22,7 @@ import { CityDesktopNewspaperHeader } from './CityDesktopNewspaperHeader'
 import { CityMobileFeedSlot } from './CityMobileFeedSlot'
 import type { CityCategory } from '@/services/cityNewsService.server'
 import { isCityFeedPath, isCityImmersivePath } from '@/lib/cityPaths'
+import { cn } from '@/lib/utils'
 
 interface CityLayoutClientProps {
   tenantSlug: string
@@ -101,7 +102,7 @@ const CityShell = memo(function CityShell({
 }) {
   const pathname = usePathname() || '/'
   const suppressFooterNewsletter = pathname.startsWith('/haber/')
-  const { isDesktop } = usePlatformLayout()
+  const { isDesktop, isMobile } = usePlatformLayout()
   const drawerOpen = useUiStore((s) => s.mobileDrawerOpen)
   const setMobileDrawerOpen = useUiStore((s) => s.setMobileDrawerOpen)
   const desktopSidebarOpen = useUiStore((s) => s.desktopSidebarOpen)
@@ -123,7 +124,10 @@ const CityShell = memo(function CityShell({
   const immersiveFeed = isCityImmersivePath(pathname)
 
   return (
-    <div className="min-h-dvh bg-[rgb(var(--color-surface))]" data-city-desktop="1">
+    <div
+      className={cn('min-h-dvh bg-[rgb(var(--color-surface))]', isMobile && 'ui-v2-mobile')}
+      data-city-desktop="1"
+    >
       <MobileSafeAreaShield />
       <CitySidebar
         cityName={displayName}

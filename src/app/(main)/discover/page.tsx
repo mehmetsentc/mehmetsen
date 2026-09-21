@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils'
 import type { Post } from '@/types/post'
 import type { TrendingTopic } from '@/lib/trendingUtils'
 import type { CategoryFeedPage } from '@/services/newsService.server'
+import { PersonalDashboard } from '@/components/home/PersonalDashboard'
+import { PulseView } from '@/components/pulse/PulseView'
 
 // Static city list — eliminates 120 Firestore reads per session (getRecentCities)
 const STATIC_CITIES: Array<{ slug: string; name: string }> = [
@@ -289,7 +291,15 @@ function DiscoverContent() {
   )
 
   return (
-    <div className="space-y-5">
+    <div className="ui-v2-screen space-y-5 px-1 pb-8">
+      <PersonalDashboard
+        chips={DEFAULT_CATEGORIES.filter((cat) => !cat.parentId).slice(0, 8).map((cat) => ({
+          id: cat.id,
+          label: cat.name,
+          href: `${ROUTES.FEED}?category=${cat.id}`,
+        }))}
+      />
+      <PulseView topics={[]} enabled={false} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

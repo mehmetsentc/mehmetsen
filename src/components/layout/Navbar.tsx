@@ -107,10 +107,10 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
 
   const iconIdle = overlayFeed
     ? 'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white drop-shadow-[0_1px_6px_rgb(0_0_0_/_0.85)]'
-    : 'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--header-onbrand))]/70 transition-colors duration-150 hover:text-[rgb(var(--header-onbrand))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
+    : 'relative flex h-11 w-11 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--header-onbrand))]/70 transition-colors duration-150 hover:text-[rgb(var(--header-onbrand))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
   const iconActive = overlayFeed
     ? 'relative flex h-8 w-8 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-white drop-shadow-[0_1px_6px_rgb(0_0_0_/_0.85)]'
-    : 'relative flex h-12 w-12 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
+    : 'relative flex h-11 w-11 shrink-0 items-center justify-center touch-manipulation rounded-full bg-transparent text-[rgb(var(--brand-500))] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--header-onbrand))]/80'
   const iconBtn = iconIdle
 
   function openSubmit() {

@@ -21,6 +21,7 @@ import { SidebarInstallCTA } from '@/components/pwa/SidebarInstallCTA'
 import { SidebarThemeToggle } from '@/components/layout/SidebarThemeToggle'
 import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 import { CityBrandLockup } from '@/components/city/CityBrandLockup'
+import { Avatar } from '@/components/ui/Avatar'
 import { isCitySectionActive } from '@/lib/cityPaths'
 import {
   buildCityCategoryNavItems,
@@ -242,9 +243,20 @@ function CitySidebarInner({
               <Link
                 href={ROUTES.PROFILE(user.username || user.uid)}
                 onClick={closeDrawer}
+                className="mb-1 flex items-center gap-3 rounded-2xl px-1 py-2"
+                data-testid="city-sidebar-account-profile"
+              >
+                <Avatar name={user.displayName || user.username} src={user.photoURL} size="md" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-extrabold">{user.displayName || user.username}</span>
+                  <span className="block truncate text-xs text-[rgb(var(--color-muted))]">@{user.username}</span>
+                </span>
+              </Link>
+              <Link
+                href={ROUTES.PROFILE(user.username || user.uid)}
+                onClick={closeDrawer}
                 className="app-sidebar__item"
                 data-accent="muted"
-                data-testid="city-sidebar-account-profile"
               >
                 <User className="app-sidebar__icon" />
                 Profilim

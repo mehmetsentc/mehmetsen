@@ -13,7 +13,11 @@ import {
   Home,
   Zap,
   Bell,
+  Bookmark,
+  Heart,
+  HelpCircle,
 } from 'lucide-react'
+import { Avatar } from '@/components/ui/Avatar'
 import { useAuth } from '@/hooks/useAuth'
 import { useMyPublishers } from '@/hooks/useMyPublishers'
 import { isAdminUser } from '@/lib/admin'
@@ -33,6 +37,7 @@ import {
   isPublisherProfilePath,
   resolvePublisherProfileHref,
 } from '@/lib/nav/publisherProfileNav'
+import { isPwaStandaloneDisplay } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -233,6 +238,41 @@ function SidebarInner({
         </form>
 
         <nav className="app-sidebar__nav flex-1 overflow-y-auto" aria-label="Ana menü">
+          {hydrated && !loading && user ? (
+            <div className="app-sidebar__section px-3 pb-2" data-testid="account-drawer-identity">
+              <Link
+                href={ROUTES.PROFILE(user.username || user.uid)}
+                onClick={closeDrawer}
+                className="flex items-center gap-3 rounded-2xl px-1 py-2"
+              >
+                <Avatar name={user.displayName || user.username} src={user.photoURL} size="md" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-extrabold">{user.displayName || user.username}</span>
+                  <span className="block truncate text-xs text-[rgb(var(--color-muted))]">@{user.username}</span>
+                </span>
+              </Link>
+              <Link href={ROUTES.FEED} onClick={closeDrawer} className="app-sidebar__item">
+                <Heart className="app-sidebar__icon" />
+                Sana Özel
+              </Link>
+              <Link
+                href={`${ROUTES.FEED_V2}?mode=following`}
+                onClick={() => {
+                  rememberFeedV2EntryOrigin(pathname)
+                  clearFeedRestoreForFeedV2Nav({ pathname })
+                  closeDrawer()
+                }}
+                className="app-sidebar__item"
+              >
+                <User className="app-sidebar__icon" />
+                Takip Ettiklerim
+              </Link>
+              <Link href={ROUTES.SAVED} onClick={closeDrawer} className="app-sidebar__item">
+                <Bookmark className="app-sidebar__icon" />
+                Kaydettiklerim
+              </Link>
+            </div>
+          ) : null}
           <div className="app-sidebar__section" data-testid="global-nav-v2-primary">
             <p className="app-sidebar__label">Gezinme</p>
             <Link
@@ -369,6 +409,15 @@ function SidebarInner({
                 </Link>
               ) : null}
               <Link
+                href={ROUTES.NOTIFICATIONS}
+                onClick={closeDrawer}
+                className="app-sidebar__item"
+                data-accent="muted"
+              >
+                <Bell className="app-sidebar__icon" />
+                Bildirimler
+              </Link>
+              <Link
                 href={ROUTES.SETTINGS}
                 onClick={closeDrawer}
                 className="app-sidebar__item"
@@ -376,6 +425,15 @@ function SidebarInner({
               >
                 <Settings className="app-sidebar__icon" />
                 Ayarlar
+              </Link>
+              <Link
+                href={ROUTES.SETTINGS_HELP}
+                onClick={closeDrawer}
+                className="app-sidebar__item"
+                data-accent="muted"
+              >
+                <HelpCircle className="app-sidebar__icon" />
+                Yardım
               </Link>
               {isAdminUser(user) ? (
                 <a
@@ -408,6 +466,16 @@ function SidebarInner({
             >
               Giriş Yap →
             </Link>
+          ) : null}
+          {hydrated ? (
+            <p
+              className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/40"
+              data-testid="pwa-install-status"
+            >
+              {isPwaStandaloneDisplay()
+                ? 'NaHaber yüklü · Uygulaman aktif'
+                : 'Tarayıcıda açık'}
+            </p>
           ) : null}
         </div>
       </aside>

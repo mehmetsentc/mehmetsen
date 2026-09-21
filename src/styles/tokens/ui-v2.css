@@ -1,0 +1,502 @@
+/* NaHaber UI-V2 — mobile-first tokens. Desktop newspaper is not remapped. */
+
+:root {
+  --nah-bg: 8 10 16;
+  --nah-surface: 16 18 26;
+  --nah-surface-raised: 22 24 34;
+  --nah-border: 255 255 255;
+  --nah-text: 255 255 255;
+  --nah-text-muted: 163 168 180;
+  --nah-red: 229 9 20;
+  --nah-radius-sm: 0.5rem;
+  --nah-radius-md: 0.85rem;
+  --nah-radius-lg: 1.15rem;
+  --nah-header-height: 3.5rem;
+  --nah-bottom-nav-height: 4.35rem;
+  --nah-cover-height: 11.5rem;
+  --nah-avatar: 5.75rem;
+}
+
+@media (max-width: 1023px) {
+  html,
+  html[data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:has(.admin-shell)) {
+    --nl-paper: var(--nah-bg);
+    --nl-ink: var(--nah-text);
+    --nl-accent: var(--nah-red);
+    --bg-base: var(--nah-bg);
+    --bg-subtle: var(--nah-surface);
+    --bg-muted: var(--nah-surface-raised);
+    --bg-card: var(--nah-surface);
+    --bg-elevated: var(--nah-surface-raised);
+    --text-primary: var(--nah-text);
+    --text-body: 230 232 238;
+    --text-secondary: 210 214 224;
+    --text-tertiary: var(--nah-text-muted);
+    --text-muted: var(--nah-text-muted);
+    --text-link: var(--nah-red);
+    --text-onbrand: 255 255 255;
+    --wordmark-na: 255 255 255;
+    --wordmark-na-onbrand: 255 255 255;
+    --wordmark-haber: var(--nah-red);
+    --border-subtle: 255 255 255;
+    --border-default: 255 255 255;
+    --nav-bar-bg: var(--nah-bg);
+    --nav-inactive: var(--nah-text-muted);
+    --nav-active: var(--nah-red);
+    --nav-hover: var(--nah-surface);
+    --color-brand: var(--nah-red);
+    --color-primary: var(--nah-red);
+    --header-brand-bg: var(--nah-bg);
+    --header-navy-bg: var(--nah-bg);
+    --header-onbrand: 255 255 255;
+    --color-text: var(--nah-text);
+    --color-text-secondary: 210 214 224;
+    --color-body: 230 232 238;
+    --color-summary: 210 214 224;
+    --color-muted: var(--nah-text-muted);
+    --color-meta: var(--nah-text-muted);
+    --color-surface: var(--nah-bg);
+    --color-card: var(--nah-surface);
+    --color-surface-raised: var(--nah-surface-raised);
+    --color-surface-raised-hover: 28 30 42;
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+  }
+
+  html[data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:has(.admin-shell)) body,
+  html[data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:has(.admin-shell)) .min-h-screen:not(.admin-shell),
+  html,
+  body {
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+  }
+
+  html[data-desktop-header='newspaper'] .mobile-top-chrome:not(.mobile-top-chrome--overlay),
+  html[data-desktop-header='newspaper']:not(.dark) .mobile-top-chrome:not(.mobile-top-chrome--overlay) {
+    color: #fff;
+    background-color: rgb(var(--nah-bg));
+    border-bottom: 0;
+  }
+
+  html[data-desktop-header='newspaper']:not(.dark)
+    .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+    .context-rail__chip,
+  html[data-desktop-header='newspaper']:not(.dark)
+    .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+    .context-rail__chip--active {
+    color: rgb(255 255 255 / 0.55) !important;
+    text-shadow: none;
+  }
+
+  html[data-desktop-header='newspaper']:not(.dark)
+    .mobile-top-chrome:not(.mobile-top-chrome--overlay)
+    .context-rail__chip--active {
+    color: #fff !important;
+    box-shadow: none;
+  }
+
+  .mobile-bottom-nav-pill {
+    width: min(100%, 26.5rem);
+    height: var(--nah-bottom-nav-height);
+    gap: 0;
+    justify-content: space-between;
+    border-radius: 1.65rem;
+    border: 1px solid rgb(var(--nah-border) / 0.08);
+    background: rgb(12 14 20 / 0.92);
+    box-shadow: 0 10px 32px rgb(0 0 0 / 0.45);
+    padding: 0.35rem 0.55rem calc(0.2rem + env(safe-area-inset-bottom, 0px));
+  }
+
+.nah-nav-slot {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    color: rgb(var(--nah-text-muted));
+  }
+
+.nah-nav-slot.is-active {
+    color: rgb(var(--nah-text));
+  }
+
+.nah-nav-slot__label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.62rem;
+    font-weight: 650;
+    line-height: 1;
+  }
+
+.nah-nav-plus {
+    display: flex;
+    height: 3.15rem;
+    width: 3.15rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    margin-top: -0.55rem;
+    border-radius: 9999px;
+    background: rgb(var(--nah-red));
+    color: #fff;
+    box-shadow: 0 8px 20px rgb(229 9 20 / 0.45);
+  }
+
+  .ui-v2-screen,
+.profile-page-shell,
+.home-feed {
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+  }
+
+.profile-page-shell {
+    max-width: none;
+    padding-inline: 0;
+  }
+
+  .nah-profile-cover {
+    position: relative;
+    height: var(--nah-cover-height);
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgb(0 0 0 / 0.05) 20%, rgb(8 10 16 / 0.92) 100%),
+      radial-gradient(120% 80% at 50% 0%, rgb(40 48 72) 0%, rgb(8 10 16) 70%);
+  }
+
+  .nah-profile-cover img {
+    object-fit: cover;
+  }
+
+  .nah-profile-avatar {
+    height: var(--nah-avatar);
+    width: var(--nah-avatar);
+    margin-top: calc(var(--nah-avatar) * -0.42);
+    border: 3px solid rgb(var(--nah-bg));
+    border-radius: 9999px;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.18);
+  }
+
+  .nah-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .nah-stat-grid strong {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nah-stat-grid span {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.62rem;
+    color: rgb(var(--nah-text-muted));
+  }
+
+  .nah-pill-tabs {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0.15rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.04);
+    scrollbar-width: none;
+  }
+
+  .nah-pill-tabs button {
+    flex: 1 0 auto;
+    min-height: 2.15rem;
+    border-radius: 9999px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgb(var(--nah-text-muted));
+  }
+
+  .nah-pill-tabs button.is-active {
+    background: rgb(var(--nah-red));
+    color: #fff;
+  }
+
+  .nah-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.2rem;
+  }
+
+  .nah-profile-grid__card {
+    position: relative;
+    min-height: 7.4rem;
+    overflow: hidden;
+    background: rgb(var(--nah-surface));
+  }
+
+  .nah-field {
+    display: flex;
+    min-height: 3.35rem;
+    align-items: center;
+    gap: 0.85rem;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+    padding: 0.7rem 0;
+  }
+
+  .nah-field input,
+  .nah-field textarea {
+    width: 100%;
+    background: transparent;
+    color: rgb(var(--nah-text));
+    outline: none;
+  }
+
+  .nah-interest-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .nah-interest-card {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: var(--nah-radius-lg);
+    border: 1.5px solid rgb(255 255 255 / 0.08);
+    background: rgb(var(--nah-surface));
+  }
+
+  .nah-interest-card.is-selected {
+    border-color: rgb(var(--nah-red));
+    box-shadow: 0 0 0 1px rgb(var(--nah-red));
+  }
+
+  .nah-interest-card__check {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    display: flex;
+    height: 1.15rem;
+    width: 1.15rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(var(--nah-red));
+    color: #fff;
+  }
+
+  .nah-install-modal {
+    width: min(100%, 22.5rem);
+    border-radius: 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(14 16 24 / 0.96);
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
+  }
+
+  .nah-cta {
+    display: flex;
+    min-height: 3rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(var(--nah-red));
+    color: #fff;
+    font-weight: 800;
+  }
+
+.source-story-card,
+.source-stories-hub,
+[data-testid='source-stories-hub'] {
+    border-radius: 1.05rem;
+  }
+
+.source-story-card__dash {
+    display: block;
+    width: 1.35rem;
+    height: 0.16rem;
+    margin-bottom: 0.45rem;
+    border-radius: 9999px;
+    background: rgb(var(--nah-red));
+  }
+
+.home-featured-manset-block {
+    margin-inline: 0;
+  }
+
+  .nah-pulse-board {
+    position: relative;
+    min-height: 22rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    background:
+      radial-gradient(circle at 50% 48%, rgb(28 32 48) 0%, rgb(8 10 16) 72%);
+  }
+
+  .nah-pulse-bubble {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    background: rgb(8 10 16 / 0.55);
+    text-align: center;
+  }
+
+.app-sidebar {
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+    border-color: rgb(255 255 255 / 0.06);
+  }
+
+.mobile-top-chrome:not(.mobile-top-chrome--overlay),
+.mobile-top-chrome--immersive:not(.mobile-top-chrome--overlay) {
+    background: rgb(var(--nah-bg));
+    --header-brand-bg: var(--nah-bg);
+    --header-onbrand: 255 255 255;
+    --wordmark-na-onbrand: 255 255 255;
+    --wordmark-haber: var(--nah-red);
+    border-bottom: 0;
+  }
+
+.mobile-top-chrome:not(.mobile-top-chrome--overlay) header {
+    height: var(--nah-header-height);
+  }
+
+.context-rail__chip {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgb(255 255 255 / 0.55);
+  }
+
+.context-rail__chip--active {
+    color: #fff;
+  }
+
+.context-rail__chip--active::after {
+    content: '';
+    position: absolute;
+    left: 18%;
+    right: 18%;
+    bottom: 0.15rem;
+    height: 2px;
+    border-radius: 9999px;
+    background: rgb(var(--nah-red));
+  }
+
+.home-feed,
+.home-section,
+.mag-feed,
+.mag-card {
+    background: rgb(var(--nah-bg));
+    color: #fff;
+  }
+
+.source-stories-hub,
+[data-testid='source-stories-hub'] {
+    border-radius: 1.15rem;
+  }
+
+.home-featured-rail--headline,
+.home-featured-manset-block,
+.home-featured-rail__card,
+.home-featured-rail--headline .home-discovery-card {
+    margin-inline: 0;
+    border-radius: 0;
+  }
+
+.home-featured-rail--headline .home-discovery-card__media {
+    min-height: 22rem;
+  }
+
+.home-featured-rail--headline .home-discovery-card__kicker {
+    background: rgb(var(--nah-red));
+    color: #fff;
+  }
+
+.mag-card__title,
+.mag-card h3,
+[data-testid='home-magazine-feed'] h3 {
+    color: #fff;
+  }
+
+.content-stage-newspaper,
+.content-main,
+.content-main-newspaper {
+    padding-bottom: calc(var(--nah-bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+.content-main-reels {
+    background: #000;
+  }
+
+.feed-article-reader,
+[data-testid='feed-article-reader'],
+.article-reader-shell {
+    background: rgb(var(--nah-bg)) !important;
+    color: rgb(var(--nah-text));
+  }
+
+.feed-article-reader h1,
+.feed-article-reader h2,
+.article-reader-shell h1,
+.article-reader-shell h2 {
+    color: #fff;
+  }
+
+.profile-card,
+.profile-page-section .card,
+[class*='profile-edit'] {
+    background: rgb(var(--nah-surface));
+    color: #fff;
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+.city-mobile-only-chrome .mobile-top-chrome:not(.mobile-top-chrome--overlay) {
+    background: rgb(var(--nah-bg));
+  }
+
+.content-stage-newspaper,
+.content-main-newspaper,
+.desktop-newspaper,
+[data-city-desktop] {
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+  }
+
+.city-mobile-bottom-nav-pill {
+    border: 1px solid rgb(var(--nah-border) / 0.08);
+    background: rgb(12 14 20 / 0.92);
+    box-shadow: 0 10px 32px rgb(0 0 0 / 0.45);
+  }
+
+.home-featured-rail--headline .home-discovery-card__copy {
+    background: linear-gradient(180deg, transparent, rgb(8 10 16 / 0.92));
+  }
+
+.home-featured-rail--headline .home-discovery-card__headline {
+    color: #fff;
+  }
+
+[data-testid='smart-feed-read-cta'] {
+    background: rgb(var(--nah-red)) !important;
+    color: #fff !important;
+  }
+
+.feed-article-reader,
+[data-testid='feed-article-reader'] {
+    background: rgb(var(--nah-bg));
+    color: rgb(var(--nah-text));
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop newspaper / portal keep existing tokens. */
+}

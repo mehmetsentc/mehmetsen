@@ -48,7 +48,7 @@ describe('immersive header Phase 1', () => {
     expect(dock).toContain('header-nav-akis')
     expect(dock).toContain('header-nav-profil')
     expect(dock).toContain("label: 'Ana Sayfa'")
-    expect(dock).toContain("label: 'Akış'")
+    expect(dock).toContain("label: 'Keşfet'")
     expect(dock).toContain("label: 'Profil'")
     expect(dock).toContain('hrefForNewsSurface')
     expect(nav).not.toContain('NotificationBell')
@@ -77,13 +77,11 @@ describe('immersive header Phase 1', () => {
     expect(nav).toMatch(/showBack\s*=\s*\n?\s*!isPrimaryDest/)
   })
 
-  it('keeps Profil dock slot for publishers only (no consumer /profile uid fallback)', () => {
+  it('keeps Profil dock slot for signed-in users (exact Firebase uid fallback)', () => {
     const dock = read('src/components/layout/MobileNav.tsx')
     expect(dock).toContain("label: 'Profil'")
     expect(dock).toContain('header-nav-profil')
-    expect(dock).toContain('resolvePublisherProfileHref')
-    expect(dock).toContain('useMyPublishers')
-    expect(dock).not.toContain('ROUTES.PROFILE(user.username || user.uid)')
+    expect(dock).toContain('ROUTES.PROFILE(user.username || user.uid)')
     expect(dock).not.toContain('listPublishersForUser')
   })
 
