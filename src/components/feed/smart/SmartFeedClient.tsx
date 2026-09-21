@@ -78,8 +78,10 @@ import {
 import {
   appendSwipeLifecycleRing,
   FEED_READER_REOPEN_LOCK_MS,
+  FEED_READER_SAME_ARTICLE_REOPEN_MS,
   formatSwipeLifecycleRing,
   isFeedReaderReopenLocked,
+  isFeedReaderSameArticleReopenLocked,
   shouldIgnoreFeedOpenCancel,
   type SwipeLifecycleEvent,
 } from '@/lib/feed/reader/swipeLifecycle'
@@ -362,6 +364,7 @@ export function SmartFeedClient({
   const [feedGestureEpoch, setFeedGestureEpoch] = useState(0)
   /** Until this timestamp, leftover horizontal motion must not reopen Reader. */
   const readerReopenLockUntilRef = useRef(0)
+  const readerSameArticleLockRef = useRef<{ articleId: string; untilMs: number } | null>(null)
   const readerReopenUnlockTimerRef = useRef<number | null>(null)
   const [feedOpenLocked, setFeedOpenLocked] = useState(false)
   const swipeLifecycleRef = useRef<string[]>([])
@@ -1880,8 +1883,15 @@ export function SmartFeedClient({
     readerCancelGenRef.current += 1
   }, [])
 
-  const armReaderReopenLock = useCallback(() => {
-    readerReopenLockUntilRef.current = Date.now() + FEED_READER_REOPEN_LOCK_MS
+  const armReaderReopenLock = useCallback((articleId?: string) => {
+    const now = Date.now()
+    readerReopenLockUntilRef.current = now + FEED_READER_REOPEN_LOCK_MS
+    if (articleId) {
+      readerSameArticleLockRef.current = {
+        articleId,
+        untilMs: now + FEED_READER_SAME_ARTICLE_REOPEN_MS,
+      }
+    }
     setFeedOpenLocked(true)
     if (readerReopenUnlockTimerRef.current != null) {
       window.clearTimeout(readerReopenUnlockTimerRef.current)
@@ -1913,6 +1923,12 @@ export function SmartFeedClient({
       if (
         isFeedReaderReopenLocked({
           untilMs: readerReopenLockUntilRef.current,
+          nowMs: Date.now(),
+        }) ||
+        isFeedReaderSameArticleReopenLocked({
+          closedArticleId: readerSameArticleLockRef.current?.articleId,
+          articleId: item.articleId,
+          untilMs: readerSameArticleLockRef.current?.untilMs,
           nowMs: Date.now(),
         })
       ) {
@@ -2101,6 +2117,12 @@ export function SmartFeedClient({
       if (
         isFeedReaderReopenLocked({
           untilMs: readerReopenLockUntilRef.current,
+          nowMs: Date.now(),
+        }) ||
+        isFeedReaderSameArticleReopenLocked({
+          closedArticleId: readerSameArticleLockRef.current?.articleId,
+          articleId: item.articleId,
+          untilMs: readerSameArticleLockRef.current?.untilMs,
           nowMs: Date.now(),
         })
       ) {
@@ -3061,13 +3083,17 @@ export function SmartFeedClient({
                 }
               })
             }}
+            onCloseBegin={() => {
+              armReaderReopenLock(readerSession.item.articleId)
+              pushSwipeLifecycle('READER_CLOSE_BEGIN')
+            }}
             onClose={() => {
               const idx = readerSession.index
               const closedId = readerSession.item.articleId
               clearReaderOpenRamp()
               feedGestureCommitLockRef.current = null
               readerOpenGuardRef.current = null
-              armReaderReopenLock()
+              armReaderReopenLock(closedId)
               setReaderSession(null)
               setFeedGestureEpoch((e) => e + 1)
               pushSwipeLifecycle('READER_CLOSE_FINISH')

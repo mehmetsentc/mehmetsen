@@ -4,10 +4,12 @@
  */
 
 export const FEED_READER_RETURN_GESTURE_ARM_MS = 350
-/** After Reader close, block leftover horizontal opens of the next card. */
-export const FEED_READER_REOPEN_LOCK_MS = 400
+/** After close begins, block leftover horizontal opens (anim 320ms + settle). */
+export const FEED_READER_REOPEN_LOCK_MS = 1200
+/** Same article must not remount after a successful close. */
+export const FEED_READER_SAME_ARTICLE_REOPEN_MS = 1200
 /** Close commit: visible peek of feed should finish, not snap the article back. */
-export const FEED_READER_CLOSE_HARD_COMPLETE = 0.26
+export const FEED_READER_CLOSE_HARD_COMPLETE = 0.2
 export const SWIPE_LIFECYCLE_RING_MAX = 28
 
 export type SwipeLifecycleEvent =
@@ -56,6 +58,17 @@ export function isFeedReaderReopenLocked(opts: {
 }): boolean {
   if (opts.untilMs == null || !Number.isFinite(opts.untilMs)) return false
   return opts.nowMs < opts.untilMs
+}
+
+/** Same-article remount after close — Arıkan-style bounce. */
+export function isFeedReaderSameArticleReopenLocked(opts: {
+  closedArticleId: string | null | undefined
+  articleId: string
+  untilMs: number | null | undefined
+  nowMs: number
+}): boolean {
+  if (!opts.closedArticleId || opts.closedArticleId !== opts.articleId) return false
+  return isFeedReaderReopenLocked({ untilMs: opts.untilMs, nowMs: opts.nowMs })
 }
 
 export function appendSwipeLifecycleRing(

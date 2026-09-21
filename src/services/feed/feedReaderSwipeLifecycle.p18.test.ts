@@ -8,9 +8,11 @@ import { join } from 'node:path'
 import {
   FEED_READER_CLOSE_HARD_COMPLETE,
   FEED_READER_REOPEN_LOCK_MS,
+  FEED_READER_SAME_ARTICLE_REOPEN_MS,
   FEED_READER_RETURN_GESTURE_ARM_MS,
   appendSwipeLifecycleRing,
   isFeedReaderReopenLocked,
+  isFeedReaderSameArticleReopenLocked,
   isReaderReturnGestureArmed,
   shouldIgnoreFeedOpenCancel,
 } from '@/lib/feed/reader/swipeLifecycle'
@@ -42,8 +44,25 @@ describe('swipe lifecycle isolation helpers', () => {
     expect(isFeedReaderReopenLocked({ untilMs: until, nowMs: until - 1 })).toBe(true)
     expect(isFeedReaderReopenLocked({ untilMs: until, nowMs: until })).toBe(false)
     expect(isFeedReaderReopenLocked({ untilMs: null, nowMs: until })).toBe(false)
-    expect(FEED_READER_REOPEN_LOCK_MS).toBe(400)
-    expect(FEED_READER_CLOSE_HARD_COMPLETE).toBeLessThan(0.32)
+    expect(FEED_READER_REOPEN_LOCK_MS).toBe(1200)
+    expect(FEED_READER_SAME_ARTICLE_REOPEN_MS).toBe(1200)
+    expect(FEED_READER_CLOSE_HARD_COMPLETE).toBe(0.2)
+    expect(
+      isFeedReaderSameArticleReopenLocked({
+        closedArticleId: 'a1',
+        articleId: 'a1',
+        untilMs: 2_000,
+        nowMs: 1_999,
+      })
+    ).toBe(true)
+    expect(
+      isFeedReaderSameArticleReopenLocked({
+        closedArticleId: 'a1',
+        articleId: 'a2',
+        untilMs: 2_000,
+        nowMs: 1_999,
+      })
+    ).toBe(false)
   })
 
   it('Reader return gesture arms only after settle window', () => {
@@ -134,6 +153,9 @@ describe('lifecycle wiring contracts', () => {
     expect(client).toContain('FEED_READER_REOPEN_LOCK_MS')
     expect(client).toContain('CANCEL_REASON=reopen_lock')
     expect(client).toContain('feedOpenLocked')
+    expect(client).toContain('onCloseBegin')
+    expect(client).toContain('READER_CLOSE_BEGIN')
+    expect(reader).toContain('onCloseBegin?.()')
     expect(reader).toContain('FEED_READER_CLOSE_HARD_COMPLETE')
   })
 })

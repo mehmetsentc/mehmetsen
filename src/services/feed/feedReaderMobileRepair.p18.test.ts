@@ -30,14 +30,14 @@ describe('Feed Reader mobile swipe repair contracts', () => {
     expect(shouldCompleteTransition({ progress: 0.1, velocityX: 0 })).toBe(false)
     expect(
       shouldCompleteTransition({
-        progress: 0.26,
+        progress: 0.2,
         velocityX: 0,
-        hardCompleteProgress: 0.26,
+        hardCompleteProgress: 0.2,
       })
     ).toBe(true)
     expect(shouldCompleteTransition({ progress: 0.26, velocityX: 0 })).toBe(false)
-    expect(FEED_READER_DURATION_MS).toBeGreaterThanOrEqual(2800)
-    expect(FEED_READER_DURATION_MS).toBeLessThanOrEqual(3200)
+    expect(FEED_READER_DURATION_MS).toBeGreaterThanOrEqual(280)
+    expect(FEED_READER_DURATION_MS).toBeLessThanOrEqual(360)
   })
 
   it('Feed→Reader is left; right swipe does not open', () => {

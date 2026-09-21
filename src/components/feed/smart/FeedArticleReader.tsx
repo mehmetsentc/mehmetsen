@@ -119,6 +119,8 @@ type Props = {
   /** Parent animating Haberi Oku / cancel — Reader mirrors without fighting. */
   progressAnimating?: boolean
   onClose: (reason: FeedReaderCloseReason) => void
+  /** Parent arms reopen lock immediately — do not wait for close animation. */
+  onCloseBegin?: () => void
   /**
    * Keep Feed underlay transform in sync during Reader→Feed drag / close ramp.
    * Without this, parent stays at progress=1 while Reader animates internally.
@@ -172,6 +174,7 @@ export function FeedArticleReader({
   visualProgress,
   progressAnimating = false,
   onClose,
+  onCloseBegin,
   onVisualProgress,
   onOpenTelemetry,
   onCloseTelemetry,
@@ -548,6 +551,7 @@ export function FeedArticleReader({
       closingRef.current = true
       setCoachClosing(true)
       closeReasonRef.current = reason
+      onCloseBegin?.()
 
       const openId = readerOpenIdRef.current
       const closeTxId = openId ? `close_${openId}` : `close_${Date.now().toString(36)}`
@@ -629,7 +633,7 @@ export function FeedArticleReader({
       if (reducedMotion) runCloseAnim()
       else requestAnimationFrame(() => requestAnimationFrame(runCloseAnim))
     },
-    [committed, feedSessionId, finishCloseUi, generation, item.articleId, item.category, reducedMotion, syncVisualProgress]
+    [committed, feedSessionId, finishCloseUi, generation, item.articleId, item.category, onCloseBegin, reducedMotion, syncVisualProgress]
   )
 
   const beginCloseRef = useRef(beginClose)
