@@ -61,21 +61,47 @@ function withBrowserHeaders(init: RequestInit): RequestInit {
   }
 }
 
+export interface DocumentFetch {
+  ok: boolean
+  status: number
+  text: string
+  url: string
+}
+
+async function fetchRaw(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS
+): Promise<DocumentFetch> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...withBrowserHeaders(init), signal: controller.signal })
+    const text = await res.text()
+    return { ok: res.ok, status: res.status, text, url }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 /** `fetch` with an abort-based timeout. Throws on non-2xx or timeout. */
 export async function fetchJson<T>(
   url: string,
   init: RequestInit = {},
   timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS
 ): Promise<T> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(url, { ...withBrowserHeaders(init), signal: controller.signal })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return (await res.json()) as T
-  } finally {
-    clearTimeout(timeout)
-  }
+  const doc = await fetchRaw(url, init, timeoutMs)
+  if (!doc.ok) throw new Error(`HTTP ${doc.status}`)
+  return JSON.parse(doc.text) as T
+}
+
+/** Non-throwing document fetch used to distinguish BLOCKED vs EMPTY. */
+export async function fetchDocument(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS
+): Promise<DocumentFetch> {
+  return fetchRaw(url, init, timeoutMs)
 }
 
 /** `fetch` returning the raw response text. Throws on non-2xx or timeout. */
@@ -207,6 +233,7 @@ export interface NormalizeInput {
   category?: string | null
   city?: string | null
   citySlug?: string | null
+  districtSlug?: string | null
   venue?: string | null
   address?: string | null
   startsAt: unknown
@@ -265,6 +292,7 @@ export function normalizeEvent(input: NormalizeInput): NaEvent | null {
 
   if (endsAt) event.endsAt = endsAt
   if (input.address?.trim()) event.address = input.address.trim()
+  if (input.districtSlug?.trim()) event.districtSlug = input.districtSlug.trim()
   if (input.coverImageUrl?.trim()) event.coverImageUrl = input.coverImageUrl.trim()
   if (input.ticketUrl?.trim()) event.ticketUrl = input.ticketUrl.trim()
 

@@ -344,7 +344,201 @@ async function saveSyncMeta(db: Firestore, result: EventSyncResult): Promise<voi
   )
 }
 
+export interface OccurrenceCanaryUpsertResult {
+  inserted: number
+  updated: number
+  skipped: number
+  markedPast: 0
+  markedRemoved: 0
+  wroteMeta: false
+  eventIds: string[]
+}
+
 export const eventSyncService = {
+  /**
+   * Çanakkale (or other scoped) occurrence canary.
+   * Reuses upsertEvents only — never markRemoved, markPast, or sync meta.
+   */
+  async planOccurrenceUpserts(events: NaEvent[]): Promise<{
+    wouldInsert: NaEvent[]
+    wouldUpdate: NaEvent[]
+    wouldSkipUnchanged: NaEvent[]
+    wouldDelete: 0
+  }> {
+    const db = getAdminFirestore()
+    const nowIso = new Date().toISOString()
+    const existingById = await loadExistingEvents(db, events)
+    const wouldInsert: NaEvent[] = []
+    const wouldUpdate: NaEvent[] = []
+    const wouldSkipUnchanged: NaEvent[] = []
+    for (const event of events) {
+      const existing = existingById.get(event.id)
+      if (!existing) wouldInsert.push(event)
+      else if (isUnchanged(event, existing, nowIso)) wouldSkipUnchanged.push(event)
+      else wouldUpdate.push(event)
+    }
+    return { wouldInsert, wouldUpdate, wouldSkipUnchanged, wouldDelete: 0 }
+  },
+
+  async syncOccurrences(options: {
+    mode?: 'shadow' | 'write'
+    allowWrite?: boolean
+    includeTicketmasterShadow?: boolean
+    citySlugs?: string[]
+    biletixStrategy?: import('@/services/eventProviders/biletixDiscovery').BiletixDiscoveryStrategy
+    deadlineMs?: number
+    cityConcurrency?: number
+    resumable?: boolean
+    persistCheckpoint?: boolean
+    checkpointStore?: import('@/lib/eventSyncCheckpoint').OccurrenceCheckpointStore
+    existingLoader?: (input?: { sources?: string[]; citySlugs?: string[] }) => Promise<import('@/types/event').NaEvent[]>
+    biletimgoCities?: string[]
+    nowIso?: string
+  } = {}): Promise<import('@/services/eventProviders/occurrenceCron').OccurrenceCronSummary> {
+    const { runOccurrenceCron, decideOccurrenceWrite } = await import('@/services/eventProviders/occurrenceCron')
+    const {
+      abortIfSuspiciousReinsert,
+      classifyProposedMutation,
+      providerOccurrenceKey,
+    } = await import('@/services/eventProviders/occurrenceMutation')
+    const discovery = await runOccurrenceCron({
+      mode: options.mode === 'write' ? 'write' : 'shadow',
+      allowWrite: options.allowWrite,
+      includeTicketmasterShadow: options.includeTicketmasterShadow,
+      citySlugs: options.citySlugs,
+      biletixStrategy: options.biletixStrategy,
+      deadlineMs: options.deadlineMs,
+      cityConcurrency: options.cityConcurrency,
+      resumable: options.resumable,
+      persistCheckpoint: options.persistCheckpoint,
+      checkpointStore: options.checkpointStore,
+      existingLoader: options.existingLoader,
+      biletimgoCities: options.biletimgoCities,
+      nowIso: options.nowIso,
+    })
+    const planStarted = Date.now()
+    const plan = await eventSyncService.planOccurrenceUpserts(discovery.writeable)
+    discovery.timings = {
+      ...discovery.timings,
+      reconcileMs: (discovery.timings?.reconcileMs ?? 0) + (Date.now() - planStarted),
+    }
+    discovery.wouldInsert = plan.wouldInsert.length
+    discovery.wouldUpdate = plan.wouldUpdate.length
+    discovery.wouldSkipUnchanged = plan.wouldSkipUnchanged.length
+    discovery.wouldDelete = 0
+    discovery.firestoreEventWrites = 0
+    discovery.inserted = 0
+    discovery.updated = 0
+
+    const writePlan: typeof discovery.writePlan = []
+    const classes: typeof discovery.mutationClasses = {
+      NEW_SOURCE_OCCURRENCE: 0,
+      MATERIAL_UPDATE: 0,
+      EXPECTED_REFRESH: 0,
+      SUSPICIOUS_REINSERT: 0,
+    }
+    const classify = (event: NaEvent, operation: 'INSERT' | 'UPDATE' | 'SKIP') => {
+      const key = providerOccurrenceKey(event)
+      const existingId = discovery.existingByProviderKey[key]
+      const classified = classifyProposedMutation({
+        operation,
+        incoming: event,
+        existingById: operation === 'INSERT' ? null : { id: event.id, status: event.status },
+        existingByProviderKey: existingId ? { id: existingId } : null,
+      })
+      classes[classified] += 1
+      writePlan.push({
+        province: event.citySlug || '',
+        provider: event.source ?? '',
+        eventId: event.id,
+        title: event.title,
+        operation,
+      })
+      return classified
+    }
+    for (const event of plan.wouldInsert) classify(event, 'INSERT')
+    for (const event of plan.wouldUpdate) classify(event, 'UPDATE')
+    for (const event of plan.wouldSkipUnchanged) classify(event, 'SKIP')
+    discovery.writePlan = writePlan
+    discovery.mutationClasses = classes
+
+    const suspicious = abortIfSuspiciousReinsert([
+      ...Array.from({ length: classes.SUSPICIOUS_REINSERT }, () => 'SUSPICIOUS_REINSERT' as const),
+    ])
+    const decision = decideOccurrenceWrite({
+      mode: options.mode === 'write' ? 'write' : 'shadow',
+      allowWrite: options.allowWrite,
+      wouldDelete: plan.wouldDelete,
+    })
+    if (!suspicious.ok) {
+      discovery.abortedWrite = true
+      discovery.abortReason = 'suspicious_reinsert'
+    } else if (decision.action === 'abort') {
+      discovery.abortedWrite = true
+      discovery.abortReason = decision.reason
+    } else if (decision.action === 'write') {
+      const { createFirestoreEventSyncLockStore, withEventSyncWriteLock } = await import('@/lib/eventSyncLock')
+      const store = createFirestoreEventSyncLockStore(getAdminFirestore())
+      try {
+        const locked = await withEventSyncWriteLock(
+          store,
+          { runId: discovery.runId, mode: 'write', startedAt: discovery.startedAt },
+          async () => eventSyncService.upsertOccurrencesOnly(discovery.writeable)
+        )
+        if (!locked.ok) {
+          discovery.abortedWrite = true
+          discovery.abortReason = 'write_locked'
+          discovery.lockStatus = 'busy'
+        } else {
+          discovery.inserted = locked.value.inserted
+          discovery.updated = locked.value.updated
+          discovery.firestoreEventWrites = locked.value.inserted + locked.value.updated
+          discovery.abortedWrite = false
+          discovery.abortReason = null
+          discovery.lockStatus = 'released'
+        }
+      } catch (error) {
+        discovery.abortedWrite = true
+        discovery.abortReason = error instanceof Error ? error.message : 'write_failed'
+        discovery.lockStatus = 'released_after_error'
+        throw error
+      }
+    }
+
+    const { classifyOccurrenceRunHealth } = await import('@/lib/eventSyncRoutePolicy')
+    discovery.runHealth = classifyOccurrenceRunHealth({
+      abortedWrite: discovery.abortedWrite,
+      abortReason: discovery.abortReason,
+      wouldDelete: discovery.wouldDelete,
+      suspiciousReinsert: classes.SUSPICIOUS_REINSERT,
+      lockStatus: discovery.lockStatus,
+      biletix: String(discovery.providerStatus.biletix ?? ''),
+      bubilet: String(discovery.providerStatus.bubilet ?? ''),
+      biletimgo: String(discovery.providerStatus.biletimgo ?? ''),
+    })
+    discovery.invocationHealth = discovery.runHealth
+    discovery.configuration = {
+      ...discovery.configuration,
+      state: options.allowWrite ? 'OCCURRENCE_WRITE' : 'OCCURRENCE_SHADOW',
+    }
+
+    return { ...discovery, writeable: [], existingByProviderKey: {} }
+  },
+
+  async upsertOccurrencesOnly(events: NaEvent[]): Promise<OccurrenceCanaryUpsertResult> {
+    const db = getAdminFirestore()
+    const { inserted, updated, skipped } = await upsertEvents(db, events)
+    return {
+      inserted,
+      updated,
+      skipped,
+      markedPast: 0,
+      markedRemoved: 0,
+      wroteMeta: false,
+      eventIds: events.map((e) => e.id),
+    }
+  },
+
   async syncEvents(): Promise<EventSyncResult> {
     const started = Date.now()
     const db = getAdminFirestore()

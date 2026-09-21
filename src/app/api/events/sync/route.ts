@@ -2,13 +2,20 @@ import { NextResponse } from 'next/server'
 import { isSyncSecretAuthorized } from '@/lib/eventSyncAuth'
 import { getBootstrapAdminUids } from '@/lib/cmsSecrets.server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { createMetaEventSyncCheckpointStore } from '@/lib/eventSyncCheckpoint'
+import { runWithEventSyncProcessLock } from '@/lib/eventSyncLock'
+import { executeScheduledEventSync, selectScheduledEventSync } from '@/lib/eventSyncRoutePolicy'
+import { getAdminFirestore } from '@/lib/firebase/admin'
 import { eventSyncService } from '@/services/eventSyncService'
 
 /**
  * POST/GET /api/events/sync
  *
  * Daily cron entry point for scraping ticket platforms and upserting into
- * Firestore `events`. Protected by:
+ * Firestore `events`. Production default remains the legacy `syncEvents()` path.
+ * Occurrence-first SHADOW/WRITE is process-opt-in via EVENTS_OCCURRENCE_V1.
+ * The route selects exactly one path: LEGACY, OCCURRENCE_SHADOW,
+ * or OCCURRENCE_WRITE. Occurrence failure never falls back to legacy. Protected by:
  *   - `EVENTS_SYNC_SECRET` / `CRON_SECRET` (Bearer, x-cron-secret, or ?secret=)
  *   - Firebase ID token for an admin user (manual refresh from /admin/events)
  *
@@ -23,8 +30,6 @@ import { eventSyncService } from '@/services/eventSyncService'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
-
-let syncInFlight: Promise<Awaited<ReturnType<typeof eventSyncService.syncEvents>>> | null = null
 
 async function isAuthorized(request: Request): Promise<boolean> {
   if (isSyncSecretAuthorized(request)) return true
@@ -65,12 +70,23 @@ async function handleSync(request: Request) {
   }
 
   try {
-    if (!syncInFlight) {
-      syncInFlight = eventSyncService.syncEvents().finally(() => {
-        syncInFlight = null
+    const result = await runWithEventSyncProcessLock(async () => {
+      const plan = selectScheduledEventSync()
+      return executeScheduledEventSync(plan, {
+        legacy: () => eventSyncService.syncEvents(),
+        occurrence: () =>
+          eventSyncService.syncOccurrences({
+            mode: plan.occurrenceMode,
+            allowWrite: plan.allowWrite,
+            includeTicketmasterShadow: plan.includeTicketmasterShadow,
+            biletixStrategy: 'city_partition',
+            resumable: true,
+            persistCheckpoint: true,
+            checkpointStore: createMetaEventSyncCheckpointStore(getAdminFirestore()),
+            deadlineMs: 180_000,
+          }),
       })
-    }
-    const result = await syncInFlight
+    })
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('[api/events/sync] failed:', error)
