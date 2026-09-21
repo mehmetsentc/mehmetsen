@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BILETIX_CRON_STRATEGY } from '@/services/eventProviders/biletixDiscovery'
 import {
   OCCURRENCE_CRON_INCLUDES_BILETIMGO,
+  OCCURRENCE_DARK_SHADOW_ONLY,
   OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED,
   allowWriteFromHttpRequest,
   classifyOccurrenceRunHealth,
@@ -85,6 +86,7 @@ describe('event sync route state machine', () => {
   it('does not require BILETIMGO_ENABLED and keeps recurring BiletimGO discovery blocked', () => {
     expect(OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED).toBe(false)
     expect(OCCURRENCE_CRON_INCLUDES_BILETIMGO).toBe(false)
+    expect(OCCURRENCE_DARK_SHADOW_ONLY).toBe(true)
   })
 
   it('forces scheduled occurrence discovery onto Biletix city_partition', () => {

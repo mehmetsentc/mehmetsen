@@ -15,6 +15,7 @@ export type EventSyncRouteState = 'LEGACY' | 'OCCURRENCE_SHADOW' | 'OCCURRENCE_W
 export const OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED = false
 /** Recurring discovery stays off until biletimo.com → BiletimGO authority is proven. */
 export const OCCURRENCE_CRON_INCLUDES_BILETIMGO = false
+export const OCCURRENCE_DARK_SHADOW_ONLY = true
 
 function envTrue(env: NodeJS.ProcessEnv, key: string): boolean {
   return env[key]?.toLowerCase() === 'true'
