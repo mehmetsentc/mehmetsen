@@ -2,8 +2,24 @@ import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from './schema'
 
+/** App convention first, then Neon’s Vercel integration aliases. */
+export const DATABASE_URL_ENV_KEYS = [
+  'DATABASE_URL',
+  'POSTGRES_URL',
+  'DATABASE_URL_UNPOOLED',
+  'POSTGRES_URL_NON_POOLING',
+] as const
+
+export function resolveDatabaseUrl(): string | null {
+  for (const key of DATABASE_URL_ENV_KEYS) {
+    const value = process.env[key]?.trim()
+    if (value) return value
+  }
+  return null
+}
+
 function getDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL
+  const url = resolveDatabaseUrl()
   if (!url) {
     throw new Error(
       'DATABASE_URL is not set. See docs/NAHABER_CITY_NETWORK.md for setup instructions.'
@@ -47,7 +63,7 @@ export function isPostgresReadsEnabled(): boolean {
 }
 
 export function hasDatabaseUrl(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim())
+  return Boolean(resolveDatabaseUrl())
 }
 
 export { schema }

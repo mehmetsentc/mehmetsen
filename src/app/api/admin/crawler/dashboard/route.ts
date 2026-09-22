@@ -6,6 +6,7 @@ import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { crawlerDashboardSnapshot } from '@/services/crawler/telemetry'
 import { readCrawlerOpsState, refreshRebuildProgress } from '@/services/crawler/ops/opsPersist'
 import { REBUILD_STATUS_TR } from '@/services/crawler/ops/opsState'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,35 +16,38 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   if (!hasDatabaseUrl()) {
-    return NextResponse.json({
-      enabled: isGlobalCrawlerEnabled(),
-      postgres: false,
-      error: 'DATABASE_URL missing',
-    })
+    return NextResponse.json(
+      databaseUnavailableResponse({ enabled: isGlobalCrawlerEnabled(), postgres: false }),
+      { status: 503 }
+    )
   }
 
-  const store = new DrizzleCrawlerStore()
-  const snapshot = await crawlerDashboardSnapshot(store)
-  let ops = await readCrawlerOpsState(store)
-  if (ops.rebuildStatus !== 'IDLE' && ops.rebuildStatus !== 'ERROR') {
-    ops = await refreshRebuildProgress(store)
+  try {
+    const store = new DrizzleCrawlerStore()
+    const snapshot = await crawlerDashboardSnapshot(store)
+    let ops = await readCrawlerOpsState(store)
+    if (ops.rebuildStatus !== 'IDLE' && ops.rebuildStatus !== 'ERROR') {
+      ops = await refreshRebuildProgress(store)
+    }
+    return NextResponse.json({
+      postgres: true,
+      ...snapshot,
+      rebuild24h: {
+        status: ops.rebuildStatus,
+        statusTr: REBUILD_STATUS_TR[ops.rebuildStatus],
+        maintenanceMode: ops.maintenanceMode,
+        cutoffAt: ops.cutoffAt,
+        rebuildStartedAt: ops.rebuildStartedAt,
+        discovered: ops.discovered,
+        pending: ops.pending,
+        extracted: ops.extracted,
+        failed: ops.failed,
+        events: ops.events,
+        multiSource: ops.multiSource,
+        windowHours: ops.rebuildWindowHours,
+      },
+    })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { postgres: false, enabled: isGlobalCrawlerEnabled() })
   }
-  return NextResponse.json({
-    postgres: true,
-    ...snapshot,
-    rebuild24h: {
-      status: ops.rebuildStatus,
-      statusTr: REBUILD_STATUS_TR[ops.rebuildStatus],
-      maintenanceMode: ops.maintenanceMode,
-      cutoffAt: ops.cutoffAt,
-      rebuildStartedAt: ops.rebuildStartedAt,
-      discovered: ops.discovered,
-      pending: ops.pending,
-      extracted: ops.extracted,
-      failed: ops.failed,
-      events: ops.events,
-      multiSource: ops.multiSource,
-      windowHours: ops.rebuildWindowHours,
-    },
-  })
 }

@@ -5,7 +5,7 @@ import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { dispatchCrawlerArticleToNewsroom } from '@/services/crawler/dispatch'
 import { parseClusterListQuery } from '@/services/crawler/editorial/query'
 import { toEventDeskRow } from '@/services/crawler/editorial/eventDesk'
-import { databaseUnavailableResponse } from '@/lib/adminApiError'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   if (!hasDatabaseUrl()) {
     return NextResponse.json(databaseUnavailableResponse({ clusters: null, total: null }), { status: 503 })
   }
+  try {
   const url = new URL(request.url)
   const hours = url.searchParams.get('hours')
   const query = parseClusterListQuery(url)
@@ -69,4 +70,7 @@ export async function GET(request: Request) {
       }
     }),
   })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { clusters: null, total: null })
+  }
 }

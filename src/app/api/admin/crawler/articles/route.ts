@@ -20,10 +20,11 @@ import {
 import { queueCountsFromStatuses } from '@/services/crawler/editorial/query'
 import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
-import { databaseUnavailableResponse } from '@/lib/adminApiError'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 function parseDate(value: string | null): Date | null {
   if (!value) return null
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
   if (!hasDatabaseUrl()) {
     return NextResponse.json(databaseUnavailableResponse({ articles: null, total: null }), { status: 503 })
   }
+  try {
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
   const store = new DrizzleCrawlerStore()
@@ -170,6 +172,9 @@ export async function GET(request: Request) {
       articles: g.articles.map(withEvent),
     })),
   })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { articles: null, total: null })
+  }
 }
 
 export async function PATCH(request: Request) {

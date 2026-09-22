@@ -1,4 +1,4 @@
-import { databaseUnavailableResponse } from '@/lib/adminApiError'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!hasDatabaseUrl()) return NextResponse.json(databaseUnavailableResponse({ clusters: null, total: null }), { status: 503 })
+  try {
   const url = new URL(request.url)
   const query = parseClusterListQuery(url)
   const store = new DrizzleCrawlerStore()
@@ -62,4 +63,7 @@ export async function GET(request: Request) {
           : null,
     })),
   })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { clusters: null, total: null })
+  }
 }
