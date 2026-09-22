@@ -3,6 +3,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { paginateSlice } from '@/services/crawler/editorial/query'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,7 +35,10 @@ function yieldSummary(row?: YieldRow) {
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
+  if (!hasDatabaseUrl()) {
+    return NextResponse.json(databaseUnavailableResponse({ sources: null, total: null }), { status: 503 })
+  }
+  try {
   const store = new DrizzleCrawlerStore()
   const sources = await store.listSources()
   const metrics = await store.getTodayMetrics()
@@ -72,4 +76,7 @@ export async function GET(request: Request) {
     totalPages: page.totalPages,
     sources: page.items,
   })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { sources: null, total: null })
+  }
 }

@@ -3,6 +3,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { classifyCrawlerFailure, FAILURE_CLASS_LABELS } from '@/services/crawler/failures/classify'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,7 +11,13 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!hasDatabaseUrl()) return NextResponse.json({ error: 'DATABASE_URL missing' }, { status: 503 })
+  if (!hasDatabaseUrl()) {
+    return NextResponse.json(
+      databaseUnavailableResponse({ discoveryFailures: null, httpFailures: null, extractionFailures: null }),
+      { status: 503 }
+    )
+  }
+  try {
   const store = new DrizzleCrawlerStore()
   const failedUrls = await store.listFailedUrls(80)
   const sources = await store.listSources()
@@ -51,4 +58,7 @@ export async function GET(request: Request) {
     extractionFailures,
     clusteringFailures: [],
   })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { discoveryFailures: null, httpFailures: null, extractionFailures: null })
+  }
 }
