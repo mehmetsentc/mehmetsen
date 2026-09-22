@@ -70,3 +70,10 @@ export function databaseUnavailableResponse(extra?: Record<string, unknown>) {
     ...extra,
   }
 }
+
+/** Caught Neon/Postgres failures on crawler admin GETs — never 500 as empty success. */
+export function crawlerDatabaseCatch(err: unknown, extra?: Record<string, unknown>) {
+  const msg = err instanceof Error ? err.message : String(err)
+  console.error('[crawler-api]', msg)
+  return Response.json(databaseUnavailableResponse(extra), { status: 503 })
+}

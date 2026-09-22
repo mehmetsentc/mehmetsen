@@ -1,4 +1,4 @@
-import { databaseUnavailableResponse } from '@/lib/adminApiError'
+import { crawlerDatabaseCatch, databaseUnavailableResponse } from '@/lib/adminApiError'
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
@@ -28,21 +28,25 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const missing = dbOrError()
   if (missing) return missing
-  const store = new DrizzleCrawlerStore()
-  const sources = await store.listSources()
-  const url = new URL(request.url)
-  const query = parseSourceListQuery(url)
-  const filtered = sources.filter((s) => matchesSourceQuery(s, query))
-  const page = paginateSlice(filtered, query.page, query.pageSize)
-  return NextResponse.json({
-    enabled: isNewsCrawlerEnabled(),
-    postgres: true,
-    total: page.total,
-    page: page.page,
-    pageSize: page.pageSize,
-    totalPages: page.totalPages,
-    sources: page.items,
-  })
+  try {
+    const store = new DrizzleCrawlerStore()
+    const sources = await store.listSources()
+    const url = new URL(request.url)
+    const query = parseSourceListQuery(url)
+    const filtered = sources.filter((s) => matchesSourceQuery(s, query))
+    const page = paginateSlice(filtered, query.page, query.pageSize)
+    return NextResponse.json({
+      enabled: isNewsCrawlerEnabled(),
+      postgres: true,
+      total: page.total,
+      page: page.page,
+      pageSize: page.pageSize,
+      totalPages: page.totalPages,
+      sources: page.items,
+    })
+  } catch (err) {
+    return crawlerDatabaseCatch(err, { enabled: isNewsCrawlerEnabled(), postgres: false, sources: null })
+  }
 }
 
 export async function POST(request: Request) {
