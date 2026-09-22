@@ -17,6 +17,31 @@ export const OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED = false
 export const OCCURRENCE_CRON_INCLUDES_BILETIMGO = false
 export const OCCURRENCE_DARK_SHADOW_ONLY = true
 
+/** Mutation allowlist. Discovery of other providers must never upsert. */
+export const OCCURRENCE_WRITE_ELIGIBLE_SOURCES = ['biletix'] as const
+
+export function occurrenceWriteEligibility(): {
+  biletix: true
+  bubilet: false
+  biletimgo: false
+  ticketmaster: false
+} {
+  return {
+    biletix: true,
+    bubilet: false,
+    biletimgo: false,
+    ticketmaster: false,
+  }
+}
+
+export function isOccurrenceWriteEligibleSource(source: string | null | undefined): boolean {
+  return Boolean(source && (OCCURRENCE_WRITE_ELIGIBLE_SOURCES as readonly string[]).includes(source))
+}
+
+export function filterOccurrenceWriteEligible<T extends { source?: string | null }>(events: T[]): T[] {
+  return events.filter((event) => isOccurrenceWriteEligibleSource(event.source))
+}
+
 function envTrue(env: NodeJS.ProcessEnv, key: string): boolean {
   return env[key]?.toLowerCase() === 'true'
 }

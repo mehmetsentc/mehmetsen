@@ -15,5 +15,6 @@ describe('occurrence writer isolation', () => {
     expect(upsert).not.toMatch(/markRemovedEvents/)
     expect(upsert).not.toMatch(/markPastEvents/)
     expect(upsert).not.toMatch(/META_DOC_PATH/)
+    expect(upsert).toMatch(/filterOccurrenceWriteEligible/)
   })
 })

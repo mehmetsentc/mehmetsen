@@ -28,6 +28,7 @@ import type { NaEvent } from '@/types/event'
 import type { ProviderHealthStatus } from '@/services/eventProviders/types'
 import {
   OCCURRENCE_CRON_INCLUDES_BILETIMGO,
+  isOccurrenceWriteEligibleSource,
   type EventSyncRouteState,
   type OccurrenceRunHealth,
 } from '@/lib/eventSyncRoutePolicy'
@@ -613,6 +614,9 @@ export async function runOccurrenceCron(
     }
     if (!slugs.includes(slug)) {
       invalid.push({ id: event.id, reason: 'out_of_scope' })
+      continue
+    }
+    if (!isOccurrenceWriteEligibleSource(event.source)) {
       continue
     }
     const prepared = prepareCanaryOccurrences([event], slug)

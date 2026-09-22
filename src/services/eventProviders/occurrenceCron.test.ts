@@ -181,6 +181,13 @@ describe('occurrence cron safety helpers', () => {
     expect(source).not.toMatch(/markRemovedEvents|markPastEvents/)
   })
 
+  it('keeps writeable assembly behind the Biletix-only write gate', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/services/eventProviders/occurrenceCron.ts'), 'utf8')
+    const start = source.indexOf('const writeable: NaEvent[] = []')
+    const end = source.indexOf('const reconciliation = countPairs(writeable)')
+    expect(source.slice(start, end)).toContain('isOccurrenceWriteEligibleSource')
+  })
+
   it('skips recurring BiletimGO discovery until biletimo.com authority is proven', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/services/eventProviders/occurrenceCron.ts'), 'utf8')
     expect(source).toContain('OCCURRENCE_CRON_INCLUDES_BILETIMGO')

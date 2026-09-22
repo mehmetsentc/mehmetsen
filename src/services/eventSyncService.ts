@@ -526,8 +526,10 @@ export const eventSyncService = {
   },
 
   async upsertOccurrencesOnly(events: NaEvent[]): Promise<OccurrenceCanaryUpsertResult> {
+    const { filterOccurrenceWriteEligible } = await import('@/lib/eventSyncRoutePolicy')
+    const eligible = filterOccurrenceWriteEligible(events)
     const db = getAdminFirestore()
-    const { inserted, updated, skipped } = await upsertEvents(db, events)
+    const { inserted, updated, skipped } = await upsertEvents(db, eligible)
     return {
       inserted,
       updated,

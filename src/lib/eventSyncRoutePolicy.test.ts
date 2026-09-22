@@ -3,7 +3,11 @@ import { BILETIX_CRON_STRATEGY } from '@/services/eventProviders/biletixDiscover
 import {
   OCCURRENCE_CRON_INCLUDES_BILETIMGO,
   OCCURRENCE_DARK_SHADOW_ONLY,
+  OCCURRENCE_WRITE_ELIGIBLE_SOURCES,
   OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED,
+  filterOccurrenceWriteEligible,
+  isOccurrenceWriteEligibleSource,
+  occurrenceWriteEligibility,
   allowWriteFromHttpRequest,
   classifyOccurrenceRunHealth,
   executeScheduledEventSync,
@@ -87,6 +91,58 @@ describe('event sync route state machine', () => {
     expect(OCCURRENCE_WRITE_REQUIRES_BILETIMGO_ENABLED).toBe(false)
     expect(OCCURRENCE_CRON_INCLUDES_BILETIMGO).toBe(false)
     expect(OCCURRENCE_DARK_SHADOW_ONLY).toBe(true)
+  })
+
+  it('allows only Biletix occurrence writes', () => {
+    expect(OCCURRENCE_WRITE_ELIGIBLE_SOURCES).toEqual(['biletix'])
+    expect(occurrenceWriteEligibility()).toEqual({
+      biletix: true,
+      bubilet: false,
+      biletimgo: false,
+      ticketmaster: false,
+    })
+    expect(isOccurrenceWriteEligibleSource('biletix')).toBe(true)
+    expect(isOccurrenceWriteEligibleSource('bubilet')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource('biletimgo')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource('ticketmaster')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource('paribu-cineverse')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource('firestore')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource('future-provider')).toBe(false)
+    expect(isOccurrenceWriteEligibleSource(undefined)).toBe(false)
+    expect(
+      filterOccurrenceWriteEligible([
+        { source: 'biletix' },
+        { source: 'bubilet' },
+        { source: 'biletimgo' },
+        { source: 'ticketmaster' },
+        { source: 'future-provider' },
+      ]).map((row) => row.source)
+    ).toEqual(['biletix'])
+  })
+
+  it('denies Bubilet/GO/Ticketmaster writes even when those rows are valid and WRITE is armed', () => {
+    const plan = selectScheduledEventSync(env({ occurrence: true, write: true }))
+    expect(plan.state).toBe('OCCURRENCE_WRITE')
+    expect(plan.allowWrite).toBe(true)
+    expect(OCCURRENCE_CRON_INCLUDES_BILETIMGO).toBe(false)
+    const mixed = [
+      { source: 'biletix', id: 'biletix_ok' },
+      { source: 'bubilet', id: 'bubilet_success' },
+      { source: 'biletimgo', id: 'go_manual' },
+      { source: 'ticketmaster', id: 'tm_diag' },
+      { source: 'future-provider', id: 'unknown_1' },
+    ]
+    expect(filterOccurrenceWriteEligible(mixed).map((row) => row.id)).toEqual(['biletix_ok'])
+  })
+
+  it('writes none when WRITE is false or KILL is true', () => {
+    const shadow = selectScheduledEventSync(env({ occurrence: true, write: false }))
+    expect(shadow.state).toBe('OCCURRENCE_SHADOW')
+    expect(shadow.allowWrite).toBe(false)
+    const killed = selectScheduledEventSync(env({ occurrence: true, write: true, kill: true }))
+    expect(killed.state).toBe('OCCURRENCE_SHADOW')
+    expect(killed.allowWrite).toBe(false)
+    expect(killed.invokeLegacy).toBe(false)
   })
 
   it('forces scheduled occurrence discovery onto Biletix city_partition', () => {
