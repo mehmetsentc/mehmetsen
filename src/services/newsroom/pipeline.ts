@@ -115,7 +115,8 @@ import {
   qualityDiscardSkipReason,
 } from '@/services/newsroom/pipelineQualityDiscard'
 import { decideStage1FailFast, recordStage1FailFastTelemetry } from '@/services/newsroom/stage1FailFast'
-import { routeAiEditor, authorFieldsFromEditor, aiEditorForcesDraft } from '@/lib/ai/editorial/editorRouter'
+import { routeAiEditor, authorFieldsFromEditor, aiEditorBlocksAutoPublish } from '@/lib/ai/editorial/editorRouter'
+import { applyScaleQualityOutcome } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
@@ -1911,7 +1912,10 @@ export async function processNewsroomArticle(
       if (byCategory) publishEditor = byCategory
     }
 
-    const personaRequiresApproval = aiEditorForcesDraft(publishEditor?.publishPolicy)
+    const personaRequiresApproval = aiEditorBlocksAutoPublish(publishEditor)
+    if (publishEditor) {
+      void applyScaleQualityOutcome(publishEditor, !gateDraft && !isFallbackContent).catch(() => undefined)
+    }
 
     const confidenceThreshold =
       rewriteAttempt > 0

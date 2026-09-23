@@ -62,6 +62,8 @@ export const Collections = {
   AI_MODEL_REGISTRY: 'aiModelRegistry',
   /** Per-call usage skeleton for cost dashboards */
   AI_USAGE_EVENTS: 'aiUsageEvents',
+  /** SCALE circuit breaker + rollout config (single-doc collection) */
+  AI_EDITORIAL_CONFIG: 'aiEditorialConfig',
 
   // ── Analytics ─────────────────────────────────────────────────────────────
   /** Daily aggregated page-view counters — doc id: YYYY-MM-DD */

@@ -29,6 +29,12 @@ export interface SeedEditorSpec {
   managedCategories?: string[]
   /** Province slug for city local editors (e.g. canakkale). */
   citySlug?: string | null
+  /** ISO-2 lowercase for Dünya/ülke desks (e.g. es). */
+  countrySlug?: string | null
+  /** District slug for ilçe desks (e.g. biga). */
+  districtSlug?: string | null
+  /** Explicit layer; inferred from slug prefixes when omitted. */
+  editorLayer?: 'national' | 'country' | 'province' | 'district'
   capabilities: Partial<AiEditorCapabilities>
   prompts: Partial<Record<AiPromptType, string>>
   modelAssignments?: Partial<Record<AiEditorTask, AiModelAssignment>>

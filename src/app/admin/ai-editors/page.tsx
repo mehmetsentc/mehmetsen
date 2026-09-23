@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { auth } from '@/lib/firebase/auth'
@@ -10,6 +10,18 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import type { AiEditorDocument } from '@/types/aiEditor'
 import { EDITOR_REGISTRY } from '@/services/newsroom/config'
+import {
+  inferEditorLayer,
+  inferEditorRegion,
+  type AiEditorLayer,
+} from '@/lib/ai/editorial/editorHierarchy'
+
+const LAYER_LABEL: Record<AiEditorLayer, string> = {
+  national: 'Ulusal',
+  country: 'Ülke',
+  province: 'İl',
+  district: 'İlçe',
+}
 
 const PIPELINE_COMPONENTS = Object.values(EDITOR_REGISTRY).filter(
   (e) => e.schedule === 'pipeline'
@@ -26,6 +38,10 @@ export default function AiEditorsAdminPage() {
   const [editors, setEditors] = useState<AiEditorDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
+  const [query, setQuery] = useState('')
+  const [layerFilter, setLayerFilter] = useState<AiEditorLayer | 'all'>('all')
+  const [regionFilter, setRegionFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -132,6 +148,61 @@ export default function AiEditorsAdminPage() {
   const autoPublish = editors.filter((e) => e.publishPolicy === 'AUTO_PUBLISH').length
   const cityEditors = editors.filter((e) => e.personaType === 'local_editor' && e.citySlug).length
 
+  const regions = useMemo(() => {
+    const set = new Set<string>()
+    for (const editor of editors) {
+      const region = inferEditorRegion(editor)
+      if (region) set.add(region)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [editors])
+
+  const categories = useMemo(() => {
+    const set = new Set<string>()
+    for (const editor of editors) {
+      for (const id of editor.managedCategories ?? editor.categoryIds ?? []) {
+        if (id) set.add(id)
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [editors])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase('tr-TR')
+    return editors.filter((editor) => {
+      const layer = inferEditorLayer(editor)
+      if (layerFilter !== 'all' && layer !== layerFilter) return false
+      const region = inferEditorRegion(editor)
+      if (regionFilter !== 'all' && region !== regionFilter) return false
+      const cats = editor.managedCategories ?? editor.categoryIds ?? []
+      if (categoryFilter !== 'all' && !cats.includes(categoryFilter)) return false
+      if (!q) return true
+      const hay = [
+        editor.name,
+        editor.slug,
+        editor.title,
+        editor.desk,
+        editor.citySlug,
+        editor.countrySlug,
+        editor.districtSlug,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('tr-TR')
+      return hay.includes(q)
+    })
+  }, [editors, query, layerFilter, regionFilter, categoryFilter])
+
+  const grouped = useMemo(() => {
+    const order: AiEditorLayer[] = ['national', 'country', 'province', 'district']
+    return order
+      .map((layer) => ({
+        layer,
+        items: filtered.filter((editor) => inferEditorLayer(editor) === layer),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [filtered])
+
   return (
     <div className="flex flex-col">
       <CMSHeader
@@ -145,6 +216,62 @@ export default function AiEditorsAdminPage() {
           <Kpi label="İl editörü" value={cityEditors} />
           <Kpi label="Köşe açık" value={columns} />
           <Kpi label="Otomatik yayın" value={`${autoPublish}/${editors.length || 0}`} small />
+        </div>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex min-w-[180px] flex-1 flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Ara
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="ad, slug, masa, bölge"
+              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs font-medium text-[rgb(var(--color-text))]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Katman
+            <select
+              value={layerFilter}
+              onChange={(e) => setLayerFilter(e.target.value as AiEditorLayer | 'all')}
+              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs font-medium text-[rgb(var(--color-text))]"
+            >
+              <option value="all">Tümü</option>
+              <option value="national">Ulusal</option>
+              <option value="country">Ülke</option>
+              <option value="province">İl</option>
+              <option value="district">İlçe</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Bölge
+            <select
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs font-medium text-[rgb(var(--color-text))]"
+            >
+              <option value="all">Tümü</option>
+              {regions.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Kategori
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-xs font-medium text-[rgb(var(--color-text))]"
+            >
+              <option value="all">Tümü</option>
+              {categories.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -199,20 +326,30 @@ export default function AiEditorsAdminPage() {
             <div className="px-5 py-16 text-center text-sm text-[rgb(var(--color-muted))]">
               Henüz AI editör yok. Seed ile varsayılan newsroom personasını oluşturun.
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-5 py-16 text-center text-sm text-[rgb(var(--color-muted))]">
+              Filtreyle eşleşen AI editör yok.
+            </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[rgb(var(--color-border))] bg-black/[0.02] text-xs uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Editör</th>
-                  <th className="px-4 py-3 font-semibold">Uzmanlık</th>
-                  <th className="px-4 py-3 font-semibold">Masa / İl</th>
-                  <th className="px-4 py-3 font-semibold">Politika</th>
-                  <th className="px-4 py-3 font-semibold">Durum</th>
-                  <th className="px-4 py-3 font-semibold" />
-                </tr>
-              </thead>
-              <tbody>
-                {editors.map((editor) => (
+            <div>
+              {grouped.map((group) => (
+                <div key={group.layer}>
+                  <div className="border-b border-[rgb(var(--color-border))] bg-black/[0.02] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                    {LAYER_LABEL[group.layer]} · {group.items.length}
+                  </div>
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-[rgb(var(--color-border))] bg-black/[0.02] text-xs uppercase tracking-wide text-[rgb(var(--color-muted))]">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Editör</th>
+                        <th className="px-4 py-3 font-semibold">Uzmanlık</th>
+                        <th className="px-4 py-3 font-semibold">Masa / İl</th>
+                        <th className="px-4 py-3 font-semibold">Politika</th>
+                        <th className="px-4 py-3 font-semibold">Durum</th>
+                        <th className="px-4 py-3 font-semibold" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((editor) => (
                   <tr
                     key={editor.id}
                     className="border-b border-[rgb(var(--color-border))] last:border-0"
@@ -266,9 +403,12 @@ export default function AiEditorsAdminPage() {
                       </Link>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

@@ -5,6 +5,14 @@ import { normalizeCitySlug } from '@/constants/cities'
 import { slugifyCity } from '@/lib/location'
 import { isYerelCategoryTree, isKibrisCategoryTree } from '@/constants/config'
 import { resolveManagedCategories, resolveEditorCitySlug } from './editorPastNews'
+import {
+  countryEditorSlug,
+  districtEditorSlug,
+  filterEditorsForCurrentHierarchy,
+  inferEditorLayer,
+  isExpandedEditorHierarchyEnabled,
+} from './editorHierarchy'
+import { isScalePublishLocked } from './scaleHardening'
 
 /** Default category → seed editor slug (Admin can override via editor.categoryIds). */
 export const FALLBACK_CATEGORY_EDITOR_SLUG: Record<string, string> = {
@@ -81,7 +89,9 @@ const CACHE_MS = 60_000
 
 async function activeEditors(): Promise<AiEditorDocument[]> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.editors
-  const editors = await listAiEditors({ status: 'active', limit: 300 })
+  const { loadExpandedHierarchyCircuitFromStore } = await import('./scaleCircuitBreakerStore')
+  await loadExpandedHierarchyCircuitFromStore().catch(() => undefined)
+  const editors = await listAiEditors({ status: 'active', limit: 4000 })
   cache = { at: Date.now(), editors }
   return editors
 }
@@ -99,6 +109,7 @@ export interface EditorRouteInput {
   text?: string | null
   citySlug?: string | null
   districtSlug?: string | null
+  countrySlug?: string | null
   /** Below this confidence, fall back to Selin. */
   minConfidence?: number
 }
@@ -132,6 +143,13 @@ export function aiEditorForcesDraft(
   policy: AiEditorDocument['publishPolicy'] | null | undefined
 ): boolean {
   return policy === 'DRAFT_ONLY'
+}
+
+/** SCALE P2: locked desks stay in the onay kuyruğu until consecutive PASS unlock. */
+export function aiEditorBlocksAutoPublish(editor: AiEditorDocument | null | undefined): boolean {
+  if (!editor) return false
+  if (aiEditorForcesDraft(editor.publishPolicy)) return true
+  return isScalePublishLocked(editor)
 }
 
 function editorManagesCategory(editor: AiEditorDocument, categoryId: string): boolean {
@@ -169,7 +187,9 @@ export function pickAiEditorFromList(
   editors: AiEditorDocument[],
   input: EditorRouteInput
 ): AiEditorDocument | null {
-  const assignable = editors.filter((e) => e.status === 'active' && isAssignableNewsEditor(e))
+  const assignable = filterEditorsForCurrentHierarchy(
+    editors.filter((e) => e.status === 'active' && isAssignableNewsEditor(e))
+  )
   if (assignable.length === 0) return null
 
   if (input.preferredAiEditorId) {
@@ -193,6 +213,35 @@ export function pickAiEditorFromList(
     ''
 
   const city = citySlug?.trim().toLowerCase() || ''
+  const district = (input.districtSlug || hint?.districtSlug || '').trim().toLowerCase()
+  const country = (input.countrySlug || hint?.countrySlug || '').trim().toLowerCase()
+
+  // SCALE P1.1: ilçe → il zinciri. Flag default false — existing city desks unchanged.
+  if (isExpandedEditorHierarchyEnabled() && city && district) {
+    if (categoryId) {
+      const districtDesks = assignable.filter(
+        (e) =>
+          inferEditorLayer(e) === 'district' &&
+          resolveEditorCitySlug(e) === city &&
+          e.districtSlug === district &&
+          editorManagesCategory(e, categoryId)
+      )
+      const specific = districtDesks.find(
+        (e) => e.slug !== districtEditorSlug(city, district)
+      )
+      if (specific) return specific
+    }
+    const districtGeneral =
+      findBySlug(assignable, districtEditorSlug(city, district)) ||
+      assignable.find(
+        (e) =>
+          inferEditorLayer(e) === 'district' &&
+          resolveEditorCitySlug(e) === city &&
+          e.districtSlug === district &&
+          e.slug === districtEditorSlug(city, district)
+      )
+    if (districtGeneral) return districtGeneral
+  }
 
   // City category desks beat national desks (Çanakkale Spor ≠ Deniz Erdem).
   if (city && categoryId) {
@@ -244,6 +293,21 @@ export function pickAiEditorFromList(
     }
   }
 
+  if (isExpandedEditorHierarchyEnabled() && country) {
+    if (categoryId) {
+      const countryDesks = assignable.filter(
+        (e) =>
+          inferEditorLayer(e) === 'country' &&
+          (e.countrySlug || '').toLowerCase() === country &&
+          editorManagesCategory(e, categoryId)
+      )
+      const specific = countryDesks.find((e) => e.slug !== countryEditorSlug(country))
+      if (specific) return specific
+    }
+    const countryGeneral = findBySlug(assignable, countryEditorSlug(country))
+    if (countryGeneral) return countryGeneral
+  }
+
   if (categoryId) {
     const byList = assignable.find((e) => editorManagesCategory(e, categoryId))
     if (byList) return byList
@@ -265,8 +329,8 @@ export function partitionEditorsForSelection(
   editors: AiEditorDocument[],
   opts: { categoryId?: string | null; citySlug?: string | null }
 ): { recommended: AiEditorDocument[]; others: AiEditorDocument[] } {
-  const assignable = editors.filter(
-    (e) => e.status === 'active' && isAssignableNewsEditor(e)
+  const assignable = filterEditorsForCurrentHierarchy(
+    editors.filter((e) => e.status === 'active' && isAssignableNewsEditor(e))
   )
   const categoryId = opts.categoryId?.trim() || ''
   const city = opts.citySlug?.trim().toLowerCase() || ''
@@ -310,12 +374,14 @@ export function routeEditorialFromList(
     ? normalizeCitySlug(cityRaw.includes('-') || /^[a-z0-9-]+$/.test(cityRaw) ? cityRaw : slugifyCity(cityRaw))
     : null
   const districtSlug = input.districtSlug || hint?.districtSlug || null
-  const countrySlug = hint?.countrySlug || null
+  const countrySlug = input.countrySlug || hint?.countrySlug || null
 
   const editor = pickAiEditorFromList(editors, {
     ...input,
     categoryId,
     citySlug,
+    districtSlug,
+    countrySlug,
   })
 
   const minConfidence = input.minConfidence ?? 0.55
