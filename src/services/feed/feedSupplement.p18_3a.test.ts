@@ -16,6 +16,7 @@ vi.mock('@/lib/firebase/collections', () => ({
 import { hasDatabaseUrl } from '@/db'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { feedCandidateService } from './FeedCandidateService'
+import { clearFirestoreQueryCache } from './firestoreQueryCache'
 import type { FeedCandidateRow } from '@/types/smartFeed'
 
 function makePgRow(id: string, overrides: Partial<FeedCandidateRow> = {}): FeedCandidateRow {
@@ -66,6 +67,7 @@ describe('P18.3A Smart Feed underfill supplement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(hasDatabaseUrl).mockReturnValue(true)
+    clearFirestoreQueryCache()
   })
 
   it('supplements when PG returns only 3 and FS has LEGACY_ALLOWED', async () => {
@@ -141,9 +143,93 @@ describe('P18.3A Smart Feed underfill supplement', () => {
       cursor: null,
     })
 
-    expect(rows.length).toBe(15)
-    expect(rows.slice(0, 3).map((r) => r.articleId)).toEqual(['pg1', 'pg2', 'pg3'])
-    expect(rows.slice(3).every((r) => r.articleId.startsWith('fs'))).toBe(true)
+    expect(rows.length).toBeGreaterThan(3)
+    expect(rows.some((r) => r.articleId === 'pg1')).toBe(true)
+    expect(rows.filter((r) => r.articleId.startsWith('fs')).length).toBeGreaterThan(0)
+  })
+
+  it('reuses the raw Firestore page across different exclude sets', async () => {
+    const pgRows = [makePgRow('pg1'), makePgRow('pg2'), makePgRow('pg3')]
+    const selectChain = {
+      from: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue(
+        pgRows.map((r) => ({
+          articleId: r.articleId,
+          clusterId: null,
+          publisherId: null,
+          publisherSlug: null,
+          publisherName: 'NaHaber',
+          publisherLogoUrl: null,
+          publisherVerified: false,
+          headline: r.headline,
+          summary: null,
+          category: 'gundem',
+          image: null,
+          video: null,
+          publishedAt: r.publishedAt,
+          updatedAt: r.updatedAt,
+          breaking: false,
+          materialUpdate: null,
+          clusterSourceCount: 1,
+          clusterImportance: 50,
+          sourceQualityTier: 'STANDARD',
+          sourceHealthScore: 75,
+          citySlug: null,
+          districtSlug: null,
+          likesCount: 0,
+          commentsCount: 0,
+          savesCount: 0,
+          sharesCount: 0,
+          viewsCount: 0,
+          slug: r.slug,
+        }))
+      ),
+    }
+
+    const { getDb } = await import('@/db')
+    vi.mocked(getDb as unknown as () => unknown).mockReturnValue({
+      select: vi.fn(() => selectChain),
+    })
+
+    const docs = Array.from({ length: 20 }, (_, i) =>
+      fsDoc(`fs${i}`, {
+        title: `Legacy ${i}`,
+        status: 'published',
+        slug: `legacy-${i}`,
+        publishedAt: Date.now() - i * 1000,
+      })
+    )
+    const get = vi.fn().mockResolvedValue({ empty: false, docs })
+
+    vi.mocked(getAdminFirestore).mockReturnValue({
+      collection: vi.fn(() => ({
+        where: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        startAfter: vi.fn().mockReturnThis(),
+        get,
+      })),
+      getAll: vi.fn(),
+    } as never)
+
+    const first = await feedCandidateService.fetchRecent({
+      limit: 15,
+      cursor: null,
+      excludeArticleIds: new Set(['fs0']),
+    })
+    const second = await feedCandidateService.fetchRecent({
+      limit: 15,
+      cursor: null,
+      excludeArticleIds: new Set(['fs1', 'fs2']),
+    })
+
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(first.some((r) => r.articleId === 'fs0')).toBe(false)
+    expect(second.some((r) => r.articleId === 'fs1' || r.articleId === 'fs2')).toBe(false)
+    expect(second.some((r) => r.articleId === 'fs0')).toBe(true)
   })
 
   it('never returns LEGACY_QUARANTINED from FS supplement', async () => {

@@ -32,6 +32,15 @@ describe('P18 infinite category archive', () => {
     expect(candidateSrc).toContain('category-native')
   })
 
+  it('caches raw Firestore pages without baking exclude into the cache key', () => {
+    expect(candidateSrc).toContain('getOrSetCache')
+    expect(candidateSrc).toContain('fs-fallback:')
+    expect(candidateSrc).toContain('fs-local:')
+    expect(candidateSrc).toContain('cacheHit')
+    expect(candidateSrc).toContain('exclude.size >= 15')
+    expect(candidateSrc).toContain('perCategoryQuota')
+  })
+
   it('category path uses session exclusion and does not soft-refill by dropping seen', () => {
     expect(feedServiceSrc).toContain('session-wide exclusion')
     expect(feedServiceSrc).toContain('never drop seen to fake infinity')
