@@ -18,6 +18,7 @@ import {
   managedIdsForDesk,
   type CityCategoryDeskId,
 } from './seedCityCategoryEditors'
+import { scaleJournalistPersona } from './scaleEditorPersona'
 
 export function provinceCategoryEditorSlug(citySlug: string, deskId: CityCategoryDeskId): string {
   return `il-${citySlug.trim().toLowerCase()}-${deskId}`
@@ -34,13 +35,21 @@ export function buildProvinceCategoryEditorSpec(
   const managed = managedIdsForDesk(deskId)
   const districts = getDistrictsForProvince(city).map((d) => d.slug)
   const slug = provinceCategoryEditorSlug(city, deskId)
+  const persona = scaleJournalistPersona({
+    slug,
+    deskLabel: `${province.name} ${label}`,
+    placeName: province.name,
+    layer: 'province',
+  })
 
   return {
     slug,
-    name: `${province.name} ${label} AI`,
-    title: `${province.name} ${label} AI Editörü`,
-    shortBio: `${province.name} ${label.toLocaleLowerCase('tr-TR')} masası; yalnızca bu il ve bu kategori.`,
-    bio: `NaHaber ${province.name} ${label} AI editörü. İl dışına çıkma; başka kategoriyi bu masaya çekme.`,
+    name: persona.name,
+    title: persona.title,
+    shortBio: persona.shortBio,
+    bio: persona.bio,
+    avatarUrl: persona.avatarUrl,
+    coverUrl: persona.coverUrl,
     columnName: null,
     primarySpecialization: `${province.name} ${label}`,
     specializations: [province.name, label],
@@ -68,7 +77,7 @@ export function buildProvinceCategoryEditorSpec(
     prompts: {
       core: `${GLOBAL_NEWSROOM_RULES}
 
-Sen ${province.name} ${label} AI Editörü'sün, NaHaber ${province.name} ${label} masası.
+Sen ${persona.name}'sın, NaHaber ${province.name} ${label} masası.
 Yalnızca ${province.name} ${label} masasında yaz. İl dışına çıkma; başka kategoriyi bu masaya çekme.
 Her haber: NEREDE? HANGİ İLÇE? HANGİ KURUM? NE OLDU? NE ZAMAN? KAYNAK?
 Sen bir AI editörsün; sahte insan kimliği / diploma uydurma.`,

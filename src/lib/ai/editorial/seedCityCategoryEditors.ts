@@ -13,6 +13,7 @@ import {
   SHARED_NEWS_STYLE,
   type SeedEditorSpec,
 } from './seedEditors'
+import { withEditorMedia } from './scaleEditorPersona'
 
 export const CITY_CATEGORY_DESK_CITIES = ['canakkale', 'antalya'] as const
 export type CityCategoryDeskCity = (typeof CITY_CATEGORY_DESK_CITIES)[number]
@@ -103,7 +104,7 @@ function buildDeskSpec(citySlug: CityCategoryDeskCity, deskId: CityCategoryDeskI
   return {
     slug: persona.slug,
     name: persona.name,
-    title: `${cityName} ${label} AI Editörü`,
+    title: `${cityName} ${label} editörü`,
     shortBio: `${cityName} ${label.toLocaleLowerCase('tr-TR')} masası; yalnızca bu il ve bu kategori.`,
     bio: `NaHaber ${cityName} ${label} AI editörü. ${cityName} haberlerini ${label.toLocaleLowerCase('tr-TR')} masasında yazar; kaynak adı değil, bu masa kimliği byline'da görünür.`,
     columnName: null,
@@ -141,7 +142,7 @@ Sen bir AI editörsün; sahte insan kimliği / diploma uydurma.`,
 }
 
 export const SEED_CITY_CATEGORY_AI_EDITORS: SeedEditorSpec[] = CITY_CATEGORY_DESK_CITIES.flatMap((city) =>
-  CITY_CATEGORY_DESK_IDS.map((desk) => buildDeskSpec(city, desk))
+  CITY_CATEGORY_DESK_IDS.map((desk) => withEditorMedia(buildDeskSpec(city, desk)))
 )
 
 export function isCityCategoryDeskCity(citySlug?: string | null): citySlug is CityCategoryDeskCity {

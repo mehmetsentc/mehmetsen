@@ -90,6 +90,8 @@ async function seedSpec(spec: SeedEditorSpec): Promise<'created' | 'exists'> {
     title: spec.title,
     shortBio: spec.shortBio,
     bio: spec.bio,
+    avatarUrl: spec.avatarUrl ?? null,
+    coverUrl: spec.coverUrl ?? null,
     columnName: spec.columnName,
     primarySpecialization: spec.primarySpecialization,
     specializations: spec.specializations,

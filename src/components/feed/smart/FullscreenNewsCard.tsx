@@ -23,6 +23,30 @@ import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import { SmartFeedCardVideo } from '@/components/feed/smart/SmartFeedCardVideo'
 import type { FeedItemDto } from '@/types/smartFeed'
 
+function EditorAvatar({
+  name,
+  src,
+}: {
+  name: string
+  src?: string | null
+}) {
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        className="h-7 w-7 shrink-0 rounded-full bg-[rgb(var(--color-brand))] object-cover"
+      />
+    )
+  }
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
+      {name.slice(0, 1)}
+    </span>
+  )
+}
+
 function formatRelativeTime(dateStr?: string | null): string | null {
   if (!dateStr) return null
   try {
@@ -165,7 +189,7 @@ export function FullscreenNewsCard({
   showSheetOpenCoach = false,
   onSheetAffordanceActivate,
   onDiscoveryArticleOpen,
-  bylineMode = 'publisher',
+  bylineMode = 'editor',
   fullBleed = false,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
@@ -332,7 +356,7 @@ export function FullscreenNewsCard({
           {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
         </span>
       )}
-      <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+      <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline">
         {item.publisher.name}
       </span>
       {publisherHref ? (
@@ -782,10 +806,8 @@ export function FullscreenNewsCard({
                     className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
                     data-testid="smart-feed-editor-link"
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
-                      {item.authorName.slice(0, 1)}
-                    </span>
-                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                    <EditorAvatar name={item.authorName} src={item.authorAvatarUrl} />
+                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
                       {item.authorName}
                     </span>
                     {timeLabel ? (
@@ -796,10 +818,8 @@ export function FullscreenNewsCard({
                   </Link>
                 ) : (
                   <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
-                      {item.authorName.slice(0, 1)}
-                    </span>
-                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                    <EditorAvatar name={item.authorName} src={item.authorAvatarUrl} />
+                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
                       {item.authorName}
                     </span>
                     {timeLabel ? (

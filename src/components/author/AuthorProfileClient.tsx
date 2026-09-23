@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { FollowButton } from '@/components/profile/FollowButton'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { ROUTES } from '@/constants/routes'
 import type { Post } from '@/types/post'
 import type { PublicAuthorProfile } from '@/services/newsService.server'
 import { cn } from '@/lib/utils'
+import { AuthorProfileActions } from '@/components/author/AuthorProfileActions'
 
 type TabId = 'all' | 'news' | 'columns' | 'videos' | 'about'
 
@@ -47,18 +47,7 @@ export function AuthorProfileClient({
 
   return (
     <div>
-      {author.isAI ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex rounded-md bg-[rgb(var(--color-brand))]/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-[rgb(var(--color-brand))]">
-            NaHaber AI Editörü
-          </span>
-          <FollowButton targetUserId={author.uid} isFollowing={false} />
-        </div>
-      ) : (
-        <div className="mb-4">
-          <FollowButton targetUserId={author.uid} isFollowing={false} />
-        </div>
-      )}
+      <AuthorProfileActions author={author} />
 
       <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-[rgb(var(--color-border))] pb-px" aria-label="Yazar sekmeleri">
         {TABS.map((t) => (

@@ -18,6 +18,7 @@ import {
   SHARED_NEWS_STYLE,
   type SeedEditorSpec,
 } from './seedEditors'
+import { withEditorMedia } from './scaleEditorPersona'
 
 const YEREL_MANAGED = [YEREL_HABER_CATEGORY_ID, ...YEREL_SUBCATEGORY_IDS]
 
@@ -83,7 +84,7 @@ function buildCityEditorSpec(
   return {
     slug: `yerel-${citySlug}`,
     name,
-    title: `${cityName} Yerel AI Editörü`,
+    title: `${cityName} yerel editörü`,
     shortBio: `${cityName} il ve ilçe haberciliği; kurum, konum ve yerel gündem.`,
     bio: `NaHaber ${cityName} yerel AI editörü. İl/ilçe, belediye, valilik ve yerel kurum odaklı; ulusal masaya yükseltme bayrağı koyabilir.`,
     columnName: null,
@@ -128,7 +129,7 @@ Spot ve başlıkta gereksiz "${cityName}'de şok" kalıbı kullanma.`,
 
 /** 81 province local editors — seeded alongside national personas. */
 export const SEED_CITY_AI_EDITORS: SeedEditorSpec[] = TURKISH_PROVINCES.map((p, i) =>
-  buildCityEditorSpec(p, i)
+  withEditorMedia(buildCityEditorSpec(p, i))
 )
 
 /** Ensure generated display names are unique (salts last name if needed). */

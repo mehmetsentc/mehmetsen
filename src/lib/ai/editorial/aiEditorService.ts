@@ -18,10 +18,11 @@ import { turkeyYmdNow } from '@/lib/turkeyCalendar'
 import { defaultModelAssignmentsForSeed, SEED_AI_EDITORS, type SeedEditorSpec } from './seedEditors'
 import { SEED_CITY_AI_EDITORS } from './seedCityEditors'
 import { SEED_CITY_CATEGORY_AI_EDITORS } from './seedCityCategoryEditors'
+import { withEditorMedia, IDENTITY_NAME_LOCK_SLUGS } from './scaleEditorPersona'
 
 /** National personas + 81 city local editors + Çanakkale/Antalya category desks. */
 export function allSeedEditorSpecs(): SeedEditorSpec[] {
-  return [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS, ...SEED_CITY_CATEGORY_AI_EDITORS]
+  return [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS, ...SEED_CITY_CATEGORY_AI_EDITORS].map(withEditorMedia)
 }
 
 export function findSeedEditorSpecBySlug(slug?: string | null): SeedEditorSpec | null {
@@ -392,13 +393,17 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     ? spec.managedCategories
     : spec.categoryIds
   const existing = await getAiEditorBySlug(spec.slug)
+  const lockName = (IDENTITY_NAME_LOCK_SLUGS as readonly string[]).includes(spec.slug)
   if (existing && existing.status === 'active') {
     await updateAiEditor(
       existing.id,
       {
+        name: lockName ? existing.name : spec.name,
         title: spec.title,
         shortBio: spec.shortBio,
         bio: spec.bio,
+        avatarUrl: spec.avatarUrl ?? existing.avatarUrl,
+        coverUrl: spec.coverUrl ?? existing.coverUrl,
         columnName: spec.columnName,
         primarySpecialization: spec.primarySpecialization,
         specializations: spec.specializations,
@@ -430,9 +435,12 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
       existing.id,
       {
         status: 'active',
+        name: lockName ? existing.name : spec.name,
         title: spec.title,
         shortBio: spec.shortBio,
         bio: spec.bio,
+        avatarUrl: spec.avatarUrl ?? existing.avatarUrl,
+        coverUrl: spec.coverUrl ?? existing.coverUrl,
         columnName: spec.columnName,
         primarySpecialization: spec.primarySpecialization,
         specializations: spec.specializations,
@@ -464,6 +472,8 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     title: spec.title,
     shortBio: spec.shortBio,
     bio: spec.bio,
+    avatarUrl: spec.avatarUrl ?? null,
+    coverUrl: spec.coverUrl ?? null,
     columnName: spec.columnName,
     primarySpecialization: spec.primarySpecialization,
     specializations: spec.specializations,
@@ -529,12 +539,20 @@ export async function enableAutoPublishForActiveEditors(
  * Mevcut editörlerin prompt'larını seed'den yenile (versioned).
  * Karakter + haber tarzı bir kez güncellenir; sonraki haberlerde geçerli olur.
  */
-export async function refreshStylePromptsFromSeed(changedBy: string | null): Promise<{
+export async function refreshStylePromptsFromSeed(
+  changedBy: string | null,
+  excludeEditorSlugs?: string[]
+): Promise<{
   updated: string[]
   missing: string[]
+  skipped: string[]
 }> {
   const updated: string[] = []
   const missing: string[] = []
+  const skipped: string[] = []
+  const exclude = new Set(
+    (excludeEditorSlugs ?? []).map((s) => normalizeEditorSlug(s)).filter(Boolean)
+  )
   const promptTypes: AiPromptType[] = [
     'core',
     'news',
@@ -547,6 +565,10 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
     'source',
   ]
   for (const spec of allSeedEditorSpecs()) {
+    if (exclude.has(normalizeEditorSlug(spec.slug))) {
+      skipped.push(spec.slug)
+      continue
+    }
     const existing = await getAiEditorBySlug(spec.slug)
     if (!existing) {
       missing.push(spec.slug)
@@ -575,7 +597,12 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
         fallbackEditorSlug: spec.fallbackEditorSlug ?? null,
         localConfig: spec.localConfig ?? null,
         assignableForNews: spec.assignableForNews ?? true,
-        capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
+        capabilities: {
+          ...DEFAULT_AI_CAPABILITIES,
+          ...spec.capabilities,
+          memoryEnabled:
+            existing.capabilities?.memoryEnabled === true || spec.capabilities?.memoryEnabled === true,
+        },
       },
       changedBy
     )
@@ -592,5 +619,5 @@ export async function refreshStylePromptsFromSeed(changedBy: string | null): Pro
     }
     updated.push(spec.slug)
   }
-  return { updated, missing }
+  return { updated, missing, skipped }
 }

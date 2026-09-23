@@ -1,7 +1,9 @@
 import { TURKISH_PROVINCES } from '@/constants/cities'
+import { FALLBACK_CATEGORY_EDITOR_SLUG } from '@/lib/ai/editorial/categoryEditorFallback'
 import { findCityCategoryEditorSpec } from '@/lib/ai/editorial/seedCityCategoryEditors'
 import { SEED_CITY_AI_EDITORS } from '@/lib/ai/editorial/seedCityEditors'
 import { SEED_AI_EDITORS } from '@/lib/ai/editorial/seedEditors'
+import { editorPortraitUrl } from '@/lib/ai/editorial/scaleEditorPersona'
 import { syntheticAiAuthorUid } from '@/types/aiEditor'
 
 const CITY_NAMES = TURKISH_PROVINCES.map((p) => p.name.toLocaleLowerCase('tr-TR'))
@@ -64,6 +66,32 @@ function findSeedEditor(opts: {
   return null
 }
 
+function nationalEditorForCategory(categoryId?: string | null) {
+  const cat = categoryId?.trim().toLowerCase() || 'gundem'
+  const slug = FALLBACK_CATEGORY_EDITOR_SLUG[cat] ?? 'selin-aras'
+  return SEED_AI_EDITORS.find((e) => e.slug === slug) ?? SEED_AI_EDITORS.find((e) => e.slug === 'selin-aras') ?? null
+}
+
+export type FeedEditorByline = {
+  name: string
+  slug: string
+  authorUid: string
+  avatarUrl: string
+}
+
+function bylineFromSeed(
+  seed: { slug: string; name: string },
+  name: string,
+  authorUid: string
+): FeedEditorByline {
+  return {
+    name,
+    slug: seed.slug,
+    authorUid,
+    avatarUrl: editorPortraitUrl(seed.slug),
+  }
+}
+
 export function resolveFeedEditorByline(opts: {
   authorName?: string | null
   authorId?: string | null
@@ -71,7 +99,7 @@ export function resolveFeedEditorByline(opts: {
   citySlug?: string | null
   categoryId?: string | null
   publisherName?: string | null
-}): { name: string; slug: string; authorUid: string } | null {
+}): FeedEditorByline | null {
   const desk = findCityCategoryEditorSpec(opts.citySlug, opts.categoryId)
   const seed = findSeedEditor(opts)
   const rawName = opts.authorName?.trim() || null
@@ -79,17 +107,17 @@ export function resolveFeedEditorByline(opts: {
 
   if (seed) {
     const existingId = opts.authorId?.trim() || ''
-    return {
-      name: useSeedName ? seed.name : rawName!,
-      slug: seed.slug,
-      authorUid: desk
+    return bylineFromSeed(
+      seed,
+      useSeedName ? seed.name : rawName!,
+      desk
         ? syntheticAiAuthorUid(seed.slug)
         : !useSeedName && existingId
           ? existingId
           : existingId.startsWith('ai_editor_')
             ? existingId
-            : syntheticAiAuthorUid(seed.slug),
-    }
+            : syntheticAiAuthorUid(seed.slug)
+    )
   }
 
   if (rawName && !isSourceLikeName(rawName, opts.publisherName)) {
@@ -110,8 +138,11 @@ export function resolveFeedEditorByline(opts: {
       name: rawName,
       slug,
       authorUid: opts.authorId?.trim() || '',
+      avatarUrl: editorPortraitUrl(slug),
     }
   }
 
-  return null
+  const national = nationalEditorForCategory(opts.categoryId)
+  if (!national) return null
+  return bylineFromSeed(national, national.name, syntheticAiAuthorUid(national.slug))
 }

@@ -1,0 +1,295 @@
+{
+  "usage": {
+    "scanned": 250,
+    "stage4": 54,
+    "filled": {
+      "editorId": 0,
+      "newsId": 0,
+      "publishScore": 54,
+      "gateDecision": 54
+    },
+    "samples": [
+      {
+        "agentName": "category_classifier",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": null,
+        "gateDecision": null,
+        "task": null
+      },
+      {
+        "agentName": "stage4_gate",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": 100,
+        "gateDecision": "publish",
+        "task": null
+      },
+      {
+        "agentName": "stage3_category",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": null,
+        "gateDecision": null,
+        "task": null
+      },
+      {
+        "agentName": "category_classifier",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": null,
+        "gateDecision": null,
+        "task": null
+      },
+      {
+        "agentName": "stage1_writer",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": null,
+        "gateDecision": null,
+        "task": null
+      },
+      {
+        "agentName": "stage4_gate",
+        "editorId": null,
+        "newsId": null,
+        "publishScore": 100,
+        "gateDecision": "publish",
+        "task": null
+      }
+    ]
+  },
+  "pilot": {
+    "id": "ai_editor_yerel-eskisehir",
+    "slug": "yerel-eskisehir",
+    "name": "Işıl Dinç",
+    "citySlug": "eskisehir",
+    "personaType": "local_editor",
+    "categoryIds": [
+      "yerel-haber",
+      "yerel-asayis",
+      "yerel-gundem",
+      "yerel-siyaset",
+      "yerel-spor",
+      "yerel-futbol",
+      "yerel-basketbol",
+      "yerel-voleybol",
+      "yerel-hentbol",
+      "yerel-atletizm",
+      "yerel-gures",
+      "yerel-tenis",
+      "yerel-karate",
+      "yerel-yuzme",
+      "yerel-motor-sporlari",
+      "yerel-ekonomi",
+      "yerel-finans",
+      "yerel-emlak",
+      "yerel-enerji",
+      "yerel-kariyer",
+      "yerel-teknoloji",
+      "yerel-etkinlik",
+      "yerel-sinema",
+      "yerel-kultur",
+      "yerel-tiyatro",
+      "yerel-konser",
+      "yerel-festival",
+      "yerel-magazin",
+      "yerel-yasam",
+      "yerel-saglik",
+      "yerel-bilim",
+      "yerel-egitim",
+      "yerel-cevre-iklim",
+      "yerel-din-inanc",
+      "yerel-gastronomi",
+      "yerel-otomobil",
+      "yerel-meteoroloji",
+      "yerel-turizm",
+      "yerel-gezi",
+      "yerel-tarih",
+      "yerel-oyun-espor",
+      "yerel-duyuru"
+    ],
+    "memoryEnabledBefore": false,
+    "memoryEnabledAfter": true,
+    "appliedThisRun": true,
+    "reasonTr": "Orta ölçekli il yerel masası: mega kent değil, ilçe-genel değil, tek citySlug, dar yerel kategori. Arşiv tekrarlayan kurum/belediye haberine elverişli.",
+    "candidateCount": 858,
+    "preferredFound": [
+      "yerel-eskisehir",
+      "yerel-konya",
+      "yerel-samsun",
+      "yerel-gaziantep",
+      "yerel-kayseri",
+      "yerel-denizli",
+      "yerel-mersin",
+      "yerel-bursa"
+    ],
+    "otherLocalMemoryEnabled": []
+  },
+  "editorialMemoryMode": "SHADOW",
+  "injectionEnabled": false,
+  "shadowSamples": [
+    {
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 1,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "results": [
+        {
+          "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+          "publishedAt": "2026-09-04T12:37:58.464Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "LIKELY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN",
+            "SHARED_NAMED_TOKEN",
+            "TITLE_OVERLAP"
+          ],
+          "retrievalScore": 2.28,
+          "ageBucket": "8-30d"
+        }
+      ]
+    },
+    {
+      "headline": "Derin uyku Alzheimer'ı yavaşlatıyor",
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 1,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "results": [
+        {
+          "headline": "Derin uyku Alzheimer'ı yavaşlatıyor",
+          "publishedAt": "2026-09-04T12:37:19.398Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "LIKELY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN",
+            "SHARED_NAMED_TOKEN",
+            "TITLE_OVERLAP"
+          ],
+          "retrievalScore": 2.28,
+          "ageBucket": "8-30d"
+        }
+      ]
+    },
+    {
+      "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 2,
+        "1-3mo": 1,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "results": [
+        {
+          "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+          "publishedAt": "2026-09-01T13:10:41.490Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "LIKELY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN",
+            "SHARED_NAMED_TOKEN",
+            "TITLE_OVERLAP",
+            "SHARED_NUMBER"
+          ],
+          "retrievalScore": 2.5967,
+          "ageBucket": "8-30d"
+        },
+        {
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "publishedAt": "2026-08-31T09:26:15.091Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.38,
+          "ageBucket": "8-30d"
+        },
+        {
+          "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+          "publishedAt": "2026-08-23T12:35:00.000Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.34,
+          "ageBucket": "1-3mo"
+        }
+      ]
+    },
+    {
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 2,
+        "1-3mo": 1,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "results": [
+        {
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "publishedAt": "2026-08-31T09:26:15.091Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "LIKELY_RELATED",
+          "evidence": [
+            "SHARED_GEO",
+            "SHARED_TOPIC_TOKEN",
+            "SHARED_NAMED_TOKEN",
+            "TITLE_OVERLAP"
+          ],
+          "retrievalScore": 3.23,
+          "ageBucket": "8-30d"
+        },
+        {
+          "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+          "publishedAt": "2026-09-01T13:10:41.490Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.38,
+          "ageBucket": "8-30d"
+        },
+        {
+          "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+          "publishedAt": "2026-08-23T12:35:00.000Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.34,
+          "ageBucket": "1-3mo"
+        }
+      ]
+    }
+  ],
+  "bestExamplesPreview": {
+    "examples": [],
+    "ifInjectedBlock": ""
+  }
+}

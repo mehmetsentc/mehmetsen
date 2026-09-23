@@ -85,6 +85,7 @@ import { resolveCountryFromText } from '@/constants/countries'
 import { shouldStripSuggestedCityForCategory } from '@/lib/news/neverLocalVerticals'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
 import { withAiUsageContext, getAiUsageContext } from '@/lib/ai/usage/context'
+import { recordPipelinePersistUsage } from '@/lib/ai/usage/pipelinePersist'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { buildBodyBlocksFromAi } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
@@ -2145,6 +2146,14 @@ export async function processNewsroomArticle(
           title: rewritten.title,
           citySlug: doc.citySlug,
         })
+        recordPipelinePersistUsage({
+          newsId: targetNewsId,
+          editorId: routedEditor?.id,
+          operation: 'updated',
+          published: false,
+          gateDecision: rewritten.gateDecision,
+          publishScore: rewritten.publishScore,
+        })
         return { outcome: 'updated', lowConfidence: true, newsId: targetNewsId }
       }
 
@@ -2170,6 +2179,14 @@ export async function processNewsroomArticle(
         newsId: targetNewsId,
         title: rewritten.title,
         citySlug: doc.citySlug,
+      })
+      recordPipelinePersistUsage({
+        newsId: targetNewsId,
+        editorId: routedEditor?.id,
+        operation: 'updated',
+        published: true,
+        gateDecision: rewritten.gateDecision,
+        publishScore: rewritten.publishScore,
       })
       return { outcome: 'updated', lowConfidence, newsId: targetNewsId }
     }
@@ -2226,6 +2243,14 @@ export async function processNewsroomArticle(
         title: rewritten.title,
         citySlug: doc.citySlug,
       })
+      recordPipelinePersistUsage({
+        newsId,
+        editorId: routedEditor?.id,
+        operation: 'publish_confirmed',
+        published: true,
+        gateDecision: rewritten.gateDecision,
+        publishScore: rewritten.publishScore,
+      })
       return { outcome: 'published', lowConfidence, newsId }
     }
 
@@ -2257,6 +2282,14 @@ export async function processNewsroomArticle(
         title: rewritten.title,
         citySlug: doc.citySlug,
       })
+      recordPipelinePersistUsage({
+        newsId: options.reprocessDraftId,
+        editorId: routedEditor?.id,
+        operation: 'draft_created',
+        published: false,
+        gateDecision: rewritten.gateDecision,
+        publishScore: rewritten.publishScore,
+      })
       return { outcome: 'created', lowConfidence, newsId: options.reprocessDraftId }
     }
 
@@ -2265,6 +2298,14 @@ export async function processNewsroomArticle(
       newsId: draftRef.id,
       title: rewritten.title,
       citySlug: doc.citySlug,
+    })
+    recordPipelinePersistUsage({
+      newsId: draftRef.id,
+      editorId: routedEditor?.id,
+      operation: 'draft_created',
+      published: false,
+      gateDecision: rewritten.gateDecision,
+      publishScore: rewritten.publishScore,
     })
     return { outcome: 'created', lowConfidence, newsId: draftRef.id }
   } catch (error) {

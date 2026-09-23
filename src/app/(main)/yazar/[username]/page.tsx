@@ -100,15 +100,22 @@ export default async function AuthorPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <SiteContainer className="py-8">
-        <header className="mb-8 flex items-start gap-4 border-b border-[rgb(var(--color-border))] pb-6">
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
+        <header className="mb-8 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+          {author.coverURL ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={author.coverURL} alt="" className="h-36 w-full object-cover sm:h-44" />
+          ) : (
+            <div className="h-28 bg-[rgb(var(--color-brand))]/10 sm:h-36" />
+          )}
+          <div className="flex items-start gap-4 px-5 pb-6">
+          <div className="-mt-10 relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-[rgb(var(--color-card))] bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
             {author.photoURL ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={author.photoURL}
                 alt={author.displayName}
-                width={64}
-                height={64}
+                width={80}
+                height={80}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -117,7 +124,7 @@ export default async function AuthorPage({ params }: Props) {
               <User className="h-7 w-7" aria-hidden />
             )}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 pt-4">
             <p className="text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
               {author.isAI ? 'NaHaber AI Editörü' : 'Yazar'}
             </p>
@@ -155,6 +162,7 @@ export default async function AuthorPage({ params }: Props) {
               ) : null}
               {author.department ? <span>{author.department}</span> : null}
             </div>
+          </div>
           </div>
         </header>
 

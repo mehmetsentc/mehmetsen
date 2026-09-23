@@ -318,28 +318,22 @@ export function publicReadMetaFromPost(
  * resolvable (canResolveArticleDetail) does not mean the content should be
  * treated as trusted historical fact for an AI editor's context.
  *
- * V1 (A3) rule — CANONICAL ONLY:
- *   CANONICAL          → eligible
- *   LEGACY_ALLOWED      → architecture supports classification (see
- *                         MemoryTrustTier below) but NOT retrieved in A3 V1.
+ * P4 / A2.1 Bölüm 2 rule:
+ *   CANONICAL          → eligible (HIGH trust)
+ *   LEGACY_ALLOWED      → eligible with trustTier LOW (provenance must stay visible)
  *   SYSTEM_ALERT        → excluded (short-lived alerts, not historical context)
  *   LEGACY_QUARANTINED  → excluded (same quarantine signals as public reads)
  *   NOT_PUBLIC          → excluded, always
- *
- * This is intentionally conservative. Do not broaden it because results are
- * sparse — sparse results are useful evidence (A3 Task 3).
  * ────────────────────────────────────────────────────────────────────── */
 
 export type MemoryTrustTier = 'HIGH' | 'LOW'
 
 /**
  * Whether a public-read class may be used as AI editorial-memory context.
- * A3 V1 returns true ONLY for CANONICAL. LEGACY_ALLOWED is intentionally
- * excluded for now (see module comment) even though it is architecturally
- * anticipated (memoryTrustTier below already knows how to label it LOW).
+ * A2.1 Bölüm 2: CANONICAL or LEGACY_ALLOWED (the latter always LOW trust).
  */
 export function canBeMemoryContext(cls: PublicReadClass): boolean {
-  return cls === 'CANONICAL'
+  return cls === 'CANONICAL' || cls === 'LEGACY_ALLOWED'
 }
 
 /** Trust tier a class WOULD carry if it were ever included as memory context. */

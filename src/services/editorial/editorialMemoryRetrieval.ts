@@ -16,7 +16,7 @@
  *  - `eventKey` / `buildEventFingerprint` are NEVER required — optional
  *    diagnostic evidence only (RECENT_CLUSTER_MATCH), never wired here in A3.
  *  - Memory source is PostgreSQL canonical `news` ONLY (see
- *    publicReadPolicy.canBeMemoryContext — CANONICAL only in V1).
+ *    publicReadPolicy.canBeMemoryContext — CANONICAL or LEGACY_ALLOWED).
  *  - Every DB query has a hard LIMIT — never scans the full corpus.
  *  - Self/future exclusion is mandatory (Task 6).
  *  - Relationship labels are conservative: LIKELY_RELATED / POSSIBLY_RELATED /
@@ -27,7 +27,12 @@ import { and, desc, eq, gte, lt, ne, or, type SQL } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
 import { canonicalPublishedWhere } from '@/lib/canonical/canonicalEligibility'
-import { classifyPublicRead, canBeMemoryContext, type PublicReadArticleMeta } from '@/services/editorial/publicReadPolicy'
+import {
+  classifyPublicRead,
+  canBeMemoryContext,
+  memoryTrustTier,
+  type PublicReadArticleMeta,
+} from '@/services/editorial/publicReadPolicy'
 import { namedTokensFrom, extractNumbers } from '@/services/crawler/cluster/fingerprint'
 import { jaccard, tokenizeNormalized } from '@/services/crawler/cluster/normalize'
 import type {
@@ -121,7 +126,8 @@ async function stageACandidatesForBucket(
 
   const conditions: SQL[] = [canonicalPublishedWhere() as SQL, lt(news.publishedAt, upperBound)]
   if (lowerBound) conditions.push(gte(news.publishedAt, lowerBound))
-  // Task 6 — mandatory self/future exclusion.
+  // Task 6 / P5 B1 — mandatory self/future exclusion. When the query
+  // carries its own articleId/slug, that row must never be a candidate.
   if (input.articleId) conditions.push(ne(news.id, input.articleId))
   if (input.slug) conditions.push(ne(news.slug, input.slug))
 
@@ -219,10 +225,9 @@ export function toHistoricalArticleContext(
   ageBucket: MemoryAgeBucket,
   bucketWeight: number
 ): HistoricalArticleContext | null {
-  // Task 11 fail-closed invariant: only ever return CANONICAL/HIGH. This is
-  // a genuine defensive re-check via the real classifier, not an assumption.
   const cls = rowToReadClass(candidate)
-  if (!canBeMemoryContext(cls) || cls !== 'CANONICAL') return null
+  if (!canBeMemoryContext(cls)) return null
+  if (cls !== 'CANONICAL' && cls !== 'LEGACY_ALLOWED') return null
   if (!candidate.publishedAt) return null
 
   const rawScore = evidence.reduce((sum, e) => sum + e.weight, 0)
@@ -237,8 +242,8 @@ export function toHistoricalArticleContext(
       candidate.citySlug || candidate.districtSlug
         ? { citySlug: candidate.citySlug, districtSlug: candidate.districtSlug }
         : null,
-    publicReadClass: 'CANONICAL',
-    trustTier: 'HIGH',
+    publicReadClass: cls,
+    trustTier: memoryTrustTier(cls),
     source: candidate.source,
     ageBucket,
     retrievalScore: Number((rawScore * bucketWeight).toFixed(4)),
@@ -289,7 +294,10 @@ export async function retrieveHistoricalContext(
         const evidence = computeEvidence(input, row)
         if (evidence.length === 0) continue // no signal at all — not shown, not "UNRELATED"-labeled
         const ctx = toHistoricalArticleContext(row, evidence, bucket.id, bucket.weight)
-        if (ctx) allContexts.push(ctx)
+        if (!ctx) continue
+        // P5 B1 — belt-and-suspenders: never surface the query article as history.
+        if (input.articleId && ctx.articleId === input.articleId) continue
+        allContexts.push(ctx)
       }
     }
   } catch (error) {
@@ -306,6 +314,7 @@ export async function retrieveHistoricalContext(
   const seen = new Set<string>()
   const deduped: HistoricalArticleContext[] = []
   for (const ctx of allContexts.sort((a, b) => b.retrievalScore - a.retrievalScore)) {
+    if (input.articleId && ctx.articleId === input.articleId) continue
     if (seen.has(ctx.articleId)) continue
     seen.add(ctx.articleId)
     deduped.push(ctx)

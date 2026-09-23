@@ -71,6 +71,8 @@ export interface FeedItemDto {
   authorSlug?: string | null
   /** Follow target (users uid or synthetic AI author uid). */
   authorId?: string | null
+  /** Public portrait for the editor chip. */
+  authorAvatarUrl?: string | null
   /** Outlet / agency shown only as an end-of-article source note. */
   sourceName?: string | null
   headline: string

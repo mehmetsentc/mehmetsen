@@ -356,9 +356,18 @@ export default function AiEditorsAdminPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgb(var(--color-primary))]/10 text-[rgb(var(--color-primary))]">
-                          <Bot className="h-4 w-4" />
-                        </div>
+                        {editor.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={editor.avatarUrl}
+                            alt=""
+                            className="h-9 w-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgb(var(--color-primary))]/10 text-[rgb(var(--color-primary))]">
+                            <Bot className="h-4 w-4" />
+                          </div>
+                        )}
                         <div>
                           <p className="font-semibold text-[rgb(var(--color-text))]">{editor.name}</p>
                           <p className="text-xs text-[rgb(var(--color-muted))]">

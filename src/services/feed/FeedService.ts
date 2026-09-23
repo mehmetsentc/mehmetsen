@@ -175,6 +175,7 @@ function toDto(
     authorName: editor?.name ?? null,
     authorSlug: editor?.slug || null,
     authorId: editor?.authorUid || row.authorId?.trim() || null,
+    authorAvatarUrl: editor?.avatarUrl || null,
     sourceName: row.sourceName?.trim() || row.publisherName?.trim() || null,
   }
 }

@@ -182,6 +182,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     provider: 'heuristic',
     promptVariant: cohort === 'off' ? undefined : cohort,
     canaryBucket: ctx?.retryOptBucket,
+    editorId: input.aiEditorId,
     outputChars: written.content.length,
     outputWordCount: countPlainWords(written.content),
     gateDecision: gate.decision,

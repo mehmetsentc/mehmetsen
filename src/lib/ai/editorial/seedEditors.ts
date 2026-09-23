@@ -47,6 +47,8 @@ export interface SeedEditorSpec {
   localConfig?: AiEditorLocalConfig | null
   /** Default true; false for internal SEO/copy/verification agents. */
   assignableForNews?: boolean
+  avatarUrl?: string | null
+  coverUrl?: string | null
 }
 
 const DEEPSEEK_NEWS: AiModelAssignment = {

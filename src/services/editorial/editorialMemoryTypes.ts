@@ -75,10 +75,10 @@ export interface HistoricalArticleContext {
   summary: string | null
   category: string | null
   geography: { citySlug: string | null; districtSlug: string | null } | null
-  /** A3 invariant: always 'CANONICAL' — see editorialMemoryEligibility. */
-  publicReadClass: 'CANONICAL'
-  /** A3 invariant: always 'HIGH' because publicReadClass is always CANONICAL. */
-  trustTier: 'HIGH'
+  /** A2.1: only CANONICAL or LEGACY_ALLOWED ever appear here. */
+  publicReadClass: 'CANONICAL' | 'LEGACY_ALLOWED'
+  /** CANONICAL=HIGH, LEGACY_ALLOWED=LOW. */
+  trustTier: 'HIGH' | 'LOW'
   source: string | null
   ageBucket: MemoryAgeBucket
   /** Internal ranking score — secondary/debug info in the UI (Task 14). */

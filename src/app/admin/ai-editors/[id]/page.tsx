@@ -429,6 +429,54 @@ export default function AiEditorDetailPage() {
 
         {tab === 'profile' && (
           <div className="space-y-4 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+            <div className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+              {editor.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={editor.coverUrl} alt="" className="h-28 w-full object-cover" />
+              ) : (
+                <div className="h-28 bg-black/[0.04]" />
+              )}
+              <div className="-mt-8 flex items-end gap-3 px-4 pb-3">
+                {editor.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={editor.avatarUrl}
+                    alt=""
+                    className="h-16 w-16 rounded-full border-2 border-[rgb(var(--color-card))] object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full border-2 border-[rgb(var(--color-card))] bg-[rgb(var(--color-primary))]/10" />
+                )}
+                <div className="pb-1">
+                  <p className="text-sm font-bold text-[rgb(var(--color-text))]">{editor.name}</p>
+                  <p className="text-xs text-[rgb(var(--color-muted))]">{editor.title}</p>
+                </div>
+              </div>
+            </div>
+            <Field
+              label="Görünen ad"
+              value={editor.name}
+              onChange={(v) => setEditor({ ...editor, name: v })}
+              disabled={!canManage}
+            />
+            <Field
+              label="Unvan"
+              value={editor.title}
+              onChange={(v) => setEditor({ ...editor, title: v })}
+              disabled={!canManage}
+            />
+            <Field
+              label="Avatar URL"
+              value={editor.avatarUrl ?? ''}
+              onChange={(v) => setEditor({ ...editor, avatarUrl: v || null })}
+              disabled={!canManage}
+            />
+            <Field
+              label="Kapak görseli URL"
+              value={editor.coverUrl ?? ''}
+              onChange={(v) => setEditor({ ...editor, coverUrl: v || null })}
+              disabled={!canManage}
+            />
             <Field
               label="Kısa bio"
               value={editor.shortBio}
@@ -494,9 +542,13 @@ export default function AiEditorDetailPage() {
                   disabled={saving}
                   onClick={() =>
                     void patch({
+                      name: editor.name,
+                      title: editor.title,
                       shortBio: editor.shortBio,
                       bio: editor.bio,
                       columnName: editor.columnName,
+                      avatarUrl: editor.avatarUrl,
+                      coverUrl: editor.coverUrl,
                       publishPolicy: editor.publishPolicy,
                       categoryIds: editor.categoryIds,
                       capabilities: editor.capabilities,

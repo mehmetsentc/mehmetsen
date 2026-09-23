@@ -12,6 +12,7 @@ import {
   type SeedEditorSpec,
 } from './seedEditors'
 import { districtEditorSlug } from './editorHierarchy'
+import { scaleJournalistPersona } from './scaleEditorPersona'
 
 export interface DistrictEditorInput {
   provinceSlug: string
@@ -53,13 +54,21 @@ export function buildDistrictEditorSpec(input: DistrictEditorInput): SeedEditorS
     : `${district.name} ${categoryLabel}`
   const categoryIds = isGeneral ? ['yerel-haber'] : [categoryKey]
   const fallback = isGeneral ? `yerel-${provinceSlug}` : districtEditorSlug(provinceSlug, districtSlug)
+  const persona = scaleJournalistPersona({
+    slug,
+    deskLabel,
+    placeName: `${provinceName} / ${district.name}`,
+    layer: 'district',
+  })
 
   return {
     slug,
-    name: `${deskLabel} AI`,
-    title: `${deskLabel} AI Editörü`,
-    shortBio: `${provinceName} / ${district.name}${categoryLabel ? ` ${categoryLabel}` : ' yönetici'} masası.`,
-    bio: `NaHaber ${provinceName} ${district.name} ${isGeneral ? 'yönetici' : categoryLabel} AI editörü. İlçe dışına çıkma; il genel masasına (${fallback}) yükseltebilir.`,
+    name: persona.name,
+    title: persona.title,
+    shortBio: persona.shortBio,
+    bio: persona.bio,
+    avatarUrl: persona.avatarUrl,
+    coverUrl: persona.coverUrl,
     columnName: null,
     primarySpecialization: deskLabel,
     specializations: [provinceName, district.name, categoryLabel ?? 'İlçe'].filter(Boolean) as string[],
@@ -87,7 +96,7 @@ export function buildDistrictEditorSpec(input: DistrictEditorInput): SeedEditorS
     prompts: {
       core: `${GLOBAL_NEWSROOM_RULES}
 
-Sen ${deskLabel} AI Editörü'sün, NaHaber ${provinceName} ${district.name} ilçe masası.
+Sen ${persona.name}'sın, NaHaber ${provinceName} ${district.name} ilçe masası.
 Uzmanlık: ${district.name} ilçesi${categoryLabel ? ` / ${categoryLabel}` : ''}.
 Her haber: NEREDE? HANGİ İLÇE? HANGİ KURUM? NE OLDU? NE ZAMAN? KAYNAK?
 - ${district.name} dışındaki ilçeleri bu masaya zorlama.

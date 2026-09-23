@@ -1,0 +1,791 @@
+{
+  "generatedAt": "2026-09-23T19:22:10.205Z",
+  "editorialMemoryMode": "SHADOW",
+  "injectionEnabled": false,
+  "writeFunctionInvoked": false,
+  "pgMemoryCorpus": {
+    "available": true,
+    "buckets": [
+      {
+        "label": "0-2d",
+        "published": 0,
+        "eskisehir": 0
+      },
+      {
+        "label": "2-7d",
+        "published": 0,
+        "eskisehir": 0
+      },
+      {
+        "label": "8-30d",
+        "published": 4,
+        "eskisehir": 0
+      },
+      {
+        "label": "1-3mo",
+        "published": 1,
+        "eskisehir": 0
+      },
+      {
+        "label": "3-12mo",
+        "published": 0,
+        "eskisehir": 0
+      }
+    ]
+  },
+  "noteTr": "Aday havuzu PostgreSQL canonical `news`. Bu ortamda 2-7g penceresinde published satır yok; 2-7g bucket sonucu bu yüzden boş kalabilir. 10-15 sorgu için Firestore published başlıklar da kullanıldı (salt okunur).",
+  "pilot": {
+    "id": "ai_editor_yerel-eskisehir",
+    "slug": "yerel-eskisehir",
+    "name": "Işıl Dinç",
+    "citySlug": "eskisehir",
+    "memoryEnabled": true,
+    "otherLocalMemoryEnabled": []
+  },
+  "queryCount": 15,
+  "queryWindowCounts": {
+    "1-3mo": 2,
+    "8-30d": 3,
+    "0-2d": 10
+  },
+  "selfMatchCount": 0,
+  "ageBucketHitCounts": {
+    "8-30d": 5,
+    "1-3mo": 1
+  },
+  "possiblyRelatedCount": 6,
+  "possiblyRelatedSingleEvidence": [
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "articleId": "7ntbGyQCwAYT255TS3Gn",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "articleId": "IBeli7VLsE3OVfOKKRmu",
+      "ageBucket": "1-3mo",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kadir İnanır'ın mirasında yeğeni Fırat İnanır'dan sessiz tavır: 'Amcamın kararına saygı duyuyorum'",
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "articleId": "0XYEJVwyi7oILuYKf91R",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "AK Parti Bursa Milletvekili Ayhan Salman Karabiga'da projeleri görüştü",
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_GEO"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_GEO",
+      "sharedTopicTokenOnly": false,
+      "needsHumanLabel": true
+    }
+  ],
+  "possiblyRelatedSharedTopicTokenOnly": [
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "articleId": "7ntbGyQCwAYT255TS3Gn",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "articleId": "IBeli7VLsE3OVfOKKRmu",
+      "ageBucket": "1-3mo",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kadir İnanır'ın mirasında yeğeni Fırat İnanır'dan sessiz tavır: 'Amcamın kararına saygı duyuyorum'",
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "articleId": "0XYEJVwyi7oILuYKf91R",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    }
+  ],
+  "possiblyRelated": [
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "articleId": "7ntbGyQCwAYT255TS3Gn",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN",
+        "SUMMARY_OVERLAP"
+      ],
+      "singleEvidence": false,
+      "singleEvidenceTag": null,
+      "sharedTopicTokenOnly": false,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "articleId": "IBeli7VLsE3OVfOKKRmu",
+      "ageBucket": "1-3mo",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "Kadir İnanır'ın mirasında yeğeni Fırat İnanır'dan sessiz tavır: 'Amcamın kararına saygı duyuyorum'",
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "articleId": "0XYEJVwyi7oILuYKf91R",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_TOPIC_TOKEN"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+      "sharedTopicTokenOnly": true,
+      "needsHumanLabel": true
+    },
+    {
+      "queryHeadline": "AK Parti Bursa Milletvekili Ayhan Salman Karabiga'da projeleri görüştü",
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "articleId": "FS6T7WazJeEe0kjOHJ5T",
+      "ageBucket": "8-30d",
+      "evidenceTags": [
+        "SHARED_GEO"
+      ],
+      "singleEvidence": true,
+      "singleEvidenceTag": "SHARED_GEO",
+      "sharedTopicTokenOnly": false,
+      "needsHumanLabel": true
+    }
+  ],
+  "samples": [
+    {
+      "queryWindow": "1-3mo",
+      "querySource": "firestore",
+      "articleId": "zKXS724mx1QWg3lMwvsl",
+      "slug": "zkxs724mx1qwg3lmwvsl",
+      "headline": "Şehit yakınları ve gazilere yeni haklar Meclis'te kabul edildi",
+      "citySlug": "",
+      "categoryId": "siyaset",
+      "publishedAt": "2026-08-10T09:01:03.646Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "1-3mo",
+      "querySource": "postgres",
+      "articleId": "IBeli7VLsE3OVfOKKRmu",
+      "slug": "günlük-burç-yorumları-24-ağustos-pazartesi-koç-burcu-yorumu-IBeli7VL",
+      "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "citySlug": null,
+      "categoryId": "gundem",
+      "publishedAt": "2026-08-23T12:35:00.000Z",
+      "selfMatchPresent": false,
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 2,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [
+        "8-30d",
+        "8-30d"
+      ],
+      "possiblyRelatedFlags": [
+        {
+          "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+          "articleId": "7ntbGyQCwAYT255TS3Gn",
+          "ageBucket": "8-30d",
+          "evidenceTags": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "singleEvidence": true,
+          "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+          "sharedTopicTokenOnly": true,
+          "needsHumanLabel": true
+        },
+        {
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "ageBucket": "8-30d",
+          "evidenceTags": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "singleEvidence": true,
+          "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+          "sharedTopicTokenOnly": true,
+          "needsHumanLabel": true
+        }
+      ],
+      "results": [
+        {
+          "articleId": "7ntbGyQCwAYT255TS3Gn",
+          "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+          "publishedAt": "2026-09-01T13:10:41.490Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.38,
+          "ageBucket": "8-30d"
+        },
+        {
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "publishedAt": "2026-08-31T09:26:15.091Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.38,
+          "ageBucket": "8-30d"
+        }
+      ]
+    },
+    {
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "articleId": "0XYEJVwyi7oILuYKf91R",
+      "slug": "yeralti-dizisinin-yeni-sezon-tarihi-henuz-aciklanmadi",
+      "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "citySlug": null,
+      "categoryId": "magazin",
+      "publishedAt": "2026-09-04T12:37:58.464Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "articleId": "0ALMkrRCE3LQqubviNZh",
+      "slug": "derin-uyku-alzheimeri-yavaslatiyor",
+      "headline": "Derin uyku Alzheimer'ı yavaşlatıyor",
+      "citySlug": null,
+      "categoryId": "saglik",
+      "publishedAt": "2026-09-04T12:37:19.398Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "8-30d",
+      "querySource": "postgres",
+      "articleId": "7ntbGyQCwAYT255TS3Gn",
+      "slug": "kayseri-melikgazi-de-yolcu-otobüsü-ile-benzin-tankeri-çarpıştı-35-yaralı-7ntbGyQC",
+      "headline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "citySlug": null,
+      "categoryId": "gundem",
+      "publishedAt": "2026-09-01T13:10:41.490Z",
+      "selfMatchPresent": false,
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 1,
+        "1-3mo": 1,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [
+        "8-30d",
+        "1-3mo"
+      ],
+      "possiblyRelatedFlags": [
+        {
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "ageBucket": "8-30d",
+          "evidenceTags": [
+            "SHARED_TOPIC_TOKEN",
+            "SUMMARY_OVERLAP"
+          ],
+          "singleEvidence": false,
+          "singleEvidenceTag": null,
+          "sharedTopicTokenOnly": false,
+          "needsHumanLabel": true
+        },
+        {
+          "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+          "articleId": "IBeli7VLsE3OVfOKKRmu",
+          "ageBucket": "1-3mo",
+          "evidenceTags": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "singleEvidence": true,
+          "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+          "sharedTopicTokenOnly": true,
+          "needsHumanLabel": true
+        }
+      ],
+      "results": [
+        {
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "publishedAt": "2026-08-31T09:26:15.091Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN",
+            "SUMMARY_OVERLAP"
+          ],
+          "retrievalScore": 0.456,
+          "ageBucket": "8-30d"
+        },
+        {
+          "articleId": "IBeli7VLsE3OVfOKKRmu",
+          "headline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+          "publishedAt": "2026-08-23T12:35:00.000Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.34,
+          "ageBucket": "1-3mo"
+        }
+      ]
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "XAqIMyQ36GfEZHTqTHM4",
+      "slug": "kale-biberinde-hasat-basladi-yillik-2-bin-500-ton-uretim-antalyadan-da-talep-var",
+      "headline": "Kale biberinde hasat başladı: yıllık 2 bin 500 ton üretim, Antalya'dan da talep var",
+      "citySlug": "antalya",
+      "categoryId": "yerel-ekonomi",
+      "publishedAt": "2026-09-23T19:21:52.257Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "sOVjL4yIL8xgKBhSgw9M",
+      "slug": "balon-baligi-avciliginda-destek-limiti-1-milyona-cikarildi",
+      "headline": "Balon balığı avcılığında destek limiti 1 milyona çıkarıldı",
+      "citySlug": "antalya",
+      "categoryId": "yerel-cevre-iklim",
+      "publishedAt": "2026-09-23T19:21:36.625Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "FPWL7OAogXYI1jfgF35Z",
+      "slug": "manavgatta-kontrolden-cikan-otomobil-refuje-carpti-surucu-yaralandi",
+      "headline": "Manavgat'ta kontrolden çıkan otomobil refüje çarptı: sürücü yaralandı",
+      "citySlug": "antalya",
+      "categoryId": "yerel-asayis",
+      "publishedAt": "2026-09-23T19:21:29.660Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "yapBEkECFxhdxnLUVCeQ",
+      "slug": "kadir-inanirin-mirasinda-yegeni-firat-inanirdan-sessiz-tavir-amcamin-kararina-sa",
+      "headline": "Kadir İnanır'ın mirasında yeğeni Fırat İnanır'dan sessiz tavır: 'Amcamın kararına saygı duyuyorum'",
+      "citySlug": null,
+      "categoryId": "magazin",
+      "publishedAt": "2026-09-23T19:21:12.834Z",
+      "selfMatchPresent": false,
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 1,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [
+        "8-30d"
+      ],
+      "possiblyRelatedFlags": [
+        {
+          "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+          "articleId": "0XYEJVwyi7oILuYKf91R",
+          "ageBucket": "8-30d",
+          "evidenceTags": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "singleEvidence": true,
+          "singleEvidenceTag": "SHARED_TOPIC_TOKEN",
+          "sharedTopicTokenOnly": true,
+          "needsHumanLabel": true
+        }
+      ],
+      "results": [
+        {
+          "articleId": "0XYEJVwyi7oILuYKf91R",
+          "headline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+          "publishedAt": "2026-09-04T12:37:58.464Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_TOPIC_TOKEN"
+          ],
+          "retrievalScore": 0.38,
+          "ageBucket": "8-30d"
+        }
+      ]
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "YtFPsPENEm0VG1IQvOWf",
+      "slug": "ak-parti-bursa-milletvekili-ayhan-salman-karabigada-projeleri-gorustu",
+      "headline": "AK Parti Bursa Milletvekili Ayhan Salman Karabiga'da projeleri görüştü",
+      "citySlug": "canakkale",
+      "categoryId": "yerel-siyaset",
+      "publishedAt": "2026-09-23T19:18:46.381Z",
+      "selfMatchPresent": false,
+      "noResultReason": null,
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 1,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [
+        "8-30d"
+      ],
+      "possiblyRelatedFlags": [
+        {
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "ageBucket": "8-30d",
+          "evidenceTags": [
+            "SHARED_GEO"
+          ],
+          "singleEvidence": true,
+          "singleEvidenceTag": "SHARED_GEO",
+          "sharedTopicTokenOnly": false,
+          "needsHumanLabel": true
+        }
+      ],
+      "results": [
+        {
+          "articleId": "FS6T7WazJeEe0kjOHJ5T",
+          "headline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+          "publishedAt": "2026-08-31T09:26:15.091Z",
+          "trustTier": "HIGH",
+          "publicReadClass": "CANONICAL",
+          "relationshipConfidence": "POSSIBLY_RELATED",
+          "evidence": [
+            "SHARED_GEO"
+          ],
+          "retrievalScore": 0.95,
+          "ageBucket": "8-30d"
+        }
+      ]
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "W5uovtKNPYLk6OVJJYdd",
+      "slug": "haydarpasa-gar-sahasi-restorasyonunda-ilk-etap-2027ye-alindi",
+      "headline": "Haydarpaşa Gar Sahası restorasyonunda ilk etap 2027'ye alındı",
+      "citySlug": "istanbul",
+      "categoryId": "yerel-gundem",
+      "publishedAt": "2026-09-23T19:15:37.640Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "8XpHQpJmxbSonvm2Vb5X",
+      "slug": "nisantasinda-magazadan-47-bin-860-liralik-urunu-odemeden-cikinca-yakalandi",
+      "headline": "Nişantaşı'nda mağazadan 47 bin 860 liralık ürünü ödemeden çıkınca yakalandı",
+      "citySlug": "istanbul",
+      "categoryId": "asayis",
+      "publishedAt": "2026-09-23T19:14:25.259Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "dHk1N7cXLnNmWAiNCjwD",
+      "slug": "afyonkarahisarda-ciraklik-egitimi-goren-cocugun-burnu-kirildi-ogretmenin-kafa-at",
+      "headline": "Afyonkarahisar'da çıraklık eğitimi gören çocuğun burnu kırıldı: öğretmenin kafa attığı iddia edildi",
+      "citySlug": "",
+      "categoryId": "yerel-haber",
+      "publishedAt": "2026-09-23T19:11:57.092Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "XIQbMsuAs8fq8VPVxpcl",
+      "slug": "11-ilde-es-zamanli-dolandiricilik-operasyonu-14-kisiyi-14-milyon-lira-dolandirdi",
+      "headline": "11 ilde eş zamanlı dolandırıcılık operasyonu: 14 kişiyi 14 milyon lira dolandırdılar",
+      "citySlug": "adana",
+      "categoryId": "yerel-asayis",
+      "publishedAt": "2026-09-23T19:11:51.065Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    },
+    {
+      "queryWindow": "0-2d",
+      "querySource": "firestore",
+      "articleId": "kr46X2M64hZbHXND87cc",
+      "slug": "cayelide-turist-tasiyan-otomobil-dere-yatagina-devrildi-6-yarali",
+      "headline": "Çayeli'de turist taşıyan otomobil dere yatağına devrildi: 6 yaralı",
+      "citySlug": "rize",
+      "categoryId": "yerel-asayis",
+      "publishedAt": "2026-09-23T19:11:41.070Z",
+      "selfMatchPresent": false,
+      "noResultReason": "NO_CANONICAL_CANDIDATES",
+      "candidatesConsideredByBucket": {
+        "2-7d": 0,
+        "8-30d": 0,
+        "1-3mo": 0,
+        "3-12mo": 0,
+        "12mo+": 0
+      },
+      "resultAgeBuckets": [],
+      "possiblyRelatedFlags": [],
+      "results": []
+    }
+  ]
+}

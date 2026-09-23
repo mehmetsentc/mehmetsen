@@ -13,59 +13,9 @@ import {
   isExpandedEditorHierarchyEnabled,
 } from './editorHierarchy'
 import { isScalePublishLocked } from './scaleHardening'
+import { FALLBACK_CATEGORY_EDITOR_SLUG } from './categoryEditorFallback'
 
-/** Default category → seed editor slug (Admin can override via editor.categoryIds). */
-export const FALLBACK_CATEGORY_EDITOR_SLUG: Record<string, string> = {
-  gundem: 'ece-yalin',
-  trend: 'selin-aras',
-  'son-dakika': 'arda-sahin',
-  asayis: 'arda-sahin',
-  siyaset: 'mert-karaca',
-  dunya: 'defne-aksoy',
-  'kibris-haberleri': 'defne-aksoy',
-  ekonomi: 'kerem-aydin',
-  'finans-piyasa': 'kerem-aydin',
-  borsa: 'kerem-aydin',
-  kripto: 'kerem-aydin',
-  'emlak-konut': 'kerem-aydin',
-  enerji: 'kerem-aydin',
-  'is-kariyer': 'kerem-aydin',
-  teknoloji: 'can-tunc',
-  bilim: 'leyla-arin',
-  'oyun-espor': 'can-tunc',
-  spor: 'deniz-erdem',
-  futbol: 'deniz-erdem',
-  basketbol: 'deniz-erdem',
-  voleybol: 'deniz-erdem',
-  hentbol: 'deniz-erdem',
-  atletizm: 'deniz-erdem',
-  gures: 'deniz-erdem',
-  'dunya-kupasi-2026': 'deniz-erdem',
-  saglik: 'ipek-demir',
-  yasam: 'su-eren',
-  astroloji: 'su-eren',
-  moda: 'su-eren',
-  'anne-cocuk': 'su-eren',
-  dekorasyon: 'su-eren',
-  iliskiler: 'su-eren',
-  gastronomi: 'nil-ozkan',
-  kultur: 'asli-tan',
-  sinema: 'asli-tan',
-  tiyatro: 'asli-tan',
-  konser: 'asli-tan',
-  festival: 'asli-tan',
-  tarih: 'asli-tan',
-  turizm: 'derya-akin',
-  gezi: 'derya-akin',
-  otomobil: 'emre-sancar',
-  egitim: 'zeynep-er',
-  'cevre-iklim': 'baran-eren',
-  meteoroloji: 'baran-eren',
-  magazin: 'melis-kaya',
-  'yerel-haber': 'burak-celik',
-  'din-inanc': 'yunus-kara',
-  etkinlikler: 'ceren-yildiz',
-}
+export { FALLBACK_CATEGORY_EDITOR_SLUG }
 
 /** Secondary desk suggestions by primary category / event. */
 export const SECONDARY_DESK_SLUG: Record<string, string> = {

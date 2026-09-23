@@ -9,15 +9,16 @@ const ALL_CLASSES: PublicReadClass[] = [
   'NOT_PUBLIC',
 ]
 
-describe('Faz A3 Task 3 — canBeMemoryContext / memoryTrustTier (CANONICAL-only invariant)', () => {
-  it('canBeMemoryContext is true ONLY for CANONICAL', () => {
+describe('Faz A3/P4 — canBeMemoryContext / memoryTrustTier (A2.1 Bölüm 2)', () => {
+  it('canBeMemoryContext is true for CANONICAL and LEGACY_ALLOWED only', () => {
     for (const cls of ALL_CLASSES) {
-      expect(canBeMemoryContext(cls)).toBe(cls === 'CANONICAL')
+      expect(canBeMemoryContext(cls)).toBe(cls === 'CANONICAL' || cls === 'LEGACY_ALLOWED')
     }
   })
 
-  it('LEGACY_ALLOWED is architecturally anticipated but NOT eligible in A3 V1', () => {
-    expect(canBeMemoryContext('LEGACY_ALLOWED')).toBe(false)
+  it('LEGACY_ALLOWED is eligible with LOW trust', () => {
+    expect(canBeMemoryContext('LEGACY_ALLOWED')).toBe(true)
+    expect(memoryTrustTier('LEGACY_ALLOWED')).toBe('LOW')
   })
 
   it('SYSTEM_ALERT, LEGACY_QUARANTINED and NOT_PUBLIC are always excluded', () => {

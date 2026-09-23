@@ -1,0 +1,67 @@
+{
+  "schema": "editorial-memory-human-labels-v1",
+  "sourcePhase": "P6",
+  "labeledBy": "Mehmet",
+  "labeledAt": "2026-09-23",
+  "pilotEditorSlug": "yerel-eskisehir",
+  "mode": "SHADOW",
+  "injectionEnabled": false,
+  "labels": [
+    {
+      "id": "p6-h1",
+      "queryHeadline": "Günlük Burç Yorumları: 24 Ağustos Pazartesi Koç Burcu Yorumu",
+      "queryArticleId": "IBeli7VLsE3OVfOKKRmu",
+      "candidateHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "candidateArticleId": "7ntbGyQCwAYT255TS3Gn",
+      "evidence": ["SHARED_TOPIC_TOKEN"],
+      "modelLabel": "POSSIBLY_RELATED",
+      "humanLabel": "NOT_RELATED",
+      "noteTr": "Tek kanıt: aynı kategori token. Konu tamamen farklı."
+    },
+    {
+      "id": "p6-h2",
+      "queryHeadline": "Kadir İnanır'ın mirasında yeğeni Fırat İnanır'dan sessiz tavır: 'Amcamın kararına saygı duyuyorum'",
+      "candidateHeadline": "Yeraltı dizisinin yeni sezon tarihi henüz açıklanmadı",
+      "candidateArticleId": "0XYEJVwyi7oILuYKf91R",
+      "evidence": ["SHARED_TOPIC_TOKEN"],
+      "modelLabel": "POSSIBLY_RELATED",
+      "humanLabel": "NOT_RELATED",
+      "noteTr": "Tek kanıt: magazin kategorisi. Miras haberi ile dizi sezonu ilgisiz."
+    },
+    {
+      "id": "p6-h3",
+      "queryHeadline": "Kayseri Melikgazi'de Yolcu Otobüsü ile Benzin Tankeri Çarpıştı: 35 Yaralı",
+      "queryArticleId": "7ntbGyQCwAYT255TS3Gn",
+      "candidateHeadline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "candidateArticleId": "FS6T7WazJeEe0kjOHJ5T",
+      "evidence": ["SHARED_TOPIC_TOKEN", "SUMMARY_OVERLAP"],
+      "modelLabel": "POSSIBLY_RELATED",
+      "humanLabel": "NOT_RELATED",
+      "noteTr": "İki kanıt (topic + summary overlap) yine ilgisiz: kaza vs yangın, farklı şehir."
+    },
+    {
+      "id": "p6-h4",
+      "queryHeadline": "AK Parti Bursa Milletvekili Ayhan Salman Karabiga'da projeleri görüştü",
+      "candidateHeadline": "Çanakkale Çan'da Ahır Yangını: Ekipler ve Köylülerin Müdahalesiyle Söndürüldü",
+      "candidateArticleId": "FS6T7WazJeEe0kjOHJ5T",
+      "evidence": ["SHARED_GEO"],
+      "modelLabel": "POSSIBLY_RELATED",
+      "humanLabel": "NOT_RELATED",
+      "noteTr": "Tek kanıt: SHARED_GEO. Siyasi ziyaret ile ahır yangını ilgisiz."
+    }
+  ],
+  "summary": {
+    "labeled": 4,
+    "notRelated": 4,
+    "related": 0,
+    "singleEvidenceNotRelated": 3,
+    "twoEvidenceNotRelated": 1
+  },
+  "proposedThreshold": {
+    "implementInThisPhase": false,
+    "sampleTooSmall": true,
+    "ruleTr": "POSSIBLY_RELATED, kanıt kümesinde SHARED_NAMED_TOKEN, SHARED_NUMBER veya TITLE_OVERLAP'ten en az biri yoksa üretilmesin. Yalnız SHARED_TOPIC_TOKEN / SHARED_GEO / SUMMARY_OVERLAP (tekil veya kombinasyon) otomatik olarak gösterilmesin (UNRESOLVED / aday düşür).",
+    "rationaleTr": "4/4 gerçek insan etiketi NOT_RELATED. Hem tek-kanıt topic/geo hem de topic+summary-overlap yanlış pozitif. İsim/sayı/başlık örtüşmesi olmayan eşleşmeler şu anki örneklemde tarihsel bağlam taşımıyor.",
+    "keepUnchanged": "editorialMemoryRetrieval.ts labelRelationship bu fazda değiştirilmedi."
+  }
+}

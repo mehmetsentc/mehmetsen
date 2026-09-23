@@ -25,6 +25,28 @@ describe('resolveFeedEditorByline', () => {
     expect(editor?.slug).toBe('yerel-canakkale')
   })
 
+  it('replaces an agency source like Anka Haber with the national desk editor', () => {
+    expect(isSourceLikeName('Anka Haber Ajansı')).toBe(true)
+    const editor = resolveFeedEditorByline({
+      authorName: 'Anka Haber Ajansı',
+      publisherName: 'Anka Haber Ajansı',
+      categoryId: 'gundem',
+    })
+    expect(editor?.slug).toBe('ece-yalin')
+    expect(editor?.name).toBe('Ece Yalın')
+    expect(editor?.name).not.toMatch(/Anka/i)
+    expect(editor?.avatarUrl).toContain('dicebear.com')
+  })
+
+  it('keeps a real journalist name instead of swapping in the national desk', () => {
+    const editor = resolveFeedEditorByline({
+      authorName: 'Ayşe Demir',
+      categoryId: 'gundem',
+    })
+    expect(editor?.name).toBe('Ayşe Demir')
+    expect(editor?.slug).not.toBe('ece-yalin')
+  })
+
   it('assigns a distinct Çanakkale category editor for spor', () => {
     const editor = resolveFeedEditorByline({
       authorName: 'Çanakkale Kalem',

@@ -164,6 +164,23 @@ describe('runMultiStageEditor Stage3 reuse', () => {
     classifyArticle.mockResolvedValue({ ...deepseekCategory })
   })
 
+  it('P5: stage4_gate usage includes editorId from input.aiEditorId', async () => {
+    await runMultiStageEditor({
+      ...editorInput,
+      aiEditorId: 'ai_editor_yerel-eskisehir',
+    })
+    const gate = recordAiRequestUsage.mock.calls
+      .map((call) => call[0] as Record<string, unknown>)
+      .find((row) => row.agentName === 'stage4_gate')
+    expect(gate).toMatchObject({
+      agentName: 'stage4_gate',
+      operation: 'gate_keep',
+      editorId: 'ai_editor_yerel-eskisehir',
+    })
+    expect(typeof gate?.gateDecision).toBe('string')
+    expect(typeof gate?.publishScore).toBe('number')
+  })
+
   it('initial → Stage3 = 1 real classifyArticle call', async () => {
     const result = await runMultiStageEditor(editorInput)
     expect(classifyArticle).toHaveBeenCalledTimes(1)

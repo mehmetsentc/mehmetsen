@@ -24,6 +24,8 @@ import { getHomeFeedCategoryFamily, isYerelHomepageExcluded } from '@/constants/
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { findSeedEditorSpecBySlug } from '@/lib/ai/editorial/aiEditorService'
 import { findCityCategoryEditorByAuthorUid } from '@/lib/ai/editorial/seedCityCategoryEditors'
+import { editorCoverUrl, editorPortraitUrl } from '@/lib/ai/editorial/scaleEditorPersona'
+import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
 import type { SeedEditorSpec } from '@/lib/ai/editorial/seedEditors'
 import { syntheticAiAuthorUid } from '@/types/aiEditor'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
@@ -1165,7 +1167,7 @@ function publicAuthorFromSeedEditor(username: string): PublicAuthorProfile | nul
     uid: syntheticAiAuthorUid(spec.slug),
     username: spec.slug,
     displayName: spec.name,
-    photoURL: null,
+    photoURL: spec.avatarUrl?.trim() || editorPortraitUrl(spec.slug),
     bio: spec.bio || spec.shortBio || null,
     website: null,
     location: cityName,
@@ -1174,7 +1176,7 @@ function publicAuthorFromSeedEditor(username: string): PublicAuthorProfile | nul
     postsCount: 0,
     isAI: true,
     aiEditorId: spec.slug,
-    coverURL: null,
+    coverURL: spec.coverUrl?.trim() || editorCoverUrl(spec.slug),
   }
 }
 
@@ -1275,8 +1277,17 @@ export async function getAuthorByUsername(username: string): Promise<PublicAutho
   const normalized = username.trim().toLocaleLowerCase('tr-TR')
   if (!normalized) return null
   const fromDb = await getAuthorByUsernameCached(normalized)
-  if (fromDb) return fromDb
-  return publicAuthorFromSeedEditor(normalized)
+  const seed = publicAuthorFromSeedEditor(normalized)
+  if (!fromDb) return seed
+  return {
+    ...fromDb,
+    photoURL: fromDb.photoURL || seed?.photoURL || null,
+    coverURL: fromDb.coverURL || seed?.coverURL || null,
+    bio: fromDb.bio || seed?.bio || null,
+    department: fromDb.department || seed?.department,
+    isAI: fromDb.isAI || seed?.isAI,
+    aiEditorId: fromDb.aiEditorId || seed?.aiEditorId || null,
+  }
 }
 
 /** Published news authored by a user id (for /yazar/[username]). Cached 30 min per author. */
@@ -1321,17 +1332,57 @@ const getPostsByAuthorIdCached = unstable_cache(
   { revalidate: 1800, tags: ['author'] }
 )
 
+const getPostsByAssignedEditorCached = unstable_cache(
+  async (editorSlug: string, limitCount: number): Promise<Post[]> => {
+    try {
+      const db = getAdminFirestore()
+      const snap = await db
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(Math.min(Math.max(limitCount * 5, 80), 200))
+        .get()
+
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter((post): post is Post => post !== null)
+        .filter((post) => {
+          const editor = resolveFeedEditorByline({
+            authorName: post.authorDisplayName,
+            authorId: post.authorId,
+            aiEditorId: post.aiEditorId,
+            citySlug: post.citySlug,
+            categoryId: post.categoryId,
+            publisherName: post.source,
+          })
+          return editor?.slug === editorSlug
+        })
+        .slice(0, limitCount)
+    } catch (error) {
+      console.warn('[newsService.server] getPostsByAssignedEditor failed:', error)
+      return []
+    }
+  },
+  ['posts-by-assigned-editor-v1'],
+  { revalidate: 1800, tags: ['author'] }
+)
+
 export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {
   const id = authorId.trim()
   if (!id) return []
   const byAuthor = await getPostsByAuthorIdCached(id, limitCount)
+  const slug = id.startsWith('ai_editor_') ? id.slice('ai_editor_'.length) : null
+  const spec = slug ? findSeedEditorSpecBySlug(slug) : null
   const desk = findCityCategoryEditorByAuthorUid(id)
-  if (!desk?.citySlug) return byAuthor
+  const editorSlug = spec?.slug || desk?.slug
+  if (!editorSlug) return byAuthor
 
-  const byDesk = await getPostsByCityDeskCached(desk.citySlug, desk.slug, limitCount)
+  const extra = desk?.citySlug
+    ? await getPostsByCityDeskCached(desk.citySlug, desk.slug, limitCount)
+    : await getPostsByAssignedEditorCached(editorSlug, limitCount)
   const seen = new Set(byAuthor.map((post) => post.id))
   const merged = [...byAuthor]
-  for (const post of byDesk) {
+  for (const post of extra) {
     if (seen.has(post.id)) continue
     seen.add(post.id)
     merged.push(post)

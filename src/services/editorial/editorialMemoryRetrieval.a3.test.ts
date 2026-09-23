@@ -365,6 +365,35 @@ describe('Faz A3 - retrieveHistoricalContext (end-to-end, DB mocked - READ ONLY)
     expect(result.results[0].ageBucket).toBe('2-7d')
   })
 
+  it('P5: own articleId never appears among results when a sibling also matches the query title', async () => {
+    vi.mocked(hasDatabaseUrl).mockReturnValue(true)
+    const selfRow = baseRow({
+      id: 'self_article',
+      slug: 'self-slug',
+      title: baseInput.headline,
+      summary: baseInput.summary,
+      citySlug: baseInput.citySlug,
+      categoryId: baseInput.categoryId,
+    })
+    const sibling = baseRow({
+      id: 'sibling_article',
+      slug: 'sibling-slug',
+      title: baseInput.headline,
+      summary: baseInput.summary,
+      citySlug: baseInput.citySlug,
+      categoryId: baseInput.categoryId,
+      publishedAt: new Date('2026-06-15T00:00:00.000Z'),
+    })
+    mockDbReturning([[selfRow, sibling], [], [], [], []])
+    const result = await retrieveHistoricalContext({
+      ...baseInput,
+      articleId: 'self_article',
+      slug: 'self-slug',
+    })
+    expect(result.results.map((r) => r.articleId)).toEqual(['sibling_article'])
+    expect(result.results.some((r) => r.articleId === 'self_article')).toBe(false)
+  })
+
   it('excludes self (by id/slug) and future-published rows even though the mocked DB does not filter them', async () => {
     vi.mocked(hasDatabaseUrl).mockReturnValue(true)
     const selfRow = baseRow({

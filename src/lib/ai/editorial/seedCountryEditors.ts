@@ -10,6 +10,7 @@ import {
   type SeedEditorSpec,
 } from './seedEditors'
 import { countryEditorSlug } from './editorHierarchy'
+import { scaleJournalistPersona } from './scaleEditorPersona'
 
 export const COUNTRY_EDITOR_CATEGORY_KEYS = [
   'genel',
@@ -65,13 +66,22 @@ export function buildCountryEditorSpec(input: CountryEditorInput): SeedEditorSpe
   const deskLabel = isGeneral ? `${nameTr} Dünya` : `${nameTr} ${meta.label}`
   const categoryIds = isGeneral ? ['dunya'] : [meta.categoryId]
   const fallback = isGeneral ? 'defne-aksoy' : countryEditorSlug(code)
+  const persona = scaleJournalistPersona({
+    slug,
+    deskLabel,
+    placeName: nameTr,
+    layer: 'country',
+    countryKey: code,
+  })
 
   return {
     slug,
-    name: `${deskLabel} AI`,
-    title: `${deskLabel} AI Editörü`,
-    shortBio: `${nameTr} masası; bu ülkenin ${meta.label.toLocaleLowerCase('tr-TR')} haberi.`,
-    bio: `NaHaber ${nameTr} ${meta.label} AI editörü. Yalnızca ${nameTr} bağlamında yazar; ulusal Dünya masasına (${fallback}) düşmeyen ülke uzmanlığı.`,
+    name: persona.name,
+    title: persona.title,
+    shortBio: persona.shortBio,
+    bio: persona.bio,
+    avatarUrl: persona.avatarUrl,
+    coverUrl: persona.coverUrl,
     columnName: null,
     primarySpecialization: deskLabel,
     specializations: [nameTr, meta.label, 'Dünya'],
@@ -92,7 +102,7 @@ export function buildCountryEditorSpec(input: CountryEditorInput): SeedEditorSpe
     prompts: {
       core: `${GLOBAL_NEWSROOM_RULES}
 
-Sen ${deskLabel} AI Editörü'sün, NaHaber Dünya masasının ${nameTr} kolu.
+Sen ${persona.name}'sın, NaHaber Dünya masasının ${nameTr} kolu (${deskLabel}).
 Uzmanlık: ${nameTr}${isGeneral ? '' : ` / ${meta.label}`}.
 - Ülke adını ve resmi kurumları doğru yaz; başka ülkeye sapma.
 - "iddia edildi" düzeyini "oldu" yapma.

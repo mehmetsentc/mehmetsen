@@ -2654,7 +2654,7 @@ export function SmartFeedClient({
                   onReact={(r) => void applyReaction(item, r)}
                   onToggleSave={() => void toggleSave(item)}
                   onCommentClick={() => setCommentArticleId(item.articleId)}
-                  bylineMode={lockCitySlug ? 'editor' : 'publisher'}
+                  bylineMode="editor"
                   fullBleed={Boolean(lockCitySlug)}
                   onReadClick={() => onRead(item, index, 'button')}
                   onCategoryClick={
@@ -3040,7 +3040,7 @@ export function SmartFeedClient({
             feedSessionId={feedSessionIdRef.current}
             openSource={readerSession.openSource ?? 'unknown'}
             generation={readerSession.generation}
-            bylineMode={lockCitySlug ? 'editor' : 'publisher'}
+            bylineMode="editor"
             onOpenRelatedArticle={(d) => {
               const synthetic: FeedItemDto = {
                 id: d.articleId,

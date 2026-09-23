@@ -1,0 +1,337 @@
+{
+  "apply": true,
+  "scanned": 2015,
+  "specs": 2015,
+  "patchCount": 2015,
+  "renameCount": 1883,
+  "samples": [
+    {
+      "slug": "ilce-samsun-19-mayis",
+      "from": "19 Mayıs (Samsun) AI",
+      "to": "Berk Albayrak",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-kastamonu-abana",
+      "from": "Abana (Kastamonu) AI",
+      "to": "Seda Sezer",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-cevre",
+      "from": "ABD Çevre AI",
+      "to": "Jack Morgan",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd",
+      "from": "ABD Dünya AI",
+      "to": "Henry Foster",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-ekonomi",
+      "from": "ABD Ekonomi AI",
+      "to": "Isabella Sawyer",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-kultur",
+      "from": "ABD Kültür-Sanat AI",
+      "to": "Liam Bennett",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-politika",
+      "from": "ABD Politika AI",
+      "to": "Matthew Foster",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-saglik",
+      "from": "ABD Sağlık AI",
+      "to": "Benjamin Everett",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-spor",
+      "from": "ABD Spor AI",
+      "to": "Chloe Whitman",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ulke-abd-teknoloji",
+      "from": "ABD Teknoloji-Bilim AI",
+      "to": "Julian Rowe",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-nevsehir-acigol",
+      "from": "Acıgöl (Nevşehir) AI",
+      "to": "Gamze Polat",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-denizli-acipayam",
+      "from": "Acıpayam (Denizli) AI",
+      "to": "Levent Aksu",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-bingol-adakli",
+      "from": "Adaklı (Bingöl) AI",
+      "to": "Yağmur Tanrıverdi",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-istanbul-adalar",
+      "from": "Adalar (İstanbul) AI",
+      "to": "Hakan Tekin",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-asayis",
+      "from": "Adana 3. Sayfa AI",
+      "to": "Tolga Kepez",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-yerel-duyuru",
+      "from": "Adana Duyuru AI",
+      "to": "Gül Serik",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-egitim",
+      "from": "Adana Eğitim AI",
+      "to": "Nilay Eroğlu",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-ekonomi",
+      "from": "Adana Ekonomi AI",
+      "to": "Tolga Tekin",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-gundem",
+      "from": "Adana Güncel AI",
+      "to": "Buse Çetin",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-kultur",
+      "from": "Adana Kültür Sanat AI",
+      "to": "Levent Eren",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-siyaset",
+      "from": "Adana Siyaset AI",
+      "to": "Kemal Coşkun",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-spor",
+      "from": "Adana Spor AI",
+      "to": "Melis Manavgat",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-turizm",
+      "from": "Adana Turizm AI",
+      "to": "Mert Pehlivan",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "il-adana-yasam",
+      "from": "Adana Yaşam AI",
+      "to": "Nilay Erdem",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    },
+    {
+      "slug": "ilce-sakarya-adapazari",
+      "from": "Adapazarı (Sakarya) AI",
+      "to": "Evren Erdem",
+      "fields": [
+        "name",
+        "title",
+        "shortBio",
+        "bio",
+        "avatarUrl",
+        "coverUrl"
+      ]
+    }
+  ],
+  "written": 2015,
+  "failed": 0,
+  "errors": []
+}
