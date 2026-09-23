@@ -344,15 +344,15 @@
     },
     {
       "path": "/api/cron/crawler/tick",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/crawler-ai-worker",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/editor-ai-queue",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/publisher-content-schedule",
