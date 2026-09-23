@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, ExternalLink, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { CalendarDays, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { StatsCard } from '@/components/admin/StatsCard'
 import { Button } from '@/components/ui/Button'
@@ -52,6 +52,14 @@ function formatEventTime(iso?: string): string {
   }
 }
 
+function toLocalInput(iso?: string): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 async function adminFetch(path: string, init?: RequestInit) {
   const user = auth.currentUser
   if (!user) throw new Error('Giriş yapmalısınız.')
@@ -94,7 +102,9 @@ export default function AdminEventsPage() {
   const [status, setStatus] = useState('')
   const [source, setSource] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [formStatus, setFormStatus] = useState<EventStatus>('published')
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -184,25 +194,72 @@ export default function AdminEventsPage() {
     }
   }
 
-  const handleCreate = async (event: React.FormEvent) => {
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setFormStatus('published')
+  }
+
+  const startCreate = () => {
+    if (showForm && !editingId) {
+      closeForm()
+      return
+    }
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setFormStatus('published')
+    setShowForm(true)
+  }
+
+  const startEdit = (item: NaEvent) => {
+    setEditingId(item.id)
+    setFormStatus(item.status)
+    setForm({
+      title: item.title,
+      citySlug: item.citySlug || 'istanbul',
+      venue: item.venue || '',
+      startsAt: toLocalInput(item.startsAt),
+      endsAt: toLocalInput(item.endsAt),
+      category: item.category || 'other',
+      description: item.description || '',
+      ticketUrl: item.ticketUrl || '',
+      coverImageUrl: item.coverImageUrl || '',
+      address: item.address || '',
+      organizer: item.organizer || '',
+    })
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSave = async (event: React.FormEvent) => {
     event.preventDefault()
     setSaving(true)
     try {
-      await adminFetch('/api/admin/events', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...form,
-          startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : '',
-          endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : '',
-        }),
-      })
-      toast.success('Etkinlik eklendi.')
-      setForm(EMPTY_FORM)
-      setShowForm(false)
+      const payload = {
+        ...form,
+        status: formStatus,
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : '',
+        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : '',
+      }
+      if (editingId) {
+        await adminFetch(`/api/admin/events/${encodeURIComponent(editingId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        })
+        toast.success('Etkinlik güncellendi.')
+      } else {
+        await adminFetch('/api/admin/events', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
+        toast.success('Etkinlik eklendi.')
+      }
+      closeForm()
       refreshCount()
       await loadItems()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Eklenemedi')
+      toast.error(error instanceof Error ? error.message : editingId ? 'Güncellenemedi' : 'Eklenemedi')
     } finally {
       setSaving(false)
     }
@@ -244,7 +301,8 @@ export default function AdminEventsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[rgb(var(--color-text))]">Event Yönetimi</h1>
         <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Etkinlik ekle, listele ve sil. Sağlayıcı kayıtları iptal edilir; manuel kayıtlar silinir.
+          Etkinlik ekle, düzenle, listele ve sil. Sağlayıcı kayıtları iptal edilir; manuel kayıtlar
+          silinir.
         </p>
       </div>
 
@@ -285,18 +343,21 @@ export default function AdminEventsPage() {
               Etkinlikler sayfası
             </Button>
           </Link>
-          <Button variant="secondary" onClick={() => setShowForm((value) => !value)}>
+          <Button variant="secondary" onClick={startCreate}>
             <Plus className="mr-2 inline h-4 w-4" />
-            {showForm ? 'Formu kapat' : 'Event ekle'}
+            {showForm && !editingId ? 'Formu kapat' : 'Event ekle'}
           </Button>
         </div>
       </div>
 
       {showForm && (
         <form
-          onSubmit={handleCreate}
+          onSubmit={handleSave}
           className="mb-6 grid gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6 md:grid-cols-2"
         >
+          <div className="md:col-span-2 text-sm font-medium">
+            {editingId ? 'Etkinliği düzenle' : 'Yeni etkinlik'}
+          </div>
           <label className="text-sm">
             Başlık
             <input
@@ -403,9 +464,26 @@ export default function AdminEventsPage() {
               className="mt-1 w-full rounded-md border border-[rgb(var(--color-border))] bg-transparent px-3 py-2"
             />
           </label>
-          <div className="md:col-span-2">
+          {editingId && (
+            <label className="text-sm">
+              Durum
+              <select
+                value={formStatus}
+                onChange={(e) => setFormStatus(e.target.value as EventStatus)}
+                className="mt-1 w-full rounded-md border border-[rgb(var(--color-border))] bg-transparent px-3 py-2"
+              >
+                <option value="published">Yayında</option>
+                <option value="draft">Taslak</option>
+                <option value="cancelled">İptal</option>
+              </select>
+            </label>
+          )}
+          <div className="md:col-span-2 flex flex-wrap gap-3">
             <Button type="submit" disabled={saving}>
-              {saving ? 'Kaydediliyor…' : 'Event kaydet'}
+              {saving ? 'Kaydediliyor…' : editingId ? 'Değişiklikleri kaydet' : 'Event kaydet'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={closeForm}>
+              Vazgeç
             </Button>
           </div>
         </form>
@@ -494,7 +572,15 @@ export default function AdminEventsPage() {
                   <td className="whitespace-nowrap px-3 py-2">{formatEventTime(item.startsAt)}</td>
                   <td className="px-3 py-2">{item.source || 'firestore'}</td>
                   <td className="px-3 py-2">{statusLabel[item.status] || item.status}</td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="whitespace-nowrap px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(item)}
+                      className="mr-3 inline-flex items-center gap-1 text-[rgb(var(--color-text))]"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Düzenle
+                    </button>
                     <button
                       type="button"
                       disabled={deletingId === item.id}
