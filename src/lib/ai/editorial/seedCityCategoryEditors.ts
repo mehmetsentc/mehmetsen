@@ -31,7 +31,7 @@ export const CITY_CATEGORY_DESK_IDS = [
 ] as const
 export type CityCategoryDeskId = (typeof CITY_CATEGORY_DESK_IDS)[number]
 
-const DESK_LABEL: Record<CityCategoryDeskId, string> = {
+export const CITY_CATEGORY_DESK_LABEL: Record<CityCategoryDeskId, string> = {
   gundem: 'Güncel',
   siyaset: 'Siyaset',
   asayis: '3. Sayfa',
@@ -87,7 +87,7 @@ function provinceName(citySlug: string): string {
   return TURKISH_PROVINCES.find((p) => p.slug === citySlug)?.name ?? citySlug
 }
 
-function managedIdsForDesk(deskId: CityCategoryDeskId): string[] {
+export function managedIdsForDesk(deskId: CityCategoryDeskId): string[] {
   const family = getCategoryFamily(deskId)
   const extras = DESK_EXTRA_IDS[deskId] ?? []
   return [...new Set([...family, deskId, ...extras])]
@@ -96,7 +96,7 @@ function managedIdsForDesk(deskId: CityCategoryDeskId): string[] {
 function buildDeskSpec(citySlug: CityCategoryDeskCity, deskId: CityCategoryDeskId): SeedEditorSpec {
   const cityName = provinceName(citySlug)
   const persona = PERSONAS[citySlug][deskId]
-  const label = DESK_LABEL[deskId]
+  const label = CITY_CATEGORY_DESK_LABEL[deskId]
   const managed = managedIdsForDesk(deskId)
   const districts = getDistrictsForProvince(citySlug).map((d) => d.slug)
 

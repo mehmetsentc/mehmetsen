@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status') as 'active' | 'disabled' | 'archived' | null
   const editors = await listAiEditors({
     status: status || undefined,
-    limit: 300,
+    limit: 4000,
   })
   return NextResponse.json({ success: true, editors })
 }

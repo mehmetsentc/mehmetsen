@@ -1,0 +1,110 @@
+{
+  "readOnly": true,
+  "projectId": "nahaberapp",
+  "queriedAt": "2026-09-23T14:21:35.359Z",
+  "existingAiEditors": 112,
+  "usageToday": 573,
+  "usage7d": 52649,
+  "usageErrorsToday": null,
+  "newsToday": 117,
+  "dunyaScanned": 1500,
+  "topCountries": [
+    [
+      "abd",
+      15
+    ],
+    [
+      "iran",
+      13
+    ],
+    [
+      "rusya",
+      10
+    ],
+    [
+      "israil",
+      9
+    ],
+    [
+      "almanya",
+      7
+    ],
+    [
+      "fransa",
+      5
+    ],
+    [
+      "ukrayna",
+      5
+    ],
+    [
+      "birlesik-krallik",
+      5
+    ],
+    [
+      "nepal",
+      5
+    ],
+    [
+      "hindistan",
+      5
+    ],
+    [
+      "filistin",
+      4
+    ],
+    [
+      "italya",
+      4
+    ],
+    [
+      "amerika-birlesik-devletleri",
+      4
+    ],
+    [
+      "yunanistan",
+      3
+    ],
+    [
+      "ispanya",
+      3
+    ],
+    [
+      "japonya",
+      3
+    ],
+    [
+      "suudi-arabistan",
+      3
+    ],
+    [
+      "cin",
+      3
+    ],
+    [
+      "guney-afrika",
+      2
+    ],
+    [
+      "belcika",
+      2
+    ]
+  ],
+  "planned": {
+    "wave0": 20,
+    "wave1SkipPilotCities": 790,
+    "wave1IfAll81": 810,
+    "wave2": 973,
+    "wave3": 120,
+    "editors": 1903,
+    "docsPerEditor": 5,
+    "writes": 9516,
+    "seedReads": 3806,
+    "firestoreWriteUsd": 0.0171288,
+    "firestoreReadUsd": 0.0022835999999999998,
+    "naiveDailyCallsIfEveryEditorHitsCap": 5709,
+    "avgDailyUsage": 7521,
+    "naiveVsCurrentRatio": 0.7590745911447946
+  },
+  "stopIfNaiveGt2x": false
+}

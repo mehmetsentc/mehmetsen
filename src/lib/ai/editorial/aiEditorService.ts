@@ -1,3 +1,4 @@
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import {
@@ -12,6 +13,8 @@ import {
   type AiPromptType,
   type AiPublishPolicy,
 } from '@/types/aiEditor'
+import { SCALE_HARDENED_CREATE_DEFAULTS, SCALE_INITIAL_MAX_DAILY_NEWS, nextScaleDailyCount, nextScaleGateState } from './scaleHardening'
+import { turkeyYmdNow } from '@/lib/turkeyCalendar'
 import { defaultModelAssignmentsForSeed, SEED_AI_EDITORS, type SeedEditorSpec } from './seedEditors'
 import { SEED_CITY_AI_EDITORS } from './seedCityEditors'
 import { SEED_CITY_CATEGORY_AI_EDITORS } from './seedCityCategoryEditors'
@@ -66,11 +69,25 @@ export async function listAiEditors(opts?: {
   limit?: number
 }): Promise<AiEditorDocument[]> {
   const db = getAdminFirestore()
-  const snap = await db.collection(Collections.AI_EDITORS).limit(400).get()
-  let editors = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AiEditorDocument, 'id'>) }))
-  if (opts?.status) editors = editors.filter((e) => e.status === opts.status)
-  editors.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-  return editors.slice(0, opts?.limit ?? 300)
+  const cap = Math.max(1, opts?.limit ?? 4000)
+  const editors: AiEditorDocument[] = []
+  let last: QueryDocumentSnapshot | undefined
+  while (editors.length < cap) {
+    const pageSize = Math.min(400, cap - editors.length)
+    let q = db.collection(Collections.AI_EDITORS).orderBy('__name__').limit(pageSize)
+    if (last) q = q.startAfter(last)
+    const snap = await q.get()
+    if (snap.empty) break
+    for (const d of snap.docs) {
+      editors.push({ id: d.id, ...(d.data() as Omit<AiEditorDocument, 'id'>) })
+    }
+    last = snap.docs[snap.docs.length - 1]
+    if (snap.size < pageSize) break
+  }
+  let out = editors
+  if (opts?.status) out = out.filter((e) => e.status === opts.status)
+  out.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+  return out.slice(0, cap)
 }
 
 export async function getActivePrompt(
@@ -151,8 +168,12 @@ export interface CreateAiEditorInput {
   categoryIds?: string[]
   managedCategories?: string[]
   citySlug?: string | null
+  countrySlug?: string | null
+  districtSlug?: string | null
+  editorLayer?: AiEditorDocument['editorLayer']
   languages?: string[]
   publishPolicy?: AiPublishPolicy
+  maxDailyNews?: number
   capabilities?: Partial<AiEditorDocument['capabilities']>
   modelAssignments?: AiEditorDocument['modelAssignments']
   preferredSourceIds?: string[]
@@ -167,6 +188,9 @@ export interface CreateAiEditorInput {
   fallbackEditorSlug?: string | null
   localConfig?: AiEditorLocalConfig | null
   assignableForNews?: boolean
+  scaleHardened?: boolean
+  autoPublishUnlockThreshold?: number
+  consecutiveQualityGatePasses?: number
 }
 
 export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEditorDocument> {
@@ -201,13 +225,20 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
       ? input.managedCategories
       : input.categoryIds ?? [],
     citySlug: input.citySlug ?? null,
+    countrySlug: input.countrySlug ?? null,
+    districtSlug: input.districtSlug ?? null,
+    editorLayer: input.editorLayer,
     languages: input.languages?.length ? input.languages : ['tr'],
     status: 'active',
     isAI: true,
     verified: true,
     capabilities: { ...DEFAULT_AI_CAPABILITIES, ...input.capabilities },
-    publishPolicy: input.publishPolicy ?? 'AUTO_PUBLISH',
-    maxDailyNews: 40,
+    publishPolicy: input.scaleHardened
+      ? SCALE_HARDENED_CREATE_DEFAULTS.publishPolicy
+      : (input.publishPolicy ?? 'AUTO_PUBLISH'),
+    maxDailyNews: input.scaleHardened
+      ? SCALE_INITIAL_MAX_DAILY_NEWS
+      : (input.maxDailyNews ?? 40),
     maxDailyColumns: 1,
     maxDailyVideos: 5,
     modelAssignments: input.modelAssignments ?? {},
@@ -221,6 +252,13 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
     fallbackEditorSlug: input.fallbackEditorSlug ?? null,
     localConfig: input.localConfig ?? null,
     assignableForNews: input.assignableForNews ?? true,
+    scaleHardened: input.scaleHardened ?? false,
+    autoPublishUnlockThreshold: input.scaleHardened
+      ? (input.autoPublishUnlockThreshold ?? SCALE_HARDENED_CREATE_DEFAULTS.autoPublishUnlockThreshold)
+      : undefined,
+    consecutiveQualityGatePasses: input.scaleHardened ? 0 : undefined,
+    scaleDailyNewsCount: input.scaleHardened ? 0 : undefined,
+    scaleDailyNewsYmd: input.scaleHardened ? null : undefined,
     version: 1,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -270,6 +308,26 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
   }
 
   return editor
+}
+
+export async function applyScaleQualityOutcome(
+  editor: AiEditorDocument,
+  gatePassed: boolean
+): Promise<void> {
+  if (!editor.scaleHardened) return
+  const next = nextScaleGateState(editor, gatePassed)
+  const daily = nextScaleDailyCount(editor, turkeyYmdNow())
+  await getAdminFirestore()
+    .collection(Collections.AI_EDITORS)
+    .doc(editor.id)
+    .update({
+      consecutiveQualityGatePasses: next.consecutiveQualityGatePasses,
+      publishPolicy: next.publishPolicy,
+      maxDailyNews: next.maxDailyNews,
+      scaleDailyNewsCount: daily.scaleDailyNewsCount,
+      scaleDailyNewsYmd: daily.scaleDailyNewsYmd,
+      updatedAt: Date.now(),
+    })
 }
 
 export async function updateAiEditor(
@@ -347,6 +405,9 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
         categoryIds: spec.categoryIds,
         managedCategories,
         citySlug: spec.citySlug ?? null,
+        countrySlug: spec.countrySlug ?? null,
+        districtSlug: spec.districtSlug ?? null,
+        editorLayer: spec.editorLayer,
         capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
         personaType: spec.personaType,
         desk: spec.desk,
@@ -378,6 +439,9 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
         categoryIds: spec.categoryIds,
         managedCategories,
         citySlug: spec.citySlug ?? null,
+        countrySlug: spec.countrySlug ?? null,
+        districtSlug: spec.districtSlug ?? null,
+        editorLayer: spec.editorLayer,
         capabilities: { ...DEFAULT_AI_CAPABILITIES, ...spec.capabilities },
         personaType: spec.personaType,
         desk: spec.desk,
@@ -406,6 +470,9 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
     categoryIds: spec.categoryIds,
     managedCategories,
     citySlug: spec.citySlug ?? null,
+    countrySlug: spec.countrySlug ?? null,
+    districtSlug: spec.districtSlug ?? null,
+    editorLayer: spec.editorLayer,
     capabilities: spec.capabilities,
     modelAssignments: defaultModelAssignmentsForSeed(spec),
     prompts: spec.prompts,

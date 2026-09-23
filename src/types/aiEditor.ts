@@ -105,6 +105,12 @@ export interface AiEditorDocument {
    * National desk editors leave this null/undefined.
    */
   citySlug?: string | null
+  /** ISO-2 lowercase country desk (e.g. es). Unused until EXPANDED_EDITOR_HIERARCHY_ENABLED. */
+  countrySlug?: string | null
+  /** District slug for ilçe desks. Unused until EXPANDED_EDITOR_HIERARCHY_ENABLED. */
+  districtSlug?: string | null
+  /** Optional explicit layer; Admin infers from slug when omitted. */
+  editorLayer?: 'national' | 'country' | 'province' | 'district'
   languages: string[]
   status: AiEditorStatus
   isAI: true
@@ -134,6 +140,16 @@ export interface AiEditorDocument {
    * Defaults to true when omitted (legacy docs).
    */
   assignableForNews?: boolean
+  /**
+   * SCALE P2: new desks start locked. Quality-gate PASS increments
+   * consecutiveQualityGatePasses; FAIL resets. At autoPublishUnlockThreshold
+   * the editor flips to AUTO_PUBLISH + unlocked maxDailyNews.
+   */
+  scaleHardened?: boolean
+  autoPublishUnlockThreshold?: number
+  consecutiveQualityGatePasses?: number
+  scaleDailyNewsCount?: number
+  scaleDailyNewsYmd?: string | null
   version: number
   createdAt: number
   updatedAt: number
