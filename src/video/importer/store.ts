@@ -158,6 +158,7 @@ export function createDrizzleImportStore(): VideoImportStore {
         updatedAt: patch.updatedAt ?? new Date(),
       }
       if (patch.status !== undefined) set.status = patch.status
+      if (patch.rightsStatus !== undefined) set.rightsStatus = patch.rightsStatus
       if (patch.originalStorageKey !== undefined) set.originalStorageKey = patch.originalStorageKey
       if (patch.mimeType !== undefined) set.mimeType = patch.mimeType
       if (patch.fileSizeBytes !== undefined) set.fileSizeBytes = patch.fileSizeBytes

@@ -8,6 +8,9 @@ export type VideoLibraryAction =
   | 'register'
   | 'import'
   | 'import-selected'
+  | 'import-direct-now'
+  | 'upload-init'
+  | 'upload-complete'
   | 'process'
 
 export function videoLibraryActionPermission(action: VideoLibraryAction): CmsPermission {
@@ -22,6 +25,9 @@ export function parseVideoLibraryAction(raw: string | undefined): VideoLibraryAc
     case 'register':
     case 'import':
     case 'import-selected':
+    case 'import-direct-now':
+    case 'upload-init':
+    case 'upload-complete':
     case 'process':
     case 'inspect-bulk':
       return raw

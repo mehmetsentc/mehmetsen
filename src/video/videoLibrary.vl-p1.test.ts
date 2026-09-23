@@ -31,6 +31,59 @@ function memoryRepo(): VideoLibraryRepository & { items: VideoLibraryItem[]; ins
     async findByDedup(keys) {
       return items.find((item) => matchesDedupKeys(item, keys)) ?? null
     },
+    async insertOwnedUpload(input) {
+      const now = new Date()
+      const ownedUrl = `nahaber-owned://sha256/${input.contentHash}`
+      const item: VideoLibraryItem = {
+        id: input.id,
+        platform: 'generic',
+        platformVideoId: input.contentHash,
+        originalUrl: ownedUrl,
+        normalizedUrl: ownedUrl,
+        sourceProfileId: null,
+        sourceUsername: null,
+        sourceName: null,
+        sourceUrl: null,
+        title: input.title,
+        description: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        aspectRatio: null,
+        thumbnailUrl: null,
+        posterStorageKey: null,
+        originalStorageKey: input.originalStorageKey,
+        playbackStorageKey: null,
+        streamManifestKey: null,
+        renditions: [],
+        mimeType: input.mimeType,
+        fileSizeBytes: input.fileSizeBytes,
+        publishedAt: null,
+        importedAt: null,
+        publishedNewsId: null,
+        status: 'PENDING_IMPORT',
+        rightsStatus: 'OWNED',
+        contentHash: input.contentHash,
+        tags: [],
+        importErrorCode: null,
+        importErrorMessage: null,
+        lastImportJobId: null,
+        processErrorCode: null,
+        processErrorMessage: null,
+        lastProcessJobId: null,
+        playbackMimeType: null,
+        playbackFileSizeBytes: null,
+        videoCodec: null,
+        audioCodec: null,
+        fps: null,
+        createdBy: input.createdBy,
+        updatedBy: input.createdBy,
+        createdAt: now,
+        updatedAt: now,
+      }
+      items.push(item)
+      return item
+    },
     async insertInspected({ metadata, createdBy }) {
       this.inserts += 1
       const now = new Date()
@@ -291,6 +344,11 @@ describe('VL-P1 auth mapping', () => {
     expect(videoLibraryActionPermission('jobs')).toBe('video:read')
     expect(videoLibraryActionPermission('import-selected')).toBe('video:create')
     expect(videoLibraryActionPermission('import')).toBe('video:create')
+    expect(videoLibraryActionPermission('upload-init')).toBe('video:create')
+    expect(videoLibraryActionPermission('upload-complete')).toBe('video:create')
+    expect(videoLibraryActionPermission('import-direct-now')).toBe('video:create')
+    expect(parseVideoLibraryAction('upload-init')).toBe('upload-init')
+    expect(parseVideoLibraryAction('import-direct-now')).toBe('import-direct-now')
     expect(parseVideoLibraryAction('inspect-bulk')).toBe('inspect-bulk')
     expect(parseVideoLibraryAction(undefined)).toBe('inspect')
   })

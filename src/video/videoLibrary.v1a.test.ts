@@ -21,6 +21,59 @@ function memoryRepo(): VideoLibraryRepository & { items: VideoLibraryItem[] } {
     async findByDedup(keys) {
       return items.find((item) => matchesDedupKeys(item, keys)) ?? null
     },
+    async insertOwnedUpload(input) {
+      const now = new Date()
+      const ownedUrl = `nahaber-owned://sha256/${input.contentHash}`
+      const item: VideoLibraryItem = {
+        id: input.id,
+        platform: 'generic',
+        platformVideoId: input.contentHash,
+        originalUrl: ownedUrl,
+        normalizedUrl: ownedUrl,
+        sourceProfileId: null,
+        sourceUsername: null,
+        sourceName: null,
+        sourceUrl: null,
+        title: input.title,
+        description: null,
+        durationMs: null,
+        width: null,
+        height: null,
+        aspectRatio: null,
+        thumbnailUrl: null,
+        posterStorageKey: null,
+        originalStorageKey: input.originalStorageKey,
+        playbackStorageKey: null,
+        streamManifestKey: null,
+        renditions: [],
+        mimeType: input.mimeType,
+        fileSizeBytes: input.fileSizeBytes,
+        publishedAt: null,
+        importedAt: null,
+        publishedNewsId: null,
+        status: 'PENDING_IMPORT',
+        rightsStatus: 'OWNED',
+        contentHash: input.contentHash,
+        tags: [],
+        importErrorCode: null,
+        importErrorMessage: null,
+        lastImportJobId: null,
+        processErrorCode: null,
+        processErrorMessage: null,
+        lastProcessJobId: null,
+        playbackMimeType: null,
+        playbackFileSizeBytes: null,
+        videoCodec: null,
+        audioCodec: null,
+        fps: null,
+        createdBy: input.createdBy,
+        updatedBy: input.createdBy,
+        createdAt: now,
+        updatedAt: now,
+      }
+      items.push(item)
+      return item
+    },
     async insertInspected({ metadata, createdBy }) {
       const now = new Date()
       const item: VideoLibraryItem = {

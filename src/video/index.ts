@@ -18,5 +18,12 @@ export { detectVideoProvider, listVideoProviders } from './providers/registry'
 export { buildVideoLibraryMediaKey } from './storage/keys'
 export { enqueueDownloadJob } from './importer/enqueue'
 export { processOneImportJob } from './importer/worker'
+export {
+  parseOwnedUploadInit,
+  ownedNormalizedUrl,
+  initOwnedUpload,
+  completeOwnedUpload,
+} from './library/ownedUpload'
+export { importDirectNow, importDirectNowMany, pickDirectImportUrls } from './library/importDirectNow'
 export { enqueueProcessJob } from './processing/enqueue'
 export { processOneProcessJob } from './processing/worker'

@@ -142,6 +142,54 @@ export class R2StorageProvider implements StorageProvider {
     return res.ok
   }
 
+  async head(key: string): Promise<{
+    exists: boolean
+    contentType: string | null
+    contentLength: number | null
+  }> {
+    const config = getR2Config()
+    const endpoint = getEndpoint(config.accountId)
+    const url = `${endpoint}/${config.bucket}/${key}`
+    const signedHeaders = await signRequest('HEAD', url, {}, config)
+    const res = await fetch(url, { method: 'HEAD', headers: signedHeaders })
+    if (!res.ok) return { exists: false, contentType: null, contentLength: null }
+    const lengthRaw = res.headers.get('content-length')
+    const contentLength = lengthRaw ? Number(lengthRaw) : null
+    return {
+      exists: true,
+      contentType: res.headers.get('content-type'),
+      contentLength: Number.isFinite(contentLength) ? contentLength : null,
+    }
+  }
+
+  /**
+   * Browser PUT to the existing nahaber-media bucket. Key is chosen by the server.
+   * Requires R2 CORS (see scripts/r2-nahaber-media-cors.json): GET/HEAD/PUT,
+   * Content-Type + Range, origins https://www.nahaber.com, https://nahaber.com,
+   * and http://localhost:3000.
+   */
+  async presignPut(key: string, contentType: string, expiresSeconds = 900): Promise<string> {
+    const config = getR2Config()
+    const endpoint = getEndpoint(config.accountId)
+    const expires = Math.min(Math.max(expiresSeconds, 60), 3600)
+    const url = new URL(`${endpoint}/${config.bucket}/${key}`)
+    url.searchParams.set('X-Amz-Expires', String(expires))
+
+    const { AwsClient } = await import('aws4fetch')
+    const client = new AwsClient({
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+      service: 's3',
+      region: 'auto',
+    })
+    const signed = await client.sign(url.toString(), {
+      method: 'PUT',
+      headers: { 'content-type': contentType },
+      aws: { signQuery: true },
+    })
+    return signed.url
+  }
+
   /** Authenticated object download (S3 GET). Used by ops diagnostics only. */
   async download(key: string): Promise<Uint8Array> {
     const config = getR2Config()

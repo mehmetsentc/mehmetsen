@@ -14,9 +14,13 @@ import { enqueueProcessJob } from '@/video/processing/enqueue'
 import { videoImportStore } from '@/video/importer/store'
 import { resolveImportSource } from '@/video/importer/resolveSource'
 import { isR2Configured, getStorage } from '@/lib/storage'
+import { R2StorageProvider } from '@/lib/storage/r2Client'
+import { completeOwnedUpload, initOwnedUpload, parseOwnedUploadInit } from '@/video/library/ownedUpload'
+import { importDirectNow } from '@/video/library/importDirectNow'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 120
 
 function flagOff() {
   return NextResponse.json(
@@ -39,6 +43,18 @@ function mapError(err: unknown) {
   if (message === 'MISSING_ORIGINAL') {
     return NextResponse.json({ error: 'Orijinal dosya yok', code: message }, { status: 400 })
   }
+  if (
+    message === 'INVALID_MIME' ||
+    message === 'INVALID_HASH' ||
+    message === 'FILE_TOO_LARGE' ||
+    message === 'INVALID_UPLOAD_FIELDS' ||
+    message === 'UPLOAD_INCOMPLETE' ||
+    message === 'PLATFORM_METADATA_ONLY' ||
+    message === 'YOUTUBE_NOT_DIRECT_MEDIA' ||
+    message === 'NOT_DIRECT_MEDIA'
+  ) {
+    return NextResponse.json({ error: 'Video alınamadı', code: message }, { status: 400 })
+  }
   if (message === 'DATABASE_UNAVAILABLE') {
     return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
   }
@@ -46,16 +62,23 @@ function mapError(err: unknown) {
   return NextResponse.json({ error: 'Video Library işlemi başarısız' }, { status: 500 })
 }
 
-function libraryAssetUrls(item: { posterStorageKey: string | null; playbackStorageKey: string | null }) {
-  if (!isR2Configured()) return { posterPublicUrl: null, playbackPublicUrl: null }
+function libraryAssetUrls(item: {
+  posterStorageKey: string | null
+  playbackStorageKey: string | null
+  originalStorageKey: string | null
+}) {
+  if (!isR2Configured()) {
+    return { posterPublicUrl: null, playbackPublicUrl: null, originalPublicUrl: null }
+  }
   try {
     const storage = getStorage()
     return {
       posterPublicUrl: item.posterStorageKey ? storage.getPublicUrl(item.posterStorageKey) : null,
       playbackPublicUrl: item.playbackStorageKey ? storage.getPublicUrl(item.playbackStorageKey) : null,
+      originalPublicUrl: item.originalStorageKey ? storage.getPublicUrl(item.originalStorageKey) : null,
     }
   } catch {
-    return { posterPublicUrl: null, playbackPublicUrl: null }
+    return { posterPublicUrl: null, playbackPublicUrl: null, originalPublicUrl: null }
   }
 }
 
@@ -135,15 +158,24 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!isVideoLibraryEnabled()) return flagOff()
 
-  let body: { action?: string; url?: string; urls?: string[]; text?: string; id?: string }
+  let body: {
+    action?: string
+    url?: string
+    urls?: string[]
+    text?: string
+    id?: string
+    filename?: string
+    mimeType?: string
+    fileSizeBytes?: number
+    contentHash?: string
+    bucket?: unknown
+    storageKey?: unknown
+    credentials?: unknown
+    command?: unknown
+    path?: unknown
+  }
   try {
-    body = (await request.json()) as {
-      action?: string
-      url?: string
-      urls?: string[]
-      text?: string
-      id?: string
-    }
+    body = (await request.json()) as typeof body
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
@@ -179,6 +211,79 @@ export async function POST(request: Request) {
 
     if (!hasDatabaseUrl()) {
       return NextResponse.json(databaseUnavailableResponse({ postgres: false }), { status: 503 })
+    }
+
+    if (action === 'upload-init') {
+      if (!isR2Configured()) {
+        return NextResponse.json({ error: 'R2 yapılandırılmamış', code: 'R2_NOT_CONFIGURED' }, { status: 503 })
+      }
+      const parsed = parseOwnedUploadInit(body)
+      if (!parsed.ok) {
+        return NextResponse.json({ error: 'Yükleme geçersiz', code: parsed.code }, { status: 400 })
+      }
+      const storage = getStorage()
+      if (!(storage instanceof R2StorageProvider)) {
+        return NextResponse.json({ error: 'R2 yapılandırılmamış', code: 'R2_NOT_CONFIGURED' }, { status: 503 })
+      }
+      const result = await initOwnedUpload({
+        parsed,
+        createdBy: auth.uid,
+        repository: videoLibraryRepository,
+        store: videoImportStore,
+        presignPut: (key, contentType, expiresSeconds) => storage.presignPut(key, contentType, expiresSeconds),
+      })
+      return NextResponse.json({
+        outcome: result.outcome,
+        itemId: result.item.id,
+        storageKey: result.storageKey,
+        uploadUrl: result.uploadUrl,
+        expiresIn: result.expiresIn,
+        item: result.item,
+      })
+    }
+
+    if (action === 'upload-complete') {
+      if (!isR2Configured()) {
+        return NextResponse.json({ error: 'R2 yapılandırılmamış', code: 'R2_NOT_CONFIGURED' }, { status: 503 })
+      }
+      if (body.bucket != null || body.storageKey != null || body.credentials != null) {
+        return NextResponse.json({ error: 'Yükleme geçersiz', code: 'INVALID_UPLOAD_FIELDS' }, { status: 400 })
+      }
+      const id = typeof body.id === 'string' ? body.id : ''
+      if (!id) return NextResponse.json({ error: 'id gerekli', code: 'INVALID_ID' }, { status: 400 })
+      const storage = getStorage()
+      if (!(storage instanceof R2StorageProvider)) {
+        return NextResponse.json({ error: 'R2 yapılandırılmamış', code: 'R2_NOT_CONFIGURED' }, { status: 503 })
+      }
+      const item = await completeOwnedUpload({
+        itemId: id,
+        store: videoImportStore,
+        head: (key) => storage.head(key),
+      })
+      return NextResponse.json({ item: { ...item, ...libraryAssetUrls(item) } })
+    }
+
+    if (action === 'import-direct-now') {
+      if (!isR2Configured()) {
+        return NextResponse.json({ error: 'R2 yapılandırılmamış', code: 'R2_NOT_CONFIGURED' }, { status: 503 })
+      }
+      const videoUrl = typeof body.url === 'string' ? body.url : ''
+      if (!videoUrl) {
+        return NextResponse.json({ error: 'Geçerli bir video URL’si girin', code: 'INVALID_URL' }, { status: 400 })
+      }
+      const result = await importDirectNow({
+        url: videoUrl,
+        createdBy: auth.uid,
+        repository: videoLibraryRepository,
+        store: videoImportStore,
+        storage: getStorage(),
+      })
+      return NextResponse.json({
+        outcome: result.outcome,
+        jobId: result.jobId,
+        item: result.item ? { ...result.item, ...libraryAssetUrls(result.item) } : null,
+        code: result.code ?? null,
+      })
     }
 
     if (action === 'import-selected') {
