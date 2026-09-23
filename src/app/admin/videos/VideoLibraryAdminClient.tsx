@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Clock, ExternalLink, Play, RefreshCw, Search, Video } from 'lucide-react'
+import { Clock, ExternalLink, Play, RefreshCw, Search, Upload, Video } from 'lucide-react'
 import {
   AdminOsEmptyState,
   AdminOsErrorState,
@@ -20,6 +20,7 @@ import type { BulkInspectRow } from '@/video/library/inspectBulk'
 type LibraryRow = VideoLibraryItem & {
   posterPublicUrl?: string | null
   playbackPublicUrl?: string | null
+  originalPublicUrl?: string | null
 }
 
 type JobRow = {
@@ -129,6 +130,8 @@ export function VideoLibraryAdminClient() {
   const [importingId, setImportingId] = useState<string | null>(null)
   const [importEnabled, setImportEnabled] = useState(false)
   const [previewItem, setPreviewItem] = useState<LibraryRow | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [directImportUrl, setDirectImportUrl] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -200,9 +203,14 @@ export function VideoLibraryAdminClient() {
         error?: string
       }
       if (!res.ok) throw new Error(body.error || 'İnceleme başarısız')
-      setInspectRows(body.rows ?? [])
-      setSelected({})
-      toast.success('İnceleme tamamlandı — indirme başlamadı')
+      const nextRows = body.rows ?? []
+      setInspectRows(nextRows)
+      setSelected(
+        Object.fromEntries(
+          nextRows.filter((row) => row.downloadable && !row.error).map((row) => [row.originalUrl, true])
+        )
+      )
+      toast.success('İnceleme tamamlandı — sosyal linkler indirilmez')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'İnceleme başarısız')
     } finally {
@@ -210,35 +218,158 @@ export function VideoLibraryAdminClient() {
     }
   }
 
-  const selectedUrls = useMemo(
-    () => rows.filter((row) => selected[row.originalUrl]).map((row) => row.originalUrl),
+  const downloadableRows = useMemo(() => rows.filter((row) => row.downloadable && !row.error), [rows])
+  const selectedDownloadableUrls = useMemo(
+    () =>
+      rows
+        .filter((row) => selected[row.originalUrl] && row.downloadable && !row.error)
+        .map((row) => row.originalUrl),
     [rows, selected]
   )
-  const downloadableRows = useMemo(() => rows.filter((row) => row.downloadable && !row.error), [rows])
 
-  const enqueueSelected = async () => {
-    if (!canCreate || !importEnabled) return
-    if (selectedUrls.length === 0) {
-      toast.error('Seçim yok')
+  const importSelectedNow = async () => {
+    if (!canCreate) return
+    if (selectedDownloadableUrls.length === 0) {
+      toast.error('Desteklenen doğrudan dosya seçin. Instagram/TikTok/YouTube indirilmez.')
       return
     }
     setQueueing(true)
+    let imported = 0
+    let skipped = 0
+    let failed = 0
+    try {
+      for (const url of selectedDownloadableUrls) {
+        setDirectImportUrl(url)
+        try {
+          const res = await fetch('/api/admin/videos/library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+            body: JSON.stringify({ action: 'import-direct-now', url }),
+          })
+          const body = (await res.json()) as { outcome?: string; error?: string; code?: string }
+          const code = body.code || ''
+          if (
+            code === 'PLATFORM_METADATA_ONLY' ||
+            code === 'YOUTUBE_NOT_DIRECT_MEDIA' ||
+            code === 'NOT_DIRECT_MEDIA'
+          ) {
+            skipped += 1
+            continue
+          }
+          if (!res.ok) {
+            failed += 1
+            continue
+          }
+          if (body.outcome === 'SUCCEEDED' || body.outcome === 'ALREADY_IMPORTED') imported += 1
+          else failed += 1
+        } catch {
+          failed += 1
+        }
+      }
+      const parts = [`${imported} dosya alındı`]
+      if (skipped) parts.push(`${skipped} atlandı`)
+      if (failed) parts.push(`${failed} hata`)
+      if (failed && imported === 0) toast.error(parts.join(', '))
+      else toast.success(parts.join(', '))
+      setTab('library')
+      void load()
+    } finally {
+      setQueueing(false)
+      setDirectImportUrl(null)
+    }
+  }
+
+  const sha256Hex = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer()
+    const digest = await crypto.subtle.digest('SHA-256', buffer)
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+
+  const mimeFromFile = (file: File): string => {
+    if (file.type) return file.type.toLowerCase()
+    const name = file.name.toLowerCase()
+    if (name.endsWith('.webm')) return 'video/webm'
+    if (name.endsWith('.mov')) return 'video/quicktime'
+    if (name.endsWith('.m4v')) return 'video/x-m4v'
+    return 'video/mp4'
+  }
+
+  const uploadOwnedFile = async (file: File) => {
+    if (!canCreate) return
+    setUploading(true)
+    try {
+      const mimeType = mimeFromFile(file)
+      const contentHash = await sha256Hex(file)
+      const initRes = await fetch('/api/admin/videos/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({
+          action: 'upload-init',
+          filename: file.name,
+          mimeType,
+          fileSizeBytes: file.size,
+          contentHash,
+        }),
+      })
+      const initBody = (await initRes.json()) as {
+        outcome?: string
+        itemId?: string
+        uploadUrl?: string | null
+        error?: string
+      }
+      if (!initRes.ok) throw new Error(initBody.error || 'Yükleme başlatılamadı')
+      if (initBody.outcome === 'ALREADY_IMPORTED') {
+        toast('Bu dosya zaten kütüphanede')
+        setTab('library')
+        void load()
+        return
+      }
+      if (!initBody.uploadUrl || !initBody.itemId) throw new Error('Yükleme adresi alınamadı')
+      const put = await fetch(initBody.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: file,
+      })
+      if (!put.ok) throw new Error('R2 yüklemesi başarısız (CORS veya ağ)')
+      const completeRes = await fetch('/api/admin/videos/library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ action: 'upload-complete', id: initBody.itemId }),
+      })
+      const completeBody = (await completeRes.json()) as { error?: string }
+      if (!completeRes.ok) throw new Error(completeBody.error || 'Yükleme tamamlanamadı')
+      toast.success('Dosya kütüphaneye alındı')
+      setTab('library')
+      void load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Yükleme başarısız')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const importDirectNow = async (url: string) => {
+    if (!canCreate) return
+    setDirectImportUrl(url)
     try {
       const res = await fetch('/api/admin/videos/library', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ action: 'import-selected', urls: selectedUrls }),
+        body: JSON.stringify({ action: 'import-direct-now', url }),
       })
-      const body = (await res.json()) as { queued?: number; skipped?: number; error?: string }
-      if (!res.ok) throw new Error(body.error || 'Kuyruk başarısız')
-      toast.success(`${body.queued ?? 0} indirme kuyruğa alındı`)
-      setTab('queue')
+      const body = (await res.json()) as { outcome?: string; error?: string; code?: string }
+      if (!res.ok) throw new Error(body.error || body.code || 'Doğrudan import başarısız')
+      if (body.outcome === 'ALREADY_IMPORTED') toast('Bu video zaten R2’de')
+      else if (body.outcome === 'SUCCEEDED') toast.success('Dosya kütüphaneye alındı')
+      else throw new Error(body.code || 'Doğrudan import başarısız')
+      setTab('library')
       void load()
-      void loadJobs()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Kuyruk başarısız')
+      toast.error(err instanceof Error ? err.message : 'Doğrudan import başarısız')
     } finally {
-      setQueueing(false)
+      setDirectImportUrl(null)
     }
   }
 
@@ -274,7 +405,7 @@ export function VideoLibraryAdminClient() {
   return (
     <AdminOsPageShell
       title="Video Kütüphanesi"
-      subtitle="İnceleme indirme başlatmaz. Seçilen desteklenen URL’ler kuyruğa alınır. Yayın yok."
+      subtitle="Kendi MP4/WebM dosyanızı yükleyin veya doğrudan dosya URL’sini alın. Sosyal kazıma ve otomatik yayın yok."
       actions={
         <button
           type="button"
@@ -307,7 +438,31 @@ export function VideoLibraryAdminClient() {
       </div>
 
       {tab === 'add' ? (
-        <section className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 md:p-5">
+        <section className="space-y-4">
+          {canCreate ? (
+            <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 md:p-5">
+              <h2 className="text-sm font-semibold text-[rgb(var(--color-text))]">Kendi dosyanızı yükleyin</h2>
+              <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                MP4, WebM, MOV veya M4V. Dosya mevcut nahaber-media deposuna gider. Haber yayını yok.
+              </p>
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                <Upload className="h-4 w-4" />
+                {uploading ? 'Yükleniyor…' : 'DOSYA SEÇ'}
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov,.m4v"
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ''
+                    if (file) void uploadOwnedFile(file)
+                  }}
+                />
+              </label>
+            </div>
+          ) : null}
+        <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 md:p-5">
           <h2 className="text-sm font-semibold text-[rgb(var(--color-text))]">Link ile Ekle</h2>
           <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
             Bir veya birden fazla URL yapıştırın. Her satıra bir URL. İnceleme dosya indirmez.
@@ -362,23 +517,20 @@ export function VideoLibraryAdminClient() {
                 {canCreate ? (
                   <button
                     type="button"
-                    onClick={() => void enqueueSelected()}
-                    disabled={queueing || !importEnabled || selectedUrls.length === 0}
+                    onClick={() => void importSelectedNow()}
+                    disabled={queueing || selectedDownloadableUrls.length === 0}
                     className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                   >
-                    {!importEnabled
-                      ? 'İndirme henüz etkin değil'
-                      : queueing
-                        ? 'Kuyruk…'
-                        : 'SEÇİLENLERİ KÜTÜPHANEYE İNDİR'}
+                    {queueing
+                      ? 'Alınıyor…'
+                      : `SEÇİLENLERİ KÜTÜPHANEYE AL (${selectedDownloadableUrls.length})`}
                   </button>
                 ) : null}
               </div>
-              {!importEnabled ? (
-                <p className="text-[11px] text-amber-700">
-                  İndirme henüz etkin değil. İnceleme dosya indirmez ve iş oluşturmaz.
-                </p>
-              ) : null}
+              <p className="text-[11px] text-amber-700">
+                Yalnızca doğrudan MP4/WebM/MOV/M4V dosya URL’leri R2’ye alınır. Instagram/TikTok/YouTube/X/Facebook
+                indirilmez. Her dosya sırayla işlenir.
+              </p>
               <div className="overflow-x-auto rounded-xl border border-[rgb(var(--color-border))]">
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase text-[rgb(var(--color-muted))]">
@@ -434,7 +586,20 @@ export function VideoLibraryAdminClient() {
                         <td className="px-3 py-2 text-xs">
                           {row.downloadable ? 'DOWNLOAD_SUPPORTED' : row.downloadCode || 'UNSUPPORTED'}
                         </td>
-                        <td className="px-3 py-2 text-xs text-red-700">{row.error || row.downloadMessage || '—'}</td>
+                        <td className="px-3 py-2 text-xs">
+                          {row.downloadable && canCreate ? (
+                            <button
+                              type="button"
+                              onClick={() => void importDirectNow(row.originalUrl)}
+                              disabled={directImportUrl === row.originalUrl}
+                              className="rounded-lg bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                            >
+                              {directImportUrl === row.originalUrl ? 'Alınıyor…' : 'Kütüphaneye al (şimdi)'}
+                            </button>
+                          ) : (
+                            <span className="text-red-700">{row.error || row.downloadMessage || '—'}</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -442,6 +607,7 @@ export function VideoLibraryAdminClient() {
               </div>
             </div>
           ) : null}
+        </div>
         </section>
       ) : null}
 
@@ -458,7 +624,7 @@ export function VideoLibraryAdminClient() {
           <AdminOsEmptyState
             icon={Video}
             title="Kütüphane boş"
-            description="Link ile Ekle sekmesinden URL inceleyin. İndirme ayrı bir adımdır."
+            description="Kendi dosyanızı yükleyin veya doğrudan MP4/WebM URL’si alın. Instagram/TikTok/YouTube indirilmez."
           />
         ) : (
           <div>
@@ -549,14 +715,14 @@ export function VideoLibraryAdminClient() {
             {previewItem ? (
               <div className="mt-4 rounded-2xl border border-[rgb(var(--color-border))] p-4">
                 <p className="text-sm font-semibold">{previewItem.title || previewItem.normalizedUrl}</p>
-                {previewItem.playbackPublicUrl ? (
+                {previewItem.playbackPublicUrl || previewItem.originalPublicUrl ? (
                   <video
                     className="mt-3 max-h-80 w-full rounded bg-black"
                     controls
                     playsInline
                     preload="metadata"
                     poster={previewItem.posterPublicUrl ?? undefined}
-                    src={previewItem.playbackPublicUrl}
+                    src={previewItem.playbackPublicUrl || previewItem.originalPublicUrl || undefined}
                   />
                 ) : previewItem.thumbnailUrl ? (
                   <img src={previewItem.thumbnailUrl} alt="" className="mt-3 max-h-64 rounded" />

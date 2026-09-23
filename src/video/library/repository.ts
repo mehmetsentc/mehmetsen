@@ -135,6 +135,37 @@ export function createDrizzleVideoLibraryRepository(): VideoLibraryRepository {
       return mapRow(rows[0])
     },
 
+    async insertOwnedUpload(input) {
+      if (!hasDatabaseUrl()) throw new Error('DATABASE_UNAVAILABLE')
+      const db = getDb()
+      const now = new Date()
+      const ownedUrl = `nahaber-owned://sha256/${input.contentHash}`
+      const rows = await db
+        .insert(videoLibraryItems)
+        .values({
+          id: input.id,
+          platform: 'generic',
+          platformVideoId: input.contentHash,
+          originalUrl: ownedUrl,
+          normalizedUrl: ownedUrl,
+          title: input.title,
+          mimeType: input.mimeType,
+          fileSizeBytes: input.fileSizeBytes,
+          originalStorageKey: input.originalStorageKey,
+          contentHash: input.contentHash,
+          renditions: [],
+          status: 'PENDING_IMPORT',
+          rightsStatus: 'OWNED',
+          tags: [],
+          createdBy: input.createdBy,
+          updatedBy: input.createdBy,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+      return mapRow(rows[0])
+    },
+
     async list(query?: VideoLibraryListQuery) {
       if (!hasDatabaseUrl()) return { items: [], total: 0 }
       const db = getDb()

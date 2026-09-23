@@ -6,12 +6,23 @@ export type VideoLibraryListQuery = {
   offset?: number
 }
 
+export type OwnedUploadInsert = {
+  id: string
+  createdBy: string
+  title: string
+  mimeType: string
+  fileSizeBytes: number
+  contentHash: string
+  originalStorageKey: string
+}
+
 export interface VideoLibraryRepository {
   findByDedup(keys: VideoDedupKeys): Promise<VideoLibraryItem | null>
   insertInspected(input: {
     metadata: VideoMetadata
     createdBy: string
   }): Promise<VideoLibraryItem>
+  insertOwnedUpload(input: OwnedUploadInsert): Promise<VideoLibraryItem>
   list(query?: VideoLibraryListQuery): Promise<{ items: VideoLibraryItem[]; total: number }>
 }
 
