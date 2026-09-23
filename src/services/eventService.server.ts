@@ -14,6 +14,7 @@ import {
   isEventUpcoming,
   PAST_EVENT_LOOKBACK_MS,
 } from '@/lib/eventUtils'
+import { collapseDisplayDuplicates } from '@/lib/eventDedupe'
 import type { EventTimeRange } from '@/services/eventService'
 import type { NaEvent } from '@/types/event'
 
@@ -146,7 +147,7 @@ export async function getCityEventsServer(
       }
     }
 
-    return events
+    return collapseDisplayDuplicates(events)
   } catch (error) {
     console.warn('[eventService.server] getCityEventsServer failed:', error)
     return []
@@ -186,10 +187,11 @@ export async function getUpcomingEventsServer(limitCount = 12): Promise<NaEvent[
       .limit(limitCount * 3)
       .get()
 
-    return snap.docs
-      .map(toEvent)
-      .filter((event) => isVisible(event) && isEventUpcoming(event, nowIso))
-      .slice(0, limitCount)
+    return collapseDisplayDuplicates(
+      snap.docs
+        .map(toEvent)
+        .filter((event) => isVisible(event) && isEventUpcoming(event, nowIso))
+    ).slice(0, limitCount)
   } catch (error) {
     console.warn('[eventService.server] getUpcomingEventsServer failed:', error)
     return []

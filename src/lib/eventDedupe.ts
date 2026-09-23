@@ -108,3 +108,136 @@ export function dedupeEvents(events: NaEvent[]): NaEvent[] {
 
   return order.map((key) => byKey.get(key)!)
 }
+
+const DISPLAY_TIME_WINDOW_MIN = 2
+
+function foldDisplay(value: string): string {
+  return value
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function titlesCompatible(a: string, b: string): boolean {
+  const na = foldDisplay(a)
+  const nb = foldDisplay(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+  const shorter = na.length <= nb.length ? na : nb
+  const longer = na.length <= nb.length ? nb : na
+  return shorter.length >= 6 && longer.includes(shorter)
+}
+
+function venuesCompatible(a?: string, b?: string): boolean {
+  const na = foldDisplay(a ?? '')
+  const nb = foldDisplay(b ?? '')
+  if (!na || !nb) return true
+  if (na === nb) return true
+  const shorter = na.length <= nb.length ? na : nb
+  const longer = na.length <= nb.length ? nb : na
+  return shorter.length >= 4 && longer.includes(shorter)
+}
+
+function istanbulDateAndMinutes(iso: string): { date: string; minutes: number } | null {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const day = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value)
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value)
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+  return { date: day, minutes: hour * 60 + minute }
+}
+
+function biletixEventCode(url?: string): string | null {
+  const value = url?.trim()
+  if (!value) return null
+  const performance = value.match(/\/performance\/([A-Za-z0-9]+)/i)
+  if (performance) return performance[1].toUpperCase()
+  const event = value.match(/\/etkinlik\/([A-Za-z0-9]+)/i)
+  return event?.[1]?.toUpperCase() ?? null
+}
+
+function sameDisplayOccurrence(a: NaEvent, b: NaEvent): boolean {
+  if ((a.citySlug ?? '') !== (b.citySlug ?? '') || !a.citySlug) return false
+  const timeA = istanbulDateAndMinutes(a.startsAt)
+  const timeB = istanbulDateAndMinutes(b.startsAt)
+  if (!timeA || !timeB || timeA.date !== timeB.date) return false
+  if (Math.abs(timeA.minutes - timeB.minutes) > DISPLAY_TIME_WINDOW_MIN) return false
+  if (!venuesCompatible(a.venue, b.venue)) return false
+  const codeA = biletixEventCode(a.ticketUrl)
+  const codeB = biletixEventCode(b.ticketUrl)
+  if (codeA && codeB) return codeA === codeB
+  return titlesCompatible(a.title, b.title)
+}
+
+function pickRicher(a: NaEvent, b: NaEvent): NaEvent {
+  const score = (event: NaEvent) => richness(event) + (event.venue ? 2 : 0)
+  const winner = score(b) > score(a) ? b : a
+  const loser = winner === a ? b : a
+  return {
+    ...winner,
+    coverImageUrl: winner.coverImageUrl || loser.coverImageUrl,
+    ticketUrl: winner.ticketUrl || loser.ticketUrl,
+    venue: winner.venue || loser.venue,
+    address: winner.address || loser.address,
+  }
+}
+
+/**
+ * Presentation-only collapse for listing cards. Same artist/city/day/time
+ * (or same Biletix event code) becomes one row. Distinct sessions stay split.
+ * Firestore documents are not deleted.
+ */
+export function collapseDisplayDuplicates(events: NaEvent[]): NaEvent[] {
+  const unique = dedupeEvents(events)
+  const parent = unique.map((_, index) => index)
+  const find = (index: number): number => {
+    if (parent[index] !== index) parent[index] = find(parent[index])
+    return parent[index]
+  }
+
+  for (let i = 0; i < unique.length; i += 1) {
+    for (let j = i + 1; j < unique.length; j += 1) {
+      if (sameDisplayOccurrence(unique[i], unique[j])) {
+        parent[find(j)] = find(i)
+      }
+    }
+  }
+
+  const clusters = new Map<number, NaEvent[]>()
+  unique.forEach((event, index) => {
+    const root = find(index)
+    const list = clusters.get(root) ?? []
+    list.push(event)
+    clusters.set(root, list)
+  })
+
+  const emitted = new Set<number>()
+  const display: NaEvent[] = []
+  unique.forEach((_, index) => {
+    const root = find(index)
+    if (emitted.has(root)) return
+    emitted.add(root)
+    const cluster = clusters.get(root) ?? []
+    let winner = cluster[0]
+    for (let i = 1; i < cluster.length; i += 1) {
+      winner = pickRicher(winner, cluster[i])
+    }
+    if (winner) display.push(winner)
+  })
+  return display
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { QueryDocumentSnapshot } from 'firebase/firestore'
-import { dedupeEvents } from '@/lib/eventDedupe'
+import { collapseDisplayDuplicates, dedupeEvents } from '@/lib/eventDedupe'
 import { fetchAggregatedEvents } from '@/lib/eventAggregateClient'
 import { sortEventsByLocation, type UserCoords } from '@/lib/eventLocation'
 import { isFirestoreInternalError } from '@/lib/firestoreQueue'
@@ -105,10 +105,10 @@ export function useEvents({
       if (signal?.aborted) return
 
       setEvents((prev) => {
-        if (reset) return nextEvents
+        if (reset) return collapseDisplayDuplicates(nextEvents)
         const seen = new Set(prev.map((e) => e.id))
         const fresh = nextEvents.filter((e) => !seen.has(e.id))
-        return fresh.length > 0 ? [...prev, ...fresh] : prev
+        return fresh.length > 0 ? collapseDisplayDuplicates([...prev, ...fresh]) : prev
       })
 
       const cursorAdvanced =
@@ -143,7 +143,7 @@ export function useEvents({
               range
             )
             if (filtered.length > nextEvents.length) {
-              setEvents(filtered)
+              setEvents(collapseDisplayDuplicates(filtered))
               setHasMore(false)
               lastDocRef.current = null
               setDataSource('live')
