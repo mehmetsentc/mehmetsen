@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles, MapPin, Share2, Bell, Clock,
+  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Wand2, Plus, Eye, Star, Sparkles, MapPin, Share2, Bell, Clock,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -318,6 +318,7 @@ export function AdminNewsEditor({
   )
   const [aiKwLoading, setAiKwLoading] = useState(false)
   const autoKwAttemptedRef = useRef(false)
+  const distributionRef = useRef<HTMLDivElement>(null)
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
   const seoDescriptionUsesFallback = mode === 'edit' && !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post?.isBreaking ?? false)
@@ -711,6 +712,9 @@ export function AdminNewsEditor({
       )
       setStatus(nextStatus)
       setShowAiPreview(true)
+      requestAnimationFrame(() => {
+        distributionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
 
       const editorLabel =
         data.editorName?.trim() ||
@@ -1080,6 +1084,300 @@ export function AdminNewsEditor({
           AI Newsroom yönet
         </a>
       </p>
+    </div>
+
+    <div
+      ref={distributionRef}
+      id="haber-dagitim-formu"
+      className="rounded-xl border-2 border-sky-500/40 bg-[rgb(var(--color-surface))] p-4 space-y-3"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
+        <Share2 className="h-3.5 w-3.5 text-sky-500" />
+        SEO, sosyal medya, bildirim ve medya
+      </p>
+      <p className="text-[10px] text-[rgb(var(--color-muted))]">
+        AI “Haberi hazırla” bu alanları görsel ve videoya göre doldurur. Manşet görsel/story üzerinedir; paylaşım özeti manşetin altıdır.
+      </p>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Başlık</label>
+          <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {seoTitle.length}/65
+          </span>
+        </div>
+        <input
+          type="text"
+          value={seoTitle}
+          onChange={(e) => setSeoTitle(e.target.value)}
+          maxLength={80}
+          placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Açıklaması</label>
+          <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {seoDescription.length}/165
+          </span>
+        </div>
+        <textarea
+          value={seoDescription}
+          onChange={(e) => setSeoDescription(e.target.value)}
+          rows={3}
+          maxLength={200}
+          placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Anahtar Kelimeler</label>
+          <button
+            type="button"
+            onClick={() => void generateAiKeywords()}
+            disabled={aiKwLoading}
+            className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+          >
+            {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+            {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
+          </button>
+        </div>
+        {seoKeywords.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {seoKeywords.map((kw) => (
+              <span
+                key={kw}
+                className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
+              >
+                {kw}
+                <button
+                  type="button"
+                  onClick={() => setSeoKeywords((prev) => prev.filter((k) => k !== kw))}
+                  className="ml-0.5 text-emerald-600 hover:text-red-500"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={seoKeywordInput}
+            onChange={(e) => setSeoKeywordInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault()
+                const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
+                if (kws.length) {
+                  setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
+                  setSeoKeywordInput('')
+                }
+              }
+            }}
+            placeholder="kelime1, kelime2... (virgülle ayır)"
+            className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
+              if (kws.length) {
+                setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
+                setSeoKeywordInput('')
+              }
+            }}
+            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Ekle
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Başlığı</label>
+          <span className={`text-[10px] font-mono ${socialHeadline.length > SOCIAL_HEADLINE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialHeadline.length}/{SOCIAL_HEADLINE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={socialHeadline}
+          onChange={(e) => setSocialHeadline(e.target.value)}
+          maxLength={SOCIAL_HEADLINE_MAX + 20}
+          placeholder="Görsel/story manşeti — merak kancası, hikâyeyi dökme"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Paylaşım Özeti</label>
+          <span className={`text-[10px] font-mono ${socialStorySummary.length > SOCIAL_SUMMARY_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialStorySummary.length}/{SOCIAL_SUMMARY_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialStorySummary}
+          onChange={(e) => setSocialStorySummary(e.target.value)}
+          rows={2}
+          maxLength={SOCIAL_SUMMARY_MAX + 40}
+          placeholder="Manşetin altında 1-2 tam cümle: ne oldu + etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Açıklaması</label>
+          <span className={`text-[10px] font-mono ${socialCaption.length > SOCIAL_CAPTION_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialCaption.length}/{SOCIAL_CAPTION_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialCaption}
+          onChange={(e) => setSocialCaption(e.target.value)}
+          rows={4}
+          maxLength={SOCIAL_CAPTION_MAX + 80}
+          placeholder="Feed açıklaması — başlığı tekrarlama; arka plan, detay, etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <Bell className="h-3 w-3" />
+            Push Bildirim Başlığı
+          </label>
+          <span className={`text-[10px] font-mono ${pushTitle.length > PUSH_TITLE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushTitle.length}/{PUSH_TITLE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={pushTitle}
+          onChange={(e) => setPushTitle(e.target.value)}
+          maxLength={PUSH_TITLE_MAX + 10}
+          placeholder="Kısa bildirim kancası"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Push Bildirim Metni</label>
+          <span className={`text-[10px] font-mono ${pushText.length > PUSH_TEXT_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushText.length}/{PUSH_TEXT_MAX}
+          </span>
+        </div>
+        <textarea
+          value={pushText}
+          onChange={(e) => setPushText(e.target.value)}
+          rows={2}
+          maxLength={PUSH_TEXT_MAX + 20}
+          placeholder="Tek net cümle"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <Clock className="h-3 w-3" />
+            Okuma Süresi
+          </label>
+        </div>
+        <input
+          type="number"
+          min={1}
+          max={30}
+          value={readingTimeMinutes}
+          onChange={(e) => setReadingTimeMinutes(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+          className={`${fieldCardInputCls} w-28`}
+        />
+        <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">dakika</p>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Görsel Alt Metni (ALT)</p>
+        <input
+          type="text"
+          value={imageAlt}
+          onChange={(e) => setImageAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+          maxLength={MEDIA_ALT_MAX}
+          placeholder="Kapak görseli alt metni"
+          className={fieldCardInputCls}
+        />
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Görsel Dosya Adı</p>
+        <input
+          type="text"
+          value={imageFilename}
+          onChange={(e) => setImageFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+          maxLength={MEDIA_FILENAME_MAX}
+          placeholder="ornek-haber.jpg"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      {additionalImages.filter((img) => img.url && img.url !== thumbnail).map((img, index) => (
+        <div key={img.url} className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Ek görsel {index + 1} — ALT / dosya adı</p>
+          <input
+            type="text"
+            value={img.alt ?? ''}
+            onChange={(e) => {
+              const alt = e.target.value.slice(0, MEDIA_ALT_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, alt } : item))
+              )
+            }}
+            maxLength={MEDIA_ALT_MAX}
+            placeholder="Görsel alt metni (ALT)"
+            className={fieldCardInputCls}
+          />
+          <input
+            type="text"
+            value={img.filename ?? ''}
+            onChange={(e) => {
+              const filename = e.target.value.slice(0, MEDIA_FILENAME_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, filename } : item))
+              )
+            }}
+            maxLength={MEDIA_FILENAME_MAX}
+            placeholder="Görsel dosya adı"
+            className={fieldCardInputCls}
+          />
+        </div>
+      ))}
+
+      <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video Alt Metni</p>
+        <input
+          type="text"
+          value={videoAlt}
+          onChange={(e) => setVideoAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+          maxLength={MEDIA_ALT_MAX}
+          placeholder="Video alt metni"
+          className={fieldCardInputCls}
+        />
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video Dosya Adı</p>
+        <input
+          type="text"
+          value={videoFilename}
+          onChange={(e) => setVideoFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+          maxLength={MEDIA_FILENAME_MAX}
+          placeholder="ornek-haber.mp4"
+          className={fieldCardInputCls}
+        />
+      </div>
     </div>
 
     <div>
@@ -1640,329 +1938,6 @@ export function AdminNewsEditor({
       </div>
     </div>
 
-    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
-        <SearchIcon className="h-3.5 w-3.5 text-emerald-500" />
-        SEO Ayarları
-      </p>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Başlık</label>
-          <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {seoTitle.length}/65
-          </span>
-        </div>
-        <input
-          type="text"
-          value={seoTitle}
-          onChange={(e) => setSeoTitle(e.target.value)}
-          maxLength={80}
-          placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
-          className={fieldCardInputCls}
-        />
-        {!seoTitle && (
-          <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa haber başlığı kullanılır</p>
-        )}
-        {seoTitleUsesFallback && seoTitle && (
-          <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-            Kayıtlı SEO başlığı yok — haber başlığı otomatik dolduruldu
-          </p>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Açıklama (Meta Description)</label>
-          <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {seoDescription.length}/165
-          </span>
-        </div>
-        <textarea
-          value={seoDescription}
-          onChange={(e) => setSeoDescription(e.target.value)}
-          rows={3}
-          maxLength={200}
-          placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
-          className={`${fieldCardInputCls} resize-none`}
-        />
-        {!seoDescription && (
-          <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa özet kullanılır</p>
-        )}
-        {seoDescriptionUsesFallback && seoDescription && (
-          <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-            Kayıtlı SEO açıklaması yok — özet/spot otomatik dolduruldu
-          </p>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">🔑 SEO Anahtar Kelimeler</label>
-          <button
-            type="button"
-            onClick={() => void generateAiKeywords()}
-            disabled={aiKwLoading}
-            className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
-          >
-            {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-            {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
-          </button>
-        </div>
-        {seoKeywords.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {seoKeywords.map((kw) => (
-              <span
-                key={kw}
-                className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
-              >
-                {kw}
-                <button
-                  type="button"
-                  onClick={() => setSeoKeywords((prev) => prev.filter((k) => k !== kw))}
-                  className="ml-0.5 text-emerald-600 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={seoKeywordInput}
-            onChange={(e) => setSeoKeywordInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault()
-                const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-                if (kws.length) {
-                  setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
-                  setSeoKeywordInput('')
-                }
-              }
-            }}
-            placeholder="kelime1, kelime2... (virgülle ayır)"
-            className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-              if (kws.length) {
-                setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
-                setSeoKeywordInput('')
-              }
-            }}
-            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Ekle
-          </button>
-        </div>
-        <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
-          Google meta keywords — virgülle ayırarak veya Enter ile ekle ({seoKeywords.length} kelime)
-        </p>
-      </div>
-    </div>
-
-    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
-        <Share2 className="h-3.5 w-3.5 text-sky-500" />
-        Sosyal medya ve bildirim
-      </p>
-      <p className="text-[10px] text-[rgb(var(--color-muted))]">
-        Manşet görsel/story üzerine; paylaşım özeti manşetin altına; açıklama feed caption. AI “Haberi hazırla” bunları görsel ve videoya göre doldurur.
-      </p>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Başlığı</label>
-          <span className={`text-[10px] font-mono ${socialHeadline.length > SOCIAL_HEADLINE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {socialHeadline.length}/{SOCIAL_HEADLINE_MAX}
-          </span>
-        </div>
-        <input
-          type="text"
-          value={socialHeadline}
-          onChange={(e) => setSocialHeadline(e.target.value)}
-          maxLength={SOCIAL_HEADLINE_MAX + 20}
-          placeholder="Merak uyandıran gazete manşeti — hikâyeyi dökme"
-          className={fieldCardInputCls}
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Paylaşım Özeti</label>
-          <span className={`text-[10px] font-mono ${socialStorySummary.length > SOCIAL_SUMMARY_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {socialStorySummary.length}/{SOCIAL_SUMMARY_MAX}
-          </span>
-        </div>
-        <textarea
-          value={socialStorySummary}
-          onChange={(e) => setSocialStorySummary(e.target.value)}
-          rows={2}
-          maxLength={SOCIAL_SUMMARY_MAX + 40}
-          placeholder="Manşetin altında 1-2 tam cümle: ne oldu + etki"
-          className={`${fieldCardInputCls} resize-none`}
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Açıklaması</label>
-          <span className={`text-[10px] font-mono ${socialCaption.length > SOCIAL_CAPTION_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {socialCaption.length}/{SOCIAL_CAPTION_MAX}
-          </span>
-        </div>
-        <textarea
-          value={socialCaption}
-          onChange={(e) => setSocialCaption(e.target.value)}
-          rows={4}
-          maxLength={SOCIAL_CAPTION_MAX + 80}
-          placeholder="Feed açıklaması — başlığı tekrarlama; arka plan, detay, etki"
-          className={`${fieldCardInputCls} resize-none`}
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
-            <Bell className="h-3 w-3" />
-            Push Bildirim Başlığı
-          </label>
-          <span className={`text-[10px] font-mono ${pushTitle.length > PUSH_TITLE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {pushTitle.length}/{PUSH_TITLE_MAX}
-          </span>
-        </div>
-        <input
-          type="text"
-          value={pushTitle}
-          onChange={(e) => setPushTitle(e.target.value)}
-          maxLength={PUSH_TITLE_MAX + 10}
-          placeholder="Kısa bildirim kancası"
-          className={fieldCardInputCls}
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Push Bildirim Metni</label>
-          <span className={`text-[10px] font-mono ${pushText.length > PUSH_TEXT_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {pushText.length}/{PUSH_TEXT_MAX}
-          </span>
-        </div>
-        <textarea
-          value={pushText}
-          onChange={(e) => setPushText(e.target.value)}
-          rows={2}
-          maxLength={PUSH_TEXT_MAX + 20}
-          placeholder="Tek net cümle"
-          className={`${fieldCardInputCls} resize-none`}
-        />
-      </div>
-    </div>
-
-    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
-        <Clock className="h-3.5 w-3.5 text-amber-500" />
-        Görsel / video meta
-      </p>
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Okuma Süresi (dakika)</label>
-        </div>
-        <input
-          type="number"
-          min={1}
-          max={30}
-          value={readingTimeMinutes}
-          onChange={(e) => setReadingTimeMinutes(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
-          className={`${fieldCardInputCls} w-28`}
-        />
-      </div>
-
-      {thumbnail ? (
-        <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
-          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Kapak görseli</p>
-          <input
-            type="text"
-            value={imageAlt}
-            onChange={(e) => setImageAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
-            maxLength={MEDIA_ALT_MAX}
-            placeholder="Görsel alt metni (ALT)"
-            className={fieldCardInputCls}
-          />
-          <input
-            type="text"
-            value={imageFilename}
-            onChange={(e) => setImageFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
-            maxLength={MEDIA_FILENAME_MAX}
-            placeholder="Görsel dosya adı (ornek-haber.jpg)"
-            className={fieldCardInputCls}
-          />
-        </div>
-      ) : (
-        <p className="text-[10px] text-[rgb(var(--color-muted))]">Kapak görseli eklenince ALT ve dosya adı burada doldurulur.</p>
-      )}
-
-      {additionalImages.filter((img) => img.url && img.url !== thumbnail).map((img, index) => (
-        <div key={img.url} className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
-          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Ek görsel {index + 1}</p>
-          <input
-            type="text"
-            value={img.alt ?? ''}
-            onChange={(e) => {
-              const alt = e.target.value.slice(0, MEDIA_ALT_MAX)
-              setAdditionalImages((prev) =>
-                prev.map((item) => (item.url === img.url ? { ...item, alt } : item))
-              )
-            }}
-            maxLength={MEDIA_ALT_MAX}
-            placeholder="Görsel alt metni (ALT)"
-            className={fieldCardInputCls}
-          />
-          <input
-            type="text"
-            value={img.filename ?? ''}
-            onChange={(e) => {
-              const filename = e.target.value.slice(0, MEDIA_FILENAME_MAX)
-              setAdditionalImages((prev) =>
-                prev.map((item) => (item.url === img.url ? { ...item, filename } : item))
-              )
-            }}
-            maxLength={MEDIA_FILENAME_MAX}
-            placeholder="Görsel dosya adı"
-            className={fieldCardInputCls}
-          />
-        </div>
-      ))}
-
-      {videoUrl ? (
-        <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
-          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video</p>
-          <input
-            type="text"
-            value={videoAlt}
-            onChange={(e) => setVideoAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
-            maxLength={MEDIA_ALT_MAX}
-            placeholder="Video alt metni"
-            className={fieldCardInputCls}
-          />
-          <input
-            type="text"
-            value={videoFilename}
-            onChange={(e) => setVideoFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
-            maxLength={MEDIA_FILENAME_MAX}
-            placeholder="Video dosya adı (ornek-haber.mp4)"
-            className={fieldCardInputCls}
-          />
-        </div>
-      ) : (
-        <p className="text-[10px] text-[rgb(var(--color-muted))]">Video eklenince alt metin ve dosya adı burada doldurulur.</p>
-      )}
-    </div>
   </div>
   )
 
