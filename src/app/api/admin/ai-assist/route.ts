@@ -21,6 +21,8 @@ import {
   shouldStripSuggestedCityForCategory,
 } from '@/lib/news/neverLocalVerticals'
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
+import { resolveDistributionFields } from '@/lib/news/distributionMeta'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,7 +78,7 @@ const CATEGORY_LIST = DEFAULT_CATEGORIES.map((category) => `${category.id}: ${ca
 const PERSONA_ATTENTION_LOCK = `
 CMS TEK-TUŞ GÖREVİ — UZMAN AI EDİTÖR:
 - Bu AI editörün karakter, ton ve yazım talimatlarına SIKI uy; genel anonim haber dili kullanma
-- Manşet net, spesifik ve doğru olsun; uydurma / abartılı clickbait / "şok" clickbait YASAK
+- ${NAHABER_HEADLINE_STYLE}
 - Spot okuyucuyu ilk 2 cümlede bilgilendirsin; 5W+1H eksiksiz
 - Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
 - Kaynakta olmayan sayı, alıntı, olay uydurma
@@ -88,11 +90,13 @@ CMS TEK-TUŞ GÖREVİ — UZMAN AI EDİTÖR:
 - categoryId geçerli kimliklerden biri; tags 5-8
 - seoKeywords ZORUNLU: 8-15 Türkçe SEO anahtar kelimesi; bu alan ASLA boş bırakılmasın
 - imageOrder yalnızca verilen görsel URL'lerini içersin
+- ${NAHABER_SOCIAL_SHARE_STYLE}
+- Her görsel ve video için mediaMeta içinde url + alt + filename doldur
 `.trim()
 
 const PUBLISH_JSON_SCHEMA = `
 Yalnızca şu JSON şemasını döndür:
-{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."]}
+{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."],"socialHeadline":"...","socialStorySummary":"...","socialCaption":"...","pushTitle":"...","pushText":"...","readingTimeMinutes":2,"mediaMeta":[{"url":"...","alt":"...","filename":"..."}]}
 Geçerli kategoriler: ${CATEGORY_LIST}
 `.trim()
 
@@ -116,7 +120,7 @@ MUTLAK: Yarım cümle, kesilmiş kelime veya bağlaçla biten paragraf bırakma;
 
   'publish-ready': `Sen NaHaber'in deneyimli genel yayın yönetmenisin. Kullanıcının verdiği ham metni yayıma hazır, kapsamlı ve bilgilendirici bir Türkçe habere dönüştür.
 Kurallar:
-- Ana başlık güçlü, doğru ve clickbait olmayan bir manşet olsun.
+- Ana başlık gazete manşeti olsun: merak kancası + doğru olgu; hikâyenin tamamını başlıkta dökme; ŞOK/SKANDAL yasak.
 - spot 5W+1H'yi karşılayan 2-4 cümle olsun; spot yalnızca spot alanında, content içinde tekrar etmesin.
 - summary en fazla 280 karakter olsun.
 - content KAPSAMLI ve BİLGİLENDİRİCİ olsun:
@@ -158,9 +162,12 @@ Kurallar:
   * "yasam" yalnızca yaşam alt dalı belirsizse
 - tags 5-8, seoKeywords 8-15 Türkçe ifade olsun.
 - imageOrder yalnızca verilen görsel URL'lerini içersin; en ilgili kapak görseli ilk sırada olsun.
+- ${NAHABER_SOCIAL_SHARE_STYLE}
+- Verilen her görsel VE video için mediaMeta üret (url, alt 10-20 kelime, kısa-slug.uzantı).
+- readingTimeMinutes: 200 kelime = 1 dakika; 1-30 arası tam sayı.
 Geçerli kategoriler: ${CATEGORY_LIST}
 Yalnızca şu JSON şemasını döndür:
-{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."]}`,
+{"title":"...","spot":"...","summary":"...","content":"...","seoTitle":"...","seoDescription":"...","categoryId":"...","tags":["..."],"seoKeywords":["..."],"imageOrder":["..."],"socialHeadline":"...","socialStorySummary":"...","socialCaption":"...","pushTitle":"...","pushText":"...","readingTimeMinutes":2,"mediaMeta":[{"url":"...","alt":"...","filename":"..."}]}`,
 
   seo: `Sen bir SEO uzmanısın. Verilen haber başlığı için SEO meta verisi oluştur.
 JSON: {"seoTitle":"...","seoDescription":"..."}
@@ -349,6 +356,7 @@ export async function POST(request: Request) {
     input?: string
     imageUrl?: string
     imageUrls?: string[]
+    videoUrls?: string[]
     aiEditorId?: string
     articleFormat?: ArticleFormatAssist
     autoRoute?: boolean
@@ -363,6 +371,7 @@ export async function POST(request: Request) {
       input?: string
       imageUrl?: string
       imageUrls?: string[]
+      videoUrls?: string[]
       aiEditorId?: string
       articleFormat?: ArticleFormatAssist
       autoRoute?: boolean
@@ -475,6 +484,10 @@ export async function POST(request: Request) {
       .map((url) => url.trim())
       .filter((url, index, all) => url && all.indexOf(url) === index)
       .slice(0, 6)
+    const requestedVideoUrls = (Array.isArray(body.videoUrls) ? body.videoUrls : [])
+      .map((url) => url.trim())
+      .filter((url, index, all) => url && all.indexOf(url) === index)
+      .slice(0, 4)
     const analyzeUrls = requestedUrls.slice(0, 1)
 
     const researchPromise =
@@ -530,6 +543,12 @@ export async function POST(request: Request) {
                   `[Görsel ${i + 1}] url:${img.url} | role:${img.role} | alaka:${img.relevanceScore}/100 | caption(sadece imageOrder için):"${img.caption}"`
                 ).join('\n')
               : 'Görsel yok veya analiz edilemedi.',
+            '',
+            'MEDYA ENVANTERİ (her biri için mediaMeta alt + filename zorunlu):',
+            [
+              ...requestedUrls.map((url, i) => `[Görsel ${i + 1}] ${url}`),
+              ...requestedVideoUrls.map((url, i) => `[Video ${i + 1}] ${url}`),
+            ].join('\n') || 'Medya yok.',
           ]
             .filter(Boolean)
             .join('\n')
@@ -622,6 +641,24 @@ export async function POST(request: Request) {
           : null
       const stripCity =
         categoryId === 'dunya' || shouldStripSuggestedCityForCategory(categoryId)
+      const distribution = resolveDistributionFields({
+        parsed,
+        title,
+        spot,
+        summary,
+        content,
+        imageUrls: orderedUrls,
+        videoUrls: requestedVideoUrls,
+        imageAnalyses,
+      })
+      const additionalImages = orderedImages.slice(1).map((img) => {
+        const meta = distribution.mediaMeta.find((item) => item.url === img.url)
+        return {
+          ...img,
+          alt: meta?.alt || img.alt || '',
+          filename: meta?.filename || '',
+        }
+      })
       return NextResponse.json({
         success: true,
         mode,
@@ -638,7 +675,18 @@ export async function POST(request: Request) {
         imageOrder: orderedUrls,
         imageAnalyses,
         imageCaption: orderedImages[0]?.caption ?? '',
-        additionalImages: orderedImages.slice(1),
+        additionalImages,
+        socialHeadline: distribution.socialHeadline,
+        socialStorySummary: distribution.socialStorySummary,
+        socialCaption: distribution.socialCaption,
+        pushTitle: distribution.pushTitle,
+        pushText: distribution.pushText,
+        imageAlt: distribution.imageAlt,
+        imageFilename: distribution.imageFilename,
+        videoAlt: distribution.videoAlt,
+        videoFilename: distribution.videoFilename,
+        readingTimeMinutes: distribution.readingTimeMinutes,
+        mediaMeta: distribution.mediaMeta,
         qualityScore,
         gateDecision,
         researchSources: research?.sources ?? [],

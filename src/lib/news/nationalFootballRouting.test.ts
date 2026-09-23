@@ -31,6 +31,37 @@ describe('detectNationalFootballClub', () => {
   it('returns null for unrelated local sports', () => {
     expect(detectNationalFootballClub('Çanakkale amatör lig maçı')).toBeNull()
   })
+
+  it('does not treat a city dateline as the club (Hatay asayiş ≠ Hatayspor)', () => {
+    expect(
+      detectNationalFootballClub(
+        "Yasa dışı bahis operasyonunda Hatay'da 4 ilde 37 şüpheli yakalandı"
+      )
+    ).toBeNull()
+    expect(
+      resolveNationalFootballLocalRouting(
+        "Yasa dışı bahis operasyonunda Hatay'da 4 ilde 37 şüpheli yakalandı",
+        'hatay'
+      )
+    ).toBeNull()
+  })
+
+  it('does not map belediye / asayiş / siyaset city news to futbol', () => {
+    expect(detectNationalFootballClub("Konya'da belediye otobüs seferleri değişti")).toBeNull()
+    expect(detectNationalFootballClub("Diyarbakır'ın Hazro ilçesinde elektrik kesintisi")).toBeNull()
+    expect(detectNationalFootballClub('Saadet Partisi Ankara’da açıklama yaptı')).toBeNull()
+    expect(
+      resolveNationalFootballLocalRouting("Antalya'da hayvan pazarı denetimi", 'antalya')
+    ).toBeNull()
+  })
+
+  it('still maps a real club + match to futbol', () => {
+    expect(detectNationalFootballClub('Hatayspor deplasmanda kazandı')?.clubName).toBe('Hatayspor')
+    expect(detectNationalFootballClub("Hatay 2-1 kazandı")?.clubName).toBe('Hatayspor')
+    expect(
+      resolveNationalFootballLocalRouting('Konyaspor maçı ertelendi', 'konya')?.clubName
+    ).toBe('Konyaspor')
+  })
 })
 
 describe('resolveNationalFootballLocalRouting', () => {

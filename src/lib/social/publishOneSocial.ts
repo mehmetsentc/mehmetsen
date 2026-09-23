@@ -541,19 +541,27 @@ export async function publishOneSocial(
     const cityName   = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
 
     // ── AI içerik üretimi (override yoksa) ───────────────────────────────────
+    const storedHeadline = typeof data.socialHeadline === 'string' ? data.socialHeadline.trim() : ''
+    const storedCaption = typeof data.socialCaption === 'string' ? data.socialCaption.trim() : ''
+    const storedSummary = typeof data.socialStorySummary === 'string' ? data.socialStorySummary.trim() : ''
+    const cmsSocialReady =
+      storedHeadline.length >= 8 &&
+      (storedCaption.length >= 12 || storedSummary.length >= 12) &&
+      !isGarbledSocialCopy(storedHeadline)
     const hasFullOverride =
       !!(overrides?.headline?.trim()) &&
       !!(overrides?.caption?.trim() || overrides?.storySummary?.trim())
 
-    let socialContent = hasFullOverride
+    let socialContent = hasFullOverride || cmsSocialReady
       ? null
       : await generateSocialContent(title, bodyText.length > 100 ? bodyText : spot, cityName)
 
     if (!socialContent) {
       const fallbackSpot = spot.replace(/\s+/g, ' ').trim()
       socialContent = {
-        headline: overlayHeadlineFromTitle(title),
+        headline: cmsSocialReady ? storedHeadline : overlayHeadlineFromTitle(title),
         storySummary: (() => {
+          if (cmsSocialReady && storedSummary) return storedSummary
           const cleaned = fallbackSpot
             .replace(/\b(detaylar(?:ı|ın)?\s+(?:için\s+)?(?:haberimizde|tıklayın)|haberimizde|haberin\s+devamı|devamı\s+için|devamını\s+oku|tıklayın)\b/giu, '')
             .replace(/\s{2,}/g, ' ')
@@ -566,9 +574,9 @@ export async function publishOneSocial(
           )
         })(),
         // caption: buildFeedCaption zaten "📰 {başlık}" ekler — gövde sadece özet olsun
-        caption: spot.trim() || '',
+        caption: (cmsSocialReady && storedCaption ? storedCaption : spot.trim()) || '',
         hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
-        altText:  title,
+        altText: (typeof data.imageAlt === 'string' && data.imageAlt.trim()) || title,
       }
     }
 

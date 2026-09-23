@@ -23,6 +23,10 @@ import {
   applyCanonicalArticleGeoWrite,
   canonicalArticleGeoToPersistFields,
 } from '@/lib/geo/canonicalArticleGeoWrite'
+import {
+  persistableDistributionFields,
+  resolveDistributionFields,
+} from '@/lib/news/distributionMeta'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,7 +57,17 @@ interface CreatePayload {
   thumbnail?: string
   imageCaption?: string
   videoUrl?: string
-  additionalImages?: Array<{ url: string; caption?: string }>
+  additionalImages?: Array<{ url: string; caption?: string; alt?: string; filename?: string }>
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
+  readingTimeMinutes?: number
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
   articleFormat?: 'standard' | 'column' | 'analysis'
@@ -207,6 +221,28 @@ export async function POST(request: Request) {
       imageUrl: body.thumbnail?.trim() ?? '',
       imageCaption: body.imageCaption?.trim() ?? '',
       videoUrl: body.videoUrl?.trim() ?? '',
+      ...persistableDistributionFields(
+        resolveDistributionFields({
+          parsed: {
+            socialHeadline: body.socialHeadline,
+            socialStorySummary: body.socialStorySummary,
+            socialCaption: body.socialCaption,
+            pushTitle: body.pushTitle,
+            pushText: body.pushText,
+            imageAlt: body.imageAlt,
+            imageFilename: body.imageFilename,
+            videoAlt: body.videoAlt,
+            videoFilename: body.videoFilename,
+            readingTimeMinutes: body.readingTimeMinutes,
+          },
+          title: body.title.trim(),
+          spot: body.spot,
+          summary,
+          content,
+          imageUrls: body.thumbnail?.trim() ? [body.thumbnail.trim()] : [],
+          videoUrls: body.videoUrl?.trim() ? [body.videoUrl.trim()] : [],
+        })
+      ),
       tags: Array.isArray(body.tags) ? body.tags : [],
       isBreaking: body.isBreaking ?? false,
       featured,
@@ -259,7 +295,9 @@ export async function POST(request: Request) {
     const editorMediaItems = buildEditorMediaItems({
       thumbnail: body.thumbnail,
       thumbnailCaption: body.imageCaption,
+      thumbnailAlt: body.imageAlt,
       videoUrl: body.videoUrl,
+      videoAlt: body.videoAlt,
       additionalImages,
     })
     if (editorMediaItems.length > 0) {

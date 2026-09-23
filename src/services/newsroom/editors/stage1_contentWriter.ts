@@ -22,6 +22,7 @@ import {
 } from '@/lib/ai/stage1RetryOptimization'
 import { getAiUsageContext } from '@/lib/ai/usage/context'
 import { hashAiInput } from '@/lib/ai/usage/hash'
+import { NAHABER_HEADLINE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 
 export interface WrittenArticle {
   title: string
@@ -61,6 +62,7 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
 - Kaynak ajans/gazete adını (AA, DHA vb.) metne yazma
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
+- Manşet gazete kancası olsun: merak + doğru olgu; hikâyenin tamamını başlıkta dökme
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma
 - Çıktı her zaman Türkçe
@@ -70,10 +72,12 @@ const HARD_RULES = `MUTLAK KURALLAR:
  * Varsayılan haber biçimi (persona yoksa).
  * Ters piramit: özet → olgular → kısa bağlam. Ansiklopedi / okul kompozisyonu YASAK.
  */
-const DEFAULT_NEWS_SYSTEM = `Sen NaHaber içerik editörüsün. Kısa, net, olgu temelli GAZETE HABERİ yaz.
+const DEFAULT_NEWS_SYSTEM = `Sen NaHaber içerik editörüsün. Kısa, olgu temelli GAZETE HABERİ yaz.
+
+${NAHABER_HEADLINE_STYLE}
 
 HABER BİÇİMİ (zorunlu):
-- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman)
+- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — spot ve gövdede; manşet tam özet değil
 - spot: 2-4 cümle lider; content spot'u tekrarlama
 - content: 250-450 kelime hedef (asgari ~220); gereksiz nutuk/doldurma YASAK
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
@@ -83,7 +87,7 @@ HABER BİÇİMİ (zorunlu):
 - Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
 
 ALANLAR:
-- title: manşet, max 70 karakter
+- title: gazete manşeti, max 70 karakter; merak kancası, tam döküm değil
 - spot: lider paragraf
 - summary: feed teaser max 120 karakter, title'dan farklı
 - content: gövde (markdown ## ZORUNLU — en az 2 alt başlık; # H1 kullanma)
@@ -93,7 +97,7 @@ ALANLAR:
 export const STAGE1_PROMPT_PACKINGS = ['source_inline', 'source_once'] as const
 export type Stage1PromptPacking = (typeof STAGE1_PROMPT_PACKINGS)[number]
 
-export const STAGE1_WRITER_PROMPT_VERSION = 'stage1-writer:v1'
+export const STAGE1_WRITER_PROMPT_VERSION = 'stage1-writer:v2'
 export const STAGE1_WRITER_PACKED_PROMPT_VERSION = 'stage1-writer:source_once_v1'
 
 export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking | undefined {

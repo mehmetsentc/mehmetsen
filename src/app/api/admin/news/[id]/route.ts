@@ -34,6 +34,10 @@ import {
   geoPatchTouchesIdentity,
   type CanonicalArticleGeoPatch,
 } from '@/lib/geo/canonicalArticleGeoWrite'
+import {
+  persistableDistributionFields,
+  resolveDistributionFields,
+} from '@/lib/news/distributionMeta'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -86,7 +90,17 @@ interface UpdatePayload {
   thumbnail?: string
   imageCaption?: string
   videoUrl?: string
-  additionalImages?: Array<{ url: string; caption?: string }>
+  additionalImages?: Array<{ url: string; caption?: string; alt?: string; filename?: string }>
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
+  readingTimeMinutes?: number
   bodyBlocks?: ArticleBlock[]
   articleLayout?: 'standard' | 'longform'
   articleFormat?: 'standard' | 'column' | 'analysis'
@@ -216,6 +230,44 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
   if (body.imageCaption != null) {
     update.imageCaption = body.imageCaption.trim()
   }
+  if (
+    body.socialHeadline != null ||
+    body.socialStorySummary != null ||
+    body.socialCaption != null ||
+    body.pushTitle != null ||
+    body.pushText != null ||
+    body.imageAlt != null ||
+    body.imageFilename != null ||
+    body.videoAlt != null ||
+    body.videoFilename != null ||
+    body.readingTimeMinutes != null
+  ) {
+    Object.assign(
+      update,
+      persistableDistributionFields(
+        resolveDistributionFields({
+          parsed: {
+            socialHeadline: body.socialHeadline,
+            socialStorySummary: body.socialStorySummary,
+            socialCaption: body.socialCaption,
+            pushTitle: body.pushTitle,
+            pushText: body.pushText,
+            imageAlt: body.imageAlt,
+            imageFilename: body.imageFilename,
+            videoAlt: body.videoAlt,
+            videoFilename: body.videoFilename,
+            readingTimeMinutes: body.readingTimeMinutes,
+          },
+          title: body.title?.trim() || '',
+          spot: body.spot,
+          summary: body.summary,
+          content: body.content,
+          imageUrls: body.thumbnail?.trim() ? [body.thumbnail.trim()] : [],
+          videoUrls: body.videoUrl?.trim() ? [body.videoUrl.trim()] : [],
+        })
+      )
+    )
+  }
   if (Array.isArray(body.additionalImages) || body.thumbnail?.trim() || body.videoUrl?.trim()) {
     if (Array.isArray(body.additionalImages)) {
       update.additionalImages = sanitizeAdditionalImages(body.additionalImages)
@@ -223,7 +275,9 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     update.mediaItems = buildEditorMediaItems({
       thumbnail: body.thumbnail,
       thumbnailCaption: body.imageCaption,
+      thumbnailAlt: body.imageAlt,
       videoUrl: body.videoUrl,
+      videoAlt: body.videoAlt,
       additionalImages: Array.isArray(body.additionalImages)
         ? sanitizeAdditionalImages(body.additionalImages)
         : [],

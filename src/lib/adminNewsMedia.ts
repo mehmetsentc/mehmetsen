@@ -1,6 +1,8 @@
 export interface EditorAdditionalImage {
   url: string
   caption?: string
+  alt?: string
+  filename?: string
 }
 
 export interface EditorMediaItem {
@@ -21,6 +23,8 @@ export function sanitizeAdditionalImages(
     .map((img) => ({
       url: img.url.trim(),
       caption: img.caption?.trim() ?? '',
+      alt: img.alt?.trim() ?? '',
+      filename: img.filename?.trim() ?? '',
     }))
 }
 
@@ -28,13 +32,16 @@ export function sanitizeAdditionalImages(
 export function buildEditorMediaItems(input: {
   thumbnail?: string
   thumbnailCaption?: string
+  thumbnailAlt?: string
   videoUrl?: string
+  videoAlt?: string
   additionalImages?: EditorAdditionalImage[]
 }): EditorMediaItem[] {
   const items: EditorMediaItem[] = []
   const thumb = input.thumbnail?.trim() ?? ''
   const video = input.videoUrl?.trim() ?? ''
   const thumbCaption = input.thumbnailCaption?.trim() ?? ''
+  const thumbAlt = input.thumbnailAlt?.trim() || thumbCaption
   let order = 0
 
   if (video) {
@@ -42,7 +49,8 @@ export function buildEditorMediaItems(input: {
       type: 'video',
       url: video,
       thumbnailUrl: thumb || null,
-      caption: null,
+      caption: input.videoAlt?.trim() || null,
+      alt: input.videoAlt?.trim() || null,
       order: order++,
     })
   }
@@ -53,7 +61,7 @@ export function buildEditorMediaItems(input: {
       url: thumb,
       thumbnailUrl: thumb,
       caption: thumbCaption || null,
-      alt: thumbCaption || null,
+      alt: thumbAlt || null,
       order: order++,
     })
   }
@@ -66,7 +74,7 @@ export function buildEditorMediaItems(input: {
       url: img.url,
       thumbnailUrl: img.url,
       caption,
-      alt: caption,
+      alt: img.alt?.trim() || caption,
       order: order++,
     })
   }

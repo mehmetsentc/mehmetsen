@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles, MapPin,
+  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles, MapPin, Share2, Bell, Clock,
 } from 'lucide-react'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
@@ -36,6 +36,16 @@ import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import { parseApiResponse } from '@/lib/parseApiResponse'
+import {
+  SOCIAL_HEADLINE_MAX,
+  SOCIAL_SUMMARY_MAX,
+  SOCIAL_CAPTION_MAX,
+  PUSH_TITLE_MAX,
+  PUSH_TEXT_MAX,
+  MEDIA_ALT_MAX,
+  MEDIA_FILENAME_MAX,
+  estimateReadingTimeMinutes,
+} from '@/lib/news/distributionMeta'
 
 /** {"caption":"..."} formatındaki bozuk değerleri temizler */
 function sanitizeCaptionValue(v: string | undefined | null): string {
@@ -65,6 +75,17 @@ interface ProfessionalAiResult {
   imageOrder?: string[]
   imageCaption?: string
   additionalImages?: AdditionalImageItem[]
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
+  readingTimeMinutes?: number
+  mediaMeta?: Array<{ url: string; kind?: string; alt?: string; filename?: string }>
   qualityScore?: number
   gateDecision?: 'publish' | 'review'
   researchSources?: Array<{ title: string; url: string }>
@@ -281,6 +302,20 @@ export function AdminNewsEditor({
     (post as (Post & { seoKeywords?: string[] }) | undefined)?.seoKeywords ?? []
   )
   const [seoKeywordInput, setSeoKeywordInput] = useState('')
+  const [socialHeadline, setSocialHeadline] = useState(post?.socialHeadline?.trim() ?? '')
+  const [socialStorySummary, setSocialStorySummary] = useState(post?.socialStorySummary?.trim() ?? '')
+  const [socialCaption, setSocialCaption] = useState(post?.socialCaption?.trim() ?? '')
+  const [pushTitle, setPushTitle] = useState(post?.pushTitle?.trim() ?? '')
+  const [pushText, setPushText] = useState(post?.pushText?.trim() ?? '')
+  const [imageAlt, setImageAlt] = useState(post?.imageAlt?.trim() || sanitizeCaptionValue(post?.imageCaption) || '')
+  const [imageFilename, setImageFilename] = useState(post?.imageFilename?.trim() ?? '')
+  const [videoAlt, setVideoAlt] = useState(post?.videoAlt?.trim() ?? '')
+  const [videoFilename, setVideoFilename] = useState(post?.videoFilename?.trim() ?? '')
+  const [readingTimeMinutes, setReadingTimeMinutes] = useState<number>(
+    post?.readingTimeMinutes && post.readingTimeMinutes > 0
+      ? post.readingTimeMinutes
+      : estimateReadingTimeMinutes([post?.title, post?.spot, post?.content].filter(Boolean).join(' '))
+  )
   const [aiKwLoading, setAiKwLoading] = useState(false)
   const autoKwAttemptedRef = useRef(false)
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
@@ -442,6 +477,16 @@ export function AdminNewsEditor({
     seoTitle,
     seoDescription,
     seoKeywords,
+    socialHeadline,
+    socialStorySummary,
+    socialCaption,
+    pushTitle,
+    pushText,
+    imageAlt,
+    imageFilename,
+    videoAlt,
+    videoFilename,
+    readingTimeMinutes,
     aiResearchSources,
     isBreaking,
     featured,
@@ -564,6 +609,7 @@ export function AdminNewsEditor({
           mode: 'publish-ready',
           input: rawInput,
           imageUrls,
+          videoUrls: videoUrl.trim() ? [videoUrl.trim()] : [],
           articleFormat,
           autoRoute: isAutoEditor,
           ...(isAutoEditor
@@ -635,7 +681,29 @@ export function AdminNewsEditor({
       }
       setThumbnail(nextThumbnail)
       setImageCaption(sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle)
-      setAdditionalImages(nextAdditional)
+      setSocialHeadline(data.socialHeadline?.trim() || nextTitle)
+      setSocialStorySummary(data.socialStorySummary?.trim() || nextSpot)
+      setSocialCaption(data.socialCaption?.trim() || nextSummary)
+      setPushTitle(data.pushTitle?.trim() || nextTitle)
+      setPushText(data.pushText?.trim() || nextSpot)
+      setImageAlt(data.imageAlt?.trim() || sanitizeCaptionValue(data.imageCaption) || nextTitle)
+      setImageFilename(data.imageFilename?.trim() || '')
+      setVideoAlt(data.videoAlt?.trim() || (videoUrl ? `${nextTitle} videosu` : ''))
+      setVideoFilename(data.videoFilename?.trim() || '')
+      setReadingTimeMinutes(
+        data.readingTimeMinutes && data.readingTimeMinutes > 0
+          ? data.readingTimeMinutes
+          : estimateReadingTimeMinutes(`${nextTitle} ${nextSpot} ${nextContent}`)
+      )
+      const nextAdditionalWithMeta = nextAdditional.map((img) => {
+        const meta = data.mediaMeta?.find((item) => item.url === img.url)
+        return {
+          ...img,
+          alt: meta?.alt || img.alt || '',
+          filename: meta?.filename || img.filename || '',
+        }
+      })
+      setAdditionalImages(nextAdditionalWithMeta)
       setAiQualityScore(data.qualityScore ?? null)
       setAiGateDecision(data.gateDecision ?? 'review')
       setAiResearchSources(
@@ -675,7 +743,20 @@ export function AdminNewsEditor({
         seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : seoKeywords,
         thumbnail: nextThumbnail,
         imageCaption: sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle,
-        additionalImages: nextAdditional,
+        additionalImages: nextAdditionalWithMeta,
+        socialHeadline: data.socialHeadline?.trim() || nextTitle,
+        socialStorySummary: data.socialStorySummary?.trim() || nextSpot,
+        socialCaption: data.socialCaption?.trim() || nextSummary,
+        pushTitle: data.pushTitle?.trim() || nextTitle,
+        pushText: data.pushText?.trim() || nextSpot,
+        imageAlt: data.imageAlt?.trim() || nextTitle,
+        imageFilename: data.imageFilename?.trim() || '',
+        videoAlt: data.videoAlt?.trim() || '',
+        videoFilename: data.videoFilename?.trim() || '',
+        readingTimeMinutes:
+          data.readingTimeMinutes && data.readingTimeMinutes > 0
+            ? data.readingTimeMinutes
+            : estimateReadingTimeMinutes(`${nextTitle} ${nextSpot} ${nextContent}`),
         aiEditorId: data.aiEditorId || (isAutoEditor ? null : aiEditorId) || null,
         citySlug: data.suggestedCitySlug?.trim() || citySlug,
         districtSlug: data.suggestedDistrictSlug?.trim() || districtSlug,
@@ -1107,7 +1188,7 @@ export function AdminNewsEditor({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={thumbnail}
-                alt={imageCaption || title || 'Kapak görseli'}
+                alt={imageAlt || imageCaption || title || 'Kapak görseli'}
                 className="aspect-[16/9] w-full object-cover"
               />
               {imageCaption && (
@@ -1127,6 +1208,16 @@ export function AdminNewsEditor({
             title={title}
             longform={articleLayout === 'longform'}
           />
+          {(socialHeadline || socialStorySummary || socialCaption || pushTitle) && (
+            <div className="mt-6 space-y-2 border-t border-[rgb(var(--color-border))] pt-4 text-xs">
+              <p className="font-bold text-[rgb(var(--color-text))]">Sosyal / bildirim</p>
+              {socialHeadline && <p><span className="text-[rgb(var(--color-muted))]">Manşet:</span> {socialHeadline}</p>}
+              {socialStorySummary && <p><span className="text-[rgb(var(--color-muted))]">Özet:</span> {socialStorySummary}</p>}
+              {socialCaption && <p><span className="text-[rgb(var(--color-muted))]">Açıklama:</span> {socialCaption}</p>}
+              {pushTitle && <p><span className="text-[rgb(var(--color-muted))]">Push:</span> {pushTitle} — {pushText}</p>}
+              <p><span className="text-[rgb(var(--color-muted))]">Okuma:</span> {readingTimeMinutes} dakika</p>
+            </div>
+          )}
         </article>
       </section>
     )}
@@ -1673,6 +1764,204 @@ export function AdminNewsEditor({
           Google meta keywords — virgülle ayırarak veya Enter ile ekle ({seoKeywords.length} kelime)
         </p>
       </div>
+    </div>
+
+    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
+        <Share2 className="h-3.5 w-3.5 text-sky-500" />
+        Sosyal medya ve bildirim
+      </p>
+      <p className="text-[10px] text-[rgb(var(--color-muted))]">
+        Manşet görsel/story üzerine; paylaşım özeti manşetin altına; açıklama feed caption. AI “Haberi hazırla” bunları görsel ve videoya göre doldurur.
+      </p>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Başlığı</label>
+          <span className={`text-[10px] font-mono ${socialHeadline.length > SOCIAL_HEADLINE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialHeadline.length}/{SOCIAL_HEADLINE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={socialHeadline}
+          onChange={(e) => setSocialHeadline(e.target.value)}
+          maxLength={SOCIAL_HEADLINE_MAX + 20}
+          placeholder="Merak uyandıran gazete manşeti — hikâyeyi dökme"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Paylaşım Özeti</label>
+          <span className={`text-[10px] font-mono ${socialStorySummary.length > SOCIAL_SUMMARY_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialStorySummary.length}/{SOCIAL_SUMMARY_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialStorySummary}
+          onChange={(e) => setSocialStorySummary(e.target.value)}
+          rows={2}
+          maxLength={SOCIAL_SUMMARY_MAX + 40}
+          placeholder="Manşetin altında 1-2 tam cümle: ne oldu + etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Açıklaması</label>
+          <span className={`text-[10px] font-mono ${socialCaption.length > SOCIAL_CAPTION_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialCaption.length}/{SOCIAL_CAPTION_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialCaption}
+          onChange={(e) => setSocialCaption(e.target.value)}
+          rows={4}
+          maxLength={SOCIAL_CAPTION_MAX + 80}
+          placeholder="Feed açıklaması — başlığı tekrarlama; arka plan, detay, etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <Bell className="h-3 w-3" />
+            Push Bildirim Başlığı
+          </label>
+          <span className={`text-[10px] font-mono ${pushTitle.length > PUSH_TITLE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushTitle.length}/{PUSH_TITLE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={pushTitle}
+          onChange={(e) => setPushTitle(e.target.value)}
+          maxLength={PUSH_TITLE_MAX + 10}
+          placeholder="Kısa bildirim kancası"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Push Bildirim Metni</label>
+          <span className={`text-[10px] font-mono ${pushText.length > PUSH_TEXT_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushText.length}/{PUSH_TEXT_MAX}
+          </span>
+        </div>
+        <textarea
+          value={pushText}
+          onChange={(e) => setPushText(e.target.value)}
+          rows={2}
+          maxLength={PUSH_TEXT_MAX + 20}
+          placeholder="Tek net cümle"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+    </div>
+
+    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
+        <Clock className="h-3.5 w-3.5 text-amber-500" />
+        Görsel / video meta
+      </p>
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Okuma Süresi (dakika)</label>
+        </div>
+        <input
+          type="number"
+          min={1}
+          max={30}
+          value={readingTimeMinutes}
+          onChange={(e) => setReadingTimeMinutes(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+          className={`${fieldCardInputCls} w-28`}
+        />
+      </div>
+
+      {thumbnail ? (
+        <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Kapak görseli</p>
+          <input
+            type="text"
+            value={imageAlt}
+            onChange={(e) => setImageAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+            maxLength={MEDIA_ALT_MAX}
+            placeholder="Görsel alt metni (ALT)"
+            className={fieldCardInputCls}
+          />
+          <input
+            type="text"
+            value={imageFilename}
+            onChange={(e) => setImageFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+            maxLength={MEDIA_FILENAME_MAX}
+            placeholder="Görsel dosya adı (ornek-haber.jpg)"
+            className={fieldCardInputCls}
+          />
+        </div>
+      ) : (
+        <p className="text-[10px] text-[rgb(var(--color-muted))]">Kapak görseli eklenince ALT ve dosya adı burada doldurulur.</p>
+      )}
+
+      {additionalImages.filter((img) => img.url && img.url !== thumbnail).map((img, index) => (
+        <div key={img.url} className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Ek görsel {index + 1}</p>
+          <input
+            type="text"
+            value={img.alt ?? ''}
+            onChange={(e) => {
+              const alt = e.target.value.slice(0, MEDIA_ALT_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, alt } : item))
+              )
+            }}
+            maxLength={MEDIA_ALT_MAX}
+            placeholder="Görsel alt metni (ALT)"
+            className={fieldCardInputCls}
+          />
+          <input
+            type="text"
+            value={img.filename ?? ''}
+            onChange={(e) => {
+              const filename = e.target.value.slice(0, MEDIA_FILENAME_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, filename } : item))
+              )
+            }}
+            maxLength={MEDIA_FILENAME_MAX}
+            placeholder="Görsel dosya adı"
+            className={fieldCardInputCls}
+          />
+        </div>
+      ))}
+
+      {videoUrl ? (
+        <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video</p>
+          <input
+            type="text"
+            value={videoAlt}
+            onChange={(e) => setVideoAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+            maxLength={MEDIA_ALT_MAX}
+            placeholder="Video alt metni"
+            className={fieldCardInputCls}
+          />
+          <input
+            type="text"
+            value={videoFilename}
+            onChange={(e) => setVideoFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+            maxLength={MEDIA_FILENAME_MAX}
+            placeholder="Video dosya adı (ornek-haber.mp4)"
+            className={fieldCardInputCls}
+          />
+        </div>
+      ) : (
+        <p className="text-[10px] text-[rgb(var(--color-muted))]">Video eklenince alt metin ve dosya adı burada doldurulur.</p>
+      )}
     </div>
   </div>
   )

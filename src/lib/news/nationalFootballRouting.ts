@@ -40,6 +40,26 @@ function textIncludesClubToken(normalizedText: string, token: string): boolean {
   return pattern.test(` ${normalizedText} `)
 }
 
+/** Hatayspor / Konyaspor / Adana Demir — kulüp adı, şehir değil. */
+function isOfficialClubToken(token: string, club: TurkishFootballClubDef): boolean {
+  const official = normalizeFootballMatchText(club.name)
+  if (token === official) return true
+  return /spor$| fk$| sk$|gucu$|birligi$|demir/.test(token)
+}
+
+/**
+ * City/nickname aliases ("hatay", "konya", "kartal") are not enough on their own.
+ * Otherwise every Hatay asayiş / Konya belediye story becomes futbol.
+ */
+const FOOTBALL_CONTEXT_RE =
+  /\b(futbol|super ?lig|trendyol|tff|uefa|fifa|maci?|goller?|penalti|kaleci|forvet|teknik direktor|stadyum|derbi|deplasman|kadro|puan durumu|hakem|kirmizi kart|sari kart|sampiyonlar|forma|skor|ofsayt|offside)\b/
+
+export function hasFootballContext(text: string): boolean {
+  const normalized = normalizeFootballMatchText(text)
+  if (normalized && FOOTBALL_CONTEXT_RE.test(` ${normalized} `)) return true
+  return /\d+\s*[-–:]\s*\d+/.test(text)
+}
+
 /**
  * Detect Süper Lig or Trendyol 1. Lig club mention in title/summary/body.
  * Returns national futbol routing when a professional club is referenced.
@@ -47,15 +67,16 @@ function textIncludesClubToken(normalizedText: string, token: string): boolean {
 export function detectNationalFootballClub(text: string): NationalFootballMatch | null {
   const normalized = normalizeFootballMatchText(text)
   if (!normalized) return null
+  const footballContext = hasFootballContext(text)
 
   for (const club of ALL_TURKISH_PRO_FOOTBALL_CLUBS) {
     for (const token of clubTokens(club)) {
-      if (textIncludesClubToken(normalized, token)) {
-        return {
-          categoryId: NATIONAL_FOOTBALL_CATEGORY_ID,
-          clubName: club.name,
-          league: club.league,
-        }
+      if (!textIncludesClubToken(normalized, token)) continue
+      if (!isOfficialClubToken(token, club) && !footballContext) continue
+      return {
+        categoryId: NATIONAL_FOOTBALL_CATEGORY_ID,
+        clubName: club.name,
+        league: club.league,
       }
     }
   }

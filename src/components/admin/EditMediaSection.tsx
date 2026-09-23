@@ -78,6 +78,8 @@ function SafePreviewImage({ src, alt, className }: { src: string; alt: string; c
 export interface AdditionalImageItem {
   url: string
   caption?: string
+  alt?: string
+  filename?: string
 }
 
 interface EditMediaSectionProps {

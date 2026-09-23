@@ -59,9 +59,18 @@ export interface NewsDocument {
    */
   galleryImages?: string[]
   /** Admin editöründe paragraflar arasına eklenen görseller */
-  additionalImages?: Array<{ url?: string; caption?: string }>
+  additionalImages?: Array<{ url?: string; caption?: string; alt?: string; filename?: string }>
   /** Kapak görseli SEO açıklaması */
   imageCaption?: string
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -406,6 +415,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
         .map((img) => ({
           url: img.url!.trim(),
           caption: img.caption?.trim() ?? '',
+          alt: img.alt?.trim() ?? '',
+          filename: img.filename?.trim() ?? '',
         }))
     : undefined
 
@@ -429,6 +440,15 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     seoTitle: data.seoTitle?.trim() || '',
     seoDescription: data.seoDescription?.trim() || '',
     seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+    socialHeadline: data.socialHeadline?.trim() || '',
+    socialStorySummary: data.socialStorySummary?.trim() || '',
+    socialCaption: data.socialCaption?.trim() || '',
+    pushTitle: data.pushTitle?.trim() || '',
+    pushText: data.pushText?.trim() || '',
+    imageAlt: data.imageAlt?.trim() || '',
+    imageFilename: data.imageFilename?.trim() || '',
+    videoAlt: data.videoAlt?.trim() || '',
+    videoFilename: data.videoFilename?.trim() || '',
     authorId,
     authorUsername,
     authorDisplayName,

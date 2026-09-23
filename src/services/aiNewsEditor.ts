@@ -383,7 +383,7 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
   * content başlıkla birebir aynı cümleyle başlamamalıdır.`
 
 const HEADLINE_RULES = `ALAN TANIMLARI:
-- title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Vurucu ama yanıltmayan. Soru işareti ile bitirme.
+- title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Merak kancası + doğru olgu; hikâyeyi başlıkta bitirme. ŞOK/SKANDAL/soru işareti yasak.
 - spot: Lider paragraf (haber girişi). Kim+ne+nerede+ne zaman+neden. 2-4 cümle, 60-120 kelime. title'dan farklı bilgi ver.
 - summary: Feed teaser. Maks 120 karakter. title ve spot'tan TAMAMEN farklı ilgi çekici detay.
 - seoTitle: Google arama başlığı. 55-65 karakter. Anahtar kelimeler öne.

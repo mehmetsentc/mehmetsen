@@ -13,6 +13,7 @@
  */
 
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
+import { NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { runAI } from '@/lib/ai/router/aiRouter'
@@ -63,6 +64,7 @@ OLGU SADAKATİ — KESİN:
 - Manşet ve alt açıklama OKUMAYA TEŞVİK EDİCİ olmalı; sıradan haber özeti yapıştırma gibi durmamalı.
 - Merak uyandır, çarpıcı detayı öne çıkar — ama doğruluktan asla taviz verme.
 - Ucuz clickbait / sahte vaat / abartılı şok dili YASAK — NaHaber güvenilir haber tonu korunur.
+- ${NAHABER_SOCIAL_SHARE_STYLE}
 
 KURALLAR:
 - headline: Görsel üzerine basılacak manşet = haber BAŞLIĞININ kısaltılmış gazete biçimi (max ${HEADLINE_MAX} karakter).
