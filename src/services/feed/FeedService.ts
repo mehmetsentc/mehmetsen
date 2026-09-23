@@ -5,10 +5,11 @@ import { getDb, hasDatabaseUrl } from '@/db'
 import { articleLikes, savedArticles, socialEvents } from '@/db/schema/socialGraph'
 import { publisherSources, publishers } from '@/db/schema/publishers'
 import { FEED_PAGINATION } from '@/lib/feed/config'
-import { isSmartFeedRankingEffectiveForUser, isNfRankLiveEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { isSmartFeedRankingEffectiveForUser } from '@/lib/user/effectiveUserFlags'
 import { FEED_RANKING_VERSION } from '@/lib/feed/rankingConfig'
 import { NFRANK_VERSION } from '@/lib/feed/nfRankConfig'
 import { isNfRankShadowEnabled } from '@/lib/feed/featureFlag'
+import { getFeedAlgorithmOps } from '@/services/feed/feedAlgorithmOps.server'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { isFollowablePublisherId } from '@/lib/feed/feedIdentity'
 import {
@@ -106,8 +107,8 @@ function clampLimit(limit?: number): number {
 async function resolveNfRankMode(ctx: FeedRequestContext): Promise<NfRankPipelineMode> {
   // Hard isolation: never activate outside /feed-v2
   if (ctx.surface !== 'feed-v2') return 'off'
-  const live = await isNfRankLiveEffectiveForUser(ctx.userId)
-  if (live) return 'live'
+  const ops = await getFeedAlgorithmOps()
+  if (ops.liveEnabled) return 'live'
   if (isNfRankShadowEnabled()) return 'shadow'
   return 'off'
 }

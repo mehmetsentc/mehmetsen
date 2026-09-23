@@ -16,6 +16,8 @@ import {
   emptySessionIntent,
   nfRankEngine,
   normalizeCandidateTags,
+  operatorTopicBoost,
+  OPERATOR_TOPIC_BOOST,
 } from '@/services/feed/nfRank/NFRankEngine'
 import { compareShadowRankings } from '@/services/feed/nfRank/nfRankShadowCompare'
 import { USER_FEATURE_DEPENDENCIES } from '@/lib/user/userRolloutMatrix'
@@ -193,6 +195,17 @@ describe('NFRank V1 scoring + composition', () => {
     expect(ranked[0]!.candidateSources).toEqual(expect.arrayContaining(['LOCAL', 'RECENT', 'DISCOVERY']))
     expect(ranked[0]!.nfExplain?.rankingVersion).toBe('NFRANK_V1')
     expect(ranked[0]!.nfExplain?.candidateSources).toEqual(ranked[0]!.candidateSources)
+  })
+
+  it('admin boost topics lift matching headline without changing others', () => {
+    const boosted = baseRow({ articleId: 'b1', headline: 'İstanbul deprem tatbikatı', category: 'gundem' })
+    const other = baseRow({ articleId: 'o1', headline: 'Teknoloji zirvesi', category: 'teknoloji' })
+    expect(operatorTopicBoost(boosted, ['deprem'])).toBe(OPERATOR_TOPIC_BOOST)
+    expect(operatorTopicBoost(other, ['deprem'])).toBe(0)
+    const ranked = nfRankEngine.compose([other, boosted], emptyCtx(), 'personal', 2, emptySessionIntent(), {
+      boostTopics: ['deprem'],
+    })
+    expect(ranked[0]!.articleId).toBe('b1')
   })
 
   it('same cluster does not flood feed', () => {
@@ -445,8 +458,15 @@ describe('NFRank Feed V2 isolation (source contracts)', () => {
       'utf8'
     )
     expect(feedService).toContain("if (ctx.surface !== 'feed-v2') return 'off'")
-    expect(feedService).toContain('isNfRankLiveEffectiveForUser')
+    expect(feedService).toContain('getFeedAlgorithmOps')
     expect(feedService).toContain("rankingVersion: 'category_mix_v1'")
+    const page = fs.readFileSync(
+      path.join(process.cwd(), 'src/app/admin/feed-algorithm/page.tsx'),
+      'utf8'
+    )
+    expect(page).toContain('Algoritma Yönetimi')
+    expect(page).toContain('Öne çıkarılacak konular')
+    expect(page).toContain('/api/admin/feed-algorithm/ops')
     const pipeline = fs.readFileSync(
       path.join(process.cwd(), 'src/services/feed/FeedRankingPipeline.ts'),
       'utf8'

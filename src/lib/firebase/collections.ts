@@ -119,6 +119,8 @@ export const Collections = {
   CMS_FEATURE_FLAGS: 'cmsFeatureFlags',
   /** Global site identity / public feature toggles — doc id: `global` */
   SITE_SETTINGS: 'siteSettings',
+  /** Feed V2 algorithm ops (live switch / instructions / topic boosts) — doc id: `global` */
+  FEED_ALGORITHM_OPS: 'feedAlgorithmOps',
   CMS_NOTIFICATIONS: 'cmsNotifications',
   STORY_CLUSTERS: 'storyClusters',
   SOURCE_PROFILES: 'sourceProfiles',

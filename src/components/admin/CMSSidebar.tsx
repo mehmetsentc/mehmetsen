@@ -172,7 +172,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/page-controls', label: 'Sayfa Kontrolleri', icon: LayoutGrid, requiredPermissions: ['pages:manage'] },
       { href: '/admin/global-layout', label: 'Global Dizilim', icon: Layers, requiredPermissions: ['pages:manage'] },
-      { href: '/admin/feed-algorithm', label: 'Feed & Algoritma', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
+      { href: '/admin/feed-algorithm', label: 'Algoritma Yönetimi', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
     ],
   },
   {

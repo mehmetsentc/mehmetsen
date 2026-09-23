@@ -264,11 +264,11 @@ const COMMANDS: CommandItem[] = [
   },
   {
     id: 'feed-algo',
-    label: 'Feed & Algoritma',
+    label: 'Algoritma Yönetimi',
     href: '/admin/feed-algorithm',
     icon: BarChart3,
     group: 'Uygulama',
-    keywords: 'algoritma feed',
+    keywords: 'algoritma feed nfrank konu talimat',
     requiredPermissions: ['algorithm:view'],
   },
 

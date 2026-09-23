@@ -321,6 +321,27 @@ function candidateSourcesOf(row: FeedCandidateRow): FeedCandidateSource[] {
   return [row.source]
 }
 
+/** Bounded editorial lift for admin-promoted topics (category / tag / headline). */
+export const OPERATOR_TOPIC_BOOST = 0.14
+
+export function operatorTopicBoost(
+  row: FeedCandidateRow,
+  topics?: readonly string[] | null
+): number {
+  if (!topics?.length) return 0
+  const cat = (row.category ?? '').trim().toLowerCase()
+  const headline = (row.headline ?? '').toLowerCase()
+  const tags = normalizeCandidateTags(row.tags)
+  for (const raw of topics) {
+    const t = raw.trim().toLowerCase()
+    if (t.length < 2) continue
+    if (cat && cat === t) return OPERATOR_TOPIC_BOOST
+    if (tags.some((tag) => tag === t)) return OPERATOR_TOPIC_BOOST
+    if (headline.includes(t)) return OPERATOR_TOPIC_BOOST
+  }
+  return 0
+}
+
 /**
  * Extract features → base relevance → diversity → exploration compose.
  * Deterministic for identical inputs (stable sort by articleId on ties).
@@ -507,6 +528,7 @@ export class NFRankEngine {
       coldStart?: boolean
       includeExplain?: boolean
       nowMs?: number
+      boostTopics?: readonly string[]
     }
   ): NfRankedCandidate[] {
     const cfg = NFRANK_CONFIG_V1
@@ -530,6 +552,8 @@ export class NFRankEngine {
           components.engagement * 0.1 +
           components.discovery * 0.07
       }
+      const topicBoost = operatorTopicBoost(row, opts?.boostTopics)
+      adj += topicBoost
       return {
         row,
         score: adj,

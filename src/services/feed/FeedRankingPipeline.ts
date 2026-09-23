@@ -12,6 +12,7 @@ import { feedSessionService, type FeedSessionPayload } from './FeedSessionServic
 import { feedUserContextService } from './FeedUserContextService'
 import { feedColdStartService } from './FeedColdStartService'
 import { isColdStartEffectiveForUser } from '@/lib/user/effectiveUserFlags'
+import { getFeedAlgorithmOps } from '@/services/feed/feedAlgorithmOps.server'
 import { feedSeenService } from './FeedSeenService'
 import { emptySessionIntent, nfRankEngine, type NfSessionIntent } from './nfRank/NFRankEngine'
 import { compareShadowRankings } from './nfRank/nfRankShadowCompare'
@@ -35,6 +36,8 @@ export interface RankingPipelineInput {
   /** Feed V2 NFRank: off | shadow (eval only) | live (visible order). */
   nfRankMode?: NfRankPipelineMode
   sessionIntent?: NfSessionIntent
+  /** Admin-promoted topics (bounded). */
+  boostTopics?: readonly string[]
 }
 
 export interface RankingPipelineResult {
@@ -157,7 +160,8 @@ function rankWindow(
   limit: number,
   nfRankMode: NfRankPipelineMode = 'off',
   sessionIntent: NfSessionIntent = emptySessionIntent(),
-  coldStart = false
+  coldStart = false,
+  boostTopics: readonly string[] = []
 ): { ranked: ScoredFeedCandidate[]; shadowComparison?: ReturnType<typeof compareShadowRankings> } {
   const reps = feedRepresentativeSelector.select(flat)
   const windowLimit = Math.max(limit * 3, limit)
@@ -167,6 +171,7 @@ function rankWindow(
       seenArticles,
       seenClusters,
       coldStart,
+      boostTopics,
     })
     return { ranked }
   }
@@ -179,6 +184,7 @@ function rankWindow(
       seenArticles,
       seenClusters,
       coldStart,
+      boostTopics,
     })
     const shadowComparison = compareShadowRankings({
       baseline: ranked,
@@ -289,7 +295,8 @@ export class FeedRankingPipeline {
       input.limit,
       input.nfRankMode ?? 'off',
       input.sessionIntent ?? emptySessionIntent(),
-      coldStart
+      coldStart,
+      input.boostTopics ?? []
     )
     const olderThan = oldestPublishedIso(ranked) ?? publishedBefore ?? null
     return { ranked, candidateCounts, olderThan, shadowComparison }
@@ -380,49 +387,54 @@ export class FeedRankingPipeline {
 
   /** 9-step ranking pipeline ensuring all published news flow through algorithm. */
   async run(input: RankingPipelineInput): Promise<RankingPipelineResult> {
-    const nfMode = input.nfRankMode ?? 'off'
+    const ops = await getFeedAlgorithmOps()
+    const resolved: RankingPipelineInput = {
+      ...input,
+      boostTopics: input.boostTopics ?? ops.boostTopics,
+    }
+    const nfMode = resolved.nfRankMode ?? 'off'
     const rankingVersion =
       nfMode === 'live' ? NFRANK_VERSION : FEED_RANKING_VERSION
 
     // 1. Load user context (exclude SYNTHETIC_TEST)
-    let ctx: FeedUserContext = await feedUserContextService.load(input.userId)
+    let ctx: FeedUserContext = await feedUserContextService.load(resolved.userId)
     if (ctx.isSynthetic) ctx = { ...ctx, explicitInterests: [], behavioralInterests: new Map(), followedPublisherIds: new Set() }
 
     // 2. On-demand behavioral aggregation (bounded, authed only)
     // Shadow NFRank must not mutate interests from hypothetical results — only real aggregator on real events.
-    if (input.userId && !ctx.isSynthetic && !input.sessionToken) {
-      await feedInterestAggregator.aggregateForUser(input.userId).catch(() => {})
-      ctx = await feedUserContextService.load(input.userId)
+    if (resolved.userId && !ctx.isSynthetic && !resolved.sessionToken) {
+      await feedInterestAggregator.aggregateForUser(resolved.userId).catch(() => {})
+      ctx = await feedUserContextService.load(resolved.userId)
     }
 
     // Session stability — continue / refill existing ranked snapshot (current + near cards frozen via rankedIds)
-    if (input.sessionToken && !input.refresh) {
-      const existing = feedSessionService.decode(input.sessionToken)
-      if (existing && existing.mode === input.mode) {
-        return this.pageFromSession(existing, input, ctx, rankingVersion, {
+    if (resolved.sessionToken && !resolved.refresh) {
+      const existing = feedSessionService.decode(resolved.sessionToken)
+      if (existing && existing.mode === resolved.mode) {
+        return this.pageFromSession(existing, resolved, ctx, rankingVersion, {
           session_continue: 1,
         })
       }
     }
 
     // 2b. Cold Start V2 — when NFRank live, reuse cold-start detection but score via NFRank (no fake personalization)
-    const coldStartAllowed = await isColdStartEffectiveForUser(input.userId)
+    const coldStartAllowed = await isColdStartEffectiveForUser(resolved.userId)
     let coldStart = false
-    if (coldStartAllowed && input.mode === 'personal' && !input.sessionToken) {
+    if (coldStartAllowed && resolved.mode === 'personal' && !resolved.sessionToken) {
       const coldProfile = feedColdStartService.resolveProfile(ctx)
       if (coldProfile) {
         if (nfMode === 'live') {
           coldStart = true
         } else {
-          return feedColdStartService.buildFeed(input, ctx, coldProfile)
+          return feedColdStartService.buildFeed(resolved, ctx, coldProfile)
         }
       }
     }
 
     // 3–6. First window
-    const exclude = await feedSeenService.expandArticleIdentities(new Set(input.seenArticles))
+    const exclude = await feedSeenService.expandArticleIdentities(new Set(resolved.seenArticles))
     const { ranked: diversified, candidateCounts, olderThan, shadowComparison } = await this.buildNextWindow(
-      input,
+      resolved,
       ctx,
       exclude,
       null,
@@ -430,13 +442,13 @@ export class FeedRankingPipeline {
     )
 
     const rankedIds = diversified.map((r) => r.articleId)
-    const session = feedSessionService.create(input.mode, rankedIds, undefined, {
+    const session = feedSessionService.create(resolved.mode, rankedIds, undefined, {
       olderThan,
       generation: 0,
       corpusExhausted: rankedIds.length === 0,
     })
 
-    const page = await this.pageFromSession(session, input, ctx, rankingVersion, candidateCounts)
+    const page = await this.pageFromSession(session, resolved, ctx, rankingVersion, candidateCounts)
     return { ...page, nfShadowComparison: shadowComparison }
   }
 }

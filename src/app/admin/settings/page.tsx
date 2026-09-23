@@ -53,8 +53,8 @@ const HUB_LINKS = [
   },
   {
     href: ROUTES.ADMIN.FEED_ALGORITHM,
-    label: 'Feed & Algoritma',
-    hint: 'Sıralama ağırlıkları (onaylı öneri)',
+    label: 'Algoritma Yönetimi',
+    hint: 'Aç/kapa, talimat, öne çıkan konular',
     icon: SlidersHorizontal,
   },
   {
