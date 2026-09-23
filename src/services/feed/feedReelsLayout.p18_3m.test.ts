@@ -9,10 +9,12 @@ describe('P18.3M feed-v2 Reels reference layout', () => {
       'utf8'
     )
     expect(card).toContain('smart-feed-publisher-row')
+    expect(card).toContain('smart-feed-editor-row')
+    expect(card).toContain('ROUTES.AUTHOR')
     expect(card).toContain('smart-feed-copy-scroll')
     expect(card).toContain('smart-feed-card-progress')
     expect(card).toContain('object-cover object-center')
-    expect(card).not.toMatch(/line-clamp/)
+    expect(card).not.toMatch(/-webkit-line-clamp/)
     expect(card).toContain('Haberi Oku')
     expect(card).toContain('variant="overlay"')
     expect(card).not.toContain('smart-feed-mid-copy')

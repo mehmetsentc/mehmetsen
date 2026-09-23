@@ -14,6 +14,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Bookmark, MessageCircle, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ROUTES } from '@/constants/routes'
 import { ShareButton as PostShareButton } from '@/components/post/ShareButton'
 import type { FeedItemDto } from '@/types/smartFeed'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
@@ -192,7 +193,7 @@ export function FeedArticleReader({
   openSource = 'unknown',
   generation = 0,
   onOpenRelatedArticle,
-  bylineMode = 'publisher',
+  bylineMode = 'editor',
 }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -1171,7 +1172,16 @@ export function FeedArticleReader({
                 {categoryLabel || 'Haber'}
               </span>
               <span className="text-white/25"> · </span>
-              {bylineLabel}
+              {item.authorSlug && bylineMode === 'editor' ? (
+                <Link
+                  href={ROUTES.AUTHOR(item.authorSlug)}
+                  className="truncate text-[color:var(--reader-page-text)] underline-offset-2 hover:underline"
+                >
+                  {bylineLabel}
+                </Link>
+              ) : (
+                bylineLabel
+              )}
             </p>
           </div>
           <button

@@ -165,7 +165,7 @@ export function FullscreenNewsCard({
   showSheetOpenCoach = false,
   onSheetAffordanceActivate,
   onDiscoveryArticleOpen,
-  bylineMode = 'publisher',
+  bylineMode: _bylineMode = 'editor',
   fullBleed = false,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
@@ -332,7 +332,7 @@ export function FullscreenNewsCard({
           {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
         </span>
       )}
-      <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+      <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline">
         {item.publisher.name}
       </span>
       {publisherHref ? (
@@ -770,8 +770,7 @@ export function FullscreenNewsCard({
               Haberi Oku
             </button>
 
-            {bylineMode === 'editor' ? (
-              item.authorName ? (
+            {item.authorName?.trim() ? (
               <div
                 className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
                 data-testid="smart-feed-editor-row"
@@ -785,7 +784,7 @@ export function FullscreenNewsCard({
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
-                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
                       {item.authorName}
                     </span>
                     {timeLabel ? (
@@ -799,7 +798,7 @@ export function FullscreenNewsCard({
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
-                    <span className="min-w-0 text-[0.88rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
                       {item.authorName}
                     </span>
                     {timeLabel ? (
@@ -811,7 +810,6 @@ export function FullscreenNewsCard({
                 )}
                 {item.authorId ? <EditorFollowButton authorUid={item.authorId} className="shrink-0" /> : null}
               </div>
-              ) : null
             ) : item.publisher ? (
               <div
                 className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
