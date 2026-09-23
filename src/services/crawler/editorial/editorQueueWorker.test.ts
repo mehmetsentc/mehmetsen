@@ -93,7 +93,7 @@ describe('processEditorAiQueue', () => {
   })
 
   it('exposes safe batch size and concurrency constants', () => {
-    expect(WORKER_BATCH_SIZE).toBe(8)
+    expect(WORKER_BATCH_SIZE).toBe(24)
     expect(WORKER_CONCURRENCY).toBe(2)
     expect(EDITOR_AI_STALE_PROCESSING_MS).toBe(6 * 60 * 1000)
   })

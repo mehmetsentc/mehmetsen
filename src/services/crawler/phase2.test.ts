@@ -201,7 +201,7 @@ describe('crawler phase 2', () => {
     const limits = crawlerTickLimits()
     expect(limits.maxFetchPerTick).toBeGreaterThan(0)
     expect(limits.maxFetchPerSource).toBeGreaterThan(0)
-    expect(limits.maxTickRuntimeMs).toBeLessThanOrEqual(55_000)
+    expect(limits.maxTickRuntimeMs).toBeLessThanOrEqual(280_000)
     expect(isFreshEnough(new Date(), 48)).toBe(true)
     expect(isFreshEnough(new Date('2020-01-01'), 48)).toBe(false)
     expect(

@@ -80,7 +80,7 @@
       "memory": 1024
     },
     "src/app/api/cron/crawler/tick/route.ts": {
-      "memory": 512
+      "memory": 1024
     },
     "src/app/api/cron/crawler-ai-worker/route.ts": {
       "memory": 1024
@@ -344,15 +344,15 @@
     },
     {
       "path": "/api/cron/crawler/tick",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/crawler-ai-worker",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/newsroom/editor-ai-queue",
-      "schedule": "* * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/publisher-content-schedule",
