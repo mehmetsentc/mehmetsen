@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { HomeFeed } from '@/components/home/HomeFeed'
+import { CategoryStoryHome } from '@/components/home/CategoryStoryHome'
+import type { CategoryStoryGroup } from '@/lib/home/categoryStories'
 import { TrendFeed } from '@/components/feed/TrendFeed'
 import type { FeedTab } from '@/components/feed/FeedCategoryBar'
 import { AdSlotProvider } from '@/context/AdSlotContext'
@@ -42,6 +43,7 @@ function DesktopFeedPlaceholder() {
 
 interface FeedPageClientProps {
   homeFeedData: HomeFeedInitialData
+  storyGroups?: CategoryStoryGroup[]
 }
 
 function FeedScrollHeaderConfig({ homeFeedData }: FeedPageClientProps) {
@@ -102,7 +104,7 @@ function useDesktopFeedReady() {
   return desktopReady
 }
 
-function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
+function FeedPageBody({ homeFeedData, storyGroups = [] }: FeedPageClientProps) {
   const searchParams = useSearchParams()
   const activeTab: FeedTab = searchParams.get('tab') === 'trend' ? 'trend' : 'home'
   const liveFeedData = useHomeFeedLiveUpdates(homeFeedData)
@@ -115,7 +117,7 @@ function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
       {activeTab === 'home' && (
         <>
           <div className="lg:hidden">
-            <HomeFeed data={liveFeedData} />
+            <CategoryStoryHome groups={storyGroups} />
           </div>
           <div className="hidden lg:block" data-testid="desktop-home-newspaper">
             {desktopReady ? (
@@ -141,19 +143,19 @@ function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
   )
 }
 
-export function FeedPageClient({ homeFeedData }: FeedPageClientProps) {
+export function FeedPageClient({ homeFeedData, storyGroups = [] }: FeedPageClientProps) {
   return (
     <Suspense
       fallback={
         <>
           <div className="lg:hidden">
-            <HomeFeed data={homeFeedData} />
+            <CategoryStoryHome groups={storyGroups} />
           </div>
           <DesktopFeedPlaceholder />
         </>
       }
     >
-      <FeedPageBody homeFeedData={homeFeedData} />
+      <FeedPageBody homeFeedData={homeFeedData} storyGroups={storyGroups} />
     </Suspense>
   )
 }

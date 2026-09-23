@@ -21,6 +21,8 @@ type SafeNewsImageProps = {
   fetchPriority?: 'high' | 'low' | 'auto'
   style?: CSSProperties
   onLoadError?: () => void
+  onLoad?: () => void
+  onError?: () => void
 }
 
 function hasObjectFitClass(className?: string): boolean {
@@ -49,6 +51,8 @@ export function SafeNewsImage({
   sizes,
   style,
   fetchPriority,
+  onLoad,
+  onError,
 }: SafeNewsImageProps) {
   const [errored, setErrored] = useState(false)
   const [useFallback, setUseFallback] = useState(false)
@@ -68,6 +72,7 @@ export function SafeNewsImage({
     }
     setErrored(true)
     onLoadError?.()
+    onError?.()
   }
 
   const numericWidth = typeof width === 'number' ? width : undefined
@@ -94,6 +99,7 @@ export function SafeNewsImage({
             className
           )}
           style={style}
+          onLoad={onLoad}
           onError={handleError}
         />
       )
@@ -113,6 +119,7 @@ export function SafeNewsImage({
         width={numericWidth ?? 96}
         height={numericHeight ?? 64}
         style={style}
+        onLoad={onLoad}
         onError={handleError}
       />
     )
@@ -133,6 +140,7 @@ export function SafeNewsImage({
       loading={loading}
       fetchPriority={fetchPriority}
       style={style}
+      onLoad={onLoad}
       onError={handleError}
       draggable={false}
       onContextMenu={(e) => e.preventDefault()}

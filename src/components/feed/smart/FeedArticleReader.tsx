@@ -10,7 +10,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Bookmark, MessageCircle, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -78,7 +78,6 @@ import {
   applyHeroRuntimeEvent,
   applyHeroTimeoutEvent,
   isFeedKnownGoodHero,
-  readerHeroShouldBeUnoptimized,
   resolveReaderHero,
   selectReaderHeroCandidate,
   stripDuplicateHeroFromBodyHtml,
@@ -162,6 +161,15 @@ type Props = {
   }) => void
   /** City Feed 2 — editor in chrome; source only as an end note. */
   bylineMode?: 'publisher' | 'editor'
+  /**
+   * Feed 2 owns history (?reader=). Home stories pass false so closing
+   * the article stays on the homepage.
+   */
+  ownHistory?: boolean
+  /** Override the body endpoint. Defaults to the Feed 2 reader route. */
+  readerApiPath?: string
+  /** Double-tap the article body to leave the reader (home stories). */
+  onDoubleTap?: () => void
 }
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -194,8 +202,16 @@ export function FeedArticleReader({
   generation = 0,
   onOpenRelatedArticle,
   bylineMode = 'editor',
+  ownHistory = true,
+  readerApiPath,
+  onDoubleTap,
 }: Props) {
   const titleId = useId()
+  const ownHistoryRef = useRef(ownHistory)
+  ownHistoryRef.current = ownHistory
+  const onDoubleTapRef = useRef(onDoubleTap)
+  onDoubleTapRef.current = onDoubleTap
+  const lastBodyTapRef = useRef<{ t: number; x: number; y: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dwellRef = useRef(new ReaderDwellTracker())
   const openedRef = useRef(false)
@@ -461,7 +477,9 @@ export function FeedArticleReader({
         source: 'reader',
       })
 
-      if (plan === 'history_back') {
+      if (!ownHistoryRef.current) {
+        clearFeedOwnerRescue()
+      } else if (plan === 'history_back') {
         ignoreNextPopRef.current = true
         armFeedOwnerRescue()
         popReaderHistory()
@@ -562,13 +580,15 @@ export function FeedArticleReader({
       const currentState = typeof window !== 'undefined' ? window.history.state : null
       // Ownership is evaluated against CURRENT history.state only — never React booleans.
       // phase 'active' here means "this transaction is allowed to act once"; ref is already closing.
-      const plan = planReaderHistoryClose({
-        reason,
-        currentState,
-        readerOpenId: openId,
-        feedSessionId,
-        phase: 'active',
-      })
+      const plan = ownHistoryRef.current
+        ? planReaderHistoryClose({
+            reason,
+            currentState,
+            readerOpenId: openId,
+            feedSessionId,
+            phase: 'active',
+          })
+        : 'none'
       const loc =
         typeof window !== 'undefined'
           ? { pathname: window.location.pathname, search: window.location.search }
@@ -669,7 +689,9 @@ export function FeedArticleReader({
     try {
       const token = await getClientAuthToken()
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-      const res = await fetch(`/api/feed/v2/reader/${encodeURIComponent(item.slug)}`, {
+      const res = await fetch(
+        readerApiPath ?? `/api/feed/v2/reader/${encodeURIComponent(item.slug)}`,
+        {
         headers,
         signal: ac.signal,
         cache: 'no-store',
@@ -711,7 +733,7 @@ export function FeedArticleReader({
         errorCode: 'fetch_error',
       })
     }
-  }, [item.slug, onBodyDebug])
+  }, [item.slug, onBodyDebug, readerApiPath])
 
   const loadBodyRef = useRef(loadBody)
   loadBodyRef.current = loadBody
@@ -765,12 +787,14 @@ export function FeedArticleReader({
     document.body.classList.add('smart-feed-reader-open')
 
     const historyState = typeof window !== 'undefined' ? window.history.state : null
-    const openPlan = planReaderHistoryOpen({
-      slug: item.slug,
-      search: typeof window !== 'undefined' ? window.location.search : '',
-      historyState,
-      readerOpenId: openId,
-    })
+    const openPlan = ownHistoryRef.current
+      ? planReaderHistoryOpen({
+          slug: item.slug,
+          search: typeof window !== 'undefined' ? window.location.search : '',
+          historyState,
+          readerOpenId: openId,
+        })
+      : 'none'
     if (openPlan === 'push_owned') {
       pushOwnedReaderHistory({
         slug: item.slug,
@@ -986,8 +1010,25 @@ export function FeedArticleReader({
     const d = dragRef.current
     dragRef.current = null
     setReturnHorizontalLocked(false)
+    const tryDoubleTap = () => {
+      const cb = onDoubleTapRef.current
+      if (!cb) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest?.('button, a, input, textarea, select, label')) return
+      const now = Date.now()
+      const prev = lastBodyTapRef.current
+      if (prev && now - prev.t < 340 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 28) {
+        lastBodyTapRef.current = null
+        cb()
+        return
+      }
+      lastBodyTapRef.current = { t: now, x: e.clientX, y: e.clientY }
+    }
     if (!committed || closingRef.current) return
-    if (!d || d.pointerId !== e.pointerId || d.axis !== 'horizontal') return
+    if (!d || d.pointerId !== e.pointerId || d.axis !== 'horizontal') {
+      tryDoubleTap()
+      return
+    }
     const dx = e.clientX - d.startX
     const dt = Math.max(1, performance.now() - d.lastT)
     const velocity = (e.clientX - d.lastX) / dt
@@ -1257,14 +1298,13 @@ export function FeedArticleReader({
               data-testid="feed-reader-hero-loading"
               aria-busy="true"
             >
-              <Image
+              <SafeNewsImage
                 src={hero.url}
                 alt=""
                 fill
                 className="object-cover opacity-0"
                 sizes="(max-width: 704px) 100vw, 704px"
                 priority
-                unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
                 onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
                 onError={() => acceptHeroLoad(hero.url!, 'error')}
               />
@@ -1281,14 +1321,13 @@ export function FeedArticleReader({
               data-testid="feed-reader-hero"
             >
               <div className="relative aspect-[16/9] min-h-[11rem] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">
-                <Image
+                <SafeNewsImage
                   src={hero.url}
                   alt=""
                   fill
                   className="object-cover"
                   sizes="(max-width: 704px) 100vw, 704px"
                   priority
-                  unoptimized={readerHeroShouldBeUnoptimized(hero.url)}
                   onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
                   onError={() => acceptHeroLoad(hero.url!, 'error')}
                 />

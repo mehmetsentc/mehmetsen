@@ -8,6 +8,11 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import {
+  CATEGORY_STORY_WINDOW_MS,
+  groupNewsByCategory,
+  type CategoryStoryGroup,
+} from '@/lib/home/categoryStories'
+import {
   canAppearInHomepage,
   classifyPublicRead,
   comparePublicReadPriority,
@@ -798,6 +803,44 @@ const getHomeCategoryItemsCached = unstable_cache(
 
 export async function getHomeCategoryItems(category: string, limitCount = 10): Promise<NewsItem[]> {
   return getHomeCategoryItemsCached(category, limitCount)
+}
+
+const CATEGORY_STORY_FETCH_LIMIT = 240
+
+const getCategoryStoryPoolCached = unstable_cache(
+  async () => {
+    try {
+      const since = Date.now() - CATEGORY_STORY_WINDOW_MS
+      const snap = await getAdminFirestore()
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('publishedAt', '>=', since)
+        .orderBy('publishedAt', 'desc')
+        .limit(CATEGORY_STORY_FETCH_LIMIT)
+        .get()
+      return mapAdminDocs(snap.docs)
+    } catch (error) {
+      console.warn('[newsService.server] category story pool failed:', error)
+      return []
+    }
+  },
+  ['category-story-pool-v1'],
+  { revalidate: 60, tags: ['home-feed'] }
+)
+
+function isCategoryStoryEligible(item: NewsItem): boolean {
+  const cat = (item.category === 'son-dakika' ? item.originalCategoryId : item.category)?.trim() ?? ''
+  if (cat && isYerelHomepageExcluded(cat)) return false
+  return canAppearInHomepage(classifyPublicRead(newsItemReadMeta(item)))
+}
+
+/** Last-24h category rings for the mobile home. Newest category first, max 10 each. */
+export async function getCategoryStoryGroups(now = Date.now()): Promise<CategoryStoryGroup[]> {
+  const pool = (await getCategoryStoryPoolCached()).filter(isCategoryStoryEligible)
+  return groupNewsByCategory(pool, now).map((group) => ({
+    ...group,
+    items: slimNewsItemsForFeed(group.items),
+  }))
 }
 
 const getHomeLocalNewsCached = unstable_cache(
