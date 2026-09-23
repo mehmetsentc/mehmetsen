@@ -38,6 +38,36 @@ export function isEventSpecificTicketUrl(url: string | null | undefined): boolea
   return path !== '/'
 }
 
+/** Event code from /performance/CODE/NNN or /etkinlik/CODE. Null if unparseable. */
+export function parseBiletixEventCode(url: string | null | undefined): string | null {
+  const perf = parseBiletixPerformanceUrl(url)
+  if (perf) return perf.eventCode
+  const value = url?.trim() ?? ''
+  const eventMatch = value.match(/\/etkinlik\/([A-Za-z0-9]+)/i)
+  return eventMatch?.[1] ?? null
+}
+
+/**
+ * True when stored vs incoming Biletix URLs encode a different event code.
+ * Same-code /etkinlik/CODE vs /performance/CODE/NNN is not a destination change.
+ * Unparseable mismatched strings are treated as different (never assumed equal).
+ */
+export function isMaterialBiletixDestinationChange(
+  storedUrl: string | null | undefined,
+  incomingUrl: string | null | undefined
+): boolean {
+  const storedCode = parseBiletixEventCode(storedUrl)
+  const incomingCode = parseBiletixEventCode(incomingUrl)
+  if (storedCode && incomingCode) {
+    return storedCode.toUpperCase() !== incomingCode.toUpperCase()
+  }
+  const stored = storedUrl?.trim() ?? ''
+  const incoming = incomingUrl?.trim() ?? ''
+  if (stored === incoming) return false
+  if (!stored || !incoming) return false
+  return true
+}
+
 export function parseBiletixPerformanceUrl(url: string | null | undefined): {
   eventCode: string
   performanceIndex: string

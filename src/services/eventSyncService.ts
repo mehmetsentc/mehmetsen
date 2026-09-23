@@ -1,6 +1,7 @@
 import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { buildEventFingerprint, dedupeEvents } from '@/lib/eventDedupe'
+import { planOccurrenceWrites } from '@/lib/occurrenceWriteDecision'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { eventProviders, getEnabledProviders } from '@/services/eventProviders'
 import { providerLog } from '@/services/eventProviders/shared'
@@ -363,21 +364,12 @@ export const eventSyncService = {
     wouldInsert: NaEvent[]
     wouldUpdate: NaEvent[]
     wouldSkipUnchanged: NaEvent[]
+    wouldHoldCancelledRepublish: NaEvent[]
     wouldDelete: 0
   }> {
     const db = getAdminFirestore()
-    const nowIso = new Date().toISOString()
     const existingById = await loadExistingEvents(db, events)
-    const wouldInsert: NaEvent[] = []
-    const wouldUpdate: NaEvent[] = []
-    const wouldSkipUnchanged: NaEvent[] = []
-    for (const event of events) {
-      const existing = existingById.get(event.id)
-      if (!existing) wouldInsert.push(event)
-      else if (isUnchanged(event, existing, nowIso)) wouldSkipUnchanged.push(event)
-      else wouldUpdate.push(event)
-    }
-    return { wouldInsert, wouldUpdate, wouldSkipUnchanged, wouldDelete: 0 }
+    return planOccurrenceWrites(events, existingById)
   },
 
   async syncOccurrences(options: {
@@ -529,11 +521,14 @@ export const eventSyncService = {
     const { filterOccurrenceWriteEligible } = await import('@/lib/eventSyncRoutePolicy')
     const eligible = filterOccurrenceWriteEligible(events)
     const db = getAdminFirestore()
-    const { inserted, updated, skipped } = await upsertEvents(db, eligible)
+    const existingById = await loadExistingEvents(db, eligible)
+    const plan = planOccurrenceWrites(eligible, existingById)
+    const toWrite = [...plan.wouldInsert, ...plan.wouldUpdate]
+    const { inserted, updated, skipped } = await upsertEvents(db, toWrite)
     return {
       inserted,
       updated,
-      skipped,
+      skipped: skipped + plan.wouldSkipUnchanged.length,
       markedPast: 0,
       markedRemoved: 0,
       wroteMeta: false,
