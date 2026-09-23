@@ -43,18 +43,20 @@ export function defaultCrawlIntervalSeconds(
 
 export function crawlerTickLimits() {
   return {
-    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 8), 1, 40),
-    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 12), 1, 50),
-    maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 2), 1, 20),
+    // Sized for */20 cron: ~149 ACTIVE sources can be due in one window.
+    // Wall clock is capped by tick maxDuration (300s); runtime clamp stays below that.
+    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 80), 1, 160),
+    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
+    maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
-    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 50_000), 5_000, 55_000),
+    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 240_000), 5_000, 280_000),
     defaultFreshnessHours: clamp(intEnv('NEWS_CRAWLER_FRESHNESS_HOURS', 48), 1, 168),
-    maxClusterArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_ARTICLES_PER_TICK', 20), 1, 80),
+    maxClusterArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_ARTICLES_PER_TICK', 80), 1, 160),
     maxClusterCandidatesPerArticle: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_CANDIDATES', 40), 5, 80),
-    maxClusterRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_RUNTIME_MS', 8_000), 1_000, 20_000),
-    maxMediaArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_ARTICLES_PER_TICK', 8), 1, 40),
-    maxMediaRefetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_REFETCH_PER_TICK', 4), 0, 20),
-    maxMediaRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_RUNTIME_MS', 6_000), 1_000, 20_000),
+    maxClusterRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_RUNTIME_MS', 40_000), 1_000, 60_000),
+    maxMediaArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_ARTICLES_PER_TICK', 24), 1, 40),
+    maxMediaRefetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_REFETCH_PER_TICK', 8), 0, 20),
+    maxMediaRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_MEDIA_RUNTIME_MS', 20_000), 1_000, 40_000),
     requestTimeoutMs: clamp(intEnv('NEWS_CRAWLER_TIMEOUT_MS', 12_000), 3_000, 30_000),
     maxBodyBytes: clamp(intEnv('NEWS_CRAWLER_MAX_BODY_BYTES', 1_500_000), 50_000, 4_000_000),
     minRequestIntervalMs: clamp(intEnv('NEWS_CRAWLER_MIN_INTERVAL_MS', 1_500), 0, 30_000),

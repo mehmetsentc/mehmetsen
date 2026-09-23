@@ -2,7 +2,7 @@
  * GET|POST /api/cron/newsroom/editor-ai-queue
  *
  * Processes the editor-initiated AI queue (AI_QUEUED raw articles).
- * Runs every minute via Vercel Cron.
+ * Runs every 20 minutes via Vercel Cron.
  * Auth: Bearer CRON_SECRET
  */
 import { createNewsroomCronHandler } from '@/app/api/cron/newsroom/_shared'

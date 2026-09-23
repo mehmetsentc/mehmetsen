@@ -1,7 +1,7 @@
 /**
  * Background worker for editor-initiated AI queue.
  *
- * Called by /api/cron/newsroom/editor-ai-queue every minute.
+ * Called by /api/cron/newsroom/editor-ai-queue every 20 minutes.
  * Picks up AI_QUEUED articles, marks them AI_PROCESSING, then runs the
  * newsroom pipeline for each. Editor-approved items must never bounce
  * back to Ham Haberler (NEW) — retries stay AI_QUEUED; junk stays REJECTED.
@@ -13,7 +13,8 @@ import { runWithAiUsageContext } from '@/lib/ai/usage/context'
 import type { CrawlerEditorialStatus } from '../types'
 
 /** Smaller parallel DeepSeek stampede — 4 concurrent writer+QA calls burned quota without publishing. */
-export const WORKER_BATCH_SIZE = 8
+/** 20-minute cron: 8/min would starve; 24 fits 300s (8 items were ~33s worst case). */
+export const WORKER_BATCH_SIZE = 24
 export const WORKER_CONCURRENCY = 2
 
 /**

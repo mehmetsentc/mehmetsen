@@ -5,8 +5,9 @@ import { runCrawlerTick } from '@/services/crawler/workers/tick'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-/** Crawler-only: discover/extract/cluster/enqueue. Paid AI is /api/cron/crawler-ai-worker. */
-export const maxDuration = 60
+/** Crawler-only: discover/extract/cluster/enqueue. Paid AI is /api/cron/crawler-ai-worker.
+ *  300s so a 20-minute cron can cover the due source fleet without a 60s 504. */
+export const maxDuration = 300
 
 async function handle(request: Request) {
   if (!(await isNewsroomAuthorized(request))) {

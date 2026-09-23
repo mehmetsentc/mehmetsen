@@ -80,7 +80,7 @@
       "memory": 1024
     },
     "src/app/api/cron/crawler/tick/route.ts": {
-      "memory": 512
+      "memory": 1024
     },
     "src/app/api/cron/crawler-ai-worker/route.ts": {
       "memory": 1024
