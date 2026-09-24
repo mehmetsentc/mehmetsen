@@ -31,8 +31,8 @@ import {
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { likeService } from '@/services/likeService'
-import { saveService } from '@/services/saveService'
+import { auth, ensureAuthReady } from '@/lib/firebase/auth'
+import { socialApi } from '@/lib/social/clientApi'
 import { postService } from '@/services/postService'
 import { useUiStore } from '@/store/uiStore'
 import toast from 'react-hot-toast'
@@ -239,16 +239,17 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
     setLiked(false)
     setSaved(false)
     postService.incrementViews(id).catch(() => {})
-    if (!user?.uid) return
     let cancelled = false
-    Promise.all([
-      likeService.isLiked(user.uid, id),
-      saveService.isSaved(user.uid, id),
-    ]).then(([l, s]) => {
-      if (cancelled) return
-      setLiked(l)
-      setSaved(s)
-    })
+    socialApi
+      .getArticleState([id])
+      .then((body) => {
+        if (cancelled) return
+        const row = (body as { states?: Array<{ liked?: boolean; saved?: boolean }> }).states?.[0]
+        if (!row) return
+        setLiked(row.liked === true)
+        setSaved(row.saved === true)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -266,15 +267,19 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
   }, [])
 
   const handleLike = useCallback(async () => {
-    if (!user) {
+    if (!current) return
+    await ensureAuthReady()
+    if (!user || !auth.currentUser) {
       toast.error('Beğenmek için giriş yapın')
       return
     }
-    if (!current) return
     const prev = liked
     setLiked(!prev)
     try {
-      setLiked(await likeService.toggle(user.uid, current.id))
+      const res = (prev
+        ? await socialApi.unlikeArticle(current.id)
+        : await socialApi.likeArticle(current.id)) as { liked?: boolean }
+      setLiked(typeof res.liked === 'boolean' ? res.liked : !prev)
     } catch {
       setLiked(prev)
       toast.error('Beğeni kaydedilemedi')
@@ -282,17 +287,21 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
   }, [user, current, liked])
 
   const handleSave = useCallback(async () => {
-    if (!user) {
+    if (!current) return
+    await ensureAuthReady()
+    if (!user || !auth.currentUser) {
       toast.error('Kaydetmek için giriş yapın')
       return
     }
-    if (!current) return
     const prev = saved
     setSaved(!prev)
     try {
-      const result = await saveService.toggle(user.uid, current.id, prev)
-      setSaved(result)
-      toast.success(result ? 'Kaydedildi' : 'Kayıttan kaldırıldı')
+      const res = (prev
+        ? await socialApi.unsaveArticle(current.id)
+        : await socialApi.saveArticle(current.id)) as { saved?: boolean }
+      const next = typeof res.saved === 'boolean' ? res.saved : !prev
+      setSaved(next)
+      toast.success(next ? 'Kaydedildi' : 'Kayıttan kaldırıldı')
     } catch {
       setSaved(prev)
       toast.error('Kaydedilemedi')
@@ -570,7 +579,11 @@ function CircleAction({
     <button
       type="button"
       aria-label={aria}
-      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
       className={cn(
         'flex h-12 w-12 shrink-0 items-center justify-center rounded-full backdrop-blur-md transition-all active:scale-95',
         active ? 'bg-brand-500 text-white shadow-brand' : 'bg-white/10 text-white'
