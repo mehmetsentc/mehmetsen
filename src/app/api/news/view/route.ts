@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       dwellMs: 0,
       countView: true,
     })
-    return NextResponse.json({ ok: true, ...result })
+    return NextResponse.json(result)
   } catch (error) {
     console.error('[news/view]', error)
     return NextResponse.json({ ok: false }, { status: 500 })
