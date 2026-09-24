@@ -2,8 +2,30 @@ import type { NextConfig } from 'next'
 import path from 'node:path'
 import { NEWS_IMAGE_REMOTE_PATTERNS } from './src/constants/imageHosts'
 
+/**
+ * SEO-1A-X.1 — serve blocking metadata (canonical, robots, title, OG…) in
+ * `<head>` to Googlebot.
+ *
+ * Next.js 15.2+ streams `generateMetadata` output into `<body>` for every user
+ * agent that is not an "HTML-limited bot". Googlebot is not on Next's default
+ * list, but Google only accepts `rel="canonical"` (and hreflang) inside
+ * `<head>` (developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls).
+ *
+ * `htmlLimitedBots` REPLACES Next's default list, so this is the verbatim
+ * Next.js 15.5.19 default (next/dist/shared/lib/router/utils/html-bots.js)
+ * plus `Googlebot(?!-)`: the real Googlebot Smartphone/Desktop crawler
+ * ("Googlebot/2.1"), not Googlebot-Image/-Video/-News tokens. Next applies
+ * the pattern case-insensitively. Normal browsers keep streaming metadata.
+ *
+ * src/lib/seo/htmlLimitedBots.seo1ax.test.ts fails if a Next upgrade changes
+ * the default list, so it cannot silently drift.
+ */
+const HTML_LIMITED_BOTS =
+  /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight|Googlebot(?!-)/
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.resolve(__dirname),
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
