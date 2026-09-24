@@ -8,6 +8,8 @@ import {
   ArrowRight,
   Bookmark,
   BookmarkCheck,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Menu,
   Pause,
@@ -418,6 +420,27 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
             {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
           </button>
         </header>
+
+        {cursor.groupIndex > 0 ? (
+          <button
+            type="button"
+            aria-label="Önceki kategori"
+            onClick={() => goCategory(-1)}
+            className="absolute left-2 top-[42%] z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white shadow-lg backdrop-blur-md"
+          >
+            <ChevronLeft className="h-6 w-6" strokeWidth={2.4} />
+          </button>
+        ) : null}
+        {cursor.groupIndex < groups.length - 1 ? (
+          <button
+            type="button"
+            aria-label="Sonraki kategori"
+            onClick={() => goCategory(1)}
+            className="absolute right-2 top-[42%] z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white shadow-lg backdrop-blur-md"
+          >
+            <ChevronRight className="h-6 w-6" strokeWidth={2.4} />
+          </button>
+        ) : null}
 
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
