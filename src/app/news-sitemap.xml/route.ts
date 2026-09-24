@@ -1,93 +1,62 @@
 /**
- * Google News Sitemap — only canonical articles published in the last 48 hours.
- * Phase P17.7H.3: Sourced directly from PostgreSQL canonical authority.
- * P18.3: intentionally excludes generic Firestore legacy corpus (CANONICAL /
- * SYSTEM_ALERT via PG only — no LEGACY_ALLOWED / LEGACY_QUARANTINED).
+ * Google News sitemap — articles published in the last 48 hours.
+ * SEO-2B: Firestore + PostgreSQL canonical sources (same authority and
+ * eligibility as the permanent monthly article sitemaps, SEO-1C.1).
+ *
+ * - www: <= 1,000 entries → news urlset; above → sitemap index of
+ *   /news-sitemaps/news-N.xml (each <= 1,000), newest first.
+ * - city hosts: valid empty urlset (article canonicals live on www).
+ * - source failure / raw cap exceeded: 503 + no-store (never a misleading empty file).
  * Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap
  */
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
 import { getCitySlugFromHost } from '@/lib/cityHost'
-import { ROUTES } from '@/constants/routes'
-import { getCanonicalPublishedNewsForSitemap } from '@/lib/canonical/canonicalEligibility'
+import { getNewsSitemapEntries } from '@/lib/sitemap/newsSitemapLoader'
+import {
+  entriesInWindow,
+  NEWS_SITEMAP_CACHE_CONTROL,
+  NEWS_SITEMAP_ERROR_CACHE_CONTROL,
+  newsPartCount,
+  newsSitemapIndexXml,
+  newsUrlsetXml,
+} from '@/lib/sitemap/newsSitemap'
+import { recordSitemapError } from '@/lib/seo/observability'
 
 export const runtime = 'nodejs'
-// ISR 30 dk — bot trafiği başına yeniden oluşturmayı engeller; Google News için yeterli
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+const XML_TYPE = 'application/xml; charset=utf-8'
+
+function xml(body: string): NextResponse {
+  return new NextResponse(body, {
+    status: 200,
+    headers: { 'Content-Type': XML_TYPE, 'Cache-Control': NEWS_SITEMAP_CACHE_CONTROL },
+  })
 }
 
 export async function GET() {
   const headerStore = await headers()
   const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
-  const citySlug = getCitySlugFromHost(host)
-
-  const base = citySlug ? `https://${citySlug}.nahaber.com` : getSiteUrl()
-  const siteName = citySlug
-    ? `NaHaber ${citySlug.charAt(0).toUpperCase() + citySlug.slice(1)}`
-    : (process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber')
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000) // 48 hours ago
-
-  let items = ''
-
-  try {
-    const rows = await getCanonicalPublishedNewsForSitemap({
-      from: cutoff,
-      citySlug: citySlug || undefined,
-      limit: 200,
-    })
-
-    for (const d of rows) {
-      const slug = d.slug?.trim() || d.id
-      const path = ROUTES.NEWS_DETAIL(slug)
-      const url = `${base}${path}`
-      const pubDate = (d.publishedAt ?? new Date()).toISOString()
-      const title = escapeXml(d.title?.trim() || 'Haber')
-      const cover = d.coverImageUrl || d.thumbnailUrl
-      const image = cover?.trim()
-        ? `<image:image><image:loc>${escapeXml(cover.trim())}</image:loc><image:title>${title}</image:title></image:image>`
-        : ''
-
-      items += `
-  <url>
-    <loc>${escapeXml(url)}</loc>
-    <lastmod>${pubDate}</lastmod>
-    ${image}
-    <news:news>
-      <news:publication>
-        <news:name>${escapeXml(siteName)}</news:name>
-        <news:language>tr</news:language>
-      </news:publication>
-      <news:publication_date>${pubDate}</news:publication_date>
-      <news:title>${title}</news:title>
-      ${d.tags?.length ? `<news:keywords>${escapeXml(d.tags.join(', '))}</news:keywords>` : ''}
-    </news:news>
-  </url>`
-    }
-  } catch (error) {
-    console.error('[news-sitemap] error generating sitemap:', error)
+  if (getCitySlugFromHost(host)) {
+    return xml(newsUrlsetXml(getSiteUrl(), []))
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset
-  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-  xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
-  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
->${items}
-</urlset>`
+  let entries
+  try {
+    entries = entriesInWindow(await getNewsSitemapEntries(), Date.now())
+  } catch (error) {
+    recordSitemapError('news', error instanceof Error ? error.message : 'load_failed')
+    console.error('[news-sitemap] source failure — serving 503:', error)
+    return new NextResponse('Service Unavailable', {
+      status: 503,
+      headers: { 'Cache-Control': NEWS_SITEMAP_ERROR_CACHE_CONTROL, 'Retry-After': '300' },
+    })
+  }
 
-  return new NextResponse(xml, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',
-    },
-  })
+  const base = getSiteUrl()
+  const parts = newsPartCount(entries.length)
+  if (parts <= 1) return xml(newsUrlsetXml(base, entries))
+  return xml(newsSitemapIndexXml(base, parts))
 }

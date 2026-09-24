@@ -50,9 +50,12 @@ describe('P18.4C draft migration safety contracts', () => {
     expect(canonicalPublishedWhere).toBeTypeOf('function')
   })
 
-  it('news-sitemap uses published canonical only', () => {
-    const src = readFileSync(resolve(process.cwd(), 'src/app/news-sitemap.xml/route.ts'), 'utf8')
+  it('news-sitemap reads published canonical PG news (SEO-2B: plus indexable Firestore)', () => {
+    // SEO-2B approved policy: PG canonical published + indexable Firestore (LEGACY_ALLOWED)
+    // through the shared sitemap eligibility; PG still wins on shared identity.
+    const src = readFileSync(resolve(process.cwd(), 'src/lib/sitemap/newsSitemapLoader.ts'), 'utf8')
     expect(src).toContain('getCanonicalPublishedNewsForSitemap')
+    expect(src).toContain('getCanonicalPublishedIdentityKeys')
   })
 
   it('pilot script has no public API route and hard-coded ids', () => {
