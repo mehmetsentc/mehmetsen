@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCityCategoryName, getDistrictsForProvince } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { CityDistrictsClient } from '@/components/city/CityDistrictsClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
@@ -21,10 +22,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const cityName = getCityCategoryName(citySlug)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
-  return {
-    title: `${cityName} İlçeleri`,
-    description: `${cityName} ilçelerinden yerel haberler. ${siteName}'de ${cityName} ilçe haberleri.`,
-  }
+  const title = `${cityName} İlçeleri`
+  const description = `${cityName} ilçelerinden yerel haberler. ${siteName}'de ${cityName} ilçe haberleri.`
+
+  return (
+    buildCityPageMetadata({ citySlug, segments: ['ilceler'], title, description }) ?? {
+      title,
+      description,
+    }
+  )
 }
 
 export default async function IlcelerPage() {

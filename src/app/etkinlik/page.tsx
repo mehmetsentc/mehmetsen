@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { CityEventsClient } from '@/components/city/CityEventsClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCityEventsServer } from '@/services/eventService.server'
@@ -22,10 +23,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const cityName = getCityCategoryName(citySlug)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
-  return {
-    title: `${cityName} Etkinlikleri`,
-    description: `${cityName} şehrindeki etkinlikler, konserler, tiyatrolar ve festivaller. ${siteName}'de ${cityName} etkinliklerini keşfedin.`,
-  }
+  const title = `${cityName} Etkinlikleri`
+  const description = `${cityName} şehrindeki etkinlikler, konserler, tiyatrolar ve festivaller. ${siteName}'de ${cityName} etkinliklerini keşfedin.`
+
+  return (
+    buildCityPageMetadata({ citySlug, segments: ['etkinlik'], title, description }) ?? {
+      title,
+      description,
+    }
+  )
 }
 
 export default async function EtkinlikPage() {

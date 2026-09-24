@@ -11,6 +11,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { isKibrisCategoryTree } from '@/constants/config'
@@ -308,10 +309,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!resolved) return { title: 'Kategori', robots: { index: false, follow: false } }
     const cityName = getCityCategoryName(citySlug)
     const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-    return {
-      title: `${cityName} ${resolved.label} Haberleri`,
-      description: `${cityName} ${resolved.label.toLowerCase()} haberleri. ${siteName}'de ${cityName} gündemini takip edin.`,
-    }
+    const title = `${cityName} ${resolved.label} Haberleri`
+    const description = `${cityName} ${resolved.label.toLowerCase()} haberleri. ${siteName}'de ${cityName} gündemini takip edin.`
+    // Self-canonical for the resolved city category route (lowercase route id;
+    // unsafe ids make the helper return null → previous metadata).
+    const routeId = id.trim().toLowerCase()
+    return (
+      buildCityPageMetadata({ citySlug, segments: ['kategori', routeId], title, description }) ?? {
+        title,
+        description,
+      }
+    )
   }
 
   const cat = getCategoryMeta(id)

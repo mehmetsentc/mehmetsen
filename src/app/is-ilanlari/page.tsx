@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCityCategoryName } from '@/constants/cities'
 import { ROUTES } from '@/constants/routes'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { CityJobsClient } from '@/components/city/CityJobsClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import {
@@ -26,10 +27,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const cityName = getCityCategoryName(citySlug)
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
 
-  return {
-    title: `${cityName} İş İlanları`,
-    description: `${cityName} iş ilanları (Kariyer.net, İŞKUR). ${siteName}'de güncel kariyer fırsatlarını inceleyin.`,
-  }
+  const title = `${cityName} İş İlanları`
+  const description = `${cityName} iş ilanları (Kariyer.net, İŞKUR). ${siteName}'de güncel kariyer fırsatlarını inceleyin.`
+
+  return (
+    buildCityPageMetadata({ citySlug, segments: ['is-ilanlari'], title, description }) ?? {
+      title,
+      description,
+    }
+  )
 }
 
 /**

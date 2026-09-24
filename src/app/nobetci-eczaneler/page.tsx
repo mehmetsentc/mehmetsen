@@ -7,6 +7,7 @@ import {
   isDutyPharmacyCity,
 } from '@/lib/dutyPharmacies/constants'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { CityDutyPharmaciesClient } from '@/components/city/CityDutyPharmaciesClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
@@ -24,10 +25,15 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   const source = dutyPharmacySourceForCity(citySlug)
 
-  return {
-    title: `${cityName} Nöbetçi Eczaneler`,
-    description: `${cityName} günlük nöbetçi eczane listesi. İlçe ilçe adres, telefon ve nöbet saatleri. Kaynak: ${source?.label ?? 'İl Eczacı Odası'}. ${siteName}`,
-  }
+  const title = `${cityName} Nöbetçi Eczaneler`
+  const description = `${cityName} günlük nöbetçi eczane listesi. İlçe ilçe adres, telefon ve nöbet saatleri. Kaynak: ${source?.label ?? 'İl Eczacı Odası'}. ${siteName}`
+
+  return (
+    buildCityPageMetadata({ citySlug, segments: ['nobetci-eczaneler'], title, description }) ?? {
+      title,
+      description,
+    }
+  )
 }
 
 /**

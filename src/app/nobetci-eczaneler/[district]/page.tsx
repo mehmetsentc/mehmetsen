@@ -7,6 +7,7 @@ import {
   isDutyPharmacyCity,
 } from '@/lib/dutyPharmacies/constants'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { CityDutyPharmaciesClient } from '@/components/city/CityDutyPharmaciesClient'
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
@@ -32,10 +33,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
   const source = dutyPharmacySourceForCity(citySlug)
 
-  return {
-    title: `${district.name} Nöbetçi Eczaneler — ${cityName}`,
-    description: `${district.name} günlük nöbetçi eczane listesi. Adres, telefon ve nöbet saatleri. Kaynak: ${source?.label ?? 'İl Eczacı Odası'}. ${siteName}`,
-  }
+  const title = `${district.name} Nöbetçi Eczaneler — ${cityName}`
+  const description = `${district.name} günlük nöbetçi eczane listesi. Adres, telefon ve nöbet saatleri. Kaynak: ${source?.label ?? 'İl Eczacı Odası'}. ${siteName}`
+
+  return (
+    buildCityPageMetadata({
+      citySlug,
+      segments: ['nobetci-eczaneler', district.slug],
+      title,
+      description,
+    }) ?? { title, description }
+  )
 }
 
 export default async function NobetciEczanelerDistrictPage({ params }: PageProps) {
