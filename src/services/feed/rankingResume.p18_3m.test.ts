@@ -141,6 +141,7 @@ describe('P18.3M featured + popularity scoring', () => {
   it('featuredBoost config is active and featuredFreshness decays', () => {
     expect(FEED_RANKING_CONFIG_V1.featuredBoost).toBeGreaterThan(0.2)
     expect(FEED_RANKING_CONFIG_V1.popularityViewWeight).toBeGreaterThanOrEqual(0.15)
+    expect(FEED_RANKING_CONFIG_V1.popularityReadMinuteWeight).toBeGreaterThan(0)
     const now = new Date()
     expect(featuredFreshnessScore(new Date(now.getTime() - 1 * 3_600_000), now)).toBeGreaterThan(
       featuredFreshnessScore(new Date(now.getTime() - 72 * 3_600_000), now)

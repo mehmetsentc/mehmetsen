@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { likeService } from '@/services/likeService'
 import { saveService } from '@/services/saveService'
-import { postService } from '@/services/postService'
+import { createEngagementTracker } from '@/lib/feed/articleEngagementClient'
 import toast from 'react-hot-toast'
 import type { NewsItem } from '@/types/newsItem'
 
@@ -49,7 +49,8 @@ import type { NewsItem } from '@/types/newsItem'
  *   - ←/→ klavye → nav, Esc → kapat, Space → pause/play
  *   - Auto-advance: STORY_DURATION_MS
  *
- * Backend bağlantısı: like + save + paylaş + view sayacı kayıt eder.
+ * Backend bağlantısı: like + save + paylaş. Görüntüleme 3sn+ ve okuma süresi
+ * /api/news/engagement üzerinden viewsCount + readDurationMs yazar.
  */
 
 const STORY_DURATION_MS = 6000
@@ -106,6 +107,7 @@ export function StoryViewer({
   const current = currentItems[cursor.itemIndex]
   const totalInGroup = currentItems.length
   const multiSource = resolvedGroups.length > 1
+  const storyEngagementRef = useRef(createEngagementTracker('story'))
 
   // Açıkken document scroll kilitle
   useEffect(() => {
@@ -134,16 +136,26 @@ export function StoryViewer({
     setPaused(false)
   }, [open, initialGroupIndex, initialIndex, resolvedGroups])
 
-  // View sayacı + like/save state'i her story'de yenile
+  // View sayacı (≥3sn) + like/save state'i her story'de yenile
   useEffect(() => {
     if (!open || !current) return
     setProgress(0)
     setLiked(false)
     setSaved(false)
 
-    postService.incrementViews(current.id).catch(() => {})
+    const id = current.id
+    storyEngagementRef.current.start(id)
+    const heartbeat = window.setInterval(() => storyEngagementRef.current.flush(id), 3_000)
+    const onHide = () => storyEngagementRef.current.flush(id)
+    document.addEventListener('visibilitychange', onHide)
 
-    if (!user?.uid) return
+    if (!user?.uid) {
+      return () => {
+        window.clearInterval(heartbeat)
+        document.removeEventListener('visibilitychange', onHide)
+        storyEngagementRef.current.end(id)
+      }
+    }
     let cancelled = false
     Promise.all([
       likeService.isLiked(user.uid, current.id),
@@ -155,6 +167,9 @@ export function StoryViewer({
     })
     return () => {
       cancelled = true
+      window.clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', onHide)
+      storyEngagementRef.current.end(id)
     }
   }, [open, current?.id, user?.uid, current])
 

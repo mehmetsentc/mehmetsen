@@ -49,6 +49,8 @@ export interface FeedRankingConfigV1 {
   popularityBoost: number
   /** Views coefficient inside popularity raw (likes remain ×3). */
   popularityViewWeight: number
+  /** Total read-time coefficient: minutes of aggregate dwell on the article. */
+  popularityReadMinuteWeight: number
   engagementNormCap: number
   popularityNormCap: number
 }
@@ -142,6 +144,7 @@ export const FEED_RANKING_CONFIG_V1: FeedRankingConfigV1 = {
   featuredHalfLifeHours: 18,
   popularityBoost: 0.22,
   popularityViewWeight: 0.2,
+  popularityReadMinuteWeight: 1.2,
   engagementNormCap: 100,
   popularityNormCap: 250,
 }
@@ -235,12 +238,15 @@ export function featuredFreshnessScore(publishedAt: Date, now = new Date()): num
 
 /**
  * Time-decayed popularity from real counters.
- * Formula: normalize(likes×3 + comments×2 + saves×2.5 + shares×2 + views×viewWeight)
+ * Formula: normalize(likes×3 + comments×2 + saves×2.5 + shares×2
+ *          + views×viewWeight + readMinutes×readMinuteWeight)
  *          × freshness(GENERAL half-life)
- * Views use news.views_count (canonical). Not impressions/telemetry.
+ * Views use news.views_count (canonical). Read time uses news.read_duration_ms.
+ * Qualified feed impressions (750ms) are not views.
  */
 export function viewPopularityScore(input: {
   viewsCount?: number | null
+  readDurationMs?: number | null
   likesCount?: number | null
   commentsCount?: number | null
   savesCount?: number | null
@@ -248,12 +254,14 @@ export function viewPopularityScore(input: {
   publishedAt: Date
   now?: Date
 }): number {
+  const readMinutes = Math.max(0, (input.readDurationMs ?? 0) / 60_000)
   const raw =
     (input.likesCount ?? 0) * 3 +
     (input.commentsCount ?? 0) * 2 +
     (input.savesCount ?? 0) * 2.5 +
     (input.sharesCount ?? 0) * 2 +
-    (input.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight
+    (input.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight +
+    readMinutes * FEED_RANKING_CONFIG_V1.popularityReadMinuteWeight
   const normalized = normalizeEngagementRate(raw, FEED_RANKING_CONFIG_V1.popularityNormCap)
   const decay = freshnessScore(input.publishedAt, 'GENERAL', input.now)
   return Math.min(1, normalized * decay)

@@ -18,6 +18,7 @@ import { stripDuplicateHeroFromBodyHtml } from '@/lib/feed/reader/mediaPolicy'
 import type { FeedItemDto } from '@/types/smartFeed'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
 import { cn } from '@/lib/utils'
+import { createEngagementTracker, postArticleEngagement } from '@/lib/feed/articleEngagementClient'
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
 
@@ -31,6 +32,7 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const openEngagementRef = useRef(createEngagementTracker('open'))
   const [detail, setDetail] = useState<FeedReaderArticleDto | null>(null)
   const [fetchState, setFetchState] = useState<FetchState>('idle')
   const [viewportBox, setViewportBox] = useState<{
@@ -122,10 +124,17 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
       setFetchState('idle')
       return
     }
+    postArticleEngagement({ articleId: item.articleId, source: 'open', countView: true, dwellMs: 0 })
+    openEngagementRef.current.start(item.articleId)
+    const heartbeat = window.setInterval(() => openEngagementRef.current.flush(item.articleId), 10_000)
     void loadBody()
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: 0 })
     })
+    return () => {
+      window.clearInterval(heartbeat)
+      openEngagementRef.current.end(item.articleId)
+    }
   }, [open, item.articleId, loadBody])
 
   useEffect(() => {

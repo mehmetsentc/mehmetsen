@@ -1,15 +1,13 @@
-import { FieldValue } from 'firebase-admin/firestore'
 import { NextResponse } from 'next/server'
-import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
+import { recordArticleEngagement } from '@/services/feed/articleEngagement.server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * Lightweight news view counter.
- * Single FieldValue.increment(1) on the news doc — no analytics events,
- * daily aggregates, IP/geo, or session docs.
+ * Lightweight news view counter (article open).
+ * Increments Firestore + PG views_count once; full analytics stays paused.
  * Client should debounce once per browser session per article.
  */
 export async function POST(request: Request) {
@@ -31,20 +29,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = getAdminFirestore()
-    const ref = db.collection(Collections.NEWS).doc(id)
-    // update() fails if missing — avoid creating empty docs via set/merge
-    await ref.update({ viewsCount: FieldValue.increment(1) })
-    return NextResponse.json({ ok: true })
+    const result = await recordArticleEngagement({
+      articleKey: id,
+      source: 'open',
+      dwellMs: 0,
+      countView: true,
+    })
+    return NextResponse.json({ ok: true, ...result })
   } catch (error) {
-    const err = error as { code?: number | string; message?: string }
-    const missing =
-      err.code === 5 ||
-      err.code === 'not-found' ||
-      /NOT_FOUND|No document to update/i.test(err.message ?? '')
-    if (missing) {
-      return NextResponse.json({ ok: false, skipped: 'not-found' }, { status: 404 })
-    }
     console.error('[news/view]', error)
     return NextResponse.json({ ok: false }, { status: 500 })
   }

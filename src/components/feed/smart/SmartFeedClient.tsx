@@ -47,6 +47,7 @@ import {
   writeGuestSeen,
   useFeedImpressionRef,
 } from '@/lib/feed/feedSeenClient'
+import { createEngagementTracker, postArticleEngagement } from '@/lib/feed/articleEngagementClient'
 import { feedItemIdentityKeys, feedItemsOverlap } from '@/lib/feed/feedIdentity'
 import { clearFeedRestore, consumePendingFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
@@ -260,6 +261,7 @@ export function SmartFeedClient({
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeIndexRef = useRef(0)
   const dwellStartRef = useRef<number | null>(null)
+  const feedEngagementRef = useRef(createEngagementTracker('feed'))
   const generationIdRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const loadingMoreRef = useRef(false)
@@ -1492,8 +1494,23 @@ export function SmartFeedClient({
   }, [items, authUser?.uid])
 
   useEffect(() => {
+    const prevId = items[activeIndexRef.current]?.articleId
+    const currentId = items[activeIndex]?.articleId
+    if (prevId && prevId !== currentId) {
+      feedEngagementRef.current.end(prevId)
+    }
     activeIndexRef.current = activeIndex
     dwellStartRef.current = Date.now()
+    if (currentId) feedEngagementRef.current.start(currentId)
+
+    const heartbeat = currentId
+      ? window.setInterval(() => feedEngagementRef.current.flush(currentId), 10_000)
+      : null
+    const onHide = () => {
+      if (currentId) feedEngagementRef.current.flush(currentId)
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', onHide)
 
     const remaining = items.length - activeIndex
     if (
@@ -1505,7 +1522,12 @@ export function SmartFeedClient({
     ) {
       void loadPage(true, cursor)
     }
-  }, [activeIndex, items.length, hasMore, loadingMore, cursor, loadPage])
+    return () => {
+      if (heartbeat) window.clearInterval(heartbeat)
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', onHide)
+    }
+  }, [activeIndex, items, hasMore, loadingMore, cursor, loadPage])
 
   const scrollToIndex = useCallback(
     (index: number) => {
@@ -1565,10 +1587,35 @@ export function SmartFeedClient({
             },
           ],
         })
+      } else if (prev) {
+        feedEngagementRef.current.end(prev.articleId)
+        if (dwell >= 3000) {
+          void postTelemetry({
+            events: [
+              {
+                eventType: 'article_dwell',
+                articleId: prev.articleId,
+                clusterId: prev.clusterId,
+                feedType: mode,
+                dwellMs: dwell,
+                metadata: {
+                  publisherId: prev.publisher?.id ?? null,
+                  category: prev.category ?? null,
+                  tags: prev.tags ?? [],
+                  source: 'feed_card',
+                },
+              },
+            ],
+          })
+        }
       }
       setActiveIndex(idx)
     }
   }, [items, mode])
+
+  const recordFeedView = useCallback((item: FeedItemDto) => {
+    feedEngagementRef.current.flush(item.articleId)
+  }, [])
 
   const recordImpression = useCallback(
     (item: FeedItemDto) => {
@@ -2157,6 +2204,7 @@ export function SmartFeedClient({
             },
           ],
         })
+        postArticleEngagement({ articleId: item.articleId, source: 'open', countView: true, dwellMs: 0 })
         return
       }
 
@@ -2244,6 +2292,7 @@ export function SmartFeedClient({
           },
         ],
       })
+      postArticleEngagement({ articleId: item.articleId, source: 'open', countView: true, dwellMs: 0 })
 
       if (decided.decision === 'OPEN_READER') {
         if (action === 'gesture' || action === 'swipe_affordance') {
@@ -2366,6 +2415,12 @@ export function SmartFeedClient({
             },
           },
         ],
+      })
+      postArticleEngagement({
+        articleId: payload.articleId,
+        source: 'open',
+        countView: false,
+        dwellMs: payload.dwellMs,
       })
     },
     [mode]
@@ -2666,6 +2721,7 @@ export function SmartFeedClient({
                       : undefined
                   }
                   onImpression={() => recordImpression(item)}
+                  onView={() => recordFeedView(item)}
                   onOpenReaderGesture={
                     !sheetMode && isActive && !readerSession?.committed && !feedOpenLocked
                       ? (g) => {
@@ -3075,6 +3131,7 @@ export function SmartFeedClient({
                 skipRamp: true,
                 openSource: 'unknown',
               })
+              postArticleEngagement({ articleId: d.articleId, source: 'open', countView: true, dwellMs: 0 })
             }}
             onVisualProgress={(progress, opts) => {
               setReaderSession((s) => {
@@ -3247,6 +3304,7 @@ function FeedCardWithImpression(props: {
   onReadClick: () => void
   onCategoryClick?: () => void
   onImpression: () => void
+  onView?: () => void
   onOpenReaderGesture?: (g: {
     dx: number
     dy: number
@@ -3315,12 +3373,13 @@ function FeedCardWithImpression(props: {
     onOpenReaderProgress,
     onOpenReaderCancel,
     onGesturePointerDebug,
+    onView,
     readerUnderlayProgress = 0,
     readerUnderlayAnimating = false,
     feedGestureEpoch = 0,
     ...cardProps
   } = props
-  const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
+  const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression, onView)
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{
     pointerId: number

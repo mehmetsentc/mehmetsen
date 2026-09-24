@@ -108,6 +108,8 @@ export const news = pgTable(
 
     // Counters
     viewsCount: integer('views_count').default(0).notNull(),
+    /** Aggregate qualified read/view dwell across feed, story, and article open. */
+    readDurationMs: integer('read_duration_ms').default(0).notNull(),
     likesCount: integer('likes_count').default(0).notNull(),
     commentsCount: integer('comments_count').default(0).notNull(),
     savesCount: integer('saves_count').default(0).notNull(),

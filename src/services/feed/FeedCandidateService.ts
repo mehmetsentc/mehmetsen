@@ -153,6 +153,7 @@ function mapRows(
     savesCount: number
     sharesCount: number
     viewsCount: number
+    readDurationMs?: number
     isFeatured?: boolean
     isEditorPick?: boolean
     slug: string
@@ -217,6 +218,7 @@ function mapRows(
       savesCount: row.savesCount ?? 0,
       sharesCount: row.sharesCount ?? 0,
       viewsCount: row.viewsCount ?? 0,
+      readDurationMs: row.readDurationMs ?? 0,
       slug: row.slug || row.articleId,
       tags: Array.isArray(row.tags)
         ? row.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
@@ -265,6 +267,7 @@ function baseSelect() {
     savesCount: news.savesCount,
     sharesCount: news.sharesCount,
     viewsCount: news.viewsCount,
+    readDurationMs: news.readDurationMs,
     isFeatured: news.isFeatured,
     isEditorPick: news.isEditorPick,
     slug: news.slug,
@@ -360,6 +363,7 @@ export class FeedCandidateService {
       savesCount: Number(data.savesCount || 0),
       sharesCount: Number(data.sharesCount || 0),
       viewsCount: Number(data.viewsCount || 0),
+      readDurationMs: Number(data.readDurationMs || 0),
       slug: data.slug || docId,
       source,
       sortScore: pubDate.getTime(),
@@ -845,7 +849,7 @@ export class FeedCandidateService {
         excludeIdsWhere(opts)
       )
       // View-heavy popularity sort (still freshness-bounded by published window / scoring decay).
-      const popularityExpr = sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.savesCount} * 2 + ${news.viewsCount} * 0.2)`
+      const popularityExpr = sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.savesCount} * 2 + ${news.viewsCount} * 0.2 + (${news.readDurationMs}::float / 60000.0) * 1.2)`
       const rows = await db
         .select({
           ...baseSelect(),

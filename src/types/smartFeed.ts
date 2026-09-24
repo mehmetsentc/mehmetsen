@@ -165,6 +165,8 @@ export interface FeedCandidateRow {
   savesCount: number
   sharesCount: number
   viewsCount?: number
+  /** Aggregate qualified dwell (feed 3s+ / story 3s+ / article body). */
+  readDurationMs?: number
   slug: string
   source: FeedCandidateSource
   /** Multi-pool provenance (deduped). Debug/telemetry — not user-facing. */

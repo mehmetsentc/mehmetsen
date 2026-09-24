@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { FEED_IMPRESSION_CONFIG, GUEST_SEEN_MAX, GUEST_SEEN_STORAGE_KEY } from '@/lib/feed/config'
+import { FEED_VIEW_CONFIG } from '@/lib/feed/articleEngagement'
 
 export function getOrCreateFeedSessionId(): string {
   if (typeof window === 'undefined') return ''
@@ -54,19 +55,28 @@ export function writeGuestSeen(ids: Set<string>): void {
 export function useFeedImpressionRef(
   articleId: string,
   isActive: boolean,
-  onQualified: () => void
+  onQualified: () => void,
+  onView?: () => void
 ): (node: HTMLElement | null) => void {
   const nodeRef = useRef<HTMLElement | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const viewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const firedRef = useRef(false)
+  const viewFiredRef = useRef(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const onQualifiedRef = useRef(onQualified)
+  const onViewRef = useRef(onView)
   onQualifiedRef.current = onQualified
+  onViewRef.current = onView
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
+    }
+    if (viewTimerRef.current) {
+      clearTimeout(viewTimerRef.current)
+      viewTimerRef.current = null
     }
     if (observerRef.current) {
       observerRef.current.disconnect()
@@ -77,17 +87,44 @@ export function useFeedImpressionRef(
   useEffect(() => {
     cleanup()
     firedRef.current = false
+    viewFiredRef.current = false
     const node = nodeRef.current
     if (!node || !isActive) return
 
+    const armTimers = () => {
+      if (!firedRef.current && !timerRef.current) {
+        timerRef.current = setTimeout(() => {
+          if (!firedRef.current) {
+            firedRef.current = true
+            timerRef.current = null
+            onQualifiedRef.current()
+          }
+        }, FEED_IMPRESSION_CONFIG.minVisibleMs)
+      }
+      if (onViewRef.current && !viewFiredRef.current && !viewTimerRef.current) {
+        viewTimerRef.current = setTimeout(() => {
+          if (!viewFiredRef.current) {
+            viewFiredRef.current = true
+            viewTimerRef.current = null
+            onViewRef.current?.()
+          }
+        }, FEED_VIEW_CONFIG.minVisibleMs)
+      }
+    }
+
+    const clearTimers = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      if (viewTimerRef.current) {
+        clearTimeout(viewTimerRef.current)
+        viewTimerRef.current = null
+      }
+    }
+
     if (typeof IntersectionObserver === 'undefined') {
-      timerRef.current = setTimeout(() => {
-        if (!firedRef.current) {
-          firedRef.current = true
-          timerRef.current = null
-          onQualifiedRef.current()
-        }
-      }, FEED_IMPRESSION_CONFIG.minVisibleMs)
+      armTimers()
       return cleanup
     }
 
@@ -95,20 +132,8 @@ export function useFeedImpressionRef(
       (entries) => {
         const ratio = entries[0]?.intersectionRatio ?? 0
         const visible = ratio >= FEED_IMPRESSION_CONFIG.visibilityRatio
-        if (visible && !firedRef.current) {
-          if (!timerRef.current) {
-            timerRef.current = setTimeout(() => {
-              if (!firedRef.current) {
-                firedRef.current = true
-                timerRef.current = null
-                onQualifiedRef.current()
-              }
-            }, FEED_IMPRESSION_CONFIG.minVisibleMs)
-          }
-        } else if (!visible && timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
+        if (visible) armTimers()
+        else clearTimers()
       },
       { threshold: [0, 0.6, 1] }
     )

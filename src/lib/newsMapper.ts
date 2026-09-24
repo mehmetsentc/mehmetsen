@@ -87,6 +87,8 @@ export interface NewsDocument {
   savesCount?: number
   sharesCount?: number
   viewsCount?: number
+  /** Aggregate qualified read/view dwell in milliseconds. */
+  readDurationMs?: number
   publishedAt?: number | string | null
   updatedAt?: number | string
   /** RSS / AI ingestion metadata */
