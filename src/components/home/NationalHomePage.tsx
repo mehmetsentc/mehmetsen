@@ -1,7 +1,7 @@
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
 import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getLcpPreload } from '@/lib/lcpImage'
-import { getCategoryStoryGroups, getHomeFeedInitialData } from '@/services/newsService.server'
+import { getHomeFeedInitialData } from '@/services/newsService.server'
 import type { Metadata } from 'next'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -54,10 +54,7 @@ export function nationalHomeMetadata(): Metadata {
 }
 
 export async function NationalHomePage() {
-  const [data, storyGroups] = await Promise.all([
-    getHomeFeedInitialData(),
-    getCategoryStoryGroups(),
-  ])
+  const data = await getHomeFeedInitialData()
 
   const lcpImage =
     data.featured[0]?.imageUrl ??
@@ -81,7 +78,7 @@ export async function NationalHomePage() {
           fetchPriority="high"
         />
       ) : null}
-      <FeedPageClient homeFeedData={data} storyGroups={storyGroups} />
+      <FeedPageClient homeFeedData={data} />
     </>
   )
 }
