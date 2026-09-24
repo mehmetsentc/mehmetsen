@@ -9,6 +9,8 @@ import { xmlEscape } from '@/lib/sitemap/seoXml'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+// SEO-1C.1: the www index also summarizes monthly article shards (bounded, cached).
+export const maxDuration = 60
 
 // ─── City sitemap ─────────────────────────────────────────────────────────────
 

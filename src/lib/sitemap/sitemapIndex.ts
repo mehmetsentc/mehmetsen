@@ -31,11 +31,22 @@ export async function buildSitemapIndexXmlAsync(base = getSiteUrl()): Promise<st
     ...(isEventPagesEnabled() ? [`${base}/sitemap-events.xml`] : []),
   ].map((loc) => ({ loc }))
 
-  const items = [...dedicated, ...newsChunks]
-    .map(
-      (item) =>
-        `  <sitemap>\n    <loc>${xmlEscape(item.loc)}</loc>\n  </sitemap>`
-    )
+  // SEO-1C.1 — permanent monthly article shards (www /haber/ canonicals).
+  let articleShards: Array<{ loc: string; lastmod?: string }> = []
+  try {
+    const { getArticleSitemapIndexItems } = await import('@/lib/sitemap/articleSitemap')
+    articleShards = await getArticleSitemapIndexItems(base)
+  } catch (err) {
+    recordSitemapError('articles-index', err instanceof Error ? err.message : 'article_index_failed')
+    articleShards = []
+  }
+
+  const children: Array<{ loc: string; lastmod?: string }> = [...dedicated, ...newsChunks, ...articleShards]
+  const items = children
+    .map((item) => {
+      const lastmod = item.lastmod ? `\n    <lastmod>${xmlEscape(item.lastmod)}</lastmod>` : ''
+      return `  <sitemap>\n    <loc>${xmlEscape(item.loc)}</loc>${lastmod}\n  </sitemap>`
+    })
     .join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>

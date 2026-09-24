@@ -356,6 +356,21 @@ export function buildNewsBreadcrumbJsonLd(post: Post): Record<string, unknown> {
   }
 }
 
+/**
+ * Legacy hard-noindex signals applied by `buildPostMetadata` on top of the
+ * public-read robots policy. Exported so sitemaps apply the exact same rule
+ * instead of keeping a second copy.
+ */
+export function hasForcedNoindexSignals(
+  post: Pick<Post, 'visibility'> & { seoNoindex?: boolean | null; publisherType?: string | null }
+): boolean {
+  return (
+    post.seoNoindex === true ||
+    post.publisherType === 'INTERNAL_TEST' ||
+    post.visibility === 'private'
+  )
+}
+
 export function buildPostMetadata(
   post: Post,
   opts?: {
@@ -400,14 +415,7 @@ export function buildPostMetadata(
     ...(post.tags?.length ? post.tags : []),
   ].filter(Boolean)
 
-  const postExt = post as Post & {
-    seoNoindex?: boolean
-    publisherType?: string
-  }
-  const legacyForceNoindex =
-    postExt.seoNoindex === true ||
-    postExt.publisherType === 'INTERNAL_TEST' ||
-    post.visibility === 'private'
+  const legacyForceNoindex = hasForcedNoindexSignals(post)
   const index = opts?.robotsOverride
     ? opts.robotsOverride.index && !legacyForceNoindex
     : !legacyForceNoindex

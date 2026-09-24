@@ -208,6 +208,11 @@ export async function getCanonicalPublishedNewsForSitemap(opts?: {
   from?: Date
   to?: Date
   citySlug?: string
+  /**
+   * SEO-1C.1 — permanent article sitemaps must not cache a DB outage as an
+   * empty month. When true, query errors propagate instead of returning [].
+   */
+  throwOnError?: boolean
 }): Promise<CanonicalNewsRow[]> {
   if (!hasDatabaseUrl()) return []
   const db = getDb()
@@ -228,7 +233,45 @@ export async function getCanonicalPublishedNewsForSitemap(opts?: {
     const rows = await query
     return rows as CanonicalNewsRow[]
   } catch (error) {
+    if (opts?.throwOnError) throw error
     console.warn('[canonicalEligibility] getCanonicalPublishedNewsForSitemap error:', error)
     return []
   }
+}
+
+/**
+ * SEO-1C.1 — identity keys that `/haber/[slug]` resolves to PostgreSQL first
+ * (`fetchCanonicalNewsBySlug` matches slug, id or legacyFirestoreId). A
+ * Firestore article whose slug hits one of these keys is served from PG, so the
+ * article sitemap must not emit it from Firestore as well. Errors propagate.
+ */
+export async function getCanonicalPublishedIdentityKeys(): Promise<string[]> {
+  if (!hasDatabaseUrl()) return []
+  const db = getDb()
+  const rows = await db
+    .select({ id: news.id, slug: news.slug, legacyFirestoreId: news.legacyFirestoreId })
+    .from(news)
+    .where(canonicalPublishedWhere())
+  const keys = new Set<string>()
+  for (const row of rows) {
+    for (const key of [row.id, row.slug, row.legacyFirestoreId]) {
+      const k = typeof key === 'string' ? key.trim() : ''
+      if (k) keys.add(k)
+    }
+  }
+  return [...keys]
+}
+
+/**
+ * SEO-1C.1 — distinct UTC `YYYY-MM` months that contain canonical published
+ * PostgreSQL news. Uses the (status, published_at) index; errors propagate.
+ */
+export async function getCanonicalPublishedMonthKeysUtc(): Promise<string[]> {
+  if (!hasDatabaseUrl()) return []
+  const db = getDb()
+  const month = sql<string>`to_char(${news.publishedAt} at time zone 'UTC', 'YYYY-MM')`
+  const rows = await db.selectDistinct({ month }).from(news).where(canonicalPublishedWhere())
+  return rows
+    .map((row) => (typeof row.month === 'string' ? row.month : ''))
+    .filter((m) => /^\d{4}-\d{2}$/.test(m))
 }

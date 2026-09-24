@@ -3,14 +3,6 @@ import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { DEFAULT_CATEGORIES, TEKRARLAYAN_CATEGORY_ID } from '@/constants/config'
 import { TURKISH_PROVINCES } from '@/constants/cities'
-import { getCanonicalPublishedNewsForSitemap, type CanonicalNewsRow } from '@/lib/canonical/canonicalEligibility'
-
-// ─── Pagination config ────────────────────────────────────────────────────────
-const DAYS_PER_PAGE = 7
-const MS_PER_PAGE   = DAYS_PER_PAGE * 24 * 60 * 60 * 1000
-const MAX_PAGES = 104 // 2 years
-
-export const ARTICLES_PER_PAGE = 500
 
 // ─── Static + category routes (page 0 only) ──────────────────────────────────
 async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Sitemap> {
@@ -44,62 +36,23 @@ async function staticAndCategoryRoutes(base: string): Promise<MetadataRoute.Site
   return [...staticRoutes, ...categoryRoutes, ...localCityRoutes]
 }
 
-// ─── Canonical rows → sitemap entries ─────────────────────────────────────────
-function mapCanonicalRows(
-  rows: CanonicalNewsRow[],
-  base: string
-): MetadataRoute.Sitemap {
-  return rows.map((row) => {
-    const slug = row.slug?.trim() || row.id
-    const path = ROUTES.NEWS_DETAIL(slug)
-    const lastMod = row.updatedAt ?? row.publishedAt ?? new Date()
-    return {
-      url: `${base}${path}`,
-      lastModified: lastMod,
-      changeFrequency: 'daily' as const,
-      priority: 0.7,
-    }
-  })
-}
-
-// ─── Time windows for each page ───────────────────────────────────────────────
-function pageTimeRange(id: number): { from: number; to: number } {
-  const now = Date.now()
-  return {
-    to:   now - id * MS_PER_PAGE,
-    from: now - (id + 1) * MS_PER_PAGE,
-  }
-}
-
 // ─── Page count ───────────────────────────────────────────────────────────────
 export async function getSitemapPageCount(): Promise<number> {
   return 1
 }
 
 // ─── Sitemap page ─────────────────────────────────────────────────────────────
+/**
+ * /sitemap/0.xml = static + category + /yerel routes only.
+ *
+ * SEO-1C.1: article URLs moved to the permanent monthly shards
+ * (/sitemaps/articles-YYYY-MM.xml, see lib/sitemap/articleSitemap.ts). The old
+ * rolling 7-day PostgreSQL-only window (500 cap) listed 0 articles because live
+ * articles are Firestore-backed; keeping it would only duplicate PG URLs.
+ */
 export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap> {
-  const base = getSiteUrl()
-
-  try {
-    const { from, to } = pageTimeRange(id)
-
-    const rows = await getCanonicalPublishedNewsForSitemap({
-      from: new Date(from),
-      to: new Date(to),
-      limit: ARTICLES_PER_PAGE,
-    })
-
-    const articles = mapCanonicalRows(rows, base)
-
-    if (id === 0) {
-      const staticRoutes = await staticAndCategoryRoutes(base)
-      return [...staticRoutes, ...articles]
-    }
-    return articles
-  } catch (error) {
-    console.warn(`[sitemap/${id}] fetch failed:`, error)
-    return id === 0 ? await staticAndCategoryRoutes(base) : []
-  }
+  if (id !== 0) return []
+  return staticAndCategoryRoutes(getSiteUrl())
 }
 
 // ─── XML helpers ─────────────────────────────────────────────────────────────
