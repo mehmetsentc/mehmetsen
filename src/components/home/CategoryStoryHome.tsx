@@ -387,8 +387,11 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
         <div
           className="absolute inset-x-0 top-0 z-30 flex flex-col gap-2 px-3 pb-1"
           style={{
+            // WKWebView reports inset 0. A 47px notch floor left the 4px bars
+            // under the Dynamic Island (~59px) while the taller category row
+            // still cleared it. Floor 64px so the bars themselves start below the clock.
             paddingTop:
-              'max(0.75rem, calc(max(var(--mobile-sat, env(safe-area-inset-top, 0px)), env(safe-area-inset-top, 0px), 47px) + 0.35rem))',
+              'max(0.75rem, calc(max(var(--mobile-sat, env(safe-area-inset-top, 0px)), env(safe-area-inset-top, 0px), 64px) + 0.35rem))',
           }}
           data-testid="category-story-top-chrome"
         >
@@ -396,7 +399,10 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
             {items.map((story, i) => {
               const fill = i < cursor.itemIndex ? 100 : i === cursor.itemIndex ? progress : 0
               return (
-                <div key={story.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
+                <div
+                  key={story.id}
+                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/35 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]"
+                >
                   <div className="h-full bg-white" style={{ width: `${fill}%` }} />
                 </div>
               )
