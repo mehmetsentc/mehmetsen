@@ -133,7 +133,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             ? 'mobile-top-chrome--overlay text-white'
             : 'mobile-top-chrome--immersive text-[rgb(var(--header-onbrand))]',
           overlayFeed
-            ? 'pt-0.5'
+            ? 'pt-[max(0.35rem,max(var(--mobile-sat,env(safe-area-inset-top,0px)),env(safe-area-inset-top,0px),64px))]'
             : 'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
