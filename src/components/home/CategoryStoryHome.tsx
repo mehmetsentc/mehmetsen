@@ -384,18 +384,26 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
           setHolding(false)
         }}
       >
-        <div className="absolute inset-x-0 top-0 z-30 flex gap-1 px-3 pt-[max(0.65rem,env(safe-area-inset-top))]">
-          {items.map((story, i) => {
-            const fill = i < cursor.itemIndex ? 100 : i === cursor.itemIndex ? progress : 0
-            return (
-              <div key={story.id} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25">
-                <div className="h-full bg-white" style={{ width: `${fill}%` }} />
-              </div>
-            )
-          })}
-        </div>
+        <div
+          className="absolute inset-x-0 top-0 z-30 flex flex-col gap-2 px-3 pb-1"
+          style={{
+            paddingTop:
+              'max(0.75rem, calc(max(var(--mobile-sat, env(safe-area-inset-top, 0px)), env(safe-area-inset-top, 0px), 47px) + 0.35rem))',
+          }}
+          data-testid="category-story-top-chrome"
+        >
+          <div className="flex gap-1" data-testid="category-story-progress">
+            {items.map((story, i) => {
+              const fill = i < cursor.itemIndex ? 100 : i === cursor.itemIndex ? progress : 0
+              return (
+                <div key={story.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
+                  <div className="h-full bg-white" style={{ width: `${fill}%` }} />
+                </div>
+              )
+            })}
+          </div>
 
-        <header className="absolute inset-x-0 top-[max(1.15rem,calc(env(safe-area-inset-top)+0.45rem))] z-30 flex items-center gap-2 px-3">
+        <header className="flex items-center gap-2">
           <button
             type="button"
             aria-label="Menü"
@@ -420,6 +428,7 @@ export function CategoryStoryHome({ groups: initialGroups }: CategoryStoryHomePr
             {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
           </button>
         </header>
+        </div>
 
         {cursor.groupIndex > 0 ? (
           <button
