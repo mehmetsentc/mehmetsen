@@ -37,8 +37,12 @@ export function ProfileTabs({
   const tabs: { id: Tab; label: string; icon: typeof Grid3X3; private?: boolean }[] = [
     { id: 'posts', label: 'Gönderiler', icon: Grid3X3 },
     { id: 'reels', label: 'Videolar', icon: Clapperboard },
-    { id: 'saved', label: 'Kaydedilenler', icon: Bookmark, private: true },
-    { id: 'liked', label: 'Beğenilenler', icon: Heart, private: true },
+    ...(isOwnProfile
+      ? [
+          { id: 'saved' as const, label: 'Kaydedilenler', icon: Bookmark, private: true },
+          { id: 'liked' as const, label: 'Beğenilenler', icon: Heart, private: true },
+        ]
+      : []),
   ]
 
   const loadTab = useCallback(async () => {

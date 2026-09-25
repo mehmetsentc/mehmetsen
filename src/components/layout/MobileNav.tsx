@@ -3,10 +3,10 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Home, User, Zap } from 'lucide-react'
+import { Home, Search, User, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { useMyPublishers } from '@/hooks/useMyPublishers'
+import { Avatar } from '@/components/ui/Avatar'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
 import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
@@ -15,72 +15,74 @@ import {
   resolveNewsSurface,
   resolveSharedCategoryId,
 } from '@/lib/feed/sharedCategoryRail'
-import {
-  isPublisherProfilePath,
-  resolvePublisherProfileHref,
-} from '@/lib/nav/publisherProfileNav'
+import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+
+type NavKind = 'home' | 'akis' | 'search' | 'profil'
 
 interface MobileNavItem {
   icon: LucideIcon
   label: string
   href: string
   testId: string
-  kind: 'home' | 'akis' | 'profil'
+  kind: NavKind
 }
 
-function isItemActive(
-  pathname: string,
-  item: MobileNavItem,
-  publishers: Array<{ slug: string }>
-): boolean {
+function decodeSlug(raw: string): string {
+  try {
+    return decodeURIComponent(raw).trim().toLocaleLowerCase('tr-TR')
+  } catch {
+    return raw.trim().toLocaleLowerCase('tr-TR')
+  }
+}
+
+function isOwnProfilePath(pathname: string, username: string): boolean {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts[0] !== 'profil' && parts[0] !== 'profile' && parts[0] !== 'u') return false
+  return decodeSlug(parts[1] ?? '') === username.trim().toLocaleLowerCase('tr-TR')
+}
+
+function isItemActive(pathname: string, item: MobileNavItem, username: string | null): boolean {
   if (item.kind === 'home') return resolveNewsSurface(pathname) === 'home'
   if (item.kind === 'akis') return resolveNewsSurface(pathname) === 'akis'
-  return isPublisherProfilePath(pathname, publishers)
+  if (item.kind === 'search') {
+    return pathname === ROUTES.SEARCH || pathname.startsWith(`${ROUTES.SEARCH}/`) || pathname.startsWith('/search')
+  }
+  if (!username) return pathname.startsWith(ROUTES.SETTINGS_PROFILE)
+  return isOwnProfilePath(pathname, username) || pathname.startsWith(ROUTES.SETTINGS_PROFILE)
 }
 
-function NavSlotChrome({
-  active,
-  badge,
-  children,
-}: {
-  active: boolean
-  badge?: ReactNode
-  children: ReactNode
-}) {
+function NavSlotChrome({ active, children }: { active: boolean; children: ReactNode }) {
   return (
     <span
       className={cn(
-        'relative flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgb(0_0_0_/_0.28)] transition-transform duration-150',
-        active ? 'scale-105 text-black' : 'text-black/55'
+        'relative flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-150',
+        active ? 'bg-white/[0.16] text-white' : 'text-white/90'
       )}
     >
       {children}
-      {badge}
     </span>
   )
-}
-
-interface MobileNavLinkProps {
-  item: MobileNavItem
-  active: boolean
-  pathname: string
 }
 
 const MobileNavLink = memo(function MobileNavLink({
   item,
   active,
   pathname,
-}: MobileNavLinkProps) {
-  const { icon: Icon, label, href, testId } = item
+}: {
+  item: MobileNavItem
+  active: boolean
+  pathname: string
+}) {
+  const { icon: Icon, label, href, testId, kind } = item
 
   const handleClick = useCallback(() => {
-    if (item.kind === 'akis') {
+    if (kind === 'akis') {
       rememberFeedV2EntryOrigin(pathname)
       clearFeedRestoreForFeedV2Nav({ pathname })
     }
     logNavClick(href, pathname)
-  }, [href, item.kind, pathname])
+  }, [href, kind, pathname])
 
   return (
     <Link
@@ -90,10 +92,10 @@ const MobileNavLink = memo(function MobileNavLink({
       aria-current={active ? 'page' : undefined}
       data-testid={testId}
       onClick={handleClick}
-      className="flex items-center justify-center touch-manipulation"
+      className="flex flex-1 items-center justify-center touch-manipulation"
     >
       <NavSlotChrome active={active}>
-        <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.45 : 2} />
+        <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.25 : 1.75} />
       </NavSlotChrome>
     </Link>
   )
@@ -103,7 +105,6 @@ function MobileNavInner() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const { publishers, loading: publishersLoading, isPublisher } = useMyPublishers()
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
@@ -111,13 +112,20 @@ function MobileNavInner() {
   }, [])
 
   const categoryId = resolveSharedCategoryId(pathname, searchParams.toString())
-  const publisherHref =
-    hydrated && !authLoading && !publishersLoading && user && isPublisher
-      ? resolvePublisherProfileHref(publishers)
-      : null
+  const signedIn = hydrated && !authLoading && Boolean(user)
+  const username = signedIn ? user?.username || user?.uid || null : null
+  const profileHref = username ? ROUTES.PROFILE(username) : ROUTES.LOGIN
+  const profileItem: MobileNavItem = {
+    icon: User,
+    label: 'Profilim',
+    href: profileHref,
+    testId: 'header-nav-profil',
+    kind: 'profil',
+  }
+  const profileActive = isItemActive(pathname, profileItem, username)
 
-  const items = useMemo<MobileNavItem[]>(() => {
-    const base: MobileNavItem[] = [
+  const items = useMemo<MobileNavItem[]>(
+    () => [
       {
         icon: Home,
         label: 'Ana Sayfa',
@@ -132,19 +140,16 @@ function MobileNavInner() {
         testId: 'header-nav-akis',
         kind: 'akis',
       },
-    ]
-    // Profil yalnızca yayıncı üyelere — yayıncı profiline gider.
-    if (publisherHref) {
-      base.push({
-        icon: User,
-        label: 'Profil',
-        href: publisherHref,
-        testId: 'header-nav-profil',
-        kind: 'profil',
-      })
-    }
-    return base
-  }, [categoryId, publisherHref])
+      {
+        icon: Search,
+        label: 'Ara',
+        href: ROUTES.SEARCH,
+        testId: 'header-nav-ara',
+        kind: 'search',
+      },
+    ],
+    [categoryId]
+  )
 
   return (
     <nav
@@ -157,10 +162,38 @@ function MobileNavInner() {
           <MobileNavLink
             key={item.kind}
             item={item}
-            active={isItemActive(pathname, item, publishers)}
+            active={isItemActive(pathname, item, username)}
             pathname={pathname}
           />
         ))}
+        <Link
+          href={profileHref}
+          prefetch
+          aria-label="Profilim"
+          aria-current={profileActive ? 'page' : undefined}
+          data-testid="header-nav-profil"
+          onClick={() => logNavClick(profileHref, pathname)}
+          className="flex flex-1 items-center justify-center touch-manipulation"
+        >
+          <span
+            className={cn(
+              'mobile-nav-profile',
+              profileActive && 'is-active',
+              !signedIn && 'mobile-nav-profile-guest'
+            )}
+          >
+            {signedIn && user ? (
+              <Avatar
+                name={user.displayName || user.username || 'Profil'}
+                src={user.photoURL}
+                size="sm"
+                className="h-9 w-9 text-[11px]"
+              />
+            ) : (
+              <User className="h-[22px] w-[22px]" strokeWidth={1.75} />
+            )}
+          </span>
+        </Link>
       </div>
     </nav>
   )

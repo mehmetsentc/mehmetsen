@@ -70,7 +70,7 @@ export function ProfilePageClient({
   const isOwnProfile = Boolean(authUser && (authUser.uid === profile.uid || authUser.username === username))
 
   return (
-    <div className="profile-page-shell w-full space-y-2 pb-6">
+    <div className="profile-page-shell w-full space-y-2 pb-6" data-profile-view={isOwnProfile ? 'own' : 'user'}>
       {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
 
       <ProfileHeader
@@ -84,7 +84,7 @@ export function ProfilePageClient({
       />
 
       <div className="profile-page-section">
-        <ProfileBadges user={profile} />
+        <ProfileBadges user={profile} showLocked={isOwnProfile} />
         <ProfileReadingStats userId={profile.uid} isOwnProfile={isOwnProfile} />
       </div>
 

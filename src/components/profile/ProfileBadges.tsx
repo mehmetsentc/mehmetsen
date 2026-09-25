@@ -19,6 +19,7 @@ import type { User } from '@/types/user'
 
 interface ProfileBadgesProps {
   user: User
+  showLocked?: boolean
 }
 
 interface Achievement {
@@ -52,7 +53,7 @@ const ACCENT_CLS: Record<Achievement['accent'], { bg: string; fg: string; ring: 
  * Earned olmayan rozetler grayscale + opacity-50 ile gösterilir (kullanıcıya
  * "neyi açabilirim" hedefi vermek için).
  */
-export function ProfileBadges({ user }: ProfileBadgesProps) {
+export function ProfileBadges({ user, showLocked = true }: ProfileBadgesProps) {
   const achievements = useMemo<Achievement[]>(() => {
     const days = createdDays(user.createdAt)
     return [
@@ -124,6 +125,8 @@ export function ProfileBadges({ user }: ProfileBadgesProps) {
   }, [user])
 
   const earnedCount = achievements.filter((a) => a.earned).length
+  const visible = showLocked ? achievements : achievements.filter((a) => a.earned)
+  if (visible.length === 0) return null
 
   return (
     <Card surface="elevated" radius="2xl" className="overflow-hidden">
@@ -134,13 +137,13 @@ export function ProfileBadges({ user }: ProfileBadgesProps) {
             Rozetler
           </CardTitle>
           <span className="text-2xs font-bold uppercase tracking-widest text-text-tertiary">
-            {earnedCount} / {achievements.length}
+            {showLocked ? `${earnedCount} / ${achievements.length}` : `${earnedCount} rozet`}
           </span>
         </div>
       </CardHeader>
       <CardBody>
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3 md:grid-cols-4 lg:grid-cols-8">
-          {achievements.map((a, i) => {
+          {visible.map((a, i) => {
             const cls = ACCENT_CLS[a.accent]
             return (
               <motion.div

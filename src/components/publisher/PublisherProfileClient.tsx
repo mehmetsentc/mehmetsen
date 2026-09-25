@@ -422,6 +422,9 @@ export function PublisherProfileClient({
                 <h1 className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
                   {publisher.displayName}
                 </h1>
+                <span className="inline-flex items-center rounded-full bg-[rgb(18_18_20)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+                  Yayıncı
+                </span>
                 {publisher.isVerified ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     <BadgeCheck className="h-3.5 w-3.5" aria-hidden />

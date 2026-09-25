@@ -46,12 +46,11 @@ describe('isPublisherProfilePath', () => {
 })
 
 describe('Profil gate wiring', () => {
-  it('MobileNav shows Profil only via publisher href helper', () => {
+  it('MobileNav Profilim opens the reader profile', () => {
     const dock = read('src/components/layout/MobileNav.tsx')
-    expect(dock).toContain('useMyPublishers')
-    expect(dock).toContain('resolvePublisherProfileHref')
-    expect(dock).toContain('publisherHref')
-    expect(dock).not.toContain('ROUTES.PROFILE(user.username || user.uid)')
+    expect(dock).toContain("label: 'Profilim'")
+    expect(dock).toContain('ROUTES.PROFILE(username)')
+    expect(dock).toContain('ROUTES.LOGIN')
     expect(dock).not.toContain('listPublishersForUser')
   })
 

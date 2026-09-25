@@ -908,22 +908,43 @@
     font-weight: 700;
   }
 
-  /* Pinterest-like floating white circles */
+  /* Dark floating capsule: Ana Sayfa, Akış, Ara, Profilim */
   .mobile-bottom-nav-pill {
     display: flex;
-    width: auto;
+    width: min(100%, 22rem);
     max-width: calc(100% - 1rem);
     height: var(--mobile-nav-pill-h);
     align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
+    justify-content: space-between;
+    gap: 0.15rem;
     border-radius: 9999px;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    padding-inline: 0.15rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(18 18 20 / 0.92);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    padding-inline: 0.35rem;
+  }
+
+  .mobile-nav-profile {
+    display: flex;
+    height: 2.55rem;
+    width: 2.55rem;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.1);
+    box-shadow: 0 0 0 2px rgb(147 197 253);
+  }
+
+  .mobile-nav-profile.is-active {
+    box-shadow: 0 0 0 2px white;
+  }
+
+  .mobile-nav-profile-guest {
+    color: white;
+    background: rgb(255 255 255 / 0.08);
   }
 
   /* City dock: sit above the iOS home indicator and stay readable on paper + dark. */

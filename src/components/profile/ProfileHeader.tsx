@@ -113,7 +113,16 @@ export function ProfileHeader({
 
   return (
     <>
-      <header className="py-5 sm:py-7">
+      <header className="py-5 sm:py-7" data-profile-view={isOwnProfile ? 'own' : 'user'}>
+        <div
+          className={
+            isOwnProfile
+              ? 'mb-4 inline-flex items-center rounded-full bg-[rgb(var(--color-brand))]/12 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-brand))]'
+              : 'mb-4 inline-flex items-center rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-muted))]'
+          }
+        >
+          {isOwnProfile ? 'Profilim' : 'Kullanıcı'}
+        </div>
 
         {/* ── Üst kısım: avatar + butonlar ── */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-10 md:gap-14">
