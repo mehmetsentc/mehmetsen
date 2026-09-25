@@ -99,10 +99,10 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           disallow: '/',
         },
       ],
-      sitemap: [
-        `${siteUrl}/sitemap.xml`,
-        `${siteUrl}/news-sitemap.xml`,
-      ],
+      // SEO-2C: city hosts own no NewsArticle URLs (article canonicals are www),
+      // so their /news-sitemap.xml is permanently empty and is not advertised.
+      // The route itself still serves a valid empty urlset.
+      sitemap: [`${siteUrl}/sitemap.xml`],
       host: hostDomain,
     }
   }
