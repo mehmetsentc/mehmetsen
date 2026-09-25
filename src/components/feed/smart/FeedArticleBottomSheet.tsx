@@ -32,7 +32,7 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
   const titleId = useId()
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const openEngagementRef = useRef(createEngagementTracker('open'))
+  const openEngagementRef = useRef(createEngagementTracker('reader'))
   const [detail, setDetail] = useState<FeedReaderArticleDto | null>(null)
   const [fetchState, setFetchState] = useState<FetchState>('idle')
   const [viewportBox, setViewportBox] = useState<{

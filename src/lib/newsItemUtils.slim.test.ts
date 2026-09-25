@@ -3,7 +3,7 @@ import { slimNewsItemForFeed } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
 
 describe('slimNewsItemForFeed', () => {
-  it('keeps card fields and drops source/url/engagement noise', () => {
+  it('keeps public count fields and drops private url noise', () => {
     const item: NewsItem = {
       id: '1',
       slug: 'haber-1',
@@ -27,6 +27,7 @@ describe('slimNewsItemForFeed', () => {
       views: 12,
       likesCount: 3,
       commentsCount: 1,
+      sharesCount: 2,
       featured: false,
       breaking: true,
     }
@@ -48,12 +49,14 @@ describe('slimNewsItemForFeed', () => {
       districtSlug: 'biga',
       publishedAt: '2026-07-20T11:00:00.000Z',
       views: 12,
+      likesCount: 3,
+      commentsCount: 1,
+      sharesCount: 2,
       breaking: true,
     })
     expect(slim).toHaveProperty('source')
     expect(slim).toHaveProperty('author')
     expect(slim).not.toHaveProperty('url')
-    expect(slim).not.toHaveProperty('likesCount')
     expect(slim).not.toHaveProperty('featured')
     expect(slim).not.toHaveProperty('createdAt')
   })

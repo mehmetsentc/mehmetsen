@@ -1,5 +1,7 @@
 'use client'
 
+import { auth } from '@/lib/firebase/auth'
+import { getOrCreateFeedSessionId } from '@/lib/feed/feedSeenClient'
 import {
   nextEngagementFlush,
   type ArticleEngagementSource,
@@ -10,10 +12,14 @@ const VIEW_KEY = (source: ArticleEngagementSource, id: string) => `nahaber-viewe
 /** Legacy article-page key used by the old viewsCount hook. */
 const LEGACY_OPEN_KEY = (id: string) => `nahaber-viewed:${id}`
 
+function isOpenLike(source: ArticleEngagementSource): boolean {
+  return source === 'open' || source === 'reader' || source === 'page'
+}
+
 function alreadyCounted(source: ArticleEngagementSource, id: string): boolean {
   try {
     if (sessionStorage.getItem(VIEW_KEY(source, id)) === '1') return true
-    if (source === 'open' && sessionStorage.getItem(LEGACY_OPEN_KEY(id)) === '1') return true
+    if (isOpenLike(source) && sessionStorage.getItem(LEGACY_OPEN_KEY(id)) === '1') return true
   } catch {
     /* private mode */
   }
@@ -23,10 +29,28 @@ function alreadyCounted(source: ArticleEngagementSource, id: string): boolean {
 function markCounted(source: ArticleEngagementSource, id: string): void {
   try {
     sessionStorage.setItem(VIEW_KEY(source, id), '1')
-    if (source === 'open') sessionStorage.setItem(LEGACY_OPEN_KEY(id), '1')
+    if (isOpenLike(source)) sessionStorage.setItem(LEGACY_OPEN_KEY(id), '1')
   } catch {
     /* quota */
   }
+}
+
+let lastAuthToken: string | null = null
+
+function sendEngagement(payload: string, token: string | null): void {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  fetch('/api/news/engagement', {
+    method: 'POST',
+    headers,
+    body: payload,
+    keepalive: true,
+  }).catch(() => {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([payload], { type: 'application/json' })
+      navigator.sendBeacon('/api/news/engagement', blob)
+    }
+  })
 }
 
 export function postArticleEngagement(input: {
@@ -43,25 +67,27 @@ export function postArticleEngagement(input: {
   if (!countView && dwellMs <= 0) return
   if (countView) markCounted(input.source, id)
 
+  const sessionId = getOrCreateFeedSessionId()
   const payload = JSON.stringify({
     id,
     source: input.source,
     dwellMs,
     countView,
+    sessionId: sessionId || undefined,
   })
-  const send = () => {
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const blob = new Blob([payload], { type: 'application/json' })
-      if (navigator.sendBeacon('/api/news/engagement', blob)) return
-    }
-    fetch('/api/news/engagement', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {})
+
+  const user = auth.currentUser
+  if (user) {
+    void user
+      .getIdToken()
+      .then((token) => {
+        lastAuthToken = token
+        sendEngagement(payload, token)
+      })
+      .catch(() => sendEngagement(payload, lastAuthToken))
+    return
   }
-  send()
+  sendEngagement(payload, lastAuthToken)
 }
 
 export function createEngagementTracker(source: ArticleEngagementSource) {

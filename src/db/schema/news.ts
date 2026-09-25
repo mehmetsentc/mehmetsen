@@ -110,6 +110,12 @@ export const news = pgTable(
     viewsCount: integer('views_count').default(0).notNull(),
     /** Aggregate qualified read/view dwell across feed, story, and article open. */
     readDurationMs: integer('read_duration_ms').default(0).notNull(),
+    /** Aggregate /haber page-tab dwell (admin Insights only). */
+    pageDurationMs: integer('page_duration_ms').default(0).notNull(),
+    /** Distinct watch sessions (any surface) — avg content dwell = read / this. */
+    watchSessionCount: integer('watch_session_count').default(0).notNull(),
+    /** Distinct /haber page sessions — avg page dwell = page_duration / this. */
+    pageSessionCount: integer('page_session_count').default(0).notNull(),
     likesCount: integer('likes_count').default(0).notNull(),
     commentsCount: integer('comments_count').default(0).notNull(),
     savesCount: integer('saves_count').default(0).notNull(),

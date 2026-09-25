@@ -77,7 +77,7 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
     initialCount: post.savesCount,
   })
 
-  // Lightweight viewsCount only (session-debounced). Full analytics stays paused.
+  // Page-tab view + dwell (session-debounced). Duration stays admin-only.
   useNewsViewIncrement(post.id)
 
   useEffect(() => {
@@ -143,6 +143,7 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
               title={post.title}
               text={leadText || bodyText.slice(0, 200)}
               variant="inline"
+              count={post.sharesCount ?? 0}
             />
             <SaveButton
               saved={saved}
@@ -151,8 +152,9 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
               loading={saveLoading}
               variant="inline"
             />
-            <span className="ml-auto text-sm text-[rgb(var(--color-muted))]">
-              {formatCount(Math.max(0, likesCount))} beğeni
+            <span className="ml-auto inline-flex items-center gap-3 text-sm text-[rgb(var(--color-muted))]">
+              <span>{formatCount(Math.max(0, post.viewsCount ?? 0))} görüntüleme</span>
+              <span>{formatCount(Math.max(0, likesCount))} beğeni</span>
             </span>
           </div>
 

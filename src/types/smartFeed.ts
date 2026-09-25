@@ -26,6 +26,7 @@ export interface FeedSocialCounts {
   comments: number
   saves: number
   shares: number
+  views: number
 }
 
 export type FeedRankReason =
@@ -167,6 +168,9 @@ export interface FeedCandidateRow {
   viewsCount?: number
   /** Aggregate qualified dwell (feed 3s+ / story 3s+ / article body). */
   readDurationMs?: number
+  pageDurationMs?: number
+  watchSessionCount?: number
+  pageSessionCount?: number
   slug: string
   source: FeedCandidateSource
   /** Multi-pool provenance (deduped). Debug/telemetry — not user-facing. */

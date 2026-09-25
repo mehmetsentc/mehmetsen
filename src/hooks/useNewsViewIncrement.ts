@@ -4,11 +4,12 @@ import { useEffect, useRef } from 'react'
 import { createEngagementTracker } from '@/lib/feed/articleEngagementClient'
 
 /**
- * Article-open view (once per session) + total read-time while the page is visible.
+ * /haber page-tab view (once per session) + page dwell while the tab is visible.
+ * Feed/story/reader trackers stay on their own surfaces.
  */
 export function useNewsViewIncrement(postId: string | undefined) {
   const trackerRef = useRef<ReturnType<typeof createEngagementTracker> | null>(null)
-  if (!trackerRef.current) trackerRef.current = createEngagementTracker('open')
+  if (!trackerRef.current) trackerRef.current = createEngagementTracker('page')
 
   useEffect(() => {
     if (!postId) return

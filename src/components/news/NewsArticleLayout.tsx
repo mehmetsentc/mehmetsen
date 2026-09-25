@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
+import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
@@ -19,6 +19,7 @@ import { PostComments } from '@/components/post/PostComments'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { useLike } from '@/hooks/useLike'
 import { useSave } from '@/hooks/useSave'
+import { useNewsViewIncrement } from '@/hooks/useNewsViewIncrement'
 import { cn } from '@/lib/utils'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import {
@@ -65,6 +66,8 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
     postId: post.id,
     initialCount: post.savesCount,
   })
+
+  useNewsViewIncrement(post.id)
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-10 sm:px-0">
@@ -136,7 +139,11 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
               <Clock className="h-3.5 w-3.5" />
               {readMinutes} dk okuma
             </span>
-            {/* görüntülenme sayısı kaldırıldı */}
+            <span aria-hidden className="text-[rgb(var(--color-border))]">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3.5 w-3.5" />
+              {formatCount(Math.max(0, post.viewsCount ?? 0))} görüntüleme
+            </span>
           </div>
         </header>
 
@@ -232,6 +239,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
               title={post.title}
               text={leadText || bodyText.slice(0, 200)}
               variant="inline"
+              count={post.sharesCount ?? 0}
             />
             <SaveButton
               saved={saved}
@@ -242,11 +250,12 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
             />
             <span
               className={cn(
-                'ml-auto text-sm text-[rgb(var(--color-muted))]',
+                'ml-auto inline-flex items-center gap-3 text-sm text-[rgb(var(--color-muted))]',
                 liked && 'text-red-600 dark:text-red-400'
               )}
             >
-              {formatCount(Math.max(0, likesCount))} beğeni
+              <span>{formatCount(Math.max(0, post.viewsCount ?? 0))} görüntüleme</span>
+              <span>{formatCount(Math.max(0, likesCount))} beğeni</span>
             </span>
           </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
+import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
 import { recordArticleEngagement } from '@/services/feed/articleEngagement.server'
 
 export const runtime = 'nodejs'
@@ -16,9 +17,9 @@ export async function POST(request: Request) {
     return rateLimitResponse()
   }
 
-  let body: { id?: unknown } = {}
+  let body: { id?: unknown; sessionId?: unknown } = {}
   try {
-    body = (await request.json()) as { id?: unknown }
+    body = (await request.json()) as { id?: unknown; sessionId?: unknown }
   } catch {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
@@ -28,12 +29,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid id' }, { status: 400 })
   }
 
+  const auth = await verifyFirebaseIdToken(request).catch(() => null)
+  const sessionRaw =
+    (typeof body.sessionId === 'string' ? body.sessionId.trim() : '') ||
+    request.headers.get('x-feed-session')?.trim() ||
+    ''
+  const sessionId =
+    sessionRaw && sessionRaw.length >= 8 && sessionRaw.length <= 80 && /^[\w-]+$/.test(sessionRaw)
+      ? sessionRaw
+      : null
+
   try {
     const result = await recordArticleEngagement({
       articleKey: id,
       source: 'open',
       dwellMs: 0,
       countView: true,
+      userId: auth?.uid ?? null,
+      sessionId,
+      clientIp: ip,
+      userAgent: request.headers.get('user-agent'),
     })
     return NextResponse.json(result)
   } catch (error) {

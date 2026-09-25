@@ -35,6 +35,7 @@ export type NewsItem = {
   viewsCount?: number
   likesCount?: number
   commentsCount?: number
+  sharesCount?: number
   featured?: boolean
   /** ISO — set when editor toggles Öne Çıkan; drives featured sort priority. */
   featuredAt?: string
