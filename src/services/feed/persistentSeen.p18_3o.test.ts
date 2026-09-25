@@ -104,7 +104,7 @@ describe('P18.3O fresh session vs back restore', () => {
       materialUpdate: false,
       clusterSourceCount: 1,
       socialState: null,
-      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0, views: 0 },
       reason: 'RECENT',
       slug: id,
     }

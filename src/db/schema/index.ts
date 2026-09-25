@@ -72,6 +72,7 @@ export {
   socialEvents,
 } from './socialGraph'
 export { userContentImpressions } from './smartFeed'
+export { articleWatchSessions } from './articleWatch'
 export { userInterestScores, userPublisherAffinity, userFeedPreferences } from './feedRanking'
 export {
   newsSources,

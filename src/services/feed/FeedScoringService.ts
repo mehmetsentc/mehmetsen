@@ -7,6 +7,7 @@ import {
   resolveCategoryClass,
   resolveModeWeights,
   viewPopularityScore,
+  popularityRawScore,
 } from '@/lib/feed/rankingConfig'
 import type { FeedUserContext } from '@/types/smartFeed'
 import { feedUserContextService } from './FeedUserContextService'
@@ -71,16 +72,7 @@ function interestScore(row: FeedCandidateRow, ctx: FeedUserContext): number {
 }
 
 function engagementScore(row: FeedCandidateRow): number {
-  // Views matter more than the historical ×0.01 (≈1/300 like) so "most viewed" can surface.
-  const readMinutes = Math.max(0, (row.readDurationMs ?? 0) / 60_000)
-  const raw =
-    row.likesCount * 3 +
-    row.commentsCount * 2 +
-    row.savesCount * 2.5 +
-    row.sharesCount * 2 +
-    (row.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight +
-    readMinutes * FEED_RANKING_CONFIG_V1.popularityReadMinuteWeight
-  return normalizeEngagementRate(raw)
+  return normalizeEngagementRate(popularityRawScore(row))
 }
 
 function discoveryScore(row: FeedCandidateRow): number {
@@ -119,6 +111,9 @@ export class FeedScoringService {
     const popularity = viewPopularityScore({
       viewsCount: row.viewsCount,
       readDurationMs: row.readDurationMs,
+      pageDurationMs: row.pageDurationMs,
+      watchSessionCount: row.watchSessionCount,
+      pageSessionCount: row.pageSessionCount,
       likesCount: row.likesCount,
       commentsCount: row.commentsCount,
       savesCount: row.savesCount,

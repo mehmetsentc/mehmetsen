@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Heart, Play } from 'lucide-react'
+import { Heart, Play, Eye, Share2 } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO, getCategoryFallbackGradient } from '@/lib/feedMediaUtils'
 import { formatCount, formatPublicSourceLabel } from '@/lib/postUtils'
@@ -28,6 +28,9 @@ export type HomeDiscoveryItem = {
   kicker?: string
   source?: string
   likesCount?: number
+  commentsCount?: number
+  sharesCount?: number
+  views?: number
   videoUrl?: string
   featured?: boolean
 }
@@ -58,6 +61,9 @@ export function newsItemToDiscovery(item: NewsItem): HomeDiscoveryItem {
     categoryLabel: newsItemCategoryLabel(item),
     source: formatPublicSourceLabel(item.source),
     likesCount: item.likesCount,
+    commentsCount: item.commentsCount,
+    sharesCount: item.sharesCount,
+    views: item.views ?? item.viewsCount,
     videoUrl: item.videoUrl,
     featured: item.featured === true,
     kicker: featuredRailKicker(item),
@@ -81,6 +87,9 @@ export function timelinePostToDiscovery(post: TimelinePost): HomeDiscoveryItem {
     categoryLabel: getCategoryLabel(post.categoryId),
     source: formatPublicSourceLabel(post.source),
     likesCount: post.likesCount,
+    commentsCount: post.commentsCount,
+    sharesCount: post.sharesCount,
+    views: post.viewsCount,
     featured: post.featured === true,
   }
 }
@@ -117,6 +126,8 @@ export function HomeDiscoveryCard({
   const src = !mediaFailed && item.imageUrl?.trim() ? item.imageUrl.trim() : ''
   const showFallback = !src
   const likes = typeof item.likesCount === 'number' && item.likesCount > 0 ? item.likesCount : 0
+  const views = typeof item.views === 'number' && item.views > 0 ? item.views : 0
+  const shares = typeof item.sharesCount === 'number' && item.sharesCount > 0 ? item.sharesCount : 0
 
   return (
     <article
@@ -202,10 +213,22 @@ export function HomeDiscoveryCard({
               <h3 className="home-discovery-card__headline">{item.title}</h3>
               <p className="home-discovery-card__meta">
                 {item.source ? <span>{item.source}</span> : null}
-                {likes > 0 ? (
+                {views > 0 ? (
                   <span className={cn('inline-flex items-center gap-0.5', item.source && 'ml-2')}>
+                    <Eye className="h-3 w-3" aria-hidden />
+                    {formatCount(views)}
+                  </span>
+                ) : null}
+                {likes > 0 ? (
+                  <span className={cn('inline-flex items-center gap-0.5', (item.source || views > 0) && 'ml-2')}>
                     <Heart className="h-3 w-3 fill-white" aria-hidden />
                     {formatCount(likes)}
+                  </span>
+                ) : null}
+                {shares > 0 ? (
+                  <span className={cn('inline-flex items-center gap-0.5', (item.source || views > 0 || likes > 0) && 'ml-2')}>
+                    <Share2 className="h-3 w-3" aria-hidden />
+                    {formatCount(shares)}
                   </span>
                 ) : null}
               </p>

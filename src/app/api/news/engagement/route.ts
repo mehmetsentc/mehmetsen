@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rateLimit'
+import { verifyFirebaseIdToken } from '@/lib/apiAuth.server'
 import {
   clampEngagementDwellMs,
   shouldCountEngagementView,
@@ -10,11 +11,19 @@ import { recordArticleEngagement } from '@/services/feed/articleEngagement.serve
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const SOURCES = new Set<ArticleEngagementSource>(['feed', 'story', 'open'])
+const SOURCES = new Set<ArticleEngagementSource>(['feed', 'story', 'open', 'reader', 'page'])
+
+function parseSessionId(value: unknown, header: string | null): string | null {
+  const fromBody = typeof value === 'string' ? value.trim() : ''
+  const fromHeader = header?.trim() || ''
+  const raw = fromBody || fromHeader
+  if (!raw || raw.length < 8 || raw.length > 80 || !/^[\w-]+$/.test(raw)) return null
+  return raw
+}
 
 /**
- * Feed 2 / story / article-open view + read-time writer.
- * Client applies the 3s gate and per-session view dedupe; this persists counters.
+ * Feed 2 / story / article-open / page view + dwell writer.
+ * Client applies the 3s gate; server upserts one watch session per actor+surface.
  */
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -27,6 +36,7 @@ export async function POST(request: Request) {
     source?: unknown
     dwellMs?: unknown
     countView?: unknown
+    sessionId?: unknown
   } = {}
   try {
     body = (await request.json()) as typeof body
@@ -56,12 +66,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, skipped: true })
   }
 
+  const auth = await verifyFirebaseIdToken(request).catch(() => null)
+  const sessionId = parseSessionId(body.sessionId, request.headers.get('x-feed-session'))
+
   try {
     const result = await recordArticleEngagement({
       articleKey: id,
       source,
       dwellMs,
       countView,
+      userId: auth?.uid ?? null,
+      sessionId,
+      clientIp: ip,
+      userAgent: request.headers.get('user-agent'),
     })
     return NextResponse.json(result)
   } catch (error) {

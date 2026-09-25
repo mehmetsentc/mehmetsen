@@ -194,6 +194,7 @@ export function FullscreenNewsCard({
     typeof commentCount === 'number' ? commentCount : item.socialCounts.comments ?? 0
   const resolvedSaveCount = typeof saveCount === 'number' ? saveCount : item.socialCounts.saves ?? 0
   const resolvedShareCount = item.socialCounts.shares ?? 0
+  const resolvedViewCount = item.socialCounts.views ?? 0
   const progressLabel =
     typeof cardIndex === 'number' && typeof cardTotal === 'number' && cardTotal > 0
       ? `${cardIndex} / ${cardTotal}`
@@ -869,6 +870,7 @@ export function FullscreenNewsCard({
             commentCount={resolvedCommentCount}
             saveCount={resolvedSaveCount}
             shareCount={resolvedShareCount}
+            viewCount={resolvedViewCount}
             reaction={reaction}
             onToggleLike={onToggleLike}
             onReact={onReact}

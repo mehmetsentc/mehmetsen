@@ -142,6 +142,8 @@ describe('P18.3M featured + popularity scoring', () => {
     expect(FEED_RANKING_CONFIG_V1.featuredBoost).toBeGreaterThan(0.2)
     expect(FEED_RANKING_CONFIG_V1.popularityViewWeight).toBeGreaterThanOrEqual(0.15)
     expect(FEED_RANKING_CONFIG_V1.popularityReadMinuteWeight).toBeGreaterThan(0)
+    expect(FEED_RANKING_CONFIG_V1.popularityAvgReadMinuteWeight).toBeGreaterThan(0)
+    expect(FEED_RANKING_CONFIG_V1.popularityAvgPageMinuteWeight).toBeGreaterThan(0)
     const now = new Date()
     expect(featuredFreshnessScore(new Date(now.getTime() - 1 * 3_600_000), now)).toBeGreaterThan(
       featuredFreshnessScore(new Date(now.getTime() - 72 * 3_600_000), now)
@@ -285,7 +287,7 @@ describe('P18.3M resume snapshot', () => {
       materialUpdate: false,
       clusterSourceCount: 1,
       socialState: null,
-      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0, views: 0 },
       reason: 'RECENT' as const,
       slug: `a${i}`,
     })) satisfies FeedItemDto[]
@@ -331,7 +333,7 @@ describe('P18.3M resume snapshot', () => {
       materialUpdate: false,
       clusterSourceCount: 1,
       socialState: null,
-      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+      socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0, views: 0 },
       reason: 'RECENT' as const,
       slug: `x${i}`,
     })) satisfies FeedItemDto[]

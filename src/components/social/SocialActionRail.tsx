@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { LikeButton as BaseLikeButton } from '@/components/post/LikeButton'
 import { SaveButton as BaseSaveButton } from '@/components/post/SaveButton'
 import { ShareButton as BaseShareButton } from '@/components/post/ShareButton'
-import { MessageCircle } from 'lucide-react'
-import { formatVisibleSocialCount } from '@/lib/postUtils'
+import { MessageCircle, Eye } from 'lucide-react'
+import { formatCount, formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 
 export const FEED_REACTION_OPTIONS = [
@@ -29,6 +29,7 @@ interface SocialActionRailProps {
   commentCount: number
   saveCount?: number
   shareCount?: number
+  viewCount?: number
   reaction?: string | null
   onToggleLike: () => void
   /** Long-press reaction — additive; does not invent fake counts. */
@@ -54,6 +55,7 @@ export function SocialActionRail({
   commentCount,
   saveCount = 0,
   shareCount = 0,
+  viewCount = 0,
   reaction,
   onToggleLike,
   onReact,
@@ -91,6 +93,7 @@ export function SocialActionRail({
   const likeEmoji = liked && activeReaction && activeReaction.id !== 'LIKE' ? activeReaction.emoji : null
   const likeLabel = formatVisibleSocialCount(Math.max(0, likeCount))
   const commentLabel = formatVisibleSocialCount(commentCount)
+  const viewLabel = viewCount > 0 ? formatCount(viewCount) : ''
 
   return (
     <div
@@ -233,6 +236,20 @@ export function SocialActionRail({
         variant="overlay"
         count={shareCount}
       />
+      {viewLabel ? (
+        <div
+          className="flex flex-col items-center gap-1 text-white"
+          aria-label={`${viewLabel} görüntüleme`}
+          data-testid="smart-feed-views"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm sm:h-12 sm:w-12">
+            <Eye className="h-6 w-6" strokeWidth={2.25} />
+          </span>
+          <span className="text-[11px] font-bold tabular-nums text-white drop-shadow sm:text-xs">
+            {viewLabel}
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }

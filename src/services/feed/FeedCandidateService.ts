@@ -226,6 +226,9 @@ function mapRows(
     sharesCount: number
     viewsCount: number
     readDurationMs?: number
+    pageDurationMs?: number
+    watchSessionCount?: number
+    pageSessionCount?: number
     isFeatured?: boolean
     isEditorPick?: boolean
     slug: string
@@ -291,6 +294,9 @@ function mapRows(
       sharesCount: row.sharesCount ?? 0,
       viewsCount: row.viewsCount ?? 0,
       readDurationMs: row.readDurationMs ?? 0,
+      pageDurationMs: row.pageDurationMs ?? 0,
+      watchSessionCount: row.watchSessionCount ?? 0,
+      pageSessionCount: row.pageSessionCount ?? 0,
       slug: row.slug || row.articleId,
       tags: Array.isArray(row.tags)
         ? row.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
@@ -340,6 +346,9 @@ function baseSelect() {
     sharesCount: news.sharesCount,
     viewsCount: news.viewsCount,
     readDurationMs: news.readDurationMs,
+    pageDurationMs: news.pageDurationMs,
+    watchSessionCount: news.watchSessionCount,
+    pageSessionCount: news.pageSessionCount,
     isFeatured: news.isFeatured,
     isEditorPick: news.isEditorPick,
     slug: news.slug,
@@ -436,6 +445,9 @@ export class FeedCandidateService {
       sharesCount: Number(data.sharesCount || 0),
       viewsCount: Number(data.viewsCount || 0),
       readDurationMs: Number(data.readDurationMs || 0),
+      pageDurationMs: Number(data.pageDurationMs || 0),
+      watchSessionCount: Number(data.watchSessionCount || 0),
+      pageSessionCount: Number(data.pageSessionCount || 0),
       slug: data.slug || docId,
       source,
       sortScore: pubDate.getTime(),
@@ -978,7 +990,19 @@ export class FeedCandidateService {
         excludeIdsWhere(opts)
       )
       // View-heavy popularity sort (still freshness-bounded by published window / scoring decay).
-      const popularityExpr = sql`(${news.likesCount} * 3 + ${news.commentsCount} * 2 + ${news.savesCount} * 2 + ${news.viewsCount} * 0.2 + (${news.readDurationMs}::float / 60000.0) * 1.2)`
+      const popularityExpr = sql`(
+        ${news.likesCount} * 3
+        + ${news.commentsCount} * 2
+        + ${news.savesCount} * 2
+        + ${news.viewsCount} * 0.2
+        + (${news.readDurationMs}::float / 60000.0) * 1.2
+        + CASE WHEN ${news.watchSessionCount} > 0
+            THEN LEAST(8.0, (${news.readDurationMs}::float / ${news.watchSessionCount}) / 60000.0) * 8
+            ELSE 0 END
+        + CASE WHEN ${news.pageSessionCount} > 0
+            THEN LEAST(8.0, (${news.pageDurationMs}::float / ${news.pageSessionCount}) / 60000.0) * 3
+            ELSE 0 END
+      )`
       const rows = await db
         .select({
           ...baseSelect(),

@@ -68,7 +68,7 @@ describe('PHASE P17.5 — Smart Feed Viewport Consistency & Transition UX Tests'
       breaking: true,
       materialUpdate: false,
       clusterSourceCount: 3,
-      socialCounts: { likes: 12, comments: 4, saves: 5, shares: 1 },
+      socialCounts: { likes: 12, comments: 4, saves: 5, shares: 1, views: 40 },
       socialState: { liked: true, saved: false },
       slug: 'test-headline',
       reason: 'INTEREST_MATCH',

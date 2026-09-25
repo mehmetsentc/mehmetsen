@@ -19,6 +19,8 @@ import {
 } from '@/lib/feed/nfRankConfig'
 import { normalizeTag } from '@/lib/tags'
 import { feedUserContextService } from '../FeedUserContextService'
+import { articleWatchRankingSignals } from '@/lib/feed/articleEngagement'
+import { FEED_RANKING_CONFIG_V1, normalizeEngagementRate } from '@/lib/feed/rankingConfig'
 
 /** Bounded session intent — does NOT permanently mutate long-term profile. */
 export interface NfSessionIntent {
@@ -386,9 +388,17 @@ export class NFRankEngine {
     const localRelevance = localFeature(row, ctx, mode)
     const editorialImportance = editorialFeature(row)
     const quality = qualityFeature(row)
-    const engagement = clamp01(
+    const watch = articleWatchRankingSignals(row)
+    const socialRaw =
       (row.likesCount * 0.02 + row.commentsCount * 0.03 + row.savesCount * 0.04 + row.sharesCount * 0.04) /
-        10
+      10
+    const watchRaw =
+      (row.viewsCount ?? 0) * FEED_RANKING_CONFIG_V1.popularityViewWeight +
+      watch.totalReadMinutes * FEED_RANKING_CONFIG_V1.popularityReadMinuteWeight +
+      watch.avgContentMinutes * FEED_RANKING_CONFIG_V1.popularityAvgReadMinuteWeight +
+      watch.avgPageMinutes * FEED_RANKING_CONFIG_V1.popularityAvgPageMinuteWeight
+    const engagement = clamp01(
+      socialRaw + normalizeEngagementRate(watchRaw, FEED_RANKING_CONFIG_V1.popularityNormCap)
     )
     const discovery = sources.includes('DISCOVERY') ? 0.85 : 0.12
     const archiveAffinity = Math.max(categoryAffinity, topicAffinity)

@@ -2418,7 +2418,7 @@ export function SmartFeedClient({
       })
       postArticleEngagement({
         articleId: payload.articleId,
-        source: 'open',
+        source: 'reader',
         countView: false,
         dwellMs: payload.dwellMs,
       })
@@ -2970,7 +2970,7 @@ export function SmartFeedClient({
                             materialUpdate: false,
                             clusterSourceCount: 0,
                             socialState: null,
-                            socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+                            socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0, views: 0 },
                             reason: 'DISCOVERY',
                             slug: d.slug || d.articleId,
                           }
@@ -3122,7 +3122,7 @@ export function SmartFeedClient({
                 materialUpdate: false,
                 clusterSourceCount: 0,
                 socialState: null,
-                socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0 },
+                socialCounts: { likes: 0, comments: 0, saves: 0, shares: 0, views: 0 },
                 reason: 'DISCOVERY',
                 slug: d.slug || d.articleId,
               }

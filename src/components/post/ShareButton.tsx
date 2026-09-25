@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Share2 } from 'lucide-react'
-import { formatVisibleSocialCount } from '@/lib/postUtils'
+import { formatCount, formatVisibleSocialCount } from '@/lib/postUtils'
 import { cn } from '@/lib/utils'
 import { buildPostShareUrl } from '@/lib/shareUtils'
 import { ShareMenu } from '@/components/post/ShareMenu'
@@ -32,7 +32,12 @@ export function ShareButton({
   const isOverlay = variant === 'overlay'
   const isInline = variant === 'inline'
   const isReels = variant === 'reels'
-  const countLabel = isOverlay || isReels ? formatVisibleSocialCount(count) : ''
+  const countLabel =
+    isOverlay || isReels
+      ? formatVisibleSocialCount(count)
+      : isInline && count > 0
+        ? formatCount(count)
+        : ''
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -61,7 +66,7 @@ export function ShareButton({
         {isInline ? (
           <>
             <Share2 className="h-4 w-4" />
-            <span>Paylaş</span>
+            <span>{countLabel || 'Paylaş'}</span>
           </>
         ) : isReels ? (
           <Share2 className="h-7 w-7" />

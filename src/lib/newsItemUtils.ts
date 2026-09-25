@@ -156,6 +156,7 @@ export function docToNewsItem(
         : typeof raw.commentCount === 'number'
           ? raw.commentCount
           : undefined,
+    sharesCount: typeof raw.sharesCount === 'number' ? raw.sharesCount : undefined,
     featured: raw.featured === true || raw.isEditorPick === true,
     featuredAt: parseFirestoreTimestamp(raw.featuredAt as TimestampLike),
     localFeatured: raw.localFeatured === true,
@@ -214,6 +215,11 @@ export function slimNewsItemForFeed(item: NewsItem): NewsItem {
   if (publishedAt) slim.publishedAt = publishedAt
 
   if (typeof item.views === 'number' && item.views > 0) slim.views = item.views
+  if (typeof item.likesCount === 'number' && item.likesCount > 0) slim.likesCount = item.likesCount
+  if (typeof item.commentsCount === 'number' && item.commentsCount > 0) {
+    slim.commentsCount = item.commentsCount
+  }
+  if (typeof item.sharesCount === 'number' && item.sharesCount > 0) slim.sharesCount = item.sharesCount
   if (item.featured === true) slim.featured = true
   if (item.featuredAt) slim.featuredAt = item.featuredAt
   if (item.localFeatured === true) slim.localFeatured = true

@@ -54,6 +54,10 @@ function baseRow(partial: Partial<FeedCandidateRow> & { articleId: string }): Fe
     savesCount: partial.savesCount ?? 0,
     sharesCount: partial.sharesCount ?? 0,
     viewsCount: partial.viewsCount ?? 0,
+    readDurationMs: partial.readDurationMs,
+    pageDurationMs: partial.pageDurationMs,
+    watchSessionCount: partial.watchSessionCount,
+    pageSessionCount: partial.pageSessionCount,
     slug: partial.slug ?? partial.articleId,
     source: partial.source ?? 'RECENT',
     candidateSources: partial.candidateSources,
@@ -477,5 +481,36 @@ describe('NFRank Feed V2 isolation (source contracts)', () => {
   it('archive rediscovery weight is bounded; validity model not claimed present', () => {
     expect(NFRANK_CONFIG_V1.baseWeights.archiveRediscovery).toBeLessThanOrEqual(0.1)
     expect(NFRANK_CONFIG_V1.archiveRediscovery.maxContribution).toBeLessThanOrEqual(0.6)
+  })
+
+  it('NFRank engagement uses Insights averages so deep reads beat equal-total skims', () => {
+    const publishedAt = new Date()
+    const totalMs = 10 * 60_000
+    const skim = nfRankEngine.scoreOne(
+      baseRow({
+        articleId: 'skim',
+        publishedAt,
+        viewsCount: 40,
+        readDurationMs: totalMs,
+        watchSessionCount: 200,
+      }),
+      emptyCtx(),
+      'personal',
+      emptySessionIntent()
+    )
+    const deep = nfRankEngine.scoreOne(
+      baseRow({
+        articleId: 'deep',
+        publishedAt,
+        viewsCount: 40,
+        readDurationMs: totalMs,
+        watchSessionCount: 2,
+      }),
+      emptyCtx(),
+      'personal',
+      emptySessionIntent()
+    )
+    expect(deep.components.engagement).toBeGreaterThan(skim.components.engagement)
+    expect(deep.score).toBeGreaterThan(skim.score)
   })
 })

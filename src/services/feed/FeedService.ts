@@ -18,6 +18,7 @@ import {
 } from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
 import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
+import { publicArticleSocialCounts } from '@/lib/feed/articleEngagement'
 import type {
   FeedCandidateRow,
   FeedItemDto,
@@ -164,12 +165,7 @@ function toDto(
     materialUpdate: row.materialUpdate,
     clusterSourceCount: row.clusterSourceCount,
     socialState: social ?? null,
-    socialCounts: {
-      likes: row.likesCount,
-      comments: row.commentsCount,
-      saves: row.savesCount,
-      shares: row.sharesCount,
-    },
+    socialCounts: publicArticleSocialCounts(row),
     reason: scored?.reason ?? row.source,
     scoreBreakdown: debug && scored ? scored.breakdown : undefined,
     slug: row.slug,
