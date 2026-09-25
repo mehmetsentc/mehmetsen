@@ -88,7 +88,7 @@ export async function GET(request: Request) {
       .webp({ quality, effort: 3 })
       .toBuffer()
 
-    return new NextResponse(webp, {
+    return new NextResponse(new Uint8Array(webp), {
       status: 200,
       headers: {
         'Content-Type': 'image/webp',
