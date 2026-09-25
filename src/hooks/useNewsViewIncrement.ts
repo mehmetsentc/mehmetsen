@@ -18,7 +18,10 @@ export function useNewsViewIncrement(postId: string | undefined) {
     tracker.start(postId)
     tracker.flush(postId)
 
-    const heartbeat = window.setInterval(() => tracker.flush(postId), 10_000)
+    // FinOps: 10s heartbeat = 6 API calls/min per reader (each: Vercel fn + PG write +
+    // Firestore write). Total read time is still exact — visibilitychange/pagehide/unmount
+    // flush the remainder — so a 30s heartbeat only coarsens mid-read progress.
+    const heartbeat = window.setInterval(() => tracker.flush(postId), 30_000)
     const onVis = () => {
       if (document.visibilityState === 'hidden') tracker.flush(postId)
     }

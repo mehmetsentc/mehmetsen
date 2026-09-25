@@ -31,6 +31,7 @@ function resetEnv() {
   vi.unstubAllEnvs()
   for (const k of [
     'CRAWLER_AI_DISPATCH_ENABLED',
+    'CRAWLER_SHADOW_RAW_DUPLICATES',
     'CRAWLER_AI_MODE',
     'CRAWLER_AI_PROVIDER_ENABLED',
     'CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER',
@@ -202,6 +203,8 @@ function jobStub(partial: Partial<CrawlerAiJobRecord> & { id: string; clusterId:
 
 describe('Phase 4F.3.1 unique shadow economics', () => {
   it('same cluster + fingerprint ×10 ticks → 10 evaluations, 1 economic decision', async () => {
+    // FinOps: raw DUPLICATE_EVAL rows are opt-in; this test pins the legacy append-all behaviour.
+    process.env.CRAWLER_SHADOW_RAW_DUPLICATES = '1'
     pricingOn()
     process.env.CRAWLER_AI_MODE = 'SHADOW_AUTO_DRAFT'
     process.env.CRAWLER_AI_DISPATCH_ENABLED = 'false'
@@ -219,6 +222,30 @@ describe('Phase 4F.3.1 unique shadow economics', () => {
       })
     }
     expect((await ai.listShadowDecisions()).length).toBe(10)
+    expect((await ai.listShadowEconomicDecisions()).length).toBe(1)
+    expect(ai.shadowEconomicDecisions.values().next().value?.evaluationCount).toBe(10)
+    expect((await ai.listJobs()).length).toBe(0)
+  })
+
+  it('FinOps default: duplicate re-evaluations skip the raw shadow row but keep evaluationCount', async () => {
+    delete process.env.CRAWLER_SHADOW_RAW_DUPLICATES
+    pricingOn()
+    process.env.CRAWLER_AI_MODE = 'SHADOW_AUTO_DRAFT'
+    process.env.CRAWLER_AI_DISPATCH_ENABLED = 'false'
+    process.env.CRAWLER_AI_PROVIDER_ENABLED = 'false'
+    process.env.CRAWLER_AI_AUTO_DRAFT_ELIGIBLE_AFTER = CUTOFF.toISOString()
+    const crawler = new MemoryCrawlerStore()
+    const ai = new MemoryAiDispatchStore()
+    await seedEventLike(crawler, { title: 'Yangın dedup shadow finops', uniqueSources: 2 })
+    for (let i = 0; i < 10; i++) {
+      await runControlledAutoDraftTick({
+        crawlerStore: crawler,
+        aiStore: ai,
+        now: new Date(NOW.getTime() + i * 60_000),
+        limit: 1,
+      })
+    }
+    expect((await ai.listShadowDecisions()).length).toBe(1)
     expect((await ai.listShadowEconomicDecisions()).length).toBe(1)
     expect(ai.shadowEconomicDecisions.values().next().value?.evaluationCount).toBe(10)
     expect((await ai.listJobs()).length).toBe(0)

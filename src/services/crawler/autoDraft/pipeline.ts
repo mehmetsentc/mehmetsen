@@ -743,7 +743,14 @@ export async function runControlledAutoDraftTick(opts: {
           revisionKind = tryEcon.row.revisionKind as typeof revisionKind
         }
       }
-      if (opts.aiStore.insertShadowDecision) {
+      // FinOps: DUPLICATE_EVAL (same cluster + fingerprint + gate) is already counted on the
+      // unique economic decision row. Appending a raw row for every re-evaluation produced
+      // ~115k rows/day (4.2 GB) that nothing reads. Set CRAWLER_SHADOW_RAW_DUPLICATES=1 to restore.
+      const keepRawDuplicate = process.env.CRAWLER_SHADOW_RAW_DUPLICATES?.trim() === '1'
+      if (
+        opts.aiStore.insertShadowDecision &&
+        (revisionKind !== 'DUPLICATE_EVAL' || keepRawDuplicate)
+      ) {
         await opts.aiStore.insertShadowDecision({
           id: newCrawlerId('shd'),
           clusterId: shadowDecision.clusterId,

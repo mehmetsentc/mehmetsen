@@ -29,6 +29,7 @@ import type {
 } from '@/types/smartFeed'
 import { decodeFeedCursor, encodeFeedCursor } from './feedUtils'
 import { feedCandidateService } from './FeedCandidateService'
+import { feedFsCacheActive, runWithFeedFsCache } from './feedFsReadCache'
 import { feedRankingPipeline, type NfRankPipelineMode } from './FeedRankingPipeline'
 import { feedRankingV1 } from './FeedRankingV1'
 import { feedSeenService } from './FeedSeenService'
@@ -261,6 +262,9 @@ async function enrichPublisherSlugs<T extends FeedCandidateRow | ScoredFeedCandi
 
 export class FeedService {
   async getFeed(ctx: FeedRequestContext, opts?: { debug?: boolean }): Promise<FeedPageDto> {
+    if (!feedFsCacheActive()) {
+      return runWithFeedFsCache(() => this.getFeed(ctx, opts))
+    }
     const limit = clampLimit(ctx.limit)
     const feedType = ctx.mode
     const rankingEnabled = await isSmartFeedRankingEffectiveForUser(ctx.userId)
@@ -326,6 +330,7 @@ export class FeedService {
         userId: ctx.userId,
         category: ctx.category ?? null,
         categoryIds,
+        surface: ctx.surface ?? 'feed',
       }
 
       // Category tab: category-native archive walk with session-wide exclusion (no soft-refill replay).

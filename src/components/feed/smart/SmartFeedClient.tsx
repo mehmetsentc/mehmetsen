@@ -1504,7 +1504,7 @@ export function SmartFeedClient({
     if (currentId) feedEngagementRef.current.start(currentId)
 
     const heartbeat = currentId
-      ? window.setInterval(() => feedEngagementRef.current.flush(currentId), 10_000)
+      ? window.setInterval(() => feedEngagementRef.current.flush(currentId), 30_000) // FinOps: was 10s; card change/hide still flush exact dwell
       : null
     const onHide = () => {
       if (currentId) feedEngagementRef.current.flush(currentId)

@@ -18,16 +18,86 @@ import {
 import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { feedSeenService } from '@/services/feed/FeedSeenService'
+import {
+  emptyFeedFsStats,
+  logFeedFsFallback,
+  readFeedQuery,
+  type FeedFsReadStats,
+} from '@/services/feed/feedFsReadCache'
 
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
 const FS_SUPPLEMENT_BATCH = 80
 const FS_SUPPLEMENT_MAX_ATTEMPTS = 4
-/** Extra attempts when walking older LEGACY_ALLOWED windows / large exclude sets. */
-const FS_OLDER_MAX_ATTEMPTS = 8
-/** Category-native archive walks can afford more batches (indexed query, not global scan). */
-const FS_CATEGORY_MAX_ATTEMPTS = 12
+/**
+ * Older-window / large-exclude cap. Default 4 (was 8).
+ * Rollback: FEED_FS_OLDER_MAX_ATTEMPTS=8
+ */
+const FS_OLDER_MAX_ATTEMPTS_DEFAULT = 4
+/**
+ * Category-native archive cap. Default 4 (was 12).
+ * Rollback: FEED_FS_CATEGORY_MAX_ATTEMPTS=12
+ */
+const FS_CATEGORY_MAX_ATTEMPTS_DEFAULT = 4
 const FS_SUPPLEMENT_HARD_CAP = 180
+
+function fsAttemptCap(envName: string, fallback: number): number {
+  const raw = process.env[envName]?.trim()
+  if (!raw) return fallback
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(12, Math.max(1, Math.floor(n)))
+}
+
+export function feedFsAttemptLimits(): { category: number; older: number; supplement: number; batch: number } {
+  return {
+    category: fsAttemptCap('FEED_FS_CATEGORY_MAX_ATTEMPTS', FS_CATEGORY_MAX_ATTEMPTS_DEFAULT),
+    older: fsAttemptCap('FEED_FS_OLDER_MAX_ATTEMPTS', FS_OLDER_MAX_ATTEMPTS_DEFAULT),
+    supplement: FS_SUPPLEMENT_MAX_ATTEMPTS,
+    batch: FS_SUPPLEMENT_BATCH,
+  }
+}
+
+/**
+ * FinOps — Firestore field projection for Smart Feed candidate reads.
+ * Feed candidates only need card metadata; full `news` docs carry the article body
+ * (content/html), which dominated "Cloud Firestore Internet Data Transfer Out" billing.
+ * Read-op count is unchanged; bytes transferred drop. Every field read by acceptDoc,
+ * mapFirestoreDocToRow and publicReadMetaFromFirestoreDoc must be listed here.
+ * Kill switch: FEED_FS_PROJECTION=0 restores full-document reads.
+ */
+export const FEED_FS_FIELDS = [
+  // ordering / identity / filters
+  'status', 'publishedAt', 'createdAt', 'updatedAt', 'slug', 'title',
+  'categoryId', 'category', 'clusterId', 'citySlug', 'districtSlug', 'tags',
+  // breaking / featured gates
+  'isBreaking', 'breaking', 'editorType', 'isFeatured', 'featured', 'isEditorPick', 'editorPick',
+  'materialUpdate',
+  // public-read policy (publicReadMetaFromFirestoreDoc)
+  'visibility', 'publicationAuthority', 'publishedBy', 'approvedBy', 'authorId',
+  'aiAutoPublished', 'needsReview', 'needsAdminReview', 'seoNoindex', 'publisherType',
+  // publisher / source / author
+  'sourceSlug', 'publisherSlug', 'sourceId', 'ingestionSourceId', 'sourceLabel', 'source',
+  'authorDisplayName', 'aiEditorId', 'sourceLogoUrl', 'publisherVerified', 'verified',
+  // card content
+  'smartFeedSummary', 'summary', 'spot', 'description', 'teaser',
+  'coverImageUrl', 'thumbnail', 'imageUrl', 'videoUrl',
+  // ranking signals
+  'clusterSourceCount', 'clusterImportance', 'sourceQualityTier', 'sourceHealthScore',
+  'likesCount', 'commentsCount', 'commentCount', 'savesCount', 'sharesCount', 'viewsCount',
+  'readDurationMs',
+] as const
+
+function feedFsProjectionEnabled(): boolean {
+  return process.env.FEED_FS_PROJECTION?.trim() !== '0'
+}
+
+function projectFeedQuery(q: FirebaseFirestore.Query): FirebaseFirestore.Query {
+  // typeof guard: unit-test Firestore mocks may not implement select().
+  return feedFsProjectionEnabled() && typeof q.select === 'function'
+    ? q.select(...FEED_FS_FIELDS)
+    : q
+}
 
 function resolveOptsCategoryIds(opts: BaseQueryOpts): string[] {
   if (opts.categoryIds?.length) {
@@ -92,6 +162,8 @@ export type BaseQueryOpts = {
   categoryIds?: string[] | null
   /** Exclusive upper bound for older corpus windows (ISO or Date). */
   publishedBefore?: Date | string | null
+  /** Log label only. Not a Firestore filter. */
+  surface?: string | null
 }
 
 function categoryFilterWhere(opts: BaseQueryOpts) {
@@ -385,7 +457,12 @@ export class FeedCandidateService {
    */
   private async fetchFirestoreFallback(
     source: FeedCandidateSource,
-    opts: BaseQueryOpts & { needed?: number; olderWindow?: boolean }
+    opts: BaseQueryOpts & {
+      needed?: number
+      olderWindow?: boolean
+      fallbackReason?: string
+      pgCandidates?: number
+    }
   ): Promise<FeedCandidateRow[]> {
     const needed = Math.min(
       Math.max(opts.needed ?? opts.limit, 1),
@@ -393,13 +470,15 @@ export class FeedCandidateService {
     )
     const categoryIds = resolveOptsCategoryIds(opts)
     const categoryNative = categoryIds.length > 0
+    const limits = feedFsAttemptLimits()
     const maxAttempts = categoryNative
-      ? FS_CATEGORY_MAX_ATTEMPTS
+      ? limits.category
       : opts.olderWindow
-        ? FS_OLDER_MAX_ATTEMPTS
+        ? limits.older
         : opts.excludeArticleIds && opts.excludeArticleIds.size > 20
-          ? FS_OLDER_MAX_ATTEMPTS
-          : FS_SUPPLEMENT_MAX_ATTEMPTS
+          ? limits.older
+          : limits.supplement
+    const fsStats = emptyFeedFsStats()
     const publishedBefore = opts.publishedBefore
       ? opts.publishedBefore instanceof Date
         ? opts.publishedBefore
@@ -481,7 +560,7 @@ export class FeedCandidateService {
             FS_SUPPLEMENT_BATCH,
             Math.max(needed - rows.length, 20) * 2
           )
-          let q = buildBase().limit(batchSize)
+          let q = projectFeedQuery(buildBase()).limit(batchSize)
           if (lastDoc) {
             q = q.startAfter(lastDoc)
           } else if (beforeOk) {
@@ -490,12 +569,16 @@ export class FeedCandidateService {
             q = q.startAfter(cursorTs)
           }
 
-          const snap = await q.get()
+          const snap = await readFeedQuery(
+            q,
+            `global:${source}:${beforeOk ? publishedBefore?.toISOString?.() ?? '' : ''}:${cursorOk ? cursorTs?.toISOString() ?? '' : ''}:${lastDoc?.id ?? ''}:${batchSize}`,
+            fsStats
+          )
           if (snap.empty) break
-          lastDoc = snap.docs[snap.docs.length - 1]
+          lastDoc = snap.docs[snap.docs.length - 1] as FirebaseFirestore.QueryDocumentSnapshot
 
           for (const doc of snap.docs) {
-            const row = acceptDoc(doc, allowCategoryPassThrough)
+            const row = acceptDoc(doc as FirebaseFirestore.QueryDocumentSnapshot, allowCategoryPassThrough)
             if (!row) continue
             seen.add(doc.id)
             rows.push(row)
@@ -533,16 +616,20 @@ export class FeedCandidateService {
                 .where('status', '==', 'published')
                 .where('categoryId', '==', catId)
                 .orderBy('publishedAt', 'desc')
-                .limit(batchSize)
+              q = projectFeedQuery(q).limit(batchSize)
               if (lastDoc) q = q.startAfter(lastDoc)
               else if (beforeOk) q = q.startAfter(publishedBefore)
               else if (cursorOk && cursorTs) q = q.startAfter(cursorTs)
 
-              const snap = await q.get()
+              const snap = await readFeedQuery(
+                q,
+                `cat:${catId}:${beforeOk ? publishedBefore?.toISOString() ?? '' : ''}:${cursorOk ? cursorTs?.toISOString() ?? '' : ''}:${lastDoc?.id ?? ''}:${batchSize}`,
+                fsStats
+              )
               if (snap.empty) break
-              lastDoc = snap.docs[snap.docs.length - 1]
+              lastDoc = snap.docs[snap.docs.length - 1] as FirebaseFirestore.QueryDocumentSnapshot
               for (const doc of snap.docs) {
-                const row = acceptDoc(doc, true)
+                const row = acceptDoc(doc as FirebaseFirestore.QueryDocumentSnapshot, true)
                 if (!row) continue
                 seen.add(doc.id)
                 bucket.push(row)
@@ -587,7 +674,9 @@ export class FeedCandidateService {
           if (dt !== 0) return dt
           return a.articleId.localeCompare(b.articleId)
         })
-        return this.canonicalizeFirestoreRows(merged.slice(0, needed))
+        const mergedRows = await this.canonicalizeFirestoreRows(merged.slice(0, needed))
+        this.logFsFallback(opts, source, categoryIds.length, fsStats, mergedRows.length)
+        return mergedRows
       }
 
       await runQueryLoop(
@@ -599,11 +688,33 @@ export class FeedCandidateService {
         false
       )
 
-      return this.canonicalizeFirestoreRows(rows.slice(0, needed))
+      const globalRows = await this.canonicalizeFirestoreRows(rows.slice(0, needed))
+      this.logFsFallback(opts, source, categoryIds.length, fsStats, globalRows.length)
+      return globalRows
     } catch (err) {
       console.warn('[feed] firestore fallback candidate fetch failed:', err)
       return []
     }
+  }
+
+  private logFsFallback(
+    opts: BaseQueryOpts & { needed?: number; fallbackReason?: string; pgCandidates?: number },
+    source: FeedCandidateSource,
+    categoryCount: number,
+    stats: FeedFsReadStats,
+    documentsReturned: number
+  ) {
+    logFeedFsFallback({
+      feed_fs_fallback_used: true,
+      route: opts.surface || 'feed',
+      reason: opts.fallbackReason || source,
+      category_count: categoryCount,
+      attempt_count: stats.attempts,
+      documents_read: stats.documentsRead,
+      cache_hits: stats.cacheHits,
+      documents_returned: documentsReturned,
+      pg_candidates_before_fallback: opts.pgCandidates ?? null,
+    })
   }
 
   /**
@@ -676,6 +787,16 @@ export class FeedCandidateService {
       categoryIds.some((id) => id !== categoryIds[0] && !primaryCats.has(id))
 
     if (primary.length >= target && !categoryHierarchyUnderfilled) {
+      logFeedFsFallback({
+        feed_fs_fallback_used: false,
+        route: opts.surface || 'feed',
+        reason: 'pg_sufficient',
+        category_count: categoryIds.length,
+        attempt_count: 0,
+        documents_read: 0,
+        documents_returned: 0,
+        pg_candidates_before_fallback: primary.length,
+      })
       return primary.slice(0, target)
     }
 
@@ -697,6 +818,14 @@ export class FeedCandidateService {
       needed: remaining,
       limit: remaining,
       olderWindow: forceOlder,
+      fallbackReason: categoryHierarchyUnderfilled
+        ? 'category_hierarchy_underfilled'
+        : primary.length === 0
+          ? 'pg_empty'
+          : forceOlder
+            ? 'older_window'
+            : 'pg_underfill',
+      pgCandidates: primary.length,
     })
 
     if (fallback.length === 0) return primary.slice(0, target)
@@ -979,7 +1108,9 @@ export class FeedCandidateService {
       let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined
       let attempts = 0
 
-      while (districtHits.length + cityHits.length < needed && attempts < FS_CATEGORY_MAX_ATTEMPTS) {
+      const fsStats = emptyFeedFsStats()
+      const cityCap = feedFsAttemptLimits().category
+      while (districtHits.length + cityHits.length < needed && attempts < cityCap) {
         attempts += 1
         const batchSize = Math.min(
           FS_SUPPLEMENT_BATCH,
@@ -990,14 +1121,18 @@ export class FeedCandidateService {
           .where('status', '==', 'published')
           .where('citySlug', '==', citySlug)
           .orderBy('publishedAt', 'desc')
-          .limit(batchSize)
+        q = projectFeedQuery(q).limit(batchSize)
         if (lastDoc) q = q.startAfter(lastDoc)
         else if (beforeOk) q = q.startAfter(publishedBefore)
         else if (cursorOk && cursorTs) q = q.startAfter(cursorTs)
 
-        const snap = await q.get()
+        const snap = await readFeedQuery(
+          q,
+          `city:${citySlug}:${beforeOk ? publishedBefore?.toISOString() ?? '' : ''}:${cursorOk ? cursorTs?.toISOString() ?? '' : ''}:${lastDoc?.id ?? ''}:${batchSize}`,
+          fsStats
+        )
         if (snap.empty) break
-        lastDoc = snap.docs[snap.docs.length - 1]
+        lastDoc = snap.docs[snap.docs.length - 1] as FirebaseFirestore.QueryDocumentSnapshot
 
         for (const doc of snap.docs) {
           if (seen.has(doc.id)) continue
@@ -1030,7 +1165,19 @@ export class FeedCandidateService {
         if (snap.docs.length < batchSize) break
       }
 
-      return [...districtHits, ...cityHits].slice(0, needed)
+      const localRows = [...districtHits, ...cityHits].slice(0, needed)
+      logFeedFsFallback({
+        feed_fs_fallback_used: true,
+        route: opts.surface || 'feed',
+        reason: 'local_city',
+        category_count: categoryIds.length,
+        attempt_count: fsStats.attempts,
+        documents_read: fsStats.documentsRead,
+        cache_hits: fsStats.cacheHits,
+        documents_returned: localRows.length,
+        pg_candidates_before_fallback: null,
+      })
+      return localRows
     } catch (err) {
       console.warn('[feed] FS local citySlug query failed', { citySlug, err })
       return []
@@ -1139,7 +1286,9 @@ export class FeedCandidateService {
       try {
         const fs = getAdminFirestore()
         const refs = missing.map((id) => fs.collection(Collections.NEWS).doc(id))
-        const snaps = await fs.getAll(...refs)
+        const snaps = feedFsProjectionEnabled()
+          ? await fs.getAll(...refs, { fieldMask: [...FEED_FS_FIELDS] })
+          : await fs.getAll(...refs)
         for (const snap of snaps) {
           if (!snap.exists) continue
           const row = this.mapFirestoreDocToRow(snap.id, snap.data()!, 'RECENT')
