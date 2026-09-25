@@ -11,7 +11,7 @@ describe('SafeNewsImage remote RSS guard', () => {
     expect(shouldUseNextImage(SOZCUCDN)).toBe(false)
     const src = readFileSync(join(__dirname, 'SafeNewsImage.tsx'), 'utf8')
     expect(src).toContain("from '@/lib/news/shouldUseNextImage'")
-    expect(src).toContain('shouldUseNextImage(resolvedSrc)')
+    expect(src).toContain('shouldUseNextImage(activeSrc)')
     expect(src).toContain('<img')
     expect(src).toMatch(/if\s*\(\s*!useNextImage\s*\)/)
   })

@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
+import { newsImageProxyPath, parsePublicImageUrl, widthHintFromSizes } from '@/lib/newsImageProxy'
 
 type SafeNewsImageProps = {
   src: string
@@ -29,12 +30,23 @@ function hasObjectFitClass(className?: string): boolean {
   return Boolean(className && /\bobject-(contain|cover|fill|none|scale-down)\b/.test(className))
 }
 
+function proxiedRemote(src: string, sizes: string | undefined, priority: boolean) {
+  if (!parsePublicImageUrl(src)) return null
+  const width = widthHintFromSizes(sizes, Boolean(priority))
+  const full = newsImageProxyPath(src, width)
+  const halfW = Math.max(64, Math.round(width / 2))
+  const half = newsImageProxyPath(src, halfW)
+  return {
+    src: full,
+    srcSet: `${half} ${halfW}w, ${full} ${width}w`,
+    sizes,
+  }
+}
+
 /**
- * Remote RSS thumbnails must not mount `next/image`. defaultLoader throws
- * during render (E231) for any hostname missing from remotePatterns, and in
- * this Next 15.5 webpack/dev runtime `unoptimized` still reaches that check.
- * Live feed CDNs cannot stay synced with remotePatterns, so only site-relative
- * paths use next/image. Unknown remotes render a native <img>.
+ * Remote RSS thumbnails must not mount `next/image` (hostname allow-list throws).
+ * They go through /api/img so a 163 px card does not download a multi-megabyte PNG.
+ * Only site-relative paths use next/image.
  */
 export function SafeNewsImage({
   src,
@@ -80,13 +92,17 @@ export function SafeNewsImage({
   const useNextImage = shouldUseNextImage(activeSrc)
   const lazy = !priority && loading !== 'eager'
   const resolvedFetchPriority = fetchPriority ?? (priority ? 'high' : 'auto')
+  const proxy = !useNextImage ? proxiedRemote(activeSrc, sizes, Boolean(priority)) : null
+  const imgSrc = proxy?.src ?? activeSrc
 
   if (!useNextImage) {
     if (fill) {
       return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={activeSrc}
+          src={imgSrc}
+          srcSet={proxy?.srcSet}
+          sizes={proxy?.sizes}
           alt={alt ?? ''}
           loading={lazy ? 'lazy' : 'eager'}
           fetchPriority={resolvedFetchPriority}
@@ -108,7 +124,9 @@ export function SafeNewsImage({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={activeSrc}
+        src={imgSrc}
+        srcSet={proxy?.srcSet}
+        sizes={proxy?.sizes}
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
         fetchPriority={resolvedFetchPriority}

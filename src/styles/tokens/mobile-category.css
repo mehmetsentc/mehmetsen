@@ -297,6 +297,13 @@
 
 /* ── Large ────────────────────────────────────────────────────────────── */
 
+.mc-large,
+.mc-compact,
+.mc-video {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+
 .mc-large {
   padding-inline: 1rem;
 }

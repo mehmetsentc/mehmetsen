@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
+import { newsImageProxyPath, parsePublicImageUrl } from '@/lib/newsImageProxy'
 
 interface SliderImageProps {
   src: string
@@ -24,6 +25,10 @@ export function SliderImage({
   fit = 'cover',
 }: SliderImageProps) {
   const useNextImage = shouldUseNextImage(src)
+  const optimizedSrc =
+    !useNextImage && parsePublicImageUrl(src)
+      ? newsImageProxyPath(src, priority ? 1200 : 640)
+      : src
   const natural = fit === 'natural'
   const objectClass = fit === 'contain' ? 'object-contain' : fit === 'cover' ? 'object-cover' : undefined
 
@@ -35,8 +40,6 @@ export function SliderImage({
           alt={alt}
           width={1600}
           height={900}
-          // aspectRatio: 'auto' overrides Next.js-injected aspect-ratio:1600/900
-          // so portrait / square images render at their true intrinsic ratio
           style={{ aspectRatio: 'auto' }}
           className={cn('h-auto w-full', className)}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 800px"
@@ -68,7 +71,7 @@ export function SliderImage({
   if (natural) {
     return (
       <Image
-        src={src}
+        src={optimizedSrc}
         alt={alt}
         width={1600}
         height={900}
@@ -84,7 +87,7 @@ export function SliderImage({
 
   return (
     <Image
-      src={src}
+      src={optimizedSrc}
       alt={alt}
       fill
       unoptimized
