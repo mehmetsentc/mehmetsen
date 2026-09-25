@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { formatEventDayBadge, resolveEventImageUrl } from '@/lib/eventUtils'
 import type { NaEvent } from '@/types/event'
 
@@ -28,7 +27,10 @@ export function CityNewspaperEventsRail({
             <article key={event.id} className="desktop-portal-tile">
               <Link href={`/etkinlik/${event.id}`} className="desktop-portal-cat__media">
                 {cover ? (
-                  <SafeNewsImage src={cover} alt="" fill sizes="220px" className="object-cover" />
+                  // Paribu posters are served from /api/events/image. next/image
+                  // rejects that URL (INVALID_IMAGE_OPTIMIZE_REQUEST) and the card stays blank.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 ) : null}
                 {day ? (
                   <span className="desktop-portal-event__date">
