@@ -84,13 +84,30 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
   // Lightweight viewsCount only (session-debounced). Full analytics stays paused.
   useNewsViewIncrement(post.id)
 
+  const [scopedCity, setScopedCity] = useState<string | null>(citySlug ?? null)
+
+  useEffect(() => {
+    if (citySlug) return
+    const host = window.location.hostname.toLowerCase()
+    if (
+      host === 'nahaber.com' ||
+      host === 'www.nahaber.com' ||
+      host === 'localhost' ||
+      host === '127.0.0.1'
+    ) {
+      return
+    }
+    const match = host.match(/^([a-z0-9-]+)\.nahaber\.com$/)
+    if (match && match[1] !== 'www') setScopedCity(match[1])
+  }, [citySlug])
+
   useEffect(() => {
     let cancelled = false
     const loadRelated = async () => {
       if (cancelled) return
       try {
         const categoryId = post.categoryId ?? 'gundem'
-        const res = citySlug
+        const res = scopedCity
           ? await fetch(`/api/city/news?category=${encodeURIComponent(categoryId)}&limit=12`)
           : await fetch(`/api/feed/category?id=${encodeURIComponent(categoryId)}&limit=12`)
         if (!res.ok || cancelled) return
@@ -119,7 +136,7 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
       cancelled = true
       globalThis.clearTimeout(t)
     }
-  }, [post.id, post.categoryId, citySlug])
+  }, [post.id, post.categoryId, scopedCity])
 
   return (
     <NewsArticlePage className="max-lg:pb-[var(--article-reader-clearance)] lg:pb-10" articleId={post.id}>

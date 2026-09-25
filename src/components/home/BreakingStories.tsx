@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
@@ -47,9 +47,22 @@ function StoryCard({ item, priority = false, onOpen }: StoryCardProps) {
   )
 }
 
+const ABOVE_FOLD_STORIES = 2
+
 export function BreakingStories({ items }: BreakingStoriesProps) {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [showRest, setShowRest] = useState(false)
+
+  useEffect(() => {
+    const enable = () => setShowRest(true)
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(enable, { timeout: 1200 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const timer = globalThis.setTimeout(enable, 600)
+    return () => globalThis.clearTimeout(timer)
+  }, [])
 
   const openAt = useCallback((index: number) => {
     setActiveIndex(index)
@@ -84,11 +97,11 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
               </span>
             </Link>
           </div>
-          {items.map((item, index) => (
+          {(showRest ? items : items.slice(0, ABOVE_FOLD_STORIES)).map((item, index) => (
             <StoryCard
               key={item.id}
               item={item}
-              priority={false}
+              priority={index === 0}
               onOpen={() => openAt(index)}
             />
           ))}

@@ -1,15 +1,14 @@
 import type { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import { FeedPageClient } from '@/components/feed/FeedPageClient'
 import { FeedStructuredData } from '@/components/home/desktop/FeedStructuredData'
 import { getSiteUrl } from '@/lib/seo'
 import { getLcpPreload } from '@/lib/lcpImage'
 import { getHomeFeedInitialData } from '@/services/newsService.server'
 import { ROUTES } from '@/constants/routes'
-import { getCityCategoryName } from '@/constants/cities'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
 
-export const dynamic = 'force-dynamic'
+// City hosts never reach this page: middleware rewrites /feed → /city-site.
+// No headers()/cookies() here so the national HTML can sit on the CDN for 60s.
+export const revalidate = 60
 
 const siteUrl = getSiteUrl()
 const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -19,26 +18,6 @@ const FEED_DESCRIPTION =
   'Gündem, 3. sayfa, spor, dünya, siyaset, ekonomi, turizm, gezi, teknoloji, bilim, otomotiv, kültür, sinema, tiyatro ve magazin haberleri. Türkiye\'nin güncel haber platformu.'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const citySlug = await getCitySlugFromHeaders()
-
-  if (citySlug) {
-    const cityName = getCityCategoryName(citySlug)
-    const cityOrigin = `https://${citySlug}.nahaber.com`
-    return {
-      title: `${cityName} Haberleri`,
-      description: `${cityName} son dakika yerel haberler, gündem, etkinlikler ve spor haberleri.`,
-      alternates: { canonical: cityOrigin },
-      openGraph: {
-        title: `${cityName} Haberleri — ${siteName}`,
-        description: `${cityName} şehrinden son dakika yerel haberler ve güncel gelişmeler.`,
-        url: cityOrigin,
-        type: 'website',
-        locale: 'tr_TR',
-        siteName,
-      },
-    }
-  }
-
   return {
     title: FEED_TITLE,
     description: FEED_DESCRIPTION,
@@ -77,12 +56,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function FeedPage() {
-  const citySlug = await getCitySlugFromHeaders()
-
-  if (citySlug) {
-    redirect('/')
-  }
-
   const data = await getHomeFeedInitialData()
 
   const lcpImage =

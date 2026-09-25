@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { isKnownNewsImageHost } from '@/constants/imageHosts'
+import { newsImageProxyPath, parsePublicImageUrl } from '@/lib/newsImageProxy'
 import { cn } from '@/lib/utils'
 
 function parseHostname(src: string): string | null {
@@ -35,6 +36,10 @@ export function SliderImage({
 }: SliderImageProps) {
   const hostname = parseHostname(src)
   const useNextImage = !hostname || isKnownNewsImageHost(hostname)
+  const optimizedSrc =
+    !useNextImage && parsePublicImageUrl(src)
+      ? newsImageProxyPath(src, priority ? 1200 : 640)
+      : src
   const natural = fit === 'natural'
   const objectClass = fit === 'contain' ? 'object-contain' : fit === 'cover' ? 'object-cover' : undefined
 
@@ -80,7 +85,7 @@ export function SliderImage({
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
+        src={optimizedSrc}
         alt={alt}
         width={1600}
         height={900}
@@ -97,7 +102,7 @@ export function SliderImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={optimizedSrc}
       alt={alt}
       fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"

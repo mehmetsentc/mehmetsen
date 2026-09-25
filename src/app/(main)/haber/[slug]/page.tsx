@@ -22,8 +22,6 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 import { ROUTES } from '@/constants/routes'
 import { getLcpPreload } from '@/lib/lcpImage'
-import { getActiveTenant } from '@/lib/tenantContext'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
 import { hasDatabaseUrl } from '@/db'
 import {
@@ -127,14 +125,9 @@ export default async function NewsDetailPage({ params }: PageProps) {
   const breadcrumbJsonLd = buildNewsBreadcrumbJsonLd(post)
   const videoJsonLd = buildVideoObjectJsonLd(post)
 
-  const tenant = await getActiveTenant()
-  const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
-  const citySlug = tenant?.provinceSlug ?? hostCitySlug
-
   const relatedPosts = await getSuggestedPostsServer(post.id, {
     categoryId: post.categoryId ?? 'gundem',
     limit: 4,
-    ...(citySlug ? { citySlug, tags: post.tags } : {}),
   })
 
   const seoContext = await getArticleSeoContext(post)
@@ -244,7 +237,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
             : null
         }
       />
-      <NewsArticleInteractive post={post} citySlug={citySlug} />
+      <NewsArticleInteractive post={post} />
     </>
   )
 }

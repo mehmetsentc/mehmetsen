@@ -26,6 +26,18 @@ const nextConfig: NextConfig = {
       ...(config.resolve.alias || {}),
       'react-hot-toast': path.resolve(__dirname, 'src/lib/toast-shim.ts'),
     }
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        '**/.git/**',
+        '**/node_modules/**',
+        '**/.worktrees/**',
+        '**/.tmp/**',
+        '**/Claude outputs/**',
+        '**/Nahaber_Feed 2/**',
+        '**/_to_delete/**',
+      ],
+    }
     return config
   },
   turbopack: {
@@ -77,11 +89,16 @@ const nextConfig: NextConfig = {
   // HTTP caching headers — Vercel CDN caches these globally (Pro)
   async headers() {
     return [
-      // Static assets: 1 year immutable
-      {
-        source: '/_next/static/(.*)',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
-      },
+      // Production hashed assets: 1 year immutable. Dev chunks reuse
+      // /_next/static/chunks/app/page.js — caching them freezes old UI.
+      ...(process.env.NODE_ENV === 'production'
+        ? [
+            {
+              source: '/_next/static/(.*)',
+              headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+            },
+          ]
+        : []),
       // Finance rates: 60s CDN cache + stale-while-revalidate
       {
         source: '/api/finance/rates',
@@ -149,6 +166,24 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*\\.(?:png|jpg|jpeg|webp|avif|ico|svg|woff2))',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/api/img',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
+          },
+        ],
+      },
+      {
+        source: '/haber/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=120, must-revalidate',
+          },
+        ],
       },
       // Service worker: always revalidate so clients pick up SW updates quickly
       {
@@ -264,6 +299,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       'lucide-react',
+      'framer-motion',
       'date-fns',
       '@firebase/firestore',
       '@vercel/analytics',

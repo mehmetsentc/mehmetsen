@@ -1,5 +1,6 @@
 import { getImageProps } from 'next/image'
 import { isKnownNewsImageHost } from '@/constants/imageHosts'
+import { newsImageProxyPath, parsePublicImageUrl } from '@/lib/newsImageProxy'
 
 /** Must match FeaturedSlider SafeNewsImage sizes + quality. */
 export const LCP_IMAGE_SIZES = '(max-width: 768px) 100vw, 860px'
@@ -24,7 +25,16 @@ export type LcpPreload = {
 /** Preload descriptors for LCP hero — optimized WebP via next/image, not raw RSS CDN. */
 export function getLcpPreload(imageUrl: string): LcpPreload | null {
   const hostname = parseHostname(imageUrl)
-  if (hostname && !isKnownNewsImageHost(hostname)) return null
+  if (hostname && !isKnownNewsImageHost(hostname)) {
+    if (!parsePublicImageUrl(imageUrl)) return null
+    const narrow = newsImageProxyPath(imageUrl, 828)
+    const wide = newsImageProxyPath(imageUrl, 1200)
+    return {
+      href: wide,
+      imagesrcset: `${narrow} 828w, ${wide} 1200w`,
+      imagesizes: LCP_IMAGE_SIZES,
+    }
+  }
 
   const { props } = getImageProps({
     src: imageUrl,

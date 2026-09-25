@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image, { type ImageProps } from 'next/image'
 import { cn } from '@/lib/utils'
 import { isKnownNewsImageHost } from '@/constants/imageHosts'
+import { newsImageProxyPath, parsePublicImageUrl, widthHintFromSizes } from '@/lib/newsImageProxy'
 
 type SafeNewsImageProps = Omit<ImageProps, 'unoptimized'> & {
   src: string
@@ -31,7 +32,17 @@ function hasObjectFitClass(className?: string): boolean {
  *
  * If the image fails to load (broken URL), calls onLoadError and hides itself.
  */
-export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError, ...rest }: SafeNewsImageProps) {
+export function SafeNewsImage({
+  src,
+  alt,
+  className,
+  fill,
+  loading,
+  onLoadError,
+  onError,
+  onLoad,
+  ...rest
+}: SafeNewsImageProps) {
   const [errored, setErrored] = useState(false)
   const hostname = parseHostname(src)
   const useNextImage = !hostname || isKnownNewsImageHost(hostname)
@@ -67,12 +78,29 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
   }
 
   const lazy = !isPriority && loading !== 'eager'
+  const proxy =
+    parsePublicImageUrl(src) != null
+      ? (() => {
+          const width = widthHintFromSizes(rest.sizes, isPriority)
+          const full = newsImageProxyPath(src, width)
+          const halfW = Math.max(64, Math.round(width / 2))
+          const half = newsImageProxyPath(src, halfW)
+          return {
+            src: full,
+            srcSet: `${half} ${halfW}w, ${full} ${width}w`,
+            sizes: typeof rest.sizes === 'string' ? rest.sizes : undefined,
+          }
+        })()
+      : null
+  const imgSrc = proxy?.src ?? src
 
   if (fill) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
+        src={imgSrc}
+        srcSet={proxy?.srcSet}
+        sizes={proxy?.sizes}
         alt={alt ?? ''}
         loading={lazy ? 'lazy' : 'eager'}
         fetchPriority={fetchPri ?? (isPriority ? 'high' : 'auto')}
@@ -84,7 +112,11 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
           !hasObjectFitClass(className) && 'object-cover',
           className
         )}
-        onError={handleError}
+        onLoad={onLoad}
+        onError={(event) => {
+          handleError()
+          onError?.(event as Parameters<NonNullable<ImageProps['onError']>>[0])
+        }}
       />
     )
   }
@@ -92,7 +124,9 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={imgSrc}
+      srcSet={proxy?.srcSet}
+      sizes={proxy?.sizes}
       alt={alt ?? ''}
       loading={lazy ? 'lazy' : 'eager'}
       fetchPriority={fetchPri ?? (isPriority ? 'high' : 'auto')}
@@ -102,7 +136,11 @@ export function SafeNewsImage({ src, alt, className, fill, loading, onLoadError,
       className={className}
       width={typeof rest.width === 'number' ? rest.width : undefined}
       height={typeof rest.height === 'number' ? rest.height : undefined}
-      onError={handleError}
+      onLoad={onLoad}
+      onError={(event) => {
+        handleError()
+        onError?.(event as Parameters<NonNullable<ImageProps['onError']>>[0])
+      }}
     />
   )
 }

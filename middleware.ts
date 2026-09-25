@@ -196,6 +196,13 @@ export async function middleware(request: NextRequest) {
       return buildCityRewrite(request, `/city-site/kategori/${categoryMatch[1]}`, tenant)
     }
 
+    // Article pages stay on the public URL but render inside city chrome.
+    // National /haber must not read the host header, or the CDN cache stays off.
+    const articleMatch = cleanPath.match(/^\/haber\/([^/]+)$/)
+    if (articleMatch) {
+      return buildCityRewrite(request, `/city-site/haber/${articleMatch[1]}`, tenant)
+    }
+
     // Direct path rewrites (/, /feed, /etkinlik, /spor, /ilceler, /yerel)
     const rewriteTarget = CITY_PATH_REWRITES[cleanPath]
     if (rewriteTarget) {
