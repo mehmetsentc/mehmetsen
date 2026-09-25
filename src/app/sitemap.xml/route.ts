@@ -3,8 +3,8 @@ import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
 import { getCitySlugFromHost } from '@/lib/cityHost'
 import { buildSitemapIndexXmlAsync } from '@/lib/sitemap/sitemapIndex'
-import { getCanonicalPublishedNewsForSitemap } from '@/lib/canonical/canonicalEligibility'
-import { ROUTES } from '@/constants/routes'
+import { getDistrictsForProvince } from '@/constants/cities'
+import { buildCityCanonicalUrl } from '@/lib/seo/cityPageMetadata'
 import { xmlEscape } from '@/lib/sitemap/seoXml'
 
 export const runtime = 'nodejs'
@@ -17,14 +17,13 @@ export const maxDuration = 60
 const CITY_STATIC = [
   { path: '/',                             priority: 1.0, freq: 'hourly'  },
   { path: '/etkinlik',                     priority: 0.8, freq: 'daily'   },
-  { path: '/spor',                         priority: 0.8, freq: 'daily'   },
   { path: '/ilceler',                      priority: 0.7, freq: 'weekly'  },
   { path: '/is-ilanlari',                  priority: 0.7, freq: 'daily'   },
-  { path: '/is-ilanlari/eleman-ariyorum',  priority: 0.6, freq: 'daily'   },
-  { path: '/is-ilanlari/is-ariyorum',      priority: 0.6, freq: 'daily'   },
   { path: '/nobetci-eczaneler',            priority: 0.7, freq: 'daily'   },
-  { path: '/editoryal-ilkeler',            priority: 0.3, freq: 'monthly' },
 ]
+// SEO-1C.3: /spor (soft redirect), /is-ilanlari/{eleman-ariyorum,is-ariyorum}
+// (forms, canonical www) and /editoryal-ilkeler (canonical www) are not
+// self-canonical city pages and are no longer listed here.
 
 const CITY_CATEGORIES = [
   'gundem',      'siyaset',     'ekonomi',     'yasam',
@@ -50,27 +49,16 @@ async function buildCitySitemapXml(citySlug: string): Promise<string> {
     xmlUrl(`${base}/kategori/${slug}`, 'hourly', 0.8)
   )
 
-  // Recent city articles (last 30 days) - PostgreSQL Canonical Only
-  let articleRows: string[] = []
-  try {
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    const rows = await getCanonicalPublishedNewsForSitemap({
-      citySlug,
-      from: cutoff,
-      limit: 500,
-    })
+  // SEO-1C.3: district landing pages (/ilceler/{slug}) — same source and same
+  // canonical helper as src/app/ilceler/[slug]/page.tsx, so every listed URL is
+  // the page's own canonical. City article copies (/haber/*) are NOT listed:
+  // their canonical owner is www (monthly article shards).
+  const districtRows = getDistrictsForProvince(citySlug)
+    .map((d) => buildCityCanonicalUrl(citySlug, ['ilceler', d.slug]))
+    .filter((loc): loc is string => Boolean(loc))
+    .map((loc) => xmlUrl(loc, 'daily', 0.7))
 
-    articleRows = rows.map((d) => {
-      const slug = d.slug?.trim() || d.id
-      const path = ROUTES.NEWS_DETAIL(slug)
-      const lastmod = (d.updatedAt ?? d.publishedAt ?? new Date()).toISOString()
-      return xmlUrl(`${base}${path}`, 'weekly', 0.7, lastmod)
-    })
-  } catch (err) {
-    console.error('[sitemap.xml] city article fetch error:', err)
-  }
-
-  const rows = [...staticRows, ...categoryRows, ...articleRows].join('\n')
+  const rows = [...staticRows, ...districtRows, ...categoryRows].join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${rows}
