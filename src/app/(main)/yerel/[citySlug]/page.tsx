@@ -6,6 +6,7 @@ import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import type { NewsItem } from '@/types/newsItem'
+import { getYerelCityBridgeLinks } from '@/lib/seo/localDiscoveryExperiment'
 
 export const revalidate = 180
 
@@ -107,9 +108,31 @@ export default async function LocalNewsCityPage({ params }: CityPageProps) {
     breaking: true,
   }))
 
+  // SEO-1D.1: Çanakkale-only bridge to the city site (empty for every other province).
+  const cityBridgeLinks = getYerelCityBridgeLinks(citySlug)
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {cityBridgeLinks.length > 0 ? (
+        <nav
+          aria-label={`${province.name} yerel haber sitesi`}
+          className="mx-auto w-full max-w-5xl px-4 pt-4"
+        >
+          <ul className="flex flex-wrap items-center gap-2 text-sm">
+            {cityBridgeLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="inline-flex items-center rounded-full border border-[rgb(var(--color-border))] px-3 py-1 font-medium text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
       <LocalNewsClient breakingItems={breakingItems} initialCitySlug={citySlug} />
     </>
   )

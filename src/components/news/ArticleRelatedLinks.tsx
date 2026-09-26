@@ -7,6 +7,7 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { formatTagLabel } from '@/lib/tags'
 import { buildPostSharePath } from '@/lib/seo/structuredData'
+import { getCityHostDiscoveryLink, getDistrictDiscoveryLink } from '@/lib/seo/localDiscoveryExperiment'
 
 /** ArticleSeoContext plus optional related posts for the internal-link aside. */
 export type ArticleRelatedLinksContext = Partial<ArticleSeoContext> & {
@@ -28,6 +29,9 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
   const publisher = context?.publisher
   const event = context?.event
   const related = (context?.relatedPosts ?? []).filter((p) => p.id !== post.id).slice(0, 4)
+  // SEO-1D.1: Çanakkale-only city-host + district links (structured fields only).
+  const cityHostLink = getCityHostDiscoveryLink(citySlug)
+  const districtLink = getDistrictDiscoveryLink(citySlug, post.districtSlug)
 
   const hasLinks = Boolean(publisher || post.categoryId || citySlug || event || related.length)
   if (!hasLinks) return null
@@ -74,6 +78,30 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
               <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
               {cityName} yerel haberler
             </Link>
+          </li>
+        ) : null}
+
+        {districtLink ? (
+          <li>
+            <a
+              href={districtLink.href}
+              className="inline-flex items-center gap-2 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+            >
+              <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
+              {districtLink.label}
+            </a>
+          </li>
+        ) : null}
+
+        {cityHostLink ? (
+          <li>
+            <a
+              href={cityHostLink.href}
+              className="inline-flex items-center gap-2 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+            >
+              <MapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-muted))]" />
+              {cityHostLink.label}
+            </a>
           </li>
         ) : null}
 
