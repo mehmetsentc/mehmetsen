@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import {
   ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Wand2, Plus, Eye, Star, Sparkles, MapPin, Share2, Bell, Clock,
 } from 'lucide-react'
+import { AdminSearchSelect } from '@/components/admin/AdminSearchSelect'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
@@ -278,6 +279,60 @@ export function AdminNewsEditor({
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
   const kibrisCategoryParts = useMemo(() => resolveKibrisCategoryParts(categoryId), [categoryId])
   const kibrisSubcategories = useMemo(() => getKibrisSubcategories(), [])
+  const categorySearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— seçin —' }] },
+      ...getAdminCategoryGroups().map((group) => ({
+        label: group.label,
+        options: group.categories.map((cat) => ({
+          value: cat.id,
+          label: cat.parentId ? `↳ ${cat.name}` : cat.name,
+        })),
+      })),
+    ],
+    []
+  )
+  const countrySearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— Ülke seçin —' }] },
+      {
+        label: 'Ülkeler',
+        options: WORLD_COUNTRIES.map((country) => ({
+          value: country.slug,
+          label: country.name,
+        })),
+      },
+    ],
+    []
+  )
+  const yerelSearchGroups = useMemo(
+    () => [
+      {
+        options: [
+          { value: '', label: '— Genel yerel —' },
+          ...yerelSubcategories.map((cat) => ({
+            value: cat.id,
+            label: getYerelSubcategoryShortLabel(cat),
+          })),
+        ],
+      },
+    ],
+    [yerelSubcategories]
+  )
+  const kibrisSearchGroups = useMemo(
+    () => [
+      {
+        options: [
+          { value: '', label: '— Genel Kıbrıs —' },
+          ...kibrisSubcategories.map((cat) => ({
+            value: cat.id,
+            label: getKibrisSubcategoryShortLabel(cat),
+          })),
+        ],
+      },
+    ],
+    [kibrisSubcategories]
+  )
   const mainCategoryValue = isYerelCategoryTree(categoryId)
     ? YEREL_HABER_CATEGORY_ID
     : isKibrisCategoryTree(categoryId)
@@ -1537,10 +1592,14 @@ export function AdminNewsEditor({
     <div className="flex flex-wrap items-end gap-3">
       <div className="min-w-[140px] flex-1">
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
-        <select
+        <AdminSearchSelect
+          ariaLabel="Kategori"
           value={mainCategoryValue}
-          onChange={(e) => {
-            const next = e.target.value
+          groups={categorySearchGroups}
+          placeholder="Kategori ara"
+          emptyLabel="— seçin —"
+          className={fieldInputCls}
+          onChange={(next) => {
             if (next === YEREL_HABER_CATEGORY_ID) {
               if (!isYerelCategoryTree(categoryId)) {
                 setCategoryId(YEREL_HABER_CATEGORY_ID)
@@ -1559,37 +1618,22 @@ export function AdminNewsEditor({
               setCountrySlug('')
             }
           }}
-          className={fieldInputCls}
-        >
-          <option value="">— seçin —</option>
-          {getAdminCategoryGroups().map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.parentId ? `↳ ${cat.name}` : cat.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        />
       </div>
       {isYerelCategoryTree(categoryId) && (
         <div className="min-w-[140px] flex-1">
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Yerel alt kategori
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Yerel alt kategori"
             value={yerelCategoryParts.subcategoryId ?? ''}
-            onChange={(e) => setCategoryId(composeYerelCategoryId(e.target.value || null))}
+            groups={yerelSearchGroups}
+            placeholder="Yerel kategori ara"
+            emptyLabel="— Genel yerel —"
             className={fieldInputCls}
-          >
-            <option value="">— Genel yerel —</option>
-            {yerelSubcategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {getYerelSubcategoryShortLabel(cat)}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => setCategoryId(composeYerelCategoryId(next || null))}
+          />
         </div>
       )}
       {isKibrisCategoryTree(categoryId) && (
@@ -1597,18 +1641,15 @@ export function AdminNewsEditor({
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Kıbrıs alt kategori
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Kıbrıs alt kategori"
             value={kibrisCategoryParts.subcategoryId ?? ''}
-            onChange={(e) => setCategoryId(composeKibrisCategoryId(e.target.value || null))}
+            groups={kibrisSearchGroups}
+            placeholder="Kıbrıs kategori ara"
+            emptyLabel="— Genel Kıbrıs —"
             className={fieldInputCls}
-          >
-            <option value="">— Genel Kıbrıs —</option>
-            {kibrisSubcategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {getKibrisSubcategoryShortLabel(cat)}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => setCategoryId(composeKibrisCategoryId(next || null))}
+          />
         </div>
       )}
       <div className="min-w-[140px] flex-1">
@@ -1634,18 +1675,15 @@ export function AdminNewsEditor({
             Ülke
             <span className="ml-1 font-normal">(dünya haberleri için)</span>
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Ülke"
             value={countrySlug}
-            onChange={(e) => setCountrySlug(e.target.value)}
-            className={`${fieldInputCls} focus:ring-emerald-500`}
-          >
-            <option value="">— Ülke seçin —</option>
-            {WORLD_COUNTRIES.map((country) => (
-              <option key={country.slug} value={country.slug}>
-                {country.name}
-              </option>
-            ))}
-          </select>
+            groups={countrySearchGroups}
+            placeholder="Ülke ara"
+            emptyLabel="— Ülke seçin —"
+            className={fieldInputCls}
+            onChange={setCountrySlug}
+          />
         </>
       ) : (
         /* Diğer kategoriler: şehir (Türkiye içi) + ülke (yurt dışı) — birbirini dışlar */
@@ -1685,24 +1723,21 @@ export function AdminNewsEditor({
               Ülke
               <span className="ml-1 font-normal text-[rgb(var(--color-muted))]">(isteğe bağlı · yurt dışı haber ise şehri boş bırakıp seçin)</span>
             </label>
-            <select
+            <AdminSearchSelect
+              ariaLabel="Ülke"
               value={countrySlug}
-              onChange={(e) => {
-                setCountrySlug(e.target.value)
-                if (e.target.value) {
+              groups={countrySearchGroups}
+              placeholder="Ülke ara"
+              emptyLabel="— Ülke seçin (isteğe bağlı) —"
+              className={fieldInputCls}
+              onChange={(next) => {
+                setCountrySlug(next)
+                if (next) {
                   setCitySlug('')
                   setDistrictSlug('')
                 }
               }}
-              className={`${fieldInputCls} focus:ring-emerald-500`}
-            >
-              <option value="">— Ülke seçin (isteğe bağlı) —</option>
-              {WORLD_COUNTRIES.map((country) => (
-                <option key={country.slug} value={country.slug}>
-                  {country.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </>
       )}
