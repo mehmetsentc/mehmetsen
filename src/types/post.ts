@@ -61,6 +61,12 @@ export interface Post {
   authorDisplayName: string
   authorPhotoURL: string | null
   categoryId: string
+  /** Dünya haberinde ülkeye ait genel kategori (gündem, spor, …). */
+  countryCategoryId?: string
+  /** Yurt dışı haber ülkesi (görünen ad). */
+  country?: string | null
+  /** Yurt dışı haber ülke slug'ı. */
+  countrySlug?: string | null
   city?: string | null
   citySlug?: string | null
   /** İlçe display name (geo / CMS). */
@@ -137,6 +143,24 @@ export interface Post {
   seoDescription?: string
   /** SEO keywords for meta keywords tag */
   seoKeywords?: string[]
+  /** Sosyal paylaşım manşeti (OG / story overlay) */
+  socialHeadline?: string
+  /** Manşet altı paylaşım özeti */
+  socialStorySummary?: string
+  /** Sosyal medya feed açıklaması */
+  socialCaption?: string
+  /** Push bildirim başlığı */
+  pushTitle?: string
+  /** Push bildirim metni */
+  pushText?: string
+  /** Kapak görseli alt metni */
+  imageAlt?: string
+  /** Kapak görseli önerilen dosya adı */
+  imageFilename?: string
+  /** Video alt metni */
+  videoAlt?: string
+  /** Video önerilen dosya adı */
+  videoFilename?: string
   /** AI-generated 60s video voiceover script (first 500 chars) */
   videoScript?: string
   /** Full JSON-serialized VideoScript object */
@@ -173,7 +197,7 @@ export interface Post {
    * Additional inline images placed between article paragraphs.
    * Stored in order; rendered evenly distributed across paragraphs.
    */
-  additionalImages?: Array<{ url: string; caption?: string }>
+  additionalImages?: Array<{ url: string; caption?: string; alt?: string; filename?: string }>
   /** Kapak görseli SEO açıklaması (image sitemap + alt text) */
   imageCaption?: string | null
   /** AI editör tekrar haber tespiti */

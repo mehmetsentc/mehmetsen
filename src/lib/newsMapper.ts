@@ -23,6 +23,10 @@ export interface NewsDocument {
   authorPhotoURL?: string | null
   category?: string
   categoryId?: string
+  /** Topic under a Dünya country (gundem, spor, …). Primary category stays `dunya`. */
+  countryCategoryId?: string
+  country?: string
+  countrySlug?: string
   slug?: string
   city?: string
   district?: string
@@ -59,9 +63,18 @@ export interface NewsDocument {
    */
   galleryImages?: string[]
   /** Admin editöründe paragraflar arasına eklenen görseller */
-  additionalImages?: Array<{ url?: string; caption?: string }>
+  additionalImages?: Array<{ url?: string; caption?: string; alt?: string; filename?: string }>
   /** Kapak görseli SEO açıklaması */
   imageCaption?: string
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
   type?: PostType
   source?: string
   sourceUrl?: string
@@ -406,6 +419,8 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
         .map((img) => ({
           url: img.url!.trim(),
           caption: img.caption?.trim() ?? '',
+          alt: img.alt?.trim() ?? '',
+          filename: img.filename?.trim() ?? '',
         }))
     : undefined
 
@@ -429,11 +444,23 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     seoTitle: data.seoTitle?.trim() || '',
     seoDescription: data.seoDescription?.trim() || '',
     seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : [],
+    socialHeadline: data.socialHeadline?.trim() || '',
+    socialStorySummary: data.socialStorySummary?.trim() || '',
+    socialCaption: data.socialCaption?.trim() || '',
+    pushTitle: data.pushTitle?.trim() || '',
+    pushText: data.pushText?.trim() || '',
+    imageAlt: data.imageAlt?.trim() || '',
+    imageFilename: data.imageFilename?.trim() || '',
+    videoAlt: data.videoAlt?.trim() || '',
+    videoFilename: data.videoFilename?.trim() || '',
     authorId,
     authorUsername,
     authorDisplayName,
     authorPhotoURL: (data as { authorPhotoURL?: string | null }).authorPhotoURL?.trim() || null,
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
+    countryCategoryId: data.countryCategoryId?.trim() || undefined,
+    country: data.country?.trim() || data.location?.country?.trim() || null,
+    countrySlug: data.countrySlug?.trim() || null,
     originalCategoryId: data.originalCategoryId?.trim() || undefined,
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,

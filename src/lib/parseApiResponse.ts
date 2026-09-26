@@ -19,6 +19,14 @@ export async function parseApiResponse<T = Record<string, unknown>>(
     return JSON.parse(trimmed) as T
   } catch {
     const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 180)
+    const looksHtml = /^<!DOCTYPE|^<html[\s>]|^<head[\s>]|^<body[\s>]/i.test(trimmed)
+    if (looksHtml || res.status === 504 || res.status === 524) {
+      throw new Error(
+        res.status === 504 || res.status === 524 || /timeout/i.test(snippet)
+          ? 'AI düzenleme zaman aşımına uğradı (DeepSeek yanıtı gelmedi). Lütfen tekrar deneyin.'
+          : `AI sunucusu HTML hata sayfası döndü (HTTP ${res.status || 500}). DeepSeek isteği tamamlanamadı.`
+      )
+    }
     if (/an error occurred/i.test(snippet)) {
       throw new Error(
         res.status === 504 || /timeout/i.test(snippet)

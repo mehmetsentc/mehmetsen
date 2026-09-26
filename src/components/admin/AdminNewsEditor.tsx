@@ -4,8 +4,9 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
-  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Search as SearchIcon, Wand2, Plus, Eye, Star, Sparkles, MapPin,
+  ArrowLeft, Pencil, X, Save, Loader2, Zap, Hash, Wand2, Plus, Eye, Star, Sparkles, MapPin, Share2, Bell, Clock,
 } from 'lucide-react'
+import { AdminSearchSelect } from '@/components/admin/AdminSearchSelect'
 import { EditMediaSection, type AdditionalImageItem } from '@/components/admin/EditMediaSection'
 import { ArticleBlockEditor } from '@/components/admin/ArticleBlockEditor'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
@@ -13,7 +14,9 @@ import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
 import {
+  formatWorldTopicName,
   getAdminCategoryGroups,
+  getWorldTopicGroups,
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
   YEREL_HABER_CATEGORY_ID,
@@ -31,10 +34,22 @@ import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { WORLD_COUNTRIES, findCountryBySlug, resolveCountrySlug } from '@/constants/countries'
 import { auth } from '@/lib/firebase/auth'
+import { isIndexedDbBackingStoreError } from '@/lib/firebase/indexedDbGuard'
 import type { Post } from '@/types/post'
 import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
+import { parseApiResponse } from '@/lib/parseApiResponse'
+import {
+  SOCIAL_HEADLINE_MAX,
+  SOCIAL_SUMMARY_MAX,
+  SOCIAL_CAPTION_MAX,
+  PUSH_TITLE_MAX,
+  PUSH_TEXT_MAX,
+  MEDIA_ALT_MAX,
+  MEDIA_FILENAME_MAX,
+  estimateReadingTimeMinutes,
+} from '@/lib/news/distributionMeta'
 
 /** {"caption":"..."} formatındaki bozuk değerleri temizler */
 function sanitizeCaptionValue(v: string | undefined | null): string {
@@ -64,6 +79,17 @@ interface ProfessionalAiResult {
   imageOrder?: string[]
   imageCaption?: string
   additionalImages?: AdditionalImageItem[]
+  socialHeadline?: string
+  socialStorySummary?: string
+  socialCaption?: string
+  pushTitle?: string
+  pushText?: string
+  imageAlt?: string
+  imageFilename?: string
+  videoAlt?: string
+  videoFilename?: string
+  readingTimeMinutes?: number
+  mediaMeta?: Array<{ url: string; kind?: string; alt?: string; filename?: string }>
   qualityScore?: number
   gateDecision?: 'publish' | 'review'
   researchSources?: Array<{ title: string; url: string }>
@@ -237,6 +263,7 @@ export function AdminNewsEditor({
   const [routedEditorLabel, setRoutedEditorLabel] = useState<string | null>(null)
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
+  const [countryCategoryId, setCountryCategoryId] = useState(post?.countryCategoryId?.trim() ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
   const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug?.trim() ?? '')
   const [districtSlug, setDistrictSlug] = useState(post?.districtSlug?.trim() ?? '')
@@ -252,10 +279,76 @@ export function AdminNewsEditor({
     )
   })
   const isWorldCategory = categoryId === 'dunya'
+  const worldTopicGroups = useMemo(() => getWorldTopicGroups(), [])
+  const categorySearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— seçin —' }] },
+      ...getAdminCategoryGroups().map((group) => ({
+        label: group.label,
+        options: group.categories.map((cat) => ({
+          value: cat.id,
+          label: cat.parentId ? `↳ ${cat.name}` : cat.name,
+        })),
+      })),
+    ],
+    []
+  )
+  const worldTopicSearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— Dünya alt kategori —' }] },
+      ...worldTopicGroups.map((group) => ({
+        label: group.label,
+        options: group.categories.map((cat) => ({
+          value: cat.id,
+          label: formatWorldTopicName(cat.name),
+        })),
+      })),
+    ],
+    [worldTopicGroups]
+  )
+  const countrySearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— Ülke seçin —' }] },
+      {
+        label: 'Ülkeler',
+        options: WORLD_COUNTRIES.map((country) => ({
+          value: country.slug,
+          label: country.name,
+        })),
+      },
+    ],
+    []
+  )
+  const yerelSearchGroups = useMemo(
+    () => [
+      {
+        options: [
+          { value: '', label: '— Genel yerel —' },
+          ...getYerelSubcategories().map((cat) => ({
+            value: cat.id,
+            label: getYerelSubcategoryShortLabel(cat),
+          })),
+        ],
+      },
+    ],
+    []
+  )
+  const kibrisSearchGroups = useMemo(
+    () => [
+      {
+        options: [
+          { value: '', label: '— Genel Kıbrıs —' },
+          ...getKibrisSubcategories().map((cat) => ({
+            value: cat.id,
+            label: getKibrisSubcategoryShortLabel(cat),
+          })),
+        ],
+      },
+    ],
+    []
+  )
   const yerelCategoryParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
-  const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
   const kibrisCategoryParts = useMemo(() => resolveKibrisCategoryParts(categoryId), [categoryId])
-  const kibrisSubcategories = useMemo(() => getKibrisSubcategories(), [])
   const mainCategoryValue = isYerelCategoryTree(categoryId)
     ? YEREL_HABER_CATEGORY_ID
     : isKibrisCategoryTree(categoryId)
@@ -280,8 +373,23 @@ export function AdminNewsEditor({
     (post as (Post & { seoKeywords?: string[] }) | undefined)?.seoKeywords ?? []
   )
   const [seoKeywordInput, setSeoKeywordInput] = useState('')
+  const [socialHeadline, setSocialHeadline] = useState(post?.socialHeadline?.trim() ?? '')
+  const [socialStorySummary, setSocialStorySummary] = useState(post?.socialStorySummary?.trim() ?? '')
+  const [socialCaption, setSocialCaption] = useState(post?.socialCaption?.trim() ?? '')
+  const [pushTitle, setPushTitle] = useState(post?.pushTitle?.trim() ?? '')
+  const [pushText, setPushText] = useState(post?.pushText?.trim() ?? '')
+  const [imageAlt, setImageAlt] = useState(post?.imageAlt?.trim() || sanitizeCaptionValue(post?.imageCaption) || '')
+  const [imageFilename, setImageFilename] = useState(post?.imageFilename?.trim() ?? '')
+  const [videoAlt, setVideoAlt] = useState(post?.videoAlt?.trim() ?? '')
+  const [videoFilename, setVideoFilename] = useState(post?.videoFilename?.trim() ?? '')
+  const [readingTimeMinutes, setReadingTimeMinutes] = useState<number>(
+    post?.readingTimeMinutes && post.readingTimeMinutes > 0
+      ? post.readingTimeMinutes
+      : estimateReadingTimeMinutes([post?.title, post?.spot, post?.content].filter(Boolean).join(' '))
+  )
   const [aiKwLoading, setAiKwLoading] = useState(false)
   const autoKwAttemptedRef = useRef(false)
+  const distributionRef = useRef<HTMLDivElement>(null)
   const seoTitleUsesFallback = mode === 'edit' && !storedSeoTitle
   const seoDescriptionUsesFallback = mode === 'edit' && !storedSeoDescription
   const [isBreaking, setIsBreaking] = useState<boolean>(post?.isBreaking ?? false)
@@ -383,11 +491,11 @@ export function AdminNewsEditor({
         body: JSON.stringify({ mode: 'keywords', input }),
         signal: AbortSignal.timeout(90_000),
       })
-      const data = await res.json() as {
+      const data = await parseApiResponse<{
         keywords?: string[]
         seoKeywords?: string[]
         error?: string
-      }
+      }>(res)
       if (!res.ok) {
         throw new Error(data.error || `AI isteği başarısız (${res.status})`)
       }
@@ -407,7 +515,13 @@ export function AdminNewsEditor({
         setSeoKeywords((prev) => [...new Set([...prev, ...fallback])])
         if (!opts?.silent) toast.success(`${fallback.length} anahtar kelime (yedek) eklendi`)
       } else if (!opts?.silent) {
-        toast.error(error instanceof Error ? error.message : 'AI isteği başarısız')
+        toast.error(
+          isIndexedDbBackingStoreError(error)
+            ? 'Tarayıcı kaydı açılamadı. Sayfayı yenileyip tekrar deneyin.'
+            : error instanceof Error
+              ? error.message
+              : 'AI isteği başarısız'
+        )
       }
     } finally {
       setAiKwLoading(false)
@@ -432,6 +546,7 @@ export function AdminNewsEditor({
     aiEditorId: aiEditorId && aiEditorId !== AI_EDITOR_AUTO ? aiEditorId : null,
     spot,
     categoryId,
+    countryCategoryId: categoryId === 'dunya' ? countryCategoryId : '',
     status,
     thumbnail,
     imageCaption,
@@ -441,6 +556,16 @@ export function AdminNewsEditor({
     seoTitle,
     seoDescription,
     seoKeywords,
+    socialHeadline,
+    socialStorySummary,
+    socialCaption,
+    pushTitle,
+    pushText,
+    imageAlt,
+    imageFilename,
+    videoAlt,
+    videoFilename,
+    readingTimeMinutes,
     aiResearchSources,
     isBreaking,
     featured,
@@ -563,6 +688,7 @@ export function AdminNewsEditor({
           mode: 'publish-ready',
           input: rawInput,
           imageUrls,
+          videoUrls: videoUrl.trim() ? [videoUrl.trim()] : [],
           articleFormat,
           autoRoute: isAutoEditor,
           ...(isAutoEditor
@@ -573,8 +699,9 @@ export function AdminNewsEditor({
           ...(districtSlug ? { districtSlug } : {}),
           isBreaking,
         }),
+        signal: AbortSignal.timeout(280_000),
       })
-      const data = await res.json() as ProfessionalAiResult
+      const data = await parseApiResponse<ProfessionalAiResult>(res)
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
 
       const nextTitle = stripHtmlToNewsPlainText(data.title?.trim() || title)
@@ -633,7 +760,29 @@ export function AdminNewsEditor({
       }
       setThumbnail(nextThumbnail)
       setImageCaption(sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle)
-      setAdditionalImages(nextAdditional)
+      setSocialHeadline(data.socialHeadline?.trim() || nextTitle)
+      setSocialStorySummary(data.socialStorySummary?.trim() || nextSpot)
+      setSocialCaption(data.socialCaption?.trim() || nextSummary)
+      setPushTitle(data.pushTitle?.trim() || nextTitle)
+      setPushText(data.pushText?.trim() || nextSpot)
+      setImageAlt(data.imageAlt?.trim() || sanitizeCaptionValue(data.imageCaption) || nextTitle)
+      setImageFilename(data.imageFilename?.trim() || '')
+      setVideoAlt(data.videoAlt?.trim() || (videoUrl ? `${nextTitle} videosu` : ''))
+      setVideoFilename(data.videoFilename?.trim() || '')
+      setReadingTimeMinutes(
+        data.readingTimeMinutes && data.readingTimeMinutes > 0
+          ? data.readingTimeMinutes
+          : estimateReadingTimeMinutes(`${nextTitle} ${nextSpot} ${nextContent}`)
+      )
+      const nextAdditionalWithMeta = nextAdditional.map((img) => {
+        const meta = data.mediaMeta?.find((item) => item.url === img.url)
+        return {
+          ...img,
+          alt: meta?.alt || img.alt || '',
+          filename: meta?.filename || img.filename || '',
+        }
+      })
+      setAdditionalImages(nextAdditionalWithMeta)
       setAiQualityScore(data.qualityScore ?? null)
       setAiGateDecision(data.gateDecision ?? 'review')
       setAiResearchSources(
@@ -641,6 +790,9 @@ export function AdminNewsEditor({
       )
       setStatus(nextStatus)
       setShowAiPreview(true)
+      requestAnimationFrame(() => {
+        distributionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
 
       const editorLabel =
         data.editorName?.trim() ||
@@ -673,7 +825,20 @@ export function AdminNewsEditor({
         seoKeywords: Array.isArray(data.seoKeywords) ? data.seoKeywords : seoKeywords,
         thumbnail: nextThumbnail,
         imageCaption: sanitizeCaptionValue(data.imageCaption) || imageCaption || nextTitle,
-        additionalImages: nextAdditional,
+        additionalImages: nextAdditionalWithMeta,
+        socialHeadline: data.socialHeadline?.trim() || nextTitle,
+        socialStorySummary: data.socialStorySummary?.trim() || nextSpot,
+        socialCaption: data.socialCaption?.trim() || nextSummary,
+        pushTitle: data.pushTitle?.trim() || nextTitle,
+        pushText: data.pushText?.trim() || nextSpot,
+        imageAlt: data.imageAlt?.trim() || nextTitle,
+        imageFilename: data.imageFilename?.trim() || '',
+        videoAlt: data.videoAlt?.trim() || '',
+        videoFilename: data.videoFilename?.trim() || '',
+        readingTimeMinutes:
+          data.readingTimeMinutes && data.readingTimeMinutes > 0
+            ? data.readingTimeMinutes
+            : estimateReadingTimeMinutes(`${nextTitle} ${nextSpot} ${nextContent}`),
         aiEditorId: data.aiEditorId || (isAutoEditor ? null : aiEditorId) || null,
         citySlug: data.suggestedCitySlug?.trim() || citySlug,
         districtSlug: data.suggestedDistrictSlug?.trim() || districtSlug,
@@ -701,7 +866,18 @@ export function AdminNewsEditor({
       if (variant === 'drawer') onClose?.()
       else router.push(ROUTES.ADMIN.NEWS)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'AI editör isteği başarısız')
+      const timedOut =
+        (error instanceof DOMException && error.name === 'TimeoutError') ||
+        (error instanceof Error && /aborted|timeout|zaman aşımı/i.test(error.message))
+      toast.error(
+        timedOut
+          ? 'AI düzenleme zaman aşımına uğradı (DeepSeek yanıtı gelmedi). Lütfen tekrar deneyin.'
+          : isIndexedDbBackingStoreError(error)
+            ? 'Tarayıcı kaydı açılamadı. Sayfayı yenileyip tekrar deneyin.'
+            : error instanceof Error
+              ? error.message
+              : 'AI editör isteği başarısız'
+      )
     } finally {
       setAiPreparing(false)
     }
@@ -727,7 +903,13 @@ export function AdminNewsEditor({
         toast.error('Oturumunuz sona ermiş, lütfen sayfayı yenileyip tekrar giriş yapın')
         return
       }
-      const token = await currentUser.getIdToken(true)
+      let token: string
+      try {
+        token = await currentUser.getIdToken(true)
+      } catch (tokenError) {
+        if (!isIndexedDbBackingStoreError(tokenError)) throw tokenError
+        token = await currentUser.getIdToken(false)
+      }
       const payload = buildPayload()
 
       if (mode === 'create') {
@@ -792,7 +974,13 @@ export function AdminNewsEditor({
         router.push(ROUTES.ADMIN.NEWS)
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Hata oluştu')
+      toast.error(
+        isIndexedDbBackingStoreError(e)
+          ? 'Tarayıcı kaydı açılamadı. Sayfayı yenileyip tekrar deneyin.'
+          : e instanceof Error
+            ? e.message
+            : 'Hata oluştu'
+      )
     } finally {
       setSaving(false)
     }
@@ -990,6 +1178,300 @@ export function AdminNewsEditor({
       </p>
     </div>
 
+    <div
+      ref={distributionRef}
+      id="haber-dagitim-formu"
+      className="rounded-xl border-2 border-sky-500/40 bg-[rgb(var(--color-surface))] p-4 space-y-3"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
+        <Share2 className="h-3.5 w-3.5 text-sky-500" />
+        SEO, sosyal medya, bildirim ve medya
+      </p>
+      <p className="text-[10px] text-[rgb(var(--color-muted))]">
+        AI “Haberi hazırla” bu alanları görsel ve videoya göre doldurur. Manşet görsel/story üzerinedir; paylaşım özeti manşetin altıdır.
+      </p>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Başlık</label>
+          <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {seoTitle.length}/65
+          </span>
+        </div>
+        <input
+          type="text"
+          value={seoTitle}
+          onChange={(e) => setSeoTitle(e.target.value)}
+          maxLength={80}
+          placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Açıklaması</label>
+          <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {seoDescription.length}/165
+          </span>
+        </div>
+        <textarea
+          value={seoDescription}
+          onChange={(e) => setSeoDescription(e.target.value)}
+          rows={3}
+          maxLength={200}
+          placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Anahtar Kelimeler</label>
+          <button
+            type="button"
+            onClick={() => void generateAiKeywords()}
+            disabled={aiKwLoading}
+            className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+          >
+            {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+            {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
+          </button>
+        </div>
+        {seoKeywords.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {seoKeywords.map((kw) => (
+              <span
+                key={kw}
+                className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
+              >
+                {kw}
+                <button
+                  type="button"
+                  onClick={() => setSeoKeywords((prev) => prev.filter((k) => k !== kw))}
+                  className="ml-0.5 text-emerald-600 hover:text-red-500"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={seoKeywordInput}
+            onChange={(e) => setSeoKeywordInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault()
+                const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
+                if (kws.length) {
+                  setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
+                  setSeoKeywordInput('')
+                }
+              }
+            }}
+            placeholder="kelime1, kelime2... (virgülle ayır)"
+            className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
+              if (kws.length) {
+                setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
+                setSeoKeywordInput('')
+              }
+            }}
+            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            Ekle
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Başlığı</label>
+          <span className={`text-[10px] font-mono ${socialHeadline.length > SOCIAL_HEADLINE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialHeadline.length}/{SOCIAL_HEADLINE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={socialHeadline}
+          onChange={(e) => setSocialHeadline(e.target.value)}
+          maxLength={SOCIAL_HEADLINE_MAX + 20}
+          placeholder="Görsel/story manşeti — merak kancası, hikâyeyi dökme"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Paylaşım Özeti</label>
+          <span className={`text-[10px] font-mono ${socialStorySummary.length > SOCIAL_SUMMARY_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialStorySummary.length}/{SOCIAL_SUMMARY_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialStorySummary}
+          onChange={(e) => setSocialStorySummary(e.target.value)}
+          rows={2}
+          maxLength={SOCIAL_SUMMARY_MAX + 40}
+          placeholder="Manşetin altında 1-2 tam cümle: ne oldu + etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Sosyal Medya Açıklaması</label>
+          <span className={`text-[10px] font-mono ${socialCaption.length > SOCIAL_CAPTION_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {socialCaption.length}/{SOCIAL_CAPTION_MAX}
+          </span>
+        </div>
+        <textarea
+          value={socialCaption}
+          onChange={(e) => setSocialCaption(e.target.value)}
+          rows={4}
+          maxLength={SOCIAL_CAPTION_MAX + 80}
+          placeholder="Feed açıklaması — başlığı tekrarlama; arka plan, detay, etki"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <Bell className="h-3 w-3" />
+            Push Bildirim Başlığı
+          </label>
+          <span className={`text-[10px] font-mono ${pushTitle.length > PUSH_TITLE_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushTitle.length}/{PUSH_TITLE_MAX}
+          </span>
+        </div>
+        <input
+          type="text"
+          value={pushTitle}
+          onChange={(e) => setPushTitle(e.target.value)}
+          maxLength={PUSH_TITLE_MAX + 10}
+          placeholder="Kısa bildirim kancası"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">Push Bildirim Metni</label>
+          <span className={`text-[10px] font-mono ${pushText.length > PUSH_TEXT_MAX ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
+            {pushText.length}/{PUSH_TEXT_MAX}
+          </span>
+        </div>
+        <textarea
+          value={pushText}
+          onChange={(e) => setPushText(e.target.value)}
+          rows={2}
+          maxLength={PUSH_TEXT_MAX + 20}
+          placeholder="Tek net cümle"
+          className={`${fieldCardInputCls} resize-none`}
+        />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="flex items-center gap-1 text-xs font-semibold text-[rgb(var(--color-muted))]">
+            <Clock className="h-3 w-3" />
+            Okuma Süresi
+          </label>
+        </div>
+        <input
+          type="number"
+          min={1}
+          max={30}
+          value={readingTimeMinutes}
+          onChange={(e) => setReadingTimeMinutes(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+          className={`${fieldCardInputCls} w-28`}
+        />
+        <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">dakika</p>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Görsel Alt Metni (ALT)</p>
+        <input
+          type="text"
+          value={imageAlt}
+          onChange={(e) => setImageAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+          maxLength={MEDIA_ALT_MAX}
+          placeholder="Kapak görseli alt metni"
+          className={fieldCardInputCls}
+        />
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Görsel Dosya Adı</p>
+        <input
+          type="text"
+          value={imageFilename}
+          onChange={(e) => setImageFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+          maxLength={MEDIA_FILENAME_MAX}
+          placeholder="ornek-haber.jpg"
+          className={fieldCardInputCls}
+        />
+      </div>
+
+      {additionalImages.filter((img) => img.url && img.url !== thumbnail).map((img, index) => (
+        <div key={img.url} className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+          <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Ek görsel {index + 1} — ALT / dosya adı</p>
+          <input
+            type="text"
+            value={img.alt ?? ''}
+            onChange={(e) => {
+              const alt = e.target.value.slice(0, MEDIA_ALT_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, alt } : item))
+              )
+            }}
+            maxLength={MEDIA_ALT_MAX}
+            placeholder="Görsel alt metni (ALT)"
+            className={fieldCardInputCls}
+          />
+          <input
+            type="text"
+            value={img.filename ?? ''}
+            onChange={(e) => {
+              const filename = e.target.value.slice(0, MEDIA_FILENAME_MAX)
+              setAdditionalImages((prev) =>
+                prev.map((item) => (item.url === img.url ? { ...item, filename } : item))
+              )
+            }}
+            maxLength={MEDIA_FILENAME_MAX}
+            placeholder="Görsel dosya adı"
+            className={fieldCardInputCls}
+          />
+        </div>
+      ))}
+
+      <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-3">
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video Alt Metni</p>
+        <input
+          type="text"
+          value={videoAlt}
+          onChange={(e) => setVideoAlt(e.target.value.slice(0, MEDIA_ALT_MAX))}
+          maxLength={MEDIA_ALT_MAX}
+          placeholder="Video alt metni"
+          className={fieldCardInputCls}
+        />
+        <p className="text-[11px] font-semibold text-[rgb(var(--color-text))]">Video Dosya Adı</p>
+        <input
+          type="text"
+          value={videoFilename}
+          onChange={(e) => setVideoFilename(e.target.value.slice(0, MEDIA_FILENAME_MAX))}
+          maxLength={MEDIA_FILENAME_MAX}
+          placeholder="ornek-haber.mp4"
+          className={fieldCardInputCls}
+        />
+      </div>
+    </div>
+
     <div>
       <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">İçerik</label>
       <textarea
@@ -1096,7 +1578,7 @@ export function AdminNewsEditor({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={thumbnail}
-                alt={imageCaption || title || 'Kapak görseli'}
+                alt={imageAlt || imageCaption || title || 'Kapak görseli'}
                 className="aspect-[16/9] w-full object-cover"
               />
               {imageCaption && (
@@ -1116,6 +1598,16 @@ export function AdminNewsEditor({
             title={title}
             longform={articleLayout === 'longform'}
           />
+          {(socialHeadline || socialStorySummary || socialCaption || pushTitle) && (
+            <div className="mt-6 space-y-2 border-t border-[rgb(var(--color-border))] pt-4 text-xs">
+              <p className="font-bold text-[rgb(var(--color-text))]">Sosyal / bildirim</p>
+              {socialHeadline && <p><span className="text-[rgb(var(--color-muted))]">Manşet:</span> {socialHeadline}</p>}
+              {socialStorySummary && <p><span className="text-[rgb(var(--color-muted))]">Özet:</span> {socialStorySummary}</p>}
+              {socialCaption && <p><span className="text-[rgb(var(--color-muted))]">Açıklama:</span> {socialCaption}</p>}
+              {pushTitle && <p><span className="text-[rgb(var(--color-muted))]">Push:</span> {pushTitle} — {pushText}</p>}
+              <p><span className="text-[rgb(var(--color-muted))]">Okuma:</span> {readingTimeMinutes} dakika</p>
+            </div>
+          )}
         </article>
       </section>
     )}
@@ -1137,10 +1629,14 @@ export function AdminNewsEditor({
     <div className="flex flex-wrap items-end gap-3">
       <div className="min-w-[140px] flex-1">
         <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">Kategori</label>
-        <select
+        <AdminSearchSelect
+          ariaLabel="Kategori"
           value={mainCategoryValue}
-          onChange={(e) => {
-            const next = e.target.value
+          groups={categorySearchGroups}
+          placeholder="Kategori ara"
+          emptyLabel="— seçin —"
+          className={fieldInputCls}
+          onChange={(next) => {
             if (next === YEREL_HABER_CATEGORY_ID) {
               if (!isYerelCategoryTree(categoryId)) {
                 setCategoryId(YEREL_HABER_CATEGORY_ID)
@@ -1157,39 +1653,25 @@ export function AdminNewsEditor({
               setDistrictSlug('')
             } else {
               setCountrySlug('')
+              setCountryCategoryId('')
             }
           }}
-          className={fieldInputCls}
-        >
-          <option value="">— seçin —</option>
-          {getAdminCategoryGroups().map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.parentId ? `↳ ${cat.name}` : cat.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        />
       </div>
       {isYerelCategoryTree(categoryId) && (
         <div className="min-w-[140px] flex-1">
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Yerel alt kategori
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Yerel alt kategori"
             value={yerelCategoryParts.subcategoryId ?? ''}
-            onChange={(e) => setCategoryId(composeYerelCategoryId(e.target.value || null))}
+            groups={yerelSearchGroups}
+            placeholder="Yerel kategori ara"
+            emptyLabel="— Genel yerel —"
             className={fieldInputCls}
-          >
-            <option value="">— Genel yerel —</option>
-            {yerelSubcategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {getYerelSubcategoryShortLabel(cat)}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => setCategoryId(composeYerelCategoryId(next || null))}
+          />
         </div>
       )}
       {isKibrisCategoryTree(categoryId) && (
@@ -1197,18 +1679,15 @@ export function AdminNewsEditor({
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Kıbrıs alt kategori
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Kıbrıs alt kategori"
             value={kibrisCategoryParts.subcategoryId ?? ''}
-            onChange={(e) => setCategoryId(composeKibrisCategoryId(e.target.value || null))}
+            groups={kibrisSearchGroups}
+            placeholder="Kıbrıs kategori ara"
+            emptyLabel="— Genel Kıbrıs —"
             className={fieldInputCls}
-          >
-            <option value="">— Genel Kıbrıs —</option>
-            {kibrisSubcategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {getKibrisSubcategoryShortLabel(cat)}
-              </option>
-            ))}
-          </select>
+            onChange={(next) => setCategoryId(composeKibrisCategoryId(next || null))}
+          />
         </div>
       )}
       <div className="min-w-[140px] flex-1">
@@ -1228,24 +1707,37 @@ export function AdminNewsEditor({
 
     <div className="space-y-2">
       {isWorldCategory ? (
-        /* Dünya kategorisi: sadece ülke seçici */
+        /* Dünya: ülke, sonra o ülkenin genel kategorisi */
         <>
           <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
             Ülke
-            <span className="ml-1 font-normal">(dünya haberleri için)</span>
           </label>
-          <select
+          <AdminSearchSelect
+            ariaLabel="Ülke"
             value={countrySlug}
-            onChange={(e) => setCountrySlug(e.target.value)}
-            className={`${fieldInputCls} focus:ring-emerald-500`}
-          >
-            <option value="">— Ülke seçin —</option>
-            {WORLD_COUNTRIES.map((country) => (
-              <option key={country.slug} value={country.slug}>
-                {country.name}
-              </option>
-            ))}
-          </select>
+            groups={countrySearchGroups}
+            placeholder="Ülke ara"
+            emptyLabel="— Ülke seçin —"
+            className={fieldInputCls}
+            onChange={setCountrySlug}
+          />
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+              {findCountryBySlug(countrySlug)?.name
+                ? `${findCountryBySlug(countrySlug)?.name} kategorileri`
+                : 'Dünya alt kategori'}
+              <span className="ml-1 font-normal">(ülkenin konusu)</span>
+            </label>
+            <AdminSearchSelect
+              ariaLabel="Dünya alt kategori"
+              value={countryCategoryId}
+              groups={worldTopicSearchGroups}
+              placeholder="Dünya gündem, yaşam, asayiş…"
+              emptyLabel="— Dünya alt kategori —"
+              className={fieldInputCls}
+              onChange={setCountryCategoryId}
+            />
+          </div>
         </>
       ) : (
         /* Diğer kategoriler: şehir (Türkiye içi) + ülke (yurt dışı) — birbirini dışlar */
@@ -1285,24 +1777,21 @@ export function AdminNewsEditor({
               Ülke
               <span className="ml-1 font-normal text-[rgb(var(--color-muted))]">(isteğe bağlı · yurt dışı haber ise şehri boş bırakıp seçin)</span>
             </label>
-            <select
+            <AdminSearchSelect
+              ariaLabel="Ülke"
               value={countrySlug}
-              onChange={(e) => {
-                setCountrySlug(e.target.value)
-                if (e.target.value) {
+              groups={countrySearchGroups}
+              placeholder="Ülke ara"
+              emptyLabel="— Ülke seçin (isteğe bağlı) —"
+              className={fieldInputCls}
+              onChange={(next) => {
+                setCountrySlug(next)
+                if (next) {
                   setCitySlug('')
                   setDistrictSlug('')
                 }
               }}
-              className={`${fieldInputCls} focus:ring-emerald-500`}
-            >
-              <option value="">— Ülke seçin (isteğe bağlı) —</option>
-              {WORLD_COUNTRIES.map((country) => (
-                <option key={country.slug} value={country.slug}>
-                  {country.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </>
       )}
@@ -1538,131 +2027,6 @@ export function AdminNewsEditor({
       </div>
     </div>
 
-    <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 space-y-3">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-[rgb(var(--color-text))]">
-        <SearchIcon className="h-3.5 w-3.5 text-emerald-500" />
-        SEO Ayarları
-      </p>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Başlık</label>
-          <span className={`text-[10px] font-mono ${seoTitle.length > 65 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {seoTitle.length}/65
-          </span>
-        </div>
-        <input
-          type="text"
-          value={seoTitle}
-          onChange={(e) => setSeoTitle(e.target.value)}
-          maxLength={80}
-          placeholder="Arama motorları için optimize başlık (55-65 karakter)..."
-          className={fieldCardInputCls}
-        />
-        {!seoTitle && (
-          <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa haber başlığı kullanılır</p>
-        )}
-        {seoTitleUsesFallback && seoTitle && (
-          <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-            Kayıtlı SEO başlığı yok — haber başlığı otomatik dolduruldu
-          </p>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">SEO Açıklama (Meta Description)</label>
-          <span className={`text-[10px] font-mono ${seoDescription.length > 165 ? 'text-red-500' : 'text-[rgb(var(--color-muted))]'}`}>
-            {seoDescription.length}/165
-          </span>
-        </div>
-        <textarea
-          value={seoDescription}
-          onChange={(e) => setSeoDescription(e.target.value)}
-          rows={3}
-          maxLength={200}
-          placeholder="Google SERP snippet açıklaması (145-165 karakter)..."
-          className={`${fieldCardInputCls} resize-none`}
-        />
-        {!seoDescription && (
-          <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">Boş bırakılırsa özet kullanılır</p>
-        )}
-        {seoDescriptionUsesFallback && seoDescription && (
-          <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-            Kayıtlı SEO açıklaması yok — özet/spot otomatik dolduruldu
-          </p>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between">
-          <label className="text-xs font-semibold text-[rgb(var(--color-muted))]">🔑 SEO Anahtar Kelimeler</label>
-          <button
-            type="button"
-            onClick={() => void generateAiKeywords()}
-            disabled={aiKwLoading}
-            className="flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
-          >
-            {aiKwLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-            {aiKwLoading ? 'Üretiliyor...' : '✨ AI Üret'}
-          </button>
-        </div>
-        {seoKeywords.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {seoKeywords.map((kw) => (
-              <span
-                key={kw}
-                className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400"
-              >
-                {kw}
-                <button
-                  type="button"
-                  onClick={() => setSeoKeywords((prev) => prev.filter((k) => k !== kw))}
-                  className="ml-0.5 text-emerald-600 hover:text-red-500"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={seoKeywordInput}
-            onChange={(e) => setSeoKeywordInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault()
-                const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-                if (kws.length) {
-                  setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
-                  setSeoKeywordInput('')
-                }
-              }
-            }}
-            placeholder="kelime1, kelime2... (virgülle ayır)"
-            className="flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const kws = seoKeywordInput.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean)
-              if (kws.length) {
-                setSeoKeywords((prev) => [...new Set([...prev, ...kws])])
-                setSeoKeywordInput('')
-              }
-            }}
-            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Ekle
-          </button>
-        </div>
-        <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
-          Google meta keywords — virgülle ayırarak veya Enter ile ekle ({seoKeywords.length} kelime)
-        </p>
-      </div>
-    </div>
   </div>
   )
 

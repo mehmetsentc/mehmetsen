@@ -222,6 +222,14 @@ const WORLD_TOPIC_EXCLUDED_IDS = new Set([
   'tekrarlayan',
 ])
 
+/** Dünya alt konu etiketi — ulusal adın önüne Dünya gelir (Dünya Gündem, Dünya Asayiş). */
+export function formatWorldTopicName(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'Dünya'
+  if (trimmed.toLocaleLowerCase('tr-TR').startsWith('dünya')) return trimmed
+  return `Dünya ${trimmed}`
+}
+
 /** Dünya → ülke altındaki konu listesi: genel kategoriler, masa kategorileri hariç. */
 export function getWorldTopicGroups(): Array<{ label: string; categories: CategoryDef[] }> {
   return getAdminCategoryGroups()

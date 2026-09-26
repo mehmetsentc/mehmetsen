@@ -12,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star, Zap, MapPin,
   Facebook, Instagram, ChevronDown, ArrowDownWideNarrow,
 } from 'lucide-react'
+import { AdminSearchSelect } from '@/components/admin/AdminSearchSelect'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { MobileContent } from '@/components/admin/mobile/MobileContent'
@@ -27,7 +28,9 @@ import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { ROUTES } from '@/constants/routes'
 import { getCityCategoryName, normalizeCitySlug, TURKISH_PROVINCES } from '@/constants/cities'
 import {
+  formatWorldTopicName,
   getAdminCategoryGroups,
+  getWorldTopicGroups,
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
   getYerelSporSubcategories,
@@ -48,8 +51,10 @@ import {
   composeKibrisCategoryId,
   KIBRIS_HABERLERI_CATEGORY_ID,
 } from '@/constants/config'
+import { WORLD_COUNTRIES, findCountryBySlug } from '@/constants/countries'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
+import { parseApiResponse } from '@/lib/parseApiResponse'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -134,8 +139,9 @@ function AiToolbar({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mode, input: post.title + '\n\n' + (post.summary ?? '') }),
       })
-      if (!res.ok) throw new Error()
-      setResult(await res.json() as AiResult)
+      const data = await parseApiResponse<AiResult & { error?: string }>(res)
+      if (!res.ok) throw new Error(data.error || 'AI servisi kullanılamıyor')
+      setResult(data)
     } catch {
       toast.error('AI servisi kullanılamıyor')
     } finally {
@@ -235,6 +241,40 @@ function SeoPreview({ post }: { post: AdminNewsItem }) {
   )
 }
 
+function foldTr(value: string): string {
+  return value
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/i̇/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+}
+
+const WORLD_TOPIC_SEARCH_GROUPS = [
+  { options: [{ value: '', label: '— Dünya alt kategori —' }] },
+  ...getWorldTopicGroups().map((group) => ({
+    label: group.label,
+    options: group.categories.map((cat) => ({
+      value: cat.id,
+      label: formatWorldTopicName(cat.name),
+    })),
+  })),
+]
+
+const COUNTRY_SEARCH_GROUPS = [
+  { options: [{ value: '', label: '— Ülke —' }] },
+  {
+    label: 'Ülkeler',
+    options: WORLD_COUNTRIES.map((country) => ({
+      value: country.slug,
+      label: country.name,
+    })),
+  },
+]
+
 // ── Inline category changer ────────────────────────────────────────────────
 function CategoryDropdownPortal({
   anchorRef,
@@ -256,7 +296,7 @@ function CategoryDropdownPortal({
     const anchor = anchorRef.current
     if (!anchor) return
     const rect = anchor.getBoundingClientRect()
-    const width = 208
+    const width = 240
     const margin = 8
     const panelMaxH = 256
     const spaceBelow = window.innerHeight - rect.bottom - margin
@@ -312,21 +352,35 @@ function CategoryDropdownPortal({
 function InlineCategoryChanger({
   postId,
   categoryId,
+  countrySlug,
+  countryCategoryId,
+  countryName,
   onCategoryChange,
+  onWorldChange,
   disabled,
   variant = 'metadata',
 }: {
   postId: string
   categoryId: string
-  citySlug?: string | null
+  countrySlug?: string | null
+  countryCategoryId?: string | null
+  countryName?: string | null
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
+  onWorldChange: (
+    postId: string,
+    patch: { countrySlug: string; country: string; countryCategoryId: string }
+  ) => Promise<void>
   disabled?: boolean
   variant?: 'metadata' | 'action'
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [localCategoryId, setLocalCategoryId] = useState(categoryId)
+  const [localCountrySlug, setLocalCountrySlug] = useState(countrySlug?.trim() || '')
+  const [localCountryCategoryId, setLocalCountryCategoryId] = useState(countryCategoryId?.trim() || '')
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const categoryGroups = useMemo(() => getAdminCategoryGroups(), [])
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
@@ -341,11 +395,39 @@ function InlineCategoryChanger({
       ? KIBRIS_HABERLERI_CATEGORY_ID
       : localCategoryId
 
+  const visibleGroups = useMemo(() => {
+    const needle = foldTr(query.trim())
+    if (!needle) return categoryGroups
+    return categoryGroups
+      .map((group) => ({
+        ...group,
+        categories: group.categories.filter((cat) => foldTr(cat.name).includes(needle)),
+      }))
+      .filter((group) => group.categories.length > 0)
+  }, [categoryGroups, query])
+
   useEffect(() => {
     setLocalCategoryId(categoryId)
   }, [categoryId, postId])
 
+  useEffect(() => {
+    setLocalCountrySlug(countrySlug?.trim() || '')
+    setLocalCountryCategoryId(countryCategoryId?.trim() || '')
+  }, [countrySlug, countryCategoryId, postId])
+
+  useEffect(() => {
+    if (!open) return
+    setQuery('')
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 0)
+    return () => window.clearTimeout(timer)
+  }, [open])
+
   const label = useMemo(() => {
+    if (localCategoryId === 'dunya') {
+      const country = findCountryBySlug(localCountrySlug)?.name || countryName?.trim() || ''
+      const topic = localCountryCategoryId ? getCategoryLabel(localCountryCategoryId) : ''
+      return ['Dünya', country, topic].filter(Boolean).join(' · ')
+    }
     if (isYerel && yerelParts.subcategoryId) {
       const sub = yerelSubcategories.find((c) => c.id === yerelParts.subcategoryId)
       return sub ? `Yerel · ${getYerelSubcategoryShortLabel(sub)}` : 'Yerel Haber'
@@ -355,7 +437,18 @@ function InlineCategoryChanger({
       return sub ? `Kıbrıs · ${getKibrisSubcategoryShortLabel(sub)}` : 'Kıbrıs Haberleri'
     }
     return getCategoryLabel(localCategoryId) || localCategoryId || 'Kategori'
-  }, [isYerel, isKibris, yerelParts.subcategoryId, kibrisParts.subcategoryId, yerelSubcategories, kibrisSubcategories, localCategoryId])
+  }, [
+    localCategoryId,
+    localCountrySlug,
+    localCountryCategoryId,
+    countryName,
+    isYerel,
+    isKibris,
+    yerelParts.subcategoryId,
+    kibrisParts.subcategoryId,
+    yerelSubcategories,
+    kibrisSubcategories,
+  ])
 
   const applyCategory = async (next: string) => {
     if (!next || next === localCategoryId || saving) return
@@ -457,13 +550,74 @@ function InlineCategoryChanger({
         </select>
       )}
 
+      {localCategoryId === 'dunya' && (
+        <>
+          <AdminSearchSelect
+            ariaLabel="Ülke"
+            value={localCountrySlug}
+            groups={COUNTRY_SEARCH_GROUPS}
+            placeholder="Ülke ara"
+            emptyLabel="Ülke"
+            disabled={disabled || saving}
+            className="h-7 w-[9.5rem] rounded-md px-2 py-1 text-[10px]"
+            onChange={(next) => {
+              const prevSlug = localCountrySlug
+              const prevTopic = localCountryCategoryId
+              const country = findCountryBySlug(next)?.name || ''
+              setLocalCountrySlug(next)
+              setSaving(true)
+              void onWorldChange(postId, {
+                countrySlug: next,
+                country,
+                countryCategoryId: localCountryCategoryId,
+              }).catch(() => {
+                setLocalCountrySlug(prevSlug)
+                setLocalCountryCategoryId(prevTopic)
+              }).finally(() => setSaving(false))
+            }}
+          />
+          <AdminSearchSelect
+            ariaLabel="Dünya alt kategori"
+            value={localCountryCategoryId}
+            groups={WORLD_TOPIC_SEARCH_GROUPS}
+            placeholder="Dünya gündem, yaşam…"
+            emptyLabel="Dünya konusu"
+            disabled={disabled || saving}
+            className="h-7 w-[11rem] rounded-md px-2 py-1 text-[10px]"
+            onChange={(next) => {
+              const prevTopic = localCountryCategoryId
+              const country = findCountryBySlug(localCountrySlug)?.name || countryName?.trim() || ''
+              setLocalCountryCategoryId(next)
+              setSaving(true)
+              void onWorldChange(postId, {
+                countrySlug: localCountrySlug,
+                country,
+                countryCategoryId: next,
+              }).catch(() => setLocalCountryCategoryId(prevTopic)).finally(() => setSaving(false))
+            }}
+          />
+        </>
+      )}
+
       <CategoryDropdownPortal
         anchorRef={buttonRef}
         open={open}
         onClose={() => setOpen(false)}
         align={isAction ? 'right' : 'left'}
       >
-        {categoryGroups.map((group) => (
+        <div className="sticky top-0 z-10 mb-2 bg-[rgb(var(--color-card))] pb-1">
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Kategori ara"
+            className="h-7 w-full rounded-md border border-[rgb(var(--color-border))] bg-transparent px-2 text-xs text-[rgb(var(--color-text))] outline-none placeholder:text-[rgb(var(--color-muted))] focus:ring-1 focus:ring-blue-500"
+            aria-label="Kategori ara"
+          />
+        </div>
+        {visibleGroups.length === 0 ? (
+          <p className="px-2 py-2 text-[11px] text-[rgb(var(--color-muted))]">Eşleşen kategori yok</p>
+        ) : visibleGroups.map((group) => (
           <div key={group.label} className="mb-2 last:mb-0">
             <p className="px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
               {group.label}
@@ -788,6 +942,7 @@ function NewsRow({
   onMarkDuplicate,
   onEdit,
   onCategoryChange,
+  onWorldChange,
   onCityChange,
   onFeaturedChange,
   onLocalFeaturedChange,
@@ -803,6 +958,10 @@ function NewsRow({
   onMarkDuplicate: (p: AdminNewsItem) => void
   onEdit: (p: AdminNewsItem) => void
   onCategoryChange: (postId: string, categoryId: string) => Promise<void>
+  onWorldChange: (
+    postId: string,
+    patch: { countrySlug: string; country: string; countryCategoryId: string }
+  ) => Promise<void>
   onCityChange: (postId: string, citySlug: string, cityName: string) => Promise<void>
   onFeaturedChange: (postId: string, featured: boolean) => Promise<void>
   onLocalFeaturedChange: (postId: string, localFeatured: boolean) => Promise<void>
@@ -1014,8 +1173,11 @@ function NewsRow({
             <InlineCategoryChanger
               postId={post.id}
               categoryId={post.categoryId ?? ''}
-              citySlug={post.citySlug}
+              countrySlug={post.countrySlug}
+              countryCategoryId={post.countryCategoryId}
+              countryName={post.country || post.location?.country}
               onCategoryChange={onCategoryChange}
+              onWorldChange={onWorldChange}
               disabled={busy}
             />
             <InlineCityChanger
@@ -1160,8 +1322,11 @@ function NewsRow({
             <InlineCategoryChanger
               postId={post.id}
               categoryId={post.categoryId ?? ''}
-              citySlug={post.citySlug}
+              countrySlug={post.countrySlug}
+              countryCategoryId={post.countryCategoryId}
+              countryName={post.country || post.location?.country}
               onCategoryChange={onCategoryChange}
+              onWorldChange={onWorldChange}
               disabled={busy}
               variant="action"
             />
@@ -1986,7 +2151,13 @@ function AdminNewsDesktopPage() {
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
-          ? { ...p, categoryId, isBreaking: categoryId === 'son-dakika' }
+          ? {
+              ...p,
+              categoryId,
+              isBreaking: categoryId === 'son-dakika',
+              countryCategoryId: categoryId === 'dunya' ? p.countryCategoryId : '',
+              ...(categoryId === 'dunya' ? {} : { countrySlug: '', country: 'Türkiye' }),
+            }
           : p
       )
     )
@@ -2002,6 +2173,10 @@ function AdminNewsDesktopPage() {
         body: JSON.stringify({
           categoryId,
           isBreaking: categoryId === 'son-dakika',
+          countryCategoryId: categoryId === 'dunya' ? (prevPost.countryCategoryId ?? '') : '',
+          ...(categoryId === 'dunya'
+            ? {}
+            : { countrySlug: '', country: 'Türkiye' }),
         }),
       })
       if (!res.ok) {
@@ -2012,6 +2187,54 @@ function AdminNewsDesktopPage() {
     } catch (e) {
       setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
       toast.error(e instanceof Error ? e.message : 'Kategori güncellenemedi')
+      throw e
+    }
+  }, [posts])
+
+  const handleWorldChange = useCallback(async (
+    postId: string,
+    patch: { countrySlug: string; country: string; countryCategoryId: string }
+  ) => {
+    const prevPost = posts.find((p) => p.id === postId)
+    if (!prevPost) return
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              categoryId: 'dunya',
+              countrySlug: patch.countrySlug,
+              country: patch.country,
+              countryCategoryId: patch.countryCategoryId,
+            }
+          : p
+      )
+    )
+
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          categoryId: 'dunya',
+          countryCategoryId: patch.countryCategoryId,
+          countrySlug: patch.countrySlug,
+          country: patch.country,
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? 'Dünya kategorisi güncellenemedi')
+      }
+      toast.success('Dünya kategorisi güncellendi')
+    } catch (e) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? prevPost : p)))
+      toast.error(e instanceof Error ? e.message : 'Dünya kategorisi güncellenemedi')
       throw e
     }
   }, [posts])
@@ -2714,6 +2937,7 @@ function AdminNewsDesktopPage() {
                 onMarkDuplicate={handleMarkDuplicate}
                 onEdit={handleEdit}
                 onCategoryChange={handleCategoryChange}
+                onWorldChange={handleWorldChange}
                 onCityChange={handleCityChange}
                 onFeaturedChange={handleFeaturedChange}
                 onLocalFeaturedChange={handleLocalFeaturedChange}
