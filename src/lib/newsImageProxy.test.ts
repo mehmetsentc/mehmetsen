@@ -15,7 +15,8 @@ describe('newsImageProxy', () => {
 
   it('derives a 2x width from a css px size', () => {
     expect(widthHintFromSizes('163px', false)).toBe(326)
-    expect(widthHintFromSizes('(max-width: 768px) 100vw, 768px', true)).toBe(1200)
+    expect(widthHintFromSizes('(max-width: 768px) 100vw, 768px', true)).toBe(828)
+    expect(widthHintFromSizes('(max-width: 768px) 100vw, 720px', false)).toBe(480)
     expect(widthHintFromSizes('100vw', true)).toBe(828)
   })
 

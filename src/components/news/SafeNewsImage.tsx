@@ -34,6 +34,9 @@ function proxiedRemote(src: string, sizes: string | undefined, priority: boolean
   if (!parsePublicImageUrl(src)) return null
   const width = widthHintFromSizes(sizes, Boolean(priority))
   const full = newsImageProxyPath(src, width)
+  if (priority) {
+    return { src: full, srcSet: undefined, sizes }
+  }
   const halfW = Math.max(64, Math.round(width / 2))
   const half = newsImageProxyPath(src, halfW)
   return {

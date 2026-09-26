@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   HomeDiscoveryCard,
@@ -29,6 +29,17 @@ export function FeaturedSlider({
 }: FeaturedSliderProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
+  const [showRest, setShowRest] = useState(false)
+
+  useEffect(() => {
+    const enable = () => setShowRest(true)
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(enable, { timeout: 1800 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const timer = setTimeout(enable, 900)
+    return () => clearTimeout(timer)
+  }, [])
   const cards = items.slice(0, limit).map((item) => {
     const discovery = newsItemToDiscovery(item)
     return {
@@ -48,6 +59,7 @@ export function FeaturedSlider({
   }, [cards.length])
 
   const goTo = useCallback((index: number) => {
+    setShowRest(true)
     const scroller = scrollerRef.current
     if (!scroller) return
     const width = scroller.clientWidth || 1
@@ -79,7 +91,7 @@ export function FeaturedSlider({
           data-testid="home-featured-rail-scroller"
           onScroll={onScroll}
         >
-          {cards.map((item, index) => (
+          {(showRest ? cards : cards.slice(0, 1)).map((item, index) => (
             <div
               key={item.id}
               className="home-featured-rail__card"
@@ -90,7 +102,7 @@ export function FeaturedSlider({
                 index={index}
                 featured
                 layout="headline"
-                priority={index < 2}
+                priority={index === 0}
                 hrefs={hrefs}
                 navSource="featured"
               />

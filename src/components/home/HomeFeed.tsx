@@ -134,7 +134,7 @@ export function HomeFeed({
             <MagazineNewsList
               key={`mag-${block.items[0]?.id ?? index}`}
               items={block.items}
-              priorityCount={index === 0 ? 2 : 0}
+              priorityCount={0}
               loadingMore={!cityMode && loadingMore && index === lastMagazineIndex}
               hasMore={!cityMode && hasMore && index === lastMagazineIndex}
               onLoadMore={

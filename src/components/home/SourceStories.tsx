@@ -1,12 +1,19 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Newspaper } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
-import { StoryViewer } from '@/components/home/StoryViewer'
 import { type SourceStoryGroup } from '@/lib/home/sourceStories'
 import type { NewsItem } from '@/types/newsItem'
+
+const StoryViewer = dynamic(
+  () => import('@/components/home/StoryViewer').then((m) => m.StoryViewer),
+  { ssr: false }
+)
+
+const ABOVE_FOLD_STORIES = 2
 
 type SourceStoriesProps = {
   groups: SourceStoryGroup[]
@@ -34,6 +41,7 @@ function StoryCard({
         alt={item.title}
         fill
         sizes="163px"
+        fetchPriority="low"
         className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
@@ -52,6 +60,17 @@ export function SourceStories({ groups }: SourceStoriesProps) {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [activeGroupIndex, setActiveGroupIndex] = useState(0)
   const [activeItemIndex, setActiveItemIndex] = useState(0)
+  const [showRest, setShowRest] = useState(false)
+
+  useEffect(() => {
+    const enable = () => setShowRest(true)
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(enable, { timeout: 1800 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const timer = setTimeout(enable, 900)
+    return () => clearTimeout(timer)
+  }, [])
 
   const openAt = useCallback((groupIndex: number, itemIndex = 0) => {
     if (groups.length === 0) return
@@ -89,7 +108,7 @@ export function SourceStories({ groups }: SourceStoriesProps) {
             </span>
           </button>
         </div>
-        {groups.map((group, groupIndex) => {
+        {(showRest ? groups : groups.slice(0, ABOVE_FOLD_STORIES)).map((group, groupIndex) => {
           const cover = group.items[0]
           if (!cover) return null
           return (
@@ -103,13 +122,15 @@ export function SourceStories({ groups }: SourceStoriesProps) {
         })}
       </div>
 
-      <StoryViewer
-        groups={groups}
-        open={viewerOpen}
-        initialGroupIndex={activeGroupIndex}
-        initialIndex={activeItemIndex}
-        onClose={() => setViewerOpen(false)}
-      />
+      {viewerOpen ? (
+        <StoryViewer
+          groups={groups}
+          open
+          initialGroupIndex={activeGroupIndex}
+          initialIndex={activeItemIndex}
+          onClose={() => setViewerOpen(false)}
+        />
+      ) : null}
     </section>
   )
 }

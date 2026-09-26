@@ -69,6 +69,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
                   fill
                   sizes="(max-width: 768px) 100vw, 720px"
                   priority={priority && index === 0}
+                  fetchPriority={priority && index === 0 ? 'high' : 'low'}
                   className="object-cover"
                 />
               </Link>
@@ -123,6 +124,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
                 fill
                 sizes="(max-width: 768px) 50vw, 360px"
                 priority={priority}
+                fetchPriority={priority ? 'high' : 'low'}
                 className="object-cover"
               />
             </span>
@@ -149,6 +151,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
           fill
           sizes="(max-width: 768px) 100vw, 720px"
           priority={priority}
+          fetchPriority={priority ? 'high' : 'low'}
           className="object-cover"
         />
         {isVideo ? (

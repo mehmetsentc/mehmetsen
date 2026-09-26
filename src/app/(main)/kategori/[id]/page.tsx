@@ -27,7 +27,7 @@ import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.serve
 import { getActiveScopedCategoryIds } from '@/services/scopedCategoryPresence.server'
 import type { TimelinePost } from '@/types/post'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
-import { getLcpPreload } from '@/lib/lcpImage'
+import { HOME_LCP_WIDTH, getLcpPreload } from '@/lib/lcpImage'
 import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
 
 interface Props {
@@ -437,7 +437,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const lcpImage = initialPosts.find((p) => categoryPostImage(p).length > 10)
   const lcpUrl = lcpImage ? categoryPostImage(lcpImage) : null
-  const lcpPreload = lcpUrl ? getLcpPreload(lcpUrl) : null
+  const lcpPreload = lcpUrl ? getLcpPreload(lcpUrl, HOME_LCP_WIDTH) : null
 
   return (
     <>

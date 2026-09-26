@@ -189,7 +189,7 @@ export function HomeDiscoveryCard({
                     : '(max-width: 1023px) 48vw, 24vw'
               }
               priority={priority}
-              fetchPriority={priority ? 'high' : 'auto'}
+              fetchPriority={priority ? 'high' : 'low'}
               className={
                 isHeadline ? 'object-cover object-[center_18%]' : 'object-cover object-center'
               }

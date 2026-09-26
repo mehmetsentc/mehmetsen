@@ -21,7 +21,7 @@ import {
   shouldEmitSelfCanonical,
 } from '@/services/editorial/publicReadPolicy'
 import { ROUTES } from '@/constants/routes'
-import { getLcpPreload } from '@/lib/lcpImage'
+import { ARTICLE_LCP_WIDTH, getLcpPreload } from '@/lib/lcpImage'
 import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
 import { hasDatabaseUrl } from '@/db'
 import {
@@ -185,7 +185,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
   }
 
   const heroImage = post.coverImageUrl?.trim() || null
-  const lcpPreload = heroImage ? getLcpPreload(heroImage) : null
+  const lcpPreload = heroImage ? getLcpPreload(heroImage, ARTICLE_LCP_WIDTH) : null
 
   return (
     <>

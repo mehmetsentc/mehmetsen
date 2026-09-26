@@ -76,7 +76,6 @@ export function SliderImage({
         width={1600}
         height={900}
         unoptimized
-        style={{ aspectRatio: 'auto' }}
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
         draggable={false}

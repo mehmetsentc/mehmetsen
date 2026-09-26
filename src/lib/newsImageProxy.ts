@@ -11,14 +11,21 @@ export function clampImageWidth(width: number): number {
   return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(width)))
 }
 
-/** CSS sizes hint → pixel width at 2x, capped so we never upscale past 1200. */
+/**
+ * CSS sizes hint → proxy width.
+ * A `100vw` slot is the phone width: 828 for the LCP hero, 480 otherwise.
+ * The desktop px in the same string must not inflate the download.
+ * A fixed card (`163px`) stays at 2× so it stays sharp.
+ */
 export function widthHintFromSizes(sizes: unknown, priority: boolean): number {
   if (typeof sizes === 'string') {
+    if (sizes.includes('100vw') || sizes.includes('vw')) {
+      return priority ? 828 : 480
+    }
     const px = [...sizes.matchAll(/(\d+)px/g)].map((m) => Number(m[1]))
     if (px.length > 0) {
       return clampImageWidth(Math.max(...px) * 2)
     }
-    if (sizes.includes('100vw')) return priority ? 828 : 640
   }
   return priority ? 828 : 480
 }
