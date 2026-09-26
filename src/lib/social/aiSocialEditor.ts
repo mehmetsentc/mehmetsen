@@ -13,6 +13,7 @@
  */
 
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
+import { NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 import { recordDirectDeepSeekObservation } from '@/lib/ai/deepseekClient'
 import { runAI } from '@/lib/ai/router/aiRouter'
@@ -49,8 +50,8 @@ Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
 Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
 ÇİFT HEDEF (ikisi birden zorunlu):
-1) MERAK: Manşet ve post metni feed'de kaydırırken "dur, bunu okuyayım" dedirtsin; çarpıcı detay / beklenmedik açı / güçlü rakam öne çıksın.
-2) BİLGİ + OLGUSAL SADAKAT: Okuyucu manşetten ve caption'dan ne olduğunu doğru anlasın. Kısaltırken anlam taşıyan kelime ASLA düşürme.
+1) MERAK: Manşet feed'de "dur, bunu okuyayım" dedirtsin. Sonucu söyleme; çarpıcı detay, aktör veya eksik parça öne çıksın.
+2) BİLGİ + OLGUSAL SADAKAT: Ne olduğu storySummary ve caption'da tam anlaşılsın. Kısaltırken anlam taşıyan kelime ASLA düşürme.
 
 OLGU SADAKATİ — KESİN:
 - Kaynaktaki sayı, özel isim, yer adı, unvan ve isim tamlamasının baş ismini KORU.
@@ -63,11 +64,12 @@ OLGU SADAKATİ — KESİN:
 - Manşet ve alt açıklama OKUMAYA TEŞVİK EDİCİ olmalı; sıradan haber özeti yapıştırma gibi durmamalı.
 - Merak uyandır, çarpıcı detayı öne çıkar — ama doğruluktan asla taviz verme.
 - Ucuz clickbait / sahte vaat / abartılı şok dili YASAK — NaHaber güvenilir haber tonu korunur.
+- ${NAHABER_SOCIAL_SHARE_STYLE}
 
 KURALLAR:
-- headline: Görsel üzerine basılacak manşet = haber BAŞLIĞININ kısaltılmış gazete biçimi (max ${HEADLINE_MAX} karakter).
-  * Yeni haber / yeni iddia / alakasız slogan UYDURMA. Kişi, yer, sayı, olay BAŞLIKTAKİ ile aynı kalsın.
-  * Sadece kısalt: bağlaç/sıfat at; olguyu değiştirme. "Dikkat çekeyim diye" başka cümle yazmak YASAK.
+- headline: Görsel manşeti (max ${HEADLINE_MAX} karakter). Haber başlığı zaten kancaysa onu koru; sonucu ekleyerek özet cümleye çevirme.
+  * Yeni haber / yeni iddia / alakasız slogan UYDURMA. Kişi, yer, sayı başlıkta varsa koru; listedeki her sonucu dökme.
+  * "Dikkat çekeyim diye" kaynakta olmayan sır uydurmak YASAK.
   * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt. Max 3 satır.
   * TAM kelimeler; yarım cümle / kesik kelime YASAK. Nokta ile bitirme (gazete manşeti gibi).
   * Karakter sınırı için kelime atmak zorundaysan önce sıfat/bağlaç at; sayı + isim tamlamasını ASLA atma.

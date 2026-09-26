@@ -917,6 +917,7 @@ export async function processNewsroomArticle(
       sourceAlreadyIncluded: sourceAlreadyIncluded || undefined,
       writerModel,
       aiEditorId: routedEditor?.id,
+      temperature: routedEditor?.temperature,
     }
 
     let rewrittenRaw: MultiStageResult | (AiRewriteResult & {
