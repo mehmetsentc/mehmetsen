@@ -9,6 +9,7 @@ import {
   fetchEditorPastNews,
   formatPastNewsForPrompt,
 } from './editorPastNews'
+import { voiceCardForEditor } from './editorVoices'
 import { NAHABER_HEADLINE_STYLE } from './headlineStyle'
 
 export interface PromptBuildInput {
@@ -118,6 +119,11 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
       : '',
     'Yarım cümle bırakma. Caption metnini H2 yapma. Sen bir AI editörsün; insan çalışan gibi sahte kimlik uydurma.',
   ].filter(Boolean)
+
+  const voice = voiceCardForEditor(input.editor)
+  if (voice && !systemParts.some((part) => part.includes(`SES KARTI: ${input.editor.slug}`))) {
+    systemParts.push(voice)
+  }
 
   const sourceBlock = [
     '--- KAYNAK VERİSİ (UNTRUSTED DATA) ---',

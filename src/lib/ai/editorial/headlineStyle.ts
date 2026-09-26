@@ -3,19 +3,20 @@
  * Ucuz "ŞOK" clickbait değil; haberi okutacak kanca.
  */
 
-export const NAHABER_HEADLINE_STYLE = `MANŞET (ulusal gazete tarzı — merak + dürüstlük):
-- Manşet haberin tamamını dökmesin; okuyucuyu spot ve gövdeye çeksin
-- Somut kanca koy: kişi, kurum, yer veya çarpıcı sayı — sonra bir pay bırak (neden / nasıl / kim / hangi liste)
-- Aktif, gazete fiili: açıkladı, ifşa etti, yakalandı, rest çekti, uyarı, plan, karar
-- 50-70 karakter; yalnızca ilk harf büyük; nokta veya soru ile bitirme
-- Tıklayınca AYNI olay çıksın; kaynakta yoksa "o sır / gizli gerçek" uydurma
-- "o marka / o isim / o karar" yalnızca kaynakta gerçekten çoklu veya henüz adı sayılmayan bir liste varsa
-- YASAK: ŞOK, SKANDAL, DEHŞET, KORKUNÇ, İNANILMAZ, "bunu görünce", büyük harf spam, yalan vaat
-- "Son dakika" yalnızca gerçek acil gelişmede
-İYİ: "Bakanlık o markaları tek tek ifşa etti"
+export const NAHABER_HEADLINE_STYLE = `MANŞET SÖZLEŞMESİ (profesyonel gazete — merak + dürüstlük):
+- Başlık haberi bitirmez. Okuyucu başlıktan "ne oldu?"yu tam anlatamamalı.
+- 4-9 kelime. Kişi, kurum, yer veya sayıdan birini tut; sonucu, listeyi ve nedeni spota bırak.
+- Soru ve kısa ünlem serbest. Cevap gövdede. Nokta koyma.
+- Üslup SES KARTINA uyar. Yorum, kaynakta duran gerilimin çerçevesidir; yeni olgu değildir.
+- Tıklayınca AYNI olay çıksın. Kaynakta yoksa sır, gizli liste, niyet uydurma.
+- "o marka / o isim" yalnızca kaynakta adı saklanan veya çoklu bir liste varsa.
+- YASAK: ŞOK, SKANDAL, DEHŞET, KORKUNÇ, İNANILMAZ, büyük harf spam, hakaret, yalan vaat.
+- "Son dakika" yalnızca gerçek acil gelişmede. Son dakika masası düz kısa olgu yazar; diğer masalar sonucu saklar.
+İYİ: "O 21 marka listede"
 İYİ: "Zidane'dan Türkiye planı"
-İYİ: "THY'de zam oranı netleşti"
-KÖTÜ: "Tarım Bakanlığı 21 gıda markasını denetim sonucu açıkladı ve vatandaşı uyardı" (her şeyi döktü)
+İYİ: "THY'nin yeni tarifesi"
+KÖTÜ: "Tarım Bakanlığı 21 gıda markasını denetim sonucu açıkladı ve vatandaşı uyardı"
+KÖTÜ: "THY'de zam oranı netleşti" (sonucu söyledi)
 KÖTÜ: "ŞOK! Markalar ifşa oldu"`.trim()
 
 /** Sosyal paylaşım manşeti + özet — OG/story overlay ve feed caption. */

@@ -13,6 +13,7 @@ import {
 } from '@/constants/config'
 import type { AiEditorCapabilities } from '@/types/aiEditor'
 import { DEFAULT_AI_CAPABILITIES } from '@/types/aiEditor'
+import { localEditorVoiceCard } from './editorVoices'
 import {
   GLOBAL_NEWSROOM_RULES,
   SHARED_NEWS_STYLE,
@@ -117,7 +118,9 @@ Her haber: NEREDE? HANGİ İLÇE? HANGİ KURUM? NE OLDU? NE ZAMAN? KAYNAK? DEVAM
 - Belediye / valilik / kaymakamlık / emniyet / jandarma / AFAD adlarını doğru yaz.
 - Ulusal önemdeyse Gündem veya Son Dakika'ya yükseltme bayrağı koy.
 - Son yayınlanan ${cityName} haberlerini tutarlılık için dikkate al; aynı olayı kopyalama.
-Sen bir AI editörsün; sahte insan kimliği / diploma uydurma.`,
+Sen bir AI editörsün; sahte insan kimliği / diploma uydurma.
+
+${localEditorVoiceCard(name, cityName, `yerel-${citySlug}`)}`,
       news: `${SHARED_NEWS_STYLE}
 Üslup: ${cityName} yerel gazeteciliği; kurum adları doğru; yinelenen şehir adı doldurması yok.
 Spot ve başlıkta gereksiz "${cityName}'de şok" kalıbı kullanma.`,

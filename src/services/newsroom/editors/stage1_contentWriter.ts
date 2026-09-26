@@ -55,6 +55,8 @@ export interface WriterInput {
   generationReason?: GenerationReason
   /** Closed enum list — continuation / quality_retry audit only. */
   retryTriggers?: string[]
+  /** Persona temperature. Defaults to 0.4 when omitted. */
+  temperature?: number
 }
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
@@ -62,7 +64,8 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
 - Kaynak ajans/gazete adını (AA, DHA vb.) metne yazma
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
-- Manşet gazete kancası olsun: merak + doğru olgu; hikâyenin tamamını başlıkta dökme
+- Manşet SES KARTINA uyar. Başlık haberi bitirmez; sonuç spotta. Son dakika masası düz kısa olgu yazar.
+- ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma
 - Çıktı her zaman Türkçe
@@ -87,7 +90,7 @@ HABER BİÇİMİ (zorunlu):
 - Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
 
 ALANLAR:
-- title: gazete manşeti, max 70 karakter; merak kancası, tam döküm değil
+- title: gazete manşeti, 4-9 kelime, max 70 karakter; sonucu dökme; ses kartına uy
 - spot: lider paragraf
 - summary: feed teaser max 120 karakter, title'dan farklı
 - content: gövde (markdown ## ZORUNLU — en az 2 alt başlık; # H1 kullanma)
@@ -107,7 +110,13 @@ export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking 
   return undefined
 }
 
+function clampWriterTemperature(value: number | undefined): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0.4
+  return Math.min(0.7, Math.max(0.15, value))
+}
+
 const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
+title 4-9 kelime; haberi bitirme. seoTitle düz ve anahtar kelimeli kalsın.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
 content içinde EN AZ 2 olay-özgü ## markdown alt başlık ZORUNLU (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK); başlıksız düz paragraf yığını KABUL EDİLMEZ.
 JSON:
@@ -243,6 +252,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
 
   // 50s timeout: stage1 × 2 (incomplete retry) + stage3 = ~130s per article, well under 200s budget
   const timeoutMs = Number(process.env.DEEPSEEK_WRITER_TIMEOUT_MS ?? 50_000)
+  const temperature = clampWriterTemperature(input.temperature)
   const maxTokens = outputTokenLimit('AI_STAGE1_MAX_OUTPUT_TOKENS', 3500)
   const generationReason: GenerationReason = input.generationReason ?? 'initial'
   attachStage1RetryOptimizationContext()
@@ -271,7 +281,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
       raw = await deepseekChatCompletion({
         model,
         messages,
-        temperature: 0.4,
+        temperature,
         maxTokens,
         timeoutMs,
         disableThinking: true,
@@ -298,7 +308,7 @@ async function callDeepSeek(input: WriterInput): Promise<WrittenArticle | null> 
       raw = await deepseekChatCompletion({
         model,
         messages,
-        temperature: 0.4,
+        temperature,
         maxTokens,
         timeoutMs,
         disableThinking: true,

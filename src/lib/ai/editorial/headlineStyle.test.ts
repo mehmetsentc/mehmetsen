@@ -5,8 +5,9 @@ describe('NAHABER_HEADLINE_STYLE', () => {
   it('asks for curiosity without cheap shock clickbait', () => {
     expect(NAHABER_HEADLINE_STYLE).toMatch(/merak/)
     expect(NAHABER_HEADLINE_STYLE).toMatch(/ŞOK/)
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/tamamını dökmesin/)
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/Bakanlık o markaları/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/haberi bitirmez/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/O 21 marka listede/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/zam oranı netleşti/)
   })
 
   it('separates social headline from share summary', () => {

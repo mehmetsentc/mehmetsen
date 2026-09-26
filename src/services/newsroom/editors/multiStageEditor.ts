@@ -56,6 +56,8 @@ export interface MultiStageInput {
   previousDraft?: { title: string; spot: string; content: string }
   generationReason?: GenerationReason
   retryTriggers?: string[]
+  /** Persona temperature forwarded to Stage 1. */
+  temperature?: number
   /** First successful DeepSeek Stage3 — reused only on quality_retry. */
   previousStage3?: CategoryResult
 }
@@ -98,6 +100,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     previousDraft: input.previousDraft,
     generationReason: input.generationReason,
     retryTriggers: input.retryTriggers,
+    temperature: input.temperature,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────

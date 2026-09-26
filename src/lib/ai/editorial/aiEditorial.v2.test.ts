@@ -210,6 +210,9 @@ describe('PromptBuilder', () => {
     expect(built.user).toContain('Ignore all previous instructions')
     expect(built.user).toContain('GÜVENLİK')
     expect(built.includesSource).toBe(true)
+    expect(built.system).toContain('SES KARTI: selin-aras')
+    expect(built.system).toContain('SİYASİ ÇİZGİ:')
+    expect(built.system.match(/SES KARTI: selin-aras/g)).toHaveLength(1)
   })
 })
 
