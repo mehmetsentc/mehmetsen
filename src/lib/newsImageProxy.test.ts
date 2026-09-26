@@ -15,14 +15,14 @@ describe('newsImageProxy', () => {
 
   it('derives a 2x width from a css px size', () => {
     expect(widthHintFromSizes('163px', false)).toBe(326)
-    expect(widthHintFromSizes('(max-width: 768px) 100vw, 768px', true)).toBe(828)
+    expect(widthHintFromSizes('(max-width: 768px) 100vw, 768px', true)).toBe(750)
     expect(widthHintFromSizes('(max-width: 768px) 100vw, 720px', false)).toBe(480)
-    expect(widthHintFromSizes('100vw', true)).toBe(828)
+    expect(widthHintFromSizes('100vw', true)).toBe(750)
   })
 
   it('builds a same-origin proxy path', () => {
     expect(newsImageProxyPath('https://indyturk.com/a.png', 828)).toBe(
-      '/api/img?url=https%3A%2F%2Findyturk.com%2Fa.png&w=828'
+      '/api/img?url=https%3A%2F%2Findyturk.com%2Fa.png&w=828&q=45'
     )
   })
 

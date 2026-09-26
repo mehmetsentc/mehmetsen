@@ -1,3 +1,4 @@
+import '@/styles/tokens/skor.css'
 import type { Metadata } from 'next'
 import { NahaberSkorPage } from '@/components/skor/NahaberSkorPage'
 import { getSiteUrl } from '@/lib/seo'

@@ -1,3 +1,5 @@
+import '@/styles/tokens/mobile-category.css'
+import '@/styles/tokens/desktop-category-portal.css'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'

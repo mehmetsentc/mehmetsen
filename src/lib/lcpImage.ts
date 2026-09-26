@@ -5,8 +5,8 @@ import { newsImageProxyPath, parsePublicImageUrl } from '@/lib/newsImageProxy'
 /** Must match FeaturedSlider SafeNewsImage sizes + quality. */
 export const LCP_IMAGE_SIZES = '(max-width: 768px) 100vw, 860px'
 export const LCP_IMAGE_QUALITY = 55
-/** Homepage headline uses sizes="100vw" + priority → this width. */
-export const HOME_LCP_WIDTH = 828
+/** Homepage headline uses sizes="100vw" + priority. Matches a phone at ~1.75×. */
+export const HOME_LCP_WIDTH = 750
 /** Article hero SliderImage requests this width. Category heroes stay at 828. */
 export const ARTICLE_LCP_WIDTH = 1200
 

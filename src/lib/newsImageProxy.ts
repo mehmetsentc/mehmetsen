@@ -20,14 +20,14 @@ export function clampImageWidth(width: number): number {
 export function widthHintFromSizes(sizes: unknown, priority: boolean): number {
   if (typeof sizes === 'string') {
     if (sizes.includes('100vw') || sizes.includes('vw')) {
-      return priority ? 828 : 480
+      return priority ? 750 : 480
     }
     const px = [...sizes.matchAll(/(\d+)px/g)].map((m) => Number(m[1]))
     if (px.length > 0) {
       return clampImageWidth(Math.max(...px) * 2)
     }
   }
-  return priority ? 828 : 480
+  return priority ? 750 : 480
 }
 
 /**
@@ -83,5 +83,5 @@ export function parsePublicImageUrl(raw: string): URL | null {
 
 export function newsImageProxyPath(src: string, width: number): string {
   const w = clampImageWidth(width)
-  return `/api/img?url=${encodeURIComponent(src)}&w=${w}`
+  return `/api/img?url=${encodeURIComponent(src)}&w=${w}&q=45`
 }

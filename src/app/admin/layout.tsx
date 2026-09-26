@@ -1,5 +1,6 @@
 'use client'
 
+import '@/styles/tokens/admin.css'
 import { Suspense, useLayoutEffect } from 'react'
 import { AdminGuard } from '@/components/admin/AdminGuard'
 import { CMSSidebar } from '@/components/admin/CMSSidebar'
