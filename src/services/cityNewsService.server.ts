@@ -7,6 +7,7 @@
  */
 
 import { unstable_cache } from 'next/cache'
+import { chunkIds } from '@/lib/firestoreIn'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import type { NewsItem } from '@/types/newsItem'
@@ -289,27 +290,14 @@ export async function getCityNews(
   return getCityNewsCached(citySlug.trim().toLowerCase(), limit)
 }
 
-/** Firestore `in` max; chunk full city category families (spor + yerel-spor mirrors). */
-const FIRESTORE_IN_LIMIT = 10
-
-function chunkIds(ids: string[], size = FIRESTORE_IN_LIMIT): string[][] {
-  if (ids.length === 0) return []
-  const chunks: string[][] = []
-  for (let i = 0; i < ids.length; i += size) {
-    chunks.push(ids.slice(i, i + size))
-  }
-  return chunks
-}
-
 function newsItemPublishedMs(item: NewsItem): number {
   return Date.parse(item.publishedAt ?? item.createdAt ?? '') || 0
 }
 
 /**
- * City category pages must use the uncapped family (getCategoryFamily), not
- * getHomeFeedCategoryFamily. The homepage helper truncates to 10 national ids
- * and drops yerel mirrors (yerel-spor, yerel-futbol, …) — which is intentional
- * for nahaber.com dual-route rails, but hides CMS “Yerel · Spor” city stories.
+ * City category pages use getCategoryFamily (includes yerel-duyuru).
+ * National pages use getHomeFeedCategoryFamily, which now keeps the same
+ * mirrors and chunks Firestore `in` queries instead of dropping ids.
  */
 const getCityNewsByCategoryCached = unstable_cache(
   async (citySlug: string, categoryId: string, limitCount: number) => {

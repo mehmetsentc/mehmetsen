@@ -74,8 +74,10 @@ export type HomeCategorySlug =
   | 'kibris-haberleri'
   | 'teknoloji'
   | 'bilim'
+  | 'bilgi'
   | 'egitim'
   | 'cevre-iklim'
+  | 'tarim'
   | 'oyun-espor'
   | 'din-inanc'
   | 'saglik'
@@ -83,6 +85,8 @@ export type HomeCategorySlug =
   | 'otomobil'
   | 'gastronomi'
   | 'kultur'
+  | 'muzik'
+  | 'meteoroloji'
   | 'turizm'
   | 'gezi'
   | 'asayis'
@@ -99,8 +103,10 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'kibris-haberleri',
   'teknoloji',
   'bilim',
+  'bilgi',
   'egitim',
   'cevre-iklim',
+  'tarim',
   'oyun-espor',
   'din-inanc',
   'saglik',
@@ -108,6 +114,8 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
   'otomobil',
   'gastronomi',
   'kultur',
+  'muzik',
+  'meteoroloji',
   'turizm',
   'gezi',
   'asayis',
@@ -122,6 +130,8 @@ export const HOME_CATEGORY_RAILS: HomeCategorySlug[] = [
 export const HOME_CATEGORY_RAIL_FETCH = 5
 export const HOME_CATEGORY_RAIL_DISPLAY = 5
 export const HOME_CATEGORY_RAIL_MIN = 4
+/** Masaüstü gazete gövdesi — her kategori bandında son 10 haber. */
+export const HOME_CATEGORY_PORTAL_FETCH = 10
 
 /**
  * Masaüstü hero/alt bölümler için Gündem'den ekstra haber gerekir.
@@ -138,10 +148,15 @@ export const HOME_CATEGORY_DESKTOP_CARDS = 4
  */
 export const HOME_FEED_SSR_RAILS: HomeCategorySlug[] = [
   'gundem',
+  'siyaset',
   'spor',
   'ekonomi',
   'teknoloji',
   'dunya',
+  'asayis',
+  'kultur',
+  'saglik',
+  'yasam',
 ]
 
 /** Desktop ikinci kategori satırı — lazy fetch. */
@@ -150,6 +165,7 @@ export const HOME_FEED_DESKTOP_LAZY_RAILS: HomeCategorySlug[] = [
   'kultur',
   'turizm',
   'gezi',
+  'yasam',
 ]
 
 /** @deprecated Artık pool-first; geriye dönük importlar için tutuluyor. */

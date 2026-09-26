@@ -36,6 +36,10 @@ const NEWS_CATEGORIES = [
   { id: 'kultur',   label: 'Kültür',    emoji: '🎭' },
   { id: 'gastronomi',label:'Gastronomi',emoji: '🍽️' },
   { id: 'otomobil', label: 'Otomobil',  emoji: '🚗' },
+  { id: 'tarim',    label: 'Tarım',     emoji: '🌾' },
+  { id: 'bilgi',    label: 'Bilgi',     emoji: '📘' },
+  { id: 'muzik',    label: 'Müzik',     emoji: '🎵' },
+  { id: 'meteoroloji', label: 'Meteoroloji', emoji: '🌦️' },
   { id: 'yerel-haber',label:'Yerel',    emoji: '📍' },
 ]
 

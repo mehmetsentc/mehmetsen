@@ -649,7 +649,7 @@ export function PublisherContentEditorClient({
                   }}
                 >
                   <option value="">Seçin</option>
-                  {DEFAULT_CATEGORIES.filter((c) => !c.standalone).map((c) => (
+                  {DEFAULT_CATEGORIES.filter((c) => c.id !== 'tekrarlayan').map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

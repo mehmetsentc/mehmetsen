@@ -8,6 +8,11 @@ import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import {
+  CATEGORY_STORY_WINDOW_MS,
+  groupNewsByCategory,
+  type CategoryStoryGroup,
+} from '@/lib/home/categoryStories'
+import {
   canAppearInHomepage,
   classifyPublicRead,
   comparePublicReadPriority,
@@ -21,6 +26,7 @@ import {
   isExcludedFromHomepageMainSlots,
 } from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily, isYerelHomepageExcluded } from '@/constants/config'
+import { fetchDocsByCategoryFamily } from '@/services/categoryFamilyQuery.server'
 import { pickTrending, pickTrendFeed, rankFeedHotAware } from '@/lib/feedRanking'
 import {
   addTurkeyDays,
@@ -74,16 +80,11 @@ async function queryPublishedByCategory(
 
   try {
     const family = getHomeFeedCategoryFamily(categoryId)
-    const baseQuery = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-    const snap = await (
-      family.length > 1
-        ? baseQuery.where('categoryId', 'in', family)
-        : baseQuery.where('categoryId', '==', categoryId)
-    )
-      .orderBy('publishedAt', 'desc')
-      .limit(itemLimit)
-      .get()
-    return snap.docs
+    return await fetchDocsByCategoryFamily({
+      collection: db.collection(NEWS_COLLECTION),
+      family: family.length > 0 ? family : [categoryId],
+      limitCount: itemLimit,
+    })
   } catch (error) {
     const code = (error as { code?: number }).code
     if (code === 8) {
@@ -657,22 +658,18 @@ const getHomeFeedRailItemsCached = unstable_cache(
     try {
       const db = getAdminFirestore()
       const family = getHomeFeedCategoryFamily(category)
-      const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-      const snap = await (
-        family.length > 1
-          ? base.where('categoryId', 'in', family)
-          : base.where('categoryId', '==', category)
-      )
-        .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
-        .get()
-      return mapAdminDocs(snap.docs)
+      const docs = await fetchDocsByCategoryFamily({
+        collection: db.collection(NEWS_COLLECTION),
+        family: family.length > 0 ? family : [category],
+        limitCount,
+      })
+      return mapAdminDocs(docs)
     } catch (error) {
       console.warn('[newsService.server] getHomeFeedRailItems failed:', category, error)
       return []
     }
   },
-  ['home-feed-rail-items-v1'],
+  ['home-feed-rail-items-v2'],
   { revalidate: 300, tags: ['home-feed'] }
 )
 
@@ -767,27 +764,61 @@ const getHomeCategoryItemsCached = unstable_cache(
     try {
       const db = getAdminFirestore()
       const family = getHomeFeedCategoryFamily(category)
-      const base = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-      const snap = await (
-        family.length > 1
-          ? base.where('categoryId', 'in', family)
-          : base.where('categoryId', '==', category)
-      )
-        .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
-        .get()
-      return mapAdminDocs(snap.docs)
+      const docs = await fetchDocsByCategoryFamily({
+        collection: db.collection(NEWS_COLLECTION),
+        family: family.length > 0 ? family : [category],
+        limitCount,
+      })
+      return mapAdminDocs(docs)
     } catch (error) {
       console.warn('[newsService.server] getHomeCategoryItems failed:', category, error)
       return []
     }
   },
-  ['home-category-items-v2'],
+  ['home-category-items-v3'],
   { revalidate: 300, tags: ['home-feed'] }
 )
 
 export async function getHomeCategoryItems(category: string, limitCount = 10): Promise<NewsItem[]> {
   return getHomeCategoryItemsCached(category, limitCount)
+}
+
+const CATEGORY_STORY_FETCH_LIMIT = 240
+
+const getCategoryStoryPoolCached = unstable_cache(
+  async () => {
+    try {
+      const since = Date.now() - CATEGORY_STORY_WINDOW_MS
+      const snap = await getAdminFirestore()
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .where('publishedAt', '>=', since)
+        .orderBy('publishedAt', 'desc')
+        .limit(CATEGORY_STORY_FETCH_LIMIT)
+        .get()
+      return mapAdminDocs(snap.docs)
+    } catch (error) {
+      console.warn('[newsService.server] category story pool failed:', error)
+      return []
+    }
+  },
+  ['category-story-pool-v1'],
+  { revalidate: 60, tags: ['home-feed'] }
+)
+
+function isCategoryStoryEligible(item: NewsItem): boolean {
+  const cat = (item.category === 'son-dakika' ? item.originalCategoryId : item.category)?.trim() ?? ''
+  if (cat && isYerelHomepageExcluded(cat)) return false
+  return canAppearInHomepage(classifyPublicRead(newsItemReadMeta(item)))
+}
+
+/** Last-24h category rings for the mobile home story. Order follows newest publish. */
+export async function getCategoryStoryGroups(now = Date.now()): Promise<CategoryStoryGroup[]> {
+  const pool = (await getCategoryStoryPoolCached()).filter(isCategoryStoryEligible)
+  return groupNewsByCategory(pool, now).map((group) => ({
+    ...group,
+    items: slimNewsItemsForFeed(group.items),
+  }))
 }
 
 const getHomeLocalNewsCached = unstable_cache(
@@ -843,17 +874,13 @@ async function hasPublishedBefore(beforeMs: number, categoryId?: string): Promis
 
     if (categoryId) {
       const family = getHomeFeedCategoryFamily(categoryId)
-      q = db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where(
-          'categoryId',
-          family.length > 1 ? 'in' : '==',
-          family.length > 1 ? family : categoryId
-        )
-        .where('publishedAt', '<', beforeMs)
-        .orderBy('publishedAt', 'desc')
-        .limit(1)
+      const docs = await fetchDocsByCategoryFamily({
+        collection: db.collection(NEWS_COLLECTION),
+        family: family.length > 0 ? family : [categoryId],
+        limitCount: 1,
+        publishedAtLt: beforeMs,
+      })
+      return docs.length > 0
     }
 
     const snap = await q.get()
@@ -901,18 +928,14 @@ async function fetchPublishedInDay(
 
   if (categoryId) {
     const family = getHomeFeedCategoryFamily(categoryId)
-    q = db
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .where(
-        'categoryId',
-        family.length > 1 ? 'in' : '==',
-        family.length > 1 ? family : categoryId
-      )
-      .where('publishedAt', '>=', startMs)
-      .where('publishedAt', '<', endMs)
-      .orderBy('publishedAt', 'desc')
-      .limit(DAY_FEED_MAX_ITEMS)
+    const docs = await fetchDocsByCategoryFamily({
+      collection: db.collection(NEWS_COLLECTION),
+      family: family.length > 0 ? family : [categoryId],
+      limitCount: DAY_FEED_MAX_ITEMS,
+      publishedAtGte: startMs,
+      publishedAtLt: endMs,
+    })
+    return mapAdminDocs(docs).map(slimNewsItemForFeed)
   }
 
   const snap = await q.get()

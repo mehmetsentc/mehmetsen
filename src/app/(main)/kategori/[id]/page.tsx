@@ -8,9 +8,11 @@ import { CategoryStructuredData } from '@/components/category/CategoryStructured
 import { CityFeedPageClient } from '@/components/city/CityFeedPageClient'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { fetchDocsByCategoryFamily } from '@/services/categoryFamilyQuery.server'
 import { Collections } from '@/lib/firebase/collections'
 import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
+import { getResolvedCitySlug } from '@/lib/cityHost'
+import { getHardcodedTenant } from '@/lib/tenant'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { isKibrisCategoryTree } from '@/constants/config'
@@ -31,6 +33,15 @@ import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+function citySlugFromSearchParams(
+  params?: Record<string, string | string[] | undefined>
+) {
+  const raw = params?.tenant
+  const slug = typeof raw === 'string' ? raw.toLowerCase() : ''
+  return slug ? getHardcodedTenant(slug)?.provinceSlug ?? null : null
 }
 
 function mapNewsDocToTimelinePost(doc: {
@@ -118,16 +129,14 @@ async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]
             .orderBy('publishedAt', 'desc')
             .limit(40)
             .get()
-        : await (() => {
+        : await (async () => {
             const family = getHomeFeedCategoryFamily(categoryId)
-            return (
-              family.length > 1
-                ? baseQ.where('categoryId', 'in', family)
-                : baseQ.where('categoryId', '==', categoryId)
-            )
-              .orderBy('publishedAt', 'desc')
-              .limit(20)
-              .get()
+            const docs = await fetchDocsByCategoryFamily({
+              collection: db.collection(Collections.NEWS),
+              family: family.length > 0 ? family : [categoryId],
+              limitCount: 20,
+            })
+            return { docs }
           })()
 
     let posts = snap.docs.map((doc) => mapNewsDocToTimelinePost(doc))
@@ -224,6 +233,9 @@ const CATEGORY_SEO_TITLES: Record<string, string> = {
   'siyaset': 'Siyaset Haberleri',
   'saglik': 'Sağlık Haberleri',
   'bilim': 'Bilim Haberleri',
+  'bilgi': 'Bilgi ve Rehber Haberleri',
+  'tarim': 'Tarım Haberleri',
+  'muzik': 'Müzik Haberleri',
   'egitim': 'Eğitim Haberleri',
   'kultur': 'Kültür Sanat Haberleri',
   'magazin': 'Magazin Haberleri',
@@ -262,6 +274,9 @@ const CATEGORY_SEO_DESCRIPTIONS: Record<string, string> = {
   'gastronomi': 'Yemek tarifleri, restoran incelemeleri, gastronomi trendleri ve mutfak kültürü.',
   'otomobil': 'Otomobil haberleri, yeni model incelemeleri, otomotiv sektörü ve trafik güncellemeleri.',
   'meteoroloji': 'Hava durumu tahminleri, meteorolojik uyarılar ve iklim verileri.',
+  'muzik': 'Müzik haberleri, konserler, albümler ve sanatçı gelişmeleri.',
+  'tarim': 'Tarım haberleri, hasat, hayvancılık, desteklemeler ve tarımsal üretim.',
+  'bilgi': 'Vatandaş rehberleri, resmi işlem anlatımları ve açıklayıcı bilgi haberleri.',
   'din-inanc': 'Din ve inanç haberleri, Diyanet açıklamaları, dini günler ve manevi yaşam.',
   'oyun-espor': 'Oyun ve espor haberleri, turnuva sonuçları, yeni çıkan oyunlar ve incelemeler.',
   'kibris-haberleri': 'Kuzey Kıbrıs ve Kıbrıs adasından son haberler, siyaset ve toplum.',
@@ -298,11 +313,12 @@ function getCategoryKeywords(cat: CategoryDef, siteName: string): string[] {
   return base
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { id } = await params
+  const query = searchParams ? await searchParams : {}
 
   // City subdomain: city-scoped title (middleware rewrite may be unavailable).
-  const citySlug = await getCitySlugFromHeaders()
+  const citySlug = citySlugFromSearchParams(query) ?? (await getResolvedCitySlug())
   if (citySlug) {
     const resolved = resolveCityCategoryRoute(id)
     if (!resolved) return { title: 'Kategori', robots: { index: false, follow: false } }
@@ -365,12 +381,13 @@ export function generateStaticParams() {
 /** Host-aware (city vs national) — must not serve a shared static shell across subdomains. */
 export const dynamic = 'force-dynamic'
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { id } = await params
+  const query = searchParams ? await searchParams : {}
 
   // City subdomain: city-scoped Ana Feed layout (siyaset family incl. yerel-siyaset).
   // Middleware rewrite to /city-site/kategori is best-effort; this path is host-aware.
-  const citySlug = await getCitySlugFromHeaders()
+  const citySlug = citySlugFromSearchParams(query) ?? (await getResolvedCitySlug())
   if (citySlug) {
     const resolved = resolveCityCategoryRoute(id)
     if (!resolved) notFound()

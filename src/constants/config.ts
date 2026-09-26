@@ -71,7 +71,9 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'yerel-enerji',   name: 'Yerel Enerji',   slug: 'yerel-enerji',   iconName: 'bolt',         color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-teknoloji', name: 'Yerel Teknoloji', slug: 'yerel-teknoloji', iconName: 'cpu',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-bilim',    name: 'Yerel Bilim',    slug: 'yerel-bilim',    iconName: 'flask',        color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-bilgi',    name: 'Yerel Bilgi',    slug: 'yerel-bilgi',    iconName: 'book-marked',  color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-cevre-iklim', name: 'Yerel Çevre & İklim', slug: 'yerel-cevre-iklim', iconName: 'tree-pine', color: '#059669', parentId: 'yerel-haber' },
+  { id: 'yerel-tarim',    name: 'Yerel Tarım',    slug: 'yerel-tarim',    iconName: 'sprout',       color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-oyun-espor', name: 'Yerel Oyun & Espor', slug: 'yerel-oyun-espor', iconName: 'gamepad-2', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-din-inanc', name: 'Yerel Din & İnanç', slug: 'yerel-din-inanc', iconName: 'moon-star', color: '#059669', parentId: 'yerel-haber' },
   { id: 'yerel-tiyatro',  name: 'Yerel Tiyatro',  slug: 'yerel-tiyatro',  iconName: 'theater',      color: '#059669', parentId: 'yerel-haber' },
@@ -115,7 +117,9 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'kibris-enerji',   name: 'Kıbrıs Enerji',   slug: 'kibris-enerji',   iconName: 'bolt',         color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-teknoloji', name: 'Kıbrıs Teknoloji', slug: 'kibris-teknoloji', iconName: 'cpu',       color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-bilim',    name: 'Kıbrıs Bilim',    slug: 'kibris-bilim',    iconName: 'flask',        color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-bilgi',    name: 'Kıbrıs Bilgi',    slug: 'kibris-bilgi',    iconName: 'book-marked',  color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-cevre-iklim', name: 'Kıbrıs Çevre & İklim', slug: 'kibris-cevre-iklim', iconName: 'tree-pine', color: '#0E7490', parentId: 'kibris-haberleri' },
+  { id: 'kibris-tarim',    name: 'Kıbrıs Tarım',    slug: 'kibris-tarim',    iconName: 'sprout',       color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-oyun-espor', name: 'Kıbrıs Oyun & Espor', slug: 'kibris-oyun-espor', iconName: 'gamepad-2', color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-din-inanc', name: 'Kıbrıs Din & İnanç', slug: 'kibris-din-inanc', iconName: 'moon-star', color: '#0E7490', parentId: 'kibris-haberleri' },
   { id: 'kibris-tiyatro',  name: 'Kıbrıs Tiyatro',  slug: 'kibris-tiyatro',  iconName: 'theater',      color: '#0E7490', parentId: 'kibris-haberleri' },
@@ -136,8 +140,10 @@ export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { id: 'teknoloji',   name: 'Teknoloji',   slug: 'teknoloji',   iconName: 'cpu',          color: '#3B82F6' },
   { id: 'saglik',      name: 'Sağlık',      slug: 'saglik',      iconName: 'heart',        color: '#EC4899' },
   { id: 'bilim',       name: 'Bilim',       slug: 'bilim',       iconName: 'flask',        color: '#14B8A6' },
+  { id: 'bilgi',       name: 'Bilgi',       slug: 'bilgi',       iconName: 'book-marked',  color: '#0369A1' },
   { id: 'egitim',      name: 'Eğitim',      slug: 'egitim',      iconName: 'graduation-cap', color: '#2563EB' },
   { id: 'cevre-iklim', name: 'Çevre & İklim', slug: 'cevre-iklim', iconName: 'tree-pine', color: '#15803D' },
+  { id: 'tarim',       name: 'Tarım',       slug: 'tarim',       iconName: 'sprout',       color: '#65A30D' },
   { id: 'oyun-espor',  name: 'Oyun & Espor', slug: 'oyun-espor', iconName: 'gamepad-2',    color: '#7C3AED' },
   { id: 'din-inanc',   name: 'Din & İnanç', slug: 'din-inanc',  iconName: 'moon-star',    color: '#0F766E' },
   { id: 'magazin',     name: 'Magazin',     slug: 'magazin',     iconName: 'star',         color: '#F472B6' },
@@ -199,14 +205,37 @@ const ADMIN_CATEGORY_GROUP_DEFS: Array<{ label: string; ids: string[] }> = [
   { label: 'Genel', ids: ['trend', 'gundem', 'yerel-haber', 'siyaset', 'dunya', 'kibris-haberleri', 'asayis', 'son-dakika'] },
   { label: 'Ekonomi', ids: ['ekonomi'] },
   { label: 'Spor', ids: ['spor'] },
-  { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim', 'oyun-espor'] },
-  { label: 'Eğitim & Toplum', ids: ['egitim', 'cevre-iklim', 'din-inanc'] },
+  { label: 'Teknoloji & Bilim', ids: ['teknoloji', 'bilim', 'bilgi', 'oyun-espor'] },
+  { label: 'Eğitim & Toplum', ids: ['egitim', 'cevre-iklim', 'tarim', 'din-inanc'] },
   { label: 'Yaşam & Turizm', ids: ['saglik', 'yasam', 'astroloji', 'gastronomi', 'turizm', 'gezi', 'otomobil', 'meteoroloji'] },
   { label: 'Müzik', ids: ['muzik'] },
   { label: 'Kültür & Magazin', ids: ['kultur', 'magazin'] },
   { label: 'Tarih', ids: ['tarih'] },
   { label: 'Özel', ids: ['etkinlikler'] },
 ]
+
+const WORLD_TOPIC_EXCLUDED_IDS = new Set([
+  'dunya',
+  'yerel-haber',
+  'kibris-haberleri',
+  'trend',
+  'tekrarlayan',
+])
+
+/** Dünya → ülke altındaki konu listesi: genel kategoriler, masa kategorileri hariç. */
+export function getWorldTopicGroups(): Array<{ label: string; categories: CategoryDef[] }> {
+  return getAdminCategoryGroups()
+    .map((group) => ({
+      label: group.label,
+      categories: group.categories.filter(
+        (cat) =>
+          !WORLD_TOPIC_EXCLUDED_IDS.has(cat.id) &&
+          !cat.id.startsWith('yerel-') &&
+          !cat.id.startsWith('kibris-')
+      ),
+    }))
+    .filter((group) => group.categories.length > 0)
+}
 
 export function getAdminCategoryGroups(): Array<{ label: string; categories: CategoryDef[] }> {
   const used = new Set<string>()
@@ -228,7 +257,18 @@ export function getAdminCategoryGroups(): Array<{ label: string; categories: Cat
     }),
   })).filter((g) => g.categories.length > 0)
 
-  const remaining = DEFAULT_CATEGORIES.filter((c) => !used.has(c.id))
+  const attachGeoChildren = (label: string, parentId: string) => {
+    const children = getSubcategories(parentId).filter((cat) => !used.has(cat.id))
+    if (children.length === 0) return
+    for (const cat of children) used.add(cat.id)
+    groups.push({ label, categories: children })
+  }
+  attachGeoChildren('Yerel', YEREL_HABER_CATEGORY_ID)
+  attachGeoChildren('Kıbrıs', KIBRIS_HABERLERI_CATEGORY_ID)
+
+  const remaining = DEFAULT_CATEGORIES.filter(
+    (c) => !used.has(c.id) && c.id !== TEKRARLAYAN_CATEGORY_ID
+  )
   if (remaining.length > 0) {
     groups.push({ label: 'Diğer', categories: remaining })
   }
@@ -336,6 +376,8 @@ export const YEREL_SUBCATEGORY_IDS = [
   'yerel-gezi',
   'yerel-tarih',
   'yerel-oyun-espor',
+  'yerel-tarim',
+  'yerel-bilgi',
   'yerel-duyuru',
 ] as const
 
@@ -387,6 +429,8 @@ export const KIBRIS_SUBCATEGORY_IDS = [
   'kibris-gezi',
   'kibris-tarih',
   'kibris-oyun-espor',
+  'kibris-tarim',
+  'kibris-bilgi',
   'kibris-duyuru',
 ] as const
 
@@ -500,6 +544,7 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-bilim': 'bilim',
   'yerel-egitim': 'egitim',
   'yerel-cevre-iklim': 'cevre-iklim',
+  'yerel-tarim': 'tarim',
   'yerel-din-inanc': 'din-inanc',
   'yerel-gastronomi': 'gastronomi',
   'yerel-otomobil': 'otomobil',
@@ -508,6 +553,7 @@ export const YEREL_TO_NATIONAL_CATEGORY_MAP: Record<string, string> = {
   'yerel-gezi': 'gezi',
   'yerel-tarih': 'tarih',
   'yerel-oyun-espor': 'oyun-espor',
+  'yerel-bilgi': 'bilgi',
 }
 
 /** National branch categories → yerel subcategory (sport, ekonomi alt dalları vb.). */
@@ -759,33 +805,21 @@ export function getCategoryFamily(parentId: string): string[] {
 }
 
 /**
- * Ana sayfa kategori rayları — standalone alt kategoriler dahil
- * (ör. Spor rayında futbol/basketbol haberleri de görünsün).
- * Firestore `in` limiti: en fazla 10 id.
- * YEREL_HOMEPAGE_EXCLUDED_IDS (ör. yerel-duyuru) ana sayfa rayına girmez;
- * istenen parentId'nin kendisi sorgulanıyorsa korunur.
- *
- * Limit aşımında ulusal alt dallar (futbol/basketbol…) öncelikli tutulur;
- * dual-route haberler ulusal categoryId ile yazıldığı için yerel ayna id'ler
- * ikincil sıradadır (yerel-futbol vb. şişirmesin).
+ * Ana sayfa ve ulusal kategori sayfası aile sorgusu.
+ * Standalone alt kategoriler ve yerel aynalar dahildir.
+ * Firestore `in` tavanı sorgu katmanında parçalanır (`chunkIds`); burada kesilmez.
+ * YEREL_HOMEPAGE_EXCLUDED_IDS (yerel-duyuru) ebeveyn rayına girmez;
+ * istenen id'nin kendisi sorgulanıyorsa korunur.
+ * yerel-gundem bu haritada yoktur — ulusal gündeme çift yazılmaz.
  */
 export function getHomeFeedCategoryFamily(parentId: string): string[] {
   const base = [parentId, ...getSubcategories(parentId).map((c) => c.id)]
   const yerelIds = getYerelIdsMappedToCategoryFamily(base).filter(
     (id) => !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)
   )
-  const combined = [...new Set([...base, ...yerelIds])].filter(
+  return [...new Set([...base, ...yerelIds])].filter(
     (id) => id === parentId || !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)
   )
-  if (combined.length <= 10) return combined
-
-  // Firestore `in` max 10 — parent + national children first, then yerel mirrors.
-  const ordered = [
-    parentId,
-    ...base.filter((id) => id !== parentId && !YEREL_HOMEPAGE_EXCLUDED_IDS.has(id)),
-    ...yerelIds.filter((id) => id !== parentId && !base.includes(id)),
-  ]
-  return [...new Set(ordered)].slice(0, 10)
 }
 
 /** True when category should stay off national homepage rails / featured filler. */
@@ -820,6 +854,10 @@ export const SIDEBAR_MAIN_CATEGORY_IDS = [
   'otomobil',
   'oyun-espor',
   'din-inanc',
+  'muzik',
+  'meteoroloji',
+  'tarim',
+  'bilgi',
 ] as const
 
 /**
@@ -845,6 +883,10 @@ export const TOP_NAV_CATEGORY_IDS = [
   'cevre-iklim',
   'oyun-espor',
   'din-inanc',
+  'muzik',
+  'meteoroloji',
+  'tarim',
+  'bilgi',
   'yasam',
   'gastronomi',
   'otomobil',
@@ -921,17 +963,21 @@ export function getSiteNavItems(): SiteNavItem[] {
     categoryLink('egitim'),
     categoryLink('saglik'),
     categoryLink('cevre-iklim'),
+    categoryLink('tarim'),
     categoryLink('oyun-espor'),
     categoryLink('din-inanc'),
     categoryLink('turizm'),
     categoryLink('gezi'),
     categoryLink('teknoloji'),
     categoryLink('bilim'),
+    categoryLink('bilgi'),
+    categoryLink('meteoroloji'),
     categoryLink('yasam'),
     categoryLink('astroloji') ? { ...categoryLink('astroloji')!, indent: true } : null,
     categoryLink('gastronomi'),
     categoryLink('otomobil'),
     categoryLink('kultur'),
+    categoryLink('muzik'),
     categoryLink('sinema') ? { ...categoryLink('sinema')!, indent: true } : null,
     categoryLink('tiyatro') ? { ...categoryLink('tiyatro')!, indent: true } : null,
     { id: 'teve', label: 'Teve', href: ROUTES.REELS, indent: true },

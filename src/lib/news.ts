@@ -13,6 +13,7 @@ import { docToNewsItem, sortNewsByDate } from '@/lib/newsItemUtils'
 import { isNationalBreakingEligible, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
 import { getHomeFeedCategoryFamily } from '@/constants/config'
+import { chunkIds, FIRESTORE_IN_LIMIT } from '@/lib/firestoreIn'
 import type { NewsItem } from '@/types/newsItem'
 import type { NaEvent } from '@/types/event'
 
@@ -136,6 +137,33 @@ export async function getFeaturedNews(limitCount = 10): Promise<NewsItem[]> {
 export async function getNewsByCategory(category: string, limitCount = 10): Promise<NewsItem[]> {
   const family = getHomeFeedCategoryFamily(category)
   const scanLimit = Math.max(limitCount * 2, 20)
+
+  if (family.length > FIRESTORE_IN_LIMIT) {
+    const snaps = await Promise.all(
+      chunkIds(family).map((chunk) =>
+        getDocs(
+          query(
+            collection(db, NEWS_COLLECTION),
+            where('status', '==', 'published'),
+            chunk.length > 1
+              ? where('categoryId', 'in', chunk)
+              : where('categoryId', '==', chunk[0]),
+            orderBy('publishedAt', 'desc'),
+            limit(scanLimit)
+          )
+        )
+      )
+    )
+    const items = sortNewsByDate(
+      snaps.flatMap((snap) => mapDocs(snap.docs))
+    )
+    const seen = new Set<string>()
+    return items.filter((item) => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    }).slice(0, limitCount)
+  }
 
   if (family.length > 1) {
     const items = await queryPublished(

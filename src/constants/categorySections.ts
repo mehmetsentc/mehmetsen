@@ -18,7 +18,7 @@ const CUSTOM_SECTION_ORDER: Partial<Record<string, readonly string[]>> = {
     'spor',
     'dunya-kupasi-2026',
   ],
-  kultur: ['sinema', 'tiyatro', 'konser', 'festival', 'kultur'],
+  kultur: ['sinema', 'dizi-tv', 'tiyatro', 'festival', 'kultur'],
   ekonomi: ['borsa', 'kripto', 'finans-piyasa', 'emlak-konut', 'enerji', 'is-kariyer', 'ekonomi'],
   yasam: ['astroloji', 'moda', 'anne-cocuk', 'dekorasyon', 'iliskiler', 'yasam'],
 }

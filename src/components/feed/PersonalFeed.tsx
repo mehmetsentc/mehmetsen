@@ -8,6 +8,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 import { db, Collections } from '@/lib/firebase/firestore'
+import { chunkIds, FIRESTORE_IN_LIMIT } from '@/lib/firestoreIn'
 import { useAuth } from '@/hooks/useAuth'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
 import { TimelineItem } from '@/components/feed/TimelineItem'
@@ -19,25 +20,62 @@ import type { TimelinePost } from '@/types/post'
 
 const PAGE_SIZE = 15
 
-// Firestore 'in' max 30 — kullanıcı max 13 kategori seçebildiği için güvende
 async function fetchPersonalPage(
   categories: string[],
   lastDoc?: QueryDocumentSnapshot
-): Promise<{ posts: TimelinePost[]; lastDoc: QueryDocumentSnapshot | null }> {
-  const constraints = [
-    where('status', '==', 'published'),
-    where('categoryId', 'in', categories),
-    orderBy('publishedAt', 'desc'),
-    limit(PAGE_SIZE),
-    ...(lastDoc ? [startAfter(lastDoc)] : []),
-  ]
-  const snap = await getDocs(query(collection(db, Collections.NEWS), ...constraints))
-  const posts = snap.docs
-    .map(d => newsDocToPost(d.id, d.data() as NewsDocument))
+): Promise<{ posts: TimelinePost[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+  const chunks = categories.length > FIRESTORE_IN_LIMIT ? chunkIds(categories) : [categories]
+  const cursorValue = lastDoc ? (lastDoc.data().publishedAt as unknown) : undefined
+  const useChunkCursor = chunks.length > 1
+
+  const snaps = await Promise.all(
+    chunks.map((chunk) => {
+      const constraints = [
+        where('status', '==', 'published'),
+        chunk.length > 1
+          ? where('categoryId', 'in', chunk)
+          : where('categoryId', '==', chunk[0]),
+        ...(useChunkCursor && cursorValue != null ? [where('publishedAt', '<', cursorValue)] : []),
+        orderBy('publishedAt', 'desc'),
+        limit(PAGE_SIZE),
+        ...(!useChunkCursor && lastDoc ? [startAfter(lastDoc)] : []),
+      ]
+      return getDocs(query(collection(db, Collections.NEWS), ...constraints))
+    })
+  )
+
+  const merged = new Map<string, QueryDocumentSnapshot>()
+  for (const snap of snaps) {
+    for (const docSnap of snap.docs) {
+      if (!merged.has(docSnap.id)) merged.set(docSnap.id, docSnap)
+    }
+  }
+  const docs = [...merged.values()].sort((a, b) => {
+    const ms = (value: unknown) => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value
+      if (typeof value === 'string') {
+        const asNumber = Number(value)
+        if (Number.isFinite(asNumber) && value.trim() !== '') return asNumber
+        const parsed = Date.parse(value)
+        return Number.isFinite(parsed) ? parsed : 0
+      }
+      if (value && typeof value === 'object' && 'toMillis' in value) {
+        const toMillis = (value as { toMillis?: () => number }).toMillis
+        if (typeof toMillis === 'function') return toMillis.call(value)
+      }
+      return 0
+    }
+    return ms(b.data().publishedAt) - ms(a.data().publishedAt)
+  })
+  const page = docs.slice(0, PAGE_SIZE)
+  const posts = page
+    .map((d) => newsDocToPost(d.id, d.data() as NewsDocument))
     .filter((p): p is NonNullable<typeof p> => p !== null) as TimelinePost[]
+  const hitCap = snaps.some((snap) => snap.docs.length === PAGE_SIZE)
   return {
     posts,
-    lastDoc: snap.docs[snap.docs.length - 1] ?? null,
+    lastDoc: page[page.length - 1] ?? null,
+    hasMore: hitCap || docs.length > PAGE_SIZE,
   }
 }
 
@@ -97,10 +135,10 @@ export function PersonalFeed() {
     didFetchRef.current = true
     setLoading(true)
     fetchPersonalPage(categories)
-      .then(({ posts: p, lastDoc }) => {
+      .then(({ posts: p, lastDoc, hasMore: more }) => {
         setPosts(p)
         lastDocRef.current = lastDoc
-        setHasMore(p.length === PAGE_SIZE)
+        setHasMore(more)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -110,7 +148,7 @@ export function PersonalFeed() {
     if (loadingMore || !hasMore || !categories.length) return
     setLoadingMore(true)
     try {
-      const { posts: more, lastDoc } = await fetchPersonalPage(
+      const { posts: more, lastDoc, hasMore: stillMore } = await fetchPersonalPage(
         categories,
         lastDocRef.current ?? undefined
       )
@@ -119,7 +157,7 @@ export function PersonalFeed() {
         return [...prev, ...more.filter(p => !ids.has(p.id))]
       })
       lastDocRef.current = lastDoc
-      setHasMore(more.length === PAGE_SIZE)
+      setHasMore(stillMore)
     } finally {
       setLoadingMore(false)
     }

@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Wheat, BookMarked, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -50,6 +50,9 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   gezi: Map,
   otomobil: Car,
   meteoroloji: CloudRain,
+  tarim: Wheat,
+  bilgi: BookMarked,
+  muzik: Music,
   kultur: Palette,
   sinema: Film,
   tiyatro: Theater,
@@ -61,7 +64,9 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
 
 function buildSidebarCategories() {
   return getAdminCategoryGroups().flatMap((group) =>
-    group.categories.map((cat) => ({
+    group.categories
+      .filter((cat) => cat.parentId !== 'yerel-haber' && cat.parentId !== 'kibris-haberleri')
+      .map((cat) => ({
       id: cat.id,
       label: cat.parentId ? `↳ ${cat.name}` : cat.name,
       icon: CATEGORY_ICON_MAP[cat.id] ?? Tag,

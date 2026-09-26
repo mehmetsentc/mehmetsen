@@ -32,11 +32,15 @@ describe('kibris subcategories', () => {
     expect(getKibrisSubcategoryShortLabel(picker.find((c) => c.id === 'kibris-asayis')!)).toBe('Asayiş')
   })
 
-  it('admin main picker keeps only Kıbrıs parent (subs via alt dropdown)', () => {
-    const genel = getAdminCategoryGroups().find((g) => g.label === 'Genel')
+  it('admin main picker keeps only Kıbrıs parent in Genel and lists subs under Kıbrıs', () => {
+    const groups = getAdminCategoryGroups()
+    const genel = groups.find((g) => g.label === 'Genel')
     const ids = genel?.categories.map((c) => c.id) ?? []
     expect(ids).toContain(KIBRIS_HABERLERI_CATEGORY_ID)
     expect(ids.some((id) => id.startsWith('kibris-') && id !== KIBRIS_HABERLERI_CATEGORY_ID)).toBe(false)
+    const kibris = groups.find((g) => g.label === 'Kıbrıs')
+    expect(kibris?.categories.some((c) => c.id === 'kibris-spor')).toBe(true)
+    expect(groups.some((g) => g.label === 'Diğer' && g.categories.some((c) => c.id.startsWith('kibris-')))).toBe(false)
   })
 
   it('resolve/compose round-trip', () => {

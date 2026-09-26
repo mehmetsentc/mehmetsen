@@ -32,6 +32,12 @@ const CATEGORY_ALIASES: Record<string, string> = {
   weather: 'meteoroloji',
   meteorology: 'meteoroloji',
   'hava-durumu': 'meteoroloji',
+  agriculture: 'tarim',
+  farming: 'tarim',
+  tarim: 'tarim',
+  bilgi: 'bilgi',
+  knowledge: 'bilgi',
+  explainer: 'bilgi',
   general: 'gundem',
   local: 'yerel-haber',
   'local-news': 'yerel-haber',
@@ -297,13 +303,15 @@ ADIM 4 — UZMAN KATEGORİ (yalnızca ULUSAL birincil haberler)
   • Sağlık (ulusal hastalık/ilaç/pandemi/aşı/WHO/sağlık bakanlığı) → "saglik"
   • Bilim (araştırma/keşif/NASA/uzay bilimi/iklim bilimi) → "bilim"
   • Hava durumu / MGM uyarısı / fırtına / sıcaklık rekoru → "meteoroloji"
+  • Tarım Bakanlığı / hasat / hayvancılık / çiftçi desteklemesi / rekolte → "tarim" (restoran/şef → gastronomi)
+  • Vatandaş rehberi / “nedir-nasıl” / resmi işlem anlatımı → "bilgi" (keşif → bilim, sınav → egitim)
   • Yemek/restoran/şef/tarif/Michelin/MasterChef (ulusal) → "gastronomi"
   • Turizm/otel/tatil/sezon/uçak bileti/seyahat rehberi → "turizm"
   • Gezi/rota/kamp/doğa yürüyüşü/seyahat deneyimi → "gezi"
   • Asayiş/suç/operasyon (çok şehir / ulusal) → "asayis"
   • Araba/araç/TOGG/trafik/motosiklet → "otomobil" (KURAL: trafik kazası tek şehir → yerel-asayis)
-  • Sinema/tiyatro/opera/müze/edebiyat/ödül töreni → "kultur"
-  • Konser/müzik etkinliği/albüm çıkışı → "kultur"
+  • Sinema/tiyatro/dizi-TV/opera/müze/edebiyat/ödül töreni → "kultur" veya "sinema" / "dizi-tv" / "tiyatro"
+  • Konser/albüm/sanatçı → "muzik" veya "konser" / "sanatci-haberleri" (kultur değil)
   • Ünlü özel hayatı/evlilik-boşanma/dizi fragmanı/dedikodu → "magazin"
   • Emlak/konut (Türkiye geneli / piyasa) → "emlak-konut"
   • Çevre/iklim (ulusal politika / ülke çapı) → "cevre-iklim"
@@ -383,7 +391,7 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
   * content başlıkla birebir aynı cümleyle başlamamalıdır.`
 
 const HEADLINE_RULES = `ALAN TANIMLARI:
-- title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Vurucu ama yanıltmayan. Soru işareti ile bitirme.
+- title: Gazete manşeti. Maks 65 karakter. Yalnızca ilk harf büyük. Merak kancası + doğru olgu; hikâyeyi başlıkta bitirme. ŞOK/SKANDAL/soru işareti yasak.
 - spot: Lider paragraf (haber girişi). Kim+ne+nerede+ne zaman+neden. 2-4 cümle, 60-120 kelime. title'dan farklı bilgi ver.
 - summary: Feed teaser. Maks 120 karakter. title ve spot'tan TAMAMEN farklı ilgi çekici detay.
 - seoTitle: Google arama başlığı. 55-65 karakter. Anahtar kelimeler öne.

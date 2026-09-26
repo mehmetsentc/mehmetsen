@@ -18,6 +18,7 @@ import { cityCategoryId, slugifyCity, toFirestoreLocation, type PostLocation } f
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { getCityCategoryName } from '@/constants/cities'
 import { getHomeFeedCategoryFamily } from '@/constants/config'
+import { chunkIds, FIRESTORE_IN_LIMIT } from '@/lib/firestoreIn'
 import { filterPostsByFeedSource } from '@/lib/feedSource'
 import { YEREL_HABER_CATEGORY, isYerelHaberEligible } from '@/lib/feedRanking'
 import { isExcludedFromCityLocalPrimaryFeed } from '@/lib/gastronomyRouting'
@@ -293,6 +294,82 @@ export const postService = {
         : options?.categoryId === 'son-dakika'
           ? Math.min(pageLimit * 3, 60)
           : pageLimit
+    const family =
+      options?.categoryId && options.categoryId !== 'son-dakika'
+        ? getHomeFeedCategoryFamily(options.categoryId)
+        : []
+    if (family.length > FIRESTORE_IN_LIMIT) {
+      try {
+        const cursorValue = lastDoc ? (lastDoc.data().publishedAt as unknown) : undefined
+        const snaps = await Promise.all(
+          chunkIds(family).map((chunk) => {
+            const constraints: Parameters<typeof query>[1][] = [
+              where('status', '==', 'published'),
+            ]
+            const cityFilter =
+              options?.citySlug?.trim() ||
+              (options?.categoryId === YEREL_HABER_CATEGORY
+                ? options?.preferredCitySlug?.trim()
+                : '')
+            if (cityFilter) {
+              constraints.push(where('citySlug', '==', cityFilter))
+            }
+            constraints.push(
+              chunk.length > 1
+                ? where('categoryId', 'in', chunk)
+                : where('categoryId', '==', chunk[0])
+            )
+            if (cursorValue != null) constraints.push(where('publishedAt', '<', cursorValue))
+            constraints.push(orderBy('publishedAt', 'desc'), limit(fetchLimit))
+            return withTimeout(
+              enqueueFirestoreRead(() =>
+                getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
+              ),
+              QUERY_TIMEOUT_MS,
+              'news-timeline-chunk'
+            )
+          })
+        )
+        const merged = new Map<string, QueryDocumentSnapshot>()
+        for (const snap of snaps) {
+          for (const docSnap of snap.docs) {
+            if (!merged.has(docSnap.id)) merged.set(docSnap.id, docSnap)
+          }
+        }
+        const docs = [...merged.values()].sort((a, b) => {
+          const ms = (value: unknown) => {
+            if (typeof value === 'number' && Number.isFinite(value)) return value
+            if (typeof value === 'string') {
+              const asNumber = Number(value)
+              if (Number.isFinite(asNumber) && value.trim() !== '') return asNumber
+              const parsed = Date.parse(value)
+              return Number.isFinite(parsed) ? parsed : 0
+            }
+            return 0
+          }
+          return ms(b.data().publishedAt) - ms(a.data().publishedAt)
+        })
+        const page = docs.slice(0, fetchLimit)
+        let posts = mapNewsSnapshot(page).filter((p) => isPubliclyVisibleStatus(p.status))
+        if (options?.feedSource) posts = filterPostsByFeedSource(posts, options.feedSource)
+        posts = applyTimelinePostFilters(posts, options).slice(0, pageLimit)
+        const hitCap = snaps.some((snap) => snap.docs.length === fetchLimit)
+        return {
+          posts,
+          lastDoc: page[page.length - 1] ?? null,
+          hasMore: hitCap || docs.length > fetchLimit,
+        }
+      } catch (newsError) {
+        const errCode = (newsError as { code?: number }).code
+        if (errCode === 8) {
+          console.warn('[postService] Firestore RESOURCE_EXHAUSTED — returning empty timeline')
+          return { posts: [], lastDoc: null, hasMore: false }
+        }
+        console.warn('[postService] chunked news timeline failed, returning empty:', newsError)
+        return { posts: [], lastDoc: null, hasMore: false }
+      }
+    }
+
     const { constraints: baseConstraints, filterAuthorOnServer } =
       buildNewsTimelineQueryConstraints(options, fetchLimit)
 
@@ -474,28 +551,40 @@ export const postService = {
 
     const { getHomeFeedCategoryFamily } = await import('@/constants/config')
     const family = getHomeFeedCategoryFamily(categoryId)
+    const chunks = family.length > FIRESTORE_IN_LIMIT ? chunkIds(family) : [family]
 
     try {
-      const constraints = [
-        where('hasVideo', '==', true),
-        where('status', '==', 'published'),
-        ...(family.length > 1
-          ? [where('categoryId', 'in', family)]
-          : [where('categoryId', '==', categoryId)]),
-        orderBy('createdAt', 'desc'),
-        limit(REELS_PAGE_SIZE),
-        ...(lastDoc ? [startAfter(lastDoc)] : []),
-      ]
-      const snap = await withTimeout(
-        getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)),
-        QUERY_TIMEOUT_MS,
-        `getVideoFeedByCategory-${categoryId}`
+      const snaps = await Promise.all(
+        chunks.map((chunk) => {
+          const constraints = [
+            where('hasVideo', '==', true),
+            where('status', '==', 'published'),
+            ...(chunk.length > 1
+              ? [where('categoryId', 'in', chunk)]
+              : [where('categoryId', '==', chunk[0] ?? categoryId)]),
+            orderBy('createdAt', 'desc'),
+            limit(REELS_PAGE_SIZE),
+            ...(chunks.length === 1 && lastDoc ? [startAfter(lastDoc)] : []),
+          ]
+          return withTimeout(
+            getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints)),
+            QUERY_TIMEOUT_MS,
+            `getVideoFeedByCategory-${categoryId}`
+          )
+        })
       )
-      const posts = mapReelsDocs(snap.docs)
+      const merged = new Map<string, QueryDocumentSnapshot>()
+      for (const snap of snaps) {
+        for (const docSnap of snap.docs) {
+          if (!merged.has(docSnap.id)) merged.set(docSnap.id, docSnap)
+        }
+      }
+      const docs = [...merged.values()].slice(0, REELS_PAGE_SIZE)
+      const posts = mapReelsDocs(docs)
       return {
         posts,
-        lastDoc: snap.docs[snap.docs.length - 1] ?? null,
-        hasMore: snap.docs.length >= REELS_PAGE_SIZE,
+        lastDoc: docs[docs.length - 1] ?? null,
+        hasMore: snaps.some((snap) => snap.docs.length >= REELS_PAGE_SIZE),
       }
     } catch (err) {
       console.warn(`[postService] getVideoFeedByCategory(${categoryId}) failed:`, err)

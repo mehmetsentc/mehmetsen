@@ -61,6 +61,18 @@ const CATEGORY_ALIASES: Record<string, string> = {
   gastronomi: 'gastronomi',
   yemek: 'gastronomi',
   food: 'gastronomi',
+  tarim: 'tarim',
+  agriculture: 'tarim',
+  farming: 'tarim',
+  bilgi: 'bilgi',
+  explainer: 'bilgi',
+  muzik: 'muzik',
+  music: 'muzik',
+  meteoroloji: 'meteoroloji',
+  weather: 'meteoroloji',
+  tenis: 'tenis',
+  tennis: 'tenis',
+  karate: 'karate',
   otomobil: 'otomobil',
   automobile: 'otomobil',
   car: 'otomobil',
@@ -660,7 +672,17 @@ function isWorldCupFinalNationalWin(text: string): boolean {
 }
 
 /** Spor alt kategorileri kümesi — birden fazla fonksiyon kullanır */
-export const SPOR_SUBS = new Set(['futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures', 'dunya-kupasi-2026'])
+export const SPOR_SUBS = new Set([
+  'futbol',
+  'basketbol',
+  'voleybol',
+  'hentbol',
+  'atletizm',
+  'gures',
+  'tenis',
+  'karate',
+  'dunya-kupasi-2026',
+])
 
 export function normalizeNewsroomCategory(raw?: string): string {
   const value = raw?.trim().toLowerCase() ?? ''
@@ -748,15 +770,19 @@ export function resolveCategoryForEditor(
   // Trust AI content analysis over the source-origin hint.
   // Exception: forced subcategories that belong to the same parent as the AI category
   // (e.g., AI says 'spor', forced says 'futbol' → prefer the more specific 'futbol').
-  const KULTUR_SUBS = new Set(['sinema', 'tiyatro', 'konser', 'festival'])
+  const KULTUR_SUBS = new Set(['sinema', 'dizi-tv', 'tiyatro', 'festival'])
+  const MUZIK_SUBS = new Set(['konser', 'sanatci-haberleri'])
   const isAiSpor = normalizedAi === 'spor' || SPOR_SUBS.has(normalizedAi)
   const isForcedSpor = normalizedForced === 'spor' || SPOR_SUBS.has(normalizedForced)
   const isAiKultur = normalizedAi === 'kultur' || KULTUR_SUBS.has(normalizedAi)
   const isForcedKultur = normalizedForced === 'kultur' || KULTUR_SUBS.has(normalizedForced)
+  const isAiMuzik = normalizedAi === 'muzik' || MUZIK_SUBS.has(normalizedAi)
+  const isForcedMuzik = normalizedForced === 'muzik' || MUZIK_SUBS.has(normalizedForced)
 
   // Both in the same family → prefer the more specific forced subcategory
   if (isAiSpor && isForcedSpor) return normalizedForced
   if (isAiKultur && isForcedKultur) return normalizedForced
+  if (isAiMuzik && isForcedMuzik) return normalizedForced
 
   // AI and source disagree on different domains → trust AI
   return normalizedAi
@@ -950,7 +976,11 @@ export function validateCategoryClassification(
     categoryId !== 'yerel-haber' &&
     categoryId !== 'spor' &&
     categoryId !== 'siyaset' &&
-    categoryId !== 'son-dakika'
+    categoryId !== 'son-dakika' &&
+    categoryId !== 'tarim' &&
+    categoryId !== 'bilgi' &&
+    categoryId !== 'muzik' &&
+    categoryId !== 'meteoroloji'
   ) {
     overrides.push(`tech-keywords → teknoloji (was ${categoryId})`)
     categoryId = 'teknoloji'
@@ -962,6 +992,18 @@ export function validateCategoryClassification(
     overrides.push(`siyaset-keywords → siyaset (was ekonomi)`)
     categoryId = 'siyaset'
     categoryConfidence = Math.max(categoryConfidence, 82)
+  }
+
+  // ── Tarım override: bakanlık / rekolte / çiftçi gündeme veya gastronomiye düşmesin
+  const TARIM_TERMS = [
+    'tarım bakan', 'tarim bakan', 'rekolte', 'çiftçi destek', 'ciftci destek',
+    'tarımsal destek', 'tarimsal destek', 'zirai', 'hasat dönemi', 'hasat donemi',
+  ]
+  const tarimSignal = TARIM_TERMS.some((term) => text.toLocaleLowerCase('tr-TR').includes(term))
+  if (tarimSignal && !sports && (categoryId === 'gundem' || categoryId === 'gastronomi')) {
+    overrides.push(`tarim-keywords → tarim (was ${categoryId})`)
+    categoryId = 'tarim'
+    categoryConfidence = Math.max(categoryConfidence, 84)
   }
 
   // ── Ekonomi override: clear financial signal but AI picked gundem

@@ -416,6 +416,26 @@ async function seedOne(spec: SeedEditorSpec, createdBy: string | null): Promise<
   return 'created'
 }
 
+export async function seedEditorsBySlugs(
+  slugs: string[],
+  createdBy: string | null = 'system'
+): Promise<{ created: string[]; updated: string[]; skipped: string[]; missing: string[] }> {
+  const want = new Set(slugs)
+  const created: string[] = []
+  const updated: string[] = []
+  const skipped: string[] = []
+  const seen = new Set<string>()
+  for (const spec of allSeedEditorSpecs()) {
+    if (!want.has(spec.slug)) continue
+    seen.add(spec.slug)
+    const result = await seedOne(spec, createdBy)
+    if (result === 'created') created.push(spec.slug)
+    else if (result === 'updated') updated.push(spec.slug)
+    else skipped.push(spec.slug)
+  }
+  return { created, updated, skipped, missing: slugs.filter((slug) => !seen.has(slug)) }
+}
+
 export async function seedDefaultAiEditors(createdBy: string | null = 'system'): Promise<{
   created: string[]
   updated: string[]

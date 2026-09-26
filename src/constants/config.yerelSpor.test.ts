@@ -61,27 +61,27 @@ describe('yerel spor alt kategorileri', () => {
     expect(getNationalCategoryForYerelSubcategory('yerel-motor-sporlari')).toBe('spor')
   })
 
-  it('keeps spor homepage family ≤10 with national children first', () => {
+  it('keeps spor homepage family complete, national children first', () => {
     const home = getHomeFeedCategoryFamily('spor')
-    expect(home.length).toBeLessThanOrEqual(10)
     expect(home[0]).toBe('spor')
     expect(home).toContain('futbol')
     expect(home).toContain('basketbol')
-    expect(home).not.toContain('yerel-spor')
+    expect(home).toContain('yerel-spor')
+    expect(home).toContain('yerel-futbol')
+    expect(home.length).toBeGreaterThan(10)
     expect(getCategoryFamily('spor')).toEqual(
       expect.arrayContaining(['yerel-spor', 'yerel-futbol', 'yerel-basketbol'])
     )
   })
 
-  it('city spor family includes yerel mirrors dropped by homepage truncation', () => {
+  it('city spor family matches homepage mirrors (no 10-id drop)', () => {
     const city = getCategoryFamily('spor')
     const home = getHomeFeedCategoryFamily('spor')
     expect(city).toContain('yerel-spor')
     expect(city).toContain('yerel-futbol')
     expect(city).toContain('yerel-yuzme')
-    expect(city.length).toBeGreaterThan(home.length)
-    // Homepage truncation is why city feeds must use getCategoryFamily, not home.
-    expect(home).not.toContain('yerel-spor')
+    expect(home).toContain('yerel-spor')
+    expect(home).toEqual(expect.arrayContaining(city))
   })
 
   it('includes yerel sport branches in spor category family for presence', () => {

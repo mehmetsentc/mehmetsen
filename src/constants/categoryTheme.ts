@@ -31,6 +31,10 @@ const ACCENT_OVERRIDES: Record<string, string> = {
   magazin: '#DB2777',
   trend: '#FF6B35',
   bilim: '#14B8A6',
+  bilgi: '#0369A1',
+  tarim: '#65A30D',
+  muzik: '#D946EF',
+  meteoroloji: '#0EA5E9',
   'yerel-haber': '#0D9488',
 }
 
@@ -46,6 +50,10 @@ const KICKER_BY_ID: Record<string, string> = {
   yasam: 'Yaşam',
   magazin: 'Magazin',
   bilim: 'Bilim',
+  bilgi: 'Bilgi',
+  tarim: 'Tarım',
+  muzik: 'Müzik',
+  meteoroloji: 'Hava durumu',
   'yerel-haber': 'Yakınınızda',
 }
 

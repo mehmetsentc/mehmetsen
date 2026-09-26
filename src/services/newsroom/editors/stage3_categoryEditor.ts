@@ -11,6 +11,7 @@
  * Dedike AI çağrısı: tek prompt, net kurallar, net çıktı.
  */
 
+import { DEFAULT_CATEGORIES, TEKRARLAYAN_CATEGORY_ID } from '@/constants/config'
 import type { WrittenArticle } from './stage1_contentWriter'
 import {
   applyAstrologyCategoryOverride,
@@ -117,9 +118,12 @@ DİĞER KATEGORİLER:
 - teknoloji: Apple/Google/Meta/AI/yazılım/siber/uzay/drone/robot
 - saglik: Hastalık, ilaç, aşı, pandemi, WHO, sağlık bakanlığı
 - bilim: Araştırma, keşif, NASA, iklim bilimi
+- bilgi: Vatandaş rehberi, “nedir/nasıl”, resmi işlem anlatımı. Keşif → bilim. Sınav/okul → egitim
+- tarim: Tarım Bakanlığı, hasat, hayvancılık, çiftçi, destekleme, rekolte. Restoran/şef → gastronomi
 - dunya: Türkiye DIŞINDA gerçekleşen tüm haberler
 - magazin: Ünlü kişisel hayatı, evlilik/boşanma, ilişki, skandal. isBreaking: false ZORUNLU.
-- kultur: Sinema, tiyatro, opera, müze, edebiyat, ödül töreni, konser, müzik
+- kultur: Sinema, tiyatro, dizi, opera, müze, edebiyat, ödül töreni. Konser/albüm → muzik (konser veya sanatci-haberleri)
+- muzik: Konser, albüm, sanatçı. Dizi/film → kultur alt dalları
 - gastronomi: Yemek, restoran, şef, Michelin, MasterChef, tarif
 - otomobil: Araç modeli, TOGG, elektrikli araç. Trafik KAZASI → yerel-haber.
 - meteoroloji: Hava durumu, MGM uyarısı, fırtına, don, sel (Türkiye geneli uyarılar)
@@ -196,7 +200,7 @@ ${input.forcedCategoryId ? `\nÖnerilen kategori: ${input.forcedCategoryId} (iç
 
 JSON formatında kategori bilgisi döndür:
 {
-  "categoryId": "string (dunya-kupasi-2026|futbol|basketbol|voleybol|hentbol|atletizm|gures|spor|son-dakika|siyaset|ekonomi|borsa|kripto|finans-piyasa|emlak-konut|enerji|is-kariyer|teknoloji|saglik|bilim|egitim|cevre-iklim|oyun-espor|din-inanc|dunya|kibris-haberleri|magazin|kultur|sinema|tiyatro|konser|festival|yasam|astroloji|moda|anne-cocuk|dekorasyon|iliskiler|gastronomi|otomobil|meteoroloji|turizm|gezi|tarih|asayis|yerel-haber|yerel-emlak|yerel-saglik|yerel-cevre-iklim|yerel-gundem|yerel-ekonomi|yerel-gastronomi|yerel-yasam|yerel-asayis|yerel-siyaset|yerel-egitim|yerel-duyuru|gundem)",
+  "categoryId": "katalog id. Örnekler: gundem, tarim, bilgi, muzik, dizi-tv, tenis, karate, meteoroloji, yerel-tarim, yerel-bilgi, kibris-tarim, kibris-bilgi. Listede olmayan id geçersizdir.",
   "isBreaking": boolean,
   "confidence": number (0-100),
   "city": "string veya null (haberin geçtiği Türk şehri, kaynak gazete şehri DEĞİL)",
@@ -207,59 +211,10 @@ JSON formatında kategori bilgisi döndür:
 }`
 }
 
-const VALID_CATEGORIES = new Set([
-  'son-dakika', 'siyaset', 'gundem', 'yerel-haber', 'dunya', 'kibris-haberleri',
-  'ekonomi', 'borsa', 'kripto', 'finans-piyasa', 'emlak-konut', 'enerji', 'is-kariyer',
-  'teknoloji', 'saglik', 'bilim', 'egitim', 'cevre-iklim', 'oyun-espor', 'din-inanc',
-  'spor', 'futbol', 'basketbol', 'voleybol', 'hentbol', 'atletizm', 'gures', 'dunya-kupasi-2026',
-  'magazin', 'kultur', 'sinema', 'tiyatro', 'konser', 'festival',
-  'yasam', 'astroloji', 'moda', 'anne-cocuk', 'dekorasyon', 'iliskiler',
-  'gastronomi', 'otomobil', 'meteoroloji', 'turizm', 'gezi', 'tarih', 'asayis',
-  'yerel-asayis', 'yerel-gundem', 'yerel-siyaset', 'yerel-spor', 'yerel-futbol',
-  'yerel-basketbol', 'yerel-voleybol', 'yerel-ekonomi', 'yerel-emlak', 'yerel-saglik',
-  'yerel-cevre-iklim', 'yerel-egitim', 'yerel-yasam', 'yerel-gastronomi', 'yerel-duyuru',
-  'yerel-kultur', 'yerel-magazin', 'yerel-etkinlik', 'yerel-meteoroloji', 'yerel-turizm',
-  'kibris-asayis',
-  'kibris-gundem',
-  'kibris-siyaset',
-  'kibris-spor',
-  'kibris-futbol',
-  'kibris-basketbol',
-  'kibris-voleybol',
-  'kibris-hentbol',
-  'kibris-atletizm',
-  'kibris-gures',
-  'kibris-tenis',
-  'kibris-yuzme',
-  'kibris-motor-sporlari',
-  'kibris-ekonomi',
-  'kibris-finans',
-  'kibris-emlak',
-  'kibris-enerji',
-  'kibris-kariyer',
-  'kibris-teknoloji',
-  'kibris-etkinlik',
-  'kibris-sinema',
-  'kibris-kultur',
-  'kibris-tiyatro',
-  'kibris-konser',
-  'kibris-festival',
-  'kibris-magazin',
-  'kibris-yasam',
-  'kibris-saglik',
-  'kibris-bilim',
-  'kibris-egitim',
-  'kibris-cevre-iklim',
-  'kibris-din-inanc',
-  'kibris-gastronomi',
-  'kibris-otomobil',
-  'kibris-meteoroloji',
-  'kibris-turizm',
-  'kibris-gezi',
-  'kibris-tarih',
-  'kibris-oyun-espor',
-  'kibris-duyuru',
-])
+/** Catalog ids the classifier may emit. tekrarlayan is audit-only. */
+const VALID_CATEGORIES = new Set(
+  DEFAULT_CATEGORIES.map((category) => category.id).filter((id) => id !== TEKRARLAYAN_CATEGORY_ID)
+)
 
 export function stage3ValidCategoryIds(): string[] {
   return [...VALID_CATEGORIES].sort()

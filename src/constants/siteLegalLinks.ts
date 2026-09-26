@@ -84,6 +84,7 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
     title: 'Kültür & Medya',
     links: [
       { label: 'Kültür', href: '/kategori/kultur' },
+      { label: 'Müzik', href: '/kategori/muzik' },
       { label: 'Sinema', href: '/kategori/sinema' },
       { label: 'Tiyatro', href: '/kategori/tiyatro' },
       { label: 'Konser', href: '/kategori/konser' },
@@ -98,6 +99,8 @@ export const FOOTER_NAV_COLUMNS: readonly FooterColumn[] = [
     links: [
       { label: 'Teknoloji', href: '/kategori/teknoloji' },
       { label: 'Bilim', href: '/kategori/bilim' },
+      { label: 'Bilgi', href: '/kategori/bilgi' },
+      { label: 'Tarım', href: '/kategori/tarim' },
       { label: 'Otomobil', href: '/kategori/otomobil' },
       { label: 'Meteoroloji', href: '/kategori/meteoroloji' },
       { label: 'Hava Durumu', href: '/weather' },
