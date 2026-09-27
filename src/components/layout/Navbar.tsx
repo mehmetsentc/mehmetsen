@@ -56,7 +56,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     !isPrimaryDest &&
     pathname !== ROUTES.REELS &&
     pathname !== ROUTES.VIDEO
-  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(!overlayFeed)
+  const { ref: chromeRef, height: chromeHeight } = useChromeOffset(true)
 
   const showContextRail =
     isFeedV2 ||
@@ -67,9 +67,11 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathIs(pathname, ROUTES.MESSAGES, '/messages') &&
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/post/'))
-  const fallbackChromeHeight = showContextRail
-    ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem) + var(--nahaber-context-rail-height, 3.15rem))'
-    : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem))'
+  const fallbackChromeHeight = overlayFeed
+    ? 'calc(env(safe-area-inset-top, 0px) + 2.75rem + 2.5rem)'
+    : showContextRail
+      ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem) + var(--nahaber-context-rail-height, 3.15rem))'
+      : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem))'
 
   /**
    * Feed/reels shells use 100dvh-sized cards. When mobile top chrome is fixed +
@@ -80,13 +82,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
-    if (overlayFeed) {
-      root.setAttribute('data-feed-overlay-chrome', '1')
-      root.style.setProperty('--mobile-top-chrome-offset', '0px')
-      return () => {
-        root.removeAttribute('data-feed-overlay-chrome')
-      }
-    }
+    if (overlayFeed) root.setAttribute('data-feed-overlay-chrome', '1')
     const mq = window.matchMedia('(max-width: 1023px)')
     const apply = () => {
       if (!mq.matches) {
@@ -101,6 +97,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     mq.addEventListener('change', apply)
     return () => {
       mq.removeEventListener('change', apply)
+      if (overlayFeed) root.removeAttribute('data-feed-overlay-chrome')
       root.style.removeProperty('--mobile-top-chrome-offset')
     }
   }, [overlayFeed, chromeHeight, fallbackChromeHeight])
@@ -133,7 +130,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             ? 'mobile-top-chrome--overlay text-white'
             : 'mobile-top-chrome--immersive text-[rgb(var(--header-onbrand))]',
           overlayFeed
-            ? 'pt-[max(0.35rem,max(var(--mobile-sat,env(safe-area-inset-top,0px)),env(safe-area-inset-top,0px),64px))]'
+            ? 'pt-[env(safe-area-inset-top,0px)]'
             : 'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
@@ -141,7 +138,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           className={cn(
             'overflow-x-hidden',
             overlayFeed
-              ? 'h-8 text-white'
+              ? 'h-[2.75rem] min-h-[2.75rem] text-white'
               : 'h-[var(--nahaber-header-row-height,3.85rem)] text-[rgb(var(--header-onbrand))]'
           )}
         >
@@ -216,7 +213,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         aria-hidden
         data-testid="mobile-chrome-spacer"
         style={{
-          height: overlayFeed ? 0 : chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
+          height: chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
         }}
       />
       {submitOpen ? <SubmitNewsModal onClose={() => setSubmitOpen(false)} /> : null}

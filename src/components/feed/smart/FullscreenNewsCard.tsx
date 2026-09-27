@@ -31,7 +31,7 @@ function formatRelativeTime(dateStr?: string | null): string | null {
     if (diffMins < 1) return 'Az önce'
     if (diffMins < 60) return `${diffMins}dk önce`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}s önce`
+    if (diffHours < 24) return `${diffHours} sa önce`
     const diffDays = Math.floor(diffHours / 24)
     return `${diffDays}g önce`
   } catch {
@@ -131,7 +131,7 @@ interface FullscreenNewsCardProps {
  */
 const MODE_NAV_CLEARANCE = 'pt-2'
 const HERO_FRAME =
-  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-neutral-950'
+  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-transparent'
 const CITY_HERO_FRAME =
   'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden bg-neutral-950'
 
@@ -173,9 +173,11 @@ export function FullscreenNewsCard({
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
   const [typedHeadline, setTypedHeadline] = useState(() => (isActive ? '' : item.headline))
+  const [typedSummary, setTypedSummary] = useState(() => (isActive ? '' : item.summary ?? ''))
   const [headlineDone, setHeadlineDone] = useState(() => !isActive)
   const [headlineReveal, setHeadlineReveal] = useState(true)
   const [showCursor, setShowCursor] = useState(false)
+  const [cursorOn, setCursorOn] = useState<'headline' | 'summary' | null>(null)
   const [motionOk, setMotionOk] = useState(true)
   const [swipeCoachNudgePx, setSwipeCoachNudgePx] = useState(0)
 
@@ -231,19 +233,25 @@ export function FullscreenNewsCard({
 
     clearType()
 
+    const summary = item.summary || ''
+
     if (!isActive) {
       setTypedHeadline(item.headline)
+      setTypedSummary(summary)
       setHeadlineDone(true)
       setShowCursor(false)
+      setCursorOn(null)
       setHeadlineReveal(true)
       return
     }
 
     const full = item.headline || ''
-    if (!full) {
+    if (!full && !summary) {
       setTypedHeadline('')
+      setTypedSummary('')
       setHeadlineDone(true)
       setShowCursor(false)
+      setCursorOn(null)
       setHeadlineReveal(true)
       return
     }
@@ -255,7 +263,9 @@ export function FullscreenNewsCard({
     if (reduced) {
       // Soft reveal — no character typing against OS preference.
       setTypedHeadline(full)
+      setTypedSummary(summary)
       setShowCursor(false)
+      setCursorOn(null)
       setHeadlineDone(false)
       setHeadlineReveal(false)
       typeTimerRef.current = window.setTimeout(() => {
@@ -266,30 +276,63 @@ export function FullscreenNewsCard({
       return clearType
     }
 
-    // Cap total typewriter ~1.6s regardless of length
-    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1600 / Math.max(full.length, 1))))
+    // Headline ~1.1s, then summary ~1.3s, regardless of length.
+    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1100 / Math.max(full.length, 1))))
+    const summaryStep = Math.max(8, Math.min(16, Math.floor(1300 / Math.max(summary.length, 1))))
     setTypedHeadline('')
+    setTypedSummary('')
     setHeadlineDone(false)
     setHeadlineReveal(true)
     setShowCursor(true)
+    setCursorOn(full ? 'headline' : 'summary')
 
     let i = 0
+    let j = 0
+    const tickSummary = () => {
+      if (!summary) {
+        setShowCursor(false)
+        setCursorOn(null)
+        typeTimerRef.current = null
+        return
+      }
+      j += 1
+      setTypedSummary(summary.slice(0, j))
+      if (j >= summary.length) {
+        setShowCursor(false)
+        setCursorOn(null)
+        typeTimerRef.current = null
+        return
+      }
+      typeTimerRef.current = window.setTimeout(tickSummary, summaryStep)
+    }
     const tick = () => {
+      if (!full) {
+        setHeadlineDone(true)
+        setCursorOn('summary')
+        tickSummary()
+        return
+      }
       i += 1
       setTypedHeadline(full.slice(0, i))
       if (i >= full.length) {
         setHeadlineDone(true)
-        setShowCursor(false)
-        typeTimerRef.current = null
+        if (!summary) {
+          setShowCursor(false)
+          setCursorOn(null)
+          typeTimerRef.current = null
+          return
+        }
+        setCursorOn('summary')
+        typeTimerRef.current = window.setTimeout(tickSummary, summaryStep)
         return
       }
       typeTimerRef.current = window.setTimeout(tick, step)
     }
     // slight delay so media expand / chrome settle
-    typeTimerRef.current = window.setTimeout(tick, 140)
+    typeTimerRef.current = window.setTimeout(full ? tick : tickSummary, 140)
 
     return clearType
-  }, [isActive, item.headline, item.articleId, skin.typeMs])
+  }, [isActive, item.headline, item.summary, item.articleId, skin.typeMs])
 
 
   const triggerDoubleTapLike = useCallback(
@@ -503,7 +546,7 @@ export function FullscreenNewsCard({
                 alt={item.headline || ''}
                 fill
                 draggable={false}
-                className="object-cover object-center"
+                className="object-contain object-center"
                 sizes="(max-width: 768px) 100vw, 44rem"
                 priority={isActive}
                 onError={() => setImageError(true)}
@@ -678,7 +721,7 @@ export function FullscreenNewsCard({
                 style={{ marginTop: 'var(--feed-v2-gap-cat-headline)' }}
               >
                 {typedHeadline}
-                {showCursor ? (
+                {showCursor && cursorOn === 'headline' ? (
                   <span
                     className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
                     style={{ background: 'var(--feed-skin-accent)' }}
@@ -696,10 +739,18 @@ export function FullscreenNewsCard({
                     headlineDone ? 'opacity-100' : 'opacity-0'
                   )}
                   data-testid="smart-feed-summary"
+                  data-feed-typewriter={cursorOn === 'summary' ? '1' : '0'}
                   data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}
                   style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
-                  {item.summary}
+                  {typedSummary}
+                  {showCursor && cursorOn === 'summary' ? (
+                    <span
+                      className="ml-0.5 inline-block h-[0.85em] w-[0.08em] animate-pulse align-[-0.08em]"
+                      style={{ background: 'var(--feed-skin-accent)' }}
+                      aria-hidden
+                    />
+                  ) : null}
                 </p>
               ) : null}
             </div>
@@ -766,7 +817,7 @@ export function FullscreenNewsCard({
                 onReadClick()
               }}
               className="inline-flex h-14 w-full shrink-0 touch-manipulation items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-tap-highlight-color:transparent]"
-              style={{ background: '#f4f4f5' }}
+              style={{ background: '#ffffff' }}
             >
               Haberi Oku
             </button>
