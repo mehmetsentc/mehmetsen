@@ -6,7 +6,7 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
 import { editorIdentityLabel } from '@/lib/profile/identityLabels'
-import { aiDeskPublicName } from '@/lib/seo/publicAuthorIdentity'
+import { publicEditorName } from '@/lib/seo/publicAuthorIdentity'
 import {
   getAuthorByUsername,
   getPostsByAuthorId,
@@ -34,12 +34,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const publicName = author.isAI ? aiDeskPublicName(author.username, siteName) : author.displayName
-  const roleLabel = author.isAI ? 'NaHaber AI Editörü' : 'Yazar'
+  const publicName = publicEditorName(author.displayName, author.username)
+  const roleLabel = editorIdentityLabel(author)
   const title = `${publicName} — ${roleLabel}`
-  const description = author.isAI
-    ? `${publicName} — NaHaber yapay zeka editoryal masası.`
-    : author.bio?.trim() || `${author.displayName} tarafından ${siteName} üzerinde yayımlanan içerikler.`
+  const description =
+    author.bio?.trim() && !/ai\s*edit[oö]r|yapay\s*zeka/i.test(author.bio)
+      ? author.bio.trim()
+      : `${publicName} tarafından ${siteName} üzerinde yayımlanan içerikler.`
   const canonical = `${siteUrl}${ROUTES.AUTHOR(author.username)}`
 
   return {
@@ -74,30 +75,25 @@ export default async function AuthorPage({ params }: Props) {
   const posts = await getPostsByAuthorId(author.uid, 40)
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const publicName = author.isAI ? aiDeskPublicName(author.username, siteName) : author.displayName
+  const publicName = publicEditorName(author.displayName, author.username)
   const profileUrl = `${siteUrl}${ROUTES.AUTHOR(author.username)}`
+  const publicBio =
+    author.bio?.trim() && !/ai\s*edit[oö]r|yapay\s*zeka/i.test(author.bio) ? author.bio.trim() : null
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ProfilePage',
-    name: `${publicName} — ${author.isAI ? 'AI Editör' : 'Yazar'}`,
+    name: `${publicName} — ${editorIdentityLabel(author)}`,
     url: profileUrl,
-    mainEntity: author.isAI
-      ? {
-          '@type': 'Organization',
-          name: publicName,
-          url: profileUrl,
-          description: `${publicName} — NaHaber yapay zeka editoryal masası.`,
-        }
-      : {
-          '@type': 'Person',
-          name: publicName,
-          url: profileUrl,
-          ...(author.photoURL ? { image: author.photoURL } : {}),
-          ...(author.bio ? { description: author.bio } : {}),
-          ...(author.website ? { sameAs: [author.website] } : {}),
-          worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
-        },
+    mainEntity: {
+      '@type': 'Person',
+      name: publicName,
+      url: profileUrl,
+      ...(author.photoURL ? { image: author.photoURL } : {}),
+      ...(publicBio ? { description: publicBio } : {}),
+      ...(author.website ? { sameAs: [author.website] } : {}),
+      worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
+    },
   }
 
   return (

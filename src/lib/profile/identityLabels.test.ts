@@ -27,6 +27,6 @@ describe('profile identity labels', () => {
   it('does not call an unverified human author a verified editor', () => {
     expect(editorIdentityLabel({ isVerified: false })).toBe('Yazar')
     expect(editorIdentityLabel({ isVerified: true })).toBe('Doğrulanmış editör')
-    expect(editorIdentityLabel({ isAI: true, isVerified: false })).toBe('NaHaber AI Editörü')
+    expect(editorIdentityLabel({ isAI: true, isVerified: false })).toBe('Yazar')
   })
 })

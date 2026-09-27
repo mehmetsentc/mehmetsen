@@ -101,8 +101,8 @@ export function ArticleSourceBadge({ post }: ArticleSourceBadgeProps) {
                     }
                   />
                 ) : null}
-                {post.editorType ? (
-                  <Row label="AI Editör" value={post.editorType} />
+                {post.editorType && !/ai\s*edit[oö]r|yapay\s*zeka/i.test(post.editorType) ? (
+                  <Row label="Yazar" value={post.editorType} />
                 ) : null}
                 {typeof post.confidenceScore === 'number' ? (
                   <Row

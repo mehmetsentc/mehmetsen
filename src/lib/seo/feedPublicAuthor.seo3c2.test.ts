@@ -61,7 +61,7 @@ function expectSameEntity(feed: { name: string; slug: string | null }, article: 
 }
 
 describe('feed and article public author', () => {
-  it('uses the city desk organization on the feed when the card has no username', () => {
+  it('uses the city editor name on the feed when the card has no username', () => {
     const article = post({
       authorId: 'ai_editor_il-mardin-ekonomi',
       authorUsername: 'il-mardin-ekonomi',
@@ -76,14 +76,14 @@ describe('feed and article public author', () => {
       authorId: 'ai_editor_il-mardin-ekonomi',
       aiEditorId: 'editor-mardin',
     })
-    expect(feed.name).toBe('NaHaber Mardin Ekonomi Masası')
-    expect(feed.name).not.toBe('Burcu Kaya')
+    expect(feed.name).toBe('Burcu Kaya')
+    expect(feed.name).not.toMatch(/AI Editör|Masası/)
     expect(feed.slug).toBe('il-mardin-ekonomi')
     expect(feed.slug).not.toBe('yerel-kars')
     expectSameEntity(feed, articleAuthor(article))
   })
 
-  it('uses the country desk organization on the feed', () => {
+  it('uses the country editor name on the feed', () => {
     const article = post({
       authorId: 'ai_editor_ulke-ukrayna',
       authorUsername: 'ulke-ukrayna',
@@ -96,12 +96,12 @@ describe('feed and article public author', () => {
       authorId: 'ai_editor_ulke-ukrayna',
       aiEditorId: 'editor-ukrayna',
     })
-    expect(feed.name).toBe('NaHaber Ukrayna Masası')
+    expect(feed.name).toBe('Andriy Kovalchuk')
     expect(feed.slug).toBe('ulke-ukrayna')
     expectSameEntity(feed, articleAuthor(article))
   })
 
-  it('uses the national AI desk when the feed row only has the legacy editor id', () => {
+  it('uses the national editor name when the feed row only has the legacy editor id', () => {
     const article = post({
       authorId: 'ai_editor_melis-kaya',
       authorUsername: 'melis-kaya',
@@ -114,8 +114,8 @@ describe('feed and article public author', () => {
       authorId: 'ai_editor_melis-kaya',
       aiEditorId: 'ai_editor_melis-kaya',
     })
-    expect(feed.name).toBe('NaHaber AI Editörlüğü')
-    expect(feed.name).not.toBe('Melis Kaya')
+    expect(feed.name).toBe('Melis Kaya')
+    expect(feed.name).not.toMatch(/AI Editör/)
     expect(feed.slug).toBe('melis-kaya')
     expectSameEntity(feed, articleAuthor(article))
   })

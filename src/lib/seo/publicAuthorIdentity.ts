@@ -1,6 +1,9 @@
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { PROVINCE_DISTRICTS } from '@/constants/turkishDistricts'
+import { SEED_CITY_CATEGORY_AI_EDITORS } from '@/lib/ai/editorial/seedCityCategoryEditors'
+import { personaNameForKey, SEED_CITY_AI_EDITORS } from '@/lib/ai/editorial/seedCityEditors'
+import { SEED_AI_EDITORS } from '@/lib/ai/editorial/seedEditors'
 import { isGenericEditorName, isSourceLikeName } from '@/lib/feed/resolveFeedEditorByline'
 
 const AI_PREFIX = 'ai_editor_'
@@ -62,6 +65,51 @@ function categoryLabel(token: string): string | null {
   return DEFAULT_CATEGORIES.find((c) => c.id === token)?.name ?? null
 }
 
+function isPublicDeskLabel(name: string): boolean {
+  return /ai\s*edit[oö]r|yapay\s*zeka|masası|editörlüğü|(?:^|\s)ai$/i.test(name)
+}
+
+/** A stored journalist name. Desk labels and “AI Editör” titles are not public names. */
+export function cleanPublicPersonaName(name?: string | null, source?: string | null): string | null {
+  const display = name?.trim() || ''
+  if (!display) return null
+  if (isGenericEditorName(display) || isPublicDeskLabel(display)) return null
+  const words = display.split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return display
+  if (isSourceLikeName(display, source)) return null
+  return display
+}
+
+function seedPersonaName(slug?: string | null): string | null {
+  const key = stripAiEditorPrefix((slug ?? '').trim().toLowerCase())
+  if (!key) return null
+  const hit = [...SEED_AI_EDITORS, ...SEED_CITY_AI_EDITORS, ...SEED_CITY_CATEGORY_AI_EDITORS].find(
+    (editor) => editor.slug === key
+  )
+  const name = hit?.name
+  return name && !isPublicDeskLabel(name) ? name : null
+}
+
+function generatedDeskName(slug?: string | null): string | null {
+  const key = stripAiEditorPrefix((slug ?? '').trim().toLowerCase())
+  if (!/^(?:ulke|il|ilce|yerel)-/.test(key)) return null
+  return personaNameForKey(key)
+}
+
+/** Public byline: the editor's own name, never an AI or desk label. */
+export function publicEditorName(
+  displayName?: string | null,
+  slug?: string | null,
+  source?: string | null
+): string {
+  return (
+    cleanPublicPersonaName(displayName, source) ||
+    seedPersonaName(slug) ||
+    generatedDeskName(slug) ||
+    siteName()
+  )
+}
+
 /** Stable organization name for an existing desk slug. Not a person's name. */
 export function aiDeskPublicName(slug: string, brand = siteName()): string {
   const s = stripAiEditorPrefix(slug.trim().toLowerCase())
@@ -96,7 +144,7 @@ export function aiDeskPublicName(slug: string, brand = siteName()): string {
   if (s.startsWith('yerel-')) {
     return `${brand} ${provinceName(s.slice('yerel-'.length))} Masası`
   }
-  return `${brand} AI Editörlüğü`
+  return brand
 }
 
 function aiAssignment(input: PublicAuthorInput): boolean {
@@ -154,11 +202,24 @@ export function resolvePublicAuthorIdentity(input: PublicAuthorInput): PublicAut
   const brand = siteName()
   if (aiAssignment(input)) {
     const profileSlug = deskProfileSlug(input)
+    const name = publicEditorName(
+      input.authorDisplayName,
+      profileSlug,
+      input.source
+    )
+    if (cleanPublicPersonaName(name, input.source)) {
+      return {
+        type: 'Person',
+        name,
+        profileSlug,
+        aiDisclosure: false,
+      }
+    }
     return {
       type: 'Organization',
-      name: profileSlug ? aiDeskPublicName(profileSlug, brand) : `${brand} AI Editörlüğü`,
+      name: brand,
       profileSlug,
-      aiDisclosure: true,
+      aiDisclosure: false,
     }
   }
 

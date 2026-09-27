@@ -57,7 +57,7 @@ describe('public author identity', () => {
     expect(author.url).toBe(publicAuthorUrl(identity, new URL(author.url).origin))
   })
 
-  it('represents an AI desk as one Organization, not a persona', () => {
+  it('shows the editor name, not an AI desk label', () => {
     const p = post({
       authorId: 'ai_editor_il-izmir-yasam',
       authorUsername: 'il-izmir-yasam',
@@ -70,11 +70,11 @@ describe('public author identity', () => {
     })
     const identity = resolvePublicAuthorIdentity(p)
     const author = authorOf(p)
-    expect(identity.type).toBe('Organization')
-    expect(identity.name).toBe('NaHaber İzmir Yaşam Masası')
-    expect(identity.name).not.toBe('Gökhan Çelik')
-    expect(identity.aiDisclosure).toBe(true)
-    expect(author['@type']).toBe('Organization')
+    expect(identity.type).toBe('Person')
+    expect(identity.name).toBe('Gökhan Çelik')
+    expect(identity.name).not.toMatch(/AI Editör|Masası/)
+    expect(identity.aiDisclosure).toBe(false)
+    expect(author['@type']).toBe('Person')
     expect(author.name).toBe(identity.name)
     expect(new URL(author.url).pathname).toBe('/yazar/il-izmir-yasam')
     expect(publicAuthorPath(identity)).toBe('/yazar/il-izmir-yasam')
@@ -126,7 +126,7 @@ describe('public author identity', () => {
     const author = authorOf(p)
     expect(publicAuthorPath(identity)).toBe('/yazar/ulke-ukrayna')
     expect(author.url).not.toContain('ai_editor_')
-    expect(identity.name).toBe('NaHaber Ukrayna Masası')
+    expect(identity.name).toBe('Andriy Kovalchuk')
   })
 
   it('does not treat HUMAN_EDITOR as the content author', () => {
@@ -139,8 +139,8 @@ describe('public author identity', () => {
       publicationAuthority: 'HUMAN_EDITOR',
     })
     const identity = resolvePublicAuthorIdentity(p)
-    expect(identity.type).toBe('Organization')
-    expect(identity.name).not.toBe('Azadeh Kazemi')
+    expect(identity.type).toBe('Person')
+    expect(identity.name).toBe('Azadeh Kazemi')
     expect(identity.profileSlug).toBe('ulke-iran')
   })
 

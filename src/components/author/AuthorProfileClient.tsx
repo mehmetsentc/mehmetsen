@@ -65,17 +65,12 @@ export function AuthorProfileClient({
 
   const about = (
     <ProfileAboutCard title="Hakkında">
-      {author.isAI ? (
-        <p className="text-[rgb(var(--color-muted))]">
-          Bu profil bir NaHaber yapay zeka editoryal masasıdır. İçerikler editoryal kurallar altında
-          üretilir; gerçek bir gazeteci kişisi değildir.
-        </p>
-      ) : author.bio ? (
+      {author.bio && !/ai\s*edit[oö]r|yapay\s*zeka/i.test(author.bio) ? (
         <p className="whitespace-pre-wrap break-words">{author.bio}</p>
       ) : (
         <p className="text-[rgb(var(--color-muted))]">Biyografi henüz eklenmedi.</p>
       )}
-      {!author.isAI && author.department ? (
+      {author.department && !/ai\s*edit[oö]r|yapay\s*zeka/i.test(author.department) ? (
         <p>
           <span className="font-semibold">Masa:</span> {author.department}
         </p>

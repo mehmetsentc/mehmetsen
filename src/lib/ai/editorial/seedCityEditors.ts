@@ -55,6 +55,15 @@ const LAST_NAMES = [
   'Rüzgar',
 ] as const
 
+/** Stable journalist-style name for a desk that has no stored persona. */
+export function personaNameForKey(key: string): string {
+  let hash = 0
+  for (const ch of key) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0
+  const first = FIRST_NAMES[hash % FIRST_NAMES.length]!
+  const last = LAST_NAMES[(hash * 7 + 3) % LAST_NAMES.length]!
+  return `${first} ${last}`
+}
+
 function cityEditorName(index: number): { name: string; slugPerson: string } {
   const first = FIRST_NAMES[index % FIRST_NAMES.length]!
   const last = LAST_NAMES[(index * 7 + 3) % LAST_NAMES.length]!
