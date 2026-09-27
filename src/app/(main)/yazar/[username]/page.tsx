@@ -4,6 +4,7 @@ import { Globe, MapPin, User } from 'lucide-react'
 import { SiteContainer } from '@/components/layout/SiteContainer'
 import { ROUTES } from '@/constants/routes'
 import { getSiteUrl } from '@/lib/seo'
+import { aiDeskPublicName } from '@/lib/seo/publicAuthorIdentity'
 import {
   getAuthorByUsername,
   getPostsByAuthorId,
@@ -31,11 +32,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const publicName = author.isAI ? aiDeskPublicName(author.username, siteName) : author.displayName
   const roleLabel = author.isAI ? 'NaHaber AI Editörü' : 'Yazar'
-  const title = `${author.displayName} — ${roleLabel}`
-  const description =
-    author.bio?.trim() ||
-    `${author.displayName} tarafından ${siteName} üzerinde yayımlanan içerikler.`
+  const title = `${publicName} — ${roleLabel}`
+  const description = author.isAI
+    ? `${publicName} — NaHaber yapay zeka editoryal masası.`
+    : author.bio?.trim() || `${author.displayName} tarafından ${siteName} üzerinde yayımlanan içerikler.`
   const canonical = `${siteUrl}${ROUTES.AUTHOR(author.username)}`
 
   return {
@@ -70,27 +72,30 @@ export default async function AuthorPage({ params }: Props) {
   const posts = await getPostsByAuthorId(author.uid, 40)
   const siteUrl = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
+  const publicName = author.isAI ? aiDeskPublicName(author.username, siteName) : author.displayName
+  const profileUrl = `${siteUrl}${ROUTES.AUTHOR(author.username)}`
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ProfilePage',
-    name: `${author.displayName} — ${author.isAI ? 'AI Editör' : 'Yazar'}`,
-    url: `${siteUrl}${ROUTES.AUTHOR(author.username)}`,
-    mainEntity: {
-      '@type': 'Person',
-      name: author.displayName,
-      url: `${siteUrl}${ROUTES.AUTHOR(author.username)}`,
-      ...(author.photoURL ? { image: author.photoURL } : {}),
-      ...(author.bio ? { description: author.bio } : {}),
-      ...(author.website ? { sameAs: [author.website] } : {}),
-      worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
-      ...(author.isAI
-        ? {
-            description: `${author.bio || author.displayName} — NaHaber yapay zeka editör kimliği.`,
-            additionalType: 'https://schema.org/SoftwareApplication',
-          }
-        : {}),
-    },
+    name: `${publicName} — ${author.isAI ? 'AI Editör' : 'Yazar'}`,
+    url: profileUrl,
+    mainEntity: author.isAI
+      ? {
+          '@type': 'Organization',
+          name: publicName,
+          url: profileUrl,
+          description: `${publicName} — NaHaber yapay zeka editoryal masası.`,
+        }
+      : {
+          '@type': 'Person',
+          name: publicName,
+          url: profileUrl,
+          ...(author.photoURL ? { image: author.photoURL } : {}),
+          ...(author.bio ? { description: author.bio } : {}),
+          ...(author.website ? { sameAs: [author.website] } : {}),
+          worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
+        },
   }
 
   return (
@@ -106,7 +111,7 @@ export default async function AuthorPage({ params }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={author.photoURL}
-                alt={author.displayName}
+                alt={publicName}
                 width={64}
                 height={64}
                 className="h-full w-full object-cover"
@@ -122,7 +127,7 @@ export default async function AuthorPage({ params }: Props) {
               {author.isAI ? 'NaHaber AI Editörü' : 'Yazar'}
             </p>
             <h1 className="mt-0.5 text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
-              {author.displayName}
+              {publicName}
               {author.isVerified ? (
                 <span className="ml-2 align-middle text-sm font-semibold text-[rgb(var(--color-brand))]">
                   ✓

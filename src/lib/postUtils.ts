@@ -1,6 +1,6 @@
 import type { MediaItem, Post, PostStatus } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
-import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
+import { resolvePublicAuthorIdentity } from '@/lib/seo/publicAuthorIdentity'
 
 // Statuses that must NEVER appear in public surfaces (feeds, trending, search).
 // `draft` = in-progress; `pending` = held for moderation/admin approval.
@@ -140,29 +140,7 @@ export function getPostPublicSource(post: Pick<Post, 'source'>): string {
   return formatPublicSourceLabel(post.source)
 }
 
-/** Public byline — syndicated news shows the site brand, not upstream RSS labels. */
+/** Public byline. Same entity as the author link and NewsArticle JSON-LD. */
 export function getArticleBylineName(post: Post): string {
-  const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-  const editor = resolveFeedEditorByline({
-    authorName: post.authorDisplayName,
-    authorId: post.authorId,
-    aiEditorId: post.aiEditorId,
-    citySlug: post.citySlug,
-    categoryId: post.categoryId,
-    publisherName: post.source,
-  })
-  if (editor?.name) return editor.name
-
-  const display = post.authorDisplayName?.trim()
-  const username = post.authorUsername?.trim()
-  const isRealPerson =
-    Boolean(display) &&
-    display !== 'nahaber' &&
-    display.toLocaleLowerCase('tr-TR') !== siteName.toLocaleLowerCase('tr-TR') &&
-    post.authorId !== 'nahaber' &&
-    username !== 'nahaber'
-
-  if (isRealPerson) return display!
-  if (post.postType === 'user_post' && display && display !== 'nahaber') return display
-  return siteName
+  return resolvePublicAuthorIdentity(post).name
 }

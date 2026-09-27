@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
 import { getPrimaryVideo, getPostCoverAlt, getArticleBylineName } from '@/lib/postUtils'
+import { publicAuthorUrl, resolvePublicAuthorIdentity } from '@/lib/seo/publicAuthorIdentity'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { DEFAULT_CATEGORIES, getParentCategory } from '@/constants/config'
 import { ROUTES } from '@/constants/routes'
@@ -164,22 +165,12 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
     ''
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
-  // Author — city category AI editor or CMS byline; otherwise NaHaber org.
-  const bylineName = getArticleBylineName(post)
-  const bylineSlug = post.authorUsername?.trim()
-  const isPersonAuthor =
-    Boolean(bylineName) &&
-    bylineName !== 'nahaber' &&
-    bylineName.toLocaleLowerCase('tr-TR') !== siteName.toLocaleLowerCase('tr-TR') &&
-    post.authorId !== 'nahaber' &&
-    bylineSlug !== 'nahaber'
-  const author = isPersonAuthor
-    ? {
-        '@type': 'Person',
-        name: bylineName!,
-        ...(bylineSlug ? { url: `${siteUrl}/yazar/${encodeURIComponent(bylineSlug)}` } : {}),
-      }
-    : { '@type': 'Organization', name: siteName, url: siteUrl }
+  const identity = resolvePublicAuthorIdentity(post)
+  const author = {
+    '@type': identity.type,
+    name: identity.name,
+    url: publicAuthorUrl(identity, siteUrl),
+  }
 
   return {
     '@context': 'https://schema.org',

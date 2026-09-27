@@ -116,6 +116,7 @@ import {
 } from '@/services/newsroom/pipelineQualityDiscard'
 import { decideStage1FailFast, recordStage1FailFastTelemetry } from '@/services/newsroom/stage1FailFast'
 import { routeAiEditor, authorFieldsFromEditor, aiEditorBlocksAutoPublish } from '@/lib/ai/editorial/editorRouter'
+import { editorRouteGeoFromResolved } from '@/lib/ai/editorial/editorRouteGeo'
 import { applyScaleQualityOutcome } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
@@ -1900,6 +1901,12 @@ export async function processNewsroomArticle(
       !workingInput.preferredAiEditorId &&
       resolvedCategory
     ) {
+      const routeGeo = editorRouteGeoFromResolved({
+        citySlug,
+        districtSlug,
+        countrySlug,
+        forcedCitySlug: workingInput.forcedCitySlug,
+      })
       const byCategory = await routeAiEditor({
         categoryId: resolvedCategory,
         isBreaking,
@@ -1908,7 +1915,9 @@ export async function processNewsroomArticle(
           .filter(Boolean)
           .join('\n')
           .slice(0, 2000),
-        citySlug: workingInput.forcedCitySlug ?? null,
+        citySlug: routeGeo.citySlug,
+        districtSlug: routeGeo.districtSlug,
+        countrySlug: routeGeo.countrySlug,
       }).catch(() => null)
       if (byCategory) publishEditor = byCategory
     }

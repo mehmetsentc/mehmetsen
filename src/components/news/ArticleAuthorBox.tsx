@@ -3,38 +3,20 @@
 import Link from 'next/link'
 import { User } from 'lucide-react'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineName, getPostPublicSource } from '@/lib/postUtils'
-import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
-import { ROUTES } from '@/constants/routes'
+import { getPostPublicSource } from '@/lib/postUtils'
+import { publicAuthorPath, resolvePublicAuthorIdentity } from '@/lib/seo/publicAuthorIdentity'
 import type { Post } from '@/types/post'
 
 interface ArticleAuthorBoxProps {
   post: Post
 }
 
-function resolvePublicAuthorSlug(post: Post): string | null {
-  const editor = resolveFeedEditorByline({
-    authorName: post.authorDisplayName,
-    authorId: post.authorId,
-    aiEditorId: post.aiEditorId,
-    citySlug: post.citySlug,
-    categoryId: post.categoryId,
-    publisherName: post.source,
-  })
-  if (editor?.slug) return editor.slug
-  const username = post.authorUsername?.trim()
-  if (!username || username === 'nahaber') return null
-  if (/\s/.test(username) || username.length < 2 || username.length > 40) return null
-  if (!post.authorId || post.authorId === 'nahaber') return null
-  return username
-}
-
 export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
-  const byline = getArticleBylineName(post)
+  const identity = resolvePublicAuthorIdentity(post)
+  const byline = identity.name
   const publicSource = getPostPublicSource(post)
   const category = getCategoryLabel(post.categoryId)
-  const authorSlug = resolvePublicAuthorSlug(post)
-  const href = authorSlug ? ROUTES.AUTHOR(authorSlug) : null
+  const href = publicAuthorPath(identity)
 
   const avatar = (
     <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[rgb(var(--color-brand))]/10 text-[rgb(var(--color-brand))]">
@@ -85,7 +67,7 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
         ) : (
           <p className="mt-0.5 text-base font-bold text-[rgb(var(--color-text))]">{byline}</p>
         )}
-        {post.aiEditorId || post.authorIsAI ? (
+        {identity.aiDisclosure ? (
           <p className="mt-1 text-xs font-semibold text-[rgb(var(--color-brand))]">
             NaHaber AI Editörü
           </p>

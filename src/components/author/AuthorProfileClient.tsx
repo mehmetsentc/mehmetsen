@@ -80,16 +80,19 @@ export function AuthorProfileClient({
 
       {tab === 'about' ? (
         <section className="space-y-3 text-sm leading-relaxed text-[rgb(var(--color-text))]">
-          {author.bio ? <p>{author.bio}</p> : <p className="text-[rgb(var(--color-muted))]">Biyografi henüz eklenmedi.</p>}
-          {author.department ? (
-            <p>
-              <span className="font-bold">Rol:</span> {author.department}
-            </p>
-          ) : null}
           {author.isAI ? (
             <p className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3 text-xs text-[rgb(var(--color-muted))]">
-              Bu profil bir NaHaber yapay zeka editör kimliğidir. İçerikler editöryal kurallar ve
-              insan denetimi altında üretilir; gerçek bir gazeteci kişisi değildir.
+              Bu profil bir NaHaber yapay zeka editoryal masasıdır. İçerikler editoryal kurallar
+              altında üretilir; gerçek bir gazeteci kişisi değildir.
+            </p>
+          ) : author.bio ? (
+            <p>{author.bio}</p>
+          ) : (
+            <p className="text-[rgb(var(--color-muted))]">Biyografi henüz eklenmedi.</p>
+          )}
+          {!author.isAI && author.department ? (
+            <p>
+              <span className="font-bold">Rol:</span> {author.department}
             </p>
           ) : null}
         </section>

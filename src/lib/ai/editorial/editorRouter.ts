@@ -158,6 +158,39 @@ function editorManagesCategory(editor: AiEditorDocument, categoryId: string): bo
   return editor.categoryIds?.includes(categoryId) ?? false
 }
 
+function boundCity(editor: AiEditorDocument): string | null {
+  const direct = editor.citySlug?.trim().toLowerCase()
+  if (direct) return direct
+  const slug = editor.slug
+  if (slug.startsWith('yerel-')) return slug.slice('yerel-'.length) || null
+  if (slug.startsWith('ilce-') || slug.startsWith('il-')) return slug.split('-')[1] || null
+  return null
+}
+
+function boundCountry(editor: AiEditorDocument): string | null {
+  const direct = editor.countrySlug?.trim().toLowerCase()
+  if (direct) return direct
+  if (editor.slug.startsWith('ulke-')) return editor.slug.slice('ulke-'.length).split('-')[0] || null
+  return null
+}
+
+/** A desk bound to a different city or country cannot satisfy this request. */
+function editorGeoConflicts(editor: AiEditorDocument, city: string, country: string): boolean {
+  const editorCity = boundCity(editor)
+  const editorCountry = boundCountry(editor)
+  if (city) {
+    if (editorCity && editorCity !== city) return true
+  } else if (editorCity) {
+    return true
+  }
+  if (country) {
+    if (editorCountry && editorCountry !== country) return true
+  } else if (editorCountry) {
+    return true
+  }
+  return false
+}
+
 function pickLocalEditor(
   assignable: AiEditorDocument[],
   citySlug: string | null | undefined
@@ -207,14 +240,27 @@ export function pickAiEditorFromList(
 
   if (!categoryId && hint) categoryId = hint.categoryId
 
+  const explicitCity = (input.citySlug ?? '').trim()
+  const explicitDistrict = (input.districtSlug ?? '').trim()
+  const explicitCountry = (input.countrySlug ?? '').trim()
+  const hasExplicitGeo = Boolean(explicitCity || explicitDistrict || explicitCountry)
+
   const citySlug =
-    input.citySlug?.trim() ||
-    (hint?.citySlug ? normalizeCitySlug(hint.citySlug) : '') ||
+    explicitCity ||
+    (!hasExplicitGeo && hint?.citySlug ? normalizeCitySlug(hint.citySlug) : '') ||
     ''
 
-  const city = citySlug?.trim().toLowerCase() || ''
-  const district = (input.districtSlug || hint?.districtSlug || '').trim().toLowerCase()
-  const country = (input.countrySlug || hint?.countrySlug || '').trim().toLowerCase()
+  const city = citySlug.trim().toLowerCase()
+  const district = (
+    explicitDistrict || (!hasExplicitGeo && hint?.districtSlug ? hint.districtSlug : '')
+  )
+    .trim()
+    .toLowerCase()
+  const country = (
+    explicitCountry || (!hasExplicitGeo && hint?.countrySlug ? hint.countrySlug : '')
+  )
+    .trim()
+    .toLowerCase()
 
   // SCALE P1.1: ilçe → il zinciri. Flag default false — existing city desks unchanged.
   if (isExpandedEditorHierarchyEnabled() && city && district) {
@@ -309,17 +355,22 @@ export function pickAiEditorFromList(
   }
 
   if (categoryId) {
-    const byList = assignable.find((e) => editorManagesCategory(e, categoryId))
-    if (byList) return byList
-
-    const slug = (FALLBACK_CATEGORY_SLUG[categoryId] ?? (isKibrisCategoryTree(categoryId) ? 'defne-aksoy' : undefined))
+    const slug =
+      FALLBACK_CATEGORY_SLUG[categoryId] ??
+      (isKibrisCategoryTree(categoryId) ? 'defne-aksoy' : undefined)
     if (slug) {
       const bySlug = findBySlug(assignable, slug)
-      if (bySlug) return bySlug
+      if (bySlug && !editorGeoConflicts(bySlug, city, country)) return bySlug
     }
+    const national = assignable.find(
+      (e) => editorManagesCategory(e, categoryId) && !editorGeoConflicts(e, city, country)
+    )
+    if (national) return national
   }
 
-  return findBySlug(assignable, 'selin-aras') ?? assignable[0] ?? null
+  const selin = findBySlug(assignable, 'selin-aras')
+  if (selin && !editorGeoConflicts(selin, city, country)) return selin
+  return assignable.find((e) => !editorGeoConflicts(e, city, country)) ?? null
 }
 
 /**
