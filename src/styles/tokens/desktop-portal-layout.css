@@ -226,8 +226,13 @@
 .desktop-portal-manset__time {
   font-size: 0.72rem;
   font-weight: 800;
-  color: #94a3b8;
+  color: #334155;
   font-variant-numeric: tabular-nums;
+}
+
+html.dark .desktop-portal-manset__time,
+html[data-theme='oled'] .desktop-portal-manset__time {
+  color: #e2e8f0;
 }
 
 .desktop-portal-manset__title,

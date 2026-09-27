@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
 /**
  * Shared mobile chrome authority: visual bottom of the fixed header+rail.
@@ -14,7 +14,7 @@ export function useChromeOffset(enabled: boolean): {
   const ref = useRef<HTMLElement | null>(null)
   const [height, setHeight] = useState(0)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!enabled) {
       setHeight(0)
       return
@@ -22,7 +22,13 @@ export function useChromeOffset(enabled: boolean): {
     const el = ref.current
     if (!el) return
 
+    const desktop = window.matchMedia('(min-width: 1024px)')
+
     const sync = () => {
+      if (desktop.matches) {
+        setHeight((prev) => (prev === 0 ? prev : 0))
+        return
+      }
       const box = el.getBoundingClientRect()
       const next = Math.max(0, Math.ceil(Math.max(box.height, box.bottom)))
       setHeight((prev) => (prev === next ? prev : next))
@@ -31,10 +37,12 @@ export function useChromeOffset(enabled: boolean): {
     sync()
     const ro = new ResizeObserver(sync)
     ro.observe(el)
+    desktop.addEventListener('change', sync)
     window.addEventListener('orientationchange', sync)
     window.visualViewport?.addEventListener('resize', sync)
     return () => {
       ro.disconnect()
+      desktop.removeEventListener('change', sync)
       window.removeEventListener('orientationchange', sync)
       window.visualViewport?.removeEventListener('resize', sync)
     }

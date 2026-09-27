@@ -86,7 +86,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
   if (view === 'purposes') {
     return (
       <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/55" />
 
         <div className="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[rgb(var(--color-surface))] shadow-2xl sm:rounded-3xl">
           <div className="flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-5 py-4">
@@ -188,7 +188,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
   // ── Ana görünüm — sade KVKK aydınlatması ───────────────────────────
   return (
     <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/55" />
 
       <div className="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[rgb(var(--color-surface))] shadow-2xl sm:rounded-3xl">
         <div className="flex justify-center pt-3 sm:hidden">

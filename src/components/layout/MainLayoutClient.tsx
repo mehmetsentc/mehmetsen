@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic'
 import { usePathname, useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { AuthIntentRunner } from '@/components/social/AuthIntentRunner'
-import { Sidebar } from '@/components/layout/Sidebar'
 import { Navbar } from '@/components/layout/Navbar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { MobileSafeAreaShield } from '@/components/layout/MobileSafeAreaShield'
@@ -44,6 +43,11 @@ import { GlobalBackNav } from '@/components/layout/BackNavButton'
 import { ScrollHeaderProvider } from '@/context/ScrollHeaderContext'
 import { ContextRailSlotProvider } from '@/components/layout/ContextRail'
 import { cn } from '@/lib/utils'
+
+const Sidebar = dynamic(
+  () => import('@/components/layout/Sidebar').then((m) => m.Sidebar),
+  { ssr: false, loading: () => null }
+)
 
 const SiteFooter = dynamic(
   () => import('@/components/home/desktop/DesktopHomeFooter').then((m) => m.DesktopHomeFooter),
@@ -127,12 +131,14 @@ const LayoutShell = memo(function LayoutShell({
     >
       {/* Outside sticky/fixed chrome so WKWebView cannot paint feed into status bar. */}
       {showTopNavbar ? <MobileSafeAreaShield /> : null}
-      <Sidebar
-        mobileOpen={drawerOpen}
-        desktopOpen={desktopSidebarOpen}
-        onMobileClose={() => setMobileDrawerOpen(false)}
-        onDesktopClose={() => setDesktopSidebarOpen(false)}
-      />
+      {drawerOpen || desktopSidebarOpen ? (
+        <Sidebar
+          mobileOpen={drawerOpen}
+          desktopOpen={desktopSidebarOpen}
+          onMobileClose={() => setMobileDrawerOpen(false)}
+          onDesktopClose={() => setDesktopSidebarOpen(false)}
+        />
+      ) : null}
       <GlobalBackNav />
       <DesktopSidebarToggle />
 

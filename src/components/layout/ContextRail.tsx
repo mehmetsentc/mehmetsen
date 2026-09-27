@@ -99,7 +99,6 @@ export function ContextRail({
       <div
         ref={scrollRef}
         className="context-rail__scroller"
-        role="tablist"
         data-no-category-swipe
         data-no-reader-gesture="1"
         onPointerDown={(event) => event.stopPropagation()}

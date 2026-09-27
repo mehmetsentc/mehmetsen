@@ -23,7 +23,33 @@ export function ConsentStrip() {
   useEffect(() => {
     if (!mounted) return
     if (isCapacitorNative()) return
-    setShowCookie(getConsent() === null)
+    if (getConsent() !== null) return
+
+    let cancelled = false
+    let idleId: number | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const show = () => {
+      if (!cancelled) setShowCookie(true)
+    }
+
+    const arm = () => {
+      if ('requestIdleCallback' in window) {
+        idleId = window.requestIdleCallback(show, { timeout: 2_500 })
+        return
+      }
+      timer = setTimeout(show, 1_500)
+    }
+
+    if (document.readyState === 'complete') arm()
+    else window.addEventListener('load', arm, { once: true })
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('load', arm)
+      if (idleId != null) window.cancelIdleCallback(idleId)
+      if (timer != null) clearTimeout(timer)
+    }
   }, [mounted])
 
   useEffect(() => {

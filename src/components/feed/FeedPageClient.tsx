@@ -59,44 +59,10 @@ function useDesktopFeedReady() {
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
-    let idleId: number | null = null
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    const clearIdle = () => {
-      if (idleId != null && 'cancelIdleCallback' in window) {
-        window.cancelIdleCallback(idleId)
-      }
-      if (timer) {
-        clearTimeout(timer)
-        timer = null
-      }
-      idleId = null
-    }
-
-    const armDesktop = () => {
-      clearIdle()
-      const enable = () => setDesktopReady(true)
-      if ('requestIdleCallback' in window) {
-        idleId = window.requestIdleCallback(enable, { timeout: 2_500 })
-      } else {
-        timer = setTimeout(enable, 1_200)
-      }
-    }
-
-    const sync = () => {
-      if (mq.matches) armDesktop()
-      else {
-        clearIdle()
-        setDesktopReady(false)
-      }
-    }
-
+    const sync = () => setDesktopReady(mq.matches)
     sync()
     mq.addEventListener('change', sync)
-    return () => {
-      mq.removeEventListener('change', sync)
-      clearIdle()
-    }
+    return () => mq.removeEventListener('change', sync)
   }, [])
 
   return desktopReady
