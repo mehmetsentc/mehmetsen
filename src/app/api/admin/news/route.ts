@@ -42,6 +42,7 @@ interface CreatePayload {
   seoDescription?: string
   seoKeywords?: string[]
   categoryId?: string
+  countryCategoryId?: string
   status?: string
   isBreaking?: boolean
   featured?: boolean
@@ -187,6 +188,7 @@ export async function POST(request: Request) {
       aiResearchSources: sanitizeGroundingSources(body.aiResearchSources),
       categoryId,
       category: categoryId,
+      countryCategoryId: categoryId === 'dunya' ? (body.countryCategoryId?.trim() ?? '') : '',
       status,
       type: 'news',
       source: body.sourceLabel?.trim() || 'NaHaber',

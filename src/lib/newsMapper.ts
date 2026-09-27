@@ -23,6 +23,10 @@ export interface NewsDocument {
   authorPhotoURL?: string | null
   category?: string
   categoryId?: string
+  /** Topic under a Dünya country (gundem, spor, …). Primary category stays `dunya`. */
+  countryCategoryId?: string
+  country?: string
+  countrySlug?: string
   slug?: string
   city?: string
   district?: string
@@ -456,6 +460,9 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     authorDisplayName,
     authorPhotoURL: (data as { authorPhotoURL?: string | null }).authorPhotoURL?.trim() || null,
     categoryId: data.categoryId?.trim() || data.category?.trim() || '',
+    countryCategoryId: data.countryCategoryId?.trim() || undefined,
+    country: data.country?.trim() || data.location?.country?.trim() || null,
+    countrySlug: data.countrySlug?.trim() || null,
     originalCategoryId: data.originalCategoryId?.trim() || undefined,
     city: data.city?.trim() || null,
     citySlug: data.citySlug?.trim() || null,

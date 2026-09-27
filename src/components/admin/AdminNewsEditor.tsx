@@ -15,6 +15,8 @@ import { articleBlocksToPlainText } from '@/lib/articleBlocks'
 import { deriveSeoKeywords, extractSeoKeywordsFromAiPayload } from '@/lib/seoKeywords'
 import {
   getAdminCategoryGroups,
+  getWorldTopicGroups,
+  formatWorldTopicName,
   getYerelSubcategories,
   getYerelSubcategoryShortLabel,
   YEREL_HABER_CATEGORY_ID,
@@ -260,6 +262,7 @@ export function AdminNewsEditor({
   const [routedEditorLabel, setRoutedEditorLabel] = useState<string | null>(null)
   const [spot, setSpot] = useState(post?.spot ?? '')
   const [categoryId, setCategoryId] = useState(post?.categoryId ?? '')
+  const [countryCategoryId, setCountryCategoryId] = useState(post?.countryCategoryId?.trim() ?? '')
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
   const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug?.trim() ?? '')
   const [districtSlug, setDistrictSlug] = useState(post?.districtSlug?.trim() ?? '')
@@ -275,6 +278,7 @@ export function AdminNewsEditor({
     )
   })
   const isWorldCategory = categoryId === 'dunya'
+  const worldTopicGroups = useMemo(() => getWorldTopicGroups(), [])
   const yerelCategoryParts = useMemo(() => resolveYerelCategoryParts(categoryId), [categoryId])
   const yerelSubcategories = useMemo(() => getYerelSubcategories(), [])
   const kibrisCategoryParts = useMemo(() => resolveKibrisCategoryParts(categoryId), [categoryId])
@@ -291,6 +295,19 @@ export function AdminNewsEditor({
       })),
     ],
     []
+  )
+  const worldTopicSearchGroups = useMemo(
+    () => [
+      { options: [{ value: '', label: '— Dünya alt kategori —' }] },
+      ...worldTopicGroups.map((group) => ({
+        label: group.label,
+        options: group.categories.map((cat) => ({
+          value: cat.id,
+          label: formatWorldTopicName(cat.name),
+        })),
+      })),
+    ],
+    [worldTopicGroups]
   )
   const countrySearchGroups = useMemo(
     () => [
@@ -524,6 +541,7 @@ export function AdminNewsEditor({
     aiEditorId: aiEditorId && aiEditorId !== AI_EDITOR_AUTO ? aiEditorId : null,
     spot,
     categoryId,
+    countryCategoryId: categoryId === 'dunya' ? countryCategoryId : '',
     status,
     thumbnail,
     imageCaption,
@@ -1616,6 +1634,7 @@ export function AdminNewsEditor({
               setDistrictSlug('')
             } else {
               setCountrySlug('')
+              setCountryCategoryId('')
             }
           }}
         />
@@ -1684,6 +1703,23 @@ export function AdminNewsEditor({
             className={fieldInputCls}
             onChange={setCountrySlug}
           />
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[rgb(var(--color-muted))]">
+              {findCountryBySlug(countrySlug)?.name
+                ? `${findCountryBySlug(countrySlug)?.name} kategorileri`
+                : 'Dünya alt kategori'}
+              <span className="ml-1 font-normal">(ülkenin konusu)</span>
+            </label>
+            <AdminSearchSelect
+              ariaLabel="Dünya alt kategori"
+              value={countryCategoryId}
+              groups={worldTopicSearchGroups}
+              placeholder="Dünya gündem, yaşam, asayiş…"
+              emptyLabel="— Dünya alt kategori —"
+              className={fieldInputCls}
+              onChange={setCountryCategoryId}
+            />
+          </div>
         </>
       ) : (
         /* Diğer kategoriler: şehir (Türkiye içi) + ülke (yurt dışı) — birbirini dışlar */

@@ -237,6 +237,37 @@ export function getAdminCategoryGroups(): Array<{ label: string; categories: Cat
   return groups
 }
 
+const WORLD_TOPIC_EXCLUDED_IDS = new Set([
+  'dunya',
+  'yerel-haber',
+  'kibris-haberleri',
+  'trend',
+  'tekrarlayan',
+])
+
+/** Dünya alt konu etiketi — ulusal adın önüne Dünya gelir (Dünya Gündem, Dünya Asayiş). */
+export function formatWorldTopicName(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'Dünya'
+  if (trimmed.toLocaleLowerCase('tr-TR').startsWith('dünya')) return trimmed
+  return `Dünya ${trimmed}`
+}
+
+/** Dünya seçilince ülkenin konusu: genel kategoriler, yerel/Kıbrıs masaları hariç. */
+export function getWorldTopicGroups(): Array<{ label: string; categories: CategoryDef[] }> {
+  return getAdminCategoryGroups()
+    .map((group) => ({
+      label: group.label,
+      categories: group.categories.filter(
+        (cat) =>
+          !WORLD_TOPIC_EXCLUDED_IDS.has(cat.id) &&
+          !cat.id.startsWith('yerel-') &&
+          !cat.id.startsWith('kibris-')
+      ),
+    }))
+    .filter((group) => group.categories.length > 0)
+}
+
 /** Returns subcategories of a given parent category id */
 export function getSubcategories(parentId: string): CategoryDef[] {
   return DEFAULT_CATEGORIES.filter((c) => c.parentId === parentId)

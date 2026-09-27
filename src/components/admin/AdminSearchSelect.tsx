@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Search } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SearchSelectOption {
@@ -31,7 +31,7 @@ export function AdminSearchSelect({
   value,
   onChange,
   groups,
-  placeholder = '1-2 harf yazın',
+  placeholder = 'Yazmaya başlayın',
   emptyLabel = '— seçin —',
   disabled,
   className,
@@ -49,7 +49,7 @@ export function AdminSearchSelect({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
@@ -80,15 +80,15 @@ export function AdminSearchSelect({
   )
 
   const place = () => {
-    const anchor = buttonRef.current
+    const anchor = rootRef.current
     if (!anchor) return
     const rect = anchor.getBoundingClientRect()
-    const width = Math.max(rect.width, 260)
+    const width = Math.max(rect.width, 280)
     const margin = 8
     const panelMaxH = 320
     const spaceBelow = window.innerHeight - rect.bottom - margin
     const spaceAbove = rect.top - margin
-    const openUp = spaceBelow < 200 && spaceAbove > spaceBelow
+    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow
     const top = openUp
       ? Math.max(margin, rect.top - Math.min(panelMaxH, spaceAbove))
       : rect.bottom + 4
@@ -102,103 +102,94 @@ export function AdminSearchSelect({
     const onScroll = () => place()
     window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', onScroll)
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 0)
     return () => {
-      window.clearTimeout(timer)
       window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', onScroll)
     }
   }, [open])
 
   useEffect(() => {
-    if (!open) return
-    const onPointer = (event: MouseEvent) => {
-      const target = event.target as Node
-      if (panelRef.current?.contains(target)) return
-      if (buttonRef.current?.contains(target)) return
-      setOpen(false)
-    }
-    document.addEventListener('mousedown', onPointer)
-    return () => document.removeEventListener('mousedown', onPointer)
-  }, [open])
-
-  useEffect(() => {
     setActiveIndex(0)
   }, [query, open])
 
-  const choose = (next: string) => {
-    onChange(next)
+  const close = () => {
     setOpen(false)
     setQuery('')
   }
 
+  const choose = (next: string) => {
+    onChange(next)
+    close()
+    inputRef.current?.blur()
+  }
+
   return (
-    <>
-      <button
-        ref={buttonRef}
-        type="button"
+    <div ref={rootRef} className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
         disabled={disabled}
+        role="combobox"
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-controls={listId}
-        onClick={() => {
+        aria-autocomplete="list"
+        value={open ? query : (selected?.label ?? '')}
+        placeholder={open ? placeholder : emptyLabel}
+        onFocus={() => {
           if (disabled) return
-          setOpen((current) => !current)
           setQuery('')
+          setOpen(true)
+        }}
+        onBlur={() => {
+          window.setTimeout(() => {
+            const active = document.activeElement
+            if (panelRef.current?.contains(active)) return
+            if (inputRef.current === active) return
+            close()
+          }, 120)
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value)
+          setOpen(true)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            close()
+            return
+          }
+          if (event.key === 'ArrowDown') {
+            event.preventDefault()
+            setOpen(true)
+            setActiveIndex((index) => Math.min(index + 1, Math.max(flat.length - 1, 0)))
+            return
+          }
+          if (event.key === 'ArrowUp') {
+            event.preventDefault()
+            setActiveIndex((index) => Math.max(index - 1, 0))
+            return
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            if (flat[activeIndex]) choose(flat[activeIndex].value)
+          }
         }}
         className={cn(
-          'flex w-full items-center justify-between gap-2 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-left text-sm text-[rgb(var(--color-text))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50',
+          'w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2.5 pr-8 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50',
           className
         )}
-      >
-        <span className={cn('truncate', !selected && 'text-[rgb(var(--color-muted))]')}>
-          {selected?.label || emptyLabel}
-        </span>
-        <ChevronDown className={cn('h-4 w-4 shrink-0 opacity-60', open && 'rotate-180')} />
-      </button>
+      />
+      <ChevronDown className={cn('pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-60', open && 'rotate-180')} />
       {open && style && typeof document !== 'undefined' && createPortal(
         <div
           ref={panelRef}
           style={{ position: 'fixed', top: style.top, left: style.left, width: style.width, zIndex: 10000 }}
           className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-xl"
         >
-          <div className="border-b border-[rgb(var(--color-border))] p-2">
-            <div className="flex items-center gap-2 rounded-lg border border-[rgb(var(--color-border))] px-2">
-              <Search className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-muted))]" />
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.preventDefault()
-                    setOpen(false)
-                    return
-                  }
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault()
-                    setActiveIndex((index) => Math.min(index + 1, Math.max(flat.length - 1, 0)))
-                    return
-                  }
-                  if (event.key === 'ArrowUp') {
-                    event.preventDefault()
-                    setActiveIndex((index) => Math.max(index - 1, 0))
-                    return
-                  }
-                  if (event.key === 'Enter' && flat[activeIndex]) {
-                    event.preventDefault()
-                    choose(flat[activeIndex].value)
-                  }
-                }}
-                placeholder={placeholder}
-                className="h-8 w-full bg-transparent text-sm text-[rgb(var(--color-text))] outline-none placeholder:text-[rgb(var(--color-muted))]"
-                aria-label={ariaLabel ? `${ariaLabel} ara` : 'Kategori ara'}
-              />
-            </div>
-          </div>
           <div id={listId} role="listbox" className="max-h-64 overflow-y-auto p-1">
             {flat.length === 0 ? (
-              <p className="px-2 py-3 text-xs text-[rgb(var(--color-muted))]">Eşleşen kategori yok</p>
+              <p className="px-2 py-3 text-xs text-[rgb(var(--color-muted))]">Eşleşen başlık yok</p>
             ) : (
               filtered.map((group) => (
                 <div key={group.label || 'options'} className="mb-1 last:mb-0">
@@ -213,10 +204,11 @@ export function AdminSearchSelect({
                     const current = option.value === value
                     return (
                       <button
-                        key={`${group.label ?? ''}-${option.value}`}
+                        key={`${group.label ?? ''}-${option.value}-${option.label}`}
                         type="button"
                         role="option"
                         aria-selected={current}
+                        onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => setActiveIndex(index)}
                         onClick={() => choose(option.value)}
                         className={cn(
@@ -236,6 +228,6 @@ export function AdminSearchSelect({
         </div>,
         document.body
       )}
-    </>
+    </div>
   )
 }

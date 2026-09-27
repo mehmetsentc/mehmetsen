@@ -60,6 +60,12 @@ export interface Post {
   authorDisplayName: string
   authorPhotoURL: string | null
   categoryId: string
+  /** Dünya haberinde ülkeye ait genel kategori (gündem, spor, …). */
+  countryCategoryId?: string
+  /** Yurt dışı haber ülkesi (görünen ad). */
+  country?: string | null
+  /** Yurt dışı haber ülke slug'ı. */
+  countrySlug?: string | null
   city?: string | null
   citySlug?: string | null
   /** İlçe display name (geo / CMS). */

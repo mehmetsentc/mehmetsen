@@ -73,6 +73,7 @@ interface UpdatePayload {
   seoDescription?: string
   seoKeywords?: string[]
   categoryId?: string
+  countryCategoryId?: string
   status?: string
   isBreaking?: boolean
   /** Homepage featured slider — national “Genelde öne çıkan” */
@@ -175,6 +176,8 @@ function buildUpdatePayload(body: UpdatePayload, authUid: string): Record<string
     // Keep the legacy `category` mirror in sync so home-pool bucketing (which reads
     // `category`) and category listing queries (which read `categoryId`) agree.
     update.category = categoryId
+    update.countryCategoryId =
+      categoryId === 'dunya' ? (body.countryCategoryId?.trim() ?? '') : ''
   }
   if (typeof body.isBreaking === 'boolean') update.isBreaking = body.isBreaking
   if (typeof body.featured === 'boolean') {
