@@ -31,9 +31,9 @@ function formatRelativeTime(dateStr?: string | null): string | null {
     if (diffMins < 1) return 'Az önce'
     if (diffMins < 60) return `${diffMins}dk önce`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours} sa önce`
+    if (diffHours < 24) return `${diffHours} saat önce`
     const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}g önce`
+    return `${diffDays} gün önce`
   } catch {
     return null
   }
@@ -376,23 +376,27 @@ export function FullscreenNewsCard({
           {item.publisher.name ? item.publisher.name.slice(0, 1) : 'N'}
         </span>
       )}
-      <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline">
-        {item.publisher.name}
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline">
+            {item.publisher.name}
+          </span>
+          {publisherHref ? (
+            <span
+              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
+              title="Doğrulanmış"
+              aria-label="Doğrulanmış yayıncı"
+            >
+              <Check className="h-2.5 w-2.5 stroke-[3]" aria-hidden />
+            </span>
+          ) : null}
+        </span>
+        {timeLabel ? (
+          <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+            {timeLabel}
+          </span>
+        ) : null}
       </span>
-      {publisherHref ? (
-        <span
-          className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
-          title="Doğrulanmış"
-          aria-label="Doğrulanmış yayıncı"
-        >
-          <Check className="h-2.5 w-2.5 stroke-[3]" aria-hidden />
-        </span>
-      ) : null}
-      {timeLabel ? (
-        <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
-          · {timeLabel}
-        </span>
-      ) : null}
     </>
   ) : null
 
@@ -547,7 +551,7 @@ export function FullscreenNewsCard({
                 alt={item.headline || ''}
                 fill
                 draggable={false}
-                className="object-contain object-center"
+                className="object-cover object-center"
                 sizes="(max-width: 768px) 100vw, 44rem"
                 priority={isActive}
                 onError={() => setImageError(true)}
@@ -676,7 +680,7 @@ export function FullscreenNewsCard({
                     className={cn(
                       'text-[11px] font-extrabold tracking-[0.06em]',
                       skin.badge === 'ghost'
-                        ? 'rounded-md bg-white/10 px-2 py-0.5 text-[color:var(--feed-skin-accent)]'
+                        ? 'rounded-md bg-white/20 px-2 py-0.5 text-white'
                         : 'rounded-md px-2 py-0.5 text-white',
                       skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
                       skin.id === 'spor' && 'rounded-full'
@@ -691,7 +695,7 @@ export function FullscreenNewsCard({
                     onClick={onCategoryClick}
                     data-testid="smart-feed-category-goto"
                     data-no-reader-gesture="1"
-                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/20 backdrop-blur-sm transition active:scale-[0.98]"
+                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/35 backdrop-blur-sm transition active:scale-[0.98]"
                     aria-label={`${cat} kategorisine git`}
                   >
                     <span className="hidden min-[360px]:inline">Kategoriye Git</span>
@@ -722,6 +726,9 @@ export function FullscreenNewsCard({
                 style={{ marginTop: 'var(--feed-v2-gap-cat-headline)' }}
               >
                 {typedHeadline}
+                <span className="text-transparent" aria-hidden>
+                  {(item.headline || '').slice(typedHeadline.length)}
+                </span>
                 {showCursor && cursorOn === 'headline' ? (
                   <span
                     className="ml-0.5 inline-block h-[0.9em] w-[0.08em] animate-pulse align-[-0.08em]"
@@ -745,6 +752,9 @@ export function FullscreenNewsCard({
                   style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
                   {typedSummary}
+                  <span className="text-transparent" aria-hidden>
+                    {(item.summary ?? '').slice(typedSummary.length)}
+                  </span>
                   {showCursor && cursorOn === 'summary' ? (
                     <span
                       className="ml-0.5 inline-block h-[0.85em] w-[0.08em] animate-pulse align-[-0.08em]"
@@ -817,15 +827,15 @@ export function FullscreenNewsCard({
                 e.stopPropagation()
                 onReadClick()
               }}
-              className="inline-flex h-14 w-full shrink-0 touch-manipulation items-center justify-center rounded-full px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-tap-highlight-color:transparent]"
-              style={{ background: '#ffffff' }}
+              className="relative z-10 inline-flex h-14 w-full shrink-0 touch-manipulation appearance-none items-center justify-center rounded-full bg-white px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-appearance:none] [-webkit-tap-highlight-color:transparent]"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
             >
               Haberi Oku
             </button>
 
             {item.authorName?.trim() ? (
               <div
-                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
+                className="mb-0.5 flex min-h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
                 data-testid="smart-feed-editor-row"
               >
                 {item.authorSlug ? (
@@ -837,35 +847,39 @@ export function FullscreenNewsCard({
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
-                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
-                      {item.authorName}
-                    </span>
-                    {timeLabel ? (
-                      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
-                        · {timeLabel}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[0.88rem] font-bold leading-tight text-white">
+                        {item.authorName}
                       </span>
-                    ) : null}
+                      {timeLabel ? (
+                        <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+                          {timeLabel}
+                        </span>
+                      ) : null}
+                    </span>
                   </Link>
                 ) : (
                   <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
-                    <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white">
-                      {item.authorName}
-                    </span>
-                    {timeLabel ? (
-                      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-white/70">
-                        · {timeLabel}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[0.88rem] font-bold leading-tight text-white">
+                        {item.authorName}
                       </span>
-                    ) : null}
+                      {timeLabel ? (
+                        <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+                          {timeLabel}
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                 )}
                 {item.authorId ? <EditorFollowButton authorUid={item.authorId} className="shrink-0" /> : null}
               </div>
             ) : item.publisher ? (
               <div
-                className="mb-0.5 flex h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
+                className="mb-0.5 flex min-h-12 min-w-0 shrink-0 flex-nowrap items-center gap-1.5 pr-12"
                 data-testid="smart-feed-publisher-row"
               >
                 {publisherHref ? (
@@ -908,7 +922,7 @@ export function FullscreenNewsCard({
 
         {/* Social rail — bottom edge above required action zone */}
         <div
-          className="pointer-events-auto absolute right-2 z-30 flex flex-col items-center gap-2.5 top-[38%] -translate-y-1/2 max-[820px]:top-auto max-[820px]:bottom-[calc(var(--feed-v2-bottom-clearance)+var(--feed-v2-action-zone)+0.35rem)] max-[820px]:translate-y-0"
+          className="pointer-events-auto absolute right-2 top-24 z-30 flex flex-col items-center gap-2.5"
           data-testid="smart-feed-social-dock"
         >
           <SocialActionRail

@@ -95,6 +95,27 @@ import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
 
+/** Drop the opening paragraph when it repeats the spot already shown above the photo. */
+function stripLeadDuplicatedInBody(html: string | null, summary: string | null): string | null {
+  if (!html || !summary) return html
+  const norm = (value: string) =>
+    value
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLocaleLowerCase('tr-TR')
+  const lead = norm(summary)
+  if (lead.length < 48) return html
+  return html.replace(/^\s*<p\b[^>]*>([\s\S]*?)<\/p>/i, (full, inner: string) => {
+    const text = norm(inner)
+    if (text.length < 48) return full
+    const probe = lead.slice(0, 80)
+    if (text.startsWith(probe) || lead.startsWith(text.slice(0, 80))) return ''
+    return full
+  })
+}
+
 export type FeedReaderTelemetryPayload = {
   articleId: string
   clusterId: string | null
@@ -342,8 +363,12 @@ export function FeedArticleReader({
   )
 
   const bodyHtmlRendered = useMemo(
-    () => stripDuplicateHeroFromBodyHtml(detail?.bodyHtml ?? null, hero.suppressBodySrc),
-    [detail?.bodyHtml, hero.suppressBodySrc]
+    () =>
+      stripLeadDuplicatedInBody(
+        stripDuplicateHeroFromBodyHtml(detail?.bodyHtml ?? null, hero.suppressBodySrc),
+        summary
+      ),
+    [detail?.bodyHtml, hero.suppressBodySrc, summary]
   )
 
   const heroCandidate = selectReaderHeroCandidate(feedImage, detailImage)
@@ -1117,7 +1142,7 @@ export function FeedArticleReader({
           minute: '2-digit',
         })
       : null,
-    readingMins ? `${readingMins} dk` : null,
+    readingMins ? `${readingMins} dk okuma` : null,
   ].filter(Boolean)
 
   const heroHasMedia = hero.state === 'LOADING' || hero.state === 'VALID_MEDIA'
@@ -1257,11 +1282,11 @@ export function FeedArticleReader({
         >
           <div className="mx-auto w-full max-w-[var(--reader-prose-max)]">
           <p
-            className="text-[12px] font-medium uppercase tracking-[0.08em] text-[color:var(--reader-page-muted)]"
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] font-medium normal-case tracking-normal text-[color:var(--reader-page-muted)]"
             data-testid="feed-reader-meta"
           >
             {metaBits.map((bit, i) => (
-              <span key={`${bit}-${i}`}>
+              <span key={`${bit}-${i}`} className="whitespace-nowrap">
                 {i > 0 ? <span className="text-white/25"> · </span> : null}
                 {i === 0 ? (
                   <span className="text-[color:var(--reader-accent)]">{bit}</span>

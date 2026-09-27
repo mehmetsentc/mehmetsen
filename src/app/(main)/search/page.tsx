@@ -254,18 +254,19 @@ function SearchPageContent() {
         </div>
       </form>
 
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+      <div className="flex gap-2 overflow-x-auto hide-scrollbar px-0.5 pb-1">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={cn('filter-chip px-4 py-2', tab === id && 'filter-chip-active')}
+            className={cn('filter-chip shrink-0 whitespace-nowrap px-3 py-2', tab === id && 'filter-chip-active')}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4 shrink-0" />
             {label}
           </button>
         ))}
+        <span className="w-3 shrink-0" aria-hidden />
       </div>
 
       {loading && (

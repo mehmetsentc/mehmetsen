@@ -43,8 +43,8 @@ export function ProfileTabs({
     { id: 'reels', label: 'Videolar', icon: Clapperboard },
     ...(isOwnProfile
       ? [
-          { id: 'saved' as const, label: 'Kaydedilenler', icon: Bookmark },
-          { id: 'liked' as const, label: 'Beğenilenler', icon: Heart },
+          { id: 'saved' as const, label: 'Kayıtlar', icon: Bookmark },
+          { id: 'liked' as const, label: 'Beğeni', icon: Heart },
         ]
       : []),
   ]
@@ -110,10 +110,11 @@ export function ProfileTabs({
             type="button"
             onClick={() => setActiveTab(id)}
             aria-current={tab === id ? 'page' : undefined}
+            aria-label={label}
             className={cn('profile-tab', tab === id && 'profile-tab-active')}
           >
-            <Icon className="h-4 w-4" aria-hidden />
-            {label}
+            <Icon className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">{label}</span>
           </button>
         ))}
       </div>

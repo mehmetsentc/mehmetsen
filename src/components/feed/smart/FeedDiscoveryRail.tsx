@@ -265,24 +265,28 @@ export function FeedDiscoveryRail({
                   className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-neutral-900"
                   data-testid="feed-reader-discovery-media"
                 >
+                  <div
+                    className="absolute inset-0 z-0 flex items-end bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 p-3 text-xs font-semibold text-white/70"
+                    data-testid="feed-reader-discovery-media-fallback"
+                    aria-hidden
+                  >
+                    {item.image ? '' : 'Görsel yok'}
+                  </div>
                   {item.image ? (
                     <Image
                       src={item.image}
                       alt=""
                       fill
-                      className="object-cover"
+                      className="z-10 object-cover"
                       sizes="(max-width: 768px) 100vw, 42rem"
                       unoptimized={
                         item.image.startsWith('http://') || item.image.startsWith('https://')
                       }
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                      }}
                     />
-                  ) : (
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950"
-                      data-testid="feed-reader-discovery-media-fallback"
-                      aria-hidden
-                    />
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 px-4 pb-4 pt-3.5">
                   <p
@@ -396,7 +400,7 @@ export function FeedDiscoveryRail({
                 <div className="flex min-h-[3.75rem] flex-col gap-1 px-2 pb-2 pt-1.5">
                   {catLabel ? (
                     <span
-                      className="truncate text-[9px] font-extrabold tracking-[0.06em] text-[color:var(--feed-skin-accent,#e11d2e)]"
+                      className="truncate text-[9px] font-extrabold tracking-[0.06em] text-white/80"
                       data-testid="smart-feed-discovery-cat"
                     >
                       {catLabel}

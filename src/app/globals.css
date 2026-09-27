@@ -4248,7 +4248,7 @@
   }
 
   .category-link {
-    @apply rounded-xl bg-[rgb(var(--color-surface))] px-3 py-3 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-brand-600/10 hover:text-brand-700 dark:hover:bg-brand-600/15 dark:hover:text-brand-400;
+    @apply min-w-0 break-words rounded-xl bg-[rgb(var(--color-surface))] px-3 py-3 text-sm font-medium leading-snug text-[rgb(var(--color-text))] transition-colors hover:bg-brand-600/10 hover:text-brand-700 dark:hover:bg-brand-600/15 dark:hover:text-brand-400;
   }
 
   .auth-card {
@@ -4813,11 +4813,11 @@
   }
 
   .profile-tabs-bar {
-    @apply flex gap-1 overflow-x-auto border-b border-[rgb(var(--color-border))];
+    @apply flex gap-1 border-b border-[rgb(var(--color-border))];
   }
 
   .profile-tab {
-    @apply inline-flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--color-brand))];
+    @apply inline-flex min-w-0 flex-1 items-center justify-center gap-1 border-b-2 border-transparent px-1 py-2.5 text-[12px] font-semibold text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--color-brand))];
   }
 
   .profile-tab-active {
@@ -6214,38 +6214,15 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header 
   min-height: 2.75rem;
 }
 
-/* Safari dvh grows the flex hero; a landscape photo then letterboxes in black. */
-@supports (-webkit-touch-callout: none) and (font: -apple-system-body) {
-  html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-double-tap-zone']:has([data-feed-hero-fit='contain']) {
-    flex: 0 0 auto !important;
-  }
+/* Safari must not paint the system gray over Haberi Oku. */
+[data-testid='smart-feed-read-cta'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
 
-  html[data-feed-overlay-chrome='1'] [data-feed-hero-fit='contain'] {
-    flex: 0 0 auto !important;
-    align-self: stretch;
-    min-height: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-  }
-
-  html[data-feed-overlay-chrome='1'] [data-feed-hero-fit='contain'] img {
-    position: relative !important;
-    inset: auto !important;
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    display: block !important;
-    width: auto !important;
-    height: auto !important;
-    max-width: 100% !important;
-    max-height: min(46svh, var(--feed-v2-hero-max, 46svh)) !important;
-    margin-inline: auto !important;
-    object-fit: contain !important;
-    object-position: center top !important;
-  }
-
-  html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-bottom-chrome'] {
-    margin-top: 0.65rem !important;
-  }
+/* Reader footer is absolute; keep the scrollport above it so the last lines stay visible. */
+[data-testid='feed-reader-scroll'] {
+  margin-bottom: var(--reader-footer-clearance, calc(5.75rem + env(safe-area-inset-bottom, 0px)));
 }

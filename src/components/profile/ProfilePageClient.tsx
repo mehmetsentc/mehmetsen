@@ -82,7 +82,7 @@ export function ProfilePageClient({
   ) : null
 
   return (
-    <div className="profile-page-shell w-full pb-8" data-profile-view={isOwnProfile ? 'own' : 'user'}>
+    <div className="profile-page-shell w-full pb-[calc(var(--mobile-nav-pill-h,3rem)+var(--mobile-nav-float-gap,1.15rem)+env(safe-area-inset-bottom,0px)+1.5rem)]" data-profile-view={isOwnProfile ? 'own' : 'user'}>
       {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
 
       <div className={isOwnProfile || about ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-8' : undefined}>
