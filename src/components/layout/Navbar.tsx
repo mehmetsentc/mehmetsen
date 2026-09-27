@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type Ref } from 'react'
+import { useLayoutEffect, useState, type Ref } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Plus, Search } from 'lucide-react'
@@ -68,7 +68,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/post/'))
   const fallbackChromeHeight = overlayFeed
-    ? 'calc(env(safe-area-inset-top, 0px) + 2.75rem + 2.5rem)'
+    ? 'calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 2.75rem + 2.5rem)'
     : showContextRail
       ? 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem) + var(--nahaber-context-rail-height, 3.15rem))'
       : 'calc(max(var(--mobile-sat, 0px), env(safe-area-inset-top, 0px)) + var(--nahaber-header-row-height, 3.85rem))'
@@ -79,7 +79,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
    * publisher/follow first-paint stack. Publish the spacer height as a CSS var
    * so `.content-main-reels` can size to the remaining band.
    */
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
     if (overlayFeed) root.setAttribute('data-feed-overlay-chrome', '1')
@@ -130,7 +130,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
             ? 'mobile-top-chrome--overlay text-white'
             : 'mobile-top-chrome--immersive text-[rgb(var(--header-onbrand))]',
           overlayFeed
-            ? 'pt-[env(safe-area-inset-top,0px)]'
+            ? 'feed-overlay-sat'
             : 'pt-[max(var(--mobile-sat,0px),env(safe-area-inset-top,0px))]'
         )}
       >
@@ -138,7 +138,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           className={cn(
             'overflow-x-hidden',
             overlayFeed
-              ? 'h-[2.75rem] min-h-[2.75rem] text-white'
+              ? 'h-[2.75rem] min-h-[2.75rem] shrink-0 text-white'
               : 'h-[var(--nahaber-header-row-height,3.85rem)] text-[rgb(var(--header-onbrand))]'
           )}
         >

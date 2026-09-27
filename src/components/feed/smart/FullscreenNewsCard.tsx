@@ -530,6 +530,7 @@ export function FullscreenNewsCard({
                   'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
               )}
               data-testid="smart-feed-fg-hero"
+              data-feed-hero-fit={fullBleed ? undefined : 'contain'}
               data-feed-full-bleed={fullBleed ? '1' : undefined}
               style={
                 fullBleed

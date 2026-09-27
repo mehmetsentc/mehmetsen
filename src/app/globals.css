@@ -6128,7 +6128,9 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail:
   html[data-feed-overlay-chrome='1'] {
     --nahaber-header-row-height: 2.75rem;
     --nahaber-context-rail-height: 2.5rem;
-    --mobile-top-chrome-offset: calc(env(safe-area-inset-top, 0px) + 2.75rem + 2.5rem);
+    --mobile-top-chrome-offset: calc(
+      var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 2.75rem + 2.5rem
+    );
   }
 }
 
@@ -6189,4 +6191,62 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome--overlay .context-rail__ch
   min-height: 2rem;
   padding: 0.2rem 0.15rem;
   text-shadow: none;
+}
+
+/*
+ * iOS Safari + viewport-fit=cover often reports env(safe-area-inset-top) as 0,
+ * so the brand row paints under the clock. One max() in real CSS — not a
+ * nested Tailwind arbitrary value, which Safari drops.
+ * Chrome (no -webkit-touch-callout) keeps env() only, so its header stays put.
+ */
+@supports (-webkit-touch-callout: none) and (font: -apple-system-body) {
+  html[data-feed-overlay-chrome='1'] {
+    --feed-overlay-sat: max(env(safe-area-inset-top, 0px), 47px);
+  }
+}
+
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat {
+  padding-top: var(--feed-overlay-sat, env(safe-area-inset-top, 0px));
+}
+
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header {
+  flex: 0 0 2.75rem;
+  height: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* Safari dvh grows the flex hero; a landscape photo then letterboxes in black. */
+@supports (-webkit-touch-callout: none) and (font: -apple-system-body) {
+  html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-double-tap-zone']:has([data-feed-hero-fit='contain']) {
+    flex: 0 0 auto !important;
+  }
+
+  html[data-feed-overlay-chrome='1'] [data-feed-hero-fit='contain'] {
+    flex: 0 0 auto !important;
+    align-self: stretch;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  html[data-feed-overlay-chrome='1'] [data-feed-hero-fit='contain'] img {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: min(46svh, var(--feed-v2-hero-max, 46svh)) !important;
+    margin-inline: auto !important;
+    object-fit: contain !important;
+    object-position: center top !important;
+  }
+
+  html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-bottom-chrome'] {
+    margin-top: 0.65rem !important;
+  }
 }
