@@ -6215,6 +6215,11 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat {
   padding-top: var(--feed-overlay-sat, env(safe-area-inset-top, 0px));
 }
 
+/* Same distance below the category row on Safari and Chrome. */
+html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-social-dock'] {
+  top: calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 11rem);
+}
+
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header {
   flex: 0 0 2.75rem;
   height: 2.75rem;

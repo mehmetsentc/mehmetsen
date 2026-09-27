@@ -646,6 +646,47 @@ export function FullscreenNewsCard({
               <Heart className="h-20 w-20 fill-rose-500 text-rose-500 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]" />
             </span>
           ) : null}
+
+          {/* Social rail sits on the photo's lower edge — same place in Safari and Chrome. */}
+          <div
+            className="pointer-events-auto absolute right-2 top-[42%] z-30 flex flex-col items-center gap-2.5"
+            data-testid="smart-feed-social-dock"
+            data-no-reader-gesture="1"
+          >
+            <SocialActionRail
+              articleId={item.articleId}
+              slug={item.slug}
+              title={item.headline}
+              summary={item.summary ?? undefined}
+              liked={liked}
+              saved={saved}
+              likeCount={resolvedLikeCount}
+              commentCount={resolvedCommentCount}
+              saveCount={resolvedSaveCount}
+              shareCount={resolvedShareCount}
+              viewCount={resolvedViewCount}
+              reaction={reaction}
+              onToggleLike={onToggleLike}
+              onReact={onReact}
+              onToggleSave={onToggleSave}
+              onCommentClick={onCommentClick}
+              likeLoading={likeLoading}
+              saveLoading={saveLoading}
+              orientation="vertical"
+              className="text-white"
+              data-testid="smart-feed-social-rail"
+            />
+            {progressLabel ? (
+              <div
+                className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
+                data-testid="smart-feed-card-progress"
+                aria-label={`Kart ${progressLabel}`}
+              >
+                <span>{progressLabel}</span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {/*
@@ -918,46 +959,6 @@ export function FullscreenNewsCard({
               </div>
             ) : null}
           </div>
-        </div>
-
-        {/* Social rail — bottom edge above required action zone */}
-        <div
-          className="pointer-events-auto absolute right-2 top-24 z-30 flex flex-col items-center gap-2.5"
-          data-testid="smart-feed-social-dock"
-        >
-          <SocialActionRail
-            articleId={item.articleId}
-            slug={item.slug}
-            title={item.headline}
-            summary={item.summary ?? undefined}
-            liked={liked}
-            saved={saved}
-            likeCount={resolvedLikeCount}
-            commentCount={resolvedCommentCount}
-            saveCount={resolvedSaveCount}
-            shareCount={resolvedShareCount}
-            viewCount={resolvedViewCount}
-            reaction={reaction}
-            onToggleLike={onToggleLike}
-            onReact={onReact}
-            onToggleSave={onToggleSave}
-            onCommentClick={onCommentClick}
-            likeLoading={likeLoading}
-            saveLoading={saveLoading}
-            orientation="vertical"
-            className="text-white"
-            data-testid="smart-feed-social-rail"
-          />
-          {progressLabel ? (
-            <div
-              className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
-              data-testid="smart-feed-card-progress"
-              aria-label={`Kart ${progressLabel}`}
-            >
-              <span>{progressLabel}</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
-            </div>
-          ) : null}
         </div>
       </div>
     </article>
