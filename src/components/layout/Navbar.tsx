@@ -85,7 +85,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     if (overlayFeed) root.setAttribute('data-feed-overlay-chrome', '1')
     const mq = window.matchMedia('(max-width: 1023px)')
     const apply = () => {
-      if (!mq.matches) {
+      if (!mq.matches || overlayFeed) {
         root.style.setProperty('--mobile-top-chrome-offset', '0px')
         return
       }
@@ -213,7 +213,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
         aria-hidden
         data-testid="mobile-chrome-spacer"
         style={{
-          height: chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
+          height: overlayFeed ? 0 : chromeHeight > 0 ? chromeHeight : fallbackChromeHeight,
         }}
       />
       {submitOpen ? <SubmitNewsModal onClose={() => setSubmitOpen(false)} /> : null}

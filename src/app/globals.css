@@ -6032,9 +6032,8 @@ html[data-desktop-header='newspaper']:not([data-city-overlay-chrome='1']) .mobil
   --nahaber-header-row-height: 2.75rem;
   --nahaber-context-rail-height: 2.5rem;
   color: #fff !important;
-  background: transparent !important;
   background-color: transparent !important;
-  background-image: none !important;
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.48), rgb(0 0 0 / 0)) !important;
   border-bottom: 0 !important;
   box-shadow: none !important;
   -webkit-backdrop-filter: none !important;
@@ -6127,9 +6126,19 @@ html[data-desktop-header='newspaper'] .mobile-top-chrome--overlay .context-rail:
   html[data-feed-overlay-chrome='1'] {
     --nahaber-header-row-height: 2.75rem;
     --nahaber-context-rail-height: 2.5rem;
-    --mobile-top-chrome-offset: calc(
-      var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 2.75rem + 2.5rem
-    );
+    --feed-overlay-sat: max(env(safe-area-inset-top, 0px), var(--mobile-sat, 0px));
+    --mobile-top-chrome-offset: 0px;
+  }
+
+  html[data-feed-overlay-chrome='1'] .content-main-reels {
+    --feed-card-h: 100dvh;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  html[data-feed-overlay-chrome='1'] .mobile-safe-area-shield {
+    background-color: transparent;
   }
 }
 
@@ -6161,15 +6170,20 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome .feed-v2-cat-chip,
   pointer-events: auto;
 }
 
-/* Feed overlay: one plate, two rows. Same height in Chrome and Safari. */
-html[data-feed-overlay-chrome='1'] .mobile-top-chrome,
-html[data-feed-overlay-chrome='1'] .mobile-top-chrome.is-fixed,
-html[data-feed-overlay-chrome='1'] .mobile-top-chrome--overlay {
-  background: rgb(8 12 18) !important;
-  background-color: rgb(8 12 18) !important;
-  background-image: none !important;
+/* Feed overlay: logo and category row float on the photo. Same inset on iOS and Android.
+   Specificity must beat the newspaper overlay rule that forces background-image: none. */
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.mobile-top-chrome--overlay.is-fixed {
+  background-color: transparent !important;
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0)) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.is-fixed::before,
+html[data-feed-overlay-chrome='1'] .mobile-top-chrome.sticky::before {
+  content: none;
+  display: none;
+  background: transparent !important;
 }
 
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome--overlay .context-rail,
@@ -6189,19 +6203,7 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome--overlay .feed-v2-cat-chip
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome--overlay .context-rail__chip {
   min-height: 2rem;
   padding: 0.2rem 0.15rem;
-  text-shadow: none;
-}
-
-/*
- * iOS Safari + viewport-fit=cover often reports env(safe-area-inset-top) as 0,
- * so the brand row paints under the clock. One max() in real CSS — not a
- * nested Tailwind arbitrary value, which Safari drops.
- * Chrome (no -webkit-touch-callout) keeps env() only, so its header stays put.
- */
-@supports (-webkit-touch-callout: none) and (font: -apple-system-body) {
-  html[data-feed-overlay-chrome='1'] {
-    --feed-overlay-sat: max(env(safe-area-inset-top, 0px), 47px);
-  }
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.85);
 }
 
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat {
