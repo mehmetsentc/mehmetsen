@@ -1,8 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Link from 'next/link'
-import { Settings, PlusCircle, Newspaper } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { User } from '@/types/user'
 import { Avatar } from '@/components/ui/Avatar'
@@ -10,11 +8,9 @@ import { FollowButton } from './FollowButton'
 import { MessageButton } from '@/components/messages/MessageButton'
 import { AvatarPickerSheet } from './AvatarPickerSheet'
 import { AvatarCropModal } from './AvatarCropModal'
-import { SubmitNewsModal } from './SubmitNewsModal'
 import { storageService } from '@/services/storageService'
 import { userService } from '@/services/userService'
 import { useAuth } from '@/hooks/useAuth'
-import { ROUTES } from '@/constants/routes'
 import { formatCount } from '@/lib/postUtils'
 
 interface ProfileHeaderProps {
@@ -39,7 +35,6 @@ export function ProfileHeader({
   // UI state
   const [showPicker, setShowPicker] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
-  const [showNewsModal, setShowNewsModal] = useState(false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -114,17 +109,7 @@ export function ProfileHeader({
   return (
     <>
       <header className="py-4 sm:py-5" data-profile-view={isOwnProfile ? 'own' : 'user'}>
-        <div
-          className={
-            isOwnProfile
-              ? 'mb-4 inline-flex items-center rounded-full bg-[rgb(var(--color-brand))]/12 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-brand))]'
-              : 'mb-4 inline-flex items-center rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-muted))]'
-          }
-        >
-          {isOwnProfile ? 'Profilim' : 'Kullanıcı'}
-        </div>
-
-        {/* ── Üst kısım: avatar + butonlar ── */}
+        {/* ── Üst kısım: avatar + kimlik ── */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-10 md:gap-14">
 
           {/* Avatar */}
@@ -191,16 +176,7 @@ export function ProfileHeader({
                   </h1>
                   <p className="truncate text-sm text-[rgb(var(--color-muted))]">@{user.username}</p>
                 </div>
-                {isOwnProfile ? (
-                  <div className="flex gap-2">
-                    <Link href={ROUTES.SETTINGS_PROFILE} className="profile-edit-btn">
-                      Profili düzenle
-                    </Link>
-                    <Link href={ROUTES.SETTINGS} className="profile-edit-btn" aria-label="Ayarlar">
-                      <Settings className="h-4 w-4" />
-                    </Link>
-                  </div>
-                ) : (
+                {isOwnProfile ? null : (
                   <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                     <MessageButton targetUser={user} />
                     <FollowButton
@@ -245,27 +221,6 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* ── Haber butonları — sadece kendi profili ── */}
-        {isOwnProfile && (
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => setShowNewsModal(true)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-            >
-              <Newspaper className="h-4 w-4" />
-              Haber Ekle
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowNewsModal(true)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-[rgb(var(--color-brand))]/40 py-2.5 text-sm font-semibold text-[rgb(var(--color-brand))] transition hover:bg-[rgb(var(--color-brand))]/8 active:scale-[0.98]"
-            >
-              <PlusCircle className="h-4 w-4" />
-              Haber Öner
-            </button>
-          </div>
-        )}
       </header>
 
       {/* ── Modals & sheets ── */}
@@ -290,10 +245,6 @@ export function ProfileHeader({
         />
       )}
 
-      {/* Haber gönder modal */}
-      {showNewsModal && (
-        <SubmitNewsModal onClose={() => setShowNewsModal(false)} />
-      )}
     </>
   )
 }

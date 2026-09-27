@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Plus, Search } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { pathIs, ROUTES } from '@/constants/routes'
+import { isProfileSurface, pathIs, ROUTES } from '@/constants/routes'
 import { CategoryNav } from './CategoryNav'
 import { ContextRailSlot } from '@/components/layout/ContextRail'
 import { BackNavButton } from '@/components/layout/BackNavButton'
@@ -63,7 +63,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
     (pathname !== ROUTES.REELS &&
       pathname !== ROUTES.VIDEO &&
       !isArticle &&
-      !isProfil(pathname) &&
+      !isProfileSurface(pathname) &&
       !pathIs(pathname, ROUTES.MESSAGES, '/messages') &&
       !pathname.startsWith('/admin') &&
       !pathname.startsWith('/post/'))
@@ -206,7 +206,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
           </div>
         </header>
 
-        {isFeedV2 ? <ContextRailSlot /> : <CategoryNav embedded />}
+        {isFeedV2 ? <ContextRailSlot /> : isProfileSurface(pathname) ? null : <CategoryNav embedded />}
       </div>
       <div
         className="lg:hidden shrink-0"

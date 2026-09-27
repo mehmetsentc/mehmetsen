@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { Bookmark, Settings, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile } from '@/hooks/useProfile'
 import { ProfileHeader } from './ProfileHeader'
@@ -82,14 +81,6 @@ export function ProfilePageClient({
     </ProfileAboutCard>
   ) : null
 
-  const ownerLinks = isOwnProfile ? (
-    <nav aria-label="Profil sahibi" className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-2">
-      <OwnerLink href={ROUTES.SETTINGS_PROFILE} icon={SlidersHorizontal} label="Profili düzenle" />
-      <OwnerLink href={ROUTES.SETTINGS} icon={Settings} label="Ayarlar" />
-      <OwnerLink href={ROUTES.SAVED} icon={Bookmark} label="Kaydedilenler" />
-    </nav>
-  ) : null
-
   return (
     <div className="profile-page-shell w-full pb-8" data-profile-view={isOwnProfile ? 'own' : 'user'}>
       {isOwnProfile && authUser && <ProfileCompleteModal user={authUser} />}
@@ -106,10 +97,6 @@ export function ProfilePageClient({
             }}
           />
 
-          <div className="mb-4 space-y-3 lg:hidden">
-            {ownerLinks}
-          </div>
-
           <ProfileTabs
             userId={profile.uid}
             username={profile.username}
@@ -120,7 +107,6 @@ export function ProfilePageClient({
 
         <div className={isOwnProfile || about ? 'mt-6 hidden space-y-4 lg:mt-7 lg:block' : 'hidden'}>
           {about}
-          {ownerLinks}
           {isOwnProfile ? (
             <>
               <ProfileBadges user={profile} showLocked />
@@ -130,25 +116,5 @@ export function ProfilePageClient({
         </div>
       </div>
     </div>
-  )
-}
-
-function OwnerLink({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string
-  label: string
-  icon: typeof Settings
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-nav-hover))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--color-brand))]"
-    >
-      <Icon className="h-4 w-4 text-[rgb(var(--color-muted))]" aria-hidden />
-      {label}
-    </Link>
   )
 }

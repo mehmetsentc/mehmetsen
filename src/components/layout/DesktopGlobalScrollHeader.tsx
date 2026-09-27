@@ -7,7 +7,7 @@ import { CityDesktopNewspaperHeader } from '@/components/city/CityDesktopNewspap
 import { CityTenantProvider } from '@/store/cityTenantContext'
 import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { readLocalCityTenant } from '@/lib/tenant'
-import { ROUTES } from '@/constants/routes'
+import { isProfileSurface, ROUTES } from '@/constants/routes'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
   if (pathname === ROUTES.REELS || pathname === '/video' || pathname.startsWith('/video/')) {
@@ -21,6 +21,7 @@ function shouldShowGlobalScrollHeader(pathname: string): boolean {
   }
   if (pathname.startsWith('/saved') || pathname.startsWith('/settings')) return false
   if (pathname.startsWith('/notifications')) return false
+  if (isProfileSurface(pathname)) return false
   return true
 }
 

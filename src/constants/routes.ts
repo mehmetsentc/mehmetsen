@@ -173,6 +173,24 @@ export function isHomePathname(pathname: string): boolean {
   return pathname === '/' || pathname === '' || pathname === '/feed'
 }
 
+/** Kullanıcı, editör ve kaynak profili. Studio bu yüzeye girmez. */
+export function isProfileSurface(pathname: string): boolean {
+  if (pathIs(pathname, '/profil', '/profile')) return true
+  if (pathname.startsWith('/u/')) return true
+  if (pathname.startsWith('/yazar/')) return true
+  if (pathname.startsWith('/publisher/') && !pathname.startsWith('/publisher-studio')) return true
+  return false
+}
+
+/** Site footer: ana sayfa, kategori ve haber içeriği. Profil sayfalarında yok. */
+export function shouldShowSiteFooter(pathname: string): boolean {
+  if (isHomePathname(pathname)) return true
+  if (pathname === '/kategori' || pathname.startsWith('/kategori/')) return true
+  if (pathname.startsWith('/haber/')) return true
+  if (pathname.startsWith('/post/') && !pathname.startsWith('/post/create')) return true
+  return false
+}
+
 /** prefix === '/' için yalnızca anasayfa; diğerlerinde tam eşleşme veya alt yol. */
 export function pathIs(pathname: string, ...prefixes: string[]): boolean {
   return prefixes.some((prefix) => {

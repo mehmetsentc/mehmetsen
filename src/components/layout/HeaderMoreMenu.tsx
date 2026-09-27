@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Bell, MessageCircle, MoreVertical, Plus } from 'lucide-react'
+import { Bell, MessageCircle, MoreVertical, Plus, Settings, SlidersHorizontal } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
+import { useAuth } from '@/hooks/useAuth'
 import { NavMessagesBadge } from '@/components/layout/NavMessagesBadge'
 import { useNotifications } from '@/hooks/useNotifications'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,7 @@ export function HeaderMoreMenu({
   const panelRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
   const { unreadCount } = useNotifications()
+  const { user } = useAuth()
 
   const close = useCallback(() => setOpen(false), [])
 
@@ -126,6 +128,30 @@ export function HeaderMoreMenu({
               <Plus className="h-4 w-4" strokeWidth={2.25} />
               Haber Ekle
             </button>
+            {user ? (
+              <Link
+                href={ROUTES.SETTINGS_PROFILE}
+                role="menuitem"
+                className={itemClass}
+                data-testid="header-action-edit-profile"
+                onClick={close}
+              >
+                <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} />
+                Profili düzenle
+              </Link>
+            ) : null}
+            {user ? (
+              <Link
+                href={ROUTES.SETTINGS}
+                role="menuitem"
+                className={itemClass}
+                data-testid="header-action-settings"
+                onClick={close}
+              >
+                <Settings className="h-4 w-4" strokeWidth={2.25} />
+                Ayarlar
+              </Link>
+            ) : null}
             <Link
               href={ROUTES.MESSAGES}
               role="menuitem"

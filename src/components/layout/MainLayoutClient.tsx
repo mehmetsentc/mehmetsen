@@ -21,7 +21,7 @@ import { usePlatformLayout } from '@/hooks/usePlatformLayout'
 import { useSmartFeedReaderSurfaceActive } from '@/hooks/useSmartFeedReaderSurfaceActive'
 import { logRouteChange } from '@/lib/navDiagnostics'
 import { pauseAllPageVideos } from '@/lib/videoPlayback'
-import { isHomePathname, isPublicRoute, ROUTES } from '@/constants/routes'
+import { isHomePathname, isPublicRoute, ROUTES, shouldShowSiteFooter } from '@/constants/routes'
 import {
   isFeedImmersiveStage,
   isFeedV2Pathname,
@@ -171,7 +171,7 @@ const LayoutShell = memo(function LayoutShell({
             >
               <DesktopGlobalScrollHeader />
               {children}
-              {variant === 'newspaper' && !isPublicVideoPathname(pathname) && (
+              {shouldShowSiteFooter(pathname) && (
                 <SiteFooter suppressNewsletter={suppressFooterNewsletter} />
               )}
             </main>

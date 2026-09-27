@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { resolveSwipeCategoryKey } from '@/constants/config'
+import { isProfileSurface } from '@/constants/routes'
 import { ContextRail, contextRailChipClass } from '@/components/layout/ContextRail'
 import {
   getSharedRailDestinations,
@@ -59,7 +60,7 @@ export function CategoryNav({
       pathname.startsWith('/admin') ||
       pathname.startsWith('/haber/') ||
       pathname.startsWith('/post/') ||
-      pathname.startsWith('/profile/')
+      isProfileSurface(pathname)
 
     if (hide) return null
 
