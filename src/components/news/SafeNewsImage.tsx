@@ -72,23 +72,23 @@ export function SafeNewsImage({
   onLoad,
   onError,
 }: SafeNewsImageProps) {
-  const [errored, setErrored] = useState(false)
-  const [useFallback, setUseFallback] = useState(false)
+  const [loadState, setLoadState] = useState<{ src: string; mode: 'fallback' | 'dead' } | null>(null)
   const resolvedSrc = typeof src === 'string' ? src.trim() : ''
   const resolvedFallback =
     typeof fallbackSrc === 'string' && fallbackSrc.trim() && fallbackSrc.trim() !== resolvedSrc
       ? fallbackSrc.trim()
       : ''
-  const activeSrc = useFallback && resolvedFallback ? resolvedFallback : resolvedSrc
+  const mode = loadState?.src === resolvedSrc ? loadState.mode : 'primary'
+  const activeSrc = mode === 'fallback' && resolvedFallback ? resolvedFallback : resolvedSrc
 
-  if (errored || !activeSrc) return <>{fallback}</>
+  if (mode === 'dead' || !activeSrc) return <>{fallback}</>
 
   function handleError() {
-    if (!useFallback && resolvedFallback) {
-      setUseFallback(true)
+    if (mode === 'primary' && resolvedFallback) {
+      setLoadState({ src: resolvedSrc, mode: 'fallback' })
       return
     }
-    setErrored(true)
+    setLoadState({ src: resolvedSrc, mode: 'dead' })
     onLoadError?.()
     onError?.()
   }
