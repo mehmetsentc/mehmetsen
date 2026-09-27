@@ -4813,20 +4813,19 @@
   }
 
   .profile-tabs-bar {
-    @apply flex justify-center gap-12 border-t border-[rgb(var(--color-border))];
+    @apply flex gap-1 overflow-x-auto border-b border-[rgb(var(--color-border))];
   }
 
   .profile-tab {
-    @apply flex items-center justify-center border-t border-transparent px-1 py-3.5 text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))];
+    @apply inline-flex shrink-0 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--color-brand))];
   }
 
   .profile-tab-active {
-    @apply border-[rgb(var(--color-text))] text-[rgb(var(--color-text))];
+    @apply border-[rgb(var(--color-brand))] text-[rgb(var(--color-text))];
   }
 
   .profile-avatar-ring {
-    @apply rounded-full p-[3px];
-    background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+    @apply rounded-full p-[2px] ring-1 ring-[rgb(var(--color-border))];
   }
 
   .profile-empty-icon {

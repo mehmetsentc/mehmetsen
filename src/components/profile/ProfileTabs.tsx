@@ -3,15 +3,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePageState } from '@/hooks/usePageState'
 import { PAGE_STATE_KEYS } from '@/lib/stateKeys'
-import { Grid3X3, Clapperboard, Bookmark, Heart, Lock } from 'lucide-react'
+import { Grid3X3, Clapperboard, Bookmark, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { resolveProfileTab, type ProfileContentTab } from '@/lib/profile/profileTabs'
 import { postService } from '@/services/postService'
 import { saveService } from '@/services/saveService'
 import { likeService } from '@/services/likeService'
 import { ProfileMasonryFeed } from './ProfileMasonryFeed'
 import type { Post } from '@/types/post'
 
-type Tab = 'posts' | 'reels' | 'saved' | 'liked'
+type Tab = ProfileContentTab
 
 interface ProfileTabsProps {
   userId: string
@@ -34,96 +35,95 @@ export function ProfileTabs({
   const [loading, setLoading] = useState(!seedOk)
   const seededPostsRef = useRef(seedOk)
 
-  const tabs: { id: Tab; label: string; icon: typeof Grid3X3; private?: boolean }[] = [
-    { id: 'posts', label: 'Gönderiler', icon: Grid3X3 },
+  const tab = resolveProfileTab(activeTab, isOwnProfile)
+  const [loadError, setLoadError] = useState(false)
+
+  const tabs: { id: Tab; label: string; icon: typeof Grid3X3 }[] = [
+    { id: 'posts', label: 'Haberler', icon: Grid3X3 },
     { id: 'reels', label: 'Videolar', icon: Clapperboard },
     ...(isOwnProfile
       ? [
-          { id: 'saved' as const, label: 'Kaydedilenler', icon: Bookmark, private: true },
-          { id: 'liked' as const, label: 'Beğenilenler', icon: Heart, private: true },
+          { id: 'saved' as const, label: 'Kaydedilenler', icon: Bookmark },
+          { id: 'liked' as const, label: 'Beğenilenler', icon: Heart },
         ]
       : []),
   ]
 
   const loadTab = useCallback(async () => {
-    if ((activeTab === 'saved' || activeTab === 'liked') && !isOwnProfile) {
+    if ((tab === 'saved' || tab === 'liked') && !isOwnProfile) {
       setPosts([])
+      setLoadError(false)
       setLoading(false)
       return
     }
 
     // SSR seeded posts: skip first posts-tab fetch to avoid LCP waterfall.
-    if (activeTab === 'posts' && seededPostsRef.current) {
+    if (tab === 'posts' && seededPostsRef.current) {
       seededPostsRef.current = false
+      setLoadError(false)
       setLoading(false)
       return
     }
 
     setLoading(true)
+    setLoadError(false)
     try {
-      if (activeTab === 'posts') {
+      if (tab === 'posts') {
         const result = await postService.getNewsByAuthor(username)
         setPosts(result.posts)
-      } else if (activeTab === 'reels') {
+      } else if (tab === 'reels') {
         const result = await postService.getNewsByAuthor(username, { videosOnly: true })
         setPosts(result.posts)
-      } else if (activeTab === 'saved') {
+      } else if (tab === 'saved') {
         const ids = await saveService.getSavedPostIds(userId)
         setPosts(await postService.getNewsByIds(ids))
-      } else if (activeTab === 'liked') {
+      } else if (tab === 'liked') {
         const ids = await likeService.getLikedPostIds(userId)
         setPosts(await postService.getNewsByIds(ids))
       }
     } catch (error) {
       console.error('[ProfileTabs] load failed:', error)
+      setLoadError(true)
       setPosts([])
     } finally {
       setLoading(false)
     }
-  }, [activeTab, username, userId, isOwnProfile])
+  }, [tab, username, userId, isOwnProfile])
 
   useEffect(() => {
     loadTab()
   }, [loadTab])
 
   const emptyMessages: Record<Tab, string> = {
-    posts: 'Henüz haber paylaşılmamış',
-    reels: 'Henüz video paylaşılmamış',
-    saved: 'Kaydedilen içerik yok',
-    liked: 'Beğenilen içerik yok',
+    posts: 'Henüz herkese açık haber yok.',
+    reels: 'Henüz video paylaşılmamış.',
+    saved: 'Kaydedilen haber yok.',
+    liked: 'Beğenilen haber yok.',
   }
 
   return (
     <div>
       <div className="profile-tabs-bar">
-        {tabs.map(({ id, label, icon: Icon, private: isPrivate }) => {
-          const locked = isPrivate && !isOwnProfile
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              aria-label={label}
-              title={label}
-              className={cn(
-                'profile-tab',
-                activeTab === id && 'profile-tab-active',
-                locked && 'opacity-60'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-            </button>
-          )
-        })}
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            aria-current={tab === id ? 'page' : undefined}
+            className={cn('profile-tab', tab === id && 'profile-tab-active')}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {(activeTab === 'saved' || activeTab === 'liked') && !isOwnProfile ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-          <Lock className="profile-empty-icon h-8 w-8" />
-          <p className="text-sm text-[rgb(var(--color-muted))]">Bu sekme yalnızca profil sahibine görünür</p>
-        </div>
+      {loadError ? (
+        <p className="py-16 text-center text-sm text-[rgb(var(--color-muted))]" role="alert">
+          Haberler yüklenemedi.
+        </p>
       ) : (
-        <ProfileMasonryFeed posts={posts} loading={loading} emptyMessage={emptyMessages[activeTab]} />
+        <ProfileMasonryFeed posts={posts} loading={loading} emptyMessage={emptyMessages[tab]} />
       )}
     </div>
   )

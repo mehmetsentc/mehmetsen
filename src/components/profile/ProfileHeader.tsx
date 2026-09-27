@@ -113,7 +113,7 @@ export function ProfileHeader({
 
   return (
     <>
-      <header className="py-5 sm:py-7" data-profile-view={isOwnProfile ? 'own' : 'user'}>
+      <header className="py-4 sm:py-5" data-profile-view={isOwnProfile ? 'own' : 'user'}>
         <div
           className={
             isOwnProfile
@@ -185,9 +185,12 @@ export function ProfileHeader({
           <div className="min-w-0 flex-1">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center">
-                <h1 className="text-xl font-normal text-[rgb(var(--color-text))] sm:text-[26px]">
-                  {user.username}
-                </h1>
+                <div className="min-w-0 text-center sm:text-left">
+                  <h1 className="truncate text-xl font-semibold text-[rgb(var(--color-text))] sm:text-2xl">
+                    {user.displayName}
+                  </h1>
+                  <p className="truncate text-sm text-[rgb(var(--color-muted))]">@{user.username}</p>
+                </div>
                 {isOwnProfile ? (
                   <div className="flex gap-2">
                     <Link href={ROUTES.SETTINGS_PROFILE} className="profile-edit-btn">
@@ -213,10 +216,6 @@ export function ProfileHeader({
             {/* İstatistikler */}
             <div className="mt-4 flex justify-center gap-8 text-sm sm:justify-start md:gap-10">
               <div>
-                <span className="font-semibold text-[rgb(var(--color-text))]">{formatCount(user.postsCount)}</span>{' '}
-                <span className="text-[rgb(var(--color-text))]">gönderi</span>
-              </div>
-              <div>
                 <span className="font-semibold text-[rgb(var(--color-text))]">{formatCount(user.followersCount)}</span>{' '}
                 <span className="text-[rgb(var(--color-text))]">takipçi</span>
               </div>
@@ -227,9 +226,8 @@ export function ProfileHeader({
             </div>
 
             {/* Bio */}
-            <div className="mt-3 text-center sm:text-left">
-              <p className="font-semibold text-[rgb(var(--color-text))]">{user.displayName}</p>
-              {user.bio && <p className="profile-body mt-1">{user.bio}</p>}
+            <div className="mt-3 text-center sm:text-left lg:hidden">
+              {user.bio && <p className="profile-body mt-1 line-clamp-4 break-words">{user.bio}</p>}
               <div className="profile-muted mt-2 flex flex-wrap justify-center gap-3 sm:justify-start">
                 {user.location && <span>{user.location}</span>}
                 {user.website && (

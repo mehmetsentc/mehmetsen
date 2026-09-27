@@ -22,6 +22,12 @@ import {
   pickLatest,
 } from '@/lib/publisher/editorialTiers'
 import { accentColorCssVarValue } from '@/lib/publisher/accentPalette'
+import {
+  publisherStatusLabel,
+  publisherTrustLabel,
+  publisherTypeLabel,
+} from '@/lib/profile/identityLabels'
+import { ProfileAboutCard } from '@/components/profile/platform/ProfileAboutCard'
 import { LivingVideoPlayer } from '@/components/publisher/LivingVideoPlayer'
 
 type ClaimUiStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'loading'
@@ -397,13 +403,21 @@ export function PublisherProfileClient({
     }
   }
 
+  const trustLabel = publisherTrustLabel(publisher.verificationStatus)
+  const statusLabel = publisherStatusLabel(publisher.verificationStatus)
+  const profileView = studioHref ? 'authorized-publisher' : 'source'
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8" style={accentStyle}>
-      {/* Publisher Header Banner Card */}
-      <header className="mb-8 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5 shadow-sm sm:p-7">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] shadow-inner">
+    <div
+      className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8"
+      style={accentStyle}
+      data-profile-view={profileView}
+      data-publisher-verification={publisher.verificationStatus}
+    >
+      <header className="mb-5 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] sm:h-16 sm:w-16">
               {publisher.logoUrl ? (
                 <SafeNewsImage
                   src={publisher.logoUrl}
@@ -422,13 +436,17 @@ export function PublisherProfileClient({
                 <h1 className="text-2xl font-black tracking-tight text-[rgb(var(--color-text))] sm:text-3xl">
                   {publisher.displayName}
                 </h1>
-                <span className="inline-flex items-center rounded-full bg-[rgb(18_18_20)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-                  Yayıncı
+                <span className="inline-flex items-center rounded-md bg-[rgb(var(--color-text))] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[rgb(var(--color-surface))]">
+                  {publisherTypeLabel(publisher.publisherType)}
                 </span>
-                {publisher.isVerified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                {trustLabel ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                    Doğrulandı
+                    {trustLabel}
+                  </span>
+                ) : statusLabel ? (
+                  <span className="inline-flex items-center rounded-full border border-[rgb(var(--color-border))] px-2.5 py-0.5 text-xs font-semibold text-[rgb(var(--color-muted))]">
+                    {statusLabel}
                   </span>
                 ) : null}
               </div>
@@ -455,11 +473,6 @@ export function PublisherProfileClient({
                   <span className="font-bold text-[rgb(var(--color-brand))]">{totalCount || articles.length}</span> haber
                 </span>
               </div>
-              {publisher.description ? (
-                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[rgb(var(--color-text))]">
-                  {publisher.description}
-                </p>
-              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0">
@@ -563,6 +576,8 @@ export function PublisherProfileClient({
         </section>
       )}
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-8">
+      <div className="min-w-0">
       {/* Category Filter Chips */}
       <section className="mb-6">
         <div className="flex items-center justify-between pb-3">
@@ -615,7 +630,7 @@ export function PublisherProfileClient({
           {articles.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[rgb(var(--color-border))] p-12 text-center">
               <p className="text-sm font-medium text-[rgb(var(--color-muted))]">
-                Bu yayın için henüz yayınlanmış haber bulunamadı.
+                Bu kaynaktan henüz haber bulunmuyor.
               </p>
             </div>
           ) : (
@@ -686,6 +701,36 @@ export function PublisherProfileClient({
           )}
         </section>
       )}
+      </div>
+      <div className="mt-6 lg:mt-0">
+        <ProfileAboutCard title="Kaynak hakkında">
+          {publisher.description ? (
+            <p className="whitespace-pre-wrap break-words">{publisher.description}</p>
+          ) : (
+            <p className="text-[rgb(var(--color-muted))]">Bu kaynak için herkese açık açıklama yok.</p>
+          )}
+          <p>
+            <span className="font-semibold">Tür:</span> {publisherTypeLabel(publisher.publisherType)}
+          </p>
+          {trustLabel ? <p>{trustLabel}</p> : statusLabel ? <p>{statusLabel}</p> : null}
+          {(publisher.city || publisher.district) && (
+            <p className="text-[rgb(var(--color-muted))]">
+              {[publisher.district, publisher.city].filter(Boolean).join(', ')}
+            </p>
+          )}
+          {publisher.websiteUrl ? (
+            <a
+              href={publisher.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
+            >
+              {publisher.websiteUrl.replace(/^https?:\/\//, '')}
+            </a>
+          ) : null}
+        </ProfileAboutCard>
+      </div>
+      </div>
     </div>
   )
 }
