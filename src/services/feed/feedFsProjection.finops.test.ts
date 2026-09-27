@@ -46,6 +46,7 @@ const REQUIRED_FEED_FS_FIELDS = [
   'sourceLabel',
   'source',
   'authorDisplayName',
+  'authorUsername',
   'aiEditorId',
   'sourceLogoUrl',
   'publisherVerified',

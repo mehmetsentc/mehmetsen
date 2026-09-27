@@ -115,15 +115,34 @@ function deskProfileSlug(input: PublicAuthorInput): string | null {
     if (!isLinkableSlug(candidate) || candidate === 'mehmetsentc' || candidate === 'nahaber') continue
     if (isMachineDeskSlug(candidate)) return candidate
   }
+  const authorId = (input.authorId ?? '').trim()
   if (
     isLinkableSlug(username) &&
     username !== 'mehmetsentc' &&
     username !== 'nahaber' &&
-    (input.authorId ?? '').trim().startsWith(AI_PREFIX)
+    authorId.startsWith(AI_PREFIX)
   ) {
     return username
   }
+  // Feed rows often store only authorId (`ai_editor_{slug}`) and not authorUsername.
+  // Use that slug when no public username is present. A stored mehmetsentc username
+  // stays excluded above so this does not attach a different profile.
+  if (
+    !isLinkableSlug(username) &&
+    isLinkableSlug(fromId) &&
+    fromId !== 'mehmetsentc' &&
+    fromId !== 'nahaber' &&
+    authorId.startsWith(AI_PREFIX)
+  ) {
+    return fromId
+  }
   return null
+}
+
+/** Feed card name and profile slug. Same entity as the article byline and JSON-LD. */
+export function publicFeedAuthor(input: PublicAuthorInput): { name: string; slug: string | null } {
+  const identity = resolvePublicAuthorIdentity(input)
+  return { name: identity.name, slug: identity.profileSlug }
 }
 
 /**

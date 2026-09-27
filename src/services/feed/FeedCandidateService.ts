@@ -3,6 +3,7 @@ import 'server-only'
 import { and, desc, eq, inArray, isNotNull, lt, lte, notInArray, or, sql } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { news } from '@/db/schema/news'
+import { users } from '@/db/schema/users'
 import { newsClusters, newsSources } from '@/db/schema/crawler'
 import { publisherSources, publishers } from '@/db/schema/publishers'
 import { userPublisherFollows } from '@/db/schema/socialGraph'
@@ -78,7 +79,7 @@ export const FEED_FS_FIELDS = [
   'aiAutoPublished', 'needsReview', 'needsAdminReview', 'seoNoindex', 'publisherType',
   // publisher / source / author
   'sourceSlug', 'publisherSlug', 'sourceId', 'ingestionSourceId', 'sourceLabel', 'source',
-  'authorDisplayName', 'aiEditorId', 'sourceLogoUrl', 'publisherVerified', 'verified',
+  'authorDisplayName', 'authorUsername', 'aiEditorId', 'sourceLogoUrl', 'publisherVerified', 'verified',
   // card content
   'smartFeedSummary', 'summary', 'spot', 'description', 'teaser',
   'coverImageUrl', 'thumbnail', 'imageUrl', 'videoUrl',
@@ -199,6 +200,7 @@ function mapRows(
     publisherSlug: string | null
     publisherName: string | null
     authorName?: string | null
+    authorUsername?: string | null
     authorId?: string | null
     aiEditorId?: string | null
     sourceName?: string | null
@@ -263,6 +265,7 @@ function mapRows(
       publisherSlug: row.publisherSlug,
       publisherName: row.publisherName || 'Kaynak',
       authorName: row.authorName?.trim() || null,
+      authorUsername: row.authorUsername?.trim() || null,
       authorId: row.authorId?.trim() || null,
       aiEditorId: row.aiEditorId?.trim() || null,
       sourceName: row.sourceName?.trim() || null,
@@ -319,6 +322,7 @@ function baseSelect() {
     publisherSlug: publishers.slug,
     publisherName: sql<string | null>`coalesce(${publishers.displayName}, ${newsSources.name}, ${news.authorDisplayName}, ${news.source}, 'Kaynak')`,
     authorName: news.authorDisplayName,
+    authorUsername: users.username,
     authorId: news.authorId,
     aiEditorId: news.aiEditorId,
     sourceName: sql<string | null>`coalesce(${newsSources.name}, ${news.source})`,
@@ -407,6 +411,10 @@ export class FeedCandidateService {
           ? data.authorDisplayName.trim()
           : null,
       authorId: typeof data.authorId === 'string' && data.authorId.trim() ? data.authorId.trim() : null,
+      authorUsername:
+        typeof data.authorUsername === 'string' && data.authorUsername.trim()
+          ? data.authorUsername.trim()
+          : null,
       aiEditorId:
         typeof data.aiEditorId === 'string' && data.aiEditorId.trim() ? data.aiEditorId.trim() : null,
       sourceName:
@@ -897,6 +905,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
@@ -930,6 +939,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
@@ -964,6 +974,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
@@ -1013,6 +1024,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(popularityExpr), desc(news.publishedAt))
         .limit(poolLimit)
@@ -1090,6 +1102,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
@@ -1270,6 +1283,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(news.publishedAt), desc(news.id))
         .limit(poolLimit)
@@ -1295,6 +1309,7 @@ export class FeedCandidateService {
           .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
           .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
           .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+          .leftJoin(users, eq(users.firebaseUid, news.authorId))
           .where(and(publishedStatusWhere(), inArray(news.id, articleIds)))
 
         for (const row of mapRows(rows, 'RECENT')) {
@@ -1351,6 +1366,7 @@ export class FeedCandidateService {
         .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
         .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
         .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+        .leftJoin(users, eq(users.firebaseUid, news.authorId))
         .where(where)
         .orderBy(desc(sql`abs(hashtext(${news.id} || ${dk}))`), desc(news.publishedAt))
         .limit(poolLimit)

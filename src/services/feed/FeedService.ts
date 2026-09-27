@@ -17,7 +17,7 @@ import {
   resolveLockedCityCategoryFilterIds,
 } from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
-import { resolveFeedEditorByline } from '@/lib/feed/resolveFeedEditorByline'
+import { publicFeedAuthor } from '@/lib/seo/publicAuthorIdentity'
 import { publicArticleSocialCounts } from '@/lib/feed/articleEngagement'
 import type {
   FeedCandidateRow,
@@ -119,7 +119,7 @@ function toDto(
   row: FeedCandidateRow | ScoredFeedCandidate,
   social?: FeedSocialState | null,
   debug?: boolean,
-  fallbackCitySlug?: string | null
+  _fallbackCitySlug?: string | null
 ): FeedItemDto {
   const scored = 'score' in row ? row : null
   const rawSlug = row.publisherSlug ?? null
@@ -128,13 +128,12 @@ function toDto(
   const linkableSlug = isPublisherProfileSlug(rawSlug)
     ? rawSlug!.trim().toLowerCase()
     : idAsSlug
-  const editor = resolveFeedEditorByline({
-    authorName: row.authorName,
+  const publicAuthor = publicFeedAuthor({
+    authorDisplayName: row.authorName,
+    authorUsername: row.authorUsername,
     authorId: row.authorId,
     aiEditorId: row.aiEditorId,
-    citySlug: row.citySlug || fallbackCitySlug || null,
-    categoryId: row.category,
-    publisherName: row.publisherName,
+    source: row.sourceName,
   })
   return {
     id: row.articleId,
@@ -170,9 +169,9 @@ function toDto(
     scoreBreakdown: debug && scored ? scored.breakdown : undefined,
     slug: row.slug,
     tags: row.tags?.length ? row.tags.slice(0, 8) : undefined,
-    authorName: editor?.name ?? null,
-    authorSlug: editor?.slug || null,
-    authorId: editor?.authorUid || row.authorId?.trim() || null,
+    authorName: publicAuthor.name,
+    authorSlug: publicAuthor.slug,
+    authorId: row.authorId?.trim() || null,
     sourceName: row.sourceName?.trim() || row.publisherName?.trim() || null,
   }
 }

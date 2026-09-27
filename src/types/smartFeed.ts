@@ -137,6 +137,8 @@ export interface FeedCandidateRow {
   publisherSlug: string | null
   publisherName: string | null
   authorName?: string | null
+  /** Public profile slug stored on the article. Not a feed persona. */
+  authorUsername?: string | null
   authorId?: string | null
   aiEditorId?: string | null
   sourceName?: string | null
