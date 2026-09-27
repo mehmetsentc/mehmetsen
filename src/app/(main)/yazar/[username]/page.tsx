@@ -116,6 +116,7 @@ export default async function AuthorPage({ params }: Props) {
                 width={56}
                 height={56}
                 className="h-full w-full object-cover"
+                fallback={<span aria-hidden>{publicName.charAt(0).toUpperCase()}</span>}
               />
             ) : (
               <span aria-hidden>{publicName.charAt(0).toUpperCase()}</span>

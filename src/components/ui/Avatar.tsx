@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 interface AvatarProps {
@@ -16,8 +19,10 @@ const sizes = {
 
 export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
   const initial = name?.[0]?.toUpperCase() ?? '?'
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const failed = Boolean(src && failedSrc === src)
 
-  if (src) {
+  if (src && !failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -25,6 +30,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
         alt={name}
         loading="lazy"
         decoding="async"
+        onError={() => setFailedSrc(src)}
         className={cn('rounded-full object-cover', sizes[size], className)}
       />
     )
@@ -33,7 +39,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-600',
+        'flex items-center justify-center rounded-full bg-[rgb(var(--color-brand))]/10 font-semibold text-[rgb(var(--color-brand))]',
         sizes[size],
         className
       )}

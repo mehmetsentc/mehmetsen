@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
@@ -10,6 +10,8 @@ type SafeNewsImageProps = {
   src: string
   /** Shown once if `src` fails (e.g. brand logo). Prevents a blank black frame. */
   fallbackSrc?: string
+  /** Rendered when the image cannot load and `fallbackSrc` is absent. */
+  fallback?: ReactNode
   alt?: string
   className?: string
   fill?: boolean
@@ -54,6 +56,7 @@ function proxiedRemote(src: string, sizes: string | undefined, priority: boolean
 export function SafeNewsImage({
   src,
   fallbackSrc,
+  fallback = null,
   alt,
   className,
   fill,
@@ -78,7 +81,7 @@ export function SafeNewsImage({
       : ''
   const activeSrc = useFallback && resolvedFallback ? resolvedFallback : resolvedSrc
 
-  if (errored || !activeSrc) return null
+  if (errored || !activeSrc) return <>{fallback}</>
 
   function handleError() {
     if (!useFallback && resolvedFallback) {

@@ -424,6 +424,11 @@ export function PublisherProfileClient({
                   alt={publisher.displayName}
                   fill
                   className="object-cover"
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center text-3xl font-black text-[rgb(var(--color-brand))]">
+                      {publisher.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  }
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-3xl font-black text-[rgb(var(--color-brand))]">
