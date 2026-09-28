@@ -3,11 +3,17 @@
  * Fetches up to 2000 articles in batches to avoid Firestore limits.
  * Spec: https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps
  */
+import { unstable_cache } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { notePublicFirestoreReads, publicReadCircuitOpen } from '@/lib/finops/publicReadBudget'
+import {
+  createTtlSingleCache,
+  IMAGE_SITEMAP_REVALIDATE_S,
+} from '@/lib/sitemap/imageSitemapCache'
 import {
   canAppearInImageSitemap,
   classifyPublicRead,
@@ -24,10 +30,11 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export async function GET() {
+async function fetchImageSitemapXml(): Promise<string> {
   const base = getSiteUrl()
   let items = ''
   let totalImages = 0
+  let documentsRead = 0
 
   try {
     const db = getAdminFirestore()
@@ -45,6 +52,7 @@ export async function GET() {
       }
 
       const snap = await query.get()
+      documentsRead += snap.docs.length
       if (snap.empty) break
 
       for (const doc of snap.docs) {
@@ -88,17 +96,38 @@ export async function GET() {
     console.error('[images-sitemap] error:', err)
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  notePublicFirestoreReads('images-sitemap', documentsRead)
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${items}
 </urlset>`
+}
+
+const getImageSitemapShared = unstable_cache(fetchImageSitemapXml, ['images-sitemap-v1'], {
+  revalidate: IMAGE_SITEMAP_REVALIDATE_S,
+})
+
+const getImageSitemap = createTtlSingleCache(
+  () => getImageSitemapShared(),
+  IMAGE_SITEMAP_REVALIDATE_S * 1000,
+  Date.now,
+  publicReadCircuitOpen
+)
+
+export async function GET() {
+  const { xml, cache } = await getImageSitemap()
+  if (cache !== 'miss') {
+    console.info('[finops_public_cache]', JSON.stringify({ route: 'images-sitemap', cache, documentsRead: 0 }))
+  }
 
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=43200',
+      'X-Nahaber-Cache': cache,
     },
   })
 }

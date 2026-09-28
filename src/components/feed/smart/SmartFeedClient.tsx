@@ -48,6 +48,7 @@ import {
   writeGuestSeen,
   useFeedImpressionRef,
 } from '@/lib/feed/feedSeenClient'
+import { ENGAGEMENT_SAFETY_FLUSH_MS } from '@/lib/feed/articleEngagement'
 import { createEngagementTracker, postArticleEngagement } from '@/lib/feed/articleEngagementClient'
 import { feedItemIdentityKeys, feedItemsOverlap } from '@/lib/feed/feedIdentity'
 import {
@@ -1559,7 +1560,7 @@ export function SmartFeedClient({
     if (currentId) feedEngagementRef.current.start(currentId)
 
     const heartbeat = currentId
-      ? window.setInterval(() => feedEngagementRef.current.flush(currentId), 30_000) // FinOps: was 10s; card change/hide still flush exact dwell
+      ? window.setInterval(() => feedEngagementRef.current.flush(currentId), ENGAGEMENT_SAFETY_FLUSH_MS)
       : null
     const onHide = () => {
       if (currentId) feedEngagementRef.current.flush(currentId)

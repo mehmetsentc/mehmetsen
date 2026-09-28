@@ -12,6 +12,14 @@ export const FEED_VIEW_CONFIG = {
 
 export const FEED_ENGAGEMENT_MAX_DWELL_MS = 30 * 60 * 1000
 export const FEED_ENGAGEMENT_FLUSH_MIN_MS = 250
+/** Safety checkpoint only. Card change, hide, and unmount still flush exact dwell. */
+export const ENGAGEMENT_SAFETY_FLUSH_MS = 120_000
+
+/** Interval flushes during a continuous open. Lifecycle flushes are separate. */
+export function safetyFlushCountForOpenMs(openMs: number): number {
+  if (!Number.isFinite(openMs) || openMs <= 0) return 0
+  return Math.floor(openMs / ENGAGEMENT_SAFETY_FLUSH_MS)
+}
 export const ARTICLE_WATCH_RETENTION_DAYS = 90
 
 export type ArticleEngagementSource = 'feed' | 'story' | 'open' | 'reader' | 'page'

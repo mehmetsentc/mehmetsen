@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { likeService } from '@/services/likeService'
 import { saveService } from '@/services/saveService'
+import { ENGAGEMENT_SAFETY_FLUSH_MS } from '@/lib/feed/articleEngagement'
 import { createEngagementTracker } from '@/lib/feed/articleEngagementClient'
 import toast from 'react-hot-toast'
 import type { NewsItem } from '@/types/newsItem'
@@ -145,7 +146,7 @@ export function StoryViewer({
 
     const id = current.id
     storyEngagementRef.current.start(id)
-    const heartbeat = window.setInterval(() => storyEngagementRef.current.flush(id), 3_000)
+    const heartbeat = window.setInterval(() => storyEngagementRef.current.flush(id), ENGAGEMENT_SAFETY_FLUSH_MS)
     const onHide = () => storyEngagementRef.current.flush(id)
     document.addEventListener('visibilitychange', onHide)
 

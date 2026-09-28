@@ -23,6 +23,7 @@ import {
   newsUrlsetXml,
 } from '@/lib/sitemap/newsSitemap'
 import { recordSitemapError } from '@/lib/seo/observability'
+import { createTtlSingleCache } from '@/lib/sitemap/imageSitemapCache'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,6 +37,15 @@ function xml(body: string): NextResponse {
   })
 }
 
+const NEWS_SITEMAP_TTL_MS = 60 * 60 * 1000
+
+const getWwwNewsSitemap = createTtlSingleCache(async () => {
+  const entries = entriesInWindow(await getNewsSitemapEntries(), Date.now())
+  const base = getSiteUrl()
+  const parts = newsPartCount(entries.length)
+  return parts <= 1 ? newsUrlsetXml(base, entries) : newsSitemapIndexXml(base, parts)
+}, NEWS_SITEMAP_TTL_MS)
+
 export async function GET() {
   const headerStore = await headers()
   const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? ''
@@ -43,9 +53,18 @@ export async function GET() {
     return xml(newsUrlsetXml(getSiteUrl(), []))
   }
 
-  let entries
   try {
-    entries = entriesInWindow(await getNewsSitemapEntries(), Date.now())
+    if (process.env.VITEST === 'true') {
+      const entries = entriesInWindow(await getNewsSitemapEntries(), Date.now())
+      const base = getSiteUrl()
+      const parts = newsPartCount(entries.length)
+      return xml(parts <= 1 ? newsUrlsetXml(base, entries) : newsSitemapIndexXml(base, parts))
+    }
+    const { xml: body, cache } = await getWwwNewsSitemap()
+    if (cache !== 'miss') {
+      console.info('[finops_public_cache]', JSON.stringify({ route: 'news-sitemap', cache, documentsRead: 0 }))
+    }
+    return xml(body)
   } catch (error) {
     recordSitemapError('news', error instanceof Error ? error.message : 'load_failed')
     console.error('[news-sitemap] source failure — serving 503:', error)
@@ -54,9 +73,4 @@ export async function GET() {
       headers: { 'Cache-Control': NEWS_SITEMAP_ERROR_CACHE_CONTROL, 'Retry-After': '300' },
     })
   }
-
-  const base = getSiteUrl()
-  const parts = newsPartCount(entries.length)
-  if (parts <= 1) return xml(newsUrlsetXml(base, entries))
-  return xml(newsSitemapIndexXml(base, parts))
 }

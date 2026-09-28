@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { COST_FREEZE_ENABLED, COST_FREEZE_MESSAGE } from '@/lib/costFreeze'
 
 describe('FINOPS cost freeze', () => {
-  it('is compiled on', () => {
-    expect(COST_FREEZE_ENABLED).toBe(true)
+  it('stays wired and is off for cost-safe live', () => {
+    expect(COST_FREEZE_ENABLED).toBe(false)
     expect(COST_FREEZE_MESSAGE).toContain('bakım')
   })
 
@@ -32,11 +32,18 @@ describe('FINOPS cost freeze', () => {
     expect(page).not.toContain('firestore')
   })
 
-  it('vercel cron schedules are empty; cron route files remain', () => {
-    const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as { crons: unknown[] }
-    expect(vercel.crons).toEqual([])
+  it('restores only the crawler tick; AI and publisher schedules stay off', () => {
+    const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
+      crons: Array<{ path: string; schedule: string }>
+    }
+    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '*/10 * * * *' }])
     const tick = readFileSync(join(process.cwd(), 'src/app/api/cron/crawler/tick/route.ts'), 'utf8')
     expect(tick).toContain('runCrawlerTick')
+    expect(tick).toContain('isGlobalCrawlerEnabled')
+    const joined = vercel.crons.map((c) => c.path).join('\n')
+    expect(joined).not.toContain('crawler-ai-worker')
+    expect(joined).not.toContain('editor-ai-queue')
+    expect(joined).not.toContain('publisher-')
   })
 
   it('health stays DB-free and reports freeze', () => {

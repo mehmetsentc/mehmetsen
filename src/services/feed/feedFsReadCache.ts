@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { notePublicFirestoreReads, publicReadCircuitOpen } from '@/lib/finops/publicReadBudget'
 
 /** In-request Firestore query cache. Never written to Neon or Firestore. */
 type CachedSnap = {
@@ -13,6 +14,25 @@ export type FeedFsReadStats = {
 }
 
 const als = new AsyncLocalStorage<Map<string, CachedSnap>>()
+
+/** Public windows only. Keys are query shape, never user/seen/like state. */
+export const FEED_PUBLIC_POOL_TTL_MS = 45_000
+const PUBLIC_POOL_MAX = 48
+const publicPools = new Map<string, { at: number; snap: CachedSnap }>()
+
+export function resetPublicFeedPoolForTests(): void {
+  publicPools.clear()
+}
+
+function rememberPublicPool(key: string, snap: CachedSnap): void {
+  if (publicPools.has(key)) publicPools.delete(key)
+  publicPools.set(key, { at: Date.now(), snap })
+  while (publicPools.size > PUBLIC_POOL_MAX) {
+    const oldest = publicPools.keys().next().value
+    if (!oldest) break
+    publicPools.delete(oldest)
+  }
+}
 
 export function feedFsCacheActive(): boolean {
   return Boolean(als.getStore())
@@ -42,10 +62,29 @@ export async function readFeedQuery<T extends CachedSnap>(
     stats.cacheHits += 1
     return hit
   }
+
+  const shared = publicPools.get(key)
+  const fresh = Boolean(shared && Date.now() - shared.at < FEED_PUBLIC_POOL_TTL_MS)
+  if (shared && (fresh || publicReadCircuitOpen())) {
+    stats.cacheHits += 1
+    cache?.set(key, shared.snap)
+    console.info(
+      '[finops_public_cache]',
+      JSON.stringify({
+        route: 'feed-public-pool',
+        cache: fresh ? 'hit' : 'stale',
+        documentsRead: 0,
+      })
+    )
+    return shared.snap as T
+  }
+
   stats.attempts += 1
   const snap = await q.get()
   stats.documentsRead += snap.docs.length
+  notePublicFirestoreReads('feed-public-pool', snap.docs.length)
   cache?.set(key, snap)
+  rememberPublicPool(key, snap)
   return snap
 }
 

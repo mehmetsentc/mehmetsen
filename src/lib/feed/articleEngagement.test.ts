@@ -7,7 +7,9 @@ import {
   clampEngagementDwellMs,
   engagementSourceToSurface,
   formatDurationCompact,
+  ENGAGEMENT_SAFETY_FLUSH_MS,
   nextEngagementFlush,
+  safetyFlushCountForOpenMs,
   publicArticleSocialCounts,
   shouldCountEngagementView,
   readMinutesFromDurationMs,
@@ -18,6 +20,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 describe('article engagement (3s view + read time)', () => {
+  it('collapses a 10-minute open article to about five safety flushes', () => {
+    expect(ENGAGEMENT_SAFETY_FLUSH_MS).toBe(120_000)
+    expect(safetyFlushCountForOpenMs(10 * 60 * 1000)).toBe(5)
+    expect(safetyFlushCountForOpenMs(10 * 60 * 1000)).toBeLessThanOrEqual(5)
+    expect(safetyFlushCountForOpenMs(30_000)).toBe(0)
+  })
+
   it('does not change qualified impression gate (60% / 750ms)', () => {
     expect(FEED_IMPRESSION_CONFIG.visibilityRatio).toBe(0.6)
     expect(FEED_IMPRESSION_CONFIG.minVisibleMs).toBe(750)

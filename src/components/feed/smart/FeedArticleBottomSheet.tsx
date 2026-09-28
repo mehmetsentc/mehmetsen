@@ -18,6 +18,7 @@ import { stripDuplicateHeroFromBodyHtml } from '@/lib/feed/reader/mediaPolicy'
 import type { FeedItemDto } from '@/types/smartFeed'
 import type { FeedReaderArticleDto } from '@/types/feedReader'
 import { cn } from '@/lib/utils'
+import { ENGAGEMENT_SAFETY_FLUSH_MS } from '@/lib/feed/articleEngagement'
 import { createEngagementTracker, postArticleEngagement } from '@/lib/feed/articleEngagementClient'
 
 type FetchState = 'idle' | 'loading' | 'ok' | 'error'
@@ -126,7 +127,7 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
     }
     postArticleEngagement({ articleId: item.articleId, source: 'open', countView: true, dwellMs: 0 })
     openEngagementRef.current.start(item.articleId)
-    const heartbeat = window.setInterval(() => openEngagementRef.current.flush(item.articleId), 10_000)
+    const heartbeat = window.setInterval(() => openEngagementRef.current.flush(item.articleId), ENGAGEMENT_SAFETY_FLUSH_MS)
     void loadBody()
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: 0 })
