@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { COST_FREEZE_ENABLED } from '@/lib/costFreeze'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,8 @@ export function GET() {
 
   return NextResponse.json(
     {
-      status: 'ok',
+      status: COST_FREEZE_ENABLED ? 'maintenance' : 'ok',
+      frozen: COST_FREEZE_ENABLED,
       service: 'nahaber',
       time: new Date().toISOString(),
       version: sha,

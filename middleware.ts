@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
+  COST_FREEZE_ENABLED,
+  COST_FREEZE_HTML,
+  COST_FREEZE_MESSAGE,
+} from '@/lib/costFreeze'
+import {
   COUNTRY_COOKIE,
   LANGUAGE_COOKIE,
   isLanguage,
@@ -134,6 +139,30 @@ function buildCityRewrite(
 }
 
 export async function middleware(request: NextRequest) {
+  if (COST_FREEZE_ENABLED) {
+    const { pathname } = request.nextUrl
+    if (pathname === '/api/health' || pathname.startsWith('/api/health/')) {
+      return NextResponse.next()
+    }
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { status: 'maintenance', frozen: true, message: COST_FREEZE_MESSAGE },
+        {
+          status: 503,
+          headers: { 'Retry-After': '3600', 'Cache-Control': 'no-store' },
+        }
+      )
+    }
+    return new NextResponse(COST_FREEZE_HTML, {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': '3600',
+      },
+    })
+  }
+
   const { pathname } = request.nextUrl
 
   if (pathname.startsWith('/admin')) {
@@ -264,6 +293,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Pages only — skip API/cron routes (saves Edge invocations on Pro) and static assets.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.[\\w]+$).*)'],
+  // Freeze covers pages AND APIs (except /api/health). Static assets stay skipped.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.[\\w]+$).*)'],
 }
