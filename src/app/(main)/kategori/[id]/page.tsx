@@ -3,213 +3,32 @@ import '@/styles/tokens/desktop-category-portal.css'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { DEFAULT_CATEGORIES, getSubcategories, getHomeFeedCategoryFamily, getParentCategory, type CategoryDef } from '@/constants/config'
+import { DEFAULT_CATEGORIES, getSubcategories, getParentCategory, type CategoryDef } from '@/constants/config'
 import { getCityCategoryName } from '@/constants/cities'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
 import { CityNewspaperCategoryPage } from '@/components/city/CityNewspaperCategoryPage'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-import { Collections } from '@/lib/firebase/collections'
 import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
-import { isKibrisCategoryTree } from '@/constants/config'
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
-import { isKibrisScopedNews, isNationalBreakingEligible } from '@/lib/featuredScope'
 import {
   filterItemsWithPresence,
   filterThemedSectionIds,
   shouldHideEmptyScopedCategories,
 } from '@/lib/scopedCategoryPresence'
-import { featuredPinTime } from '@/lib/featuredPins'
 import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
+import { prefetchCategoryPosts } from '@/services/categoryFirstPage.server'
 import { getActiveScopedCategoryIds } from '@/services/scopedCategoryPresence.server'
-import type { TimelinePost } from '@/types/post'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
 import { HOME_LCP_WIDTH, getLcpPreload } from '@/lib/lcpImage'
 import { categoryPostImage } from '@/components/home/desktop/categoryPostUtils'
 
 interface Props {
   params: Promise<{ id: string }>
-}
-
-function mapNewsDocToTimelinePost(doc: {
-  id: string
-  data: () => Record<string, unknown>
-}): TimelinePost {
-  const d = doc.data()
-  const image =
-    (d.coverImageUrl as string | undefined) ??
-    (d.thumbnail as string | undefined) ??
-    (d.imageUrl as string | undefined) ??
-    (d.featuredImage as string | undefined) ??
-    null
-  const videoUrl = (d.videoUrl as string | undefined) ?? ''
-  const mediaItems = videoUrl
-    ? [{ type: 'video' as const, url: videoUrl, thumbnailUrl: image, caption: null }]
-    : image
-      ? [{ type: 'image' as const, url: image, thumbnailUrl: image, caption: null }]
-      : []
-  const ts = (v: unknown): number | null => {
-    if (!v) return null
-    if (typeof v === 'object' && 'toMillis' in (v as object)) {
-      return (v as { toMillis(): number }).toMillis()
-    }
-    if (typeof v === 'number') return v
-    if (typeof v === 'string') {
-      const n = Date.parse(v)
-      return isNaN(n) ? null : n
-    }
-    return null
-  }
-  const slug = typeof d.slug === 'string' ? d.slug : undefined
-  return {
-    id: doc.id,
-    authorUsername: (d.authorUsername as string | undefined) ?? '',
-    authorDisplayName: (d.authorDisplayName as string | undefined) ?? '',
-    authorId: (d.authorId as string | undefined) ?? '',
-    title: (d.title as string | undefined) ?? '',
-    spot: (d.spot as string | undefined) ?? (d.summary as string | undefined) ?? '',
-    content: (d.content as string | undefined) ?? '',
-    summary: (d.summary as string | undefined) ?? (d.spot as string | undefined) ?? '',
-    categoryId: (d.categoryId as string | undefined) ?? '',
-    originalCategoryId: (d.originalCategoryId as string | undefined) ?? '',
-    isBreaking: d.isBreaking === true || (d.categoryId as string | undefined) === 'son-dakika',
-    citySlug: (d.citySlug as string | undefined) ?? '',
-    city: d.city ?? null,
-    cityName: (d.cityName as string | undefined) ?? '',
-    coverImageUrl: image,
-    mediaItems,
-    url: (d.url as string | undefined) ?? ROUTES.NEWS_DETAIL(slug?.trim() || doc.id),
-    slug: slug ?? doc.id,
-    publishedAt: ts(d.publishedAt) ?? ts(d.createdAt) ?? Date.now(),
-    createdAt: ts(d.createdAt) ?? Date.now(),
-    updatedAt: ts(d.updatedAt) ?? null,
-    status: (d.status as string | undefined) ?? 'published',
-    visibility: (d.visibility as string | undefined) ?? 'public',
-    postType: (d.postType as string | undefined) ?? (videoUrl ? 'video' : 'news'),
-    source: (d.source as string | undefined) ?? '',
-    author: d.author ?? null,
-    hasVideo: d.hasVideo === true,
-    isVideo: d.isVideo === true,
-    featured: d.featured === true,
-    isEditorPick: d.isEditorPick === true || d.featured === true,
-    tags: (d.tags as string[] | undefined) ?? [],
-    priorityScore: (d.priorityScore as number | null | undefined) ?? null,
-    viewsCount: (d.viewsCount as number | undefined) ?? 0,
-    likesCount: (d.likesCount as number | undefined) ?? 0,
-    commentsCount:
-      (d.commentsCount as number | undefined) ?? (d.commentCount as number | undefined) ?? 0,
-    savesCount: (d.savesCount as number | undefined) ?? 0,
-    sharesCount: (d.sharesCount as number | undefined) ?? 0,
-  } as unknown as TimelinePost
-}
-
-/** Server-side: ilk 20 haberi Admin SDK ile çek (ISR cache'lenecek) */
-async function prefetchCategoryPosts(categoryId: string): Promise<TimelinePost[]> {
-  try {
-    const db = getAdminFirestore()
-    const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
-
-    const snap =
-      categoryId === 'son-dakika'
-        ? await baseQ
-            .where('isBreaking', '==', true)
-            .orderBy('publishedAt', 'desc')
-            .limit(40)
-            .get()
-        : await (() => {
-            const family = getHomeFeedCategoryFamily(categoryId)
-            return (
-              family.length > 1
-                ? baseQ.where('categoryId', 'in', family)
-                : baseQ.where('categoryId', '==', categoryId)
-            )
-              .orderBy('publishedAt', 'desc')
-              .limit(20)
-              .get()
-          })()
-
-    let posts = snap.docs.map((doc) => mapNewsDocToTimelinePost(doc))
-
-    if (categoryId === 'son-dakika') {
-      posts = posts
-        .filter((post) =>
-          isNationalBreakingEligible({
-            categoryId: post.categoryId,
-            originalCategoryId: post.originalCategoryId,
-            citySlug: post.citySlug,
-          })
-        )
-        .slice(0, 20)
-    }
-
-    // Kıbrıs/KKTC: Öne Çıkan pinleri + yerel/kıbrıs son dakika manşetine çek.
-    if (isKibrisCategoryTree(categoryId)) {
-      const family = new Set(getHomeFeedCategoryFamily(categoryId))
-      const belongsOnKibrisPage = (post: TimelinePost) =>
-        family.has(String(post.categoryId ?? '').trim()) ||
-        isKibrisScopedNews({
-          categoryId: post.categoryId,
-          originalCategoryId: post.originalCategoryId,
-        })
-      try {
-        const featSnap = await baseQ
-          .where('featured', '==', true)
-          .orderBy('publishedAt', 'desc')
-          .limit(40)
-          .get()
-        const pinned = featSnap.docs
-          .map((doc) => {
-            const data = doc.data() as Record<string, unknown>
-            return {
-              post: mapNewsDocToTimelinePost(doc),
-              pinAt: featuredPinTime(data),
-            }
-          })
-          .filter(({ post }) => belongsOnKibrisPage(post))
-          .sort((a, b) => b.pinAt - a.pinAt)
-          .map(({ post }) => post)
-
-        if (pinned.length > 0) {
-          const seen = new Set(pinned.map((p) => p.id))
-          posts = [...pinned, ...posts.filter((p) => !seen.has(p.id))].slice(0, 24)
-        } else {
-          posts = [...posts].sort(
-            (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured))
-          )
-        }
-      } catch {
-        posts = [...posts].sort(
-          (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured))
-        )
-      }
-
-      try {
-        const breakingSnap = await baseQ
-          .where('isBreaking', '==', true)
-          .orderBy('publishedAt', 'desc')
-          .limit(30)
-          .get()
-        const kibrisBreaking = breakingSnap.docs
-          .map((doc) => mapNewsDocToTimelinePost(doc))
-          .filter((post) => belongsOnKibrisPage(post))
-        if (kibrisBreaking.length > 0) {
-          const seen = new Set(posts.map((p) => p.id))
-          posts = [...kibrisBreaking.filter((p) => !seen.has(p.id)), ...posts].slice(0, 24)
-        }
-      } catch {
-        /* breaking merge is best-effort */
-      }
-    }
-
-    return posts
-  } catch {
-    return []
-  }
 }
 
 function getCategoryMeta(id: string) {
