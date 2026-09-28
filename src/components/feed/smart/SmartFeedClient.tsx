@@ -44,12 +44,20 @@ import { FEED_PAGINATION } from '@/lib/feed/config'
 import {
   getOrCreateFeedSessionId,
   readGuestSeen,
+  rememberFeedWindowSeen,
   writeGuestSeen,
   useFeedImpressionRef,
 } from '@/lib/feed/feedSeenClient'
 import { createEngagementTracker, postArticleEngagement } from '@/lib/feed/articleEngagementClient'
 import { feedItemIdentityKeys, feedItemsOverlap } from '@/lib/feed/feedIdentity'
-import { clearFeedRestore, consumePendingFeedRestore, readFeedRestore, saveFeedRestore } from '@/lib/feed/feedRestoration'
+import {
+  clearFeedRestore,
+  clearFeedRestoreOnFeedV2ColdStart,
+  consumePendingFeedRestore,
+  isDocumentNavigationToFeedV2,
+  readFeedRestore,
+  saveFeedRestore,
+} from '@/lib/feed/feedRestoration'
 import { isSocialGraphEnabledClient } from '@/lib/social/featureFlagClient'
 import { socialApi } from '@/lib/social/clientApi'
 import { buildAuthIntent, loginHrefWithIntent } from '@/lib/social/authIntent'
@@ -270,6 +278,7 @@ export function SmartFeedClient({
 
   const [mode, setMode] = useState<FeedMode>(() => {
     if (typeof window !== 'undefined') {
+      clearFeedRestoreOnFeedV2ColdStart()
       const restore = readFeedRestore()
       if (restore?.pending && restore.mode) return restore.mode
     }
@@ -497,7 +506,16 @@ export function SmartFeedClient({
         category,
       })
     }
+    const persistSanaOzelWindow = () => {
+      const list = itemsRef.current
+      if (!categoryRef.current && list.length > 0) {
+        rememberFeedWindowSeen(list)
+      }
+    }
+    window.addEventListener('pagehide', persistSanaOzelWindow)
     return () => {
+      window.removeEventListener('pagehide', persistSanaOzelWindow)
+      persistSanaOzelWindow()
       // Warm Feed V2 tab return: persist snapshot on route exit (Profile/Search/etc).
       const list = itemsRef.current
       const idx = activeIndexRef.current
@@ -883,8 +901,9 @@ export function SmartFeedClient({
           }
 
           const restorePeek = !append ? readFeedRestore() : null
-          const restoreExemptId =
-            (!append && (searchParams.get('restore') ?? restorePeek?.articleId)) || null
+          const urlRestore =
+            !append && !isDocumentNavigationToFeedV2() ? searchParams.get('restore') : null
+          const restoreExemptId = (!append && (urlRestore ?? restorePeek?.articleId)) || null
           // Category tabs: allow re-browse of older stories (server already walks corpus).
           // Sana Özel hides durable localStorage seen for guests AND signed-in users
           // so app kill → home → Zap does not replay the same first cards.
@@ -978,7 +997,9 @@ export function SmartFeedClient({
             }
           } else {
             const restore = readFeedRestore()
-            const restoreId = searchParams.get('restore') ?? restore?.articleId
+            const restoreId =
+              (isDocumentNavigationToFeedV2() ? null : searchParams.get('restore')) ??
+              restore?.articleId
             if (restoreId) {
               let idx = acceptedIncoming.findIndex((i) => i.articleId === restoreId)
               if (idx < 0 && typeof restore?.scrollIndex === 'number') {

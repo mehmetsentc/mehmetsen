@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { FEED_IMPRESSION_CONFIG, GUEST_SEEN_MAX, GUEST_SEEN_STORAGE_KEY } from '@/lib/feed/config'
 import { FEED_VIEW_CONFIG } from '@/lib/feed/articleEngagement'
+import { feedItemIdentityKeys } from '@/lib/feed/feedIdentity'
 
 export function getOrCreateFeedSessionId(): string {
   if (typeof window === 'undefined') return ''
@@ -50,6 +51,18 @@ export function writeGuestSeen(ids: Set<string>): void {
       /* quota / private mode */
     }
   }
+}
+
+/** Persist the current Sana Özel window so a PWA relaunch does not replay it. */
+export function rememberFeedWindowSeen(
+  items: Array<{ articleId: string; slug?: string | null; clusterId?: string | null }>
+): void {
+  if (typeof window === 'undefined' || items.length === 0) return
+  const seen = readGuestSeen()
+  for (const item of items) {
+    for (const key of feedItemIdentityKeys(item)) seen.add(key)
+  }
+  writeGuestSeen(seen)
 }
 
 export function useFeedImpressionRef(

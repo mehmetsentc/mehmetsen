@@ -165,6 +165,40 @@ describe('P18.3O fresh session vs back restore', () => {
     expect(freshPage.length).toBe(15)
   })
 
+  it('rememberFeedWindowSeen writes the loaded Sana Özel window into durable seen', async () => {
+    const local = {
+      getItem: (k: string) => memory.get(`local:${k}`) ?? null,
+      setItem: (k: string, v: string) => {
+        memory.set(`local:${k}`, v)
+      },
+      removeItem: (k: string) => {
+        memory.delete(`local:${k}`)
+      },
+    }
+    vi.stubGlobal('window', {
+      localStorage: local,
+      sessionStorage: {
+        getItem: (k: string) => memory.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          memory.set(k, v)
+        },
+        removeItem: (k: string) => {
+          memory.delete(k)
+        },
+      },
+    })
+    const { rememberFeedWindowSeen, readGuestSeen } = await import('@/lib/feed/feedSeenClient')
+    rememberFeedWindowSeen([
+      { articleId: 'volley', slug: 'sultanlar', clusterId: 'c1' },
+      { articleId: 'gold' },
+    ])
+    const seen = readGuestSeen()
+    expect(seen.has('volley')).toBe(true)
+    expect(seen.has('sultanlar')).toBe(true)
+    expect(seen.has('cluster:c1')).toBe(true)
+    expect(seen.has('gold')).toBe(true)
+  })
+
   it('detail-open identity keys cover article + slug + cluster', () => {
     expect(feedItemIdentityKeys({ articleId: 'pg1', slug: 'slug-1', clusterId: 'c9' })).toEqual([
       'pg1',

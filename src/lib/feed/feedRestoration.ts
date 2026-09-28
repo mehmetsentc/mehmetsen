@@ -101,6 +101,51 @@ export function clearFeedRestore(): void {
   sessionStore()?.removeItem(FEED_RESTORE_STORAGE_KEY)
 }
 
+const FEED_RESTORE_DOC_ORIGIN_KEY = 'nahaber_feed_restore_doc_origin_v1'
+
+function documentNavigationPathname(): string | null {
+  if (typeof window === 'undefined') return null
+  const nav =
+    typeof performance !== 'undefined'
+      ? (performance.getEntriesByType?.('navigation')?.[0] as
+          | PerformanceNavigationTiming
+          | undefined)
+      : undefined
+  const raw = nav?.name || window.location.href
+  try {
+    return new URL(raw, window.location.origin).pathname
+  } catch {
+    return window.location.pathname || null
+  }
+}
+
+/** True when this JS document itself loaded on Feed V2 (PWA kill → last URL), not a client Zap. */
+export function isDocumentNavigationToFeedV2(): boolean {
+  const path = documentNavigationPathname()
+  return path === '/feed-v2' || Boolean(path?.startsWith('/feed-v2/'))
+}
+
+/**
+ * iOS standalone PWA keeps sessionStorage across kill and relaunches the last URL.
+ * A document load on /feed-v2 must drop the frozen 15-card snapshot. Same-document
+ * remounts (Profile → Zap) keep the mark and still restore.
+ */
+export function clearFeedRestoreOnFeedV2ColdStart(): boolean {
+  if (typeof window === 'undefined') return false
+  if (!isDocumentNavigationToFeedV2()) return false
+  const origin =
+    typeof performance !== 'undefined' ? String(performance.timeOrigin) : '0'
+  try {
+    const store = sessionStore()
+    if (store?.getItem(FEED_RESTORE_DOC_ORIGIN_KEY) === origin) return false
+    store?.setItem(FEED_RESTORE_DOC_ORIGIN_KEY, origin)
+  } catch {
+    /* private mode — still drop the snapshot */
+  }
+  clearFeedRestore()
+  return true
+}
+
 /**
  * Zap / main-nav entry to Feed V2:
  * - Keep warm route_exit snapshots (Profile / Search → Feed V2)

@@ -6,6 +6,7 @@ import {
 import {
   clearFeedRestore,
   clearFeedRestoreForFeedV2Nav,
+  clearFeedRestoreOnFeedV2ColdStart,
   consumePendingFeedRestore,
   readFeedRestore,
   saveFeedRestore,
@@ -182,5 +183,88 @@ describe('P18 warm Feed V2 restore', () => {
     expect(client).toContain("source: 'route_exit'")
     expect(client).toContain('impressedArticleIdsRef')
     expect(client).toContain('quiet')
+    expect(client).toContain('clearFeedRestoreOnFeedV2ColdStart')
+    expect(client).toContain('rememberFeedWindowSeen')
+  })
+
+  it('PWA document load on /feed-v2 drops the frozen window; remount keeps it', () => {
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v)
+      },
+      removeItem: (k: string) => {
+        store.delete(k)
+      },
+    }
+    vi.stubGlobal('window', {
+      location: {
+        href: 'https://nahaber.com/feed-v2',
+        pathname: '/feed-v2',
+        origin: 'https://nahaber.com',
+      },
+      sessionStorage: storage,
+    })
+    vi.stubGlobal('performance', {
+      timeOrigin: 42,
+      getEntriesByType: (type: string) =>
+        type === 'navigation' ? [{ name: 'https://nahaber.com/feed-v2' }] : [],
+    })
+    saveFeedRestore({
+      mode: 'personal',
+      articleId: 'volley',
+      scrollIndex: 1,
+      items: [{ articleId: 'volley' } as never, { articleId: 'gold' } as never],
+      pending: true,
+      source: 'route_exit',
+    })
+    expect(clearFeedRestoreOnFeedV2ColdStart()).toBe(true)
+    expect(readFeedRestore()).toBeNull()
+
+    saveFeedRestore({
+      mode: 'personal',
+      articleId: 'volley',
+      scrollIndex: 1,
+      items: [{ articleId: 'volley' } as never],
+      pending: true,
+      source: 'route_exit',
+    })
+    expect(clearFeedRestoreOnFeedV2ColdStart()).toBe(false)
+    expect(readFeedRestore()?.articleId).toBe('volley')
+  })
+
+  it('document load on magazine home does not auto-drop restore (Zap click does)', () => {
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v)
+      },
+      removeItem: (k: string) => {
+        store.delete(k)
+      },
+    }
+    vi.stubGlobal('window', {
+      location: {
+        href: 'https://nahaber.com/',
+        pathname: '/',
+        origin: 'https://nahaber.com',
+      },
+      sessionStorage: storage,
+    })
+    vi.stubGlobal('performance', {
+      timeOrigin: 7,
+      getEntriesByType: (type: string) =>
+        type === 'navigation' ? [{ name: 'https://nahaber.com/' }] : [],
+    })
+    saveFeedRestore({
+      mode: 'personal',
+      articleId: 'a1',
+      scrollIndex: 0,
+      items: [{ articleId: 'a1' } as never],
+      pending: true,
+      source: 'route_exit',
+    })
+    expect(clearFeedRestoreOnFeedV2ColdStart()).toBe(false)
+    expect(readFeedRestore()?.articleId).toBe('a1')
   })
 })
