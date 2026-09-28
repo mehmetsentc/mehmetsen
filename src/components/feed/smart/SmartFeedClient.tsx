@@ -388,6 +388,40 @@ export function SmartFeedClient({
   authUidRef.current = authUser?.uid ?? null
   const cardHeightRef = useRef(0)
   const programmaticScrollRef = useRef(false)
+  const feedScrollWasLockedRef = useRef(false)
+  // Keep the Feed from moving under an open Reader without toggling overflow.
+  // iOS forgets scroll-snap after overflow:hidden is removed, which freezes the reel.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !feedScrollLocked) return
+    const block = (event: Event) => {
+      event.preventDefault()
+    }
+    el.addEventListener('touchmove', block, { passive: false })
+    el.addEventListener('wheel', block, { passive: false })
+    return () => {
+      el.removeEventListener('touchmove', block)
+      el.removeEventListener('wheel', block)
+    }
+  }, [feedScrollLocked])
+  useEffect(() => {
+    if (!readerSession) setFeedScrollLocked(false)
+  }, [readerSession])
+  useEffect(() => {
+    const wasLocked = feedScrollWasLockedRef.current
+    feedScrollWasLockedRef.current = feedScrollLocked
+    if (feedScrollLocked || !wasLocked) return
+    const el = scrollRef.current
+    if (!el) return
+    const place = () => {
+      const h = cardHeightRef.current || el.clientHeight || 1
+      el.scrollTop = activeIndexRef.current * h
+    }
+    requestAnimationFrame(() => {
+      place()
+      window.setTimeout(place, 80)
+    })
+  }, [feedScrollLocked])
   const [cardHeightPx, setCardHeightPx] = useState(0)
   const feedReaderEnabledRef = useRef(false)
   const readerCapabilityReadyRef = useRef(false)
@@ -2649,11 +2683,7 @@ export function SmartFeedClient({
             onScroll={onScroll}
             className={cn(
               'h-full min-h-0 w-full snap-y snap-mandatory overflow-y-scroll transition-opacity duration-200',
-              isTabSwitching && 'opacity-55',
-              // Only while Reader is committed/open. Close must unlock immediately —
-              // never pointer-events-none here: reopen lock is a logic gate, not a
-              // 1–5s freeze of vertical snap scroll.
-              feedScrollLocked && 'overflow-hidden touch-none'
+              isTabSwitching && 'opacity-55'
             )}
             style={
               {

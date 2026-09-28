@@ -1158,27 +1158,28 @@ export function FeedArticleReader({
 
   return (
     <div
-      className={cn(
-        // Above mobile-safe-area-shield (z-160) + top chrome (z-100) so Haberi Oku
-        // never leaves NaHaber brand bar stacked over Akışa Dön in Capacitor.
-        'fixed inset-0 z-[170] flex justify-center',
-        committed ? 'pointer-events-auto' : 'pointer-events-none'
-      )}
+      className="pointer-events-none fixed inset-0 z-[170] flex justify-center"
       data-testid="feed-article-reader"
       data-reader-committed={committed ? '1' : '0'}
       data-reader-open={committed ? '1' : '0'}
       data-reader-progress={progress.toFixed(2)}
       data-reader-underlay="feed"
       role="dialog"
-      aria-modal={committed}
+      aria-modal={committed && progress > 0.02}
       aria-labelledby={titleId}
       style={{ background: progress > 0.02 ? 'rgba(0,0,0,0.55)' : 'transparent' }}
     >
+      {progress > 0.02 ? (
+        <div className="pointer-events-auto absolute inset-0 z-0" aria-hidden />
+      ) : null}
       <div
         className={cn(
-          'feed-reader-article relative flex h-[100dvh] flex-col overflow-hidden md:my-0',
+          'feed-reader-article relative z-10 flex h-[100dvh] flex-col overflow-hidden md:my-0',
           ARTICLE_READER_SHELL_CLASS,
-          FEED_READER_SURFACE_CLASS
+          FEED_READER_SURFACE_CLASS,
+          // The shell stays pointer-events-none. Hit testing follows the page
+          // itself, so a fully slid-off Reader cannot freeze the Feed underneath.
+          progress > 0.02 ? 'pointer-events-auto' : 'pointer-events-none'
         )}
         data-article-reader-skin="feed-v2"
         style={{

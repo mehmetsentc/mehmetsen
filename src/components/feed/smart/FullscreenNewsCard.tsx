@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Check, ChevronDown, ExternalLink, Heart, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
@@ -169,6 +170,11 @@ export function FullscreenNewsCard({
   fullBleed = false,
 }: FullscreenNewsCardProps) {
   const [imageError, setImageError] = useState(false)
+  // iOS does not start loading="lazy" images inside this snap scroller, and
+  // flipping the attribute to eager later does not fetch. Once the card is
+  // actually on screen, remount the photo as an eager same-origin request.
+  const [heroOnScreen, setHeroOnScreen] = useState(isActive)
+  const heroWatchRef = useRef<HTMLElement | null>(null)
   const [videoError, setVideoError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
@@ -207,9 +213,32 @@ export function FullscreenNewsCard({
   void skin.layout
   const isCenter = false
   const playMediaDolly = isActive && motionOk
+  const heroEager = isActive || heroOnScreen
+
+  useEffect(() => {
+    if (isActive) setHeroOnScreen(true)
+  }, [isActive])
+
+  useEffect(() => {
+    if (heroOnScreen) return
+    const node = heroWatchRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.45)) {
+          setHeroOnScreen(true)
+        }
+      },
+      { threshold: [0.45, 0.75] }
+    )
+    io.observe(node)
+    return () => io.disconnect()
+  }, [heroOnScreen, item.articleId])
 
   useEffect(() => {
     setVideoError(false)
+    setImageError(false)
+    setHeroOnScreen(isActive)
   }, [item.articleId])
 
   useEffect(() => {
@@ -402,7 +431,10 @@ export function FullscreenNewsCard({
 
   return (
     <article
-      ref={cardRef}
+      ref={(node) => {
+        heroWatchRef.current = node
+        cardRef?.(node)
+      }}
       className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-[rgb(var(--color-surface))]"
       aria-label={item.headline}
       data-article-id={item.articleId}
@@ -434,21 +466,18 @@ export function FullscreenNewsCard({
         L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
       */}
       <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
-        {hasValidImage ? (
-          <Image
-            src={item.image!}
-            alt=""
-            fill
-            draggable={false}
-            className="scale-110 object-cover opacity-70 blur-2xl brightness-[0.45] saturate-[1.05]"
-            sizes="100vw"
-            aria-hidden
-            data-testid="smart-feed-bg-blur"
-            unoptimized={
-              typeof item.image === 'string' &&
-              (item.image.startsWith('http://') || item.image.startsWith('https://'))
-            }
-          />
+        {hasValidImage && isActive ? (
+          <div className="absolute inset-0" data-testid="smart-feed-bg-blur" aria-hidden>
+            <SafeNewsImage
+              src={item.image!}
+              alt=""
+              fill
+              className="scale-110 object-cover opacity-70 blur-2xl brightness-[0.45] saturate-[1.05]"
+              sizes="64px"
+            />
+          </div>
+        ) : hasValidImage ? (
+          <span data-testid="smart-feed-bg-blur" className="sr-only" />
         ) : (
           <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-950 select-none">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
@@ -545,20 +574,16 @@ export function FullscreenNewsCard({
                     }
               }
             >
-              <Image
-                key={`fg-${item.articleId}-${playMediaDolly ? 'in' : 'idle'}`}
+              <SafeNewsImage
+                key={`fg-${item.articleId}-${heroEager ? 'now' : 'wait'}`}
                 src={item.image!}
                 alt={item.headline || ''}
                 fill
-                draggable={false}
                 className="object-cover object-center"
                 sizes="(max-width: 768px) 100vw, 44rem"
-                priority={isActive}
+                priority={heroEager}
+                loading={heroEager ? 'eager' : 'lazy'}
                 onError={() => setImageError(true)}
-                unoptimized={
-                  typeof item.image === 'string' &&
-                  (item.image.startsWith('http://') || item.image.startsWith('https://'))
-                }
               />
               {playableVideo ? (
                 <span
@@ -589,17 +614,15 @@ export function FullscreenNewsCard({
               }}
             >
               {hasValidImage ? (
-                <Image
+                <SafeNewsImage
+                  key={`fg-${item.articleId}-${heroEager ? 'now' : 'wait'}`}
                   src={item.image!}
                   alt=""
                   fill
-                  draggable={false}
                   className="object-cover object-center"
                   sizes="(max-width: 768px) 100vw, 44rem"
-                  unoptimized={
-                    typeof item.image === 'string' &&
-                    (item.image.startsWith('http://') || item.image.startsWith('https://'))
-                  }
+                  priority={heroEager}
+                  loading={heroEager ? 'eager' : 'lazy'}
                 />
               ) : null}
               <SmartFeedCardVideo
