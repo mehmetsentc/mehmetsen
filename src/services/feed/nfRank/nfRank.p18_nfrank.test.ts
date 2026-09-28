@@ -205,7 +205,7 @@ describe('NFRank V1 scoring + composition', () => {
     const rows = [
       baseRow({ articleId: 'n1', citySlug: null, source: 'RECENT' }),
       baseRow({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
-      baseRow({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
+      baseRow({ articleId: 'i1', citySlug: 'izmir', source: 'LOCAL' }),
     ]
     const ranked = nfRankEngine.compose(
       rows,

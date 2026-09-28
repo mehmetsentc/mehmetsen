@@ -1,5 +1,6 @@
 'use client'
 
+import { isHomePathname } from '@/constants/routes'
 import {
   FEED_RESTORE_MAX_ITEMS,
   FEED_RESTORE_STORAGE_KEY,
@@ -102,7 +103,8 @@ export function clearFeedRestore(): void {
 
 /**
  * Zap / main-nav entry to Feed V2:
- * - Keep warm route_exit snapshots (Profile → Feed V2)
+ * - Keep warm route_exit snapshots (Profile / Search → Feed V2)
+ * - Clear when entering from magazine home (close/reopen must not replay the same 15)
  * - Clear canonical article→back snapshots (CASE B fresh entry)
  * - Always clear when already on /feed-v2 (explicit re-tap refresh)
  */
@@ -110,7 +112,7 @@ export function clearFeedRestoreForFeedV2Nav(opts: {
   pathname: string
 }): void {
   const path = opts.pathname || ''
-  if (path === '/feed-v2' || path.startsWith('/feed-v2?')) {
+  if (path === '/feed-v2' || path.startsWith('/feed-v2?') || isHomePathname(path)) {
     clearFeedRestore()
     return
   }

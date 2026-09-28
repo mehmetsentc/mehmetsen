@@ -145,6 +145,19 @@ describe('P18 warm Feed V2 restore', () => {
     expect(readFeedRestore()).toBeNull()
   })
 
+  it('Zap from magazine home clears warm snapshot so close/reopen does not replay', () => {
+    saveFeedRestore({
+      mode: 'personal',
+      articleId: 'a1',
+      scrollIndex: 0,
+      items: [{ articleId: 'a1' } as never],
+      pending: true,
+      source: 'route_exit',
+    })
+    clearFeedRestoreForFeedV2Nav({ pathname: '/' })
+    expect(readFeedRestore()).toBeNull()
+  })
+
   it('auth userKey mismatch invalidates personalized snapshot', () => {
     saveFeedRestore({
       mode: 'personal',
@@ -160,7 +173,7 @@ describe('P18 warm Feed V2 restore', () => {
   })
 
   it('nav uses clearFeedRestoreForFeedV2Nav; client saves route_exit + quiet refresh', () => {
-    const nav = readFileSync(join(process.cwd(), 'src/components/layout/Navbar.tsx'), 'utf8')
+    const nav = readFileSync(join(process.cwd(), 'src/components/layout/MobileNav.tsx'), 'utf8')
     const client = readFileSync(
       join(process.cwd(), 'src/components/feed/smart/SmartFeedClient.tsx'),
       'utf8'

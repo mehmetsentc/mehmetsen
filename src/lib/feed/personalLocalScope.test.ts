@@ -63,22 +63,24 @@ describe('personal local scope — Sana Özel inventory', () => {
   it('keeps national rows and home-city locals', () => {
     const scope = personalLocalScopeFromContext(ctx({ city: 'canakkale' }))
     expect(isPersonalLocalAllowed({ citySlug: null }, scope)).toBe(true)
-    expect(isPersonalLocalAllowed({ citySlug: 'canakkale' }, scope)).toBe(true)
+    expect(isPersonalLocalAllowed({ citySlug: 'canakkale', category: 'yerel-gundem' }, scope)).toBe(true)
+    expect(isPersonalLocalAllowed({ citySlug: 'istanbul', category: 'siyaset' }, scope)).toBe(true)
   })
 
   it('drops other cities when the user has not read them', () => {
     const scope = personalLocalScopeFromContext(ctx({ city: 'canakkale' }))
-    expect(isPersonalLocalAllowed({ citySlug: 'izmir' }, scope)).toBe(false)
+    expect(isPersonalLocalAllowed({ citySlug: 'izmir', source: 'LOCAL' }, scope)).toBe(false)
     const kept = filterPersonalLocalInventory(
       [
-        { articleId: 'n1', citySlug: null },
-        { articleId: 'c1', citySlug: 'canakkale' },
-        { articleId: 'i1', citySlug: 'izmir' },
+        { articleId: 'n1', citySlug: null, category: 'gundem' },
+        { articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' },
+        { articleId: 'i1', citySlug: 'izmir', category: 'yerel-gundem' },
+        { articleId: 'nat', citySlug: 'izmir', category: 'siyaset' },
       ],
       'personal',
       scope
     )
-    expect(kept.map((r) => r.articleId)).toEqual(['n1', 'c1'])
+    expect(kept.map((r) => r.articleId)).toEqual(['n1', 'c1', 'nat'])
   })
 
   it('allows a foreign city only after scored local reads', () => {
@@ -91,14 +93,14 @@ describe('personal local scope — Sana Özel inventory', () => {
         ]),
       })
     )
-    expect(isPersonalLocalAllowed({ citySlug: 'izmir' }, scope)).toBe(true)
-    expect(isPersonalLocalAllowed({ citySlug: 'van' }, scope)).toBe(false)
+    expect(isPersonalLocalAllowed({ citySlug: 'izmir', source: 'LOCAL' }, scope)).toBe(true)
+    expect(isPersonalLocalAllowed({ citySlug: 'van', category: 'yerel-gundem' }, scope)).toBe(false)
     expect([...scope.extraCities]).toEqual(['izmir'])
   })
 
   it('without a home city, suppresses unread city-tagged locals', () => {
     const scope = personalLocalScopeFromContext(ctx())
-    expect(isPersonalLocalAllowed({ citySlug: 'ankara' }, scope)).toBe(false)
+    expect(isPersonalLocalAllowed({ citySlug: 'ankara', source: 'LOCAL' }, scope)).toBe(false)
     expect(isPersonalLocalAllowed({ citySlug: null }, scope)).toBe(true)
   })
 

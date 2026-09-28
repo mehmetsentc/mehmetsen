@@ -110,11 +110,38 @@ export function cityAffinity(scope: PersonalLocalScope, citySlug: string | null 
   return scope.affinities.get(slug) ?? 0
 }
 
-/** National / world (no city) stay. Foreign locals enter only after real reads. */
+/**
+ * True local inventory only. National news often keeps a citySlug for routing
+ * ("konum yalnızca geçiyor") and must not be treated as another city's local.
+ */
+export function isCityLocalArticle(row: {
+  citySlug?: string | null
+  category?: string | null
+  source?: string | null
+  candidateSources?: readonly string[] | null
+}): boolean {
+  if (!normalizeKnownCitySlug(row.citySlug)) return false
+  const cat = (row.category ?? '').trim().toLowerCase()
+  if (cat === 'yerel' || cat.startsWith('yerel-')) return true
+  const sources = row.candidateSources?.length
+    ? row.candidateSources
+    : row.source
+      ? [row.source]
+      : []
+  return sources.includes('LOCAL')
+}
+
+/** National / world stay. Foreign true-locals enter only after real reads. */
 export function isPersonalLocalAllowed(
-  row: { citySlug?: string | null },
+  row: {
+    citySlug?: string | null
+    category?: string | null
+    source?: string | null
+    candidateSources?: readonly string[] | null
+  },
   scope: PersonalLocalScope
 ): boolean {
+  if (!isCityLocalArticle(row)) return true
   const rowCity = normalizeKnownCitySlug(row.citySlug)
   if (!rowCity) return true
   if (scope.homeCity && rowCity === scope.homeCity) return true

@@ -886,9 +886,9 @@ export function SmartFeedClient({
           const restoreExemptId =
             (!append && (searchParams.get('restore') ?? restorePeek?.articleId)) || null
           // Category tabs: allow re-browse of older stories (server already walks corpus).
-          // Personal/following still hide guest-seen to reduce replay.
-          const guestSeen =
-            !authUser && !activeCategory ? readGuestSeen() : new Set<string>()
+          // Sana Özel hides durable localStorage seen for guests AND signed-in users
+          // so app kill → home → Zap does not replay the same first cards.
+          const guestSeen = !activeCategory ? readGuestSeen() : new Set<string>()
           const incoming = page.items.filter((i) => {
             if (restoreExemptId && (i.articleId === restoreExemptId || i.slug === restoreExemptId)) {
               return true

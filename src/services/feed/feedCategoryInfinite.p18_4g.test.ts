@@ -24,7 +24,7 @@ describe('P18.4G category infinite scroll (archive session)', () => {
   })
 
   it('category browse does not client-filter guest-seen (server session owns exclusion)', () => {
-    expect(clientSrc).toContain('!authUser && !activeCategory ? readGuestSeen()')
+    expect(clientSrc).toContain('!activeCategory ? readGuestSeen()')
     expect(clientSrc).toContain('EMPTY_PAGE_REFILL_MAX = 8')
   })
 

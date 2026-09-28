@@ -151,7 +151,7 @@ describe('P5 local signal', () => {
       [
         row({ articleId: 'n1', citySlug: null, source: 'RECENT' }),
         row({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
-        row({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
+        row({ articleId: 'i1', citySlug: 'izmir', source: 'LOCAL' }),
       ],
       ctx({ city: 'canakkale' }),
       'personal',
@@ -165,8 +165,8 @@ describe('P5 local signal', () => {
     const scored = feedScoringService.scoreAll(
       [
         row({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
-        row({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
-        row({ articleId: 'v1', citySlug: 'van', source: 'RECENT' }),
+        row({ articleId: 'i1', citySlug: 'izmir', source: 'LOCAL' }),
+        row({ articleId: 'v1', citySlug: 'van', source: 'LOCAL' }),
       ],
       ctx({
         city: 'canakkale',
