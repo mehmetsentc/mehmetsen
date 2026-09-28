@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 import path from 'node:path'
 import { NEWS_IMAGE_REMOTE_PATTERNS } from './src/constants/imageHosts'
+import { COST_FREEZE_ENABLED } from './src/lib/costFreeze'
 
 /**
  * SEO-1A-X.1 — serve blocking metadata (canonical, robots, title, OG…) in
@@ -86,7 +87,7 @@ const nextConfig: NextConfig = {
   },
 
   async redirects() {
-    return [
+    const routes = [
       { source: '/news/:slug', destination: '/haber/:slug', permanent: true },
       { source: '/local', destination: '/yerel', permanent: true },
       { source: '/local/:path*', destination: '/yerel/:path*', permanent: true },
@@ -121,6 +122,17 @@ const nextConfig: NextConfig = {
       { source: '/konu/:slug', destination: '/etiket/:slug', permanent: true },
       { source: '/sitemap-news-:n.xml', destination: '/sitemap/:n.xml', permanent: false },
       { source: '/burclar', destination: '/kategori/astroloji', permanent: true },
+    ]
+    if (!COST_FREEZE_ENABLED) return routes
+    // Runs before middleware and route handlers. The previous middleware
+    // matcher never intercepted the live homepage, so this redirect is the gate.
+    return [
+      {
+        source: '/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)',
+        destination: '/bakim.html',
+        permanent: false,
+      },
+      ...routes,
     ]
   },
 

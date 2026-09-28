@@ -293,6 +293,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Freeze covers pages AND APIs (except /api/health). Static assets stay skipped.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.[\\w]+$).*)'],
+  // Literal matcher. Health stays on the route. XML, RSS, and API paths are included.
+  matcher: ['/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)'],
 }

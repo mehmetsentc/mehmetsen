@@ -14,11 +14,22 @@ describe('FINOPS cost freeze', () => {
     expect(mw).toContain('COST_FREEZE_ENABLED')
     expect(mw).toContain("status: 503")
     expect(mw).toContain('api/health')
-    expect(mw).toMatch(/matcher:\s*\[/)
-    expect(mw).not.toContain('(?!api|_next/static')
+    expect(mw).toContain("'/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)'")
+    expect(mw).not.toContain('.*\\\\.[\\\\w]+$')
     const freezeBlock = mw.slice(mw.indexOf('if (COST_FREEZE_ENABLED)'), mw.indexOf('const { pathname } = request.nextUrl', mw.indexOf('if (COST_FREEZE_ENABLED)') + 10))
     expect(freezeBlock).not.toContain('resolveTenantFromRequest')
     expect(freezeBlock).not.toContain('verifyCmsSessionToken')
+  })
+
+  it('redirects every public path to a static page before route handlers', () => {
+    const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
+    const page = readFileSync(join(process.cwd(), 'public/bakim.html'), 'utf8')
+    expect(config).toContain('COST_FREEZE_ENABLED')
+    expect(config).toContain("destination: '/bakim.html'")
+    expect(config).toContain("'/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)'")
+    expect(page).toContain('NaHaber kısa süreli bakım çalışmasındadır.')
+    expect(page).not.toContain('getDb')
+    expect(page).not.toContain('firestore')
   })
 
   it('vercel cron schedules are empty; cron route files remain', () => {
