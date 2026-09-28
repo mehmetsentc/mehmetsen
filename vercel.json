@@ -89,10 +89,5 @@
       "memory": 1024
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/crawler/tick",
-      "schedule": "*/10 * * * *"
-    }
-  ]
+  "crons": []
 }
