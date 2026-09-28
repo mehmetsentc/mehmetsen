@@ -77,6 +77,8 @@ export interface FeedItemDto {
   headline: string
   summary: string | null
   category: string | null
+  /** Province slug when the article is local; omitted/null for national. */
+  citySlug?: string | null
   image: string | null
   video: string | null
   publishedAt: string

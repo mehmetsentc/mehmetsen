@@ -145,6 +145,41 @@ describe('P5 local signal', () => {
     const other = feedScoringService.scoreCandidate(row({ articleId: 'n1' }), ctx(), 'local')
     expect(local.breakdown.local).toBeGreaterThan(other.breakdown.local)
   })
+
+  it('Sana Özel drops unread foreign locals and keeps national + home', () => {
+    const scored = feedScoringService.scoreAll(
+      [
+        row({ articleId: 'n1', citySlug: null, source: 'RECENT' }),
+        row({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
+        row({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
+      ],
+      ctx({ city: 'canakkale' }),
+      'personal',
+      new Set(),
+      new Set()
+    )
+    expect(scored.map((r) => r.articleId).sort()).toEqual(['c1', 'n1'])
+  })
+
+  it('Sana Özel can surface a foreign city after local reads', () => {
+    const scored = feedScoringService.scoreAll(
+      [
+        row({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
+        row({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
+        row({ articleId: 'v1', citySlug: 'van', source: 'RECENT' }),
+      ],
+      ctx({
+        city: 'canakkale',
+        behavioralInterests: new Map([['city:izmir', 0.5]]),
+      }),
+      'personal',
+      new Set(),
+      new Set()
+    )
+    expect(scored.map((r) => r.articleId).sort()).toEqual(['c1', 'i1'])
+    const izmir = scored.find((r) => r.articleId === 'i1')
+    expect(izmir?.breakdown.local).toBeGreaterThan(0)
+  })
 })
 
 describe('P5 editorial + breaking', () => {

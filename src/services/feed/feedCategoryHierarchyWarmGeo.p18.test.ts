@@ -77,6 +77,8 @@ describe('P18 Sana Özel foreign-local deprioritize', () => {
     expect(scoring).not.toMatch(/if \(rowCity\) return 0\.4/)
     expect(nf).not.toMatch(/if \(rowCity\) return 0\.35/)
     expect(scoring).toContain("row.source === 'LOCAL'")
+    expect(scoring).toContain('isPersonalLocalAllowed')
+    expect(nf).toContain('isPersonalLocalAllowed')
     // Yerel mode path untouched in FeedService
     const service = readFileSync(join(process.cwd(), 'src/services/feed/FeedService.ts'), 'utf8')
     expect(service).toContain("emptyReason: 'location_required'")

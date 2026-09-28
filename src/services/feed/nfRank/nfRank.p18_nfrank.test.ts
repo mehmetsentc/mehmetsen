@@ -201,6 +201,22 @@ describe('NFRank V1 scoring + composition', () => {
     expect(ranked[0]!.nfExplain?.candidateSources).toEqual(ranked[0]!.candidateSources)
   })
 
+  it('Sana Özel compose drops unread foreign locals', () => {
+    const rows = [
+      baseRow({ articleId: 'n1', citySlug: null, source: 'RECENT' }),
+      baseRow({ articleId: 'c1', citySlug: 'canakkale', source: 'LOCAL' }),
+      baseRow({ articleId: 'i1', citySlug: 'izmir', source: 'RECENT' }),
+    ]
+    const ranked = nfRankEngine.compose(
+      rows,
+      emptyCtx({ city: 'canakkale' }),
+      'personal',
+      8,
+      emptySessionIntent()
+    )
+    expect(ranked.map((r) => r.articleId).sort()).toEqual(['c1', 'n1'])
+  })
+
   it('admin boost topics lift matching headline without changing others', () => {
     const boosted = baseRow({ articleId: 'b1', headline: 'İstanbul deprem tatbikatı', category: 'gundem' })
     const other = baseRow({ articleId: 'o1', headline: 'Teknoloji zirvesi', category: 'teknoloji' })

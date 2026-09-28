@@ -11,6 +11,12 @@ import {
 } from '@/lib/feed/rankingConfig'
 import type { FeedUserContext } from '@/types/smartFeed'
 import { feedUserContextService } from './FeedUserContextService'
+import {
+  cityAffinity,
+  isPersonalLocalAllowed,
+  normalizeKnownCitySlug,
+  personalLocalScopeFromContext,
+} from '@/lib/feed/personalLocalScope'
 
 const QUALITY_TIER_SCORE: Record<string, number> = {
   PREMIUM: 1,
@@ -47,12 +53,16 @@ function featuredScore(row: FeedCandidateRow): number {
 }
 
 function localScore(row: FeedCandidateRow, ctx: FeedUserContext, mode: FeedMode): number {
-  if (mode !== 'local' && !ctx.city) return 0
-  const userCity = ctx.city?.trim().toLowerCase()
-  const rowCity = row.citySlug?.trim().toLowerCase()
+  const scope = personalLocalScopeFromContext(ctx)
+  const userCity = scope.homeCity
+  const rowCity = normalizeKnownCitySlug(row.citySlug)
   if (userCity && rowCity && userCity === rowCity) return 0.95
+  if (mode === 'personal' && rowCity && scope.extraCities.has(rowCity)) {
+    return Math.min(0.85, 0.35 + cityAffinity(scope, rowCity) * 0.5)
+  }
+  if (mode !== 'local' && !userCity) return 0
   // LOCAL pool is already city-scoped at fetch — keep affinity for that pool only.
-  if (row.source === 'LOCAL') return 0.75
+  if (row.source === 'LOCAL' && (!rowCity || rowCity === userCity)) return 0.75
   // Ordinary foreign-city tags must not soft-boost Sana Özel (no filler affinity).
   // National/world rows without citySlug stay 0; personal interest / follow use other signals.
   return 0
@@ -215,12 +225,14 @@ export class FeedScoringService {
     seenArticles: Set<string>,
     seenClusters: Set<string>
   ): ScoredFeedCandidate[] {
+    const scope = personalLocalScopeFromContext(ctx)
     return rows
       .filter((row) => {
         // Hard no-replay: qualified-seen articles never re-enter the ranked window,
         // except genuine material-update members (cluster already re-eligible upstream).
         if (seenArticles.has(row.articleId) && !row.materialUpdate) return false
         if (row.clusterId && seenClusters.has(row.clusterId) && !row.materialUpdate) return false
+        if (mode === 'personal' && !isPersonalLocalAllowed(row, scope)) return false
         return true
       })
       .map((row) =>

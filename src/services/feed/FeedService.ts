@@ -156,6 +156,7 @@ function toDto(
     headline: row.headline,
     summary: row.summary,
     category: row.category,
+    citySlug: row.citySlug ?? null,
     image: row.image,
     video: sanitizeFeedVideoUrl(row.video),
     publishedAt: row.publishedAt.toISOString(),

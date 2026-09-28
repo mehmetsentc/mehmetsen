@@ -21,6 +21,12 @@ import { normalizeTag } from '@/lib/tags'
 import { feedUserContextService } from '../FeedUserContextService'
 import { articleWatchRankingSignals } from '@/lib/feed/articleEngagement'
 import { FEED_RANKING_CONFIG_V1, normalizeEngagementRate } from '@/lib/feed/rankingConfig'
+import {
+  cityAffinity,
+  isPersonalLocalAllowed,
+  normalizeKnownCitySlug,
+  personalLocalScopeFromContext,
+} from '@/lib/feed/personalLocalScope'
 
 /** Bounded session intent — does NOT permanently mutate long-term profile. */
 export interface NfSessionIntent {
@@ -304,15 +310,19 @@ function editorialFeature(row: FeedCandidateRow): number {
 }
 
 function localFeature(row: FeedCandidateRow, ctx: FeedUserContext, mode: FeedMode): number {
-  if (mode !== 'local' && !ctx.city && !ctx.districtSlug) return 0
+  const scope = personalLocalScopeFromContext(ctx)
   const userDistrict = ctx.districtSlug?.trim().toLowerCase()
   const rowDistrict = row.districtSlug?.trim().toLowerCase()
-  const userCity = ctx.city?.trim().toLowerCase()
-  const rowCity = row.citySlug?.trim().toLowerCase()
+  const userCity = scope.homeCity
+  const rowCity = normalizeKnownCitySlug(row.citySlug)
   if (userDistrict && rowDistrict && userDistrict === rowDistrict) return 1
   if (userCity && rowCity && userCity === rowCity) return 0.85
+  if (mode === 'personal' && rowCity && scope.extraCities.has(rowCity)) {
+    return Math.min(0.7, 0.28 + cityAffinity(scope, rowCity) * 0.42)
+  }
+  if (mode !== 'local' && !userCity && !ctx.districtSlug) return 0
   // LOCAL pool is city-scoped at fetch — keep soft affinity for that pool only.
-  if (row.source === 'LOCAL') return 0.7
+  if (row.source === 'LOCAL' && (!rowCity || rowCity === userCity)) return 0.7
   // Do not soft-boost ordinary foreign-city inventory in Sana Özel / NFRank.
   return 0
 }
@@ -543,7 +553,10 @@ export class NFRankEngine {
   ): NfRankedCandidate[] {
     const cfg = NFRANK_CONFIG_V1
     const nowMs = opts?.nowMs ?? Date.now()
-    const scored = candidates.map((row) => {
+    const scope = personalLocalScopeFromContext(ctx)
+    const eligible =
+      mode === 'personal' ? candidates.filter((row) => isPersonalLocalAllowed(row, scope)) : candidates
+    const scored = eligible.map((row) => {
       const seenArticle = opts?.seenArticles?.has(row.articleId) ?? false
       const seenCluster = row.clusterId ? opts?.seenClusters?.has(row.clusterId) ?? false : false
       const { score, components, reason, breakdown } = this.scoreOne(row, ctx, mode, session, {

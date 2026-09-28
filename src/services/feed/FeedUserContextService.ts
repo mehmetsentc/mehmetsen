@@ -9,6 +9,7 @@ import {
   userPublisherAffinity,
 } from '@/db/schema/feedRanking'
 
+import { resolveHomeCity, parseCityAffinities } from '@/lib/feed/personalLocalScope'
 import type { FeedUserContext } from '@/types/smartFeed'
 
 export type { FeedUserContext }
@@ -83,6 +84,11 @@ export class FeedUserContextService {
     const publisherAffinities = new Map<string, number>()
     for (const row of affinityRows) publisherAffinities.set(row.publisherId, row.score)
 
+    const profileCity = profile?.localNewsClearedAt
+      ? null
+      : (profile?.citySlug || profile?.city || null)?.trim().toLowerCase() || null
+    const cityAffinities = parseCityAffinities(behavioralInterests)
+
     return {
       userId,
       isSynthetic: false,
@@ -91,10 +97,11 @@ export class FeedUserContextService {
       publisherAffinities,
       followedPublisherIds: new Set(followRows.map((r) => r.publisherId)),
       negativePreferences: prefRows,
-      // Explicit Yerel preference (slug). Cleared → null (do not resurrect free-text city).
-      city: profile?.localNewsClearedAt
-        ? null
-        : (profile?.citySlug || profile?.city || null)?.trim().toLowerCase() || null,
+      // Explicit Yerel preference (slug). Cleared → still allow learned city from reads.
+      city: resolveHomeCity({
+        profileCity,
+        affinities: cityAffinities,
+      }),
       districtSlug: profile?.localNewsClearedAt
         ? null
         : (profile?.districtSlug || null)?.trim().toLowerCase() || null,

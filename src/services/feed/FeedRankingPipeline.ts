@@ -16,6 +16,12 @@ import { getFeedAlgorithmOps } from '@/services/feed/feedAlgorithmOps.server'
 import { feedSeenService } from './FeedSeenService'
 import { emptySessionIntent, nfRankEngine, type NfSessionIntent } from './nfRank/NFRankEngine'
 import { compareShadowRankings } from './nfRank/nfRankShadowCompare'
+import {
+  MAX_EXTRA_LOCAL_CITIES,
+  applyPersonalLocationToContext,
+  filterPersonalLocalInventory,
+  personalLocalScopeFromContext,
+} from '@/lib/feed/personalLocalScope'
 
 export type NfRankPipelineMode = 'off' | 'shadow' | 'live'
 
@@ -58,6 +64,7 @@ async function fetchPools(
     districtSlug?: string | null
     region?: string | null
     lockCity?: boolean
+    extraCitySlugs?: readonly string[]
     excludeArticleIds: Set<string>
     excludeClusterIds: Set<string>
     publishedBefore?: Date | string | null
@@ -86,21 +93,35 @@ async function fetchPools(
   }
 
   if (mode === 'personal') {
-    const [featured, breaking, recent, popular, local, discovery, following] = await Promise.all([
-      feedCandidateService.fetchFeatured({ ...base, limit: limits.FEATURED }),
-      feedCandidateService.fetchBreaking({ ...base, limit: limits.BREAKING }),
-      feedCandidateService.fetchRecent({ ...base, limit: limits.RECENT }),
-      feedCandidateService.fetchPopular({ ...base, limit: limits.POPULAR }),
-      feedCandidateService.fetchLocal({ ...base, limit: limits.LOCAL }),
-      feedCandidateService.fetchDiscovery({ ...base, limit: limits.DISCOVERY }),
-      opts.userId ? feedCandidateService.fetchFollowing({ ...base, limit: limits.FOLLOWING }) : Promise.resolve([]),
-    ])
+    const extraSlugs = (opts.extraCitySlugs ?? []).filter(
+      (slug) => slug && slug !== (opts.citySlug ?? '').trim().toLowerCase()
+    )
+    const [featured, breaking, recent, popular, local, extraLocal, discovery, following] =
+      await Promise.all([
+        feedCandidateService.fetchFeatured({ ...base, limit: limits.FEATURED }),
+        feedCandidateService.fetchBreaking({ ...base, limit: limits.BREAKING }),
+        feedCandidateService.fetchRecent({ ...base, limit: limits.RECENT }),
+        feedCandidateService.fetchPopular({ ...base, limit: limits.POPULAR }),
+        feedCandidateService.fetchLocal({ ...base, limit: limits.LOCAL }),
+        Promise.all(
+          extraSlugs.slice(0, MAX_EXTRA_LOCAL_CITIES).map((slug) =>
+            feedCandidateService.fetchLocal({
+              ...base,
+              citySlug: slug,
+              districtSlug: null,
+              limit: Math.min(limits.LOCAL, 40),
+            })
+          )
+        ),
+        feedCandidateService.fetchDiscovery({ ...base, limit: limits.DISCOVERY }),
+        opts.userId ? feedCandidateService.fetchFollowing({ ...base, limit: limits.FOLLOWING }) : Promise.resolve([]),
+      ])
     return {
       FEATURED: featured,
       BREAKING: breaking,
       RECENT: recent,
       POPULAR: popular,
-      LOCAL: local,
+      LOCAL: [...local, ...extraLocal.flat()],
       DISCOVERY: discovery,
       FOLLOWING: following,
     }
@@ -223,35 +244,39 @@ export class FeedRankingPipeline {
     olderThan: string | null
     shadowComparison?: ReturnType<typeof compareShadowRankings>
   }> {
+    const scope = personalLocalScopeFromContext(ctx, input.citySlug)
+    const extraCitySlugs = [...scope.extraCities]
     // Exclude served IDs in SQL (see fetchRecent) — do not time-gate first, so
     // remaining unseen recent inventory is consumed before older fallback.
     let pools = await fetchPools(input.mode, {
       limit: input.limit * 4,
       userId: input.userId,
-      citySlug: input.citySlug,
+      citySlug: input.citySlug ?? scope.homeCity,
       districtSlug: input.districtSlug,
       region: input.region,
       lockCity: input.lockCity,
+      extraCitySlugs,
       excludeArticleIds,
       excludeClusterIds: input.seenClusters,
       publishedBefore: null,
     })
-    let flat = flattenPools(pools)
+    let flat = filterPersonalLocalInventory(flattenPools(pools), input.mode, scope)
     let candidateCounts = countPools(pools)
 
     if (flat.length < input.limit && publishedBefore) {
       pools = await fetchPools(input.mode, {
         limit: input.limit * 4,
         userId: input.userId,
-        citySlug: input.citySlug,
+        citySlug: input.citySlug ?? scope.homeCity,
         districtSlug: input.districtSlug,
         region: input.region,
         lockCity: input.lockCity,
+        extraCitySlugs,
         excludeArticleIds,
         excludeClusterIds: input.seenClusters,
         publishedBefore,
       })
-      const boundFlat = flattenPools(pools)
+      const boundFlat = filterPersonalLocalInventory(flattenPools(pools), input.mode, scope)
       candidateCounts = { ...candidateCounts, ...countPools(pools), older_bound: boundFlat.length }
       const seen = new Set(flat.map((r) => r.articleId))
       for (const row of boundFlat) {
@@ -277,7 +302,7 @@ export class FeedRankingPipeline {
       })
       candidateCounts.OLDER_LEGACY = older.length
       const seen = new Set(flat.map((r) => r.articleId))
-      for (const row of older) {
+      for (const row of filterPersonalLocalInventory(older, input.mode, scope)) {
         if (seen.has(row.articleId) || excludeArticleIds.has(row.articleId)) continue
         seen.add(row.articleId)
         flat.push(row)
@@ -406,6 +431,10 @@ export class FeedRankingPipeline {
       await feedInterestAggregator.aggregateForUser(resolved.userId).catch(() => {})
       ctx = await feedUserContextService.load(resolved.userId)
     }
+
+    ctx = applyPersonalLocationToContext(ctx, resolved.citySlug, resolved.districtSlug)
+    resolved.citySlug = resolved.citySlug || ctx.city
+    resolved.districtSlug = resolved.districtSlug || ctx.districtSlug
 
     // Session stability — continue / refill existing ranked snapshot (current + near cards frozen via rankedIds)
     if (resolved.sessionToken && !resolved.refresh) {

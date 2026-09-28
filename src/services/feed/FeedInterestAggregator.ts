@@ -1,11 +1,13 @@
 import 'server-only'
 
-import { and, eq, gte } from 'drizzle-orm'
+import { and, eq, gte, inArray, or } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import { socialEvents } from '@/db/schema/socialGraph'
+import { news } from '@/db/schema/news'
 import { userInterestScores, userPublisherAffinity } from '@/db/schema/feedRanking'
 import { FEED_RANKING_CONFIG_V1 } from '@/lib/feed/rankingConfig'
 import type { BehavioralSignal } from '@/lib/feed/rankingConfig'
+import { cityInterestKey, normalizeKnownCitySlug } from '@/lib/feed/personalLocalScope'
 
 const EVENT_TO_SIGNAL: Record<string, BehavioralSignal | null> = {
   publisher_follow: 'FOLLOW',
@@ -23,6 +25,15 @@ const EVENT_TO_SIGNAL: Record<string, BehavioralSignal | null> = {
   article_liked: 'LIKE',
   quick_skip: 'QUICK_SKIP',
 }
+
+const CITY_POSITIVE_SIGNALS: ReadonlySet<BehavioralSignal> = new Set([
+  'SAVE',
+  'SHARE',
+  'ARTICLE_OPEN',
+  'LONG_DWELL',
+  'COMMENT',
+  'LIKE',
+])
 
 function interestKey(kind: 'cat' | 'tag' | 'ent', raw: string): string {
   const n = raw.trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, '-')
@@ -64,6 +75,7 @@ export class FeedInterestAggregator {
 
     const interestScores = new Map<string, number>()
     const publisherScores = new Map<string, number>()
+    const cityCredit = new Map<string, { delta: number; metaCity: string | null }>()
 
     for (const ev of events) {
       const signal = EVENT_TO_SIGNAL[ev.eventType]
@@ -96,7 +108,16 @@ export class FeedInterestAggregator {
           publisherId?: string
           tags?: string[] | string
           entities?: string[] | string
+          citySlug?: string
         } | null
+        if (CITY_POSITIVE_SIGNALS.has(signal) && ev.targetId) {
+          const metaCity = typeof meta?.citySlug === 'string' ? meta.citySlug : null
+          const prev = cityCredit.get(ev.targetId)
+          cityCredit.set(ev.targetId, {
+            delta: (prev?.delta ?? 0) + delta,
+            metaCity: metaCity || prev?.metaCity || null,
+          })
+        }
         if (meta?.category) {
           const key = interestKey('cat', meta.category)
           interestScores.set(key, (interestScores.get(key) ?? 0) + delta * 0.6)
@@ -149,6 +170,32 @@ export class FeedInterestAggregator {
         }
       } else if (ev.targetType === 'publisher' && ev.targetId) {
         publisherScores.set(ev.targetId, (publisherScores.get(ev.targetId) ?? 0) + delta)
+      }
+    }
+
+    if (cityCredit.size) {
+      const ids = [...cityCredit.keys()].slice(0, 200)
+      const cityByArticle = new Map<string, string>()
+      try {
+        const rows = await db
+          .select({ id: news.id, legacy: news.legacyFirestoreId, citySlug: news.citySlug })
+          .from(news)
+          .where(or(inArray(news.id, ids), inArray(news.legacyFirestoreId, ids)))
+          .limit(400)
+        for (const row of rows) {
+          const slug = normalizeKnownCitySlug(row.citySlug)
+          if (!slug) continue
+          if (row.id) cityByArticle.set(row.id, slug)
+          if (row.legacy) cityByArticle.set(row.legacy, slug)
+        }
+      } catch {
+        // Metadata citySlug still applies below.
+      }
+      for (const [articleId, credit] of cityCredit) {
+        const slug = normalizeKnownCitySlug(credit.metaCity) ?? cityByArticle.get(articleId) ?? null
+        if (!slug) continue
+        const key = cityInterestKey(slug)
+        interestScores.set(key, (interestScores.get(key) ?? 0) + credit.delta)
       }
     }
 

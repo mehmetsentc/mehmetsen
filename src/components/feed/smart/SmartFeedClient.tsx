@@ -1613,11 +1613,12 @@ export function SmartFeedClient({
               articleId: prev.articleId,
               feedType: mode,
               dwellMs: dwell,
-              metadata: {
-                category: prev.category ?? null,
-                tags: prev.tags ?? [],
-                publisherId: prev.publisher?.id ?? null,
-              },
+                metadata: {
+                  category: prev.category ?? null,
+                  tags: prev.tags ?? [],
+                  publisherId: prev.publisher?.id ?? null,
+                  citySlug: prev.citySlug ?? null,
+                },
             },
           ],
         })
@@ -1636,6 +1637,7 @@ export function SmartFeedClient({
                   publisherId: prev.publisher?.id ?? null,
                   category: prev.category ?? null,
                   tags: prev.tags ?? [],
+                  citySlug: prev.citySlug ?? null,
                   source: 'feed_card',
                 },
               },
@@ -2232,6 +2234,7 @@ export function SmartFeedClient({
                 publisherId: item.publisher?.id ?? null,
                 category: item.category ?? null,
                 tags: item.tags ?? [],
+                citySlug: item.citySlug ?? null,
                 source: 'feed_v3_sheet',
                 openAction: action,
               },
@@ -2320,6 +2323,7 @@ export function SmartFeedClient({
               publisherId: item.publisher?.id ?? null,
               category: item.category ?? null,
               tags: item.tags ?? [],
+              citySlug: item.citySlug ?? null,
               source:
                 decided.decision === 'OPEN_READER' ? 'feed_reader' : 'news_detail',
             },

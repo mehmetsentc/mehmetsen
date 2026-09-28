@@ -89,6 +89,19 @@ describe('P18.4H local feed geo gate — user geography (no proximity)', () => {
   it('Sana Özel still calls fetchLocal as a pool (not redesigned)', () => {
     expect(pipeline).toContain("mode === 'personal'")
     expect(pipeline).toContain('feedCandidateService.fetchLocal')
+    expect(pipeline).toContain('extraCitySlugs')
+    expect(pipeline).toContain('filterPersonalLocalInventory')
+    expect(pipeline).toContain('applyPersonalLocationToContext')
+  })
+
+  it('interest aggregator writes city: affinity from qualified reads', () => {
+    const aggregator = readFileSync(
+      join(process.cwd(), 'src/services/feed/FeedInterestAggregator.ts'),
+      'utf8'
+    )
+    expect(aggregator).toContain('cityInterestKey')
+    expect(aggregator).toContain('CITY_POSITIVE_SIGNALS')
+    expect(aggregator).toContain('news.citySlug')
   })
 
   it('city tenant Feed V2 locks corpus to Host city (Çanakkale ≠ Antalya ≠ national)', () => {
