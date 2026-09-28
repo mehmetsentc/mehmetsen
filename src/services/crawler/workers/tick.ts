@@ -92,6 +92,7 @@ export async function runCrawlerTick(opts?: {
   const fetchImpl = opts?.fetchImpl
   const lookup = opts?.lookup
   const limits = crawlerTickLimits()
+  store.beginMetricBatch?.()
   const tickStarted = Date.now()
   const sources = await store.listDueSources(now, limits.maxSourcesPerTick)
   let urlsInserted = 0
@@ -589,6 +590,7 @@ export async function runCrawlerTick(opts?: {
     await refreshRebuildProgress(store)
   }
 
+  await store.flushMetricBatch?.()
   return result
 }
 

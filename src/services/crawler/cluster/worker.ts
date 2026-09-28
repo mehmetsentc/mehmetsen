@@ -101,7 +101,9 @@ export async function runClusterTick(opts: {
     let best: { cluster: NewsClusterRecord; score: ReturnType<typeof scoreClusterMatch> } | null = null
     for (const cluster of candidates) {
       const rep = cluster.representativeArticleId
-        ? await opts.store.getRawArticle(cluster.representativeArticleId)
+        ? await (opts.store.getRawArticleText
+            ? opts.store.getRawArticleText(cluster.representativeArticleId)
+            : opts.store.getRawArticle(cluster.representativeArticleId))
         : null
       const scored = scoreClusterMatch(
         fp,
@@ -203,7 +205,9 @@ async function recomputeCluster(
   const memberships = await store.listMemberships(clusterId)
   const members: Array<{ article: RawArticleRecord; source: NewsSourceRecord | null; membershipId: string }> = []
   for (const m of memberships) {
-    const article = await store.getRawArticle(m.articleId)
+    const article = await (store.getRawArticleText
+      ? store.getRawArticleText(m.articleId)
+      : store.getRawArticle(m.articleId))
     if (!article) continue
     members.push({ article, source: await store.getSource(article.sourceId), membershipId: m.id })
   }

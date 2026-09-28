@@ -119,7 +119,9 @@ async function membersFor(crawlerStore: CrawlerStore, clusterId: string): Promis
   const memberships = await crawlerStore.listMemberships(clusterId)
   const out: MemberEvidence[] = []
   for (const m of memberships) {
-    const article = await crawlerStore.getRawArticle(m.articleId)
+    const article = await (crawlerStore.getRawArticleText
+      ? crawlerStore.getRawArticleText(m.articleId)
+      : crawlerStore.getRawArticle(m.articleId))
     const source = await crawlerStore.getSource(m.sourceId)
     if (!article) continue
     out.push({

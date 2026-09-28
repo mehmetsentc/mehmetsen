@@ -265,6 +265,12 @@ export class MemoryCrawlerStore implements CrawlerStore {
     return row
   }
 
+  async getRawArticleText(id: string): Promise<RawArticleRecord | null> {
+    const row = await this.getRawArticle(id)
+    if (!row) return null
+    return { ...row, articleBodyHtml: null }
+  }
+
   async getRawArticle(id: string): Promise<RawArticleRecord | null> {
     return this.articles.get(id) ?? null
   }

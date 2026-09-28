@@ -427,6 +427,12 @@ export interface CrawlerStore {
   hasAiCache(contentHash: string, promptVersion: string, model: string): Promise<boolean>
 
   incrementMetric(metric: CrawlerMetricName, amount?: number, now?: Date): Promise<void>
+  /** Tick-scope counter. Optional so older fakes keep working. */
+  beginMetricBatch?(): void
+  /** Writes at most one upsert statement. Returns round-trips (0 or 1). */
+  flushMetricBatch?(): Promise<number>
+  /** Same as getRawArticle but articleBodyHtml is null. */
+  getRawArticleText?(id: string): Promise<RawArticleRecord | null>
   getTodayMetrics(now?: Date): Promise<Record<string, number>>
   countActiveSources(): Promise<number>
   countFailedSources(): Promise<number>

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, gte, ilike, inArray, lte, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, hasDatabaseUrl } from '@/db'
 import {
   aiProcessingCache,
@@ -300,9 +300,57 @@ export function canUseDrizzleCrawlerStore(): boolean {
   return hasDatabaseUrl()
 }
 
+/** True when a discovered-url patch would change a persisted field. updatedAt-only writes are skipped. */
+export function discoveredUrlPatchChanges(
+  current: DiscoveredUrlRecord,
+  patch: Partial<DiscoveredUrlRecord>
+): boolean {
+  for (const [key, value] of Object.entries(patch) as [keyof DiscoveredUrlRecord, unknown][]) {
+    if (value === undefined) continue
+    const prev = current[key]
+    if (value instanceof Date || prev instanceof Date) {
+      const nextMs = value instanceof Date ? value.getTime() : NaN
+      const prevMs = prev instanceof Date ? prev.getTime() : NaN
+      if (nextMs !== prevMs) return true
+      continue
+    }
+    if (typeof value === 'object' && value !== null) {
+      if (JSON.stringify(value) !== JSON.stringify(prev)) return true
+      continue
+    }
+    if (prev !== value) return true
+  }
+  return false
+}
+
 export class DrizzleCrawlerStore implements CrawlerStore {
+  private metricBuffer: Map<string, { day: string; metric: CrawlerMetricName; value: number; updatedAt: Date }> | null =
+    null
+
   private db() {
     return getDb()
+  }
+
+  beginMetricBatch(): void {
+    this.metricBuffer = new Map()
+  }
+
+  async flushMetricBatch(): Promise<number> {
+    const buf = this.metricBuffer
+    this.metricBuffer = null
+    if (!buf || buf.size === 0) return 0
+    const rows = [...buf.values()]
+    await this.db()
+      .insert(crawlerMetricsDaily)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: [crawlerMetricsDaily.day, crawlerMetricsDaily.metric],
+        set: {
+          value: sql`${crawlerMetricsDaily.value} + excluded.value`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      })
+    return 1
   }
 
   async listSources(): Promise<NewsSourceRecord[]> {
@@ -508,6 +556,9 @@ export class DrizzleCrawlerStore implements CrawlerStore {
   }
 
   async updateDiscoveredUrl(id: string, patch: Partial<DiscoveredUrlRecord>): Promise<void> {
+    const current = await this.getDiscoveredById(id)
+    if (!current) return
+    if (!discoveredUrlPatchChanges(current, patch)) return
     const values: Record<string, unknown> = { updatedAt: new Date() }
     if (patch.status !== undefined) values.status = patch.status
     if (patch.canonicalUrl !== undefined) values.canonicalUrl = patch.canonicalUrl
@@ -548,7 +599,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
 
   async insertRawArticle(input: InsertRawArticleInput): Promise<RawArticleRecord> {
     const id = newCrawlerId('raw')
-    await this.db().insert(rawArticles).values({
+    const inserted = await this.db().insert(rawArticles).values({
       id,
       sourceId: input.sourceId,
       discoveredUrlId: input.discoveredUrlId,
@@ -603,14 +654,25 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       clusterRole: input.clusterRole ?? null,
       discoveryPrimaryImageCandidate: input.discoveryPrimaryImageCandidate ?? null,
       primaryImageConfidence: input.primaryImageConfidence ?? null,
-    })
-    const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.id, id)).limit(1)
-    return mapRaw(rows[0])
+    }).returning()
+    return mapRaw(inserted[0])
   }
 
   async getRawArticle(id: string): Promise<RawArticleRecord | null> {
     const rows = await this.db().select().from(rawArticles).where(eq(rawArticles.id, id)).limit(1)
     return rows[0] ? mapRaw(rows[0]) : null
+  }
+
+  /** Hot-path read: card + body text, no article_body_html. */
+  async getRawArticleText(id: string): Promise<RawArticleRecord | null> {
+    const { articleBodyHtml: _html, ...columns } = getTableColumns(rawArticles)
+    const rows = await this.db()
+      .select(columns)
+      .from(rawArticles)
+      .where(eq(rawArticles.id, id))
+      .limit(1)
+    if (!rows[0]) return null
+    return mapRaw({ ...rows[0], articleBodyHtml: null } as typeof rawArticles.$inferSelect)
   }
 
   async listRecentArticles(limit = 50): Promise<RawArticleRecord[]> {
@@ -959,16 +1021,34 @@ export class DrizzleCrawlerStore implements CrawlerStore {
   }
 
   async listPendingClusterArticles(limit: number): Promise<RawArticleRecord[]> {
-    const members = await this.db().select({ articleId: clusterMemberships.articleId }).from(clusterMemberships)
-    const taken = new Set(members.map((m) => m.articleId))
+    // Same window as before: newest max(limit*4, 80) raw rows, then drop
+    // members / exact dupes / quality rejects. Membership is an indexed
+    // NOT EXISTS against that window (cluster_memberships_article_uidx),
+    // not a full-table article_id scan.
+    const fetchLimit = Math.max(limit * 4, 80)
     const rows = await this.db()
       .select()
       .from(rawArticles)
+      .where(
+        and(
+          sql`${rawArticles.id} in (
+            select id from (
+              select ${rawArticles.id} as id
+              from ${rawArticles}
+              order by ${rawArticles.fetchedAt} desc
+              limit ${fetchLimit}
+            ) recent_raw
+          )`,
+          sql`not exists (
+            select 1 from ${clusterMemberships} cm
+            where cm.article_id = ${rawArticles.id}
+          )`
+        )
+      )
       .orderBy(desc(rawArticles.fetchedAt))
-      .limit(Math.max(limit * 4, 80))
     return rows
       .map(mapRaw)
-      .filter((a) => !taken.has(a.id) && !a.isExactDuplicate && shouldEnterClusterFunnel(a.qualityStatus))
+      .filter((a) => !a.isExactDuplicate && shouldEnterClusterFunnel(a.qualityStatus))
       .slice(0, limit)
   }
 
@@ -1488,6 +1568,17 @@ export class DrizzleCrawlerStore implements CrawlerStore {
 
   async incrementMetric(metric: CrawlerMetricName, amount = 1, now = new Date()): Promise<void> {
     const day = dayStamp(now)
+    if (this.metricBuffer) {
+      const key = `${day}:${metric}`
+      const prev = this.metricBuffer.get(key)
+      if (prev) {
+        prev.value += amount
+        prev.updatedAt = now
+      } else {
+        this.metricBuffer.set(key, { day, metric, value: amount, updatedAt: now })
+      }
+      return
+    }
     await this.db()
       .insert(crawlerMetricsDaily)
       .values({ day, metric, value: amount, updatedAt: now })
