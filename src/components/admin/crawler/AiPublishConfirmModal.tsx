@@ -34,13 +34,12 @@ export function AiPublishConfirmModal({
     >
       <div className="space-y-3 text-sm">
         <p>
-          <strong>{count}</strong> ham haber seçildi. AI haberleri hazırlar; yayın için editör onayı gerekir.
-          Hazırlananlar <strong>Onay Bekliyor</strong> taslağı olarak kalır. Düşük güvenli veya riskli olanlar da
-          aynı inceleme akışında tutulur.
+          <strong>{count}</strong> ham haber seçildi. AI şimdi yazar; siteye kendiliğinden çıkmaz.
+          Hazırlananlar <strong>Yayın Odası → Onay Bekliyor</strong> taslağı olur. Kuyrukta bekleyen
+          onaylar da bu turda yazılır.
         </p>
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-          ✓ Arka planda işlenir — onaylayınca pencere kapanır, siz çalışmaya devam edebilirsiniz.
-          Haberler <strong>⏳ AI Kuyruğu</strong> sekmesinden izlenebilir; hazır olanlar{' '}
+          Yazım bitene kadar bu pencere açık kalır. Bitenler{' '}
           <strong>Yayın Odası → Onay Bekliyor</strong> altında görünür.
         </p>
         <label className="flex items-start gap-2">

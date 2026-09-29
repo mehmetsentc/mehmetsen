@@ -105,7 +105,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await publishRawArticlesWithAi({ store, ids })
+    const waiting = ids.length > 0 ? await store.listEditorAiQueued(AI_PUBLISH_BATCH_CAP) : []
+    const merged = [...new Set([...ids, ...waiting.map((row) => row.id)])].slice(0, AI_PUBLISH_BATCH_CAP)
+    const result = await publishRawArticlesWithAi({ store, ids: merged })
     return NextResponse.json({ ...result, requested })
   } catch (err) {
     console.error('[ai-publish]', err)

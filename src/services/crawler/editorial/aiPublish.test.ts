@@ -307,6 +307,8 @@ describe('isRawArticleAiPublishEligible', () => {
     expect(isRawArticleAiPublishEligible('IN_REVIEW')).toBe(true)
     expect(isRawArticleAiPublishEligible('PUBLISHED')).toBe(false)
     expect(isRawArticleAiPublishEligible('DELETED')).toBe(false)
+    expect(isRawArticleAiPublishEligible('AI_QUEUED')).toBe(true)
+    expect(isRawArticleAiPublishEligible('AI_PROCESSING')).toBe(false)
   })
 })
 

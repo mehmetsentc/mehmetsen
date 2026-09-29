@@ -17,6 +17,8 @@ import { numberedPages, nextSortState, RAW_ARTICLE_PAGE_SIZES } from '@/services
 import { RawArticleDrawer } from '@/components/admin/crawler/RawArticleDrawer'
 import { SourceChips } from '@/components/admin/crawler/SourceChips'
 import { AiPublishConfirmModal } from '@/components/admin/crawler/AiPublishConfirmModal'
+import { notifyAiPublishResult } from '@/components/admin/crawler/notifyAiPublish'
+import type { AiPublishBatchResult } from '@/services/crawler/editorial/aiPublish'
 import { ReviewClassificationDrawer } from '@/components/admin/crawler/ReviewClassificationDrawer'
 import type { RawArticleReviewMeta } from '@/services/crawler/editorial/reviewMeta'
 import {
@@ -347,7 +349,7 @@ function CrawlerArticlesInner() {
     const singleId = singleAiPublishId
     setBusyBulk(true)
     try {
-      const res = await fetch('/api/admin/crawler/articles/ai-enqueue', {
+      const res = await fetch('/api/admin/crawler/articles/ai-publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({
@@ -356,16 +358,9 @@ function CrawlerArticlesInner() {
           filter: activeFilter(),
         }),
       })
-      const body = await parseApiResponse<{ enqueued: number; skipped: number; requested: number; error?: string }>(res)
-      if (!res.ok) throw new Error(body.error || 'Kuyruğa eklenemedi')
-      if (body.requested > 0 && body.enqueued === 0) {
-        throw new Error(
-          body.skipped > 0
-            ? `Hiçbir haber kuyruğa eklenemedi (${body.skipped} zaten kuyrukta veya uygun değil)`
-            : 'Hiçbir haber kuyruğa eklenemedi'
-        )
-      }
-      toast.success(`${body.enqueued} haber AI kuyruğuna eklendi${body.skipped > 0 ? ` (${body.skipped} atlandı)` : ''}`)
+      const body = await parseApiResponse<AiPublishBatchResult & { error?: string }>(res)
+      if (!res.ok) throw new Error(body.error || 'AI yazımı başarısız')
+      notifyAiPublishResult(body)
       if (!singleId) setSelection(clearSelection(filterKey))
       await load()
     } catch (err) {
@@ -453,7 +448,7 @@ function CrawlerArticlesInner() {
     ? 'Yetki yükleniyor…'
     : !canAiPublish
       ? 'Yayın yetkisi (news:publish) gerekli'
-      : 'Seçili haberleri AI ile doğrudan yayına al'
+      : 'Seçili haberleri AI yazar, Onay Bekliyor taslağı olur'
   const sortCol = searchParams.get('sort')
   const sortOrder = searchParams.get('order')
 
@@ -550,7 +545,8 @@ function CrawlerArticlesInner() {
   function renderActions(row: ArticleRow) {
     const published = row.editorialStatus === 'PUBLISHED'
     const needsReview = row.reviewMeta?.needsReview === true
-    const rowAiPublishEligible = queue === 'active' && isRawArticleAiPublishEligible(row.editorialStatus)
+    const rowAiPublishEligible =
+      (queue === 'active' || queue === 'ai_queue') && isRawArticleAiPublishEligible(row.editorialStatus)
     return (
       <div className="flex flex-wrap gap-2 text-xs">
         <button type="button" className="underline" onClick={() => openDrawer(row)}>
@@ -764,7 +760,7 @@ function CrawlerArticlesInner() {
   }
 
   return (
-    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. Aktif kuyrukta seçili haberleri AI için onaylayıp doğrudan yayına alın.">
+    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. AI için onayla haberi hemen yazar; taslak Yayın Odası → Onay Bekliyor'a düşer.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <AdminOsMetricGrid
@@ -815,7 +811,7 @@ function CrawlerArticlesInner() {
       ) : null}
       {count > 0 && queue === 'active' ? (
         <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
-          Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI için onayla</strong> — İncelemeye Al ve AI Adayı yalnızca
+          Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI için onayla</strong> — AI hemen yazar, haber Onay Bekliyor'a düşer. İncelemeye Al ve AI Adayı yalnızca
           editoryal durumu değiştirir, yayınlamaz.
         </p>
       ) : null}
