@@ -11,7 +11,8 @@ import 'server-only'
  *
  * Cost safety:
  *   - bounded month range queries only, paged, field projection (`select`)
- *   - month data cached in the Next data cache: current month 1h, closed months 24h
+ *   - month data cached in the Next data cache: current and closed months 24h.
+ *     Fresh URLs for the last 48h live in the news sitemap.
  *   - month discovery walks the (status, publishedAt DESC) index with one
  *     `limit(1)` read per non-empty month (no collection scan, no hardcoded start)
  *   - errors throw (never cached as an empty month)
@@ -41,7 +42,7 @@ import {
   type FirestoreSitemapCandidate,
 } from '@/lib/sitemap/articleSitemapEntries'
 
-export const ARTICLE_MONTH_REVALIDATE_CURRENT_S = 3600
+export const ARTICLE_MONTH_REVALIDATE_CURRENT_S = 86400
 export const ARTICLE_MONTH_REVALIDATE_CLOSED_S = 86400
 
 const FIRESTORE_PAGE_SIZE = 1000

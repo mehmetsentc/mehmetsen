@@ -45,11 +45,11 @@ describe('SEO-1C.1 /sitemaps/[file]', () => {
     vi.unstubAllEnvs()
   })
 
-  it('serves a valid urlset of www /haber/ URLs with 1h cache for the current month', async () => {
+  it('serves a valid urlset of www /haber/ URLs with 24h cache for the current month', async () => {
     const res = await call('articles-2026-09.xml')
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/xml')
-    expect(res.headers.get('cache-control')).toContain('s-maxage=3600')
+    expect(res.headers.get('cache-control')).toContain('s-maxage=86400')
     const xml = await res.text()
     expect(XMLValidator.validate(xml)).toBe(true)
     expect(xml).toContain('<loc>https://www.nahaber.com/haber/haber-a</loc>')

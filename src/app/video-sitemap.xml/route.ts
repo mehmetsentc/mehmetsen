@@ -15,7 +15,7 @@ import {
 
 export const runtime = 'nodejs'
 // force-dynamic kaldırıldı — her bot isteğinde 500 doc okutuyordu; ISR 30 dk yeterli
-export const revalidate = 1800
+export const revalidate = 21600
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -122,7 +122,7 @@ ${items}
   return new NextResponse(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',
+      'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=21600',
     },
   })
 }

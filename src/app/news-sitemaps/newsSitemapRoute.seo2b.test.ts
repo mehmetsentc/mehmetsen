@@ -43,7 +43,7 @@ describe('SEO-2B news sitemap routes', () => {
     const res = await ROOT()
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/xml')
-    expect(res.headers.get('cache-control')).toBe('public, s-maxage=3600, stale-while-revalidate=3600')
+    expect(res.headers.get('cache-control')).toBe('public, s-maxage=21600, stale-while-revalidate=21600')
     const xml = await res.text()
     expect(XMLValidator.validate(xml)).toBe(true)
     expect(xml).toContain('<urlset')

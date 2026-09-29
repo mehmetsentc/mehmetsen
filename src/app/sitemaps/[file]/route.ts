@@ -12,7 +12,6 @@ import { getCitySlugFromHost } from '@/lib/cityHost'
 import { getArticleMonth } from '@/lib/sitemap/articleSitemap'
 import { articleUrlsetXml } from '@/lib/sitemap/articleSitemapEntries'
 import {
-  isClosedMonth,
   monthBoundsUtc,
   parseArticleShardFile,
   slicePart,
@@ -60,13 +59,10 @@ export async function GET(_request: Request, context: { params: Promise<{ file: 
   const entries = slicePart(month.entries, shard.part)
   if (entries.length === 0) return notFound()
 
-  const closed = isClosedMonth(shard.month, nowMs)
   return new NextResponse(articleUrlsetXml(getSiteUrl(), entries), {
     headers: {
       'Content-Type': XML_TYPE,
-      'Cache-Control': closed
-        ? 'public, s-maxage=86400, stale-while-revalidate=3600'
-        : 'public, s-maxage=3600, stale-while-revalidate=600',
+      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
     },
   })
 }

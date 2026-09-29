@@ -2,7 +2,8 @@ import 'server-only'
 
 /**
  * SEO-2B — data layer for the Google News sitemap.
- * Bounded 48h queries (Firestore + PG), projection, paging, raw cap, 5 min data cache.
+ * Bounded 48h queries (Firestore + PG), projection, paging, raw cap, 6h data cache.
+ * The file emits at most 1,000 URLs, so the scan stops there instead of reading the whole window.
  * Errors propagate (never cached as an empty sitemap).
  */
 import { unstable_cache } from 'next/cache'
@@ -18,6 +19,7 @@ import type { FirestoreSitemapCandidate } from '@/lib/sitemap/articleSitemapEntr
 import { recordSitemapGeneration } from '@/lib/seo/observability'
 import {
   buildNewsSitemapEntries,
+  NEWS_SITEMAP_MAX_ENTRIES,
   NEWS_SITEMAP_RAW_CAP,
   NEWS_SITEMAP_REVALIDATE_S,
   NEWS_SITEMAP_WINDOW_MS,
@@ -51,6 +53,7 @@ export async function loadFirestoreNewsWindow(nowMs: number): Promise<FirestoreS
     if (out.length > NEWS_SITEMAP_RAW_CAP) {
       throw new NewsSitemapCapExceededError('firestore', out.length)
     }
+    if (out.length >= NEWS_SITEMAP_MAX_ENTRIES) break
     if (snap.docs.length < FIRESTORE_PAGE_SIZE) break
     cursor = snap.docs[snap.docs.length - 1]
   }
@@ -63,7 +66,7 @@ export async function loadNewsSitemapEntries(nowMs: number): Promise<NewsSitemap
     getCanonicalPublishedNewsForSitemap({
       from: new Date(nowMs - NEWS_SITEMAP_WINDOW_MS),
       to: new Date(nowMs + 1),
-      limit: NEWS_SITEMAP_RAW_CAP + 1,
+      limit: NEWS_SITEMAP_MAX_ENTRIES,
       throwOnError: true,
     }),
     getCanonicalPublishedIdentityKeys(),

@@ -12,7 +12,7 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 
 export const runtime = 'nodejs'
 // ISR 30 dk — RSS reader'lar genellikle saatlik kontrol yapar; 300→1800 sn ile reads azalır
-export const revalidate = 1800
+export const revalidate = 21600
 
 export async function GET() {
   const base = getSiteUrl()
@@ -65,7 +65,7 @@ export async function GET() {
     return new NextResponse(xml, {
       headers: {
         'Content-Type': 'application/rss+xml; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',
+        'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=21600',
       },
     })
   } catch (err) {

@@ -11,10 +11,8 @@ import { ArticleLiftShell } from '@/components/articleLift/ArticleLiftShell'
 import { ArticleLiftHardNavFallback } from '@/components/articleLift/ArticleLiftHardNavFallback'
 import { ROUTES } from '@/constants/routes'
 
-// ISR note: this route shares the same 60s revalidate window as the
-// canonical /haber/[slug] page it intercepts (see that file) so the two
-// never disagree about freshness.
-export const revalidate = 60
+// Same hour-long window as the canonical /haber/[slug] page.
+export const revalidate = 3600
 
 // Separate `cache()` instance from the canonical page's — Next.js request
 // memoization is per-module, and this is a distinct module (a distinct

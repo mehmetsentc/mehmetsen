@@ -17,6 +17,7 @@ import { getNewsSitemapEntries } from '@/lib/sitemap/newsSitemapLoader'
 import {
   entriesInWindow,
   NEWS_SITEMAP_CACHE_CONTROL,
+  NEWS_SITEMAP_REVALIDATE_S,
   NEWS_SITEMAP_ERROR_CACHE_CONTROL,
   newsPartCount,
   newsSitemapIndexXml,
@@ -37,7 +38,7 @@ function xml(body: string): NextResponse {
   })
 }
 
-const NEWS_SITEMAP_TTL_MS = 60 * 60 * 1000
+const NEWS_SITEMAP_TTL_MS = NEWS_SITEMAP_REVALIDATE_S * 1000
 
 const getWwwNewsSitemap = createTtlSingleCache(async () => {
   const entries = entriesInWindow(await getNewsSitemapEntries(), Date.now())

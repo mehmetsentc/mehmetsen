@@ -36,10 +36,10 @@ export const NEWS_SITEMAP_WINDOW_MS = 48 * 60 * 60 * 1000
 export const NEWS_SITEMAP_MAX_ENTRIES = 1000
 /** Defensive ceiling for raw rows inside the 48h window (per source). */
 export const NEWS_SITEMAP_RAW_CAP = 5000
-export const NEWS_SITEMAP_REVALIDATE_S = 3600
+export const NEWS_SITEMAP_REVALIDATE_S = 6 * 60 * 60
 export const NEWS_SITEMAP_LANGUAGE = 'tr'
 
-export const NEWS_SITEMAP_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=3600'
+export const NEWS_SITEMAP_CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=21600'
 export const NEWS_SITEMAP_ERROR_CACHE_CONTROL = 'no-store'
 
 /**

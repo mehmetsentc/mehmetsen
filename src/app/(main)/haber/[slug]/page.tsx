@@ -30,8 +30,9 @@ import {
 import { publisherService } from '@/services/publisher/publisherService'
 import { publisherAdInventoryService } from '@/services/publisher/publisherAdInventoryService'
 
-// ISR: Vercel CDN caches rendered news pages for 60s (Pro edge cache)
-export const revalidate = 60
+// Published articles stay on the CDN for an hour. The homepage and breaking
+// strip refresh on their own shorter caches.
+export const revalidate = 3600
 
 // Deduplicate: generateMetadata + page both need the post — fetch once per request
 const getCachedNews = cache((slug: string) => getNewsBySlug(slug))

@@ -323,23 +323,24 @@ describe('SEO-2B loader (bounded, fail-closed)', () => {
     pgState.fail = false
   })
 
-  it('Firestore query bounded to [now-48h, now] with projection and paging', async () => {
+  it('Firestore query bounded to [now-48h, now] with projection and stops at 1000', async () => {
     fsState.pages = [Array.from({ length: 1000 }, (_, i) => fsDoc(`p${i}`)), [fsDoc('last')]]
     const docs = await loadFirestoreNewsWindow(NOW)
-    expect(docs).toHaveLength(1001)
+    expect(docs).toHaveLength(1000)
     const ops = fsState.calls[0]!
     expect(ops).toContainEqual(['where', ['status', '==', 'published']])
     expect(ops).toContainEqual(['where', ['publishedAt', '>=', NOW - NEWS_SITEMAP_WINDOW_MS]])
     expect(ops).toContainEqual(['where', ['publishedAt', '<=', NOW]])
     expect(ops).toContainEqual(['orderBy', ['publishedAt', 'desc']])
     expect(ops.find(([n]) => n === 'select')?.[1]).toEqual(expect.arrayContaining(['slug', 'title', 'publishedAt', 'status']))
-    expect(fsState.calls[1]!.some(([n]) => n === 'startAfter')).toBe(true)
+    expect(fsState.calls[1]).toBeUndefined()
   })
 
   it('raw cap exceeded throws (no partial sitemap)', async () => {
-    fsState.pages = Array.from({ length: 6 }, (_, p) => Array.from({ length: 1000 }, (_, i) => fsDoc(`c${p}-${i}`)))
+    fsState.pages = [Array.from({ length: NEWS_SITEMAP_RAW_CAP + 1 }, (_, i) => fsDoc(`c${i}`))]
     await expect(loadFirestoreNewsWindow(NOW)).rejects.toBeInstanceOf(NewsSitemapCapExceededError)
     expect(NEWS_SITEMAP_RAW_CAP).toBe(5000)
+    expect(NEWS_SITEMAP_MAX_ENTRIES).toBe(1000)
   })
 
   it('PG raw cap exceeded throws', async () => {
@@ -358,7 +359,7 @@ describe('SEO-2B loader (bounded, fail-closed)', () => {
       from: new Date(NOW - NEWS_SITEMAP_WINDOW_MS),
       to: new Date(NOW + 1),
       throwOnError: true,
-      limit: NEWS_SITEMAP_RAW_CAP + 1,
+      limit: NEWS_SITEMAP_MAX_ENTRIES,
     })
     fsState.pages = [[]]
     pgState.fail = true
