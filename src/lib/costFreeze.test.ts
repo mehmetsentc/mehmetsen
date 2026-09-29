@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { COST_FREEZE_ENABLED, COST_FREEZE_MESSAGE } from '@/lib/costFreeze'
 
 describe('FINOPS cost freeze', () => {
-  it('is compiled on after the 15-minute read spike', () => {
-    expect(COST_FREEZE_ENABLED).toBe(true)
+  it('stays wired and is off so the product is live', () => {
+    expect(COST_FREEZE_ENABLED).toBe(false)
     expect(COST_FREEZE_MESSAGE).toContain('bakım')
   })
 
@@ -32,11 +32,11 @@ describe('FINOPS cost freeze', () => {
     expect(page).not.toContain('firestore')
   })
 
-  it('stops schedules again while the read spike is investigated', () => {
+  it('keeps only the crawler tick; AI and publisher schedules stay off', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
-    expect(vercel.crons).toEqual([])
+    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '*/10 * * * *' }])
     const tick = readFileSync(join(process.cwd(), 'src/app/api/cron/crawler/tick/route.ts'), 'utf8')
     expect(tick).toContain('runCrawlerTick')
     expect(tick).toContain('isGlobalCrawlerEnabled')

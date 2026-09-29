@@ -2,7 +2,7 @@
  * Compile-time production cost freeze.
  * Rollback to freeze: set true and redeploy. Cron list stays the cost-safe minimum.
  */
-export const COST_FREEZE_ENABLED = true
+export const COST_FREEZE_ENABLED = false
 
 export const COST_FREEZE_MESSAGE = 'NaHaber kısa süreli bakım çalışmasındadır.'
 
