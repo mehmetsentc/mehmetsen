@@ -256,6 +256,17 @@ export function normalizeApifyJobItem(
     pickString(row, ['ilanTarihi', 'publishedAt', 'yayinTarihi', 'yayınTarihi'])
   )
 
+  const summary = pickString(row, [
+    'aciklama',
+    'açıklama',
+    'isTanimi',
+    'işTanımı',
+    'nitelikler',
+    'genelNitelikler',
+    'description',
+    'summary',
+  ])
+
   const listing: JobListing = {
     id: `iskur_${idKey}`,
     citySlug,
@@ -270,6 +281,7 @@ export function normalizeApifyJobItem(
     deadlineAt,
     publishedAt,
     applyUrl,
+    summary: summary ? summary.slice(0, 1500) : null,
     source: 'iskur',
     sourceId: idKey,
     listingKind: normalizeKind(

@@ -28,7 +28,7 @@ export default async function CityJobsPage() {
   if (!tenant) return null
 
   const cityName = getCityCategoryName(tenant.provinceSlug)
-  const [initialJobs, setup, employerClassifieds, seekerClassifieds] = await Promise.all([
+  const [board, setup, employerClassifieds, seekerClassifieds] = await Promise.all([
     getCityJobListingsServer(tenant.provinceSlug),
     Promise.resolve(getJobSyncSetupStatus()),
     getApprovedJobClassifiedsServer(tenant.provinceSlug, 'employer'),
@@ -39,7 +39,9 @@ export default async function CityJobsPage() {
     <CityJobsClient
       citySlug={tenant.provinceSlug}
       cityName={cityName}
-      initialJobs={initialJobs}
+      initialJobs={board.listings}
+      listingsCapped={board.capped}
+      totalActive={board.totalActive}
       employerClassifieds={employerClassifieds}
       seekerClassifieds={seekerClassifieds}
       syncConfigured={setup.configured}

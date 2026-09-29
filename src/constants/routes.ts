@@ -99,6 +99,7 @@ export const ROUTES = {
   CITY_JOBS: '/is-ilanlari',
   CITY_JOBS_EMPLOYER: '/is-ilanlari/eleman-ariyorum',
   CITY_JOBS_SEEKER: '/is-ilanlari/is-ariyorum',
+  CITY_JOB_DETAIL: (id: string) => `/is-ilanlari/${id}`,
   CITY_SPOR: '/spor',
   CITY_DISTRICTS: '/ilceler',
   CITY_DUTY_PHARMACIES: '/nobetci-eczaneler',

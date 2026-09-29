@@ -22,6 +22,8 @@ export interface JobListing {
   deadlineAt: string | null
   publishedAt: string | null
   applyUrl: string | null
+  /** Short listing text when the source scraper provides one. */
+  summary?: string | null
   source: JobListingSource
   sourceId: string
   listingKind: JobListingKind

@@ -52,7 +52,7 @@ export default async function IsIlanlariPage() {
   }
 
   const cityName = getCityCategoryName(citySlug)
-  const [initialJobs, setup, navPresence, employerClassifieds, seekerClassifieds] =
+  const [board, setup, navPresence, employerClassifieds, seekerClassifieds] =
     await Promise.all([
       getCityJobListingsServer(citySlug),
       Promise.resolve(getJobSyncSetupStatus()),
@@ -72,7 +72,9 @@ export default async function IsIlanlariPage() {
       <CityJobsClient
         citySlug={citySlug}
         cityName={cityName}
-        initialJobs={initialJobs}
+        initialJobs={board.listings}
+        listingsCapped={board.capped}
+        totalActive={board.totalActive}
         employerClassifieds={employerClassifieds}
         seekerClassifieds={seekerClassifieds}
         syncConfigured={setup.configured}

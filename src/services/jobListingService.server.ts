@@ -3,7 +3,20 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { JobListing } from '@/types/jobListing'
 
-const CITY_JOB_FETCH_LIMIT = 120
+/**
+ * Board window. The old cap of 120 made every city with a fuller İŞKUR/Kariyer
+ * pull display exactly “120 ilan”. 400 is the on-page window; `totalActive`
+ * is the real active count in Firestore.
+ */
+const CITY_JOB_FETCH_LIMIT = 400
+
+export interface CityJobBoardData {
+  listings: JobListing[]
+  /** True when the open-listing window was filled and more rows may exist. */
+  capped: boolean
+  /** Active rows for the city, including ones outside the page window. */
+  totalActive: number | null
+}
 
 function toListing(doc: QueryDocumentSnapshot): JobListing {
   return { id: doc.id, ...(doc.data() as Omit<JobListing, 'id'>) }
@@ -25,31 +38,46 @@ function isStillOpen(listing: JobListing, nowMs: number): boolean {
 export async function getCityJobListingsServer(
   citySlug: string,
   limit = CITY_JOB_FETCH_LIMIT
-): Promise<JobListing[]> {
+): Promise<CityJobBoardData> {
   try {
     const db = getAdminFirestore()
     const nowMs = Date.now()
+    const queryLimit = limit * 2
 
-    let snap
-    try {
-      snap = await db
+    const [snap, totalActive] = await Promise.all([
+      (async () => {
+        try {
+          return await db
+            .collection(Collections.JOB_LISTINGS)
+            .where('citySlug', '==', citySlug)
+            .where('isActive', '==', true)
+            .orderBy('fetchedAt', 'desc')
+            .limit(queryLimit)
+            .get()
+        } catch (err) {
+          console.warn('[getCityJobListingsServer] indexed query failed, plain filter:', err)
+          return db
+            .collection(Collections.JOB_LISTINGS)
+            .where('citySlug', '==', citySlug)
+            .where('isActive', '==', true)
+            .limit(limit * 3)
+            .get()
+        }
+      })(),
+      db
         .collection(Collections.JOB_LISTINGS)
         .where('citySlug', '==', citySlug)
         .where('isActive', '==', true)
-        .orderBy('fetchedAt', 'desc')
-        .limit(limit * 2)
+        .count()
         .get()
-    } catch (err) {
-      console.warn('[getCityJobListingsServer] indexed query failed, plain filter:', err)
-      snap = await db
-        .collection(Collections.JOB_LISTINGS)
-        .where('citySlug', '==', citySlug)
-        .where('isActive', '==', true)
-        .limit(limit * 3)
-        .get()
-    }
+        .then((agg) => agg.data().count)
+        .catch((err) => {
+          console.warn('[getCityJobListingsServer] count failed:', err)
+          return null
+        }),
+    ])
 
-    const listings = snap.docs
+    const open = snap.docs
       .map(toListing)
       .filter((l) => isStillOpen(l, nowMs))
       .sort((a, b) => {
@@ -58,12 +86,37 @@ export async function getCityJobListingsServer(
         if (da !== db_) return da.localeCompare(db_)
         return (b.fetchedAt || '').localeCompare(a.fetchedAt || '')
       })
-      .slice(0, limit)
 
-    return listings
+    const capped = open.length > limit || (open.length >= limit && snap.size >= queryLimit)
+
+    return {
+      listings: open.slice(0, limit),
+      capped,
+      totalActive,
+    }
   } catch (err) {
     console.error('[getCityJobListingsServer]', err)
-    return []
+    return { listings: [], capped: false, totalActive: null }
+  }
+}
+
+export async function getCityJobListingById(
+  id: string,
+  citySlug: string
+): Promise<JobListing | null> {
+  try {
+    const db = getAdminFirestore()
+    const doc = await db.collection(Collections.JOB_LISTINGS).doc(id).get()
+    if (!doc.exists) return null
+    const data = doc.data()
+    if (!data) return null
+    const listing: JobListing = { id: doc.id, ...(data as Omit<JobListing, 'id'>) }
+    if (listing.citySlug !== citySlug || !listing.isActive) return null
+    if (!isStillOpen(listing, Date.now())) return null
+    return listing
+  } catch (err) {
+    console.error('[getCityJobListingById]', err)
+    return null
   }
 }
 
