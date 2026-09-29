@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d7c2a4"/>
+      <stop offset="1" stop-color="#efe4d4"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.24"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <path d="M0 230c120-30 180 10 300-16 140-30 220 16 340-8v154H0z" fill="#cbb89a"/>
+  <rect x="180" y="150" width="36" height="110" fill="#b7a48a"/>
+  <rect x="240" y="118" width="42" height="142" fill="#a89074"/>
+  <rect x="300" y="146" width="34" height="114" fill="#c2ad92"/>
+  <rect x="150" y="176" width="220" height="18" fill="#9c866c"/>
+  <path d="M80 250h70l10 40H70z" fill="#a89074"/>
+  <path d="M470 210h90l16 70H454z" fill="#b39a7e"/>
+  <rect width="640" height="360" filter="url(#grain)"/>
+</svg>

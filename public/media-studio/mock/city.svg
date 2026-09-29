@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9eb4c6"/>
+      <stop offset="1" stop-color="#d5dde3"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.16"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <rect x="0" y="250" width="640" height="110" fill="#b7b1a6"/>
+  <rect x="24" y="120" width="70" height="150" fill="#5d6b78"/>
+  <rect x="108" y="80" width="54" height="190" fill="#3e4c59"/>
+  <rect x="176" y="140" width="90" height="130" fill="#6d7c88"/>
+  <rect x="280" y="60" width="64" height="210" fill="#2f3c48"/>
+  <rect x="360" y="110" width="80" height="160" fill="#546270"/>
+  <rect x="456" y="150" width="100" height="120" fill="#6a7884"/>
+  <rect x="570" y="96" width="48" height="174" fill="#3d4b57"/>
+  <g fill="#e7eef2">
+    <rect x="40" y="140" width="10" height="14"/>
+    <rect x="58" y="140" width="10" height="14"/>
+    <rect x="40" y="164" width="10" height="14"/>
+    <rect x="58" y="164" width="10" height="14"/>
+    <rect x="122" y="100" width="8" height="12"/>
+    <rect x="136" y="100" width="8" height="12"/>
+    <rect x="122" y="122" width="8" height="12"/>
+    <rect x="296" y="84" width="10" height="16"/>
+    <rect x="314" y="84" width="10" height="16"/>
+    <rect x="296" y="110" width="10" height="16"/>
+    <rect x="314" y="110" width="10" height="16"/>
+  </g>
+  <rect width="640" height="360" filter="url(#grain)"/>
+</svg>

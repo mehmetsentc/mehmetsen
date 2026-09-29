@@ -13,12 +13,14 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
+import { isMediaStudioEnabled } from '@/media-studio/featureFlag'
+import { MEDIA_STUDIO_HREF, MEDIA_STUDIO_LABEL, insertMediaStudioNav } from '@/media-studio/nav'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 
@@ -407,8 +409,18 @@ export function CMSSidebar() {
     () =>
       NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter(
-          (item) => !item.requiredPermissions || item.requiredPermissions.some((p) => can(p))
+        items: insertMediaStudioNav(
+          group.items.filter(
+            (item) => !item.requiredPermissions || item.requiredPermissions.some((p) => can(p))
+          ),
+          group.id === 'content' && isMediaStudioEnabled() && can('video:read')
+            ? {
+                href: MEDIA_STUDIO_HREF,
+                label: MEDIA_STUDIO_LABEL,
+                icon: Images,
+                requiredPermissions: ['video:read'],
+              }
+            : null
         ),
       })).filter((group) => group.items.length > 0),
     [can]

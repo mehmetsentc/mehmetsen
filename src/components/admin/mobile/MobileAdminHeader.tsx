@@ -17,6 +17,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/job-classifieds', title: 'İş Kariyer', backHref: '/admin/menu' },
   { prefix: '/admin/archive', title: 'Arşiv', backHref: '/admin/menu' },
   { prefix: '/admin/videos', title: 'Videolar', backHref: '/admin/menu' },
+  { prefix: '/admin/media-studio', title: 'Medya Stüdyosu', backHref: '/admin/menu' },
   { prefix: '/admin/newsroom', title: 'AI Newsroom', backHref: '/admin/menu' },
   { prefix: '/admin/ai-editors', title: 'AI Editörler', backHref: '/admin/menu' },
   { prefix: '/admin/ai-usage', title: 'AI Maliyet', backHref: '/admin/menu' },

@@ -36,6 +36,7 @@ export const CMS_FLAG_LABELS: Record<CmsFeatureFlagKey, string> = {
   scopedRbacEnabled: 'Kapsamlı yetkiler',
   smmNetworkEnabled: '81 il SMM ağı',
   videoLibraryEnabled: 'Video Kütüphanesi',
+  mediaStudioEnabled: 'Medya Stüdyosu',
 }
 
 export function defaultSiteSettings(): SiteSettings {

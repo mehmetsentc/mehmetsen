@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  Newspaper, Clock, Archive, Video, BrainCircuit, Bot, Search, Share2,
+  Newspaper, Clock, Archive, Video, Images, BrainCircuit, Bot, Search, Share2,
   BarChart3, Users, UserCog, UserCheck, Settings, Mail, Inbox, ArrowLeft,
   Megaphone, Tag, LogOut, Flame, Briefcase, Timer, Coins, Radar,
 } from 'lucide-react'
@@ -11,6 +11,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { CMS_ROLE_COLORS } from '@/types/cms'
 import { cn } from '@/lib/utils'
 import type { CmsPermission } from '@/types/cms'
+import { isMediaStudioEnabled } from '@/media-studio/featureFlag'
+import { MEDIA_STUDIO_HREF, MEDIA_STUDIO_LABEL, insertMediaStudioNav } from '@/media-studio/nav'
 
 interface MenuItem {
   href: string
@@ -92,7 +94,13 @@ export function MobileMenu() {
       </div>
 
       {GROUPS.map((group) => {
-        const items = group.items.filter((i) => !i.perm || can(i.perm))
+        const permitted = group.items.filter((i) => !i.perm || can(i.perm))
+        const items = insertMediaStudioNav(
+          permitted,
+          group.label === 'Haber Merkezi' && isMediaStudioEnabled() && can('video:read')
+            ? { href: MEDIA_STUDIO_HREF, label: MEDIA_STUDIO_LABEL, icon: Images, perm: 'video:read' }
+            : null
+        )
         if (items.length === 0) return null
         return (
           <section key={group.label} className="mb-5">
