@@ -387,11 +387,11 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
   * content alanı minimum 220 kelime içermelidir (hedef 250-450).
   * content içinde HTML tag, JSON yapısı ({\\"className\\":), React/Next.js kodu, script bloğu, self.__next_f gibi teknik içerik KESİNLİKLE yasak.
   * Kaynak içerik teknik veri (HTML/JSON/JS) içeriyorsa YALNIZCAoriginalTitle + originalSummary'den yararlanarak haber yaz; teknik içeriği kopyalama.
-  * title 4-9 kelime; haberi bitirme. spot en az 3 cümle içermelidir.
+  * title 6-12 kelime; en çarpıcı olgu başlıkta. spot en az 3 cümle içermelidir.
   * content başlıkla birebir aynı cümleyle başlamamalıdır.`
 
 const HEADLINE_RULES = `ALAN TANIMLARI:
-- title: Gazete manşeti. 4-9 kelime, maks 70 karakter. Sonucu başlıkta bitirme. Soru serbest, cevap spotta. ŞOK/SKANDAL yasak. seoTitle düz kalır.
+- title: Gazete manşeti. 6-12 kelime, maks 85 karakter. En çarpıcı doğrulanmış olgu başlıkta (ölü, tutar, karar, skor). "Büyük kaza" gibi jenerik başlık yasak. ŞOK/SKANDAL yasak. seoTitle de olayı söylesin.
 - spot: Lider paragraf (haber girişi). Kim+ne+nerede+ne zaman+neden. 2-4 cümle, 60-120 kelime. title'dan farklı bilgi ver.
 - summary: Feed teaser. Maks 120 karakter. title ve spot'tan TAMAMEN farklı ilgi çekici detay.
 - seoTitle: Google arama başlığı. 55-65 karakter. Anahtar kelimeler öne.

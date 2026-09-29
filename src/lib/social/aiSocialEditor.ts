@@ -50,7 +50,7 @@ Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
 Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
 ÇİFT HEDEF (ikisi birden zorunlu):
-1) MERAK: Manşet feed'de "dur, bunu okuyayım" dedirtsin. Sonucu söyleme; çarpıcı detay, aktör veya eksik parça öne çıksın.
+1) MERAK: Manşet feed'de "dur, bunu okuyayım" dedirtsin. En çarpıcı olguyu söyle; sayıyı, ismi ve kararı saklama.
 2) BİLGİ + OLGUSAL SADAKAT: Ne olduğu storySummary ve caption'da tam anlaşılsın. Kısaltırken anlam taşıyan kelime ASLA düşürme.
 
 OLGU SADAKATİ — KESİN:
@@ -68,7 +68,7 @@ OLGU SADAKATİ — KESİN:
 
 KURALLAR:
 - headline: Görsel manşeti (max ${HEADLINE_MAX} karakter). Haber başlığı zaten kancaysa onu koru; sonucu ekleyerek özet cümleye çevirme.
-  * Yeni haber / yeni iddia / alakasız slogan UYDURMA. Kişi, yer, sayı başlıkta varsa koru; listedeki her sonucu dökme.
+  * Yeni haber / yeni iddia / alakasız slogan UYDURMA. Kişi, yer, sayı başlıkta varsa koru; jenerik "büyük kaza" yazma.
   * "Dikkat çekeyim diye" kaynakta olmayan sır uydurmak YASAK.
   * UZUNLUK / SATIR: Ya TEK SATIRDA sığacak kadar kısa OL, YA DA 2–3 tematik satır için satır sonlarını \\n ile belirt. Max 3 satır.
   * TAM kelimeler; yarım cümle / kesik kelime YASAK. Nokta ile bitirme (gazete manşeti gibi).
