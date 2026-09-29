@@ -67,6 +67,36 @@ export interface EditorQueueWorkerResult {
   durationMs: number
 }
 
+let approvedQueueKick: Promise<EditorQueueWorkerResult | null> | null = null
+
+/**
+ * Writes already-approved AI_QUEUED rows. One in-flight kick per instance.
+ * A fresh AI_PROCESSING lease blocks a second kick so two tab loads do not
+ * double-spend the model.
+ */
+export function kickApprovedAiQueue(store: DrizzleCrawlerStore): Promise<EditorQueueWorkerResult | null> {
+  if (approvedQueueKick) return approvedQueueKick
+  approvedQueueKick = drainApprovedAiQueue(store).finally(() => {
+    approvedQueueKick = null
+  })
+  return approvedQueueKick
+}
+
+async function drainApprovedAiQueue(store: DrizzleCrawlerStore): Promise<EditorQueueWorkerResult | null> {
+  if (!isManualEditorAiEnabled()) return null
+  const fresh = await store.countFreshEditorAiProcessing(new Date(), EDITOR_AI_STALE_PROCESSING_MS)
+  if (fresh > 0) return null
+
+  const started = Date.now()
+  let last: EditorQueueWorkerResult | null = null
+  while (Date.now() - started < 240_000) {
+    const batch = await processEditorAiQueue(store, 8, WORKER_CONCURRENCY)
+    last = batch
+    if (batch.claimed === 0) break
+  }
+  return last
+}
+
 export async function processEditorAiQueue(
   store: DrizzleCrawlerStore,
   batchSize = WORKER_BATCH_SIZE,

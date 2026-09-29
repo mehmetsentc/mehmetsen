@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { processEditorAiQueue } from './editorQueueWorker'
+import { kickApprovedAiQueue, processEditorAiQueue } from './editorQueueWorker'
 
 describe('P17.12 editor AI queue manual gate', () => {
   beforeEach(() => {
@@ -29,6 +29,15 @@ describe('P17.12 editor AI queue manual gate', () => {
     expect(mockStore.listEditorAiQueued).not.toHaveBeenCalled()
     expect(mockStore.bulkSetEditorialStatus).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not read the queue when the editor AI gate is closed', async () => {
+    const mockStore = {
+      countFreshEditorAiProcessing: vi.fn(),
+    } as any
+    const res = await kickApprovedAiQueue(mockStore)
+    expect(res).toBeNull()
+    expect(mockStore.countFreshEditorAiProcessing).not.toHaveBeenCalled()
   })
 
   it('enqueue path alone does not call provider (worker idle with empty queue)', async () => {

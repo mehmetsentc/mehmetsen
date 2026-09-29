@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { hasDatabaseUrl } from '@/db'
 import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
@@ -21,9 +21,12 @@ import { queueCountsFromStatuses } from '@/services/crawler/editorial/query'
 import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 import { databaseUnavailableResponse } from '@/lib/adminApiError'
+import { authorizeEditorAiPublish } from '@/services/crawler/editorial/aiPublish'
+import { kickApprovedAiQueue } from '@/services/crawler/editorial/editorQueueWorker'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function parseDate(value: string | null): Date | null {
   if (!value) return null
@@ -158,6 +161,19 @@ export async function GET(request: Request) {
       clusterUniqueSourceCount: event?.uniqueSourceCount ?? null,
     }
   }
+  if (
+    listQuery.queue === 'ai_queue' &&
+    (queueCounts.aiQueue ?? 0) > 0 &&
+    authorizeEditorAiPublish(auth.role).ok
+  ) {
+    const drainStore = store
+    after(() =>
+      kickApprovedAiQueue(drainStore).catch((err) => {
+        console.error('[ai-queue-kick]', err)
+      })
+    )
+  }
+
   return NextResponse.json({
     ...result,
     articles: articles.map(withEvent),

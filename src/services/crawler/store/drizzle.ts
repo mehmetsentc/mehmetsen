@@ -1646,6 +1646,15 @@ export class DrizzleCrawlerStore implements CrawlerStore {
   /**
    * Reset editor AI articles stuck in AI_PROCESSING (e.g. cron timeout) back to AI_QUEUED.
    */
+  async countFreshEditorAiProcessing(now: Date, freshMs: number): Promise<number> {
+    const cutoff = new Date(now.getTime() - freshMs)
+    const rows = await this.db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(rawArticles)
+      .where(and(eq(rawArticles.editorialStatus, 'AI_PROCESSING'), gte(rawArticles.updatedAt, cutoff)))
+    return Number(rows[0]?.n ?? 0)
+  }
+
   async recoverStaleEditorAiProcessing(now: Date, staleMs: number): Promise<number> {
     const cutoff = new Date(now.getTime() - staleMs)
     const result = await this.db()
