@@ -455,6 +455,7 @@ describe('Phase 4A.4 unified discovery extraction event pipeline', () => {
 
   it('T. PUBLISHED is absent from default Ham Haberler active queue', () => {
     expect(ACTIVE_EDITORIAL_STATUSES.includes('PUBLISHED')).toBe(false)
+    expect(ACTIVE_EDITORIAL_STATUSES.includes('DRAFT')).toBe(false)
     expect(
       matchesRawArticleQuery(
         {

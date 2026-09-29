@@ -15,7 +15,6 @@ export const ACTIVE_EDITORIAL_STATUSES: CrawlerEditorialStatus[] = [
   'NEW',
   'IN_REVIEW',
   'AI_CANDIDATE',
-  'DRAFT',
   'EDITING',
   'SKIPPED',
 ]
