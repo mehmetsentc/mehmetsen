@@ -21,15 +21,16 @@ function envFalse(name: string): boolean {
 
 /**
  * Master crawl switch.
- * Explicit false/0/off wins. Explicit true/1/on wins.
- * Unset on Vercel production is on, so the 10-minute tick actually crawls.
- * Everywhere else, unset stays off (local must not crawl production).
+ * Vercel production always crawls: the 10-minute tick is what fills Ham Haberler.
+ * An old GLOBAL_CRAWLER_ENABLED=false left from the cost freeze must not keep
+ * that tick from writing raw articles. Local and preview stay off unless the
+ * flag is explicitly true.
  * GLOBAL_CRAWLER_ENABLED is canonical; NEWS_CRAWLER_ENABLED remains an alias.
  */
 export function isGlobalCrawlerEnabled(): boolean {
+  if (process.env.VERCEL_ENV === 'production') return true
   if (envFalse('GLOBAL_CRAWLER_ENABLED') || envFalse('NEWS_CRAWLER_ENABLED')) return false
-  if (envTrue('GLOBAL_CRAWLER_ENABLED') || envTrue('NEWS_CRAWLER_ENABLED')) return true
-  return process.env.VERCEL_ENV === 'production'
+  return envTrue('GLOBAL_CRAWLER_ENABLED') || envTrue('NEWS_CRAWLER_ENABLED')
 }
 
 /** @deprecated Use isGlobalCrawlerEnabled */

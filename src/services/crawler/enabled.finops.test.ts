@@ -22,10 +22,10 @@ describe('minimum-cost crawler switch', () => {
     expect(isGlobalCrawlerEnabled()).toBe(false)
   })
 
-  it('explicit false still stops the crawler in production', () => {
+  it('still crawls in production when the freeze left the flag false', () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('GLOBAL_CRAWLER_ENABLED', 'false')
-    expect(isGlobalCrawlerEnabled()).toBe(false)
+    expect(isGlobalCrawlerEnabled()).toBe(true)
   })
 
   it('leaves paid AI closed unless a flag is explicitly true', () => {
