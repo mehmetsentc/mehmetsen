@@ -471,7 +471,9 @@ export class MemoryCrawlerStore implements CrawlerStore {
 
   async updateMembership(
     id: string,
-    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+    patch: Partial<
+      Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore' | 'clusterId'>
+    >
   ): Promise<void> {
     const row = this.memberships.get(id)
     if (!row) return

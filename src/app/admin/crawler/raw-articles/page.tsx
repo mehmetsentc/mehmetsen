@@ -37,7 +37,7 @@ import type { CrawlerEditorialStatus, CrawlerRejectionReason } from '@/services/
 import { loadAdminJson } from '@/lib/adminApiError'
 import { parseApiResponse } from '@/lib/parseApiResponse'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
-import { sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
+import { clusterCategoryLabel, realAgendaBadgeLabel, sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -71,6 +71,8 @@ interface ArticleRow {
   clusterId: string | null
   clusterArticleCount?: number | null
   clusterUniqueSourceCount?: number | null
+  clusterCategoryHint?: string | null
+  clusterRealAgenda?: boolean
   articleBodyText?: string | null
   description?: string | null
   imageCandidateCount?: number | null
@@ -706,13 +708,25 @@ function CrawlerArticlesInner() {
                     {row.title || '(başlıksız)'}
                   </button>
                   {row.clusterId && (row.clusterArticleCount || 0) >= 2 ? (
-                    <a
-                      href={`/admin/crawler/clusters/${row.clusterId}`}
-                      className="mt-1 inline-block text-[11px] font-semibold text-amber-800 underline dark:text-amber-200"
-                      title="Olay kümesini aç"
-                    >
-                      {sameEventBadgeLabel(row.clusterArticleCount || 0, row.clusterUniqueSourceCount || 1)}
-                    </a>
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      <a
+                        href={`/admin/crawler/clusters/${row.clusterId}`}
+                        className="inline-block text-[11px] font-semibold text-amber-800 underline dark:text-amber-200"
+                        title="Olay kümesini aç"
+                      >
+                        {sameEventBadgeLabel(row.clusterArticleCount || 0, row.clusterUniqueSourceCount || 1)}
+                      </a>
+                      {row.clusterRealAgenda ? (
+                        <span className="inline-block rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                          {realAgendaBadgeLabel(row.clusterUniqueSourceCount || 1)}
+                        </span>
+                      ) : null}
+                      {clusterCategoryLabel(row.clusterCategoryHint) ? (
+                        <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {clusterCategoryLabel(row.clusterCategoryHint)}
+                        </span>
+                      ) : null}
+                    </span>
                   ) : null}
                 </td>
                 <td className="px-3 py-2">

@@ -23,9 +23,48 @@ export interface EventFingerprint {
   numbers: string[]
   titleShingles: string[]
   leadShingles: string[]
+  /** Capitalized person/org tokens. Cities and outlet words are excluded. */
+  properNameTokens: string[]
   simhash: string | null
   eventKey: string
   publishedAt: Date | null
+}
+
+const PUBLISHER_NOISE = new Set([
+  'gazete',
+  'gazetesi',
+  'haberleri',
+  'haberi',
+  'olay',
+  'ajans',
+  'ajansi',
+  'ajansı',
+])
+
+/** Proper names from the original headline casing. Not every long word. */
+export function properNameTokens(title: string, language?: string | null, city?: string | null): string[] {
+  const cityTok = city ? localeLower(city, language) : ''
+  const original = decodeHtmlEntities(title)
+    .normalize('NFC')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/['’`´]/g, ' ')
+  const named = original
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}.-]+/gu, ''))
+    .filter((w) => w.length >= 3 && /\p{Lu}/u.test(w) && !/^\d+$/.test(w))
+    .map((w) => localeLower(w, language))
+    .map((w) => {
+      const stemmed = lightStem(w, language)
+      return stemmed.length >= 3 ? stemmed : w
+    })
+    .filter(
+      (w) =>
+        w !== cityTok &&
+        !WEAK_EVENT_TOKENS.has(w) &&
+        !PUBLISHER_NOISE.has(w) &&
+        w.length >= 3
+    )
+  return [...new Set(named)]
 }
 
 const LEAD_CHARS = 420
@@ -117,6 +156,7 @@ export function buildEventFingerprint(input: {
     numbers,
     titleShingles: shingles(titleTokens, 3),
     leadShingles: shingles(leadTokens.slice(0, 24), 3),
+    properNameTokens: properNameTokens(title, language, input.city),
     simhash: input.simhash ?? null,
     eventKey,
     publishedAt: input.publishedAt ?? null,

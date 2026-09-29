@@ -1099,13 +1099,16 @@ export class DrizzleCrawlerStore implements CrawlerStore {
 
   async updateMembership(
     id: string,
-    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+    patch: Partial<
+      Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore' | 'clusterId'>
+    >
   ): Promise<void> {
     const values: Record<string, unknown> = {}
     if (patch.isCanonical !== undefined) values.isCanonical = patch.isCanonical ? 1 : 0
     if (patch.membershipRole !== undefined) values.membershipRole = patch.membershipRole
     if (patch.isIndependentSource !== undefined) values.isIndependentSource = patch.isIndependentSource ? 1 : 0
     if (patch.similarityScore !== undefined) values.similarityScore = patch.similarityScore
+    if (patch.clusterId !== undefined) values.clusterId = patch.clusterId
     if (!Object.keys(values).length) return
     await this.db().update(clusterMemberships).set(values).where(eq(clusterMemberships.id, id))
   }

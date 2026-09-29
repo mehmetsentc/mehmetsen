@@ -117,6 +117,31 @@ export function sameEventBadgeLabel(articleCount: number, sourceCount: number): 
   return `AYNI OLAY · ${n} HABER · ${m} KAYNAK`
 }
 
+/** Dominant multi-source story — the real agenda of the window. */
+export function realAgendaBadgeLabel(sourceCount: number): string {
+  const m = Math.max(1, sourceCount)
+  return `GERÇEK GÜNDEM · ${m} KAYNAK`
+}
+
+const CLUSTER_CATEGORY_LABELS: Record<string, string> = {
+  gundem: 'Gündem',
+  siyaset: 'Siyaset',
+  'yerel-haber': 'Yerel',
+  ekonomi: 'Ekonomi',
+  spor: 'Spor',
+  futbol: 'Futbol',
+  'son-dakika': 'Son Dakika',
+  dunya: 'Dünya',
+  magazin: 'Magazin',
+  saglik: 'Sağlık',
+  'cevre-iklim': 'Çevre',
+}
+
+export function clusterCategoryLabel(id: string | null | undefined): string | null {
+  if (!id) return null
+  return CLUSTER_CATEGORY_LABELS[id] || id
+}
+
 /** Phase 4E — multi-source event headline for admin desk. */
 export function multiSourceEventSummary(input: {
   title: string
