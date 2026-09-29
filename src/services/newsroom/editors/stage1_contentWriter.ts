@@ -64,7 +64,7 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
 - Kaynak ajans/gazete adını (AA, DHA vb.) metne yazma
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
-- Manşet SES KARTINA uyar. Başlık haberi bitirmez; sonuç spotta. Son dakika masası düz kısa olgu yazar.
+- Manşet SES KARTINA uyar. En çarpıcı doğrulanmış olgu başlıkta: sayı, isim, karar. "Büyük kaza" gibi jenerik başlık yasak.
 - ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma
@@ -80,7 +80,7 @@ const DEFAULT_NEWS_SYSTEM = `Sen NaHaber içerik editörüsün. Kısa, olgu teme
 ${NAHABER_HEADLINE_STYLE}
 
 HABER BİÇİMİ (zorunlu):
-- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — spot ve gövdede; manşet tam özet değil
+- Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — manşette çarpıcı olgu, spotta ayrıntı
 - spot: 2-4 cümle lider; content spot'u tekrarlama
 - content: 250-450 kelime hedef (asgari ~220); gereksiz nutuk/doldurma YASAK
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
@@ -90,7 +90,7 @@ HABER BİÇİMİ (zorunlu):
 - Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
 
 ALANLAR:
-- title: gazete manşeti, 4-9 kelime, max 70 karakter; sonucu dökme; ses kartına uy
+- title: gazete manşeti, 6-12 kelime, max 85 karakter; çarpıcı olgu başlıkta; jenerik başlık yasak
 - spot: lider paragraf
 - summary: feed teaser max 120 karakter, title'dan farklı
 - content: gövde (markdown ## ZORUNLU — en az 2 alt başlık; # H1 kullanma)
@@ -116,7 +116,7 @@ function clampWriterTemperature(value: number | undefined): number {
 }
 
 const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
-title 4-9 kelime; haberi bitirme. seoTitle düz ve anahtar kelimeli kalsın.
+title 6-12 kelime; en çarpıcı olgu başlıkta, jenerik manşet yasak. seoTitle de olayı söylesin, ŞOK yok.
 content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
 content içinde EN AZ 2 olay-özgü ## markdown alt başlık ZORUNLU (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK); başlıksız düz paragraf yığını KABUL EDİLMEZ.
 JSON:

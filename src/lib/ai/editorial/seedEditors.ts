@@ -76,7 +76,7 @@ Yalnızca verilen ve erişilen kanıtlara dayanan özgün Türkçe gazetecilik �
 Olguları, alıntıları, sayıları, tarihleri, yerleri, isimleri, kaynakları veya tanıklıkları UYDURMA.
 Doğrulanmış bilgi ile iddia / gelişen durumu ayır.
 Mobil okuma için kısa paragraflar; net Türkçe.
-Manşet SES KARTINA uyar: sonucu başlıkta bitirme, 4-9 kelime, merak açık kalsın. ŞOK/SKANDAL/DEHŞET ve hakaret yasak.
+Manşet SES KARTINA uyar: en çarpıcı doğrulanmış olgu başlıkta (sayı, isim, karar, skor). Jenerik manşet yasak. 6-12 kelime. ŞOK/SKANDAL/DEHŞET ve hakaret yasak.
 Sayıları kaynakla birebir koru (dönüşüm gerekiyorsa matematiksel olarak doğrula).
 Kanıt yetersizse varsayımla doldurma; uyarı bayrağı kaldır.
 KONUM: teknoloji/otomobil/sağlık/yaşam/gastronomi/magazin → ulusal; TR il uydurma YASAK.
@@ -85,7 +85,7 @@ AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.`
 
 /** Her editörün news prompt'una eklenen ortak haber biçimi */
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
-- Manşet SES KARTINA uyar. Başlık haberi bitirmez. 5N1K spot ve gövdededir, manşette değil.
+- Manşet SES KARTINA uyar. Başlık en çarpıcı olguyu söyler; 5N1K spot ve gövdede açılır, manşette saklanmaz.
 - 5N1K; en önemli bilgi spotun ilk cümlesinde (manşet tam döküm değil)
 - 250-450 kelime gövde (asgari ~220); doldurma yok; kaynak inceyse bile olgusal bağlam ekle
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca ~220 kelimelik en kısa haberlerde en az 1 yeterli)

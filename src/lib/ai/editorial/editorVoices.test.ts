@@ -18,7 +18,8 @@ describe('editor voice cards', () => {
   it('keeps breaking factual and other desks open-ended', () => {
     const arda = SEED_AI_EDITORS.find((spec) => spec.slug === 'arda-sahin')
     const selin = SEED_AI_EDITORS.find((spec) => spec.slug === 'selin-aras')
-    expect(arda?.prompts.core).toContain('düz ve kısa olgu')
+    expect(arda?.prompts.core).toContain('Düz ve kısa olgu')
+    expect(selin?.prompts.core).toContain('Emekli zammı yüzde 25’te kaldı')
     expect(selin?.prompts.core).toContain('Emeklinin payı masada kaldı')
     expect(selin?.prompts.core).not.toContain('ŞOK! Markalar')
   })
@@ -36,6 +37,6 @@ describe('editor voice cards', () => {
       citySlug: 'canakkale',
     })
     expect(card).toContain('Çanakkale')
-    expect(card).toContain('İlçe + bitmemiş iş')
+    expect(card).toContain('somut olay')
   })
 })

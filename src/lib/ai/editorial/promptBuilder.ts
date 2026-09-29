@@ -121,8 +121,13 @@ export async function buildEditorPrompt(input: PromptBuildInput): Promise<BuiltP
   ].filter(Boolean)
 
   const voice = voiceCardForEditor(input.editor)
-  if (voice && !systemParts.some((part) => part.includes(`SES KARTI: ${input.editor.slug}`))) {
-    systemParts.push(voice)
+  const personaText = systemParts.slice(0, 2).join('\n')
+  const staleHeadline =
+    /haberi bitirmez|sonucu sakla|cevaplamasın|sonucu başlıkta bitirme|sonucu dökme/i.test(personaText)
+  if (voice && (staleHeadline || !personaText.includes(`SES KARTI: ${input.editor.slug}`))) {
+    systemParts.push(
+      `GÜNCEL SES KARTI (eski üstü kapalı manşet örneklerini ezer):\n${voice}`
+    )
   }
 
   const sourceBlock = [

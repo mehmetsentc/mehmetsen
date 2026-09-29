@@ -3,11 +3,11 @@ import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE } from './headlineSt
 
 describe('NAHABER_HEADLINE_STYLE', () => {
   it('asks for curiosity without cheap shock clickbait', () => {
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/merak/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/çarpıcı/)
     expect(NAHABER_HEADLINE_STYLE).toMatch(/ŞOK/)
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/haberi bitirmez/)
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/O 21 marka listede/)
-    expect(NAHABER_HEADLINE_STYLE).toMatch(/zam oranı netleşti/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/5 ölü/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/Büyük kaza/)
+    expect(NAHABER_HEADLINE_STYLE).toMatch(/haberi saklamaz/)
   })
 
   it('separates social headline from share summary', () => {
