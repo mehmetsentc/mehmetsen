@@ -1,8 +1,8 @@
 /**
  * POST /api/admin/crawler/articles/ai-enqueue
  *
- * Fast endpoint: marks selected raw articles as AI_QUEUED and returns
- * immediately. A cron worker picks them up in the background.
+ * Marks the editor's selection as approved, then writes that queue in this
+ * request. The Ham Haberler button still posts here.
  *
  * Auth: Bearer CMS token with news:publish
  */
@@ -14,12 +14,14 @@ import { clampPageSize, parseEditorialStatus, parseHasImage, parseQueueTab, pars
 import { BULK_ID_CAP, FILTER_MATCH_CAP } from '@/services/crawler/editorial/bulk'
 import { AI_ENQUEUE_BATCH_CAP, enqueueRawArticlesForAi } from '@/services/crawler/editorial/aiEnqueue'
 import { authorizeEditorAiPublish } from '@/services/crawler/editorial/aiPublish'
+import { kickApprovedAiQueue } from '@/services/crawler/editorial/editorQueueWorker'
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 import type { CrawlerQualityStatus } from '@/services/crawler/types'
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== 'string' || !value) return null
@@ -95,7 +97,11 @@ export async function POST(request: Request) {
     }
 
     const result = await enqueueRawArticlesForAi(store, ids)
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
+    const written = await kickApprovedAiQueue(store)
+    return NextResponse.json(
+      { ...result, written },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (err) {
     console.error('[ai-enqueue]', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Kuyruğa ekleme başarısız' }, { status: 500 })

@@ -22,7 +22,12 @@ vi.mock('@/services/crawler/editorial/aiEnqueue', () => ({
   enqueueRawArticlesForAi: vi.fn().mockResolvedValue({ requested: 1, enqueued: 1, skipped: 0 }),
 }))
 
+vi.mock('@/services/crawler/editorial/editorQueueWorker', () => ({
+  kickApprovedAiQueue: vi.fn().mockResolvedValue(null),
+}))
+
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { kickApprovedAiQueue } from '@/services/crawler/editorial/editorQueueWorker'
 
 describe('P17.12D ai-enqueue route', () => {
   beforeEach(() => {
@@ -47,6 +52,7 @@ describe('P17.12D ai-enqueue route', () => {
     expect(res.status).toBe(200)
     expect(body.enqueued).toBe(1)
     expect(enqueueRawArticlesForAi).toHaveBeenCalled()
+    expect(kickApprovedAiQueue).toHaveBeenCalled()
   })
 
   it('returns 403 when manual editor AI is disabled', async () => {
@@ -61,6 +67,7 @@ describe('P17.12D ai-enqueue route', () => {
     )
     expect(res.status).toBe(403)
     expect(enqueueRawArticlesForAi).not.toHaveBeenCalled()
+    expect(kickApprovedAiQueue).not.toHaveBeenCalled()
   })
 
   it('accepts 25 human-selected ids for queue (under AI_ENQUEUE_BATCH_CAP)', async () => {
