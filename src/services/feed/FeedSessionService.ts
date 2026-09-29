@@ -12,6 +12,8 @@ export interface FeedSessionPayload {
   generation?: number
   /** ISO publishedAt boundary for older corpus fallback (exclusive upper bound). */
   olderThan?: string | null
+  /** Keyset partner of olderThan so the next archive page is one index range. */
+  archiveCursorId?: string | null
   /** True only when all refill tiers returned no new eligible unseen IDs. */
   corpusExhausted?: boolean
   /** Explicit Feed V2 category tab (e.g. magazin) — session exclusion scoped here. */

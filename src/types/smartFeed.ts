@@ -102,6 +102,7 @@ export type FeedTelemetryEventType =
   | 'article_dwell'
   | 'quick_skip'
   | 'article_opened'
+  | 'article_liked'
   | 'discovery_module_viewed'
   | 'discovery_card_opened'
 

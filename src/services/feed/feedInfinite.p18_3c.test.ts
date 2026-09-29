@@ -234,3 +234,18 @@ describe('P18.3C refresh seen suppression fixture', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('archive keyset stays cheap', () => {
+  const pipeline = readFileSync(join(process.cwd(), 'src/services/feed/FeedRankingPipeline.ts'), 'utf8')
+  const candidate = readFileSync(join(process.cwd(), 'src/services/feed/FeedCandidateService.ts'), 'utf8')
+
+  it('continues personal feed with one small indexed page, not a corpus scan', () => {
+    expect(candidate).toContain('const ARCHIVE_PAGE_SIZE = 20')
+    expect(candidate).toContain('async fetchArchivePage')
+    expect(candidate).toMatch(/fetchArchivePage[\s\S]*?limit\(ARCHIVE_PAGE_SIZE\)/)
+    expect(candidate).not.toMatch(/fetchArchivePage[\s\S]{0,900}mergeWithLegacySupplement/)
+    expect(pipeline).toContain('fillFromArchive')
+    expect(pipeline).toContain('passes < 4')
+    expect(pipeline).toContain("input.mode !== 'local'")
+  })
+})

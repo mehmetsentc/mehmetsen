@@ -20,6 +20,8 @@ import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { feedSeenService } from '@/services/feed/FeedSeenService'
 
 const DEFAULT_POOL_SIZE = 150
+/** One indexed page per scroll. Small on purpose — do not raise this into a corpus scan. */
+const ARCHIVE_PAGE_SIZE = 20
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
 const FS_SUPPLEMENT_BATCH = 80
 const FS_SUPPLEMENT_MAX_ATTEMPTS = 4
@@ -713,6 +715,40 @@ export class FeedCandidateService {
     }
   }
 
+  /**
+   * Next slice of the published archive for infinite scroll.
+   * One indexed read, exact limit, no Firestore supplement and no 150-row pool.
+   * Keyset is (publishedAt, id); an empty page is the only end of the feed.
+   */
+  async fetchArchivePage(cursor: FeedCursorPayload | null): Promise<{
+    rows: FeedCandidateRow[]
+    cursor: FeedCursorPayload | null
+    end: boolean
+  }> {
+    if (!hasDatabaseUrl()) {
+      return { rows: [], cursor: null, end: true }
+    }
+    const db = requireDb()
+    const raw = await db
+      .select(baseSelect())
+      .from(news)
+      .leftJoin(newsClusters, eq(newsClusters.publishedNewsId, news.id))
+      .leftJoin(newsSources, eq(newsSources.id, newsClusters.primarySourceId))
+      .leftJoin(publisherSources, eq(publisherSources.sourceId, newsSources.id))
+      .leftJoin(publishers, eq(publishers.id, publisherSources.publisherId))
+      .where(and(publishedStatusWhere(), cursorWhere(cursor, null)))
+      .orderBy(desc(news.publishedAt), desc(news.id))
+      .limit(ARCHIVE_PAGE_SIZE)
+
+    const tail = raw[raw.length - 1]
+    const nextCursor =
+      tail?.publishedAt && tail.articleId
+        ? { publishedAt: tail.publishedAt.toISOString(), id: tail.articleId }
+        : null
+    const rows = mapRows(raw, 'RECENT')
+    return { rows, cursor: nextCursor, end: raw.length < ARCHIVE_PAGE_SIZE }
+  }
+
   async fetchBreaking(opts: BaseQueryOpts): Promise<FeedCandidateRow[]> {
     const poolLimit = Math.max(opts.limit * 3, DEFAULT_POOL_SIZE)
     if (!hasDatabaseUrl()) {
@@ -912,6 +948,7 @@ export class FeedCandidateService {
     const cursorTs = opts.cursor?.publishedAt ? new Date(opts.cursor.publishedAt) : null
     const cursorOk = Boolean(cursorTs && !Number.isNaN(cursorTs.getTime()))
     const cursorId = opts.cursor?.id?.trim() || null
+    const categoryIds = resolveOptsCategoryIds(opts)
 
     try {
       const db = getAdminFirestore()
@@ -962,6 +999,10 @@ export class FeedCandidateService {
           }
           // Defense: never accept another province from a mis-indexed doc.
           if ((row.citySlug || '').toLowerCase() !== citySlug) continue
+          if (categoryIds.length) {
+            const rowCat = (row.category || '').toLowerCase()
+            if (!rowCat || !categoryIds.includes(rowCat)) continue
+          }
           seen.add(doc.id)
           const rowDistrict = (row.districtSlug || '').toLowerCase()
           if (districtSlug && rowDistrict === districtSlug) districtHits.push(row)

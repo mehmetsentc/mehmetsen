@@ -28,6 +28,8 @@ export interface RankingPipelineInput {
   citySlug?: string | null
   districtSlug?: string | null
   region?: string | null
+  /** Yerel tab only — city corpus wall. Sana Özel keeps the full archive. */
+  lockCity?: boolean
   seenArticles: Set<string>
   seenClusters: Set<string>
   /** Feed V2 NFRank: off | shadow (eval only) | live (visible order). */
@@ -52,6 +54,7 @@ async function fetchPools(
     citySlug?: string | null
     districtSlug?: string | null
     region?: string | null
+    lockCity?: boolean
     excludeArticleIds: Set<string>
     excludeClusterIds: Set<string>
     publishedBefore?: Date | string | null
@@ -70,6 +73,15 @@ async function fetchPools(
   }
 
   const limits = FEED_RANKING_CONFIG_V1.candidatePoolLimits
+
+  // City wall is Yerel only. Sana Özel still mixes national old+new; city is a score boost.
+  if (mode === 'local' && opts.lockCity && opts.citySlug) {
+    const local = await feedCandidateService.fetchLocal({
+      ...base,
+      limit: Math.max(opts.limit, limits.LOCAL),
+    })
+    return { LOCAL: local }
+  }
 
   if (mode === 'personal') {
     const [featured, breaking, recent, popular, local, discovery, following] = await Promise.all([
@@ -160,7 +172,14 @@ function rankWindow(
     return { ranked }
   }
 
-  const scored = feedScoringService.scoreAll(reps, ctx, mode, seenArticles, seenClusters)
+  const scored = feedScoringService.scoreAll(
+    reps,
+    ctx,
+    mode,
+    seenArticles,
+    seenClusters,
+    sessionIntent
+  )
   const ranked = feedDiversityEngine.rerank(scored, mode, windowLimit)
 
   if (nfRankMode === 'shadow') {
@@ -214,6 +233,7 @@ export class FeedRankingPipeline {
       citySlug: input.citySlug,
       districtSlug: input.districtSlug,
       region: input.region,
+      lockCity: input.lockCity,
       excludeArticleIds,
       excludeClusterIds: input.seenClusters,
       publishedBefore: null,
@@ -228,6 +248,7 @@ export class FeedRankingPipeline {
         citySlug: input.citySlug,
         districtSlug: input.districtSlug,
         region: input.region,
+        lockCity: input.lockCity,
         excludeArticleIds,
         excludeClusterIds: input.seenClusters,
         publishedBefore,
@@ -242,8 +263,8 @@ export class FeedRankingPipeline {
       }
     }
 
-    // Tier: older LEGACY_ALLOWED when recent/canonical pools underfill after exclusions.
-    // LOCAL mode must NEVER nationwide-fill — that made Eskişehir appear in Antalya Yerel.
+    // Older archive (PG + legacy) when the fresh head is thin.
+    // Yerel never nationwide-fills. Sana Özel does — old and new, ranked by behavior.
     if (flat.length < input.limit && input.mode !== 'local') {
       const before =
         publishedBefore ??
@@ -282,6 +303,55 @@ export class FeedRankingPipeline {
     return { ranked, candidateCounts, olderThan, shadowComparison }
   }
 
+  /**
+   * Walk published news by keyset. At most 4 pages of 20 per request.
+   * Stops only when a page comes back short — not when the head pool repeats.
+   */
+  private async fillFromArchive(
+    session: FeedSessionPayload,
+    input: RankingPipelineInput,
+    ctx: FeedUserContext
+  ): Promise<FeedSessionPayload> {
+    let working = session
+    let passes = 0
+    while (
+      working.rankedIds.length - (working.offset ?? 0) < input.limit &&
+      !working.corpusExhausted &&
+      passes < 4
+    ) {
+      passes += 1
+      const cursor =
+        working.olderThan && working.archiveCursorId
+          ? { publishedAt: working.olderThan, id: working.archiveCursorId }
+          : null
+      const page = await feedCandidateService.fetchArchivePage(cursor)
+      if (!page.rows.length || !page.cursor) {
+        return { ...working, corpusExhausted: true }
+      }
+      const scored = feedScoringService.scoreAll(
+        page.rows,
+        ctx,
+        input.mode,
+        input.seenArticles,
+        input.seenClusters,
+        input.sessionIntent
+      )
+      const ordered = feedDiversityEngine.rerank(scored, input.mode, Math.max(scored.length, 1))
+      working = feedSessionService.appendWindow(
+        working,
+        ordered.map((row) => row.articleId),
+        page.cursor.publishedAt
+      )
+      working = {
+        ...working,
+        olderThan: page.cursor.publishedAt,
+        archiveCursorId: page.cursor.id,
+        corpusExhausted: page.end,
+      }
+    }
+    return working
+  }
+
   private async pageFromSession(
     session: FeedSessionPayload,
     input: RankingPipelineInput,
@@ -292,6 +362,13 @@ export class FeedRankingPipeline {
     let working = session
     let candidateCounts: Record<string, number> = { ...(extraCounts ?? {}) }
 
+    // Sana Özel / national tabs: one 20-row keyset per pass. No head remix, no Firestore.
+    if (input.mode !== 'local') {
+      working = await this.fillFromArchive(working, input, ctx)
+    }
+
+    // Yerel only: bounded city refill. National archive does not use this loop.
+    if (input.mode === 'local') {
     // Ensure enough unused IDs remain; otherwise refill a bounded older/unseen window.
     // Up to 3 refill passes so a thin window (dupes / sparse FS batch) does not stall the feed.
     let refillPasses = 0
@@ -332,24 +409,36 @@ export class FeedRankingPipeline {
         }
       }
       const afterLen = working.rankedIds.length - (working.offset ?? 0)
-      // No net growth → stop spinning even if corpusExhausted stayed false.
-      if (afterLen <= beforeLen) break
+      // No net growth → the archive slice is done. Do not report hasMore.
+      if (afterLen <= beforeLen) {
+        working = { ...working, corpusExhausted: true }
+        break
+      }
+    }
     }
 
     const { ids, nextPayload, hasMoreInSnapshot } = feedSessionService.slicePage(working, input.limit)
     if (!ids.length) {
+      const exhausted = nextPayload.corpusExhausted === true
       return {
         ranked: [],
-        session: { ...nextPayload, corpusExhausted: true },
-        sessionToken: feedSessionService.encode({ ...nextPayload, corpusExhausted: true }),
+        session: { ...nextPayload, corpusExhausted: exhausted },
+        sessionToken: feedSessionService.encode({ ...nextPayload, corpusExhausted: exhausted }),
         rankingVersion,
-        candidateCounts: { ...candidateCounts, session_resume: 0, hasMore: 0 },
+        candidateCounts: { ...candidateCounts, session_resume: 0, hasMore: exhausted ? 0 : 1 },
       }
     }
 
     const rows = await feedCandidateService.fetchByIds(ids)
     const ordered = feedSessionService.reorderBySession(rows, nextPayload)
-    const scored = feedScoringService.scoreAll(ordered, ctx, input.mode, input.seenArticles, input.seenClusters)
+    const scored = feedScoringService.scoreAll(
+      ordered,
+      ctx,
+      input.mode,
+      input.seenArticles,
+      input.seenClusters,
+      input.sessionIntent
+    )
 
     // Optimistic has-more: more in snapshot OR corpus not proven exhausted
     const mayHaveMore = hasMoreInSnapshot || !nextPayload.corpusExhausted
@@ -373,6 +462,10 @@ export class FeedRankingPipeline {
 
     // 1. Load user context (exclude SYNTHETIC_TEST)
     let ctx: FeedUserContext = await feedUserContextService.load(input.userId)
+    // Sana Özel: known city boosts local cards. It does not replace the national archive.
+    if (input.mode === 'personal' && input.citySlug && !ctx.city) {
+      ctx = { ...ctx, city: input.citySlug.trim().toLowerCase() }
+    }
     if (ctx.isSynthetic) ctx = { ...ctx, explicitInterests: [], behavioralInterests: new Map(), followedPublisherIds: new Set() }
 
     // 2. On-demand behavioral aggregation (bounded, authed only)

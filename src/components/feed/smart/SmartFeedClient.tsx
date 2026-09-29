@@ -8,6 +8,9 @@ import toast from 'react-hot-toast'
 import { FullscreenNewsCard } from '@/components/feed/smart/FullscreenNewsCard'
 import { FullscreenNewsCardSkeleton } from '@/components/feed/smart/FullscreenNewsCardSkeleton'
 import { FeedV2CategoryNav } from '@/components/feed/smart/FeedV2CategoryNav'
+import { useCityTenant } from '@/store/cityTenantContext'
+import { CITY_CATEGORY_EVENT, useOptionalCityCategoryFilter } from '@/store/cityCategoryContext'
+import { buildCityFeedV2Tabs } from '@/lib/feed/feedV2Tabs'
 import { FeedCardMenu } from '@/components/feed/smart/FeedCardMenu'
 import { CommentsBottomSheet } from '@/components/feed/smart/CommentsBottomSheet'
 import {
@@ -49,8 +52,8 @@ import {
   EMPTY_FEED_READER_DEBUG,
   buildFeedReaderDebugBadgeLines,
   decideFeedReadAction,
-  isFeedReaderDebugPilot,
   mapClickDebugFromDecision,
+  resolveGrantBackedPilotMatch,
   shouldShowFeedReaderDebugPanel,
   type FeedReaderDebugSnapshot,
 } from '@/lib/feed/reader/readerDebug'
@@ -108,6 +111,7 @@ async function fetchFeedPage(opts: {
   cursor?: string | null
   city?: string | null
   district?: string | null
+  lockCity?: boolean
   refresh?: boolean
   signal?: AbortSignal
   forceAuthRefresh?: boolean
@@ -120,6 +124,7 @@ async function fetchFeedPage(opts: {
   params.set('limit', String(FEED_PAGINATION.defaultLimit))
   if (opts.city) params.set('city', opts.city)
   if (opts.district) params.set('district', opts.district)
+  if (opts.lockCity && opts.city) params.set('lockCity', '1')
 
   const headers: Record<string, string> = {
     'x-feed-session': getOrCreateFeedSessionId(),
@@ -184,6 +189,8 @@ async function postTelemetry(payload: {
 interface SmartFeedClientProps {
   initialCitySlug?: string | null
   initialDistrictSlug?: string | null
+  /** City tenant — never leak GPS/national corpus into this host. */
+  lockCitySlug?: boolean
   /** SSR-prefetched first page — paints cards before auth/profile finishes. */
   initialPage?: FeedPageDto | null
   debug?: boolean
@@ -192,6 +199,7 @@ interface SmartFeedClientProps {
 export function SmartFeedClient({
   initialCitySlug,
   initialDistrictSlug,
+  lockCitySlug = false,
   initialPage = null,
   debug,
 }: SmartFeedClientProps) {
@@ -248,6 +256,15 @@ export function SmartFeedClient({
   const [gpsDenied, setGpsDenied] = useState(false)
   const localCitySlugRef = useRef<string | null>(localCitySlug)
   localCitySlugRef.current = localCitySlug
+  const cityTenant = useCityTenant()
+  const cityCategories = useOptionalCityCategoryFilter()
+  const cityTabs = useMemo(
+    () =>
+      lockCitySlug && cityTenant && cityCategories?.categories.length
+        ? buildCityFeedV2Tabs(cityCategories.categories)
+        : undefined,
+    [lockCitySlug, cityTenant, cityCategories]
+  )
 
   const [items, setItems] = useState<FeedItemDto[]>(() => initialPage?.items ?? [])
   const itemsRef = useRef<FeedItemDto[]>([])
@@ -259,7 +276,21 @@ export function SmartFeedClient({
   const [errorState, setErrorState] = useState<FeedErrorState>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [commentArticleId, setCommentArticleId] = useState<string | null>(null)
-  const [readerItem, setReaderItem] = useState<{ item: FeedItemDto; index: number } | null>(null)
+  /** Feed↔Reader session: progress drives interactive page-turn; committed owns history. */
+  const [readerSession, setReaderSession] = useState<{
+    item: FeedItemDto
+    index: number
+    progress: number
+    committed: boolean
+    progressAnimating: boolean
+  } | null>(null)
+  const readerItem = readerSession
+    ? { item: readerSession.item, index: readerSession.index }
+    : null
+  const readerOpenRampRef = useRef<number | null>(null)
+  const readerCancelGenRef = useRef(0)
+  /** Single-open guard: articleId while ramp/open in progress. */
+  const readerOpenGuardRef = useRef<string | null>(null)
   const [feedReaderEnabled, setFeedReaderEnabled] = useState(false)
   const [readerCapabilityReady, setReaderCapabilityReady] = useState(false)
   const [feedScrollLocked, setFeedScrollLocked] = useState(false)
@@ -301,6 +332,7 @@ export function SmartFeedClient({
         serverAuthenticated?: boolean | null
         clientAuthenticated?: boolean
         error?: boolean
+        identityDebug?: import('@/lib/feed/reader/capabilityClient').FeedReaderIdentityDebug | null
       }
     ) => {
       feedReaderEnabledRef.current = enabled
@@ -308,6 +340,24 @@ export function SmartFeedClient({
       readerCapabilityReadyRef.current = true
       setReaderCapabilityReady(true)
       capabilityErrorRef.current = Boolean(meta?.error)
+      const id = meta?.identityDebug
+      const authenticated = Boolean(
+        typeof meta?.clientAuthenticated === 'boolean'
+          ? meta.clientAuthenticated
+          : typeof meta?.serverAuthenticated === 'boolean'
+            ? meta.serverAuthenticated
+            : enabled
+      )
+      const grantMatch =
+        typeof id?.currentMatchesActiveFeedReaderGrant === 'boolean'
+          ? id.currentMatchesActiveFeedReaderGrant
+          : null
+      const uidMatch = resolveGrantBackedPilotMatch({
+        currentMatchesActiveFeedReaderGrant: grantMatch,
+        capabilityReady: true,
+        capabilityEnabled: enabled,
+        authenticated,
+      })
       patchReaderDebug({
         capabilityRequestFinished: true,
         capabilityEnabled: enabled,
@@ -321,6 +371,24 @@ export function SmartFeedClient({
             : typeof meta?.clientAuthenticated === 'boolean'
               ? meta.clientAuthenticated
               : null,
+        uidMatch,
+        currentMatchesActiveFeedReaderGrant: grantMatch ?? (authenticated ? enabled : null),
+        ...(id
+          ? {
+              currentUidPresent: id.currentUidPresent,
+              historicalGoogleCandidateExists: id.historicalGoogleCandidateExists,
+              historicalGoogleCandidateProvider: id.historicalGoogleCandidateProvider,
+              currentMatchesHistoricalGooglePilot: id.currentMatchesHistoricalGooglePilot,
+              currentMatchesProgrammaticOperator: id.currentMatchesProgrammaticOperator,
+              currentProviderType: id.currentProviderType,
+              currentFirebaseRecordValid: id.currentFirebaseRecordValid,
+              currentDisabled: id.currentDisabled,
+              currentProfileExists: id.currentProfileExists,
+              currentTermsAccepted: id.currentTermsAccepted,
+              historicalProviderStillGoogleLinked: id.historicalProviderStillGoogleLinked,
+              historicalCandidateDisabled: id.historicalCandidateDisabled,
+            }
+          : {}),
       })
     },
     [patchReaderDebug]
@@ -334,7 +402,10 @@ export function SmartFeedClient({
     patchReaderDebug({
       authLoading,
       authenticated: Boolean(authUser?.uid),
-      uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+      // Grant-backed pilotMatch settles in applyFeedReaderCapability; clear while loading.
+      ...(authLoading
+        ? { uidMatch: false, currentMatchesActiveFeedReaderGrant: null }
+        : {}),
     })
 
     if (authLoading) {
@@ -357,12 +428,16 @@ export function SmartFeedClient({
 
     ;(async () => {
       try {
-        let result = await fetchFeedReaderCapability({ signal: ac.signal })
+        let result = await fetchFeedReaderCapability({
+          signal: ac.signal,
+          readerDebug: readerDebugQuery,
+        })
         // AuthProvider may already have uid while ID token is momentarily unavailable.
         if (!ac.signal.aborted && authUser?.uid && !result.authenticated) {
           result = await fetchFeedReaderCapability({
             signal: ac.signal,
             forceAuthRefresh: true,
+            readerDebug: readerDebugQuery,
           })
         }
         if (ac.signal.aborted) return
@@ -373,6 +448,7 @@ export function SmartFeedClient({
           globalDefault: result.globalDefault,
           serverAuthenticated: result.serverAuthenticated,
           clientAuthenticated: result.authenticated,
+          identityDebug: result.identityDebug,
         })
       } catch (err) {
         if (ac.signal.aborted) return
@@ -389,7 +465,7 @@ export function SmartFeedClient({
     return () => {
       ac.abort()
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug, readerDebugQuery])
 
   useEffect(() => {
     patchReaderDebug({
@@ -406,9 +482,12 @@ export function SmartFeedClient({
     }
     try {
       patchReaderDebug({ capabilityRequestStarted: true })
-      let result = await fetchFeedReaderCapability()
+      let result = await fetchFeedReaderCapability({ readerDebug: readerDebugQuery })
       if (authUser?.uid && !result.authenticated) {
-        result = await fetchFeedReaderCapability({ forceAuthRefresh: true })
+        result = await fetchFeedReaderCapability({
+          forceAuthRefresh: true,
+          readerDebug: readerDebugQuery,
+        })
       }
       // Do not clobber a newer effect settle; only fill if still pending.
       if (!readerCapabilityReadyRef.current) {
@@ -418,6 +497,7 @@ export function SmartFeedClient({
           globalDefault: result.globalDefault,
           serverAuthenticated: result.serverAuthenticated,
           clientAuthenticated: result.authenticated,
+          identityDebug: result.identityDebug,
         })
       }
       return feedReaderEnabledRef.current
@@ -427,11 +507,12 @@ export function SmartFeedClient({
       }
       return feedReaderEnabledRef.current
     }
-  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug])
+  }, [authLoading, authUser?.uid, applyFeedReaderCapability, patchReaderDebug, readerDebugQuery])
 
   /** Yerel sekmesi: fallback İstanbul ile ulusal karışım gösterme — gerçek konum şart. */
   const resolveFeedCity = useCallback(
     (activeMode: FeedMode): string | null => {
+      if (lockCitySlug && initialCitySlug) return initialCitySlug
       if (activeMode === 'local') {
         if (localCitySlugRef.current) return localCitySlugRef.current
         const persisted = readLocalNewsCitySlug()
@@ -452,7 +533,7 @@ export function SmartFeedClient({
         null
       )
     },
-    [userLocation.ready, userLocation.citySlug, userLocation.source, initialCitySlug]
+    [userLocation.ready, userLocation.citySlug, userLocation.source, initialCitySlug, lockCitySlug]
   )
 
   const windowStart = Math.max(0, activeIndex - WINDOW_BEFORE)
@@ -520,6 +601,7 @@ export function SmartFeedClient({
             cursor: pageCursor,
             city: resolveFeedCity(activeMode),
             district: initialDistrictSlug,
+            lockCity: lockCitySlug,
             refresh: !append && emptyRefills === 0,
             signal,
             forceAuthRefresh,
@@ -665,8 +747,11 @@ export function SmartFeedClient({
         }
       }
     },
-    [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity]
+    [mode, category, initialDistrictSlug, searchParams, authUser, resolveFeedCity, lockCitySlug]
   )
+  const loadPageRef = useRef(loadPage)
+  loadPageRef.current = loadPage
+  const lastAppliedCityCategoryRef = useRef<string | null | undefined>(undefined)
 
   const applyLocalCity = useCallback(
     (slug: string, name: string, source: 'geolocation' | 'manual' | 'ip' | 'profile' | 'cookie') => {
@@ -852,6 +937,12 @@ export function SmartFeedClient({
         else params.set('mode', nextMode)
       }
       const q = params.toString()
+      if (lockCitySlug) {
+        cityCategories?.setActiveCategoryId(nextCategory)
+        const nextUrl = nextCategory ? `/?category=${encodeURIComponent(nextCategory)}` : '/'
+        window.history.replaceState(window.history.state, '', nextUrl)
+        return
+      }
       router.replace(q ? `/feed-v2?${q}` : '/feed-v2', { scroll: false })
 
       if (nextMode === 'local' && !nextCategory) {
@@ -875,8 +966,58 @@ export function SmartFeedClient({
 
       void loadPage(false, null, nextMode, false, nextCategory)
     },
-    [activeTabId, items.length, loadPage, resolveFeedCity, router, searchParams]
+    [activeTabId, items.length, loadPage, resolveFeedCity, router, searchParams, lockCitySlug, cityCategories]
   )
+
+  useEffect(() => {
+    if (!lockCitySlug) return
+
+    const apply = (categoryId: string | null) => {
+      const next = categoryId?.trim() || null
+      if (next === lastAppliedCityCategoryRef.current) return
+      lastAppliedCityCategoryRef.current = next
+      clearFeedRestore()
+      restoreAppliedRef.current = false
+      pendingRestoreScrollRef.current = null
+      setActiveTabId(next || 'personal')
+      setMode('personal')
+      setCategory(next)
+      setCursor(null)
+      cursorRef.current = null
+      setActiveIndex(0)
+      activeIndexRef.current = 0
+      setErrorState(null)
+      setLoading(true)
+      setItems([])
+      itemsRef.current = []
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0
+      }
+      const nextUrl = next ? `/?category=${encodeURIComponent(next)}` : '/'
+      window.history.replaceState(window.history.state, '', nextUrl)
+      void loadPageRef.current(false, null, 'personal', false, next)
+    }
+
+    const onCityCategory = (event: Event) => {
+      const categoryId =
+        (event as CustomEvent<{ categoryId: string | null }>).detail?.categoryId ?? null
+      apply(categoryId)
+    }
+
+    const onChipClick = (event: MouseEvent) => {
+      const chip = (event.target as Element | null)?.closest?.('[data-category-chip]')
+      if (!chip) return
+      const raw = chip.getAttribute('data-category-chip')
+      apply(!raw || raw === '__all' ? null : raw)
+    }
+
+    window.addEventListener(CITY_CATEGORY_EVENT, onCityCategory)
+    document.addEventListener('click', onChipClick)
+    return () => {
+      window.removeEventListener(CITY_CATEGORY_EVENT, onCityCategory)
+      document.removeEventListener('click', onChipClick)
+    }
+  }, [lockCitySlug])
 
   // Boot / auth only — must NOT depend on mode/category.
   // Tab chips call loadPage directly; including mode/category here previously
@@ -925,15 +1066,20 @@ export function SmartFeedClient({
       activeIndexRef.current === 0
     ) {
       personalizedOnceRef.current = true
-      void loadPage(false, null, 'personal', true, null)
+      void loadPageRef.current(false, null, 'personal', true, null)
       return
     }
 
     // Cold start / no SSR: fetch immediately — do not wait for auth profile.
     if (!hasCards) {
-      void loadPage(false)
+      const cityCategory =
+        lockCitySlug && typeof window !== 'undefined'
+          ? lastAppliedCityCategoryRef.current ??
+            new URLSearchParams(window.location.search).get('category')
+          : undefined
+      void loadPageRef.current(false, null, undefined, false, cityCategory ?? undefined)
     }
-  }, [authLoading, authUser?.uid, loadPage])
+  }, [authLoading, authUser?.uid, lockCitySlug])
 
   // After restore hydrate (or index set), snap scroll to global index (WINDOW_MAX safe).
   useLayoutEffect(() => {
@@ -1098,19 +1244,22 @@ export function SmartFeedClient({
     if (idx !== activeIndexRef.current && idx >= 0 && idx < items.length) {
       const prev = items[activeIndexRef.current]
       const dwell = dwellStartRef.current ? Date.now() - dwellStartRef.current : 0
-      if (prev && dwell < 1500) {
+      if (prev && dwell > 0) {
+        const metadata = {
+          category: prev.category ?? null,
+          tags: prev.tags ?? [],
+          publisherId: prev.publisher?.id ?? null,
+        }
+        // Under 1.5s = not interested in this type. Longer stays raise that type.
         void postTelemetry({
           events: [
             {
-              eventType: 'quick_skip',
+              eventType: dwell < 1500 ? 'quick_skip' : 'article_dwell',
               articleId: prev.articleId,
+              clusterId: prev.clusterId,
               feedType: mode,
               dwellMs: dwell,
-              metadata: {
-                category: prev.category ?? null,
-                tags: prev.tags ?? [],
-                publisherId: prev.publisher?.id ?? null,
-              },
+              metadata,
             },
           ],
         })
@@ -1202,6 +1351,24 @@ export function SmartFeedClient({
               : undefined
         const canonicalLiked = typeof body.liked === 'boolean' ? body.liked : nextLiked
 
+        if (canonicalLiked) {
+          void postTelemetry({
+            events: [
+              {
+                eventType: 'article_liked',
+                articleId: item.articleId,
+                clusterId: item.clusterId,
+                feedType: mode,
+                metadata: {
+                  category: item.category ?? null,
+                  tags: item.tags ?? [],
+                  publisherId: item.publisher?.id ?? null,
+                },
+              },
+            ],
+          })
+        }
+
         setSocial((s) => ({
           ...s,
           [item.articleId]: {
@@ -1228,7 +1395,7 @@ export function SmartFeedClient({
         })
       }
     },
-    [actionLoading, authUser, authLoading, router, searchParams, social]
+    [actionLoading, authUser, authLoading, mode, router, searchParams, social]
   )
 
   const applyReaction = useCallback(
@@ -1422,34 +1589,102 @@ export function SmartFeedClient({
     })
   }, [])
 
-  const openReader = useCallback((item: FeedItemDto, index: number) => {
-    // Keep Feed mounted — no restore snapshot needed for overlay path.
-    setReaderItem({ item, index })
-    patchReaderDebug({
-      openReaderCalled: true,
-      readerOpenRequested: true,
-      readerItemSet: true,
-      readerComponentRendered: true,
-      readerOverlayMounted: true,
-      readerUnmountReason: null,
-      currentPath: 'FEED',
-      routerPushCanonicalCalled: false,
-    })
-  }, [patchReaderDebug])
+  const clearReaderOpenRamp = useCallback(() => {
+    if (readerOpenRampRef.current != null) {
+      window.clearTimeout(readerOpenRampRef.current)
+      readerOpenRampRef.current = null
+    }
+    readerCancelGenRef.current += 1
+  }, [])
+
+  const openReader = useCallback(
+    (item: FeedItemDto, index: number, opts?: { fromProgress?: number; skipRamp?: boolean }) => {
+      // Exactly one commit per article open — ignore double Haberi Oku / duplicate gesture commit.
+      if (readerOpenGuardRef.current === item.articleId) {
+        // Allow gesture skipRamp to promote an in-progress Haberi Oku ramp to committed once.
+        if (!(opts?.skipRamp && readerSession?.item.articleId === item.articleId && !readerSession.committed)) {
+          return
+        }
+      }
+
+      const from = Math.min(1, Math.max(0, opts?.fromProgress ?? 0))
+      const reduced = prefersReducedMotion()
+
+      if (opts?.skipRamp || from >= 0.92 || reduced) {
+        clearReaderOpenRamp()
+        readerOpenGuardRef.current = item.articleId
+        setReaderSession({
+          item,
+          index,
+          progress: 1,
+          committed: true,
+          progressAnimating: false,
+        })
+        patchReaderDebug({
+          openReaderCalled: true,
+          readerOpenRequested: true,
+          readerItemSet: true,
+          readerComponentRendered: true,
+          readerOverlayMounted: true,
+          readerUnmountReason: null,
+          currentPath: 'FEED',
+          routerPushCanonicalCalled: false,
+        })
+        return
+      }
+
+      // Haberi Oku / button: same page-turn authority as swipe (progress 0 → 1, then commit).
+      clearReaderOpenRamp()
+      readerOpenGuardRef.current = item.articleId
+      setReaderSession({
+        item,
+        index,
+        progress: from,
+        committed: false,
+        progressAnimating: false,
+      })
+      requestAnimationFrame(() => {
+        setReaderSession((s) =>
+          s && s.item.articleId === item.articleId
+            ? { ...s, progress: 1, progressAnimating: true }
+            : s
+        )
+        readerOpenRampRef.current = window.setTimeout(() => {
+          readerOpenRampRef.current = null
+          setReaderSession((s) => {
+            if (!s || s.item.articleId !== item.articleId) return s
+            if (s.committed) return s
+            return { ...s, progress: 1, committed: true, progressAnimating: false }
+          })
+        }, FEED_READER_DURATION_MS)
+      })
+      patchReaderDebug({
+        openReaderCalled: true,
+        readerOpenRequested: true,
+        readerItemSet: true,
+        readerComponentRendered: true,
+        readerOverlayMounted: true,
+        readerUnmountReason: null,
+        currentPath: 'FEED',
+        routerPushCanonicalCalled: false,
+      })
+    },
+    [clearReaderOpenRamp, patchReaderDebug, readerSession]
+  )
 
   // Pilot diagnostic only: whether open-gesture handlers are currently attachable.
   useEffect(() => {
     if (!showReaderDebug) return
     patchReaderDebug({
       gestureHandlerAttached: Boolean(
-        feedReaderEnabled && readerCapabilityReady && !readerItem
+        feedReaderEnabled && readerCapabilityReady && !readerSession?.committed
       ),
     })
   }, [
     showReaderDebug,
     feedReaderEnabled,
     readerCapabilityReady,
-    readerItem,
+    readerSession?.committed,
     patchReaderDebug,
   ])
 
@@ -1482,7 +1717,11 @@ export function SmartFeedClient({
         capabilityReady: readerCapabilityReadyRef.current,
         authLoading,
         authenticated: Boolean(authUser?.uid),
-        uidMatch: isFeedReaderDebugPilot(authUser?.uid),
+        uidMatch: resolveGrantBackedPilotMatch({
+          capabilityReady: readerCapabilityReadyRef.current,
+          capabilityEnabled: enabled,
+          authenticated: Boolean(authUser?.uid),
+        }),
         readerOpenRequested: decided.decision === 'OPEN_READER',
         openReaderCalled: false,
         routerPushCanonicalCalled: false,
@@ -1507,7 +1746,16 @@ export function SmartFeedClient({
       })
 
       if (decided.decision === 'OPEN_READER') {
-        openReader(item, index)
+        if (action === 'gesture') {
+          openReader(item, index, {
+            fromProgress: readerSession?.item.articleId === item.articleId
+              ? readerSession.progress
+              : 1,
+            skipRamp: true,
+          })
+        } else {
+          openReader(item, index)
+        }
         return
       }
 
@@ -1515,6 +1763,9 @@ export function SmartFeedClient({
       if (decided.decision === 'PENDING') return
 
       // Legacy path: navigate to canonical article page (non-pilot / guest / settled disabled).
+      clearReaderOpenRamp()
+      readerOpenGuardRef.current = null
+      setReaderSession(null)
       saveFeedRestore({
         mode,
         articleId: item.articleId,
@@ -1617,6 +1868,7 @@ export function SmartFeedClient({
         <FeedV2CategoryNav
           activeTabId={activeTabId}
           onChange={handleTabChange}
+          tabs={cityTabs}
           trailing={
             items[activeIndex] ? (
               <FeedCardMenu
@@ -1843,7 +2095,7 @@ export function SmartFeedClient({
                   }
                   onImpression={() => recordImpression(item)}
                   onOpenReaderGesture={
-                    feedReaderEnabled && readerCapabilityReady && isActive && !readerItem
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
                       ? (g) => {
                           if (showReaderDebug) {
                             const classified = classifyFeedOpenGestureDecision(g)
@@ -1859,6 +2111,57 @@ export function SmartFeedClient({
                             ...g,
                             onOpen: () => onRead(item, index, 'gesture'),
                           })
+                        }
+                      : undefined
+                  }
+                  onOpenReaderProgress={
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                      ? (progress) => {
+                          clearReaderOpenRamp()
+                          setReaderSession((s) => {
+                            if (s?.committed) return s
+                            if (!s || s.item.articleId !== item.articleId) {
+                              return {
+                                item,
+                                index,
+                                progress,
+                                committed: false,
+                                progressAnimating: false,
+                              }
+                            }
+                            return { ...s, progress, progressAnimating: false }
+                          })
+                        }
+                      : undefined
+                  }
+                  onOpenReaderCancel={
+                    feedReaderEnabled && readerCapabilityReady && isActive && !readerSession?.committed
+                      ? () => {
+                          const gen = ++readerCancelGenRef.current
+                          if (readerOpenRampRef.current != null) {
+                            window.clearTimeout(readerOpenRampRef.current)
+                            readerOpenRampRef.current = null
+                          }
+                          // Preview cancel is not a committed open — release guard for this card.
+                          if (readerOpenGuardRef.current === item.articleId) {
+                            readerOpenGuardRef.current = null
+                          }
+                          setReaderSession((s) => {
+                            if (!s || s.committed) return s
+                            if (s.item.articleId !== item.articleId) return s
+                            return { ...s, progress: 0, progressAnimating: true }
+                          })
+                          window.setTimeout(() => {
+                            if (gen !== readerCancelGenRef.current) return
+                            setReaderSession((s) =>
+                              s &&
+                              !s.committed &&
+                              s.item.articleId === item.articleId &&
+                              s.progress <= 0.02
+                                ? null
+                                : s
+                            )
+                          }, FEED_READER_DURATION_MS)
                         }
                       : undefined
                   }
@@ -1965,13 +2268,17 @@ export function SmartFeedClient({
           }}
         />
 
-        {readerItem ? (
+        {readerSession && readerSession.progress > 0.001 ? (
           <FeedArticleReader
-            item={readerItem.item}
-            open={Boolean(readerItem)}
+            item={readerSession.item}
+            committed={readerSession.committed}
+            visualProgress={readerSession.progress}
+            progressAnimating={readerSession.progressAnimating}
             onClose={() => {
-              const idx = readerItem.index
-              setReaderItem(null)
+              const idx = readerSession.index
+              clearReaderOpenRamp()
+              readerOpenGuardRef.current = null
+              setReaderSession(null)
               patchReaderDebug({
                 readerItemSet: false,
                 readerOverlayMounted: false,
@@ -1997,22 +2304,34 @@ export function SmartFeedClient({
                   }
                 : undefined
             }
-            liked={social[readerItem.item.articleId]?.liked ?? readerItem.item.socialState?.liked ?? false}
-            saved={social[readerItem.item.articleId]?.saved ?? readerItem.item.socialState?.saved ?? false}
+            liked={
+              social[readerSession.item.articleId]?.liked ??
+              readerSession.item.socialState?.liked ??
+              false
+            }
+            saved={
+              social[readerSession.item.articleId]?.saved ??
+              readerSession.item.socialState?.saved ??
+              false
+            }
             likeCount={
-              social[readerItem.item.articleId]?.likeCount ?? readerItem.item.socialCounts.likes ?? 0
+              social[readerSession.item.articleId]?.likeCount ??
+              readerSession.item.socialCounts.likes ??
+              0
             }
             commentCount={
-              social[readerItem.item.articleId]?.commentCount ??
-              readerItem.item.socialCounts.comments ??
+              social[readerSession.item.articleId]?.commentCount ??
+              readerSession.item.socialCounts.comments ??
               0
             }
             saveCount={
-              social[readerItem.item.articleId]?.saveCount ?? readerItem.item.socialCounts.saves ?? 0
+              social[readerSession.item.articleId]?.saveCount ??
+              readerSession.item.socialCounts.saves ??
+              0
             }
-            onToggleLike={() => void toggleLike(readerItem.item)}
-            onToggleSave={() => void toggleSave(readerItem.item)}
-            onCommentClick={() => setCommentArticleId(readerItem.item.articleId)}
+            onToggleLike={() => void toggleLike(readerSession.item)}
+            onToggleSave={() => void toggleSave(readerSession.item)}
+            onCommentClick={() => setCommentArticleId(readerSession.item.articleId)}
             onLockFeedScroll={setFeedScrollLocked}
           />
         ) : null}
@@ -2071,6 +2390,10 @@ function FeedCardWithImpression(props: {
     viewportWidth: number
     velocityX: number
   }) => void
+  /** Interactive page-turn: report progress during drag (before release). */
+  onOpenReaderProgress?: (progress: number) => void
+  /** Snap-back / cancel — clear uncommitted Reader preview. */
+  onOpenReaderCancel?: () => void
   /** Pilot readerDebug only — pointer delivery forensic; no engagement writes. */
   onGesturePointerDebug?: (ev: {
     phase: 'down' | 'move' | 'up' | 'cancel'
@@ -2081,7 +2404,8 @@ function FeedCardWithImpression(props: {
   discoveryCategory?: string | null
   discoveryExcludeIds?: string[]
 }) {
-  const { onOpenReaderGesture, onGesturePointerDebug, ...cardProps } = props
+  const { onOpenReaderGesture, onOpenReaderProgress, onOpenReaderCancel, onGesturePointerDebug, ...cardProps } =
+    props
   const impressionRef = useFeedImpressionRef(props.item.articleId, props.isActive, props.onImpression)
   const surfaceRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<{
@@ -2176,6 +2500,7 @@ function FeedCardWithImpression(props: {
               drag.current = null
               setHorizontalLocked(false)
               setDragProgress(0)
+              onOpenReaderCancel?.()
               return
             }
             if (intent !== 'horizontal') return
@@ -2189,6 +2514,7 @@ function FeedCardWithImpression(props: {
           const width = window.innerWidth || 390
           const progress = feedToReaderProgress(dx, width)
           setDragProgress(progress)
+          onOpenReaderProgress?.(progress)
           d.lastX = ev.clientX
           d.lastT = performance.now()
         }
@@ -2251,6 +2577,7 @@ function FeedCardWithImpression(props: {
         if (open) {
           setSnapAnimating(true)
           setDragProgress(1)
+          onOpenReaderProgress?.(1)
           window.setTimeout(() => {
             setSnapAnimating(false)
             setDragProgress(0)
@@ -2258,20 +2585,26 @@ function FeedCardWithImpression(props: {
           return
         }
 
+        if (axis === 'horizontal' && progress > 0.02) {
+          onOpenReaderCancel?.()
+        }
         resetDragVisual(axis === 'horizontal' && progress > 0.02)
       }}
       onPointerCancel={() => {
-        if (drag.current) onGesturePointerDebug?.({ phase: 'cancel' })
+        if (drag.current) {
+          onGesturePointerDebug?.({ phase: 'cancel' })
+          onOpenReaderCancel?.()
+        }
         resetDragVisual(false)
       }}
     >
-      {/* Paper peek behind card during left page-turn */}
+      {/* Dark Reader peek behind card during left page-turn */}
       {dragProgress > 0.04 && !reducedMotion ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
-            background: 'linear-gradient(90deg, #f7f4ef 0%, #ebe6de 100%)',
+            background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
             opacity: Math.min(1, dragProgress * 1.4),
           }}
         />

@@ -10,6 +10,7 @@ import {
 } from '@/lib/feed/rankingConfig'
 import type { FeedUserContext } from '@/types/smartFeed'
 import { feedUserContextService } from './FeedUserContextService'
+import type { NfSessionIntent } from './nfRank/NFRankEngine'
 
 const QUALITY_TIER_SCORE: Record<string, number> = {
   PREMIUM: 1,
@@ -68,6 +69,33 @@ function interestScore(row: FeedCandidateRow, ctx: FeedUserContext): number {
   return feedUserContextService.interestScore(ctx, row.category)
 }
 
+/** Session behavior: long dwell / open / like raise the type; quick skips push it down. */
+function sessionBehavior(
+  row: FeedCandidateRow,
+  session: NfSessionIntent | undefined,
+  negativeWeight: number
+): { interestAdd: number; penalty: number } {
+  if (!session) return { interestAdd: 0, penalty: 0 }
+  const cat = (row.category ?? '').trim().toLowerCase()
+  let interestAdd = cat ? (session.categoryBoosts.get(cat) ?? 0) : 0
+  if (row.publisherId) {
+    interestAdd += (session.publisherBoosts.get(row.publisherId) ?? 0) * 0.45
+  }
+  const tags = Array.isArray(row.tags) ? row.tags : []
+  let skipPenalty = 0
+  const catSkips = cat ? (session.categoryQuickSkips.get(cat) ?? 0) : 0
+  if (catSkips === 1) skipPenalty += negativeWeight * 0.55
+  else if (catSkips >= 2) skipPenalty += negativeWeight
+  for (const raw of tags) {
+    const tag = raw.trim().toLowerCase()
+    if (!tag) continue
+    interestAdd += (session.tagBoosts.get(tag) ?? 0) * 0.3
+    const tagSkips = session.tagQuickSkips.get(tag) ?? 0
+    if (tagSkips >= 2) skipPenalty += negativeWeight * 0.25
+  }
+  return { interestAdd: Math.min(1, interestAdd), penalty: skipPenalty }
+}
+
 function engagementScore(row: FeedCandidateRow): number {
   // Views matter more than the historical ×0.01 (≈1/300 like) so "most viewed" can surface.
   const raw =
@@ -106,10 +134,11 @@ export class FeedScoringService {
     row: FeedCandidateRow,
     ctx: FeedUserContext,
     mode: FeedMode,
-    opts?: { seenArticle?: boolean; seenCluster?: boolean }
+    opts?: { seenArticle?: boolean; seenCluster?: boolean; sessionIntent?: NfSessionIntent }
   ): ScoredFeedCandidate {
     const weights = resolveModeWeights(mode)
     const catClass = resolveCategoryClass(row.category, row.breaking)
+    const behavior = sessionBehavior(row, opts?.sessionIntent, weights.negativeFeedbackPenalty)
 
     const featured = featuredScore(row)
     const popularity = viewPopularityScore({
@@ -124,7 +153,7 @@ export class FeedScoringService {
     const signals = {
       following: followingScore(row, ctx),
       freshness: freshnessScore(row.publishedAt, catClass),
-      interest: interestScore(row, ctx),
+      interest: Math.min(1, interestScore(row, ctx) + behavior.interestAdd),
       local: localScore(row, ctx, mode),
       editorial: editorialScore(row, mode),
       quality: qualityScore(row),
@@ -138,6 +167,7 @@ export class FeedScoringService {
     let penalties = 0
     if (opts?.seenArticle) penalties += weights.seenPenalty * 0.6
     if (opts?.seenCluster) penalties += weights.seenPenalty * 0.4
+    penalties += behavior.penalty
     if (feedUserContextService.hasNegativePreference(ctx, {
       articleId: row.articleId,
       publisherId: row.publisherId,
@@ -213,7 +243,8 @@ export class FeedScoringService {
     ctx: FeedUserContext,
     mode: FeedMode,
     seenArticles: Set<string>,
-    seenClusters: Set<string>
+    seenClusters: Set<string>,
+    sessionIntent?: NfSessionIntent
   ): ScoredFeedCandidate[] {
     return rows
       .filter((row) => {
@@ -227,6 +258,7 @@ export class FeedScoringService {
         this.scoreCandidate(row, ctx, mode, {
           seenArticle: seenArticles.has(row.articleId),
           seenCluster: row.clusterId ? seenClusters.has(row.clusterId) : false,
+          sessionIntent,
         })
       )
       .sort((a, b) => {
