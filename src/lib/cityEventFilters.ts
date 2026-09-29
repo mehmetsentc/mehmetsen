@@ -56,7 +56,7 @@ function isParibuCinemaEvent(event: NaEvent): boolean {
   )
 }
 
-function hasValidInstant(iso: string | undefined): boolean {
+function hasValidInstant(iso: string | undefined): iso is string {
   if (!iso?.trim()) return false
   return !Number.isNaN(new Date(iso).getTime())
 }
@@ -133,7 +133,7 @@ export function pickCinemaEventsForDay(
     .filter((event) => resolveEventFilterCategory(event) === 'cinema')
     .filter((event) => {
       const { startsAt } = resolveEventSchedule(event, nowIso)
-      return isSameIstanbulCalendarDay(startsAt, dayIso)
+      return hasValidInstant(startsAt) && isSameIstanbulCalendarDay(startsAt, dayIso)
     })
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
 }
