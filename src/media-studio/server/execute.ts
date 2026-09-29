@@ -107,6 +107,21 @@ export async function analyzeFor(ownerId: string, text: string): Promise<StudioS
   }
 }
 
+export async function clearAnalysesFor(ownerId: string): Promise<StudioSession> {
+  const [{ jobs }, analyses] = await Promise.all([listOwned(ownerId), listAnalyses(ownerId)])
+  const used = new Set(jobs.map((job) => job.analysisId))
+  const db = getAdminFirestore()
+  const batch = db.batch()
+  let deletes = 0
+  for (const row of analyses) {
+    if (used.has(row.id)) continue
+    batch.delete(db.collection(Collections.MEDIA_STUDIO_ANALYSES).doc(row.id))
+    deletes += 1
+  }
+  if (deletes) await batch.commit()
+  return snapshotFor(ownerId)
+}
+
 export async function enqueueFor(
   ownerId: string,
   items: { id: string; assets: AssetChoice[] }[]

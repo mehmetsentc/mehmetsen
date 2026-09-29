@@ -3,6 +3,7 @@ import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import type { AssetChoice, WorkspaceText } from '@/media-studio/types'
 import {
   analyzeFor,
+  clearAnalysesFor,
   enqueueFor,
   handoffWorkspace,
   mutateWorkspace,
@@ -47,6 +48,8 @@ async function handle(ownerId: string, body: { type?: string; [key: string]: unk
   switch (body.type) {
     case 'analyze':
       return analyzeFor(ownerId, String(body.text ?? ''))
+    case 'clearAnalyses':
+      return clearAnalysesFor(ownerId)
     case 'enqueue': {
       const items = Array.isArray(body.items) ? (body.items as { id: string; assets: AssetChoice[] }[]) : []
       const jobs = await enqueueFor(ownerId, items)

@@ -61,6 +61,13 @@ export function ImportScreen({
           <StudioSkeleton rows={2} />
         </div>
       ) : null}
+      {results.length > 0 ? (
+        <div className="mb-4">
+          <button type="button" className={quietButton} onClick={() => void actions.clearAnalyses()}>
+            Yeni bağlantı
+          </button>
+        </div>
+      ) : null}
       {results.length > 0 && wide ? (
         <section>
           <div className="sticky top-0 z-10 -mx-4 mb-3 flex flex-wrap items-center justify-between gap-3 bg-[rgb(var(--color-bg))]/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
@@ -97,7 +104,7 @@ export function ImportScreen({
           assets={session.assetSelection[results[0].id] ?? []}
           onToggleCard={() => actions.toggleAnalysis(results[0].id)}
           onToggleAsset={(key) => actions.toggleAsset(results[0].id, key)}
-          action={downloadAction}
+          action={results[0].status === 'READY' ? downloadAction : undefined}
         />
       ) : null}
       {mode === 'compose' && results.length === 0 && !pending ? (

@@ -37,6 +37,7 @@ import type { AssetChoice, StudioJob, WorkspaceText } from '@/media-studio/types
 export interface StudioActions {
   analyze(text: string): Promise<void>
   selectAll(): void
+  clearAnalyses(): Promise<void>
   toggleAnalysis(id: string): void
   toggleAsset(id: string, key: AssetChoice): void
   enqueue(): Promise<void>
@@ -72,6 +73,9 @@ const mockActions: StudioActions = {
     updateStudioSession((current) => applyMockAnalysis(current, text))
   },
   selectAll: () => updateStudioSession(selectAllReady),
+  async clearAnalyses() {
+    updateStudioSession((current) => ({ ...current, analyses: [], selectedAnalysisIds: [], assetSelection: {} }))
+  },
   toggleAnalysis: (id) => updateStudioSession((current) => toggleAnalysis(current, id)),
   toggleAsset: (id, key) => updateStudioSession((current) => toggleAnalysisAsset(current, id, key)),
   async enqueue() {
@@ -215,6 +219,9 @@ export function StudioLiveBridge({ children }: { children: React.ReactNode }) {
     ...mockActions,
     analyze: async (text) => {
       await postCommand({ type: 'analyze', text })
+    },
+    clearAnalyses: async () => {
+      await postCommand({ type: 'clearAnalyses' })
     },
     enqueue: async () => {
       const session = getStudioSession()

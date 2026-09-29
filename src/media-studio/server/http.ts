@@ -21,10 +21,11 @@ async function assertPublic(url: string): Promise<URL> {
 
 export async function safeFetch(
   rawUrl: string,
-  options?: { maxBytes?: number; timeoutMs?: number }
+  options?: { maxBytes?: number; timeoutMs?: number; truncate?: boolean }
 ): Promise<{ finalUrl: string; status: number; contentType: string; body: Buffer }> {
   const maxBytes = options?.maxBytes ?? 500_000
   const timeoutMs = options?.timeoutMs ?? 15_000
+  const truncate = options?.truncate === true
   let current = rawUrl
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     const url = await assertPublic(current)
@@ -45,7 +46,7 @@ export async function safeFetch(
     if (!response.ok) throw new StudioHttpError(`Kaynak yanıtı ${response.status}.`)
     const contentType = response.headers.get('content-type') ?? 'application/octet-stream'
     const lengthHeader = Number(response.headers.get('content-length') ?? '')
-    if (Number.isFinite(lengthHeader) && lengthHeader > maxBytes) {
+    if (!truncate && Number.isFinite(lengthHeader) && lengthHeader > maxBytes) {
       throw new StudioHttpError('Dosya indirme sınırını aşıyor.')
     }
     const reader = response.body?.getReader()
@@ -58,6 +59,7 @@ export async function safeFetch(
       loaded += step.value.byteLength
       if (loaded > maxBytes) {
         await reader.cancel()
+        if (truncate) break
         throw new StudioHttpError('Dosya indirme sınırını aşıyor.')
       }
       chunks.push(step.value)

@@ -36,7 +36,7 @@ const CHOICE_LABEL: Record<AssetChoice, string> = {
 export async function inspectUrl(rawUrl: string): Promise<InspectedPage> {
   let fetched: Awaited<ReturnType<typeof safeFetch>>
   try {
-    fetched = await safeFetch(rawUrl, { maxBytes: 800_000, timeoutMs: 15_000 })
+    fetched = await safeFetch(rawUrl, { maxBytes: 1_500_000, timeoutMs: 15_000, truncate: true })
   } catch (error) {
     const message = error instanceof StudioHttpError ? error.message : 'Bağlantı incelenmedi.'
     return failedInspect(rawUrl, message)
