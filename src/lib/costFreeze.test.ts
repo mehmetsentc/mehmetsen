@@ -36,7 +36,7 @@ describe('FINOPS cost freeze', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
-    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '*/10 * * * *' }])
+    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '*/30 * * * *' }])
     const tick = readFileSync(join(process.cwd(), 'src/app/api/cron/crawler/tick/route.ts'), 'utf8')
     expect(tick).toContain('runCrawlerTick')
     expect(tick).toContain('isGlobalCrawlerEnabled')

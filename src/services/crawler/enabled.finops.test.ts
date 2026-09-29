@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { isGlobalCrawlerEnabled } from '@/services/crawler/enabled'
+import { crawlerTickLimits, isGlobalCrawlerEnabled } from '@/services/crawler/enabled'
 import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 
@@ -26,6 +26,16 @@ describe('minimum-cost crawler switch', () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     vi.stubEnv('GLOBAL_CRAWLER_ENABLED', 'false')
     expect(isGlobalCrawlerEnabled()).toBe(true)
+  })
+
+  it('keeps each tick short so Neon can suspend between half-hour runs', () => {
+    vi.stubEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', '')
+    vi.stubEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', '')
+    vi.stubEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', '')
+    const limits = crawlerTickLimits()
+    expect(limits.maxSourcesPerTick).toBe(25)
+    expect(limits.maxFetchPerTick).toBe(20)
+    expect(limits.maxTickRuntimeMs).toBe(90_000)
   })
 
   it('leaves paid AI closed unless a flag is explicitly true', () => {

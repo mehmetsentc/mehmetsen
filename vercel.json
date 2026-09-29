@@ -92,7 +92,7 @@
   "crons": [
     {
       "path": "/api/cron/crawler/tick",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }

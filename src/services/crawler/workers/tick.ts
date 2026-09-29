@@ -102,7 +102,11 @@ export async function runCrawlerTick(opts?: {
   let aiCandidates = 0
   let aiAvoided = 0
 
+  // Leave the second half of the tick for fetches. Discovery of every due
+  // source used to consume the whole budget and Ham Haberler stayed empty.
+  const discoveryDeadline = tickStarted + Math.floor(limits.maxTickRuntimeMs / 2)
   for (const source of sources) {
+    if (Date.now() > discoveryDeadline) break
     await store.incrementMetric('sources_checked', 1, now)
     const started = Date.now()
     try {

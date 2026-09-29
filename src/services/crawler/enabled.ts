@@ -54,13 +54,13 @@ export function defaultCrawlIntervalSeconds(
 
 export function crawlerTickLimits() {
   return {
-    // Sized for */20 cron: ~149 ACTIVE sources can be due in one window.
-    // Wall clock is capped by tick maxDuration (300s); runtime clamp stays below that.
-    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 80), 1, 160),
-    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
+    // */30 cron. A short tick leaves Neon idle long enough to suspend.
+    // 141 ACTIVE sources are covered across several ticks, newest URLs first.
+    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 25), 1, 160),
+    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 20), 1, 160),
     maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
-    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 240_000), 5_000, 280_000),
+    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 90_000), 5_000, 280_000),
     defaultFreshnessHours: clamp(intEnv('NEWS_CRAWLER_FRESHNESS_HOURS', 48), 1, 168),
     maxClusterArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_ARTICLES_PER_TICK', 80), 1, 160),
     maxClusterCandidatesPerArticle: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_CANDIDATES', 40), 5, 80),
