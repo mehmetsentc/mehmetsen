@@ -118,3 +118,21 @@ export async function getApprovedJobClassifiedsServer(
     return []
   }
 }
+
+export async function getApprovedJobClassifiedById(
+  id: string,
+  citySlug: string
+): Promise<JobClassified | null> {
+  try {
+    const db = getAdminFirestore()
+    const doc = await db.collection(Collections.JOB_CLASSIFIEDS).doc(id).get()
+    if (!doc.exists) return null
+    const data = doc.data()
+    if (!data) return null
+    const mapped = mapJobClassifiedDoc(doc.id, data as Record<string, unknown>)
+    if (!mapped || mapped.citySlug !== citySlug || mapped.status !== 'approved') return null
+    return mapped
+  } catch {
+    return null
+  }
+}

@@ -36,7 +36,15 @@ async function main() {
   )
 
   const list = await getCityJobListingsServer(city)
-  console.log('getCityJobListingsServer=', list.length, list[0]?.title ?? null)
+  console.log(
+    'getCityJobListingsServer=',
+    list.listings.length,
+    'capped=',
+    list.capped,
+    'totalActive=',
+    list.totalActive,
+    list.listings[0]?.title ?? null
+  )
 }
 
 main().catch((e) => {

@@ -122,6 +122,8 @@ export function normalizeKariyerJobItem(
   const employmentType = pickString(row, ['employmentType', 'calismaSekli', 'workType'])
   const workType = [employmentType, workModel].filter(Boolean).join(' · ') || null
 
+  const summary = pickString(row, ['description', 'summary', 'jobDescription', 'aciklama'])
+
   const listing: JobListing = {
     id: `kariyer_${sourceId}`,
     citySlug,
@@ -136,6 +138,7 @@ export function normalizeKariyerJobItem(
     deadlineAt: null,
     publishedAt: null,
     applyUrl,
+    summary: summary ? summary.slice(0, 1500) : null,
     source: 'kariyer',
     sourceId,
     listingKind: 'normal',

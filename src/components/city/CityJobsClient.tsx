@@ -7,7 +7,7 @@ import {
   Building2,
   CalendarClock,
   ChevronDown,
-  ExternalLink,
+  ChevronRight,
   Filter,
   Mail,
   MapPin,
@@ -39,6 +39,7 @@ import {
   type CityJobFilterState,
   type CityJobSort,
 } from '@/lib/cityJobFilters'
+import { jobMonogram } from '@/lib/jobListingPresentation'
 import { cn } from '@/lib/utils'
 import type { JobClassified } from '@/types/jobClassified'
 import type { JobListing } from '@/types/jobListing'
@@ -51,11 +52,17 @@ interface CityJobsClientProps {
   employerClassifieds?: JobClassified[]
   /** Approved seeker classifieds for “İş arayanlar” tab. */
   seekerClassifieds?: JobClassified[]
+  /** Active Firestore rows beyond the on-page window. */
+  listingsCapped?: boolean
+  /** Active listing count for the city, before the page window. */
+  totalActive?: number | null
   syncConfigured: boolean
   missingEnv: string[]
 }
 
 type BoardTab = 'openings' | 'seekers'
+
+const JOB_PAGE_SIZE = 12
 
 const SORT_OPTIONS: Array<{ id: CityJobSort; label: string }> = [
   { id: 'deadline', label: 'Son başvuruya göre' },
@@ -130,6 +137,8 @@ export function CityJobsClient({
   initialJobs,
   employerClassifieds = [],
   seekerClassifieds = [],
+  listingsCapped = false,
+  totalActive = null,
   syncConfigured,
   missingEnv,
 }: CityJobsClientProps) {
@@ -138,7 +147,6 @@ export function CityJobsClient({
   const [boardTab, setBoardTab] = useState<BoardTab>('openings')
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [tabletFiltersExpanded, setTabletFiltersExpanded] = useState(false)
-
   const provinceDistricts = useMemo(() => getDistrictsForProvince(citySlug), [citySlug])
 
   const openingsPool = useMemo(() => {
@@ -188,23 +196,49 @@ export function CityJobsClient({
 
   const setQuery = (query: string) => setFilters((prev) => ({ ...prev, query }))
 
+  const listSignature = [
+    boardTab,
+    sort,
+    filters.query,
+    filters.category,
+    filters.districtSlug,
+    filters.source,
+    filters.workType,
+  ].join('|')
+  const [listWindow, setListWindow] = useState({ signature: listSignature, visible: JOB_PAGE_SIZE })
+  if (listWindow.signature !== listSignature) {
+    setListWindow({ signature: listSignature, visible: JOB_PAGE_SIZE })
+  }
+  const shownCount = listWindow.signature === listSignature ? listWindow.visible : JOB_PAGE_SIZE
+  const visibleJobs = filtered.slice(0, shownCount)
+
+  const headlineCount =
+    activeFilterCount > 0
+      ? filtered.length
+      : listingsCapped && totalActive != null
+        ? totalActive + employerClassifieds.length
+        : openingsPool.length
+  const headlinePlus = activeFilterCount === 0 && listingsCapped && totalActive == null
+  const windowNote =
+    activeFilterCount === 0 &&
+    listingsCapped &&
+    totalActive != null &&
+    totalActive > initialJobs.length
+
   return (
     <div className="w-full pb-8 pt-3 max-md:pt-2">
-      <header className="mb-3 flex flex-wrap items-start justify-between gap-3 md:mb-4">
+      <header className="mb-4 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))]/10">
-              <Briefcase className="h-5 w-5 text-[rgb(var(--color-brand))]" />
-            </span>
-            <div>
-              <h1 className="text-lg font-black tracking-tight text-[rgb(var(--color-text))] md:text-xl xl:text-2xl">
-                {cityName} İş İlanları
-              </h1>
-              <p className="mt-0.5 text-xs text-[rgb(var(--color-text-secondary))] md:text-sm">
-                Kariyer.net ve İŞKUR — başvuru kaynak sitede yapılır
-              </p>
-            </div>
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--color-brand))]">
+            Kariyer
+          </p>
+          <h1 className="mt-1 text-xl font-black tracking-tight text-[rgb(var(--color-text))] md:text-2xl">
+            {cityName} İş İlanları
+          </h1>
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-[rgb(var(--color-text-secondary))] md:text-sm">
+            İlana tıklayınca detay bu sitede açılır. Başvur deyince İŞKUR veya Kariyer.net’e geçilir.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -246,6 +280,34 @@ export function CityJobsClient({
             )}
           </button>
         </div>
+        </div>
+        <dl className="grid grid-cols-3 border-t border-[rgb(var(--color-border))]">
+          <div className="px-4 py-3 sm:px-5">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              Açık ilan
+            </dt>
+            <dd className="mt-0.5 text-lg font-black tabular-nums text-[rgb(var(--color-text))]">
+              {headlineCount}
+              {headlinePlus ? '+' : ''}
+            </dd>
+          </div>
+          <div className="border-l border-[rgb(var(--color-border))] px-4 py-3 sm:px-5">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              İş arayan
+            </dt>
+            <dd className="mt-0.5 text-lg font-black tabular-nums text-[rgb(var(--color-text))]">
+              {seekerClassifieds.length}
+            </dd>
+          </div>
+          <div className="border-l border-[rgb(var(--color-border))] px-4 py-3 sm:px-5">
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              Kaynak
+            </dt>
+            <dd className="mt-0.5 text-sm font-bold leading-tight text-[rgb(var(--color-text))]">
+              İŞKUR · Kariyer
+            </dd>
+          </div>
+        </dl>
       </header>
 
       {/* Employer / seeker CTAs */}
@@ -487,13 +549,15 @@ export function CityJobsClient({
               </div>
               <p className="text-sm text-[rgb(var(--color-text-secondary))]">
                 <span className="font-semibold text-[rgb(var(--color-text))]">
-                  {boardTab === 'openings' ? filtered.length : filteredSeekers.length}
+                  {boardTab === 'openings'
+                    ? `${headlineCount}${headlinePlus ? '+' : ''}`
+                    : filteredSeekers.length}
                 </span>{' '}
                 {boardTab === 'openings' ? 'ilan' : 'iş arayan'}
-                {boardTab === 'openings' && activeFilterCount > 0 && (
+                {boardTab === 'openings' && windowNote && (
                   <span className="text-[rgb(var(--color-muted))]">
                     {' '}
-                    · {openingsPool.length} toplam
+                    · listede {initialJobs.length}
                   </span>
                 )}
               </p>
@@ -626,114 +690,111 @@ export function CityJobsClient({
               )}
             </div>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {filtered.map((job) => {
+            <>
+            <ul className="flex flex-col gap-2.5">
+              {visibleJobs.map((job) => {
                 const kind = kindLabel(job.listingKind)
                 const src = sourceLabel(job.source)
                 const category = resolveJobCategory(job)
                 const place = districtDisplayName(job, provinceDistricts)
+                const meta = [
+                  place,
+                  job.workType,
+                  job.deadlineAt ? formatDeadline(job.deadlineAt) : null,
+                  job.openPositions != null && job.openPositions > 0
+                    ? `${job.openPositions} kişi`
+                    : null,
+                ].filter(Boolean)
                 return (
                   <li key={job.id}>
-                    <article
+                    <Link
+                      href={ROUTES.CITY_JOB_DETAIL(job.id)}
                       className={cn(
-                        'group relative overflow-hidden rounded-xl border border-[rgb(var(--color-border))]',
-                        'bg-[rgb(var(--color-card))] shadow-sm transition-colors',
-                        'hover:border-[rgb(var(--color-brand))]/35'
+                        'group flex items-center gap-3 rounded-2xl border border-[rgb(var(--color-border))]',
+                        'bg-[rgb(var(--color-card))] p-3.5 shadow-sm transition-colors sm:gap-4 sm:p-4',
+                        'hover:border-[rgb(var(--color-brand))]/45'
                       )}
                     >
-                      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:justify-between sm:p-5">
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
-                              {src}
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] text-sm font-black tracking-tight text-white">
+                        {jobMonogram(job.title, job.employer)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="mb-1 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-[rgb(var(--color-brand))]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
+                            {src}
+                          </span>
+                          <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-1.5 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-text-secondary))]">
+                            {jobCategoryLabel(category)}
+                          </span>
+                          {kind && (
+                            <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-1.5 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
+                              {kind}
                             </span>
-                            <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-text-secondary))]">
-                              {jobCategoryLabel(category)}
-                            </span>
-                            {kind && (
-                              <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
-                                {kind}
-                              </span>
-                            )}
-                            {job.employerType && (
-                              <span className="rounded bg-[rgb(var(--color-surface-elevated))] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-muted))]">
-                                {job.employerType}
-                              </span>
-                            )}
-                          </div>
-
-                          <h2 className="text-base font-bold leading-snug text-[rgb(var(--color-text))] md:text-[17px]">
-                            {job.title}
-                          </h2>
-
-                          {job.employer && (
-                            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-[rgb(var(--color-text-secondary))]">
-                              <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                              <span className="truncate">{job.employer}</span>
-                            </p>
                           )}
-
-                          <div className="mt-3 grid gap-1.5 text-xs text-[rgb(var(--color-muted))] sm:grid-cols-2">
+                        </span>
+                        <span className="block truncate text-[15px] font-bold leading-snug text-[rgb(var(--color-text))] group-hover:text-[rgb(var(--color-brand))]">
+                          {job.title}
+                        </span>
+                        {job.employer && (
+                          <span className="mt-0.5 flex items-center gap-1.5 text-sm text-[rgb(var(--color-text-secondary))]">
+                            <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                            <span className="truncate">{job.employer}</span>
+                          </span>
+                        )}
+                        {meta.length > 0 && (
+                          <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[rgb(var(--color-muted))]">
                             {place && (
-                              <span className="inline-flex min-w-0 items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{place}</span>
-                              </span>
-                            )}
-                            {job.deadlineAt && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-                                {formatDeadline(job.deadlineAt)}
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {place}
                               </span>
                             )}
                             {job.workType && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <Briefcase className="h-3.5 w-3.5 shrink-0" />
+                              <span className="inline-flex items-center gap-1">
+                                <Briefcase className="h-3.5 w-3.5" />
                                 {job.workType}
                               </span>
                             )}
-                            {job.openPositions != null && job.openPositions > 0 && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5 shrink-0" />
-                                {job.openPositions} açık pozisyon
+                            {job.deadlineAt && (
+                              <span className="inline-flex items-center gap-1">
+                                <CalendarClock className="h-3.5 w-3.5" />
+                                {formatDeadline(job.deadlineAt)}
                               </span>
                             )}
-                          </div>
-
-                          {job.locationLabel && place !== job.locationLabel && (
-                            <p className="mt-2 truncate text-[11px] text-[rgb(var(--color-muted))]">
-                              {job.locationLabel}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex shrink-0 flex-col justify-center gap-2 sm:items-end">
-                          {job.applyUrl ? (
-                            <a
-                              href={job.applyUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                'inline-flex items-center justify-center gap-2 rounded-lg',
-                                'bg-[rgb(var(--color-brand))] px-5 py-2.5 text-sm font-bold text-white',
-                                'transition-opacity hover:opacity-90'
-                              )}
-                            >
-                              İlana git
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          ) : (
-                            <span className="text-xs text-[rgb(var(--color-muted))]">
-                              Başvuru linki yok
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </article>
+                            {job.openPositions != null && job.openPositions > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                <Users className="h-3.5 w-3.5" />
+                                {job.openPositions} kişi
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                      <ChevronRight className="h-5 w-5 shrink-0 text-[rgb(var(--color-muted))] transition-transform group-hover:translate-x-0.5 group-hover:text-[rgb(var(--color-brand))]" />
+                    </Link>
                   </li>
                 )
               })}
             </ul>
+            {shownCount < filtered.length && (
+              <button
+                type="button"
+                onClick={() =>
+                  setListWindow((prev) => ({
+                    signature: listSignature,
+                    visible: prev.visible + JOB_PAGE_SIZE,
+                  }))
+                }
+                className={cn(
+                  'mt-4 w-full rounded-xl border border-[rgb(var(--color-border))]',
+                  'bg-[rgb(var(--color-card))] py-3 text-sm font-bold text-[rgb(var(--color-text))]',
+                  'transition-colors hover:border-[rgb(var(--color-brand))]/40'
+                )}
+              >
+                Daha fazla ilan ({filtered.length - shownCount})
+              </button>
+            )}
+            </>
           )}
 
           <p className="mt-6 text-center text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
