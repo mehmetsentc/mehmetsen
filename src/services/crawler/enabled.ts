@@ -14,12 +14,22 @@ function envTrue(name: string): boolean {
   return raw === 'true' || raw === '1' || raw === 'on'
 }
 
+function envFalse(name: string): boolean {
+  const raw = process.env[name]?.trim().toLowerCase()
+  return raw === 'false' || raw === '0' || raw === 'off'
+}
+
 /**
- * Master crawl switch. Default OFF.
+ * Master crawl switch.
+ * Explicit false/0/off wins. Explicit true/1/on wins.
+ * Unset on Vercel production is on, so the 10-minute tick actually crawls.
+ * Everywhere else, unset stays off (local must not crawl production).
  * GLOBAL_CRAWLER_ENABLED is canonical; NEWS_CRAWLER_ENABLED remains an alias.
  */
 export function isGlobalCrawlerEnabled(): boolean {
-  return envTrue('GLOBAL_CRAWLER_ENABLED') || envTrue('NEWS_CRAWLER_ENABLED')
+  if (envFalse('GLOBAL_CRAWLER_ENABLED') || envFalse('NEWS_CRAWLER_ENABLED')) return false
+  if (envTrue('GLOBAL_CRAWLER_ENABLED') || envTrue('NEWS_CRAWLER_ENABLED')) return true
+  return process.env.VERCEL_ENV === 'production'
 }
 
 /** @deprecated Use isGlobalCrawlerEnabled */

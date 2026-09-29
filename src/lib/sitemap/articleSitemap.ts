@@ -237,11 +237,16 @@ export async function getArticleSitemapIndexItems(
   } = {}
 ): Promise<SitemapIndexItem[]> {
   const listMonths = deps.listMonths ?? (() => getArticleMonthsCached())
-  const getMonth = deps.getMonth ?? ((m: MonthKey) => getArticleMonth(m))
   const budgetMs = deps.budgetMs ?? INDEX_SUMMARY_BUDGET_MS
   const root = base.replace(/\/$/, '')
 
   const months = await listMonths()
+  // The index only needs shard URLs. Loading every month's articles here
+  // repeated the same Firestore scan the shard route does on a cache miss.
+  if (!deps.getMonth) {
+    return months.map((m) => ({ loc: `${root}${articleShardPath(m, 1)}` }))
+  }
+  const getMonth = deps.getMonth
   const pending = Symbol('pending')
   const settled = new Map<MonthKey, ArticleSitemapMonth | Error>()
 

@@ -21,7 +21,7 @@ import {
 } from '@/services/editorial/publicReadPolicy'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+export const revalidate = 21600
 
 const BATCH_SIZE = 500
 const MAX_IMAGES = 2000

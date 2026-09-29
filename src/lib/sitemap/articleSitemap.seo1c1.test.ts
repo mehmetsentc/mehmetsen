@@ -387,6 +387,18 @@ describe('SEO-1C.1 dedupe + scale', () => {
 })
 
 describe('SEO-1C.1 sitemap index', () => {
+  it('default index lists shard URLs and does not load month bodies', async () => {
+    fsState.calls = []
+    const items = await getArticleSitemapIndexItems(BASE, {
+      listMonths: async () => ['2026-09', '2026-08'],
+    })
+    expect(items).toEqual([
+      { loc: `${BASE}/sitemaps/articles-2026-09.xml` },
+      { loc: `${BASE}/sitemaps/articles-2026-08.xml` },
+    ])
+    expect(fsState.calls).toEqual([])
+  })
+
   it('19. empty month is not advertised; parts + real lastmod are', async () => {
     const months: Record<string, [string, number][]> = {
       '2026-09': [['a', Math.floor((MID + 5000) / 1000)], ['b', Math.floor(MID / 1000)]],
