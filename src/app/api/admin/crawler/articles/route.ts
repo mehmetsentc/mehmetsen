@@ -22,6 +22,7 @@ import type { CrawlerQualityStatus, RawArticleRecord } from '@/services/crawler/
 import type { RawArticleListQuery, RawArticleSort } from '@/services/crawler/store/types'
 import { databaseUnavailableResponse } from '@/lib/adminApiError'
 import { authorizeEditorAiPublish } from '@/services/crawler/editorial/aiPublish'
+import { reconcilePublishedRawArticles } from '@/services/crawler/editorial/newsLink'
 import { kickApprovedAiQueue } from '@/services/crawler/editorial/editorQueueWorker'
 
 export const runtime = 'nodejs'
@@ -161,6 +162,18 @@ export async function GET(request: Request) {
       clusterUniqueSourceCount: event?.uniqueSourceCount ?? null,
     }
   }
+  let visibleArticles = articles
+  if (listQuery.queue === 'active' || listQuery.queue == null) {
+    const reconciled = await reconcilePublishedRawArticles(visibleArticles)
+    visibleArticles = reconciled.articles
+    if (reconciled.hidden > 0) {
+      total = Math.max(0, total - reconciled.hidden)
+      totalPages = Math.max(1, Math.ceil(total / (result.pageSize || 25)) || 1)
+      queueCounts.active = Math.max(0, (queueCounts.active ?? 0) - reconciled.hidden)
+      queueCounts.published = (queueCounts.published ?? 0) + reconciled.hidden
+    }
+  }
+
   if (
     listQuery.queue === 'ai_queue' &&
     (queueCounts.aiQueue ?? 0) > 0 &&
@@ -176,7 +189,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ...result,
-    articles: articles.map(withEvent),
+    articles: visibleArticles.map(withEvent),
     total,
     page,
     totalPages,

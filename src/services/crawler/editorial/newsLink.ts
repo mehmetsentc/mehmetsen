@@ -43,3 +43,29 @@ export async function syncCrawlerEditorial(opts: {
     editorialStatus,
   })
 }
+
+/** Drop ham-haber rows whose news is already live. Active queue includes DRAFT. */
+export async function reconcilePublishedRawArticles<T extends { id: string; editorialStatus: string }>(
+  articles: T[]
+): Promise<{ articles: T[]; hidden: number }> {
+  const stuck = articles.filter(
+    (article) => article.editorialStatus === 'DRAFT' || article.editorialStatus === 'EDITING'
+  )
+  if (stuck.length === 0) return { articles, hidden: 0 }
+
+  const hidden = new Set<string>()
+  await Promise.all(
+    stuck.map(async (article) => {
+      const news = await findNewsByRawArticleId(article.id).catch(() => null)
+      if (news?.status !== 'published') return
+      await syncCrawlerEditorial({
+        rawArticleId: article.id,
+        newsId: news.id,
+        status: 'published',
+      }).catch(() => {})
+      hidden.add(article.id)
+    })
+  )
+  if (hidden.size === 0) return { articles, hidden: 0 }
+  return { articles: articles.filter((article) => !hidden.has(article.id)), hidden: hidden.size }
+}

@@ -265,6 +265,19 @@ function resolveSourceLabel(
   return 'NaHaber'
 }
 
+async function markRawArticlePublished(rssGuid: string | undefined, newsId: string): Promise<void> {
+  const rawArticleId = String(rssGuid || '').trim()
+  if (!rawArticleId.startsWith('raw_')) return
+  const { syncCrawlerEditorial } = await import('@/services/crawler/editorial/newsLink')
+  await syncCrawlerEditorial({
+    rawArticleId,
+    newsId,
+    status: 'published',
+  }).catch((err) => {
+    console.warn('[approveDraft] crawler sync', err)
+  })
+}
+
 function draftToPublishedNews(
   draft: NewsDraftDocument | NewsroomDraftFields,
   slug: string,
@@ -680,6 +693,8 @@ export const newsDraftService = {
       updatedAt: now,
     })
 
+    await markRawArticlePublished(draft.rssGuid, newsRef.id)
+
     return { newsId: newsRef.id, slug }
   },
 
@@ -729,6 +744,7 @@ export const newsDraftService = {
       sourceBodyText?: string
       rightsStatus?: string
       rightsBasis?: string
+      rssGuid?: string
     }
     const now = Date.now()
     const authz = authorizePublication({
@@ -763,6 +779,7 @@ export const newsDraftService = {
         // Upgrade leftover draft placeholders even on review-clear path
         ...(isPlaceholderDraftSlug(data.slug) ? { slug } : {}),
       })
+      await markRawArticlePublished(data.rssGuid, newsId)
       return { newsId, slug }
     }
 
@@ -792,6 +809,7 @@ export const newsDraftService = {
           }
         : {}),
     })
+    await markRawArticlePublished(data.rssGuid, newsId)
 
     return { newsId, slug }
   },
