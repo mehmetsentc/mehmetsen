@@ -1,7 +1,9 @@
 import { crawlerTickLimits } from '../enabled'
+import { categoryHintForEvent, isDominantAgenda } from './agenda'
 import { clusterTopicFromTitle } from './cheap'
 import { buildEventFingerprint } from './fingerprint'
 import { namedTokensMatch } from './normalize'
+import { promotePublishedNewsToFeatured } from './promoteFeatured'
 import { MATCH_HORIZON_MS, scoreClusterMatch } from './score'
 import { detectMaterialUpdate, selectPrimaryArticle } from './canonical'
 import { evaluateClusterEligibility, looksLikeNewsText } from './eligibility'
@@ -17,6 +19,7 @@ export interface ClusterTickResult {
   clustersCreated: number
   articlesClustered: number
   merges: number
+  clusterMerges: number
   borderline: number
   aiCalls: number
 }
@@ -65,6 +68,7 @@ export async function runClusterTick(opts: {
     clustersCreated: 0,
     articlesClustered: 0,
     merges: 0,
+    clusterMerges: 0,
     borderline: 0,
     aiCalls: 0,
   }
@@ -189,7 +193,26 @@ export async function runClusterTick(opts: {
     })
   }
 
+  result.clusterMerges = await mergeSameStoryClusters(opts.store, now, tickStarted, limits.maxTickRuntimeMs)
+  await promoteOpenAgenda(opts.store, now)
+
   return result
+}
+
+/** Feature the published copy of a real-agenda cluster once it goes live. */
+async function promoteOpenAgenda(store: CrawlerStore, now: Date): Promise<void> {
+  const since = new Date(now.getTime() - MATCH_HORIZON_MS)
+  const recent = await store.recentClusters(null, since)
+  for (const cluster of recent) {
+    if (cluster.importanceBreakdown?.realAgenda !== 1) continue
+    if (cluster.importanceBreakdown?.agendaFeatured === 1) continue
+    if (!cluster.publishedNewsId) continue
+    const promoted = await promotePublishedNewsToFeatured(cluster.publishedNewsId)
+    if (promoted !== 'featured' && promoted !== 'ineligible') continue
+    await store.updateCluster(cluster.id, {
+      importanceBreakdown: { ...cluster.importanceBreakdown, agendaFeatured: 1 },
+    })
+  }
 }
 
 async function recomputeCluster(
@@ -310,6 +333,28 @@ async function recomputeCluster(
   }
 
   const primarySource = members.find((m) => m.article.id === canonical.id)?.source || null
+  const editorClosed = cluster.editorialDecision === 'REJECTED' || cluster.editorialDecision === 'ARCHIVED'
+  const peers = await store.recentClusters(cluster.countryCode, new Date(now.getTime() - MATCH_HORIZON_MS))
+  const otherCounts = peers
+    .filter((p) => p.id !== clusterId && p.eventStatus !== 'CLOSED')
+    .map((p) => p.uniqueSourceCount || 0)
+  const dominant = !editorClosed && isDominantAgenda(uniqueSources.size, otherCounts)
+  const breakdown: Record<string, number> = {
+    ...importance.breakdown,
+    confirmedSources: uniqueSources.size,
+    realAgenda: dominant ? 1 : 0,
+  }
+  if (cluster.importanceBreakdown?.agendaFeatured === 1) breakdown.agendaFeatured = 1
+  let editorialPriority = cluster.editorialPriority
+  if (dominant && editorialPriority === 'NORMAL') editorialPriority = 'HIGH'
+  const newsId = published.newsId || cluster.publishedNewsId
+  if (dominant && newsId && breakdown.agendaFeatured !== 1) {
+    const promoted = await promotePublishedNewsToFeatured(newsId)
+    if (promoted === 'featured' || promoted === 'ineligible') breakdown.agendaFeatured = 1
+  }
+  const categoryHint =
+    categoryHintForEvent(canonical.title || cluster.canonicalTitle, uniqueSources.size) || cluster.categoryHint
+
   await store.updateCluster(clusterId, {
     representativeArticleId: canonical.id,
     canonicalTitle: canonical.title || cluster.canonicalTitle,
@@ -328,7 +373,9 @@ async function recomputeCluster(
     clusterConfidence: Number((avgConf || 0).toFixed(4)),
     aiEligibility: eligibility.eligibility,
     aiEligibilityReason: eligibility.reason,
-    importanceBreakdown: importance.breakdown,
+    importanceBreakdown: breakdown,
+    categoryHint,
+    editorialPriority,
     signatureTokens: [...named].slice(0, 16),
     language: canonical.language || cluster.language,
     city: cluster.city || canonical.city || members[0]?.source?.city || null,
@@ -343,4 +390,105 @@ async function recomputeCluster(
     primarySourceId: canonical.sourceId,
     primarySourceName: primarySource?.name || null,
   })
+}
+
+/** Fold already-split copies of one story (different publisher cities) into one event. */
+async function mergeSameStoryClusters(
+  store: CrawlerStore,
+  now: Date,
+  tickStarted: number,
+  maxTickRuntimeMs: number
+): Promise<number> {
+  if (Date.now() - tickStarted > maxTickRuntimeMs) return 0
+  const since = new Date(now.getTime() - MATCH_HORIZON_MS)
+  const recent = (await store.recentClusters(null, since)).filter(
+    (cluster) => cluster.eventStatus !== 'CLOSED' && (cluster.articleCount || 0) > 0 && cluster.canonicalTitle
+  )
+  const window = recent.slice(0, 40)
+  if (window.length < 2) return 0
+
+  const packed = window.map((cluster) => ({
+    cluster,
+    fp: buildEventFingerprint({
+      title: cluster.canonicalTitle,
+      language: cluster.language,
+      countryCode: cluster.countryCode,
+      region: cluster.region,
+      city: cluster.city,
+      district: cluster.district,
+      publishedAt: cluster.lastSeenAt,
+    }),
+  }))
+  const parent = new Map(packed.map((row) => [row.cluster.id, row.cluster.id]))
+  const find = (id: string): string => {
+    const next = parent.get(id) || id
+    if (next === id) return id
+    const root = find(next)
+    parent.set(id, root)
+    return root
+  }
+  const unite = (a: string, b: string) => {
+    const left = find(a)
+    const right = find(b)
+    if (left !== right) parent.set(right, left)
+  }
+
+  for (let i = 0; i < packed.length; i++) {
+    if (Date.now() - tickStarted > maxTickRuntimeMs) break
+    for (let j = i + 1; j < packed.length; j++) {
+      const shared = packed[i].fp.properNameTokens.filter((token) =>
+        packed[j].fp.properNameTokens.some((other) => namedTokensMatch(token, other))
+      )
+      if (shared.length < 2) continue
+      const scored = scoreClusterMatch(
+        packed[i].fp,
+        {
+          fingerprint: packed[j].fp,
+          lastSeenAt: packed[j].cluster.lastSeenAt,
+          firstSeenAt: packed[j].cluster.firstSeenAt,
+        },
+        now
+      )
+      if (scored.band === 'HIGH') unite(packed[i].cluster.id, packed[j].cluster.id)
+    }
+  }
+
+  const groups = new Map<string, string[]>()
+  for (const row of packed) {
+    const root = find(row.cluster.id)
+    const list = groups.get(root) || []
+    list.push(row.cluster.id)
+    groups.set(root, list)
+  }
+
+  let merges = 0
+  for (const ids of groups.values()) {
+    if (ids.length < 2) continue
+    if (Date.now() - tickStarted > maxTickRuntimeMs) break
+    const ranked = ids
+      .map((id) => packed.find((row) => row.cluster.id === id)!.cluster)
+      .sort(
+        (a, b) =>
+          (b.articleCount || 0) - (a.articleCount || 0) || (b.uniqueSourceCount || 0) - (a.uniqueSourceCount || 0)
+      )
+    const keep = ranked[0]
+    if (!keep) continue
+    for (const drop of ranked.slice(1)) {
+      const memberships = await store.listMemberships(drop.id)
+      for (const membership of memberships) {
+        await store.updateMembership(membership.id, { clusterId: keep.id })
+        await store.updateRawArticle(membership.articleId, { clusterId: keep.id, clusterStatus: 'CLUSTERED' })
+      }
+      await store.updateCluster(drop.id, {
+        eventStatus: 'CLOSED',
+        articleCount: 0,
+        sourceCount: 0,
+        uniqueSourceCount: 0,
+        representativeArticleId: null,
+      })
+      merges += 1
+    }
+    await recomputeCluster(store, keep.id, now)
+  }
+  return merges
 }

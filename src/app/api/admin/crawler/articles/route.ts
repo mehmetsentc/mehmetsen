@@ -134,7 +134,10 @@ export async function GET(request: Request) {
     articles = await enrichArticlesWithReviewMeta(articles)
   }
   const clusterIds = [...new Set(articles.map((a) => a.clusterId).filter((id): id is string => Boolean(id)))]
-  const clusterById = new Map<string, { articleCount: number; uniqueSourceCount: number }>()
+  const clusterById = new Map<
+    string,
+    { articleCount: number; uniqueSourceCount: number; categoryHint: string | null; realAgenda: boolean }
+  >()
   // Soft-fail: cluster meta is optional UI enrichment. Schema drift (e.g. missing
   // news_clusters.seo_slug) must not 500 the entire Ham Haberler list.
   await Promise.all(
@@ -145,6 +148,8 @@ export async function GET(request: Request) {
           clusterById.set(id, {
             articleCount: cluster.articleCount,
             uniqueSourceCount: cluster.uniqueSourceCount,
+            categoryHint: cluster.categoryHint,
+            realAgenda: cluster.importanceBreakdown?.realAgenda === 1,
           })
         }
       } catch {
@@ -158,6 +163,8 @@ export async function GET(request: Request) {
       ...serializeArticle(article),
       clusterArticleCount: event?.articleCount ?? null,
       clusterUniqueSourceCount: event?.uniqueSourceCount ?? null,
+      clusterCategoryHint: event?.categoryHint ?? null,
+      clusterRealAgenda: event?.realAgenda ?? false,
     }
   }
   return NextResponse.json({

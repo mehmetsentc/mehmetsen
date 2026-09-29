@@ -362,7 +362,9 @@ export interface CrawlerStore {
   }): Promise<'inserted' | 'duplicate'>
   updateMembership(
     id: string,
-    patch: Partial<Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore'>>
+    patch: Partial<
+      Pick<ClusterMembershipRecord, 'isCanonical' | 'membershipRole' | 'isIndependentSource' | 'similarityScore' | 'clusterId'>
+    >
   ): Promise<void>
   listFailedUrls(limit?: number): Promise<DiscoveredUrlRecord[]>
   touchCluster(id: string, representativeArticleId?: string): Promise<void>

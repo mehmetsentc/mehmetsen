@@ -44,11 +44,28 @@ function timeScore(articleAt: Date | null, clusterLast: Date, now: Date): number
   return clamp01(1 - delta / MATCH_HORIZON_MS)
 }
 
+/**
+ * Publisher home city is copied onto every raw article. A trailing outlet credit
+ * ("Olay Gazetesi Bursa") is not the event location. Lead mentions are
+ * ("İstanbul'da deprem", "Manisa'da yangın").
+ */
+export function cityIsEventLocation(fp: EventFingerprint): boolean {
+  if (!fp.city) return false
+  const city = localeLower(fp.city, fp.language)
+  const idx = fp.titleTokens.findIndex(
+    (t) => t === city || namedTokensMatch(t, city) || (city.length >= 4 && t.startsWith(city))
+  )
+  return idx >= 0 && idx <= 2
+}
+
 function geoScore(a: EventFingerprint, b: EventFingerprint): { score: number; mismatch: boolean } {
   if (a.countryCode && b.countryCode && a.countryCode !== b.countryCode) {
     return { score: 0, mismatch: true }
   }
-  if (a.city && b.city && a.city !== b.city) return { score: 0, mismatch: true }
+  if (a.city && b.city && a.city !== b.city) {
+    if (cityIsEventLocation(a) && cityIsEventLocation(b)) return { score: 0, mismatch: true }
+    return { score: 0.3, mismatch: false }
+  }
   if (a.district && b.district && a.district !== b.district) return { score: 0.2, mismatch: true }
   if (a.city && b.city && a.city === b.city) {
     if (a.district && b.district && a.district === b.district) return { score: 1, mismatch: false }
@@ -100,6 +117,24 @@ export function conflictingExclusivePlaces(a: EventFingerprint, b: EventFingerpr
   const exclusivePlaceA = onlyA.filter((t) => placeLike(a, t))
   const exclusivePlaceB = onlyB.filter((t) => placeLike(b, t))
   return exclusivePlaceA.length >= 1 && exclusivePlaceB.length >= 1
+}
+
+/**
+ * Same person, paraphrased headlines from different outlets.
+ * Requires a 3-token proper name (not "Erdoğan" alone) plus either shared
+ * event words or a short spin headline ("son darbe").
+ */
+export function samePersonParaphrase(a: EventFingerprint, b: EventFingerprint, time: number): boolean {
+  const namesA = a.properNameTokens || []
+  const namesB = b.properNameTokens || []
+  const shared = namesA.filter((t) => namesB.some((o) => namedTokensMatch(t, o)))
+  if (shared.length < 3 || time < 0.35) return false
+  const isName = (token: string, names: string[]) => names.some((n) => namedTokensMatch(token, n) || token === n)
+  const contentA = a.titleTokens.filter((t) => !isName(t, namesA))
+  const contentB = b.titleTokens.filter((t) => !isName(t, namesB))
+  const overlap = tokenOverlapScore(contentA, contentB)
+  const shortSpin = Math.min(contentA.length, contentB.length) <= 4
+  return overlap >= 0.15 || shortSpin
 }
 
 /** Shared signal is only weak event keywords — never enough alone. */
@@ -172,6 +207,7 @@ export function scoreClusterMatch(
   } else if (strongOverlap.length === 0 && titleSimilarity < 0.72) blocked = 'weak_entity_overlap'
 
   let band: MatchBand = 'LOW'
+  const samePerson = samePersonParaphrase(article, cluster.fingerprint, time)
   const highOk =
     !blocked &&
     final >= HIGH_MATCH &&
@@ -196,6 +232,8 @@ export function scoreClusterMatch(
   ) {
     band = 'HIGH'
   } else if (!blocked && strongOverlap.length >= 1 && titleSimilarity >= 0.42 && entityOverlap >= 0.35) {
+    band = 'HIGH'
+  } else if (!blocked && samePerson) {
     band = 'HIGH'
   } else if (!blocked && final >= BORDERLINE_MATCH) band = 'BORDERLINE'
 
