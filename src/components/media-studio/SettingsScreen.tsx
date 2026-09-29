@@ -1,54 +1,122 @@
-import { MOCK_SETTINGS } from '@/media-studio/mockData'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useStudio } from '@/media-studio/useStudio'
+import { useStudioActions } from './studioActions'
+import { fieldClass, primaryButton } from './styles'
 
 export function SettingsScreen() {
-  const settings = MOCK_SETTINGS
+  const session = useStudio()
+  const actions = useStudioActions()
+  const [draft, setDraft] = useState(session.settings)
+  useEffect(() => {
+    setDraft(session.settings)
+  }, [session.settings])
+
   return (
-    <div className="grid gap-4 pb-10 lg:grid-cols-2">
-      <div
-        className="rounded-2xl border px-4 py-3 text-sm lg:col-span-2"
-        style={{
-          borderColor: 'rgb(var(--admin-warning))',
-          backgroundColor: 'color-mix(in srgb, rgb(var(--admin-warning)) 12%, transparent)',
-          color: 'rgb(var(--admin-text))',
-        }}
-      >
-        Önizleme. Bu ayarlar henüz kaydedilmez ve indirilen dosyayı etkilemez.
-      </div>
+    <form
+      className="grid gap-4 pb-10 lg:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void actions.saveSettings(draft)
+      }}
+    >
       <Section title="İndirmeler">
-        <Row label="Eşzamanlı indirme" value={String(settings.concurrentDownloads)} />
-        <Row label="Varsayılan kalite" value={settings.defaultQuality} />
+        <NumberField
+          label="Eşzamanlı indirme"
+          min={1}
+          max={3}
+          value={draft.concurrentDownloads}
+          onChange={(value) => setDraft({ ...draft, concurrentDownloads: value })}
+        />
+        <label className="block py-3 text-sm">
+          <span className="text-[rgb(var(--color-muted))]">Varsayılan kalite</span>
+          <input
+            className={`${fieldClass} mt-1`}
+            value={draft.defaultQuality}
+            onChange={(event) => setDraft({ ...draft, defaultQuality: event.target.value })}
+          />
+          <span className="mt-1 block text-xs text-[rgb(var(--color-muted))]">Tercih kaydedilir. Dosya kaynaktaki haliyle iner.</span>
+        </label>
       </Section>
       <Section title="Depolama">
-        <Row label="Geçici saklama süresi" value={`${settings.temporaryHours} saat`} />
-        <Row label="Kota" value={`${settings.quota.usedLabel} / ${settings.quota.capLabel}`} />
+        <NumberField
+          label="Geçici saklama (saat)"
+          min={1}
+          max={168}
+          value={draft.temporaryHours}
+          onChange={(value) => setDraft({ ...draft, temporaryHours: value })}
+        />
+        <p className="py-3 text-sm font-medium text-[rgb(var(--color-text))]">
+          {session.quota.usedLabel} / {session.quota.capLabel}
+        </p>
       </Section>
       <Section title="Dosyalar">
-        <Row label="Video" value={settings.includeVideo ? 'Dahil' : 'Kapalı'} />
-        <Row label="Görseller" value={settings.includeImages ? 'Dahil' : 'Kapalı'} />
-        <Row label="Metadata" value={settings.includeMetadata ? 'Dahil' : 'Kapalı'} />
+        <Check label="Video" checked={draft.includeVideo} onChange={(includeVideo) => setDraft({ ...draft, includeVideo })} />
+        <Check label="Görseller" checked={draft.includeImages} onChange={(includeImages) => setDraft({ ...draft, includeImages })} />
+        <Check label="Metadata" checked={draft.includeMetadata} onChange={(includeMetadata) => setDraft({ ...draft, includeMetadata })} />
       </Section>
       <Section title="Gelişmiş">
-        <Row label="Otomatik yeniden deneme" value={settings.autoRetry ? 'Açık' : 'Kapalı'} />
-        <Row label="ZIP saklama" value={`${settings.zipRetentionHours} saat`} />
+        <Check label="Otomatik yeniden deneme" checked={draft.autoRetry} onChange={(autoRetry) => setDraft({ ...draft, autoRetry })} />
+        <NumberField
+          label="ZIP saklama (saat)"
+          min={1}
+          max={168}
+          value={draft.zipRetentionHours}
+          onChange={(value) => setDraft({ ...draft, zipRetentionHours: value })}
+        />
       </Section>
-    </div>
+      <div className="lg:col-span-2">
+        <button type="submit" className={primaryButton}>
+          Kaydet
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function NumberField({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="block py-3 text-sm">
+      <span className="text-[rgb(var(--color-muted))]">{label}</span>
+      <input
+        className={`${fieldClass} mt-1`}
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  )
+}
+
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-4 py-3 text-sm">
+      <span className="text-[rgb(var(--color-muted))]">{label}</span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
   )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
+    <section className="rounded-2xl bg-[rgb(var(--color-card))] p-5 ring-1 ring-[rgb(var(--color-border))]">
       <h2 className="text-base font-semibold text-[rgb(var(--color-text))]">{title}</h2>
-      <dl className="mt-3 divide-y divide-[rgb(var(--color-border))]">{children}</dl>
+      <div className="mt-2">{children}</div>
     </section>
-  )
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3 text-sm">
-      <dt className="text-[rgb(var(--color-muted))]">{label}</dt>
-      <dd className="font-medium text-[rgb(var(--color-text))]">{value}</dd>
-    </div>
   )
 }

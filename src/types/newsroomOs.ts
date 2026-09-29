@@ -31,7 +31,7 @@ export const DEFAULT_CMS_FEATURE_FLAGS: CmsFeatureFlags = {
   scopedRbacEnabled: true,
   smmNetworkEnabled: true,
   videoLibraryEnabled: false,
-  mediaStudioEnabled: false,
+  mediaStudioEnabled: true,
 }
 
 // ─── Permission scopes ────────────────────────────────────────────────────────

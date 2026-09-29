@@ -33,16 +33,18 @@ function sceneForHue(hue: number): string {
 /** Local generated still. No remote fetch. */
 export function MediaThumb({
   hue,
+  src,
   className,
   label,
 }: {
   hue: number
+  src?: string
   className?: string
   label?: string
 }) {
   return (
     <img
-      src={sceneForHue(hue)}
+      src={src || sceneForHue(hue)}
       alt={label ?? ''}
       className={cn('bg-[rgb(var(--color-surface))] object-cover', className)}
     />

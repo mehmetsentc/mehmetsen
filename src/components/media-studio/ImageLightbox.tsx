@@ -76,7 +76,7 @@ export function ImageLightbox({
         className="grid max-h-[92vh] w-full max-w-5xl gap-4 overflow-auto rounded-3xl bg-[rgb(var(--color-card))] p-4 lg:grid-cols-[minmax(0,1fr)_240px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <MediaThumb hue={image.hue} className="min-h-[240px] rounded-2xl" label={image.filename} />
+        <MediaThumb hue={image.hue} src={image.publicUrl} className="min-h-[240px] rounded-2xl" label={image.filename} />
         <div>
           <h3 className="text-lg font-semibold text-[rgb(var(--color-text))]">{image.filename}</h3>
           <dl className="mt-4 space-y-2 text-sm text-[rgb(var(--color-muted))]">

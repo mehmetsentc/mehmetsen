@@ -1,7 +1,8 @@
 'use client'
 
 import type { LibraryFilter, LibrarySort } from '@/media-studio/types'
-import { setLibraryControls, updateStudioSession, visibleLibrary } from '@/media-studio/session'
+import { visibleLibrary } from '@/media-studio/session'
+import { useStudioActions } from './studioActions'
 import { useStudio } from '@/media-studio/useStudio'
 import { fieldClass, focusRing, quietButton } from './styles'
 import { EmptyState } from './EmptyState'
@@ -23,6 +24,7 @@ const FILTERS: { id: LibraryFilter; label: string }[] = [
 
 export function LibraryScreen() {
   const session = useStudio()
+  const actions = useStudioActions()
   const ready = useStudioReveal()
   const items = visibleLibrary(session)
 
@@ -36,7 +38,7 @@ export function LibraryScreen() {
             placeholder="Başlık veya kaynak ara"
             value={session.libraryQuery}
             onChange={(event) =>
-              updateStudioSession((current) => setLibraryControls(current, { libraryQuery: event.target.value }))
+              actions.setLibrary({ libraryQuery: event.target.value })
             }
           />
         </label>
@@ -47,9 +49,7 @@ export function LibraryScreen() {
             value={session.libraryFilter}
             aria-label="Filtre"
             onChange={(event) =>
-              updateStudioSession((current) =>
-                setLibraryControls(current, { libraryFilter: event.target.value as LibraryFilter })
-              )
+              actions.setLibrary({ libraryFilter: event.target.value as LibraryFilter })
             }
           >
             {FILTERS.map((filter) => (
@@ -66,9 +66,7 @@ export function LibraryScreen() {
             value={session.librarySort}
             aria-label="Sırala"
             onChange={(event) =>
-              updateStudioSession((current) =>
-                setLibraryControls(current, { librarySort: event.target.value as LibrarySort })
-              )
+              actions.setLibrary({ librarySort: event.target.value as LibrarySort })
             }
           >
             <option value="newest">En Yeni</option>
@@ -82,7 +80,7 @@ export function LibraryScreen() {
             type="button"
             className={session.libraryView === 'grid' ? quietButton : `${quietButton} opacity-70`}
             aria-pressed={session.libraryView === 'grid'}
-            onClick={() => updateStudioSession((current) => setLibraryControls(current, { libraryView: 'grid' }))}
+            onClick={() => actions.setLibrary({ libraryView: 'grid' })}
           >
             Izgara
           </button>
@@ -90,7 +88,7 @@ export function LibraryScreen() {
             type="button"
             className={`${session.libraryView === 'list' ? quietButton : `${quietButton} opacity-70`} ${focusRing}`}
             aria-pressed={session.libraryView === 'list'}
-            onClick={() => updateStudioSession((current) => setLibraryControls(current, { libraryView: 'list' }))}
+            onClick={() => actions.setLibrary({ libraryView: 'list' })}
           >
             Liste
           </button>

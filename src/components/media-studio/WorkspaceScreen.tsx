@@ -3,25 +3,8 @@
 import { useState } from 'react'
 import type { WorkspaceTab } from '@/media-studio/types'
 import { WORKSPACE_TABS } from '@/media-studio/types'
-import { isWorkspaceDirty } from '@/media-studio/session'
-import {
-  clearWorkspaceImages,
-  deleteSelectedImages,
-  deleteWorkspaceImage,
-  deleteWorkspaceFile,
-  deleteWorkspaceVideo,
-  findWorkspace,
-  keepWorkspace,
-  patchWorkspaceText,
-  previewAction,
-  renameWorkspaceFile,
-  renameWorkspaceImage,
-  renameWorkspaceVideo,
-  saveWorkspaceText,
-  setCoverImage,
-  toggleWorkspaceImage,
-  updateStudioSession,
-} from '@/media-studio/session'
+import { findWorkspace, isWorkspaceDirty } from '@/media-studio/session'
+import { useStudioActions } from './studioActions'
 import { useStudio } from '@/media-studio/useStudio'
 import { focusRing } from './styles'
 import { MediaThumb } from './MediaThumb'
@@ -34,10 +17,9 @@ import { useStudioReveal } from './useStudioReveal'
 import { VideoPanel } from './VideoPanel'
 import { WorkspaceHeader } from './WorkspaceHeader'
 
-const PREVIEW = 'Önizleme: dosya henüz oluşturulmadı.'
-
 export function WorkspaceScreen({ id, initialTab = 'general' }: { id: string; initialTab?: WorkspaceTab }) {
   const session = useStudio()
+  const actions = useStudioActions()
   const ready = useStudioReveal()
   const workspace = findWorkspace(session, id)
   const [tab, setTab] = useState<WorkspaceTab>(initialTab)
@@ -69,15 +51,11 @@ export function WorkspaceScreen({ id, initialTab = 'general' }: { id: string; in
       <WorkspaceHeader
         workspace={workspace}
         onEdit={() => requestTab('text')}
-        onDownloadAll={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
-        onZip={() => updateStudioSession((current) => previewAction(current, 'Önizleme: ZIP henüz oluşturulmadı.'))}
-        onHandoff={() =>
-          updateStudioSession((current) =>
-            previewAction(current, 'Önizleme: haber editörüne aktarım bir sonraki fazda açılacak. Yayın yok.')
-          )
-        }
-        onDelete={() => updateStudioSession((current) => previewAction(current, 'Önizleme: çalışma alanı silinmedi.'))}
-        onKeep={() => updateStudioSession((current) => keepWorkspace(current, workspace.id))}
+        onDownloadAll={() => workspace.files.forEach((file) => openStored(file.publicUrl))}
+        onZip={() => void actions.zip(workspace.id)}
+        onHandoff={() => void actions.handoff(workspace.id)}
+        onDelete={() => void actions.removeWorkspace(workspace.id)}
+        onKeep={() => void actions.keep(workspace.id)}
       />
       <div className="flex gap-5 overflow-x-auto border-b border-[rgb(var(--color-border))]" role="tablist" aria-label="Çalışma alanı">
         {WORKSPACE_TABS.map((item) => (
@@ -105,7 +83,7 @@ export function WorkspaceScreen({ id, initialTab = 'general' }: { id: string; in
               type="button"
               className="rounded-xl bg-[rgb(var(--color-brand))] px-3 py-2 font-semibold text-white"
               onClick={() => {
-                updateStudioSession((current) => saveWorkspaceText(current, workspace.id))
+                void actions.saveText(workspace.id)
                 setTab(pendingTab)
                 setPendingTab(null)
               }}
@@ -158,25 +136,26 @@ export function WorkspaceScreen({ id, initialTab = 'general' }: { id: string; in
         <VideoPanel
           video={workspace.video}
           hue={workspace.thumbHue}
-          onDownload={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
-          onRename={(filename) => updateStudioSession((current) => renameWorkspaceVideo(current, workspace.id, filename))}
-          onDelete={() => updateStudioSession((current) => deleteWorkspaceVideo(current, workspace.id))}
+          onDownload={() => openStored(workspace.video?.publicUrl)}
+          onRename={(filename) => void actions.renameVideo(workspace.id, filename)}
+          onDelete={() => void actions.deleteVideo(workspace.id)}
         />
       ) : null}
       {tab === 'images' ? (
         <ImageManager
           images={workspace.images}
           selectedIds={session.imageSelection[workspace.id] ?? []}
-          onToggle={(imageId) => updateStudioSession((current) => toggleWorkspaceImage(current, workspace.id, imageId))}
-          onClear={() => updateStudioSession((current) => clearWorkspaceImages(current, workspace.id))}
-          onDeleteSelected={() => updateStudioSession((current) => deleteSelectedImages(current, workspace.id))}
-          onDownloadSelected={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
-          onDownloadOne={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
-          onRename={(imageId, filename) =>
-            updateStudioSession((current) => renameWorkspaceImage(current, workspace.id, imageId, filename))
-          }
-          onCover={(imageId) => updateStudioSession((current) => setCoverImage(current, workspace.id, imageId))}
-          onDeleteOne={(imageId) => updateStudioSession((current) => deleteWorkspaceImage(current, workspace.id, imageId))}
+          onToggle={(imageId) => actions.toggleImage(workspace.id, imageId)}
+          onClear={() => actions.clearImages(workspace.id)}
+          onDeleteSelected={() => void actions.deleteImages(workspace.id)}
+          onDownloadSelected={() => {
+            const ids = new Set(session.imageSelection[workspace.id] ?? [])
+            workspace.images.filter((image) => ids.has(image.id)).forEach((image) => openStored(image.publicUrl))
+          }}
+          onDownloadOne={(imageId) => openStored(workspace.images.find((image) => image.id === imageId)?.publicUrl)}
+          onRename={(imageId, filename) => void actions.renameImage(workspace.id, imageId, filename)}
+          onCover={(imageId) => void actions.cover(workspace.id, imageId)}
+          onDeleteOne={(imageId) => void actions.deleteImage(workspace.id, imageId)}
         />
       ) : null}
       {tab === 'text' ? (
@@ -184,19 +163,24 @@ export function WorkspaceScreen({ id, initialTab = 'general' }: { id: string; in
           original={workspace.originalText}
           edited={workspace.editedText}
           saved={workspace.savedText}
-          onChange={(key, value) => updateStudioSession((current) => patchWorkspaceText(current, workspace.id, key, value))}
-          onSave={() => updateStudioSession((current) => saveWorkspaceText(current, workspace.id))}
+          onChange={(key, value) => actions.patchText(workspace.id, key, value)}
+          onSave={() => void actions.saveText(workspace.id)}
         />
       ) : null}
       {tab === 'files' ? (
         <FileManager
           files={workspace.files}
-          onDownload={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
-          onRename={(fileId, name) => updateStudioSession((current) => renameWorkspaceFile(current, workspace.id, fileId, name))}
-          onDelete={(fileId) => updateStudioSession((current) => deleteWorkspaceFile(current, workspace.id, fileId))}
+          onDownload={(fileId) => openStored(workspace.files.find((file) => file.id === fileId)?.publicUrl)}
+          onRename={(fileId, name) => void actions.renameFile(workspace.id, fileId, name)}
+          onDelete={(fileId) => void actions.deleteFile(workspace.id, fileId)}
         />
       ) : null}
     </div>
   )
+}
+
+function openStored(url?: string) {
+  if (!url) return
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 

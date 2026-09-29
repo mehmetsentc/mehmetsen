@@ -1,7 +1,7 @@
 import { runMockAnalysis, selectedAssetsFor } from './analyze'
 import { statusCounts } from './format'
 import { filterLibrary } from './libraryQuery'
-import { MOCK_JOBS, MOCK_LIBRARY, MOCK_QUOTA, MOCK_WORKSPACES, REVIEW_GALLERY_URL, reviewBatchJobs } from './mockData'
+import { MOCK_JOBS, MOCK_LIBRARY, MOCK_QUOTA, MOCK_SETTINGS, MOCK_WORKSPACES, REVIEW_GALLERY_URL, reviewBatchJobs } from './mockData'
 import type {
   AnalysisItem,
   AssetChoice,
@@ -10,6 +10,8 @@ import type {
   LibrarySort,
   LibraryView,
   StudioJob,
+  StudioQuota,
+  StudioSettingsPreview,
   StudioStatus,
   Workspace,
   WorkspaceText,
@@ -30,6 +32,8 @@ export interface StudioSession {
   workspaces: Workspace[]
   imageSelection: Record<string, string[]>
   notice: string | null
+  settings: StudioSettingsPreview
+  quota: StudioQuota
 }
 
 function safeDisplayName(filename: string): string {
@@ -55,6 +59,27 @@ export function createStudioSession(): StudioSession {
     workspaces,
     imageSelection: {},
     notice: null,
+    settings: clone(MOCK_SETTINGS),
+    quota: clone(MOCK_QUOTA),
+  }
+}
+
+export function createEmptyLiveSession(): StudioSession {
+  return {
+    analyses: [],
+    selectedAnalysisIds: [],
+    assetSelection: {},
+    jobs: [],
+    library: [],
+    libraryQuery: '',
+    libraryFilter: 'all',
+    librarySort: 'newest',
+    libraryView: 'grid',
+    workspaces: [],
+    imageSelection: {},
+    notice: null,
+    settings: clone(MOCK_SETTINGS),
+    quota: { usedLabel: '0 GB', capLabel: '5 GB', usedRatio: 0 },
   }
 }
 
@@ -171,7 +196,7 @@ export function deleteJob(session: StudioSession, id: string): StudioSession {
 export function sessionSummary(session: StudioSession) {
   return {
     ...statusCounts(session.jobs.map((job) => job.status)),
-    quota: MOCK_QUOTA,
+    quota: session.quota ?? MOCK_QUOTA,
   }
 }
 

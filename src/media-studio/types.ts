@@ -42,11 +42,12 @@ export interface AnalysisItem {
   errorDetail?: string
   thumbHue: number
   /** PHASE 1 local fixture. */
-  mock: true
+  mock: boolean
 }
 
 export interface JobProgress {
-  percent: number
+  /** Null when the server has bytes but no Content-Length. Never invent a percent. */
+  percent: number | null
   loadedLabel: string
   totalLabel: string
   speedLabel: string
@@ -61,6 +62,7 @@ export interface StudioJob {
   createdLabel: string
   sizeLabel: string
   thumbHue: number
+  thumbUrl?: string
   workspaceId: string | null
   progress: JobProgress | null
   stageLabel?: string
@@ -70,7 +72,7 @@ export interface StudioJob {
   resultLabel?: string
   errorTitle?: string
   errorDetail?: string
-  mock: true
+  mock: boolean
 }
 
 export type LibraryFilter =
@@ -100,7 +102,7 @@ export interface LibraryItem {
   status: StudioStatus
   flags: Array<'today' | 'video' | 'images' | 'draft' | 'imported' | 'saved' | 'expiring'>
   thumbHue: number
-  mock: true
+  mock: boolean
 }
 
 export interface StudioImage {
@@ -112,6 +114,7 @@ export interface StudioImage {
   format: string
   cover: boolean
   hue: number
+  publicUrl?: string
 }
 
 export interface StudioFileNode {
@@ -121,6 +124,8 @@ export interface StudioFileNode {
   sizeLabel: string
   modifiedLabel: string
   depth: number
+  publicUrl?: string
+  storagePath?: string
 }
 
 export interface WorkspaceText {
@@ -139,6 +144,7 @@ export interface WorkspaceVideo {
   duration: string
   format: string
   sizeLabel: string
+  publicUrl?: string
 }
 
 export interface WorkspaceRetention {
@@ -162,7 +168,8 @@ export interface Workspace {
   editedText: WorkspaceText
   savedText: WorkspaceText
   files: StudioFileNode[]
-  mock: true
+  createdAt?: number
+  mock: boolean
 }
 
 export type WorkspaceTab = 'general' | 'video' | 'images' | 'text' | 'files'
@@ -182,7 +189,7 @@ export interface StudioQuota {
 }
 
 export interface StudioSettingsPreview {
-  mock: true
+  mock: boolean
   concurrentDownloads: number
   defaultQuality: string
   temporaryHours: number

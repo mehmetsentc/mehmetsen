@@ -8,10 +8,8 @@ function parseTriState(raw: string | undefined): boolean | null {
 }
 
 /**
- * MEDIA_STUDIO_ENABLED — default false.
- * Env wins when set; otherwise CMS flag `mediaStudioEnabled` (also default false).
- * Client surfaces (sidebar) read NEXT_PUBLIC_MEDIA_STUDIO_ENABLED.
- * Does not download, store, or publish anything.
+ * MEDIA_STUDIO_ENABLED — on unless an env value turns it off.
+ * Env wins when set; otherwise CMS flag `mediaStudioEnabled`.
  */
 export function isMediaStudioEnabled(): boolean {
   const env =

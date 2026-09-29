@@ -73,7 +73,7 @@ export function ImageManager({
               }`}
             >
               <button type="button" className={`block w-full ${focusRing}`} onClick={() => setOpen(index)} aria-label={`${image.filename} büyüt`}>
-                <MediaThumb hue={image.hue} className="aspect-[4/3]" label="" />
+                <MediaThumb hue={image.hue} src={image.publicUrl} className="aspect-[4/3]" label="" />
               </button>
               <div className="space-y-2 p-3">
                 <div>

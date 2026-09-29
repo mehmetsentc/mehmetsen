@@ -32,6 +32,9 @@ import {
 import { WORKSPACE_TABS } from '@/media-studio/types'
 import { DEFAULT_CMS_FEATURE_FLAGS } from '@/types/newsroomOs'
 import { parseImportText } from '@/media-studio/urlInput'
+import { inspectHtml } from '@/media-studio/server/inspect'
+import { zipStore } from '@/media-studio/server/zipStore'
+import { assertSafeUrl } from '@/services/crawler/url/ssrf'
 
 const FLAG_KEYS = ['MEDIA_STUDIO_ENABLED', 'NEXT_PUBLIC_MEDIA_STUDIO_ENABLED'] as const
 
@@ -52,9 +55,9 @@ describe('media studio phase 1', () => {
     }
   })
 
-  it('keeps the feature flag off by default and hides the nav item', () => {
-    expect(DEFAULT_CMS_FEATURE_FLAGS.mediaStudioEnabled).toBe(false)
-    expect(isMediaStudioEnabled()).toBe(false)
+  it('turns the studio on by default and still hides the nav item until a caller inserts it', () => {
+    expect(DEFAULT_CMS_FEATURE_FLAGS.mediaStudioEnabled).toBe(true)
+    expect(isMediaStudioEnabled()).toBe(true)
     const items = insertMediaStudioNav(
       [{ href: '/admin/videos' }, { href: '/admin/events' }],
       null
@@ -215,5 +218,21 @@ describe('media studio phase 1', () => {
     expect(classes).toContain('grid-cols-2')
     expect(classes).not.toContain('max-w-3xl')
     expect(classes).not.toContain('max-w-4xl')
+  })
+
+  it('plans a direct video from page html and refuses a private address', async () => {
+    const page = inspectHtml(
+      'https://example.com/story',
+      '<html><head><title>Sahil</title><meta property="og:video" content="https://cdn.example.com/clip.mp4"></head></html>'
+    )
+    expect(page.item.status).toBe('READY')
+    expect(page.plan.assets.some((asset) => asset.key === 'video' && asset.url?.endsWith('.mp4'))).toBe(true)
+    await expect(assertSafeUrl('http://127.0.0.1/secret')).rejects.toThrow()
+  })
+
+  it('writes an uncompressed zip that names the file', () => {
+    const zip = zipStore([{ name: 'note.txt', data: Buffer.from('merhaba') }])
+    expect(zip.subarray(0, 2).toString('utf8')).toBe('PK')
+    expect(zip.toString('utf8')).toContain('note.txt')
   })
 })

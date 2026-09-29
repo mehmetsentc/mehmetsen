@@ -28,7 +28,12 @@ export function WorkspaceHeader({
   const [confirm, setConfirm] = useState(false)
   return (
     <header className="grid items-start gap-5 lg:grid-cols-[minmax(280px,420px)_minmax(0,1fr)]">
-      <MediaThumb hue={workspace.thumbHue} className="aspect-video w-full rounded-2xl" label="" />
+      <MediaThumb
+        hue={workspace.thumbHue}
+        src={workspace.images.find((image) => image.cover)?.publicUrl ?? workspace.images[0]?.publicUrl}
+        className="aspect-video w-full rounded-2xl"
+        label=""
+      />
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={workspace.status} />

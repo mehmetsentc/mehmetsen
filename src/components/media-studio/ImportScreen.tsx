@@ -1,21 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Check, Pencil } from 'lucide-react'
-import {
-  applyMockAnalysis,
-  cancelJob,
-  deleteJob,
-  enqueueSelected,
-  previewAction,
-  retryJob,
-  selectAllReady,
-  toggleAnalysis,
-  toggleAnalysisAsset,
-  updateStudioSession,
-} from '@/media-studio/session'
 import { useStudio } from '@/media-studio/useStudio'
+import { useStudioActions } from './studioActions'
 import { AnalysisCard } from './AnalysisCard'
 import { ImportPanel } from './ImportPanel'
 import { JobRow } from './JobRow'
@@ -23,8 +12,6 @@ import { StudioSkeleton } from './StudioSkeleton'
 import { MediaThumb } from './MediaThumb'
 import { primaryButton, quietButton } from './styles'
 import { useStudioLinks } from './studioLinks'
-
-const PREVIEW = 'Önizleme: dosya henüz oluşturulmadı.'
 
 export function ImportScreen({
   initialText = '',
@@ -34,18 +21,10 @@ export function ImportScreen({
   mode?: 'compose' | 'result'
 }) {
   const session = useStudio()
+  const actions = useStudioActions()
   const links = useStudioLinks()
   const [text, setText] = useState(initialText)
   const [pending, setPending] = useState(false)
-
-  useEffect(() => {
-    if (!pending) return
-    const timer = window.setTimeout(() => {
-      updateStudioSession((current) => applyMockAnalysis(current, text))
-      setPending(false)
-    }, 420)
-    return () => window.clearTimeout(timer)
-  }, [pending, text])
 
   const results = session.analyses
   const active = session.jobs.filter((job) => job.status === 'DOWNLOADING')
@@ -56,7 +35,7 @@ export function ImportScreen({
       type="button"
       className={`${primaryButton} w-full sm:w-auto`}
       disabled={session.selectedAnalysisIds.length === 0}
-      onClick={() => updateStudioSession(enqueueSelected)}
+        onClick={() => void actions.enqueue()}
     >
       Seçilenleri İndir
       <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -66,7 +45,15 @@ export function ImportScreen({
   return (
     <div className="pb-10">
       {mode === 'compose' && results.length === 0 && !pending ? (
-        <ImportPanel value={text} onChange={setText} busy={pending} onAnalyze={() => setPending(true)} />
+          <ImportPanel
+            value={text}
+            onChange={setText}
+            busy={pending}
+            onAnalyze={() => {
+              setPending(true)
+              void actions.analyze(text).finally(() => setPending(false))
+            }}
+          />
       ) : null}
       {pending ? (
         <div className="mt-8 max-w-[840px]" aria-live="polite">
@@ -82,7 +69,7 @@ export function ImportScreen({
               <p className="text-sm text-[rgb(var(--color-text))]/75">{session.selectedAnalysisIds.length} seçili</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={quietButton} onClick={() => updateStudioSession(selectAllReady)}>
+                <button type="button" className={quietButton} onClick={() => actions.selectAll()}>
                 Tümünü Seç
               </button>
               {downloadAction}
@@ -96,8 +83,8 @@ export function ImportScreen({
                 item={item}
                 selected={session.selectedAnalysisIds.includes(item.id)}
                 assets={session.assetSelection[item.id] ?? []}
-                onToggleCard={() => updateStudioSession((current) => toggleAnalysis(current, item.id))}
-                onToggleAsset={(key) => updateStudioSession((current) => toggleAnalysisAsset(current, item.id, key))}
+                onToggleCard={() => actions.toggleAnalysis(item.id)}
+                onToggleAsset={(key) => actions.toggleAsset(item.id, key)}
               />
             ))}
           </div>
@@ -108,8 +95,8 @@ export function ImportScreen({
           item={results[0]}
           selected={session.selectedAnalysisIds.includes(results[0].id)}
           assets={session.assetSelection[results[0].id] ?? []}
-          onToggleCard={() => updateStudioSession((current) => toggleAnalysis(current, results[0].id))}
-          onToggleAsset={(key) => updateStudioSession((current) => toggleAnalysisAsset(current, results[0].id, key))}
+          onToggleCard={() => actions.toggleAnalysis(results[0].id)}
+          onToggleAsset={(key) => actions.toggleAsset(results[0].id, key)}
           action={downloadAction}
         />
       ) : null}
@@ -128,10 +115,10 @@ export function ImportScreen({
                   <JobRow
                     key={job.id}
                     job={job}
-                    onCancel={() => updateStudioSession((current) => cancelJob(current, job.id))}
-                    onRetry={() => updateStudioSession((current) => retryJob(current, job.id))}
-                    onDelete={() => updateStudioSession((current) => deleteJob(current, job.id))}
-                    onDownload={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
+                    onCancel={() => void actions.cancel(job.id)}
+                    onRetry={() => void actions.retry(job.id)}
+                    onDelete={() => void actions.deleteJob(job.id)}
+                    onDownload={() => actions.openFile(job)}
                   />
                 ))}
               </div>

@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { JobFilter } from '@/media-studio/session'
-import { cancelJob, deleteJob, filterJobs, previewAction, retryJob, updateStudioSession } from '@/media-studio/session'
+import { filterJobs } from '@/media-studio/session'
+import { useStudioActions } from './studioActions'
 import { useStudio } from '@/media-studio/useStudio'
 import { batchOverview, statusLabel } from '@/media-studio/format'
 import { focusRing } from './styles'
@@ -15,8 +16,6 @@ import { StudioSkeleton } from './StudioSkeleton'
 import type { StudioJob } from '@/media-studio/types'
 
 const FILTERS: JobFilter[] = ['ALL', 'DOWNLOADING', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED']
-const PREVIEW = 'Önizleme: dosya henüz oluşturulmadı.'
-
 export function JobsScreen({ immediate = false }: { immediate?: boolean }) {
   const session = useStudio()
   const revealed = useStudioReveal()
@@ -128,13 +127,14 @@ function JobGroup({
 }
 
 function JobLine({ job }: { job: StudioJob }) {
+  const actions = useStudioActions()
   return (
     <JobRow
       job={job}
-      onCancel={() => updateStudioSession((current) => cancelJob(current, job.id))}
-      onRetry={() => updateStudioSession((current) => retryJob(current, job.id))}
-      onDelete={() => updateStudioSession((current) => deleteJob(current, job.id))}
-      onDownload={() => updateStudioSession((current) => previewAction(current, PREVIEW))}
+      onCancel={() => void actions.cancel(job.id)}
+      onRetry={() => void actions.retry(job.id)}
+      onDelete={() => void actions.deleteJob(job.id)}
+      onDownload={() => actions.openFile(job)}
     />
   )
 }

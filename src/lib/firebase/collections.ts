@@ -52,6 +52,10 @@ export const Collections = {
   SOURCES:        'sources',
   /** Processed-story library — cross-source duplicate gate (Admin SDK only) */
   NEWSROOM_STORY_LIBRARY: 'newsroomStoryLibrary',
+  MEDIA_STUDIO_JOBS: 'mediaStudioJobs',
+  MEDIA_STUDIO_WORKSPACES: 'mediaStudioWorkspaces',
+  MEDIA_STUDIO_ANALYSES: 'mediaStudioAnalyses',
+  MEDIA_STUDIO_SETTINGS: 'mediaStudioSettings',
 
   // ── AI Editorial Newsroom V2 (personas) ───────────────────────────────────
   /** Persistent AI editor identities (private config) */

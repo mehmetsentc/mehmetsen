@@ -6,10 +6,11 @@ import { FormEvent, useState } from 'react'
 import { AlertCircle, ArrowDownToLine, LayoutGrid, Plus, Search, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { STUDIO_NAV, isStudioNavActive } from '@/media-studio/routes'
-import { clearNotice, sessionSummary, setLibraryControls, updateStudioSession } from '@/media-studio/session'
+import { sessionSummary } from '@/media-studio/session'
 import { useStudio } from '@/media-studio/useStudio'
 import { cn } from '@/lib/utils'
 import { focusRing } from './styles'
+import { useStudioActions } from './studioActions'
 import { useStudioLinks } from './studioLinks'
 
 const RAIL_ICON: Record<string, LucideIcon> = {
@@ -32,13 +33,14 @@ export function MediaStudioShell({
   const pathname = navPathname ?? livePathname
   const router = useRouter()
   const links = useStudioLinks()
+  const actions = useStudioActions()
   const session = useStudio()
   const quota = sessionSummary(session).quota
   const [query, setQuery] = useState('')
 
   const onSearch = (event: FormEvent) => {
     event.preventDefault()
-    updateStudioSession((current) => setLibraryControls(current, { libraryQuery: query.trim() }))
+    actions.setLibrary({ libraryQuery: query.trim() })
     router.push(links.href('/admin/media-studio/library'))
   }
 
@@ -120,7 +122,7 @@ export function MediaStudioShell({
           <div className="px-4 pt-4 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-3 rounded-xl bg-[rgb(var(--color-surface))] px-4 py-3 text-sm text-[rgb(var(--color-text))]">
               <p>{session.notice}</p>
-              <button type="button" className={`rounded-lg px-2 py-1 text-xs font-semibold ${focusRing}`} onClick={() => updateStudioSession(clearNotice)}>
+              <button type="button" className={`rounded-lg px-2 py-1 text-xs font-semibold ${focusRing}`} onClick={() => actions.clearNotice()}>
                 Kapat
               </button>
             </div>

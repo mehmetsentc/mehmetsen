@@ -34,13 +34,13 @@ export function JobRow({
   const completed = job.status === 'COMPLETED'
 
   if (downloading) {
-    const width = Math.max(0, Math.min(100, progress.percent))
+    const width = progress.percent == null ? null : Math.max(0, Math.min(100, progress.percent))
     const speed = progressSpeedLabel(progress.speedLabel)
     const eta = progress.etaLabel ? progressEtaShort(progress.etaLabel) : ''
     return (
       <article className="rounded-2xl bg-[rgb(var(--color-card))] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-[rgb(var(--color-border))] sm:p-4">
         <div className="flex gap-3 sm:gap-4">
-          <MediaThumb hue={job.thumbHue} className="h-16 w-24 shrink-0 rounded-xl sm:h-[104px] sm:w-[176px]" label="" />
+          <MediaThumb hue={job.thumbHue} src={job.thumbUrl} className="h-16 w-24 shrink-0 rounded-xl sm:h-[104px] sm:w-[176px]" label="" />
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -48,9 +48,11 @@ export function JobRow({
                 <p className="mt-1 hidden text-sm text-[rgb(var(--color-text))]/80 sm:block">{job.mediaLabel ?? job.stageLabel ?? 'Video'}</p>
               </div>
               <div className="flex items-start gap-1">
+                {width == null ? null : (
                 <p className="text-[28px] font-semibold leading-none tabular-nums tracking-tight text-[rgb(var(--color-text))] sm:text-[32px]">
                   {width}%
                 </p>
+                )}
                 <OverflowMenu label={`${job.title} işlemleri`}>
                   <button type="button" className={overflowItemClass} onClick={onCancel}>
                     İptal
@@ -142,7 +144,7 @@ function ProgressBlock({
   eta,
 }: {
   className?: string
-  width: number
+  width: number | null
   label: string
   amount: string
   speed: string
@@ -155,10 +157,12 @@ function ProgressBlock({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={width}
+        aria-valuenow={width ?? undefined}
         aria-label={label}
       >
-        <div className="h-full rounded-full" style={{ width: `${width}%`, backgroundColor: 'rgb(var(--admin-info))' }} />
+        {width == null ? null : (
+          <div className="h-full rounded-full" style={{ width: `${width}%`, backgroundColor: 'rgb(var(--admin-info))' }} />
+        )}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <span className="font-medium tabular-nums text-[rgb(var(--color-text))]">{amount}</span>
