@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   extractCategoryOptions,
   filterCityEvents,
+  isDailyListingEvent,
+  pickCinemaEventsForDay,
   resolveEventFilterCategory,
 } from '@/lib/cityEventFilters'
 import type { NaEvent } from '@/types/event'
@@ -146,17 +148,12 @@ describe('filterCityEvents dateFilter', () => {
     expect(filtered.map((e) => e.id)).toEqual(['tomorrow'])
   })
 
-  it('Yarın includes multi-day events spanning tomorrow (Istanbul calendar)', () => {
+  it('Yarın keeps only single-day events starting tomorrow', () => {
     const now = '2026-08-13T09:00:00.000Z' // 13 Ağustos öğlen TR
     const spanningFestival = makeEvent({
       id: 'altin-sardalya',
       startsAt: '2026-08-13T07:00:00.000Z',
       endsAt: '2026-08-17T18:00:00.000Z',
-    })
-    const troia = makeEvent({
-      id: 'troia',
-      startsAt: '2026-08-08T07:00:00.000Z',
-      endsAt: '2026-08-16T18:00:00.000Z',
     })
     const startsTomorrow = makeEvent({
       id: 'starts-tomorrow',
@@ -166,21 +163,14 @@ describe('filterCityEvents dateFilter', () => {
       id: 'future-only',
       startsAt: '2026-08-20T18:00:00.000Z',
     })
-    const finishedBefore = makeEvent({
-      id: 'finished-before',
-      startsAt: '2026-08-08T07:00:00.000Z',
-      endsAt: '2026-08-10T18:00:00.000Z',
-    })
 
     const filtered = filterCityEvents(
-      [spanningFestival, troia, startsTomorrow, futureOnly, finishedBefore],
+      [spanningFestival, startsTomorrow, futureOnly],
       { dateFilter: 'tomorrow', category: null, venue: null, districtSlug: null },
       now
     )
 
-    expect(filtered.map((e) => e.id).sort()).toEqual(
-      ['altin-sardalya', 'starts-tomorrow', 'troia'].sort()
-    )
+    expect(filtered.map((e) => e.id)).toEqual(['starts-tomorrow'])
   })
 
   it('Yarın excludes previous-day cinema whose endsAt only spills past midnight', () => {
@@ -203,7 +193,7 @@ describe('filterCityEvents dateFilter', () => {
       now
     )
 
-    expect(filtered.map((e) => e.id)).toEqual(['festival'])
+    expect(filtered.map((e) => e.id)).toEqual([])
   })
 
   it('Sinema filter matches tag-only Paribu cinema events', () => {
@@ -286,7 +276,7 @@ describe('filterCityEvents dateFilter', () => {
     expect(filtered.map((e) => e.id)).toEqual(['future-annual'])
   })
 
-  it('Tümü on Yaklaşan keeps multi-day events still running today', () => {
+  it('Tümü on Yaklaşan drops multi-day exhibitions still running today', () => {
     const ongoingExhibition = makeEvent({
       id: 'ongoing-exhibition',
       startsAt: '2026-07-01T07:00:00.000Z',
@@ -305,7 +295,7 @@ describe('filterCityEvents dateFilter', () => {
       { timeRange: 'upcoming' }
     )
 
-    expect(filtered.map((e) => e.id)).toEqual(['ongoing-exhibition', 'future-event'])
+    expect(filtered.map((e) => e.id)).toEqual(['future-event'])
   })
 
   it('Tümü on Geçmiş does not apply upcoming-only date constraint', () => {
@@ -323,5 +313,86 @@ describe('filterCityEvents dateFilter', () => {
     )
 
     expect(filtered.map((e) => e.id)).toEqual(['finished-july'])
+  })
+})
+
+describe('isDailyListingEvent', () => {
+  it('keeps a same-day concert starting today or later', () => {
+    expect(
+      isDailyListingEvent(
+        makeEvent({ startsAt: '2026-08-10T18:00:00.000Z', endsAt: '2026-08-10T21:00:00.000Z' }),
+        AUG_10_2026_NOON_TR
+      )
+    ).toBe(true)
+  })
+
+  it('drops Aug–Nov museum ranges and past starts', () => {
+    expect(
+      isDailyListingEvent(
+        makeEvent({
+          startsAt: '2026-08-10T06:00:00.000Z',
+          endsAt: '2026-11-02T15:00:00.000Z',
+          recurrence: 'annual',
+        }),
+        AUG_10_2026_NOON_TR
+      )
+    ).toBe(false)
+    expect(
+      isDailyListingEvent(
+        makeEvent({ startsAt: '2026-08-01T18:00:00.000Z' }),
+        AUG_10_2026_NOON_TR
+      )
+    ).toBe(false)
+  })
+
+  it('drops standing museums even when hours are a single calendar day', () => {
+    expect(
+      isDailyListingEvent(
+        makeEvent({
+          title: 'Antalya Kum Heykel Müzesi - 2026',
+          venue: 'Antalya Kum Heykel Müzesi',
+          startsAt: '2026-08-10T06:00:00.000Z',
+          endsAt: '2026-08-10T17:00:00.000Z',
+        }),
+        AUG_10_2026_NOON_TR
+      )
+    ).toBe(false)
+  })
+
+  it('keeps late-night cinema that spills before 06:00', () => {
+    expect(
+      isDailyListingEvent(
+        makeEvent({
+          startsAt: '2026-08-10T18:30:00.000Z',
+          endsAt: '2026-08-10T21:30:00.000Z', // 11 Ağustos 00:30 TR
+          category: 'cinema',
+        }),
+        AUG_10_2026_NOON_TR
+      )
+    ).toBe(true)
+  })
+})
+
+describe('pickCinemaEventsForDay', () => {
+  it('returns only cinema starting on that Istanbul day', () => {
+    const todayFilm = makeEvent({
+      id: 'film-today',
+      category: 'cinema',
+      startsAt: '2026-08-10T16:00:00.000Z',
+    })
+    const tomorrowFilm = makeEvent({
+      id: 'film-tomorrow',
+      category: 'cinema',
+      startsAt: '2026-08-11T16:00:00.000Z',
+    })
+    const concert = makeEvent({
+      id: 'concert',
+      category: 'concert',
+      startsAt: '2026-08-10T18:00:00.000Z',
+    })
+
+    expect(
+      pickCinemaEventsForDay([todayFilm, tomorrowFilm, concert], AUG_10_2026_NOON_TR).map((e) => e.id)
+    ).toEqual(['film-today'])
   })
 })

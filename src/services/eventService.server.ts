@@ -1,12 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
-import {
-  addIstanbulCalendarDays,
-  getIstanbulTodayStartIso,
-  isSameOrAfterIstanbulCalendarDay,
-  resolveEventSchedule,
-} from '@/lib/annualEventDates'
-import { resolveEventFilterCategory } from '@/lib/cityEventFilters'
+import { isSameIstanbulCalendarDay, resolveEventSchedule } from '@/lib/annualEventDates'
+import { isDailyListingEvent, resolveEventFilterCategory } from '@/lib/cityEventFilters'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import {
@@ -20,23 +15,14 @@ import type { NaEvent } from '@/types/event'
 
 const CITY_EVENT_FETCH_TARGET = 120
 const FETCH_BATCH_SIZE = 50
-const CITY_CINEMA_FEED_LIMIT = 8
-const CITY_CINEMA_NEAR_TERM_DAYS = 7
-
-function isNearTermCityEvent(event: NaEvent, nowIso: string): boolean {
-  const { startsAt } = resolveEventSchedule(event, nowIso)
-  const todayStart = getIstanbulTodayStartIso(nowIso)
-  const nearEnd = addIstanbulCalendarDays(todayStart, CITY_CINEMA_NEAR_TERM_DAYS)
-  return (
-    isSameOrAfterIstanbulCalendarDay(startsAt, todayStart) &&
-    isSameOrAfterIstanbulCalendarDay(nearEnd, startsAt)
-  )
-}
+const CITY_CINEMA_FEED_LIMIT = 12
+const CITY_CINEMA_CITIES = new Set(['canakkale', 'antalya'])
 
 function filterCityCinemaEvents(events: NaEvent[], nowIso: string): NaEvent[] {
   return events
     .filter((event) => resolveEventFilterCategory(event) === 'cinema')
-    .filter((event) => isNearTermCityEvent(event, nowIso))
+    .filter((event) => isDailyListingEvent(event, nowIso))
+    .filter((event) => isSameIstanbulCalendarDay(resolveEventSchedule(event, nowIso).startsAt, nowIso))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
     .slice(0, CITY_CINEMA_FEED_LIMIT)
 }
@@ -47,7 +33,7 @@ function isVisible(event: NaEvent): boolean {
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
   if (timeRange === 'upcoming') {
-    return isEventUpcoming(event, nowIso)
+    return isDailyListingEvent(event, nowIso)
   }
 
   if (isEventUpcoming(event, nowIso)) return false
@@ -163,16 +149,14 @@ const getCityCinemaEventsCached = unstable_cache(
     const events = await getCityEventsServer(citySlug, 'upcoming', 80)
     return filterCityCinemaEvents(events, nowIso)
   },
-  ['city-cinema-events-v1'],
+  ['city-cinema-events-v2'],
   { revalidate: 120, tags: ['city-events'] }
 )
 
-/** Today + near-term cinema rows for city Ana Feed (Paribu / Sinema tag).
- *  Cinema strip is Çanakkale-tenant only — national /yerel pages do not show it.
- */
+/** Today's cinema rows for city Ana Feed (Paribu / Sinema tag). */
 export async function getCityCinemaEventsServer(citySlug: string): Promise<NaEvent[]> {
   const slug = citySlug.trim().toLowerCase()
-  if (slug !== 'canakkale') return []
+  if (!CITY_CINEMA_CITIES.has(slug)) return []
   return getCityCinemaEventsCached(slug)
 }
 

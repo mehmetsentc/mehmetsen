@@ -15,6 +15,7 @@ import { db, Collections } from '@/lib/firebase/firestore'
 import { devLog, withTimeout } from '@/lib/asyncUtils'
 import { enqueueFirestoreRead } from '@/lib/firestoreQueue'
 import { resolveEventSchedule } from '@/lib/annualEventDates'
+import { isDailyListingEvent } from '@/lib/cityEventFilters'
 import {
   getUpcomingStartsAtLowerBound,
   isEventUpcoming,
@@ -61,7 +62,7 @@ function effectiveTimelineStatus(event: NaEvent, nowIso: string): EventTimelineS
 
 function matchesTimeRange(event: NaEvent, timeRange: EventTimeRange, nowIso: string): boolean {
   if (timeRange === 'upcoming') {
-    return isEventUpcoming(event, nowIso)
+    return isDailyListingEvent(event, nowIso)
   }
 
   if (isEventUpcoming(event, nowIso)) return false

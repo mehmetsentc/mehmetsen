@@ -5,8 +5,6 @@ import {
   CalendarDays,
   ChevronDown,
   Filter,
-  LayoutGrid,
-  List,
   SlidersHorizontal,
 } from 'lucide-react'
 import { getDistrictsForProvince } from '@/constants/cities'
@@ -14,17 +12,18 @@ import { useEvents } from '@/hooks/useEvents'
 import { filterEventsForQuery } from '@/services/eventService'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import {
+  cinemaStripDayIso,
   countActiveFilters,
   DEFAULT_CITY_EVENT_FILTERS,
   extractCategoryOptions,
   extractDistrictOptions,
   extractVenueOptions,
   filterCityEvents,
-  pickFeaturedEvents,
+  pickCinemaEventsForDay,
+  resolveEventFilterCategory,
   sortCityEvents,
   type CityEventFilterState,
   type CityEventSort,
-  type CityEventViewMode,
 } from '@/lib/cityEventFilters'
 import { cn } from '@/lib/utils'
 import type { EventTimeRange } from '@/services/eventService'
@@ -33,9 +32,8 @@ import {
   CityEventFiltersPanel,
   CityEventQuickFilters,
 } from './CityEventFiltersPanel'
-import { CityEventGridCard, CityEventGridCardSkeleton } from './CityEventGridCard'
+import { CityCinemaEventsStrip } from './CityCinemaEventsStrip'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
-import { CityEventTopSellers } from './CityEventTopSellers'
 
 interface CityEventsClientProps {
   citySlug: string
@@ -50,17 +48,29 @@ const SORT_OPTIONS: Array<{ id: CityEventSort; label: string }> = [
   { id: 'rating', label: 'Popülerlik' },
 ]
 
-const TIME_RANGE_OPTIONS: Array<{ id: EventTimeRange; label: string }> = [
-  { id: 'upcoming', label: 'Yaklaşan' },
-  { id: 'past', label: 'Geçmiş' },
-]
+const TIME_RANGE: EventTimeRange = 'upcoming'
+
+const BACK_VOWELS = new Set(['a', 'ı', 'o', 'u'])
+
+function cityLocative(cityName: string): string {
+  const chars = [...cityName.toLocaleLowerCase('tr-TR')]
+  let vowel: string | null = null
+  for (let i = chars.length - 1; i >= 0; i--) {
+    if ('aeıioöuü'.includes(chars[i])) {
+      vowel = chars[i]
+      break
+    }
+  }
+  const suffix = vowel && BACK_VOWELS.has(vowel) ? "'da" : "'de"
+  return `${cityName}${suffix}`
+}
 
 export function CityEventsClient({
   citySlug,
   cityName,
   initialEvents = [],
 }: CityEventsClientProps) {
-  const [timeRange, setTimeRange] = useState<EventTimeRange>('upcoming')
+  const timeRange = TIME_RANGE
   const { events, loading, error, retry } = useEvents({
     citySlug,
     timeRange,
@@ -68,7 +78,7 @@ export function CityEventsClient({
 
   // SSR ile gelen initialEvents'i; client yüklenirken VE timeout/hata durumunda da göster
   const rawDisplayEvents = (() => {
-    const hasSSR = initialEvents.length > 0 && timeRange === 'upcoming'
+    const hasSSR = initialEvents.length > 0
     if (hasSSR && (loading || error) && events.length === 0) return initialEvents
     return events
   })()
@@ -80,7 +90,6 @@ export function CityEventsClient({
 
   const [filters, setFilters] = useState<CityEventFilterState>(DEFAULT_CITY_EVENT_FILTERS)
   const [sort, setSort] = useState<CityEventSort>('date')
-  const [viewMode, setViewMode] = useState<CityEventViewMode>('grid')
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [tabletFiltersExpanded, setTabletFiltersExpanded] = useState(false)
 
@@ -107,22 +116,39 @@ export function CityEventsClient({
     return sortCityEvents(filtered, sort)
   }, [displayEvents, filters, sort, timeRange])
 
-  const featuredEvents = useMemo(() => pickFeaturedEvents(filteredEvents), [filteredEvents])
+  const cinemaEvents = useMemo(() => {
+    if (filters.category && filters.category !== 'cinema') return []
+    return pickCinemaEventsForDay(
+      filterCityEvents(
+        displayEvents,
+        { ...filters, category: 'cinema' },
+        undefined,
+        { timeRange }
+      ),
+      cinemaStripDayIso(filters.dateFilter)
+    )
+  }, [displayEvents, filters, timeRange])
+
+  const listedEvents = useMemo(() => {
+    if (filters.category === 'cinema') return []
+    return filteredEvents.filter((event) => resolveEventFilterCategory(event) !== 'cinema')
+  }, [filteredEvents, filters.category])
+
+  const cinemaTitle = useMemo(() => {
+    const locative = cityLocative(cityName)
+    if (filters.dateFilter === 'tomorrow') return `Yarın ${locative} Sinemalar`
+    return `Bugün ${locative} Sinemalar`
+  }, [cityName, filters.dateFilter])
+
   const activeFilterCount = countActiveFilters(filters)
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
   // SSR fallback aktifken error UI'ı gizle (soft retry yeterli)
   const clientErrorVisible = !!error && rawDisplayEvents.length === 0
-  const showEmpty = !loading && !clientErrorVisible && filteredEvents.length === 0
+  const showEmpty =
+    !loading && !clientErrorVisible && listedEvents.length === 0 && cinemaEvents.length === 0
   const showSkeletons = loading && displayEvents.length === 0
-
-  const gridClassName = cn(
-    'grid gap-3 md:gap-4',
-    viewMode === 'grid'
-      ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-      : 'grid-cols-1'
-  )
 
   return (
     <div className="w-full pb-8 pt-3 max-md:pt-2">
@@ -138,7 +164,7 @@ export function CityEventsClient({
                 {cityName} Etkinlikleri
               </h1>
               <p className="text-xs text-[rgb(var(--color-text-secondary))] md:text-sm">
-                Konser, sinema, tiyatro, festival ve daha fazlası
+                Bugünün ve yaklaşan tek günlük etkinlikleri
               </p>
             </div>
           </div>
@@ -252,46 +278,37 @@ export function CityEventsClient({
             </div>
           </div>
 
-          <CityEventTopSellers events={featuredEvents} loading={showSkeletons} />
-
-          {/* Toolbar: time range + sort + view toggle + count */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div
-                className="inline-flex rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5"
-                role="group"
-                aria-label="Zaman aralığı"
-              >
-                {TIME_RANGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setTimeRange(opt.id)}
-                    aria-pressed={timeRange === opt.id}
-                    className={cn(
-                      'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm',
-                      timeRange === opt.id
-                        ? 'bg-[rgb(var(--color-brand))] text-white'
-                        : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-sm text-[rgb(var(--color-text-secondary))]">
-                {showSkeletons ? (
-                  'Yükleniyor…'
-                ) : (
-                  <>
-                    <span className="font-semibold text-[rgb(var(--color-text))]">
-                      {filteredEvents.length}
-                    </span>{' '}
-                    etkinlik
-                  </>
-                )}
-              </p>
+          {showSkeletons ? (
+            <div className="mb-5 flex gap-3 overflow-hidden">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div
+                  key={i}
+                  className="h-40 w-[240px] shrink-0 animate-pulse rounded-xl bg-[rgb(var(--color-surface-raised))]"
+                />
+              ))}
             </div>
+          ) : (
+            <CityCinemaEventsStrip
+              events={cinemaEvents}
+              cityName={cityName}
+              title={cinemaTitle}
+              variant="page"
+            />
+          )}
+
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[rgb(var(--color-text-secondary))]">
+              {showSkeletons ? (
+                'Yükleniyor…'
+              ) : (
+                <>
+                  <span className="font-semibold text-[rgb(var(--color-text))]">
+                    {listedEvents.length + cinemaEvents.length}
+                  </span>{' '}
+                  etkinlik
+                </>
+              )}
+            </p>
 
             <div className="flex items-center gap-2">
               <label className="sr-only" htmlFor="city-event-sort">
@@ -313,56 +330,15 @@ export function CityEventsClient({
                   </option>
                 ))}
               </select>
-
-              <div
-                className="hidden items-center rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-0.5 md:flex"
-                role="group"
-                aria-label="Görünüm"
-              >
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  aria-pressed={viewMode === 'grid'}
-                  className={cn(
-                    'rounded-md p-1.5 transition-colors',
-                    viewMode === 'grid'
-                      ? 'bg-[rgb(var(--color-brand))] text-white'
-                      : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
-                  )}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  aria-pressed={viewMode === 'list'}
-                  className={cn(
-                    'rounded-md p-1.5 transition-colors',
-                    viewMode === 'list'
-                      ? 'bg-[rgb(var(--color-brand))] text-white'
-                      : 'text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]'
-                  )}
-                >
-                  <List className="h-4 w-4" />
-                </button>
-              </div>
             </div>
           </div>
 
           {showSkeletons ? (
-            viewMode === 'grid' ? (
-              <div className={gridClassName}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <CityEventGridCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <CityEventListCardSkeleton key={i} />
-                ))}
-              </div>
-            )
+            <div className="space-y-3">
+              {Array.from({ length: 5 }, (_, i) => (
+                <CityEventListCardSkeleton key={i} />
+              ))}
+            </div>
           ) : clientErrorVisible ? (
             <div className="rounded-xl border border-dashed border-[rgb(var(--color-border))] py-16 text-center">
               <p className="text-sm text-[rgb(var(--color-text-secondary))]">{error}</p>
@@ -380,9 +356,7 @@ export function CityEventsClient({
               <p className="mt-3 text-sm font-medium text-[rgb(var(--color-text))]">
                 {activeFilterCount > 0
                   ? 'Seçili filtrelere uygun etkinlik bulunamadı.'
-                  : timeRange === 'past'
-                    ? 'Geçmiş etkinlik bulunamadı.'
-                    : 'Yaklaşan etkinlik bulunamadı.'}
+                  : 'Bugün veya ilerisi için tek günlük etkinlik bulunamadı.'}
               </p>
               {activeFilterCount > 0 && (
                 <button
@@ -394,15 +368,9 @@ export function CityEventsClient({
                 </button>
               )}
             </div>
-          ) : viewMode === 'grid' ? (
-            <div className={gridClassName}>
-              {filteredEvents.map((event) => (
-                <CityEventGridCard key={event.id} event={event} />
-              ))}
-            </div>
           ) : (
             <div className="space-y-3">
-              {filteredEvents.map((event) => (
+              {listedEvents.map((event) => (
                 <CityEventListCard key={event.id} event={event} />
               ))}
             </div>
@@ -432,7 +400,7 @@ export function CityEventsClient({
             onClick={() => setFilterSheetOpen(false)}
             className="w-full rounded-xl bg-[rgb(var(--color-brand))] py-3 text-sm font-bold text-white"
           >
-            {filteredEvents.length} etkinlik göster
+            {listedEvents.length + cinemaEvents.length} etkinlik göster
           </button>
         </div>
       </BottomSheet>

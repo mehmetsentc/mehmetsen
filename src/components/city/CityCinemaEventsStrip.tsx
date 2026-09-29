@@ -9,26 +9,30 @@ import type { NaEvent } from '@/types/event'
 interface CityCinemaEventsStripProps {
   events: NaEvent[]
   cityName?: string
+  /** Overrides the default "Sinema · city" heading */
+  title?: string
   /** Desktop newspaper layout — wider cards, section divider spacing */
-  variant?: 'mobile' | 'desktop' | 'newspaper'
+  variant?: 'mobile' | 'desktop' | 'newspaper' | 'page'
 }
 
 export function CityCinemaEventsStrip({
   events,
   cityName,
+  title,
   variant = 'mobile',
 }: CityCinemaEventsStripProps) {
   if (events.length === 0) return null
+  const heading = title?.trim() || (cityName ? `Sinema · ${cityName}` : 'Sinema')
 
   const cardWrapClassName =
-    variant === 'desktop'
+    variant === 'desktop' || variant === 'page'
       ? 'w-[240px] shrink-0 snap-start xl:w-[260px]'
       : 'w-[min(72vw,280px)] shrink-0 snap-start md:w-[calc(50%-0.5rem)] md:max-w-[320px] xl:w-[240px]'
 
   const header = (
     <div
       className={
-        variant === 'desktop'
+        variant === 'desktop' || variant === 'page'
           ? 'mb-4 flex items-center justify-between gap-3'
           : 'home-rail-title max-md:mb-3 max-md:px-4'
       }
@@ -43,26 +47,23 @@ export function CityCinemaEventsStrip({
           </span>
           <h2
             className={
-              variant === 'desktop'
+              variant === 'desktop' || variant === 'page'
                 ? 'text-base font-black text-[rgb(var(--color-text))] lg:text-lg'
                 : 'text-lg font-black text-[rgb(var(--color-text))] max-md:text-[1.25rem]'
             }
           >
-            Sinema
-            {cityName ? (
-              <span className="ml-1 text-sm font-semibold text-[rgb(var(--color-muted))]">
-                · {cityName}
-              </span>
-            ) : null}
+            {heading}
           </h2>
         </div>
-        <Link
-          href={ROUTES.CITY_EVENTS}
-          className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-[rgb(var(--color-brand))]"
-        >
-          Tümü
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+        {variant === 'page' ? null : (
+          <Link
+            href={ROUTES.CITY_EVENTS}
+            className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-[rgb(var(--color-brand))]"
+          >
+            Tümü
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -70,11 +71,11 @@ export function CityCinemaEventsStrip({
   const strip = (
     <div
       className={
-        variant === 'desktop'
+        variant === 'desktop' || variant === 'page'
           ? '-mx-1 flex gap-4 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory'
           : '-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hide snap-x snap-mandatory max-md:px-4'
       }
-      aria-label="Sinema"
+      aria-label={heading}
       data-no-category-swipe
     >
       {events.map((event) => (
@@ -105,9 +106,18 @@ export function CityCinemaEventsStrip({
     )
   }
 
+  if (variant === 'page') {
+    return (
+      <section className="mb-5" aria-label={heading}>
+        {header}
+        {strip}
+      </section>
+    )
+  }
+
   if (variant === 'desktop') {
     return (
-      <section className="lg:hidden" aria-label="Sinema">
+      <section className="lg:hidden" aria-label={heading}>
         {header}
         {strip}
       </section>
@@ -117,7 +127,7 @@ export function CityCinemaEventsStrip({
   return (
     <section
       className="home-section max-md:!mb-6 max-md:!mt-5 max-md:!px-0 lg:hidden"
-      aria-label="Sinema"
+      aria-label={heading}
     >
       {header}
       {strip}

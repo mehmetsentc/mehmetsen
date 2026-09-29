@@ -9,7 +9,7 @@ import {
   isSameOrAfterIstanbulCalendarDay,
   resolveEventSchedule,
 } from '@/lib/annualEventDates'
-import { EVENT_CATEGORIES, isEventUpcoming } from '@/lib/eventUtils'
+import { EVENT_CATEGORIES } from '@/lib/eventUtils'
 import type { EventCategory, NaEvent } from '@/types/event'
 
 export type CityEventDateFilter = 'all' | 'today' | 'tomorrow' | 'thisWeek'
@@ -56,6 +56,88 @@ function isParibuCinemaEvent(event: NaEvent): boolean {
   )
 }
 
+function hasValidInstant(iso: string | undefined): boolean {
+  if (!iso?.trim()) return false
+  return !Number.isNaN(new Date(iso).getTime())
+}
+
+const STANDING_ATTRACTION_RE =
+  /\b(müze|müzesi|muze|museum|bienal|biennale|kum heykel)\b/i
+
+function looksLikeDateRangeLabel(label?: string): boolean {
+  if (!label?.trim()) return false
+  const n = label.normalize('NFC')
+  return (
+    /\d{1,2}\s*(ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\s*[–\-—]\s*\d{1,2}/i.test(
+      n
+    ) ||
+    /\d{1,2}\s*[–\-—]\s*\d{1,2}\s*(ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)/i.test(
+      n
+    )
+  )
+}
+
+/** Year-round museums / multi-month shows — not a one-night listing row. */
+export function isStandingAttractionEvent(
+  event: Pick<NaEvent, 'title' | 'venue' | 'dateLabel' | 'category'>
+): boolean {
+  if (looksLikeDateRangeLabel(event.dateLabel)) return true
+  const text = `${event.title ?? ''} ${event.venue ?? ''} ${event.dateLabel ?? ''}`
+  return STANDING_ATTRACTION_RE.test(text)
+}
+
+/**
+ * Single-day listing row: start is today or later (Istanbul), and the span
+ * is one calendar day — or a late-night spill ending before 06:00 next day.
+ * Multi-month exhibitions / annual ranges stay in Firestore but drop here.
+ */
+export function isDailyListingEvent(
+  event: Pick<
+    NaEvent,
+    'startsAt' | 'endsAt' | 'recurrence' | 'status' | 'title' | 'venue' | 'dateLabel' | 'category'
+  >,
+  nowIso: string = new Date().toISOString()
+): boolean {
+  if (event.status === 'draft' || event.status === 'cancelled') return false
+  if (isStandingAttractionEvent(event)) return false
+
+  const { startsAt, endsAt } = resolveEventSchedule(event, nowIso)
+  if (!hasValidInstant(startsAt)) return false
+  if (compareIstanbulCalendarDays(startsAt, nowIso) < 0) return false
+
+  if (!hasValidInstant(endsAt)) return true
+  if (isSameIstanbulCalendarDay(startsAt, endsAt)) return true
+
+  return (
+    compareIstanbulCalendarDays(endsAt, startsAt) === 1 &&
+    istanbulCalendarParts(endsAt).hour < LATE_NIGHT_SPILL_END_HOUR
+  )
+}
+
+export function cinemaStripDayIso(
+  dateFilter: CityEventDateFilter,
+  nowIso: string = new Date().toISOString()
+): string {
+  if (dateFilter === 'tomorrow') {
+    return addIstanbulCalendarDays(getIstanbulTodayStartIso(nowIso), 1)
+  }
+  return nowIso
+}
+
+export function pickCinemaEventsForDay(
+  events: NaEvent[],
+  dayIso: string,
+  nowIso: string = new Date().toISOString()
+): NaEvent[] {
+  return events
+    .filter((event) => resolveEventFilterCategory(event) === 'cinema')
+    .filter((event) => {
+      const { startsAt } = resolveEventSchedule(event, nowIso)
+      return isSameIstanbulCalendarDay(startsAt, dayIso)
+    })
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+}
+
 /**
  * Effective category for city filters — uses tags/source when the stored
  * `category` field is stale (e.g. Paribu rows tagged "Sinema" but saved as other).
@@ -68,14 +150,14 @@ export function resolveEventFilterCategory(event: NaEvent): EventCategory {
 }
 
 /**
- * Tümü on Yaklaşan: today + future, or multi-day still running
- * (end calendar day ≥ today). Fully ended before today → false.
+ * Tümü on Yaklaşan: today + future single-day rows only.
+ * Wide-range exhibitions stay out of the public listing.
  */
 export function matchesCityEventUpcomingAllDateFilter(
   event: NaEvent,
   nowIso: string = new Date().toISOString()
 ): boolean {
-  return isEventUpcoming(event, nowIso)
+  return isDailyListingEvent(event, nowIso)
 }
 
 /**
@@ -161,6 +243,10 @@ export function filterCityEvents(
   options?: { timeRange?: CityEventTimeRange }
 ): NaEvent[] {
   return events.filter((event) => {
+    if (options?.timeRange !== 'past' && !isDailyListingEvent(event, nowIso)) {
+      return false
+    }
+
     if (
       filters.category &&
       resolveEventFilterCategory(event) !== filters.category
@@ -239,7 +325,7 @@ export function pickFeaturedEvents(
   limit = 8,
   nowIso: string = new Date().toISOString()
 ): NaEvent[] {
-  const upcoming = events.filter((e) => isEventUpcoming(e, nowIso))
+  const upcoming = events.filter((e) => isDailyListingEvent(e, nowIso))
   const rated = upcoming.filter((e) => (e.ratingCount ?? 0) > 0)
   if (rated.length >= 3) {
     return sortCityEvents(rated, 'rating').slice(0, limit)
