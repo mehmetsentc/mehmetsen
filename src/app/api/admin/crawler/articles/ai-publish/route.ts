@@ -74,7 +74,12 @@ export async function POST(request: Request) {
 
     let ids: string[] = []
     let requested = 0
-    if (body.matchFilter === true) {
+    const drainQueued = body.drainQueued === true
+    if (drainQueued) {
+      const waiting = await store.listEditorAiQueued(AI_PUBLISH_BATCH_CAP)
+      ids = waiting.map((row) => row.id)
+      requested = ids.length
+    } else if (body.matchFilter === true) {
       const listed = await store.listRawArticleIds(
         filterFrom((body.filter as Record<string, unknown>) || body),
         FILTER_MATCH_CAP
@@ -105,7 +110,18 @@ export async function POST(request: Request) {
       )
     }
 
-    const waiting = ids.length > 0 ? await store.listEditorAiQueued(AI_PUBLISH_BATCH_CAP) : []
+    if (ids.length === 0) {
+      return NextResponse.json({
+        requested: 0,
+        published: 0,
+        drafted: 0,
+        skipped: 0,
+        failed: 0,
+        results: [],
+      })
+    }
+
+    const waiting = drainQueued ? [] : await store.listEditorAiQueued(AI_PUBLISH_BATCH_CAP)
     const merged = [...new Set([...ids, ...waiting.map((row) => row.id)])].slice(0, AI_PUBLISH_BATCH_CAP)
     const result = await publishRawArticlesWithAi({ store, ids: merged })
     return NextResponse.json({ ...result, requested })

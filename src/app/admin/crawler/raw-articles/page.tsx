@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { AdminOsMetricGrid, AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
@@ -203,6 +203,8 @@ function CrawlerArticlesInner() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [confirmMatch, setConfirmMatch] = useState(false)
   const [reviewTarget, setReviewTarget] = useState<ArticleRow | null>(null)
+  const drainPasses = useRef(0)
+  const drainBusy = useRef(false)
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams(searchParams.toString())
@@ -344,6 +346,28 @@ function CrawlerArticlesInner() {
     setConfirmAiPublish(true)
   }
 
+  async function drainApprovedQueue() {
+    if (drainBusy.current) return
+    drainBusy.current = true
+    setBusyBulk(true)
+    try {
+      const res = await fetch('/api/admin/crawler/articles/ai-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ drainQueued: true }),
+      })
+      const body = await parseApiResponse<AiPublishBatchResult & { error?: string }>(res)
+      if (!res.ok) throw new Error(body.error || 'AI yazımı başarısız')
+      if (body.requested > 0) notifyAiPublishResult(body)
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Kuyruk yazılamadı')
+    } finally {
+      drainBusy.current = false
+      setBusyBulk(false)
+    }
+  }
+
   async function runAiEnqueue() {
     if (busyBulk) return
     const singleId = singleAiPublishId
@@ -443,6 +467,16 @@ function CrawlerArticlesInner() {
   const hint = pageSelectionHint(selection, pageSize)
   const queue = searchParams.get('queue') || 'active'
   const canAiPublish = can('news:publish') || isSuperAdmin
+  const waitingAi = data?.queueCounts?.aiQueue ?? 0
+
+  useEffect(() => {
+    if (queue !== 'ai_queue' || authLoading || !canAiPublish) return
+    if (waitingAi <= 0 || drainPasses.current >= 2 || drainBusy.current) return
+    drainPasses.current += 1
+    void drainApprovedQueue()
+    // Starts once per queue count change; the function identity must not retrigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue, authLoading, canAiPublish, waitingAi])
   const aiPublishDisabled = authLoading || !canAiPublish
   const aiPublishHint = authLoading
     ? 'Yetki yükleniyor…'
@@ -807,6 +841,13 @@ function CrawlerArticlesInner() {
             Mükerrer
           </button>
           .
+        </p>
+      ) : null}
+      {queue === 'ai_queue' && waitingAi > 0 ? (
+        <p className="mb-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+          {busyBulk
+            ? 'Onaylanmış kuyruk yazılıyor. Bitenler Yayın Odası → Onay Bekliyor’a düşer.'
+            : `${waitingAi.toLocaleString('tr-TR')} haber zaten AI için onaylı. Yazım bu sekmede kendiliğinden başlar; bitenler Yayın Odası → Onay Bekliyor’a düşer.`}
         </p>
       ) : null}
       {count > 0 && queue === 'active' ? (
