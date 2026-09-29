@@ -213,7 +213,7 @@ export class MemoryCrawlerStore implements CrawlerStore {
   async listPendingFetch(limit: number): Promise<DiscoveredUrlRecord[]> {
     return [...this.urls.values()]
       .filter((u) => u.status === 'PENDING_FETCH')
-      .sort((a, b) => a.discoveredAt.getTime() - b.discoveredAt.getTime())
+      .sort((a, b) => b.discoveredAt.getTime() - a.discoveredAt.getTime())
       .slice(0, limit)
   }
 

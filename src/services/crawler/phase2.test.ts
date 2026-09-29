@@ -195,6 +195,7 @@ describe('crawler phase 2', () => {
     expect(counts.A).toBeLessThanOrEqual(2)
     expect(counts.B).toBeGreaterThanOrEqual(1)
     expect(counts.C).toBeGreaterThanOrEqual(1)
+    expect(picked.filter((row) => row.sourceId === 'A').map((row) => row.id)).toEqual(['a4', 'a3'])
   })
 
   it('enforces global fetch budget and freshness', async () => {

@@ -23,7 +23,8 @@ export function pickFairPending(opts: {
     buckets.set(item.sourceId, list)
   }
   for (const list of buckets.values()) {
-    list.sort((a, b) => a.discoveredAt.getTime() - b.discoveredAt.getTime())
+    // Newest first. A multi-thousand pending backlog must not hide this hour's URLs.
+    list.sort((a, b) => b.discoveredAt.getTime() - a.discoveredAt.getTime())
   }
 
   const sourceIds = [...buckets.keys()].sort((a, b) => {

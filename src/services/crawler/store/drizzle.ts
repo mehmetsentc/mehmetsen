@@ -550,7 +550,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .select()
       .from(discoveredArticleUrls)
       .where(eq(discoveredArticleUrls.status, 'PENDING_FETCH'))
-      .orderBy(discoveredArticleUrls.discoveredAt)
+      .orderBy(desc(discoveredArticleUrls.discoveredAt))
       .limit(limit)
     return rows.map(mapUrl)
   }
