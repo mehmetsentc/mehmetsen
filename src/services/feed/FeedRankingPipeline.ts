@@ -246,8 +246,10 @@ export class FeedRankingPipeline {
   }> {
     const scope = personalLocalScopeFromContext(ctx, input.citySlug)
     const extraCitySlugs = [...scope.extraCities]
-    // Exclude served IDs in SQL (see fetchRecent) — do not time-gate first, so
-    // remaining unseen recent inventory is consumed before older fallback.
+    // First page stays unscoped so unseen recent cards are still eligible.
+    // A continuation must use the time bound: served ids were compacted out of
+    // the session, and an unscoped fetch replays the same head until the
+    // client stalls on the last card.
     let pools = await fetchPools(input.mode, {
       limit: input.limit * 4,
       userId: input.userId,
@@ -258,7 +260,7 @@ export class FeedRankingPipeline {
       extraCitySlugs,
       excludeArticleIds,
       excludeClusterIds: input.seenClusters,
-      publishedBefore: null,
+      publishedBefore: publishedBefore ?? null,
     })
     let flat = filterPersonalLocalInventory(flattenPools(pools), input.mode, scope)
     let candidateCounts = countPools(pools)
@@ -323,7 +325,13 @@ export class FeedRankingPipeline {
       coldStart,
       input.boostTopics ?? []
     )
-    const olderThan = oldestPublishedIso(ranked) ?? publishedBefore ?? null
+    // Recent-pool tail, not the oldest ranked card. One old popular item
+    // would otherwise jump the next page past the rest of the corpus.
+    const olderThan =
+      oldestPublishedIso(pools.RECENT ?? []) ??
+      oldestPublishedIso(ranked) ??
+      publishedBefore ??
+      null
     return { ranked, candidateCounts, olderThan, shadowComparison }
   }
 
