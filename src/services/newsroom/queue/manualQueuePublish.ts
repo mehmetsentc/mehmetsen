@@ -4,7 +4,7 @@ import { isYerelCategoryTree } from '@/constants/config'
 import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { normalizePublishedLocalCategory } from '@/lib/news/nationalLocalCategoryRouting'
-import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { recordStoryInLibrary } from '@/services/newsroom/dedupe/storyLibraryService'
 import type { NewsQueueDocument } from '@/services/newsroom/queue/types'
@@ -240,6 +240,7 @@ export async function publishQueueItemManual(
       revalidatePath('/yerel')
     }
     revalidatePath(`/haber/${slug}`)
+    revalidatePublishedNews(slug)
     void notifyPublishedArticle(slug).catch(() => {})
   } catch {
     /* best-effort */

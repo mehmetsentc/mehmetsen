@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyAdminRequest } from '@/lib/adminAuth'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
-import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import { buildNewsSlug } from '@/lib/newsSlug'
 import { normalizePublishedLocalCategory } from '@/lib/news/nationalLocalCategoryRouting'
 import { notifyPublishedArticle } from '@/lib/indexNow'
@@ -143,6 +143,7 @@ export async function POST(request: Request, context: RouteContext) {
     if (categoryId) revalidatePath(`/kategori/${categoryId}`)
     if (categoryIdRaw !== categoryId) revalidatePath(`/kategori/${categoryIdRaw}`)
     revalidatePath(`/haber/${slug}`)
+    revalidatePublishedNews(slug)
     void notifyPublishedArticle(slug).catch(() => {})
   } catch { /* best-effort */ }
 

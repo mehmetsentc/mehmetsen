@@ -72,13 +72,16 @@ export async function POST(request: Request) {
   if (approved > 0) {
     try {
       const { revalidatePath } = await import('next/cache')
-      const { revalidateHomeFeedCaches } = await import('@/lib/revalidateHome')
+      const { revalidateHomeFeedCaches, revalidatePublishedNews } = await import('@/lib/revalidateHome')
       revalidateHomeFeedCaches()
       for (const cat of categories) {
         revalidatePath(`/kategori/${cat}`)
         if (cat === 'yerel-haber') revalidatePath('/yerel')
       }
-      for (const slug of publishedSlugs) revalidatePath(`/haber/${slug}`)
+      for (const slug of publishedSlugs) {
+        revalidatePath(`/haber/${slug}`)
+        revalidatePublishedNews(slug)
+      }
       for (const uname of authors) revalidatePath(`/yazar/${uname}`)
     } catch {
       /* best-effort */

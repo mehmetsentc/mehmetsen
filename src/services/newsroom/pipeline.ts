@@ -2217,11 +2217,12 @@ export async function processNewsroomArticle(
       }
       try {
         const { revalidatePath } = await import('next/cache')
-        const { revalidateHomeFeedCaches } = await import('@/lib/revalidateHome')
+        const { revalidateHomeFeedCaches, revalidatePublishedNews } = await import('@/lib/revalidateHome')
         revalidateHomeFeedCaches()
         if (resolvedCategory) revalidatePath(`/kategori/${resolvedCategory}`)
         if (isYerelCategoryTree(resolvedCategory)) revalidatePath('/yerel')
         if (slug) revalidatePath(`/haber/${slug}`)
+        revalidatePublishedNews(slug)
         if (personaAuthors?.authorUsername) {
           revalidatePath(`/yazar/${personaAuthors.authorUsername}`)
         }

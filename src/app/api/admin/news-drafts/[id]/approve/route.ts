@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyAdminRequest } from '@/lib/adminAuth'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
-import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { newsDraftService } from '@/services/newsDraftService'
 
@@ -33,6 +33,7 @@ export async function POST(request: Request, context: RouteContext) {
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
       if (categoryId === 'yerel-haber') revalidatePath('/yerel')
       revalidatePath(`/haber/${result.slug}`)
+      revalidatePublishedNews(result.slug)
       if (authorUsername) revalidatePath(`/yazar/${authorUsername}`)
       void notifyPublishedArticle(result.slug).catch(() => {})
     } catch {

@@ -9,7 +9,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
-import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import {
@@ -344,6 +344,7 @@ export async function POST(request: Request) {
       revalidateHomeFeedCaches()
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
       revalidatePath(`/haber/${slug}`)
+      revalidatePublishedNews(slug)
       if (status === 'published') {
         void notifyPublishedArticle(slug).catch(() => {})
       }

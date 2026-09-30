@@ -11,7 +11,7 @@ import { newsDraftService } from '@/services/newsDraftService'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
-import { revalidateHomeFeedCaches } from '@/lib/revalidateHome'
+import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import {
   authorizePublication,
   publicationProvenanceFields,
@@ -343,10 +343,16 @@ function revalidateNewsPaths(
     if (oldCategoryId) revalidatePath(`/kategori/${oldCategoryId}`)
     if (newCategoryId && newCategoryId !== oldCategoryId) revalidatePath(`/kategori/${newCategoryId}`)
     const slug = (body.slug?.trim() || (prevData?.slug as string | undefined))?.trim()
-    if (slug) revalidatePath(`/haber/${slug}`)
-    if (body.slug?.trim() && body.slug.trim() !== prevData?.slug) {
-      revalidatePath(`/haber/${body.slug.trim()}`)
+    if (slug) {
+      revalidatePath(`/haber/${slug}`)
+      revalidatePublishedNews(slug)
     }
+    const previousSlug = (prevData?.slug as string | undefined)?.trim()
+    if (body.slug?.trim() && body.slug.trim() !== previousSlug) {
+      revalidatePath(`/haber/${body.slug.trim()}`)
+      revalidatePublishedNews(body.slug.trim())
+    }
+    if (previousSlug && previousSlug !== slug) revalidatePublishedNews(previousSlug)
     for (const tag of [...(prevData?.tags as string[] | undefined) ?? [], ...(body.tags ?? [])]) {
       if (tag?.trim()) revalidatePath(ROUTES.TAG(tag))
     }
@@ -711,8 +717,10 @@ export async function DELETE(request: Request, context: RouteContext) {
     let categoryId: string | undefined
     let collection = 'news'
 
+    let slug: string | undefined
     if (newsSnap.exists) {
       categoryId = newsSnap.data()?.categoryId as string | undefined
+      slug = newsSnap.data()?.slug as string | undefined
       if (permanent) {
         await newsRef.delete()
         try { await db.collection(Collections.POSTS).doc(id).delete() } catch { /* ok */ }
@@ -741,6 +749,8 @@ export async function DELETE(request: Request, context: RouteContext) {
       revalidateHomeFeedCaches()
       revalidatePath('/kategori/son-dakika')
       if (categoryId) revalidatePath(`/kategori/${categoryId}`)
+      if (slug) revalidatePath(`/haber/${slug}`)
+      revalidatePublishedNews(slug)
     } catch { /* best-effort */ }
 
     return NextResponse.json({ ok: true, collection, permanent })

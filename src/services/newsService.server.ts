@@ -327,7 +327,7 @@ export async function getLegacyNewsBySlug(slug: string): Promise<Post | null> {
  * so Firestore published continuity remains for the same identity. PG drafts are
  * never exposed publicly. When PG is published, PG wins.
  */
-export async function getNewsBySlug(slug: string): Promise<Post | null> {
+async function loadNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
 
@@ -346,6 +346,16 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
     return getLegacyNewsBySlugCached(normalized)
   }
   return post
+}
+
+export async function getNewsBySlug(slug: string): Promise<Post | null> {
+  const normalized = slug.trim()
+  if (!normalized) return null
+  return unstable_cache(
+    () => loadNewsBySlug(normalized),
+    ['news-by-slug-v1', normalized],
+    { revalidate: 3600, tags: ['news-post', `news:${normalized}`] }
+  )()
 }
 
 function mapAdminDocs(docs: QueryDocumentSnapshot[]): NewsItem[] {
