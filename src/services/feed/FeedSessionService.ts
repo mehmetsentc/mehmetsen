@@ -18,7 +18,15 @@ export interface FeedSessionPayload {
   corpusExhausted?: boolean
   /** Explicit Feed V2 category tab (e.g. magazin) — session exclusion scoped here. */
   category?: string | null
+  /**
+   * Ids already handed to the client. Kept bounded so a refill cannot replay
+   * the head after rankedIds is compacted. Not the full read history.
+   */
+  servedIds?: string[]
 }
+
+/** How many already-sent ids stay in the cursor for exclusion. */
+export const FEED_SESSION_SERVED_CAP = 48
 
 /** Soft cap so session tokens stay bounded; older windows keep appending within this. */
 export const FEED_SESSION_RANKED_SOFT_CAP = 400
@@ -99,9 +107,10 @@ export class FeedSessionService {
     // Keep only cards not yet sent so the URL cursor cannot grow with every
     // card the reader has already seen.
     const unread = payload.rankedIds.slice(start + ids.length)
+    const servedIds = [...(payload.servedIds ?? []), ...ids].slice(-FEED_SESSION_SERVED_CAP)
     return {
       ids,
-      nextPayload: { ...payload, rankedIds: unread, offset: 0 },
+      nextPayload: { ...payload, rankedIds: unread, offset: 0, servedIds },
       hasMoreInSnapshot: unread.length > 0,
     }
   }
@@ -112,7 +121,7 @@ export class FeedSessionService {
     newIds: string[],
     olderThan?: string | null
   ): FeedSessionPayload {
-    const existing = new Set(payload.rankedIds)
+    const existing = new Set([...(payload.servedIds ?? []), ...payload.rankedIds])
     const appended: string[] = []
     for (const id of newIds) {
       if (existing.has(id)) continue

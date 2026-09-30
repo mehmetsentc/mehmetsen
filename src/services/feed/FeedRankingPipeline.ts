@@ -172,6 +172,17 @@ function oldestPublishedIso(rows: Array<{ publishedAt: Date }>): string | null {
   return new Date(min).toISOString()
 }
 
+/** Ignore a lone old popular card so the next page does not jump a month. */
+function continuationOlderThan(
+  ranked: Array<{ publishedAt: Date }>,
+  previous: string | null | undefined
+): string | null {
+  const cutoff = Date.now() - 21 * 24 * 60 * 60 * 1000
+  const recent = ranked.filter((row) => row.publishedAt.getTime() >= cutoff)
+  const pool = recent.length >= 8 ? recent : ranked
+  return oldestPublishedIso(pool) ?? previous ?? null
+}
+
 function rankWindow(
   flat: FeedCandidateRow[],
   ctx: FeedUserContext,
@@ -325,13 +336,7 @@ export class FeedRankingPipeline {
       coldStart,
       input.boostTopics ?? []
     )
-    // Recent-pool tail, not the oldest ranked card. One old popular item
-    // would otherwise jump the next page past the rest of the corpus.
-    const olderThan =
-      oldestPublishedIso(pools.RECENT ?? []) ??
-      oldestPublishedIso(ranked) ??
-      publishedBefore ??
-      null
+    const olderThan = continuationOlderThan(ranked, publishedBefore)
     return { ranked, candidateCounts, olderThan, shadowComparison }
   }
 
@@ -354,7 +359,11 @@ export class FeedRankingPipeline {
       refillPasses < 3
     ) {
       refillPasses += 1
-      const seed = new Set<string>([...input.seenArticles, ...working.rankedIds])
+      const seed = new Set<string>([
+        ...input.seenArticles,
+        ...working.rankedIds,
+        ...(working.servedIds ?? []),
+      ])
       const exclude = await feedSeenService.expandArticleIdentities(seed)
       // Prefer time-cursor past the oldest served item so SQL can skip the head of the table.
       const olderBound = working.olderThan ?? null
