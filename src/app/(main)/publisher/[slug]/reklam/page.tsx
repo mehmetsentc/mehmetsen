@@ -116,7 +116,7 @@ export default async function PublisherReklamMediaKitPage({ params }: Props) {
       </div>
 
       <p className="mt-8 text-sm">
-        <Link href={ROUTES.PUBLISHER(slug)} className="font-semibold text-[rgb(var(--color-brand))]">
+        <Link prefetch={false} href={ROUTES.PUBLISHER(slug)} className="font-semibold text-[rgb(var(--color-brand))]">
           ← Yayın profiline dön
         </Link>
       </p>

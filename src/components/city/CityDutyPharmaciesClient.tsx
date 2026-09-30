@@ -150,7 +150,7 @@ export function CityDutyPharmaciesClient({
           </div>
 
           <div className="mb-5 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-            <Link
+            <Link prefetch={false}
               href={ROUTES.CITY_DUTY_PHARMACIES}
               className={cn(
                 'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors',
@@ -162,7 +162,7 @@ export function CityDutyPharmaciesClient({
               Tümü
             </Link>
             {chips.map((chip) => (
-              <Link
+              <Link prefetch={false}
                 key={chip.slug}
                 href={ROUTES.CITY_DUTY_PHARMACIES_DISTRICT(chip.slug)}
                 className={cn(

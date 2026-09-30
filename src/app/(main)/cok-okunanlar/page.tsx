@@ -106,7 +106,7 @@ export default async function MostReadPage() {
               const image = item.imageUrl || FEED_FALLBACK_LOGO
               return (
                 <li key={item.id}>
-                  <Link
+                  <Link prefetch={false}
                     href={newsItemDetailHref(item)}
                     className="flex gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 transition-colors hover:border-[rgb(var(--color-brand))]/40"
                   >

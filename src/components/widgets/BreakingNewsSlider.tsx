@@ -49,7 +49,7 @@ export function BreakingNewsSlider({ initialItems }: BreakingNewsSliderProps) {
           <Zap className="h-4 w-4 text-red-500" />
           <span className="text-sm font-bold text-[rgb(var(--color-text))]">Son Dakika</span>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CATEGORY('son-dakika')}
           className="flex items-center gap-0.5 text-xs font-semibold text-red-500"
         >

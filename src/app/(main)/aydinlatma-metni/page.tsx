@@ -78,7 +78,7 @@ export default function KVKKPage() {
       </ul>
       <p>
         Çerez tercihlerinizi{' '}
-        <Link href={ROUTES.SETTINGS_PRIVACY} className="text-[rgb(var(--color-brand))]">
+        <Link prefetch={false} href={ROUTES.SETTINGS_PRIVACY} className="text-[rgb(var(--color-brand))]">
           Ayarlar → Gizlilik
         </Link>{' '}
         bölümünden her zaman değiştirebilirsiniz.
@@ -126,13 +126,13 @@ export default function KVKKPage() {
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3 text-xs">
-        <Link href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'} className="text-[rgb(var(--color-brand))]">
+        <Link prefetch={false} href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'} className="text-[rgb(var(--color-brand))]">
           Gizlilik Politikası
         </Link>
-        <Link href={ROUTES.SETTINGS_PRIVACY} className="text-[rgb(var(--color-brand))]">
+        <Link prefetch={false} href={ROUTES.SETTINGS_PRIVACY} className="text-[rgb(var(--color-brand))]">
           Çerez Tercihleri
         </Link>
-        <Link href={ROUTES.FEED} className="text-[rgb(var(--color-brand))]">
+        <Link prefetch={false} href={ROUTES.FEED} className="text-[rgb(var(--color-brand))]">
           Ana Sayfa
         </Link>
       </div>

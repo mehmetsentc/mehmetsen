@@ -79,7 +79,7 @@ export default function SiteHaritasiPage() {
         <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[rgb(var(--color-muted))]">
           <ol className="flex list-none flex-wrap gap-2 p-0 m-0">
             <li>
-              <Link href={ROUTES.FEED} className="hover:underline">
+              <Link prefetch={false} href={ROUTES.FEED} className="hover:underline">
                 Ana Sayfa
               </Link>
             </li>
@@ -102,7 +102,7 @@ export default function SiteHaritasiPage() {
           <ul className="grid list-none gap-2 p-0 m-0 sm:grid-cols-2">
             {navItems.map((item) => (
               <li key={item.id} className={item.indent ? 'pl-4' : undefined}>
-                <Link
+                <Link prefetch={false}
                   href={item.href}
                   title={`${item.label} haberleri`}
                   className="text-sm text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))] hover:underline"
@@ -121,7 +121,7 @@ export default function SiteHaritasiPage() {
           <ul className="grid list-none gap-2 p-0 m-0 sm:grid-cols-2">
             {UTILITY_PAGES.map((page) => (
               <li key={page.href}>
-                <Link
+                <Link prefetch={false}
                   href={page.href}
                   className="text-sm text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))] hover:underline"
                 >

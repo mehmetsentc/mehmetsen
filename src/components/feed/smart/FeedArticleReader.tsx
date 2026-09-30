@@ -1240,7 +1240,7 @@ export function FeedArticleReader({
               </span>
               <span className="text-white/25"> · </span>
               {item.authorSlug && bylineMode === 'editor' ? (
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.AUTHOR(item.authorSlug)}
                   className="truncate text-[color:var(--reader-page-text)] underline-offset-2 hover:underline"
                 >
@@ -1399,7 +1399,7 @@ export function FeedArticleReader({
                 >
                   Tekrar dene
                 </button>
-                <Link
+                <Link prefetch={false}
                   href={canonicalPath}
                   className="inline-flex items-center gap-1 rounded border border-white/20 px-3 py-1.5"
                 >

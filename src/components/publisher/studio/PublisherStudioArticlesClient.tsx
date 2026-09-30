@@ -45,7 +45,7 @@ export function PublisherStudioArticlesClient({
           ))}
         </ul>
       )}
-      <Link href={ROUTES.PUBLISHER_STUDIO.LAYOUT_EDIT(slug)} className="studio-btn mt-4 inline-flex">
+      <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.LAYOUT_EDIT(slug)} className="studio-btn mt-4 inline-flex">
         Düzenleyiciye git
       </Link>
     </PublisherStudioShell>

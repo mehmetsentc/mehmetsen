@@ -47,7 +47,7 @@ export function DesktopInsideIndex({
       <ol className="nl-index-box__list">
         {items.map((item) => (
           <li key={item.href} className="nl-index-box__item">
-            <Link href={item.href}>{item.label}</Link>
+            <Link prefetch={false} href={item.href}>{item.label}</Link>
             <span className="nl-index-box__page" aria-hidden>
               {item.page}
             </span>

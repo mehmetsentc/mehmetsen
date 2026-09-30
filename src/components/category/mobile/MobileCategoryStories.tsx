@@ -49,7 +49,7 @@ export function MobileCategoryHero({
 
   return (
     <article className="mc-hero">
-      <Link href={categoryPostHref(post)} className="mc-hero__link group">
+      <Link prefetch={false} href={categoryPostHref(post)} className="mc-hero__link group">
         <div className="mc-hero__media">
           <SafeNewsImage
             src={image}
@@ -82,7 +82,7 @@ export function MobileCategoryLarge({ post }: { post: TimelinePost }) {
 
   return (
     <article className="mc-large">
-      <Link href={categoryPostHref(post)} className="group block">
+      <Link prefetch={false} href={categoryPostHref(post)} className="group block">
         {image ? (
           <div className="mc-large__media">
             <SafeNewsImage
@@ -120,7 +120,7 @@ export function MobileCategoryCompact({ post }: { post: TimelinePost }) {
 
   return (
     <article className="mc-compact">
-      <Link href={categoryPostHref(post)} className="mc-compact__link group">
+      <Link prefetch={false} href={categoryPostHref(post)} className="mc-compact__link group">
         <div className="mc-compact__media">
           <SafeNewsImage
             src={image}
@@ -151,7 +151,7 @@ export function MobileCategoryVideo({ post }: { post: TimelinePost }) {
 
   return (
     <article className="mc-video">
-      <Link href={categoryPostHref(post)} className="mc-video__link group">
+      <Link prefetch={false} href={categoryPostHref(post)} className="mc-video__link group">
         <div className="mc-video__media">
           <SafeNewsImage
             src={image}
@@ -180,7 +180,7 @@ export function MobileCategoryText({ post }: { post: TimelinePost }) {
 
   return (
     <article className="mc-text">
-      <Link href={categoryPostHref(post)} className="group block">
+      <Link prefetch={false} href={categoryPostHref(post)} className="group block">
         <Badge post={post} />
         <h3 className="mc-text__title">{post.title}</h3>
         {summary ? <p className="mc-text__summary">{summary}</p> : null}

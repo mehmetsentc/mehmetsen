@@ -14,7 +14,7 @@ export function SporCategoryExtras() {
   return (
     <div className="space-y-4">
       {isUserFacingNavProductEnabled('skor') ? (
-        <Link href={ROUTES.SKOR} className="skor-cta" aria-label="NaHaber Skor’a git">
+        <Link prefetch={false} href={ROUTES.SKOR} className="skor-cta" aria-label="NaHaber Skor’a git">
           <div className="flex min-w-0 items-start gap-2.5">
             <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--color-brand))]" aria-hidden />
             <div className="min-w-0">

@@ -41,7 +41,7 @@ export function MediaLibraryList({ items }: { items: LibraryItem[] }) {
                 <StatusBadge status={item.status} />
               </td>
               <td className="px-3 py-3">
-                <Link href={mediaStudioWorkspacePath(item.workspaceId)} className={ghostButton}>
+                <Link prefetch={false} href={mediaStudioWorkspacePath(item.workspaceId)} className={ghostButton}>
                   Aç
                 </Link>
               </td>

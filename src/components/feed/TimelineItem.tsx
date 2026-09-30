@@ -84,7 +84,7 @@ export function TimelineItem({ post, featured = false, isLast = false }: Timelin
         </div>
 
         {/* Card: image with overlay */}
-        <Link href={detailHref} className="group block overflow-hidden rounded-2xl shadow-md">
+        <Link prefetch={false} href={detailHref} className="group block overflow-hidden rounded-2xl shadow-md">
           <div className="relative w-full overflow-hidden rounded-2xl" style={{ aspectRatio: '4/3' }}>
             {/* Image or fallback */}
             {isFallbackImage || !imageUrl ? (

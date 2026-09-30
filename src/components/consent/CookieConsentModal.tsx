@@ -150,7 +150,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
               <p className="text-xs leading-relaxed text-[rgb(var(--color-muted))]">
                 NaHaber, kişisel verilerinizi üçüncü taraf reklamverenlere satmaz veya pazarlama
                 amaçlı paylaşmaz. Detaylar için{' '}
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'}
                   target="_blank"
                   className="font-semibold text-[rgb(var(--color-brand))] hover:underline"
@@ -245,7 +245,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
 
           <p className="text-xs text-[rgb(var(--color-muted))]">
             Seçiminizi her zaman Ayarlar → Gizlilik bölümünden değiştirebilirsiniz.{' '}
-            <Link
+            <Link prefetch={false}
               href={ROUTES.SETTINGS_PRIVACY_POLICY ?? '/settings/privacy-policy'}
               target="_blank"
               rel="noopener noreferrer"
@@ -254,7 +254,7 @@ export function CookieConsentModal({ onAccept, onReject }: CookieConsentModalPro
               Gizlilik Politikası
             </Link>
             {' · '}
-            <Link
+            <Link prefetch={false}
               href="/aydinlatma-metni"
               target="_blank"
               rel="noopener noreferrer"

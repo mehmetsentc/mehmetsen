@@ -293,7 +293,7 @@ export function PostMoreMenu({
 
               if (row.href) {
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={row.id}
                     href={row.href}
                     className={className}

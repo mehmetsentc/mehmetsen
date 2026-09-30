@@ -60,7 +60,7 @@ export function DesktopMustWatch({ items }: DesktopMustWatchProps) {
         data-no-category-swipe
       >
         {items.slice(0, 8).map((item) => (
-          <Link
+          <Link prefetch={false}
             key={item.id}
             href={newsItemDetailHref(item)}
             className="group w-[280px] shrink-0 snap-start"

@@ -125,7 +125,7 @@ function TrendingTopicRow({ item, rank, maxCount }: { item: TrendingTopic; rank:
   const dir   = pseudoDirection(item.tag, item.count)
 
   return (
-    <Link
+    <Link prefetch={false}
       href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}&tag=1`}
       className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[rgb(var(--color-card))]"
     >
@@ -189,7 +189,7 @@ function NewsCardCompact({ post }: { post: Post }) {
     : ROUTES.POST_DETAIL(post.id)
 
   return (
-    <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
+    <Link prefetch={false} href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
           <DiscoverThumb src={imageUrl} />
@@ -216,7 +216,7 @@ function VideoCardCompact({ post }: { post: Post }) {
   const href = getPostDetailHref(post)
 
   return (
-    <Link href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
+    <Link prefetch={false} href={href} className="group flex gap-3 rounded-lg p-2.5 transition-colors hover:bg-[rgb(var(--color-card))]">
       {!isFallback && imageUrl && (
         <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg">
           <DiscoverThumb src={imageUrl} />
@@ -296,7 +296,7 @@ function DiscoverContent() {
           <h1 className="text-xl font-black tracking-tight text-[rgb(var(--color-text))]">Keşfet</h1>
           <p className="text-xs text-[rgb(var(--color-muted))]">Trend haberler, konular ve daha fazlası</p>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.SEARCH}
           className="flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-border))]"
         >
@@ -337,7 +337,7 @@ function DiscoverContent() {
         <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3">
           <Zap className="h-4 w-4 text-amber-500" />
           <h2 className="text-sm font-black tracking-tight text-[rgb(var(--color-text))]">Gündem Haberleri</h2>
-          <Link href={ROUTES.FEED} className="ml-auto text-[11px] font-semibold text-[rgb(var(--color-brand))]">
+          <Link prefetch={false} href={ROUTES.FEED} className="ml-auto text-[11px] font-semibold text-[rgb(var(--color-brand))]">
             Tümü →
           </Link>
         </div>
@@ -362,7 +362,7 @@ function DiscoverContent() {
           <div className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] px-4 py-3">
             <Clapperboard className="h-4 w-4 text-purple-500" />
             <h2 className="text-sm font-black tracking-tight text-[rgb(var(--color-text))]">Trend Videolar</h2>
-            <Link href={ROUTES.REELS} className="ml-auto text-[11px] font-semibold text-[rgb(var(--color-brand))]">
+            <Link prefetch={false} href={ROUTES.REELS} className="ml-auto text-[11px] font-semibold text-[rgb(var(--color-brand))]">
               Tümü →
             </Link>
           </div>
@@ -391,7 +391,7 @@ function DiscoverContent() {
           </div>
           <div className="flex flex-wrap gap-2 p-3">
             {cities.map((city) => (
-              <Link
+              <Link prefetch={false}
                 key={city.slug}
                 href={`${ROUTES.FEED}?city=${encodeURIComponent(city.slug)}`}
                 className="inline-flex items-center gap-1 rounded-full border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold text-[rgb(var(--color-text))] transition-colors hover:border-[rgb(var(--color-brand))] hover:text-[rgb(var(--color-brand))]"
@@ -413,7 +413,7 @@ function DiscoverContent() {
           {DEFAULT_CATEGORIES.map((cat) => {
             const meta = CATEGORY_META[cat.id]
             return (
-              <Link
+              <Link prefetch={false}
                 key={cat.id}
                 href={`${ROUTES.FEED}?category=${cat.id}`}
                 className={cn(

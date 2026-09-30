@@ -85,7 +85,7 @@ export function JobRow({
         </p>
       </div>
       {completed && job.workspaceId ? (
-        <Link href={links.workspace(job.workspaceId)} className={`${primaryButton} hidden min-h-9 px-3 sm:inline-flex`}>
+        <Link prefetch={false} href={links.workspace(job.workspaceId)} className={`${primaryButton} hidden min-h-9 px-3 sm:inline-flex`}>
           <Pencil className="h-4 w-4" aria-hidden="true" />
           Düzenle
         </Link>
@@ -94,12 +94,12 @@ export function JobRow({
       )}
       <OverflowMenu label={`${job.title} işlemleri`}>
         {completed && job.workspaceId ? (
-          <Link href={links.workspace(job.workspaceId)} className={`${overflowItemClass} sm:hidden`}>
+          <Link prefetch={false} href={links.workspace(job.workspaceId)} className={`${overflowItemClass} sm:hidden`}>
             Düzenle
           </Link>
         ) : null}
         {job.workspaceId ? (
-          <Link href={links.files(job.workspaceId)} className={overflowItemClass}>
+          <Link prefetch={false} href={links.files(job.workspaceId)} className={overflowItemClass}>
             Dosyaları Gör
           </Link>
         ) : null}

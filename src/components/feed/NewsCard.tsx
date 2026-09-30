@@ -85,7 +85,7 @@ export function NewsCard({ post }: NewsCardProps) {
         </Badge>
       </div>
 
-      <Link href={ROUTES.POST_DETAIL(post.id)} className="group block">
+      <Link prefetch={false} href={ROUTES.POST_DETAIL(post.id)} className="group block">
         {cover ? (
           <div className="feed-media-card feed-media-card-photo">
             <div className="feed-media-card-media">
@@ -156,7 +156,7 @@ export function NewsCard({ post }: NewsCardProps) {
             <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
             <span>{formatCount(likesCount)}</span>
           </button>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.POST_DETAIL(post.id)}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-blue-600"
           >

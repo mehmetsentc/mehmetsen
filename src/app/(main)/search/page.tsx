@@ -37,7 +37,7 @@ function PostResult({ post }: { post: Post }) {
   const href = getPostDetailHref(post)
 
   return (
-    <Link href={href} className="flex gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]">
+    <Link prefetch={false} href={href} className="flex gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]">
       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))]">
         {post.coverImageUrl ? (
           <SafeNewsImage src={post.coverImageUrl} alt="" fill className="object-cover" loading="lazy" sizes="56px" />
@@ -59,7 +59,7 @@ function PostResult({ post }: { post: Post }) {
 
 function UserResult({ user }: { user: User }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.PROFILE(user.username)}
       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-surface))]"
     >
@@ -160,7 +160,7 @@ function SearchResultsPanel({
       {showCategories && categoryItems.length > 0 && (
         <ResultsSection title="Kategoriler" count={categoryItems.length}>
           {categoryItems.map((cat) => (
-            <Link
+            <Link prefetch={false}
               key={cat.id}
               href={`${ROUTES.FEED}?category=${cat.id}`}
               className="block px-4 py-3 text-sm font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
@@ -316,7 +316,7 @@ function SearchPageContent() {
                   .map((id) => DEFAULT_CATEGORIES.find((c) => c.id === id))
                   .filter(Boolean)
                   .map((cat) => (
-                    <Link
+                    <Link prefetch={false}
                       key={cat!.id}
                       href={ROUTES.CATEGORY(cat!.slug)}
                       className="category-link"

@@ -225,7 +225,7 @@ export function NewsArticleStatic({
       >
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href={ROUTES.FEED} className="hover:text-[color:var(--reader-page-text)]">
+            <Link prefetch={false} href={ROUTES.FEED} className="hover:text-[color:var(--reader-page-text)]">
               Ana Sayfa
             </Link>
           </li>
@@ -235,7 +235,7 @@ export function NewsArticleStatic({
           {post.categoryId && (
             <>
               <li>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.CATEGORY(post.categoryId)}
                   className="hover:text-[color:var(--reader-page-text)]"
                 >
@@ -446,7 +446,7 @@ export function NewsArticleStatic({
               {publicSource && (
                 <>
                   {' · '}
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.SOURCE_PROFILE(publicSource)}
                     className="font-semibold text-[color:var(--reader-accent)] hover:underline"
                   >
@@ -464,7 +464,7 @@ export function NewsArticleStatic({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {hasCity && post.citySlug && (
-                  <Link
+                  <Link prefetch={false}
                     href={`${ROUTES.FEED}?category=${encodeURIComponent(cityCategoryId(post.citySlug))}`}
                     className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-400 ring-1 ring-emerald-500/25"
                   >
@@ -473,7 +473,7 @@ export function NewsArticleStatic({
                   </Link>
                 )}
                 {post.tags.map((tag) => (
-                  <Link
+                  <Link prefetch={false}
                     key={tag}
                     href={ROUTES.TAG(tag)}
                     className="inline-flex items-center gap-1 rounded-full bg-[color:var(--reader-page-bg)] px-2.5 py-1 text-xs font-semibold text-[color:var(--reader-accent)] ring-1 ring-[color:var(--reader-page-edge)]"

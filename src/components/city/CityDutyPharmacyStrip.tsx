@@ -60,7 +60,7 @@ export function CityDutyPharmacyStrip({
           <DutyPharmacyGroupList groups={groups} hideGroupHeadings />
         </div>
         <p className="mt-4 text-right">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.CITY_DUTY_PHARMACIES_DISTRICT(districtSlug)}
             className="text-xs font-semibold text-[rgb(var(--color-brand))] underline-offset-2 hover:underline"
           >

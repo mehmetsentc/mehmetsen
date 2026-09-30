@@ -17,10 +17,10 @@ export function BreakingNewsBand({ items }: BreakingNewsBandProps) {
 
   return (
     <div className="nl-breaking-band mb-0" role="region" aria-label="Son dakika bandı">
-      <Link href={ROUTES.CATEGORY('son-dakika')} className="nl-breaking-band__label">
+      <Link prefetch={false} href={ROUTES.CATEGORY('son-dakika')} className="nl-breaking-band__label">
         Son Dakika
       </Link>
-      <Link href={newsItemDetailHref(lead)} className="nl-breaking-band__story">
+      <Link prefetch={false} href={newsItemDetailHref(lead)} className="nl-breaking-band__story">
         <p className="m-0 truncate text-sm font-semibold">{lead.title}</p>
       </Link>
       {items.length > 1 ? (

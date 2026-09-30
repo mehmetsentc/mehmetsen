@@ -45,7 +45,7 @@ function FooterNavLink({
   active: boolean
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={item.href}
       aria-current={active ? 'page' : undefined}
       title={`${item.label} haberleri`}
@@ -86,7 +86,7 @@ function HeaderNavList({
         const active = isActive(pathname, item.href, item.id)
         return (
           <li key={item.id} className="flex items-stretch">
-            <Link
+            <Link prefetch={false}
               href={item.href}
               aria-current={active ? 'page' : undefined}
               title={`${item.label} haberleri`}
@@ -156,7 +156,7 @@ export function DesktopSiteNavLinks({
           const active = isActive(pathname, item.href, item.id)
           return (
             <li key={item.id} className="flex items-stretch">
-              <Link
+              <Link prefetch={false}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 title={`${item.label} haberleri`}
@@ -201,7 +201,7 @@ export function DesktopSiteNavLinks({
               {!isMasthead && index > 0 ? (
                 <span className="my-3 w-px shrink-0 bg-[rgb(var(--color-border))]" aria-hidden />
               ) : null}
-              <Link
+              <Link prefetch={false}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 title={`${item.label} haberleri`}

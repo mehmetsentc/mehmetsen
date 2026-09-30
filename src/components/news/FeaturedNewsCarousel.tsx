@@ -234,7 +234,7 @@ export function FeaturedNewsCarousel({
             </>
           ) : null}
 
-          <Link
+          <Link prefetch={false}
             href={item.href}
             className="featured-news-carousel__link"
             onClick={() => handleSlideClick(current)}

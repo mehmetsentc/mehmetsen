@@ -93,7 +93,7 @@ export function DesktopMarketSidebar() {
             CANLI
           </span>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CATEGORY('ekonomi')}
           className="text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"
         >

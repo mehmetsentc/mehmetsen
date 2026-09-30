@@ -341,7 +341,7 @@ export function FeedDiscoveryRail({
 
             return (
               <li key={item.articleId} className="w-full min-w-0">
-                <Link
+                <Link prefetch={false}
                   href={`/haber/${item.slug || item.articleId}`}
                   className={className}
                   style={style}
@@ -449,7 +449,7 @@ export function FeedDiscoveryRail({
             }
 
             return (
-              <Link
+              <Link prefetch={false}
                 key={item.articleId}
                 href={`/haber/${item.slug || item.articleId}`}
                 className={className}

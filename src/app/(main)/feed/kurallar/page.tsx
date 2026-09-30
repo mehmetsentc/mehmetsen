@@ -13,7 +13,7 @@ export default function FeedContentPolicyPage() {
   return (
     <div className="legal-hub mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-4">
-        <Link href={ROUTES.FEED} className="text-sm font-medium text-red-600 hover:underline">
+        <Link prefetch={false} href={ROUTES.FEED} className="text-sm font-medium text-red-600 hover:underline">
           ← Akışa dön
         </Link>
       </div>

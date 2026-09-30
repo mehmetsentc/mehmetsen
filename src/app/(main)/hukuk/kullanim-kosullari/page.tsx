@@ -81,11 +81,11 @@ export default function KullanimKosullariPage() {
       <Section title="8. Gizlilik">
         <p>
           Kişisel verilerinizin işlenmesi hakkında bilgi almak için{' '}
-          <Link href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] hover:underline">
+          <Link prefetch={false} href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] hover:underline">
             KVKK Politikamızı
           </Link>{' '}
           ve{' '}
-          <Link href="/hukuk/gizlilik" className="text-[rgb(var(--color-brand))] hover:underline">
+          <Link prefetch={false} href="/hukuk/gizlilik" className="text-[rgb(var(--color-brand))] hover:underline">
             Gizlilik Politikamızı
           </Link>{' '}
           inceleyebilirsiniz.

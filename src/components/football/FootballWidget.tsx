@@ -159,7 +159,7 @@ export function FootballWidget() {
       )}
 
       <div className="mt-3 border-t border-[rgb(var(--color-border))] pt-2.5">
-        <Link
+        <Link prefetch={false}
           href="/futbol-canli"
           className="text-xs font-medium text-[rgb(var(--color-brand))] hover:underline"
         >

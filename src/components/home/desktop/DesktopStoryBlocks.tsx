@@ -134,7 +134,7 @@ function Headline({
   serif?: boolean
 }) {
   return (
-    <Link href={newsItemDetailHref(item)} className="group block min-w-0">
+    <Link prefetch={false} href={newsItemDetailHref(item)} className="group block min-w-0">
       <HeadlineText item={item} size={size} serif={serif} />
     </Link>
   )
@@ -143,7 +143,7 @@ function Headline({
 export function HeroStory({ item, priority = false }: { item: NewsItem; priority?: boolean }) {
   return (
     <article>
-      <Link href={newsItemDetailHref(item)} className="group block">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="group block">
         <div className="relative mb-4 aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
@@ -184,7 +184,7 @@ export function HeroImageOnly({
 
   return (
     <article className="min-w-0">
-      <Link href={newsItemDetailHref(item)} className="group block">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="group block">
         <div className={cn('relative w-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
@@ -210,7 +210,7 @@ export function RightFeatureStory({ item, live = false }: { item: NewsItem; live
           Canlı
         </span>
       ) : null}
-      <Link href={newsItemDetailHref(item)} className="group flex min-w-0 gap-3.5">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="group flex min-w-0 gap-3.5">
         <div className="relative aspect-[4/3] w-[7.25rem] shrink-0 overflow-hidden rounded-lg bg-[rgb(var(--color-border))] sm:w-[8.5rem]">
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
@@ -247,7 +247,7 @@ export function QuickHeadlineStrip({ items }: { items: NewsItem[] }) {
       <ul className="flex flex-wrap divide-x divide-[rgb(var(--color-border))]">
         {items.map((item) => (
           <li key={item.id} className="min-w-0 flex-1 px-4 first:pl-0 last:pr-0">
-            <Link
+            <Link prefetch={false}
               href={newsItemDetailHref(item)}
               className="line-clamp-3 text-sm font-bold leading-snug text-[rgb(var(--color-text))] hover:underline"
             >
@@ -280,7 +280,7 @@ export function ImageStory({
 
   return (
     <article className="min-w-0">
-      <Link href={newsItemDetailHref(item)} className="group block min-w-0">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="group block min-w-0">
         <div className={cn('relative mb-3 w-full overflow-hidden rounded-xl bg-[rgb(var(--color-border))]', aspectCls)}>
           <SafeNewsImage
             src={item.imageUrl || FEED_FALLBACK_LOGO}
@@ -380,7 +380,7 @@ export function DualImageStory({ items }: { items: NewsItem[] }) {
 
   return (
     <article>
-      <Link href={newsItemDetailHref(lead)} className="group block">
+      <Link prefetch={false} href={newsItemDetailHref(lead)} className="group block">
         <div className="mb-3 grid grid-cols-2 gap-1">
           {items.slice(0, 2).map((item, i) => (
             <div key={item.id} className="relative aspect-[3/4] overflow-hidden bg-[rgb(var(--color-border))]">

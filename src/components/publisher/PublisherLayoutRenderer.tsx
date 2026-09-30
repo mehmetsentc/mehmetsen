@@ -43,7 +43,7 @@ function ArticleCard({
   const hero = size === 'HERO' || size === 'FULL'
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.NEWS_DETAIL(article.slug)}
       className={cn(
         'group block overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] transition hover:border-[rgb(var(--color-brand))]/40',

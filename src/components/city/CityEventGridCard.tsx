@@ -37,7 +37,7 @@ export function CityEventGridCard({ event, compact = false }: CityEventGridCardP
         'bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md'
       )}
     >
-      <Link href={`/etkinlik/${event.id}`} className="flex min-h-0 flex-1 flex-col">
+      <Link prefetch={false} href={`/etkinlik/${event.id}`} className="flex min-h-0 flex-1 flex-col">
       <div
         className={cn(
           'relative w-full overflow-hidden bg-[rgb(var(--color-surface-elevated))]',

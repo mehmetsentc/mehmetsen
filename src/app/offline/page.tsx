@@ -36,7 +36,7 @@ export default function OfflinePage() {
       </p>
 
       <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-        <Link
+        <Link prefetch={false}
           href={ROUTES.FEED}
           className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-brand transition-colors hover:bg-brand-600"
         >

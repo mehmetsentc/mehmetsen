@@ -63,7 +63,7 @@ export function PublisherStudioNav({
             )
           }
           return (
-            <Link
+            <Link prefetch={false}
               key={item.label}
               href={href}
               className={cn(

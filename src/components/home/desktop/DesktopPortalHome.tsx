@@ -48,7 +48,7 @@ function PortalBandHead({
   return (
     <div className="desktop-portal-bottom__head">
       <h2 className="desktop-portal-kicker">{title}</h2>
-      <Link href={href} className="desktop-portal-more">
+      <Link prefetch={false} href={href} className="desktop-portal-more">
         {more}
       </Link>
     </div>
@@ -58,10 +58,10 @@ function PortalBandHead({
 function PortalTile({ item, sizes = '240px' }: { item: NewsWithImage; sizes?: string }) {
   return (
     <article className="desktop-portal-tile">
-      <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
         <SafeNewsImage src={item.imageUrl} alt="" fill sizes={sizes} className="object-cover" />
       </Link>
-      <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
         {item.title}
       </Link>
       {item.summary || item.description ? (
@@ -129,15 +129,15 @@ function PortalLeadColumn({
 
   return (
     <article className="desktop-portal-cat" style={{ borderTopColor: accent }}>
-      <Link href={href} className="desktop-portal-cat__kicker" style={{ color: accent }}>
+      <Link prefetch={false} href={href} className="desktop-portal-cat__kicker" style={{ color: accent }}>
         {title}
       </Link>
       {lead ? (
         <>
-          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
+          <Link prefetch={false} href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
             <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
           </Link>
-          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
+          <Link prefetch={false} href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
             {lead.title}
           </Link>
         </>
@@ -146,7 +146,7 @@ function PortalLeadColumn({
         <ul className="desktop-portal-extra desktop-portal-scroll">
           {rest.map((item) => (
             <li key={item.id}>
-              <Link href={newsItemDetailHref(item)}>{item.title}</Link>
+              <Link prefetch={false} href={newsItemDetailHref(item)}>{item.title}</Link>
             </li>
           ))}
         </ul>
@@ -263,7 +263,7 @@ export function DesktopPortalHome({
               const clock = formatNewsClockTime(item.publishedAt ?? item.createdAt)
               return (
                 <li key={item.id}>
-                  <Link href={newsItemDetailHref(item)} className="desktop-portal-manset__row">
+                  <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-manset__row">
                     <span className="desktop-portal-manset__thumb">
                       <SafeNewsImage
                         src={item.imageUrl}
@@ -318,7 +318,7 @@ export function DesktopPortalHome({
                 {newsItemCategoryLabel(hero) ? (
                   <span className="desktop-portal-hero__cat">{newsItemCategoryLabel(hero)}</span>
                 ) : null}
-                <Link href={newsItemDetailHref(hero)} className="desktop-portal-hero__title">
+                <Link prefetch={false} href={newsItemDetailHref(hero)} className="desktop-portal-hero__title">
                   {hero.seoTitle || hero.title}
                 </Link>
                 {hero.summary || hero.description ? (
@@ -351,7 +351,7 @@ export function DesktopPortalHome({
             <ul className="desktop-portal-rail__list">
               {railItems.map((item) => (
                 <li key={item.id}>
-                  <Link
+                  <Link prefetch={false}
                     href={newsItemDetailHref(item)}
                     className="desktop-portal-manset__row desktop-portal-manset__row--thumb"
                   >
@@ -429,7 +429,7 @@ export function DesktopPortalHome({
           <div className="desktop-portal-grid-4">
             {videos.slice(0, 4).map((item) => (
               <article key={item.id} className="desktop-portal-video-tile">
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+                <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
                   <SafeNewsImage
                     src={item.imageUrl}
                     alt=""
@@ -441,7 +441,7 @@ export function DesktopPortalHome({
                     <Play className="h-5 w-5 fill-current" />
                   </span>
                 </Link>
-                <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
+                <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
                   {item.title}
                 </Link>
               </article>

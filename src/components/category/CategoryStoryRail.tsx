@@ -27,7 +27,7 @@ function RailCard({ post, priority = false }: { post: TimelinePost; priority?: b
   const time = formatNewsDateBbc(postIso(post))
 
   return (
-    <Link href={categoryPostHref(post)} className="category-rail-card group">
+    <Link prefetch={false} href={categoryPostHref(post)} className="category-rail-card group">
       <div className="category-rail-card__media">
         <SafeNewsImage
           src={image}

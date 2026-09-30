@@ -15,7 +15,7 @@ export default function HukukLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-1 text-sm text-[rgb(var(--color-muted))]">
-        <Link href="/" className="hover:text-[rgb(var(--color-text))]">Ana Sayfa</Link>
+        <Link prefetch={false} href="/" className="hover:text-[rgb(var(--color-text))]">Ana Sayfa</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-[rgb(var(--color-text))] font-medium">Hukuki Bilgiler</span>
       </nav>
@@ -27,7 +27,7 @@ export default function HukukLayout({ children }: { children: ReactNode }) {
             <ul className="flex flex-row flex-wrap gap-2 lg:flex-col lg:gap-1">
               {legalLinks.map(({ href, label }) => (
                 <li key={href}>
-                  <Link
+                  <Link prefetch={false}
                     href={href}
                     className="block rounded-xl px-3 py-2 text-sm font-medium text-[rgb(var(--color-muted))] transition-colors hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] aria-[current=page]:bg-[rgb(var(--color-brand))]/10 aria-[current=page]:text-[rgb(var(--color-brand))]"
                   >

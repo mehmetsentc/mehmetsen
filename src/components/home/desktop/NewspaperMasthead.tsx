@@ -40,7 +40,7 @@ export function NewspaperMasthead({
         </div>
       </div>
 
-      <Link href={cityName ? '/' : ROUTES.FEED} className="block no-underline">
+      <Link prefetch={false} href={cityName ? '/' : ROUTES.FEED} className="block no-underline">
         {cityName ? (
           <p className="nl-masthead__title m-0 font-serif text-4xl font-black tracking-tight text-[rgb(var(--color-text))]">
             {cityName}{' '}

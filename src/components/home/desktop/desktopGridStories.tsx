@@ -23,7 +23,7 @@ export function GridStory({ post, size = 'md' }: { post: TimelinePost; size?: 'm
 
   return (
     <article className="min-w-0">
-      <Link href={href} className="group block min-w-0">
+      <Link prefetch={false} href={href} className="group block min-w-0">
         <div className={cn('relative mb-3 w-full overflow-hidden bg-[rgb(var(--color-border))]', aspect)}>
           <SafeNewsImage
             src={image}
@@ -58,7 +58,7 @@ export function StackedStory({ post }: { post: TimelinePost }) {
 
   return (
     <article className="border-b border-[rgb(var(--color-border))] pb-4 last:border-b-0 last:pb-0">
-      <Link href={href} className="group flex gap-3">
+      <Link prefetch={false} href={href} className="group flex gap-3">
         <div className="relative h-[72px] w-[108px] shrink-0 overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={image}

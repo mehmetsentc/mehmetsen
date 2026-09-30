@@ -14,7 +14,7 @@ export function BreakingTicker({ items }: BreakingTickerProps) {
   const lead = items[0]!
 
   return (
-    <Link
+    <Link prefetch={false}
       href={newsItemDetailHref(lead)}
       className="home-full-bleed flex h-11 overflow-hidden md:home-contained md:rounded-xl"
       aria-label={`Son dakika: ${lead.title}`}

@@ -61,10 +61,10 @@ export function DesktopBreakingTicker({
         data-testid="desktop-portal-breaking"
       >
         <div className="desktop-web-header__inner desktop-portal-breaking__inner">
-          <Link href={ROUTES.CATEGORY('son-dakika')} className="desktop-portal-breaking__label">
+          <Link prefetch={false} href={ROUTES.CATEGORY('son-dakika')} className="desktop-portal-breaking__label">
             Son dakika
           </Link>
-          <Link
+          <Link prefetch={false}
             href={newsItemDetailHref(item)}
             className="desktop-portal-breaking__story"
             aria-label={`Son dakika: ${item.title}`}
@@ -96,11 +96,11 @@ export function DesktopBreakingTicker({
 
   return (
     <div className="nl-breaking-ticker mb-4" aria-live="polite" aria-atomic="true">
-      <Link href={ROUTES.CATEGORY('son-dakika')} className="nl-breaking-ticker__label">
+      <Link prefetch={false} href={ROUTES.CATEGORY('son-dakika')} className="nl-breaking-ticker__label">
         Son Dakika
       </Link>
 
-      <Link
+      <Link prefetch={false}
         href={newsItemDetailHref(item)}
         className="flex min-w-0 flex-1 items-center gap-3 px-4"
         aria-label={`Son dakika: ${item.title}`}

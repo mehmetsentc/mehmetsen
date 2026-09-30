@@ -60,7 +60,7 @@ export function DesktopCategoryWatch({ posts, categorySlug }: DesktopCategoryWat
           const image = categoryPostImage(post) || FEED_FALLBACK_LOGO
           const summary = categoryPostSummary(post)
           return (
-            <Link key={post.id} href={href} className="group w-[260px] shrink-0 snap-start">
+            <Link prefetch={false} key={post.id} href={href} className="group w-[260px] shrink-0 snap-start">
               <div className="relative mb-3 aspect-video overflow-hidden bg-neutral-800">
                 <SafeNewsImage src={image} alt={post.title} fill sizes="260px" className="object-cover group-hover:scale-[1.03] transition-transform" />
                 <span className="absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/75">

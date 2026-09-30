@@ -13,7 +13,7 @@ export default function KunyePage() {
     <div className="nl-editorial desktop-newspaper-shell mx-auto max-w-2xl py-10">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="mb-8 flex items-center gap-1 text-sm text-[rgb(var(--color-muted))]">
-        <Link href="/" className="hover:text-[rgb(var(--color-text))]">Ana Sayfa</Link>
+        <Link prefetch={false} href="/" className="hover:text-[rgb(var(--color-text))]">Ana Sayfa</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-medium text-[rgb(var(--color-text))]">Künye</span>
       </nav>
@@ -71,13 +71,13 @@ export default function KunyePage() {
 
         {/* Hukuki linkler */}
         <div className="mt-6 flex flex-wrap gap-3 text-xs text-[rgb(var(--color-muted))]">
-          <Link href="/hukuk/kvkk" className="hover:text-[rgb(var(--color-brand))] hover:underline">KVKK</Link>
+          <Link prefetch={false} href="/hukuk/kvkk" className="hover:text-[rgb(var(--color-brand))] hover:underline">KVKK</Link>
           <span aria-hidden>·</span>
-          <Link href="/hukuk/gizlilik" className="hover:text-[rgb(var(--color-brand))] hover:underline">Gizlilik Politikası</Link>
+          <Link prefetch={false} href="/hukuk/gizlilik" className="hover:text-[rgb(var(--color-brand))] hover:underline">Gizlilik Politikası</Link>
           <span aria-hidden>·</span>
-          <Link href="/hukuk/cerez-politikasi" className="hover:text-[rgb(var(--color-brand))] hover:underline">Çerez Politikası</Link>
+          <Link prefetch={false} href="/hukuk/cerez-politikasi" className="hover:text-[rgb(var(--color-brand))] hover:underline">Çerez Politikası</Link>
           <span aria-hidden>·</span>
-          <Link href="/hukuk/kullanim-kosullari" className="hover:text-[rgb(var(--color-brand))] hover:underline">Kullanım Koşulları</Link>
+          <Link prefetch={false} href="/hukuk/kullanim-kosullari" className="hover:text-[rgb(var(--color-brand))] hover:underline">Kullanım Koşulları</Link>
         </div>
 
         <p className="mt-6 text-center text-xs text-[rgb(var(--color-muted))]">

@@ -57,7 +57,7 @@ export function FeedGuestPolicyModal({ open, onAccept, onDecline }: FeedGuestPol
             ))}
           </ul>
 
-          <Link href={ROUTES.FEED_CONTENT_POLICY} className="feed-policy-link">
+          <Link prefetch={false} href={ROUTES.FEED_CONTENT_POLICY} className="feed-policy-link">
             Tüm içerik kurallarını oku →
           </Link>
         </div>
@@ -74,7 +74,7 @@ export function FeedGuestPolicyModal({ open, onAccept, onDecline }: FeedGuestPol
           </div>
           <p className="feed-policy-register">
             Hesabın yok mu?{' '}
-            <Link href={ROUTES.REGISTER} className="font-semibold text-red-600 hover:underline">
+            <Link prefetch={false} href={ROUTES.REGISTER} className="font-semibold text-red-600 hover:underline">
               Kayıt ol
             </Link>
           </p>

@@ -17,7 +17,7 @@ export function SettingsHeader({
 }: SettingsHeaderProps) {
   return (
     <header className="settings-header">
-      <Link href={backHref} className="settings-header-back" aria-label={backLabel}>
+      <Link prefetch={false} href={backHref} className="settings-header-back" aria-label={backLabel}>
         <ChevronLeft className="h-6 w-6" />
       </Link>
       <h1 className="settings-header-title">{title}</h1>

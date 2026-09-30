@@ -21,7 +21,7 @@ function EditorialCard({ item }: { item: NewsItem }) {
           {catLabel}
         </span>
       ) : null}
-      <Link href={newsItemDetailHref(item)} className="group block min-w-0">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="group block min-w-0">
         <h3 className="font-serif text-base font-bold leading-snug text-[rgb(var(--color-text))] decoration-2 underline-offset-2 group-hover:underline">
           {item.title}
         </h3>

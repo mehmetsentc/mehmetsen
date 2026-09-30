@@ -24,7 +24,7 @@ export function LocalListStory({ post }: { post: TimelinePost }) {
   const time = formatNewsDateBbc(postIso(post))
 
   return (
-    <Link href={href} className="local-list__row group">
+    <Link prefetch={false} href={href} className="local-list__row group">
       <div className="local-list__media shrink-0">
         <SafeNewsImage
           src={image}

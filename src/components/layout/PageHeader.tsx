@@ -23,7 +23,7 @@ export function PageHeader({
   return (
     <div className={cn('mb-4', className)}>
       <header className="page-header">
-        <Link href={backHref} className="page-header-back" aria-label={backLabel}>
+        <Link prefetch={false} href={backHref} className="page-header-back" aria-label={backLabel}>
           <ChevronLeft className="h-6 w-6" />
         </Link>
         <h1 className="page-header-title">{title}</h1>

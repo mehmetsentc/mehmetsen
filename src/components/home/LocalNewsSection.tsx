@@ -21,7 +21,7 @@ function EventMiniCard({ event, fallbackCity }: { event: NaEvent; fallbackCity?:
   const { day, month } = formatEventDayBadge(event.startsAt)
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.EVENTS}
       className="w-[160px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >
@@ -153,7 +153,7 @@ export function LocalNewsSection() {
             {news.map((item) => {
               const image = item.imageUrl || FEED_FALLBACK_LOGO
               return (
-                <Link
+                <Link prefetch={false}
                   key={item.id}
                   href={newsItemDetailHref(item)}
                   className="flex gap-3 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2"
@@ -182,7 +182,7 @@ export function LocalNewsSection() {
                 <CalendarDays className="h-4 w-4 text-[rgb(var(--color-brand))]" />
                 <h2 className="text-lg font-black text-[rgb(var(--color-text))]">Yakınındaki Etkinlikler</h2>
               </div>
-              <Link href={ROUTES.EVENTS} className="text-xs font-bold text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.EVENTS} className="text-xs font-bold text-[rgb(var(--color-brand))]">
                 Tümü
               </Link>
             </div>

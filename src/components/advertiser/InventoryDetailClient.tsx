@@ -85,7 +85,7 @@ export function InventoryDetailClient({ inventoryId }: { inventoryId: string }) 
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
-      <Link href="/reklam-pazari" className="text-sm text-stone-600 underline">
+      <Link prefetch={false} href="/reklam-pazari" className="text-sm text-stone-600 underline">
         ← Pazar yerine dön
       </Link>
       <header>
@@ -152,7 +152,7 @@ export function InventoryDetailClient({ inventoryId }: { inventoryId: string }) 
         ) : !advertiserId ? (
           <p className="text-sm">
             Talep için{' '}
-            <Link href="/advertiser/onboarding" className="underline">
+            <Link prefetch={false} href="/advertiser/onboarding" className="underline">
               reklamveren hesabı
             </Link>{' '}
             gerekli.

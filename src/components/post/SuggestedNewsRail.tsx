@@ -44,7 +44,7 @@ export function SuggestedNewsRail({
       {hideHeader ? null : (
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">Önerilen Haberler</h2>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             className="flex items-center gap-0.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
           >
@@ -65,7 +65,7 @@ export function SuggestedNewsRail({
           const timeLabel = formatTimelineTime(post.publishedAt)
 
           return (
-            <Link
+            <Link prefetch={false}
               key={post.id}
               href={href}
               className="group w-56 shrink-0 snap-start overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"

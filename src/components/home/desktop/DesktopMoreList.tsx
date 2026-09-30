@@ -65,7 +65,7 @@ function MoreRow({ fields }: { fields: MoreRowFields }) {
         </time>
       </div>
       <div className="col-span-12 min-w-0 sm:col-span-7 lg:col-span-7">
-        <Link href={fields.href} className="group block">
+        <Link prefetch={false} href={fields.href} className="group block">
           <h3 className="bbc-more-title group-hover:underline">{fields.title}</h3>
           {fields.summary ? (
             <p className="bbc-story-summary mt-2 line-clamp-3">{fields.summary}</p>
@@ -73,7 +73,7 @@ function MoreRow({ fields }: { fields: MoreRowFields }) {
         </Link>
       </div>
       <div className="col-span-12 sm:col-span-3 lg:col-span-3 sm:col-start-auto">
-        <Link href={fields.href} className="group relative block aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
+        <Link prefetch={false} href={fields.href} className="group relative block aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={fields.image}
             alt={fields.title}

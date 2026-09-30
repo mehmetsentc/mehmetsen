@@ -25,7 +25,7 @@ export function CityNewspaperEventsRail({
           const { day, month } = formatEventDayBadge(event.startsAt)
           return (
             <article key={event.id} className="desktop-portal-tile">
-              <Link href={`/etkinlik/${event.id}`} className="desktop-portal-cat__media">
+              <Link prefetch={false} href={`/etkinlik/${event.id}`} className="desktop-portal-cat__media">
                 {cover ? (
                   // Paribu posters are served from /api/events/image. next/image
                   // rejects that URL (INVALID_IMAGE_OPTIMIZE_REQUEST) and the card stays blank.
@@ -39,7 +39,7 @@ export function CityNewspaperEventsRail({
                   </span>
                 ) : null}
               </Link>
-              <Link href={`/etkinlik/${event.id}`} className="desktop-portal-cat__title">
+              <Link prefetch={false} href={`/etkinlik/${event.id}`} className="desktop-portal-cat__title">
                 {event.title}
               </Link>
             </article>

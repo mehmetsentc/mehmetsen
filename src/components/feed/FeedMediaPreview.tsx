@@ -39,7 +39,7 @@ export function FeedMediaPreview({
   const isThumb = layout === 'thumb'
 
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className={cn(
         'group/media relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800',

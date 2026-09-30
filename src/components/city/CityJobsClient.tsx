@@ -312,7 +312,7 @@ export function CityJobsClient({
 
       {/* Employer / seeker CTAs */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CITY_JOBS_EMPLOYER}
           className={cn(
             'group flex items-start gap-3 rounded-xl border border-[rgb(var(--color-border))]',
@@ -332,7 +332,7 @@ export function CityJobsClient({
             </span>
           </span>
         </Link>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CITY_JOBS_SEEKER}
           className={cn(
             'group flex items-start gap-3 rounded-xl border border-[rgb(var(--color-border))]',
@@ -597,7 +597,7 @@ export function CityJobsClient({
                 <p className="mx-auto mt-1 max-w-md text-sm text-[rgb(var(--color-text-secondary))]">
                   Onaylanan “iş arıyorum” ilanları burada listelenir.
                 </p>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.CITY_JOBS_SEEKER}
                   className="mt-4 inline-flex text-sm font-semibold text-[rgb(var(--color-brand))]"
                 >
@@ -707,7 +707,7 @@ export function CityJobsClient({
                 ].filter(Boolean)
                 return (
                   <li key={job.id}>
-                    <Link
+                    <Link prefetch={false}
                       href={ROUTES.CITY_JOB_DETAIL(job.id)}
                       className={cn(
                         'group flex items-center gap-3 rounded-2xl border border-[rgb(var(--color-border))]',

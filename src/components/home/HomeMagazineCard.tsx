@@ -58,7 +58,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
             onScroll={syncActive}
           >
             {images.map((src, index) => (
-              <Link
+              <Link prefetch={false}
                 key={`${item.id}-${src}`}
                 href={href}
                 className="mag-card__carousel-slide"
@@ -105,7 +105,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
             />
           ))}
         </div>
-        <Link href={href} className="mag-card__copy">
+        <Link prefetch={false} href={href} className="mag-card__copy">
           {title}
         </Link>
       </article>
@@ -115,7 +115,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
   if (images.length === 2) {
     return (
       <article className="mag-card" data-testid="magazine-card">
-        <Link href={href} className="mag-card__pair">
+        <Link prefetch={false} href={href} className="mag-card__pair">
           {images.map((src) => (
             <span key={src} className="mag-card__pair-cell">
               <SafeNewsImage
@@ -135,7 +135,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
             </span>
           ) : null}
         </Link>
-        <Link href={href} className="mag-card__copy">
+        <Link prefetch={false} href={href} className="mag-card__copy">
           {title}
         </Link>
       </article>
@@ -144,7 +144,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
 
   return (
     <article className="mag-card" data-testid="magazine-card">
-      <Link href={href} className="mag-card__media">
+      <Link prefetch={false} href={href} className="mag-card__media">
         <SafeNewsImage
           src={images[0] || FEED_FALLBACK_LOGO}
           alt={item.title}
@@ -160,7 +160,7 @@ export function HomeMagazineCard({ item, priority = false }: HomeMagazineCardPro
           </span>
         ) : null}
       </Link>
-      <Link href={href} className="mag-card__copy">
+      <Link prefetch={false} href={href} className="mag-card__copy">
         {title}
       </Link>
     </article>

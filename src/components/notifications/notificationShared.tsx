@@ -148,7 +148,7 @@ export function NotificationRow({
   if (href) {
     return (
       <li>
-        <Link href={href} onClick={onNavigate}>
+        <Link prefetch={false} href={href} onClick={onNavigate}>
           {body}
         </Link>
       </li>

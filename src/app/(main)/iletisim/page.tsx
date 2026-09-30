@@ -84,7 +84,7 @@ const FAQ: FaqEntry[] = [
     a: (
       <>
         Uygulamada{' '}
-        <Link href="/settings/account/delete" className="font-semibold text-brand-600 underline dark:text-brand-400">
+        <Link prefetch={false} href="/settings/account/delete" className="font-semibold text-brand-600 underline dark:text-brand-400">
           Ayarlar → Oturum → Hesabı Sil
         </Link>
         {' '}menüsünden hesabınızı doğrudan silebilirsiniz. Sorun yaşarsanız{' '}
@@ -124,7 +124,7 @@ const FAQ: FaqEntry[] = [
           {CONTACT_EMAIL}
         </a>
         {' '}adresine yazın. Detaylar için{' '}
-        <Link className="font-semibold text-brand-600 underline dark:text-brand-400" href="/aydinlatma-metni">
+        <Link prefetch={false} className="font-semibold text-brand-600 underline dark:text-brand-400" href="/aydinlatma-metni">
           Aydınlatma Metni
         </Link>
         {' '}sayfasına bakabilirsiniz.
@@ -275,7 +275,7 @@ export default function IletisimPage() {
             <strong className="font-semibold text-red-950 dark:text-red-50">Ayarlar → Oturum → Hesabı Sil</strong>{' '}
             menüsünden hesabınızı kalıcı olarak silebilirsiniz.
           </p>
-          <Link
+          <Link prefetch={false}
             href="/settings/account/delete"
             className="mb-3 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
@@ -318,7 +318,7 @@ export default function IletisimPage() {
           <ul className="grid gap-2 text-sm sm:grid-cols-2">
             {FOOTER_LEGAL_LINKS.map((link) => (
               <li key={link.href}>
-                <Link
+                <Link prefetch={false}
                   href={link.href}
                   className="font-medium text-brand-600 underline hover:no-underline dark:text-brand-400"
                 >

@@ -200,7 +200,7 @@ export function NewsSlider({ categoryId, initialItems, variant = 'default', chil
         onTouchEnd={onTouchEnd}
       >
         {items.map((it, i) => (
-          <Link
+          <Link prefetch={false}
             key={it.id}
             href={ROUTES.NEWS_DETAIL(it.slug)}
             className={`absolute inset-0 transition-opacity duration-500 ${

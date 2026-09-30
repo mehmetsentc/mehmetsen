@@ -42,7 +42,7 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-3 py-3">
-        <Link
+        <Link prefetch={false}
           href={ROUTES.MESSAGES}
           className="flex h-9 w-9 items-center justify-center rounded-full text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-nav-hover))] lg:hidden"
           aria-label="Mesajlara dön"
@@ -51,7 +51,7 @@ export function MessageThread({ conversationId }: MessageThreadProps) {
         </Link>
 
         {other ? (
-          <Link
+          <Link prefetch={false}
             href={ROUTES.PROFILE(other.username)}
             className="flex min-w-0 flex-1 items-center gap-3"
           >

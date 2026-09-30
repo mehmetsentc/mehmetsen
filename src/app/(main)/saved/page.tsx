@@ -80,7 +80,7 @@ export default function SavedPage() {
           <p className="empty-state-text">
             Haber kartlarındaki kaydet ikonuna tıklayarak buraya ekleyebilirsin.
           </p>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             className="mt-4 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >

@@ -20,7 +20,7 @@ interface NotificationBellProps {
 function NotificationsPanelFooter({ onClose }: { onClose: () => void }) {
   return (
     <div className="border-t border-[rgb(var(--color-border))] px-4 py-2.5">
-      <Link
+      <Link prefetch={false}
         href={ROUTES.NOTIFICATIONS}
         onClick={onClose}
         className="text-xs font-semibold text-[rgb(var(--color-brand))] hover:underline"

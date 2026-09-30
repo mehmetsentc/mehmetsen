@@ -204,7 +204,7 @@ export function RegisterForm() {
 
             <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
                 Zaten hesabın var mı?{' '}
-                <Link href={loginHrefWithNext(nextFromQuery)} className="font-medium text-brand-600 hover:underline">
+                <Link prefetch={false} href={loginHrefWithNext(nextFromQuery)} className="font-medium text-brand-600 hover:underline">
                     Giriş yap
                 </Link>
             </p>

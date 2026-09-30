@@ -162,7 +162,7 @@ export function LoginForm() {
 
       <p className="mt-6 text-center text-sm text-[rgb(var(--color-muted))]">
         Hesabın yok mu?{' '}
-        <Link
+        <Link prefetch={false}
           href={registerHrefWithNext(nextFromQuery ?? '')}
           className="font-medium text-brand-600 hover:underline"
         >

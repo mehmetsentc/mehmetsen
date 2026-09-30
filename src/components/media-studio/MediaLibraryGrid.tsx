@@ -20,7 +20,7 @@ export function MediaLibraryGrid({ items }: { items: LibraryItem[] }) {
             <p className="text-sm text-[rgb(var(--color-muted))]">
               {item.mediaCount} medya · {item.sizeLabel} · {item.createdLabel}
             </p>
-            <Link href={mediaStudioWorkspacePath(item.workspaceId)} className={`${primaryButton} mt-2 w-full`}>
+            <Link prefetch={false} href={mediaStudioWorkspacePath(item.workspaceId)} className={`${primaryButton} mt-2 w-full`}>
               Workspace&apos;i Aç
             </Link>
           </div>

@@ -63,7 +63,7 @@ export default function FacebookAppDocPage() {
 
         {/* Header */}
         <div className="mb-10">
-          <Link
+          <Link prefetch={false}
             href="/admin/social"
             className="mb-6 inline-flex items-center gap-1.5 text-sm text-blue-600 hover:underline dark:text-blue-400"
           >
@@ -181,7 +181,7 @@ export default function FacebookAppDocPage() {
 
           <Step n={7} title="NaHaber Admin Paneline Bilgileri Gir">
             <p>
-              <Link
+              <Link prefetch={false}
                 href="/admin/social"
                 className="font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
@@ -263,7 +263,7 @@ export default function FacebookAppDocPage() {
 
         {/* Footer CTA */}
         <div className="mt-8 flex gap-3">
-          <Link
+          <Link prefetch={false}
             href="/admin/social"
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
           >

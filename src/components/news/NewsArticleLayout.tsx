@@ -75,7 +75,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
       <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[rgb(var(--color-muted))]">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
-            <Link href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
+            <Link prefetch={false} href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
               Ana Sayfa
             </Link>
           </li>
@@ -85,7 +85,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
           {post.categoryId && (
             <>
               <li>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.CATEGORY(post.categoryId)}
                   className="hover:text-[rgb(var(--color-text))]"
                 >
@@ -202,7 +202,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {hasCity && post.citySlug && (
-                  <Link
+                  <Link prefetch={false}
                     href={`${ROUTES.FEED}?category=${encodeURIComponent(cityCategoryId(post.citySlug))}`}
                     className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-900"
                   >
@@ -211,7 +211,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
                   </Link>
                 )}
                 {post.tags.map((tag) => (
-                  <Link
+                  <Link prefetch={false}
                     key={tag}
                     href={ROUTES.TAG(tag)}
                     className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--color-surface))] px-2.5 py-1 text-xs font-semibold text-blue-600 ring-1 ring-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-nav-hover))] dark:text-blue-400"

@@ -47,7 +47,7 @@ export function ProfileGrid({ posts, loading, emptyMessage = 'Henüz içerik yok
         const hasMedia = Boolean(imageUrl || videoUrl)
 
         return (
-          <Link
+          <Link prefetch={false}
             key={post.id}
             href={href}
             className="group relative aspect-square overflow-hidden bg-[rgb(var(--color-surface))]"

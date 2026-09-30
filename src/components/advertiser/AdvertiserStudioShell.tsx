@@ -39,7 +39,7 @@ export function AdvertiserStudioShell({
                   ? pathname === base || pathname === `${base}/`
                   : pathname.startsWith(href)
               return (
-                <Link
+                <Link prefetch={false}
                   key={item.href}
                   href={href}
                   className={`rounded-md px-3 py-2 text-sm ${

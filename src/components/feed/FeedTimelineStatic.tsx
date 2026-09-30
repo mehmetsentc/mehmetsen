@@ -53,7 +53,7 @@ export function FeedTimelineStatic({ posts }: FeedTimelineStaticProps) {
                 )}
               </div>
 
-              <Link href={href} className="group block overflow-hidden rounded-2xl shadow-md">
+              <Link prefetch={false} href={href} className="group block overflow-hidden rounded-2xl shadow-md">
                 <div
                   className="relative w-full overflow-hidden rounded-2xl"
                   style={{ aspectRatio: '4/3' }}

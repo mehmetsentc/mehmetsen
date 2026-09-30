@@ -121,7 +121,7 @@ export function PublisherVideoPrerollPlayer({
         </div>
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
           {ad.clickHref ? (
-            <Link
+            <Link prefetch={false}
               href={ad.clickHref}
               className="rounded bg-white/90 px-2 py-1 text-[11px] font-bold text-black"
               rel="sponsored noopener noreferrer"

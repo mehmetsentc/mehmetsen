@@ -92,7 +92,7 @@ export default function DeleteAccountPage() {
           <p className="text-sm text-[rgb(var(--color-muted))]">
             Hesabınızı silmek için önce giriş yapmalısınız.
           </p>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.LOGIN}
             className="mt-4 inline-block rounded-xl bg-[rgb(var(--color-brand))] px-5 py-2 text-sm font-bold text-white"
           >
@@ -164,7 +164,7 @@ export default function DeleteAccountPage() {
 
         {/* Aksiyon butonları */}
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.SETTINGS}
             className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-white/10"
           >

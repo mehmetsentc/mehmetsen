@@ -36,7 +36,7 @@ export function CategoryRail({ categoryId, title, items }: CategoryRailProps) {
           <span className="home-rail-accent shrink-0" aria-hidden />
           <h2 className="truncate text-lg font-black text-[rgb(var(--color-text))]">{heading}</h2>
         </div>
-        <Link
+        <Link prefetch={false}
           href={categoryHref}
           className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]"
         >
@@ -52,7 +52,7 @@ export function CategoryRail({ categoryId, title, items }: CategoryRailProps) {
         {cards.map((item) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           return (
-            <Link
+            <Link prefetch={false}
               key={item.id}
               href={newsItemDetailHref(item)}
               className="w-[78vw] max-w-[280px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] sm:w-[250px]"

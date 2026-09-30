@@ -254,7 +254,7 @@ export function PublisherContentStudioClient({
                     </a>
                   ) : null}
                   {s.clusterSlug || s.clusterId ? (
-                    <Link
+                    <Link prefetch={false}
                       href={ROUTES.EVENT(s.clusterSlug || s.clusterId!)}
                       className="studio-btn inline-flex"
                     >
@@ -277,7 +277,7 @@ export function PublisherContentStudioClient({
                 className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.PUBLISHER_STUDIO.ARTICLE_EDIT(slug, item.id)}
                     className="truncate font-semibold hover:underline"
                   >
@@ -301,13 +301,13 @@ export function PublisherContentStudioClient({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.PUBLISHER_STUDIO.ARTICLE_EDIT(slug, item.id)}
                     className="studio-btn inline-flex"
                   >
                     Düzenle
                   </Link>
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.PUBLISHER_STUDIO.ARTICLE_PREVIEW(slug, item.id)}
                     className="studio-btn inline-flex"
                   >
@@ -315,7 +315,7 @@ export function PublisherContentStudioClient({
                   </Link>
                   {item.status === 'PUBLISHED' && item.publishedNewsId ? (
                     <>
-                      <Link
+                      <Link prefetch={false}
                         href={ROUTES.NEWS_DETAIL(item.seoSlug || item.publishedNewsId)}
                         className="studio-btn inline-flex"
                       >

@@ -122,7 +122,7 @@ export function PublisherAdRenderer({
         data-ad-id={ad.adId}
         aria-label="Sponsorlu içerik"
       >
-        <Link href={ad.clickHref} className="block" rel="sponsored noopener noreferrer" target="_blank">
+        <Link prefetch={false} href={ad.clickHref} className="block" rel="sponsored noopener noreferrer" target="_blank">
           <div className="relative aspect-[16/9] bg-[rgb(var(--color-bg))]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -169,7 +169,7 @@ export function PublisherAdRenderer({
           <div className="absolute left-2 top-2 rounded bg-black/50 px-1.5 py-0.5">{sponsored}</div>
         </div>
         <div className="p-2">
-          <Link
+          <Link prefetch={false}
             href={ad.clickHref}
             className="text-xs font-bold text-[rgb(var(--color-brand))] hover:underline"
             rel="sponsored noopener noreferrer"
@@ -191,7 +191,7 @@ export function PublisherAdRenderer({
       data-ad-id={ad.adId}
       aria-label="Reklam"
     >
-      <Link href={ad.clickHref} className="block" rel="sponsored noopener noreferrer" target="_blank">
+      <Link prefetch={false} href={ad.clickHref} className="block" rel="sponsored noopener noreferrer" target="_blank">
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

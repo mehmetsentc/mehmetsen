@@ -26,21 +26,21 @@ export default function NotFound() {
       </p>
 
       <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-        <Link
+        <Link prefetch={false}
           href={ROUTES.FEED}
           className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-brand transition-colors hover:bg-brand-600"
         >
           <Home className="h-4 w-4" />
           Ana sayfa
         </Link>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.SEARCH}
           className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle"
         >
           <Search className="h-4 w-4" />
           Haber ara
         </Link>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.DISCOVER}
           className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle"
         >

@@ -50,7 +50,7 @@ export default function NewsletterUnsubscribePage() {
           <p className="text-sm font-medium text-[rgb(var(--color-text))]">
             Aboneliğiniz iptal edildi.
           </p>
-          <Link href="/" className="text-sm font-semibold text-[rgb(var(--color-brand))] underline">
+          <Link prefetch={false} href="/" className="text-sm font-semibold text-[rgb(var(--color-brand))] underline">
             Ana sayfaya dön
           </Link>
         </div>

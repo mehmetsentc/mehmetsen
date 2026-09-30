@@ -15,7 +15,7 @@ export function FeedSliderHero({ item, variant = 'default' }: FeedSliderHeroProp
   return (
     <div style={SLIDER_OUTER_STYLE}>
       <div className={`relative overflow-hidden ${SLIDER_HEIGHT_CLASS}`}>
-        <Link href={ROUTES.NEWS_DETAIL(item.slug)} className="absolute inset-0 block">
+        <Link prefetch={false} href={ROUTES.NEWS_DETAIL(item.slug)} className="absolute inset-0 block">
           {item.imageUrl ? (
             <SliderImage src={item.imageUrl} alt={item.title} priority />
           ) : (

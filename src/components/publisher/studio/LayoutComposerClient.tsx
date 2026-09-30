@@ -231,7 +231,7 @@ export function LayoutComposerClient({
         </button>
         <span className="text-xs text-[rgb(var(--color-muted))]">{saving ? 'Kaydediliyor…' : 'Taslak kaydedildi'}</span>
         <div className="ml-auto flex gap-2">
-          <Link href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="studio-btn">
+          <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="studio-btn">
             Geri
           </Link>
           <button type="button" onClick={() => void publish()} disabled={publishing} className="studio-btn-primary">

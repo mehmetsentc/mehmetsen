@@ -18,7 +18,7 @@ interface CityJobDetailProps {
 export function CityJobDetail({ detail }: CityJobDetailProps) {
   return (
     <div className="w-full pb-8 pt-3 max-md:pt-2">
-      <Link
+      <Link prefetch={false}
         href={ROUTES.CITY_JOBS}
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-brand))]"
       >
@@ -155,7 +155,7 @@ export function CityJobDetail({ detail }: CityJobDetailProps) {
               <ul className="mt-3 space-y-2">
                 {detail.related.map((item) => (
                   <li key={item.id}>
-                    <Link
+                    <Link prefetch={false}
                       href={ROUTES.CITY_JOB_DETAIL(item.id)}
                       className="block rounded-xl px-2 py-2 transition-colors hover:bg-[rgb(var(--color-surface-elevated))]"
                     >

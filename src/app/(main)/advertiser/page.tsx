@@ -14,13 +14,13 @@ export default function AdvertiserIndexPage() {
         Hesabınızı oluşturun veya mevcut hesabınıza giriş yapın.
       </p>
       <div className="flex flex-col gap-3">
-        <Link
+        <Link prefetch={false}
           href="/advertiser/onboarding"
           className="rounded bg-stone-900 px-4 py-3 text-white"
         >
           Reklam Ver — Hesap Oluştur
         </Link>
-        <Link href="/advertiser/onboarding" className="text-sm text-stone-600 underline">
+        <Link prefetch={false} href="/advertiser/onboarding" className="text-sm text-stone-600 underline">
           Mevcut hesaplarımı gör
         </Link>
       </div>

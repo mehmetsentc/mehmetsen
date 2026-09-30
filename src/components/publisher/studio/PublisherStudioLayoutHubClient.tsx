@@ -19,10 +19,10 @@ export function PublisherStudioLayoutHubClient({
         Taslak düzeninizi oluşturun, önizleyin ve yayınlayın. Değişiklikler yayınlanana kadar public profilde görünmez.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href={ROUTES.PUBLISHER_STUDIO.LAYOUT_EDIT(slug)} className="studio-btn-primary">
+        <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.LAYOUT_EDIT(slug)} className="studio-btn-primary">
           Düzenle
         </Link>
-        <Link href={ROUTES.PUBLISHER(publisher.slug)} className="studio-btn" target="_blank">
+        <Link prefetch={false} href={ROUTES.PUBLISHER(publisher.slug)} className="studio-btn" target="_blank">
           Public profili aç
         </Link>
       </div>

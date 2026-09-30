@@ -24,10 +24,10 @@ export default function ReklamPazariPage() {
           yalnızca rezervasyon talebi oluşturabilirsiniz.
         </p>
         <div className="mb-8 flex gap-4 text-sm">
-          <Link href="/advertiser/onboarding" className="rounded bg-stone-900 px-4 py-2 text-white">
+          <Link prefetch={false} href="/advertiser/onboarding" className="rounded bg-stone-900 px-4 py-2 text-white">
             Reklam Ver
           </Link>
-          <Link href="/advertiser" className="rounded border border-stone-400 px-4 py-2">
+          <Link prefetch={false} href="/advertiser" className="rounded border border-stone-400 px-4 py-2">
             Stüdyoya Git
           </Link>
         </div>

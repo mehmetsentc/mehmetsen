@@ -51,7 +51,7 @@ export function TimelineItemActions({
         <span>Beğen{likesCount > 0 ? ` · ${formatCount(likesCount)}` : ''}</span>
       </button>
 
-      <Link href={ROUTES.POST_DETAIL(postId)} className="timeline-action">
+      <Link prefetch={false} href={ROUTES.POST_DETAIL(postId)} className="timeline-action">
         <MessageCircle className="h-4 w-4" />
         <span>
           Yorum yap{commentsCount > 0 ? ` · ${formatCount(commentsCount)}` : ''}

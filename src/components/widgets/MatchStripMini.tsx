@@ -73,7 +73,7 @@ export function MatchStripMini() {
             </span>
           )}
         </span>
-        <Link href="/kategori/spor"
+        <Link prefetch={false} href="/kategori/spor"
           className="text-[10px] font-semibold text-emerald-100 underline-offset-2 hover:underline">
           Tümü →
         </Link>

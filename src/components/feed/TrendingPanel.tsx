@@ -29,7 +29,7 @@ export function TrendingPanel() {
           <ul className="space-y-2">
             {breakingPosts.map((post) => (
               <li key={post.id}>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.NEWS_DETAIL(post.slug ?? post.id)}
                   className="group flex items-start gap-2 rounded-lg p-1.5 transition-colors hover:bg-[rgb(var(--color-surface))]"
                 >
@@ -57,7 +57,7 @@ export function TrendingPanel() {
         <ul className="space-y-3">
           {topics.map((item, i) => (
             <li key={item.tag}>
-              <Link
+              <Link prefetch={false}
                 href={`${ROUTES.SEARCH}?q=${encodeURIComponent(item.tag)}&tag=1`}
                 className="group flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-[rgb(var(--color-surface))]"
               >
@@ -88,7 +88,7 @@ export function TrendingPanel() {
         </div>
         <div className="flex flex-wrap gap-2">
           {DEFAULT_CATEGORIES.slice(0, 6).map((cat) => (
-            <Link key={cat.id} href={`${ROUTES.FEED}?category=${cat.id}`} className="tag-pill">
+            <Link prefetch={false} key={cat.id} href={`${ROUTES.FEED}?category=${cat.id}`} className="tag-pill">
               {cat.name}
             </Link>
           ))}

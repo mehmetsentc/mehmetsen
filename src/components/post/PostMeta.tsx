@@ -21,7 +21,7 @@ export function PostMeta({ post, className = '' }: PostMetaProps) {
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       {hasCity && post.citySlug && (
-        <Link
+        <Link prefetch={false}
           href={`${ROUTES.FEED}?category=${encodeURIComponent(cityCategoryId(post.citySlug))}`}
           className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-900"
         >
@@ -31,7 +31,7 @@ export function PostMeta({ post, className = '' }: PostMetaProps) {
       )}
       {hasTags &&
         post.tags.map((tag) => (
-          <Link
+          <Link prefetch={false}
             key={tag}
             href={`${ROUTES.SEARCH}?q=${encodeURIComponent(tag)}&tag=1`}
             className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400"

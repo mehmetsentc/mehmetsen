@@ -146,7 +146,7 @@ export function HomeDiscoveryCard({
       data-discovery-featured={featured ? '1' : '0'}
       data-discovery-id={item.id}
     >
-      <Link
+      <Link prefetch={false}
         href={item.href}
         className="home-discovery-card group"
         onClick={() => {

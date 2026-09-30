@@ -273,7 +273,7 @@ export function FeedArticleBottomSheet({ item, open, onClose }: Props) {
                 >
                   Tekrar dene
                 </button>
-                <Link
+                <Link prefetch={false}
                   href={canonicalPath}
                   className="inline-flex items-center gap-1 rounded-lg border border-white/20 px-3 py-1.5"
                 >

@@ -16,7 +16,7 @@ export function NewsFeedCard({ item, priority = false }: NewsFeedCardProps) {
 
   return (
     <article className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
-      <Link href={newsItemDetailHref(item)} className="block">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="block">
         <div className="relative aspect-video w-full overflow-hidden bg-[rgb(var(--color-border))]">
           <SafeNewsImage
             src={image}

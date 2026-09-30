@@ -54,7 +54,7 @@ export function ProfilePageClient({
           <p className="max-w-sm text-sm text-[rgb(var(--color-muted))]">
             @{username} geçerli bir profil değil veya henüz kayıt tamamlanmamış.
           </p>
-          <Link href={ROUTES.FEED}>
+          <Link prefetch={false} href={ROUTES.FEED}>
             <Button variant="primary">Ana sayfaya dön</Button>
           </Link>
         </div>

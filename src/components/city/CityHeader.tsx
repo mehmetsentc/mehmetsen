@@ -30,7 +30,7 @@ export function CityHeader({ cityName, provinceSlug }: CityHeaderProps) {
         )}
       >
         <div className="flex h-14 items-center gap-1.5 px-3">
-          <Link
+          <Link prefetch={false}
             href="/"
             className="flex min-w-0 flex-1 items-center"
             aria-label={`${cityName} NaHaber`}

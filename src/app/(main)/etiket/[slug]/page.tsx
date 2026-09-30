@@ -121,10 +121,10 @@ export default async function TagPage({ params }: Props) {
             Bu sayfada {posts.length} haber listeleniyor.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href={ROUTES.MOST_READ} className="bbc-category-chip">
+            <Link prefetch={false} href={ROUTES.MOST_READ} className="bbc-category-chip">
               En çok okunanlar
             </Link>
-            <Link href={ROUTES.FEED} className="bbc-category-chip">
+            <Link prefetch={false} href={ROUTES.FEED} className="bbc-category-chip">
               Ana sayfa
             </Link>
           </div>
@@ -133,7 +133,7 @@ export default async function TagPage({ params }: Props) {
         <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
           {posts.map((post) => (
             <article key={post.id} className="group min-w-0">
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.NEWS_DETAIL(post.slug)}
                 className="relative mb-3 block aspect-[16/10] overflow-hidden rounded-xl bg-[rgb(var(--color-surface))]"
               >
@@ -151,7 +151,7 @@ export default async function TagPage({ params }: Props) {
                 {getCategoryLabel(post.categoryId)}
               </p>
               <h2 className="bbc-story-title bbc-story-title--md mt-1">
-                <Link href={ROUTES.NEWS_DETAIL(post.slug)} className="hover:underline">
+                <Link prefetch={false} href={ROUTES.NEWS_DETAIL(post.slug)} className="hover:underline">
                   {post.title}
                 </Link>
               </h2>

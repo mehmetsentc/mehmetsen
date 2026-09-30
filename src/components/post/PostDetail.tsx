@@ -245,7 +245,7 @@ export function PostDetail({ post, suggested }: PostDetailProps) {
             >
               {isVideo && videoUrl ? (
                 isReelsVideoPost(post) ? (
-                  <Link href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
+                  <Link prefetch={false} href={ROUTES.REELS_VIDEO(post.id)} className="group block h-full w-full">
                     <video
                       src={videoUrl}
                       poster={imageUrl ?? undefined}

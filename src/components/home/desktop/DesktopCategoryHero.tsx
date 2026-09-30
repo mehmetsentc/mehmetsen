@@ -41,7 +41,7 @@ export function DesktopCategoryHero({
 
       {lead && leadImage ? (
         <article className="dcp-lead">
-          <Link href={newsItemDetailHref(lead)} className="dcp-lead__media">
+          <Link prefetch={false} href={newsItemDetailHref(lead)} className="dcp-lead__media">
             <SafeNewsImage
               src={leadImage}
               alt={lead.title}
@@ -60,7 +60,7 @@ export function DesktopCategoryHero({
         </article>
       ) : lead ? (
         <article className="dcp-lead dcp-lead--text">
-          <Link href={newsItemDetailHref(lead)} className="dcp-lead__text">
+          <Link prefetch={false} href={newsItemDetailHref(lead)} className="dcp-lead__text">
             {clock ? <span className="dcp-lead__time">{clock}</span> : null}
             <span className="dcp-lead__title">{lead.seoTitle || lead.title}</span>
             {dek ? <span className="dcp-lead__dek">{dek}</span> : null}

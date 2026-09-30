@@ -49,7 +49,7 @@ function StoryLink({
   className?: string
 }) {
   return (
-    <Link href={categoryPostHref(post)} className={cn('group block min-w-0', className)}>
+    <Link prefetch={false} href={categoryPostHref(post)} className={cn('group block min-w-0', className)}>
       {children}
     </Link>
   )

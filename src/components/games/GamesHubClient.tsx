@@ -18,7 +18,7 @@ export function GamesHubClient() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {NAHABER_GAMES.map((game) => (
-          <Link
+          <Link prefetch={false}
             key={game.slug}
             href={game.playHref}
             className="group flex flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition hover:border-violet-500/40 hover:shadow-md"
@@ -47,12 +47,12 @@ export function GamesHubClient() {
       </div>
 
       <p className="mt-8 text-center text-xs text-[rgb(var(--color-muted))]">
-        <Link href={ROUTES.CATEGORY('oyun-espor')} className="underline hover:text-[rgb(var(--color-text))]">
+        <Link prefetch={false} href={ROUTES.CATEGORY('oyun-espor')} className="underline hover:text-[rgb(var(--color-text))]">
           Oyun &amp; Espor haberleri
         </Link>
         {' · '}
         Geri bildirim için{' '}
-        <Link href="/iletisim" className="underline hover:text-[rgb(var(--color-text))]">
+        <Link prefetch={false} href="/iletisim" className="underline hover:text-[rgb(var(--color-text))]">
           iletişim
         </Link>
       </p>

@@ -23,7 +23,7 @@ export function CityEventDetailView({ event }: CityEventDetailViewProps) {
   return (
     <div className="mx-auto max-w-2xl pb-12 pt-4">
       {/* Geri */}
-      <Link
+      <Link prefetch={false}
         href="/etkinlik"
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-text))]"
       >

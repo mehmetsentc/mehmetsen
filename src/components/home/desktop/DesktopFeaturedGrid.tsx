@@ -69,7 +69,7 @@ export function DesktopFeaturedGrid({ items }: { items: NewsItem[] }) {
 
 function LeadCard({ item }: { item: NewsItem }) {
   return (
-    <Link href={newsItemDetailHref(item)} className="group absolute inset-0 block">
+    <Link prefetch={false} href={newsItemDetailHref(item)} className="group absolute inset-0 block">
       <div className="relative h-full overflow-hidden rounded-xl bg-[rgb(var(--text-primary))]">
         <SafeNewsImage
           src={item.imageUrl || FEED_FALLBACK_LOGO}
@@ -101,7 +101,7 @@ function LeadCard({ item }: { item: NewsItem }) {
 function FeaturedSideCard({ item }: { item: NewsItem }) {
   const time = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
   return (
-    <Link
+    <Link prefetch={false}
       href={newsItemDetailHref(item)}
       className="group flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >
@@ -134,7 +134,7 @@ function FeaturedSideCard({ item }: { item: NewsItem }) {
 function FeaturedTileCard({ item }: { item: NewsItem }) {
   const time = formatNewsDateBbc(item.publishedAt ?? item.createdAt)
   return (
-    <Link
+    <Link prefetch={false}
       href={newsItemDetailHref(item)}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"
     >

@@ -130,7 +130,7 @@ function EventMiniCard({
   }
 
   return (
-    <Link href={cardHref} className="shrink-0 snap-start" aria-label={event.title}>
+    <Link prefetch={false} href={cardHref} className="shrink-0 snap-start" aria-label={event.title}>
       {card}
     </Link>
   )
@@ -248,7 +248,7 @@ export function LocalCityEventsStrip({
             {sectionTitle}
           </span>
         </div>
-        <Link
+        <Link prefetch={false}
           href={eventsHref}
           className="flex items-center gap-0.5 text-[11px] font-semibold text-blue-600"
         >
@@ -272,7 +272,7 @@ export function LocalCityEventsStrip({
 
       {!loading && events.length > 0 && (
         <div className="mt-3 px-3">
-          <Link
+          <Link prefetch={false}
             href={eventsHref}
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
           >

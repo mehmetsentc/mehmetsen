@@ -157,7 +157,7 @@ function CitySidebarInner({
         data-open={mobileOpen || desktopOpen ? 'true' : 'false'}
       >
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] px-4">
-          <Link
+          <Link prefetch={false}
             href="/"
             onClick={closeDrawer}
             className="flex min-w-0 items-center"
@@ -239,7 +239,7 @@ function CitySidebarInner({
 
           {hydrated && !loading && user ? (
             <>
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.PROFILE(user.username || user.uid)}
                 onClick={closeDrawer}
                 className="app-sidebar__item"
@@ -250,7 +250,7 @@ function CitySidebarInner({
                 Profilim
               </Link>
               {publisherHref ? (
-                <Link
+                <Link prefetch={false}
                   href={publisherHref}
                   onClick={closeDrawer}
                   className="app-sidebar__item"
@@ -261,7 +261,7 @@ function CitySidebarInner({
                   Yayıncı profilim
                 </Link>
               ) : null}
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.SETTINGS}
                 onClick={closeDrawer}
                 className="app-sidebar__item"
@@ -295,7 +295,7 @@ function CitySidebarInner({
           ) : null}
 
           {hydrated && !loading && !user ? (
-            <Link
+            <Link prefetch={false}
               href={ROUTES.LOGIN}
               onClick={closeDrawer}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700"

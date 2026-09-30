@@ -55,7 +55,7 @@ export function SettingsItem({
 
   if (href) {
     return (
-      <Link href={href} className={rowClass}>
+      <Link prefetch={false} href={href} className={rowClass}>
         {content}
       </Link>
     )

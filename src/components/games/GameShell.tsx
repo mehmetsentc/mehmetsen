@@ -101,7 +101,7 @@ export function GameShell({
         )}
         style={{ touchAction: 'none' }}
       >
-        <Link
+        <Link prefetch={false}
           href={ROUTES.GAMES}
           className={cn(
             'flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors active:scale-95',

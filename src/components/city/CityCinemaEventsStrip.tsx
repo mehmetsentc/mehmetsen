@@ -56,7 +56,7 @@ export function CityCinemaEventsStrip({
           </h2>
         </div>
         {variant === 'page' ? null : (
-          <Link
+          <Link prefetch={false}
             href={ROUTES.CITY_EVENTS}
             className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-[rgb(var(--color-brand))]"
           >
@@ -91,7 +91,7 @@ export function CityCinemaEventsStrip({
       <section className="desktop-portal-band desktop-portal-events" aria-label="Etkinlikler">
         <div className="desktop-portal-bottom__head">
           <h2 className="desktop-portal-kicker">Etkinlikler</h2>
-          <Link href={ROUTES.CITY_EVENTS} className="desktop-portal-more">
+          <Link prefetch={false} href={ROUTES.CITY_EVENTS} className="desktop-portal-more">
             Tümü
           </Link>
         </div>

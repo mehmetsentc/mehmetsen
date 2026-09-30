@@ -28,7 +28,7 @@ export function ConversationList({ className }: ConversationListProps) {
     <div className={cn('flex h-full min-h-0 flex-col', className)}>
       <div className="flex items-center justify-between border-b border-[rgb(var(--color-border))] px-4 py-4">
         <h1 className="text-lg font-bold text-[rgb(var(--color-text))]">Mesajlar</h1>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.SEARCH}
           className="flex h-9 w-9 items-center justify-center rounded-full text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-nav-hover))]"
           aria-label="Yeni mesaj"
@@ -59,7 +59,7 @@ export function ConversationList({ className }: ConversationListProps) {
             <p className="mt-2 text-xs leading-relaxed text-[rgb(var(--color-muted))]">
               Takip ettiğin kişilere veya arama ile bulduğun kullanıcılara mesaj gönderebilirsin.
             </p>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.SEARCH}
               className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >

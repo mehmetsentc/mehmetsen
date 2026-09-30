@@ -54,13 +54,13 @@ export function GameAuthGate({ children, gameSlug }: GameAuthGateProps) {
           Oyunlar yalnızca üyeler içindir. Üye olunca skorun kaydedilir ve sıralamada görünür.
         </p>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link
+          <Link prefetch={false}
             href={registerHrefWithNext(pathname)}
             className="rounded-2xl bg-[rgb(var(--color-brand))] px-5 py-3 text-sm font-bold text-white"
           >
             Üye ol
           </Link>
-          <Link
+          <Link prefetch={false}
             href={loginHrefWithNext(pathname)}
             className="rounded-2xl border border-[rgb(var(--color-border))] px-5 py-3 text-sm font-bold text-[rgb(var(--color-text))]"
           >

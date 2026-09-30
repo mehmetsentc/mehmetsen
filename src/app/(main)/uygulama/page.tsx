@@ -112,7 +112,7 @@ export default function AppDownloadPage() {
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <InstallNowButton />
-          <Link
+          <Link prefetch={false}
             href="#yontemler"
             className="rounded-full border border-border bg-bg-card px-5 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle"
           >

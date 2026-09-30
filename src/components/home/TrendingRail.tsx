@@ -20,7 +20,7 @@ export function TrendingRail({ items }: TrendingRailProps) {
         <span className="ml-2 rounded-full bg-[rgb(var(--color-brand))]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
           Canlı
         </span>
-        <Link
+        <Link prefetch={false}
           href={`${ROUTES.FEED}?tab=trend`}
           className="ml-auto text-sm font-semibold text-[rgb(var(--color-brand))]"
         >
@@ -33,7 +33,7 @@ export function TrendingRail({ items }: TrendingRailProps) {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           const rank = index + 1
           return (
-            <Link
+            <Link prefetch={false}
               key={item.id}
               href={newsItemDetailHref(item)}
               className="relative w-[260px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]"

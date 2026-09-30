@@ -50,7 +50,7 @@ function ArticleCard({
 }) {
   const catLabel = categoryLabelFor(article, categoryMap)
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.NEWS_DETAIL(article.slug)}
       data-article-lift-origin={article.id}
       onClick={(e) => setLiftOrigin(article.id, e.currentTarget)}
@@ -141,7 +141,7 @@ function LeadArticleCard({
 }) {
   const catLabel = categoryLabelFor(article, categoryMap)
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.NEWS_DETAIL(article.slug)}
       data-article-lift-origin={article.id}
       onClick={(e) => setLiftOrigin(article.id, e.currentTarget)}
@@ -501,7 +501,7 @@ export function PublisherProfileClient({
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
             Yayıncı hesabınız doğrulandı. Studio’dan profil ve içerik yönetimi yapabilirsiniz.
           </p>
-          <Link
+          <Link prefetch={false}
             href={studioHref}
             className="mt-3 inline-flex rounded-lg bg-[rgb(var(--color-brand))] px-4 py-2 text-sm font-bold text-white"
           >

@@ -32,7 +32,7 @@ export function HomeCategoryGrid({ categoryId, items }: HomeCategoryGridProps) {
           <span className="home-rail-accent shrink-0" aria-hidden />
           <h2 className="truncate text-lg font-black text-[rgb(var(--color-text))]">{heading}</h2>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CATEGORY(slug)}
           className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]"
         >
@@ -42,7 +42,7 @@ export function HomeCategoryGrid({ categoryId, items }: HomeCategoryGridProps) {
       </div>
       <div className="mag-category-grid" data-no-category-swipe>
         {cards.map((item) => (
-          <Link
+          <Link prefetch={false}
             key={item.id}
             href={newsItemDetailHref(item)}
             className="mag-category-grid__card"

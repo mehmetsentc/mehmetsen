@@ -169,7 +169,7 @@ function NewsTimelineContent({
           {!user && (
             <p className="mt-4 text-sm text-[rgb(var(--color-muted))]">
               Paylaşım yapmak için{' '}
-              <Link href={ROUTES.REGISTER} className="font-semibold text-red-600 hover:underline">
+              <Link prefetch={false} href={ROUTES.REGISTER} className="font-semibold text-red-600 hover:underline">
                 kayıt olun
               </Link>
               .

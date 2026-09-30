@@ -27,7 +27,7 @@ function ProgressRow({
   href: string
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className="flex items-center justify-between rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-sm hover:bg-[rgb(var(--color-surface))]"
     >
@@ -119,27 +119,27 @@ export function PublisherStudioOverviewClient({
           </div>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <Link href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="text-[rgb(var(--color-brand))]">
                 Profil bilgilerini düzenle
               </Link>
             </li>
             <li>
-              <Link href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="text-[rgb(var(--color-brand))]">
                 Logo / kapak ekle
               </Link>
             </li>
             <li>
-              <Link href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)} className="text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)} className="text-[rgb(var(--color-brand))]">
                 Haberleri görüntüle veya yayınla
               </Link>
             </li>
             <li>
-              <Link href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="text-[rgb(var(--color-brand))]">
                 Sayfa düzenini ayarla
               </Link>
             </li>
             <li>
-              <Link href={ROUTES.PUBLISHER_STUDIO.ADS(slug)} className="text-[rgb(var(--color-brand))]">
+              <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.ADS(slug)} className="text-[rgb(var(--color-brand))]">
                 İsteğe bağlı: reklam alanı ekle
               </Link>
             </li>
@@ -176,16 +176,16 @@ export function PublisherStudioOverviewClient({
       </section>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Link href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="studio-card">
+        <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.PROFILE(slug)} className="studio-card">
           Profil ayarları
         </Link>
-        <Link href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="studio-card">
+        <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.LAYOUT(slug)} className="studio-card">
           Sayfa düzeni
         </Link>
-        <Link href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)} className="studio-card">
+        <Link prefetch={false} href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)} className="studio-card">
           İçerikler
         </Link>
-        <Link href={ROUTES.PUBLISHER(publisher.slug)} className="studio-card" target="_blank">
+        <Link prefetch={false} href={ROUTES.PUBLISHER(publisher.slug)} className="studio-card" target="_blank">
           Public profili görüntüle
         </Link>
       </div>

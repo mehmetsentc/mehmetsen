@@ -63,7 +63,7 @@ export default function AdvertiserOnboardingPage() {
         <div className="space-y-2">
           <p className="text-sm text-stone-600">Mevcut hesaplarınız</p>
           {memberships.map((m) => (
-            <Link
+            <Link prefetch={false}
               key={m.advertiser.id}
               href={`/advertiser/${m.advertiser.id}`}
               className="block rounded border border-stone-200 bg-white px-3 py-2 text-sm"

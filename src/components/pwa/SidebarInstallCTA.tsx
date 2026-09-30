@@ -42,7 +42,7 @@ export function SidebarInstallCTA({ onNavigate }: SidebarInstallCTAProps) {
   if (!show) return null
 
   return (
-    <Link
+    <Link prefetch={false}
       href="/uygulama"
       onClick={onNavigate}
       className="mb-2 flex items-center gap-2.5 rounded-xl border border-brand-500/30 bg-gradient-to-br from-brand-500/10 to-transparent px-3 py-2.5 text-xs font-semibold text-text-primary transition-colors hover:from-brand-500/20"

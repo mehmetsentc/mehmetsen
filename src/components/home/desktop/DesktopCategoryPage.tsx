@@ -99,14 +99,14 @@ export function DesktopCategoryPage({
       <div className="dcp-body">
         {showTabs && parentSlug ? (
           <nav className="dcp-subnav" aria-label="Alt kategoriler" data-no-category-swipe>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.CATEGORY(parentSlug)}
               className={cn('dcp-chip', !isSubcategory && 'is-active')}
             >
               Tümü
             </Link>
             {subTabs.map((sub) => (
-              <Link
+              <Link prefetch={false}
                 key={sub.id}
                 href={sub.href}
                 className={cn('dcp-chip', sub.active && 'is-active')}
@@ -187,7 +187,7 @@ function CategoryRailRow({ item }: { item: NewsItem }) {
   const clock = formatNewsClockTime(item.publishedAt ?? item.createdAt)
 
   return (
-    <Link href={newsItemDetailHref(item)} className="dcp-row">
+    <Link prefetch={false} href={newsItemDetailHref(item)} className="dcp-row">
       {image ? (
         <span className="dcp-row__thumb">
           <SafeNewsImage src={image} alt="" fill sizes="56px" className="object-cover" />

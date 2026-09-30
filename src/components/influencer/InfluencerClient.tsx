@@ -42,7 +42,7 @@ function InfluencerCard({ post }: { post: Post }) {
       : ROUTES.POST_DETAIL(post.id)
 
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className="group overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] transition-all hover:border-[rgb(var(--color-brand))]/40 hover:shadow-md"
     >

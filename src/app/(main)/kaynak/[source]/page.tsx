@@ -84,7 +84,7 @@ export default async function SourceProfilePage({ params }: Props) {
               null
             return (
               <li key={post.id}>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.NEWS_DETAIL(post.slug)}
                   className="flex gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 transition-colors hover:border-[rgb(var(--color-brand))]/40"
                 >

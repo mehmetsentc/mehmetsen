@@ -23,7 +23,7 @@ export function LocalCategoryBanner() {
   }, [])
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.LOCAL}
       className="mb-4 flex items-center gap-3 rounded-2xl border border-[rgb(var(--color-brand))]/30 bg-[rgb(var(--color-brand))]/5 px-4 py-3 transition-colors hover:bg-[rgb(var(--color-brand))]/10"
     >

@@ -519,7 +519,7 @@ export function PublisherContentEditorClient({
       <div className="pb-24">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.PUBLISHER_STUDIO.ARTICLES(slug)}
               className="text-xs font-bold text-[rgb(var(--color-muted))]"
             >
@@ -569,10 +569,10 @@ export function PublisherContentEditorClient({
           <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-950">
             <p className="font-bold">Yayınlandı</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link href={ROUTES.NEWS_DETAIL(item?.seoSlug || publishSuccess.newsId)} className="studio-btn-primary inline-flex">
+              <Link prefetch={false} href={ROUTES.NEWS_DETAIL(item?.seoSlug || publishSuccess.newsId)} className="studio-btn-primary inline-flex">
                 Haberi Gör
               </Link>
-              <Link href={ROUTES.PUBLISHER(slug)} className="studio-btn inline-flex">
+              <Link prefetch={false} href={ROUTES.PUBLISHER(slug)} className="studio-btn inline-flex">
                 Profile Git
               </Link>
               <button type="button" className="studio-btn" onClick={addToPage}>
@@ -940,7 +940,7 @@ export function PublisherContentEditorClient({
           >
             Kaydet
           </button>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.PUBLISHER_STUDIO.ARTICLE_PREVIEW(slug, contentId)}
             className="studio-btn inline-flex"
           >

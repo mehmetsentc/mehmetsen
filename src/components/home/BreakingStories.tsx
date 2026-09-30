@@ -82,7 +82,7 @@ export function BreakingStories({ items }: BreakingStoriesProps) {
           data-no-category-swipe
         >
           <div className="shrink-0 snap-start">
-            <Link
+            <Link prefetch={false}
               href={ROUTES.CATEGORY('son-dakika')}
               className="relative flex h-[290px] w-[163px] flex-col items-center justify-center overflow-hidden rounded-2xl p-3 text-center shadow-brand transition-transform duration-quick ease-out-soft hover:-translate-y-0.5"
               style={{

@@ -40,7 +40,7 @@ export function FailedScreen() {
                 Tekrar Dene
               </button>
               {job.workspaceId ? (
-                <Link href={mediaStudioWorkspacePath(job.workspaceId)} className={quietButton}>
+                <Link prefetch={false} href={mediaStudioWorkspacePath(job.workspaceId)} className={quietButton}>
                   Workspace&apos;i Aç
                 </Link>
               ) : null}

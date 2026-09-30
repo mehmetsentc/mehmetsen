@@ -58,7 +58,7 @@ export function PublisherAdSlotPlaceholder({
           <p className="text-xs font-semibold">{formatPriceMinor(priceMinor, currency)}</p>
         ) : null}
         {forSale && mediaKitHref ? (
-          <Link
+          <Link prefetch={false}
             href={mediaKitHref}
             className="mt-1 text-xs font-bold text-[rgb(var(--color-brand))] hover:underline"
           >

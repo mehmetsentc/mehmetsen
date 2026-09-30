@@ -19,13 +19,13 @@ const QUICK_CITIES = [
 export function MobileYerelCityStrip() {
   return (
     <div className="mc-city-strip" aria-label="Şehir seç">
-      <Link href={ROUTES.LOCAL} className="mc-city-strip__cta">
+      <Link prefetch={false} href={ROUTES.LOCAL} className="mc-city-strip__cta">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
         Şehrini seç
       </Link>
       <div className="mc-city-strip__chips scrollbar-hide" data-no-category-swipe>
         {QUICK_CITIES.map((c) => (
-          <Link
+          <Link prefetch={false}
             key={c.slug}
             href={ROUTES.LOCAL_CITY(c.slug)}
             className="mc-city-strip__chip"
@@ -33,7 +33,7 @@ export function MobileYerelCityStrip() {
             {c.name}
           </Link>
         ))}
-        <Link href={ROUTES.LOCAL} className="mc-city-strip__chip mc-city-strip__chip--more">
+        <Link prefetch={false} href={ROUTES.LOCAL} className="mc-city-strip__chip mc-city-strip__chip--more">
           Tümü
         </Link>
       </div>

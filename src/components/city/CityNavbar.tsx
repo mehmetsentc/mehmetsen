@@ -102,7 +102,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
               <Menu className={overlayFeed ? 'h-4 w-4' : 'h-5 w-5 sm:h-6 sm:w-6'} strokeWidth={2} />
             </button>
 
-            <Link
+            <Link prefetch={false}
               href="/"
               className="flex min-w-0 flex-1 items-center overflow-hidden pr-1"
               aria-label={`${cityName} NaHaber`}
@@ -138,7 +138,7 @@ export function CityNavbar({ cityName, provinceSlug, onMenuClick }: CityNavbarPr
                 }
               />
               {profileHref ? (
-                <Link
+                <Link prefetch={false}
                   href={profileHref}
                   className={cn(
                     'flex items-center justify-center text-[rgb(var(--header-onbrand))]',

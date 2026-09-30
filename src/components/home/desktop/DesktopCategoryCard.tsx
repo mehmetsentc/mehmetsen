@@ -17,7 +17,7 @@ export function DesktopCategoryCard({ item, priority = false }: DesktopCategoryC
   return (
     <article className="dcp-card">
       {image ? (
-        <Link href={newsItemDetailHref(item)} className="dcp-card__media">
+        <Link prefetch={false} href={newsItemDetailHref(item)} className="dcp-card__media">
           <SafeNewsImage
             src={image}
             alt=""
@@ -29,7 +29,7 @@ export function DesktopCategoryCard({ item, priority = false }: DesktopCategoryC
         </Link>
       ) : null}
       {clock ? <p className="dcp-card__time">{clock}</p> : null}
-      <Link href={newsItemDetailHref(item)} className="dcp-card__title">
+      <Link prefetch={false} href={newsItemDetailHref(item)} className="dcp-card__title">
         {item.title}
       </Link>
       {dek ? <p className="dcp-card__dek">{dek}</p> : null}

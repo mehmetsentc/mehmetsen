@@ -31,7 +31,7 @@ export function DesktopSectionHeader({ title, href, className, variant = 'nl' }:
 
   if (href) {
     return (
-      <Link href={href} className={cn(cls, 'group w-fit hover:opacity-80')}>
+      <Link prefetch={false} href={href} className={cn(cls, 'group w-fit hover:opacity-80')}>
         {content}
       </Link>
     )

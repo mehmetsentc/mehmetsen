@@ -32,7 +32,7 @@ export function VideoFeedNav() {
         {items.map(({ icon: Icon, href }) => {
           const active = pathname === href
           return (
-            <Link
+            <Link prefetch={false}
               key={href}
               href={href}
               className={cn(

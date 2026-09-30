@@ -172,7 +172,7 @@ export function DesktopLocalNewsPage({ state }: DesktopLocalNewsPageProps) {
               <p className="text-lg font-semibold text-[rgb(var(--color-text))]">
                 {city ? `${city.name} haberleri henüz eklenmedi` : 'Haber bulunamadı'}
               </p>
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.FEED}
                 className="mt-3 inline-block text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
               >

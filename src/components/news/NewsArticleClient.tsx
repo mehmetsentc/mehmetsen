@@ -127,7 +127,7 @@ export function NewsArticleClient({ postId, initialPost }: NewsArticleClientProp
             <RefreshCw className="h-4 w-4" />
             Tekrar dene
           </button>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             className="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-semibold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-nav-hover))]"
           >

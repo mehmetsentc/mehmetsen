@@ -37,11 +37,11 @@ export function LiveBlogView({ post, updates = [] }: LiveBlogViewProps) {
   return (
     <article className="mx-auto w-full max-w-3xl px-4 pb-10 sm:px-0">
       <nav className="mb-4 text-sm text-[rgb(var(--color-muted))]">
-        <Link href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
+        <Link prefetch={false} href={ROUTES.FEED} className="hover:text-[rgb(var(--color-text))]">
           Ana Sayfa
         </Link>
         <span className="mx-2">/</span>
-        <Link href={ROUTES.CATEGORY('son-dakika')} className="hover:text-[rgb(var(--color-text))]">
+        <Link prefetch={false} href={ROUTES.CATEGORY('son-dakika')} className="hover:text-[rgb(var(--color-text))]">
           Canlı
         </Link>
       </nav>

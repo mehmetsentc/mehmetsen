@@ -15,19 +15,19 @@ export default function AdvertiserOverviewPage() {
           hazırlayın. Ödeme ve gelir bu fazda yoktur.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
+          <Link prefetch={false}
             href={`/advertiser/${id}/marketplace`}
             className="rounded bg-stone-900 px-4 py-2 text-sm text-white"
           >
             Pazar Yeri
           </Link>
-          <Link
+          <Link prefetch={false}
             href={`/advertiser/${id}/campaigns`}
             className="rounded border border-stone-300 px-4 py-2 text-sm"
           >
             Kampanyalar
           </Link>
-          <Link href="/reklam-pazari" className="rounded border border-stone-300 px-4 py-2 text-sm">
+          <Link prefetch={false} href="/reklam-pazari" className="rounded border border-stone-300 px-4 py-2 text-sm">
             Genel pazar
           </Link>
         </div>

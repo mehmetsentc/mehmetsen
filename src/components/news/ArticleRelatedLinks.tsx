@@ -47,7 +47,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
       <ul className="space-y-2 text-sm">
         {publisher ? (
           <li>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.PUBLISHER(publisher.slug)}
               className="inline-flex items-center gap-2 font-medium text-[rgb(var(--color-brand))] hover:underline"
             >
@@ -59,7 +59,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
 
         {post.categoryId ? (
           <li>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.CATEGORY(categorySlug)}
               className="inline-flex items-center gap-2 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
             >
@@ -71,7 +71,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
 
         {citySlug && cityName ? (
           <li>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.LOCAL_CITY(citySlug)}
               className="inline-flex items-center gap-2 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
             >
@@ -107,7 +107,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
 
         {event && event.sourceCount >= 2 ? (
           <li>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.EVENT(event.slug)}
               className="inline-flex items-center gap-2 text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
             >
@@ -119,7 +119,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
 
         {post.tags.slice(0, 3).map((tag) => (
           <li key={tag}>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.TAG(tag)}
               className="inline-flex items-center gap-2 text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
             >
@@ -138,7 +138,7 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
           <ul className="space-y-2">
             {related.map((item) => (
               <li key={item.id}>
-                <Link
+                <Link prefetch={false}
                   href={buildPostSharePath(item)}
                   className="line-clamp-2 text-sm font-medium text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
                 >

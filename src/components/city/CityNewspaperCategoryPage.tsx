@@ -44,7 +44,7 @@ export function CityNewspaperCategoryPage({
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
             <article key={item.id} className="min-w-0">
-              <Link href={newsItemDetailHref(item)} className="block">
+              <Link prefetch={false} href={newsItemDetailHref(item)} className="block">
                 {item.imageUrl ? (
                   <span className="relative mb-3 block aspect-[16/10] overflow-hidden bg-[rgb(var(--color-border))]">
                     <SafeNewsImage

@@ -46,10 +46,10 @@ export function DesktopPortalFullHeader({
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/hakkimizda" className="desktop-portal-utility__link">
+            <Link prefetch={false} href="/hakkimizda" className="desktop-portal-utility__link">
               Hakkımızda
             </Link>
-            <Link href="/iletisim" className="desktop-portal-utility__link">
+            <Link prefetch={false} href="/iletisim" className="desktop-portal-utility__link">
               İletişim
             </Link>
             <div className="hidden items-center gap-2 sm:flex">
@@ -72,7 +72,7 @@ export function DesktopPortalFullHeader({
 
       <div className="desktop-portal-masthead">
         <div className="desktop-web-header__inner desktop-portal-masthead__inner">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             className="desktop-portal-masthead__brand"
             aria-label="NaHaber Ana Sayfa"
@@ -86,7 +86,7 @@ export function DesktopPortalFullHeader({
 
       <nav className="desktop-portal-nav" aria-label="Haber kategorileri">
         <div className="desktop-web-header__inner desktop-portal-nav__inner">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             aria-label="Ana Sayfa"
             aria-current="page"
@@ -97,13 +97,13 @@ export function DesktopPortalFullHeader({
           <ul className="desktop-portal-nav__list">
             {PORTAL_NAV.map((item) => (
               <li key={item.id}>
-                <Link href={item.href} className="desktop-portal-nav__link" title={`${item.label} haberleri`}>
+                <Link prefetch={false} href={item.href} className="desktop-portal-nav__link" title={`${item.label} haberleri`}>
                   {item.label}
                 </Link>
               </li>
             ))}
           </ul>
-          <Link href={ROUTES.SEARCH} className="desktop-portal-nav__search" aria-label="Haber ara">
+          <Link prefetch={false} href={ROUTES.SEARCH} className="desktop-portal-nav__search" aria-label="Haber ara">
             <Search className="h-4 w-4" strokeWidth={2.2} />
           </Link>
         </div>

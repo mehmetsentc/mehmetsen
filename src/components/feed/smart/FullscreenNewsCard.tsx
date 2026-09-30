@@ -903,7 +903,7 @@ export function FullscreenNewsCard({
                 data-testid="smart-feed-editor-row"
               >
                 {item.authorSlug ? (
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.AUTHOR(item.authorSlug)}
                     className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
                     data-testid="smart-feed-editor-link"
@@ -947,7 +947,7 @@ export function FullscreenNewsCard({
                 data-testid="smart-feed-publisher-row"
               >
                 {publisherHref ? (
-                  <Link
+                  <Link prefetch={false}
                     href={publisherHref}
                     className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
                     style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}

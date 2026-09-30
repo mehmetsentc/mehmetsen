@@ -20,7 +20,7 @@ export function MustReadSection({ items }: MustReadSectionProps) {
           <span className="home-rail-accent shrink-0" aria-hidden />
           <h2 className="truncate text-lg font-black text-[rgb(var(--color-text))]">Gözden Kaçmasın</h2>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.MOST_READ}
           className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]"
         >
@@ -33,7 +33,7 @@ export function MustReadSection({ items }: MustReadSectionProps) {
         {items.map((item) => {
           const image = item.imageUrl || FEED_FALLBACK_LOGO
           return (
-            <Link
+            <Link prefetch={false}
               key={item.id}
               href={newsItemDetailHref(item)}
               className="flex gap-3 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2"

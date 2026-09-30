@@ -2613,7 +2613,7 @@ export function SmartFeedClient({
             </h2>
             <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
             {errorState.type === 'AUTH_REQUIRED' ? (
-              <Link
+              <Link prefetch={false}
                 href={`/login?next=${encodeURIComponent('/feed-v2')}`}
                 className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
               >
@@ -2621,7 +2621,7 @@ export function SmartFeedClient({
               </Link>
             ) : errorState.type === 'DISABLED' && !authUser ? (
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                <Link
+                <Link prefetch={false}
                   href={`/login?next=${encodeURIComponent('/feed-v2')}`}
                   className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
                 >

@@ -103,7 +103,7 @@ export function MediaOverlay({
   const { href, image, summary, label, time, isVideo } = useCardMeta(post)
 
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className={cn('exp-card exp-card--overlay group', hero && 'exp-card--hero')}
     >
@@ -158,7 +158,7 @@ export function MediaBelow({
 
   return (
     <article className="exp-card exp-card--stack group">
-      <Link href={href} className="block">
+      <Link prefetch={false} href={href} className="block">
         <AspectBox aspect={aspect} className="exp-card__media rounded-[var(--exp-radius,1rem)]">
           <SafeNewsImage
             src={image}
@@ -194,7 +194,7 @@ export function MediaBelow({
 export function QuoteSurface({ post }: { post: TimelinePost }) {
   const { href, label, time } = useCardMeta(post)
   return (
-    <Link href={href} className="exp-card exp-card--quote group">
+    <Link prefetch={false} href={href} className="exp-card exp-card--quote group">
       <span className="exp-card__quote-mark" aria-hidden>
         “
       </span>
@@ -210,7 +210,7 @@ export function QuoteSurface({ post }: { post: TimelinePost }) {
 export function AiSurface({ post }: { post: TimelinePost }) {
   const { href, summary, time } = useCardMeta(post)
   return (
-    <Link href={href} className="exp-card exp-card--ai group">
+    <Link prefetch={false} href={href} className="exp-card exp-card--ai group">
       <div className="exp-card__chips">
         <CardBadge tone="ai">
           <Sparkles className="mr-1 inline h-3 w-3" />
@@ -256,7 +256,7 @@ export function BreakingSurface({ post, aspect }: { post: TimelinePost; aspect: 
 export function QuickReadSurface({ post }: { post: TimelinePost }) {
   const { href, label, time, reading } = useCardMeta(post)
   return (
-    <Link href={href} className="exp-card exp-card--quick group">
+    <Link prefetch={false} href={href} className="exp-card exp-card--quick group">
       <div className="exp-card__chips">
         {label ? <CardBadge tone="muted">{label}</CardBadge> : null}
         <Bookmark className="ml-auto h-4 w-4 text-[rgb(var(--color-muted))] opacity-0 transition group-hover:opacity-100" />

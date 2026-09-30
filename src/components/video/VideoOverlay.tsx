@@ -53,7 +53,7 @@ export function VideoOverlay({ video, surface = 'reels' }: VideoOverlayProps) {
           ) : null}
 
           {video.title && (
-            <Link
+            <Link prefetch={false}
               href={surface === 'video' ? articleHref : ROUTES.POST_DETAIL(video.id)}
               className="block"
             >
@@ -81,7 +81,7 @@ export function VideoOverlay({ video, surface = 'reels' }: VideoOverlayProps) {
           ) : null}
 
           {surface === 'video' ? (
-            <Link
+            <Link prefetch={false}
               href={articleHref}
               className="mt-3 inline-flex items-center rounded-full bg-white px-4 py-1.5 text-xs font-bold text-black shadow"
             >

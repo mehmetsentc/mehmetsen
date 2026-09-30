@@ -190,7 +190,7 @@ export function CityJobClassifiedForm({ type, citySlug, cityName }: CityJobClass
             Editör onayından sonra {cityName} iş ilanları sayfasında yayınlanır. NaHaber başvuru
             almaz; iletişim bilgileriniz onay sonrası ilanda görünür.
           </p>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.CITY_JOBS}
             className="mt-6 inline-flex rounded-lg bg-[rgb(var(--color-brand))] px-5 py-2.5 text-sm font-bold text-white"
           >
@@ -203,7 +203,7 @@ export function CityJobClassifiedForm({ type, citySlug, cityName }: CityJobClass
 
   return (
     <div className="mx-auto max-w-3xl pb-10 pt-3">
-      <Link
+      <Link prefetch={false}
         href={ROUTES.CITY_JOBS}
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-[rgb(var(--color-text-secondary))] hover:text-[rgb(var(--color-brand))]"
       >

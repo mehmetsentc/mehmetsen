@@ -148,7 +148,7 @@ export function CityDistrictsClient({
                     : null
 
                   return (
-                    <Link
+                    <Link prefetch={false}
                       key={district.slug}
                       href={`/ilceler/${district.slug}`}
                       onMouseEnter={() => setHoveredSlug(district.slug)}

@@ -141,7 +141,7 @@ export function AuthorProfileClient({
 function StoryCard({ post, prominent = false }: { post: Post; prominent?: boolean }) {
   const image = storyImage(post)
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.NEWS_DETAIL(post.slug)}
       className={cn(
         'group flex gap-3 rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 transition-colors hover:border-[rgb(var(--color-brand))]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--color-brand))]',

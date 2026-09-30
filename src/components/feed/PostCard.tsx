@@ -41,7 +41,7 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Content */}
-      <Link href={ROUTES.POST_DETAIL(post.id)} className="group block">
+      <Link prefetch={false} href={ROUTES.POST_DETAIL(post.id)} className="group block">
         <div className="flex gap-4">
           <div className="flex-1 min-w-0">
             <h2 className="mb-1.5 line-clamp-2 text-base font-semibold text-[rgb(var(--color-text))] transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">
@@ -71,7 +71,7 @@ export function PostCard({ post }: PostCardProps) {
           <Heart className="h-4 w-4" />
           <span>{post.likesCount}</span>
         </button>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.POST_DETAIL(post.id)}
           className="flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-blue-500"
         >

@@ -57,7 +57,7 @@ function PersonalFeedPrompt({ loggedIn }: { loggedIn: boolean }) {
         </p>
       </div>
       {loggedIn ? (
-        <Link
+        <Link prefetch={false}
           href="/settings/profile"
           className="inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-primary))] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
         >
@@ -65,7 +65,7 @@ function PersonalFeedPrompt({ loggedIn }: { loggedIn: boolean }) {
           Kategorilerimi seç
         </Link>
       ) : (
-        <Link
+        <Link prefetch={false}
           href={ROUTES.LOGIN}
           className="inline-flex items-center gap-2 rounded-full bg-[rgb(var(--color-primary))] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
         >
@@ -150,7 +150,7 @@ export function PersonalFeed() {
         <span className="text-sm font-semibold text-[rgb(var(--color-text))]">
           Seçtiğin kategorilerden en son haberler
         </span>
-        <Link
+        <Link prefetch={false}
           href="/settings/profile"
           className="ml-auto text-xs font-medium text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]"
         >
@@ -169,7 +169,7 @@ export function PersonalFeed() {
           <p className="font-semibold text-[rgb(var(--color-text))]">
             Seçilen kategorilerde henüz haber yok
           </p>
-          <Link
+          <Link prefetch={false}
             href="/settings/profile"
             className="mt-2 inline-block text-sm text-[rgb(var(--color-primary))] hover:underline"
           >

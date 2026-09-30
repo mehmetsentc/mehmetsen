@@ -52,11 +52,11 @@ function PortalScrollRail({
         {items.map((item) => (
           <article key={item.id} className="desktop-portal-tile">
             {hasImage(item) ? (
-              <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
+              <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__media">
                 <SafeNewsImage src={item.imageUrl} alt="" fill sizes="200px" className="object-cover" />
               </Link>
             ) : null}
-            <Link href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
+            <Link prefetch={false} href={newsItemDetailHref(item)} className="desktop-portal-cat__title">
               {item.title}
             </Link>
           </article>
@@ -89,11 +89,11 @@ function PortalLeadColumn({
       {lead ? (
         <>
           {hasImage(lead) ? (
-            <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
+            <Link prefetch={false} href={newsItemDetailHref(lead)} className="desktop-portal-cat__media">
               <SafeNewsImage src={lead.imageUrl} alt="" fill sizes="360px" className="object-cover" />
             </Link>
           ) : null}
-          <Link href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
+          <Link prefetch={false} href={newsItemDetailHref(lead)} className="desktop-portal-cat__title">
             {lead.title}
           </Link>
         </>
@@ -102,7 +102,7 @@ function PortalLeadColumn({
         <ul className="desktop-portal-extra desktop-portal-scroll">
           {rest.map((item) => (
             <li key={item.id}>
-              <Link href={newsItemDetailHref(item)}>{item.title}</Link>
+              <Link prefetch={false} href={newsItemDetailHref(item)}>{item.title}</Link>
             </li>
           ))}
         </ul>
@@ -170,7 +170,7 @@ export function CityDesktopNewspaperRsc({
           <ul className="desktop-portal-manset__list">
             {portal.mansetItems.map((item) => (
               <li key={item.id}>
-                <Link
+                <Link prefetch={false}
                   href={newsItemDetailHref(item)}
                   className="desktop-portal-manset__row desktop-portal-manset__row--thumb"
                 >
@@ -208,7 +208,7 @@ export function CityDesktopNewspaperRsc({
                 {newsItemCategoryLabel(hero) ? (
                   <span className="desktop-portal-hero__cat">{newsItemCategoryLabel(hero)}</span>
                 ) : null}
-                <Link href={newsItemDetailHref(hero)} className="desktop-portal-hero__title">
+                <Link prefetch={false} href={newsItemDetailHref(hero)} className="desktop-portal-hero__title">
                   {hero.seoTitle || hero.title}
                 </Link>
                 {hero.summary || hero.description ? (
@@ -227,7 +227,7 @@ export function CityDesktopNewspaperRsc({
             <ul className="desktop-portal-rail__list">
               {portal.mostRead.map((item) => (
                 <li key={item.id}>
-                  <Link
+                  <Link prefetch={false}
                     href={newsItemDetailHref(item)}
                     className="desktop-portal-manset__row desktop-portal-manset__row--thumb"
                   >

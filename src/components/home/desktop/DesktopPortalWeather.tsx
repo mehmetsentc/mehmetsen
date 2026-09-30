@@ -36,7 +36,7 @@ export function DesktopPortalWeather() {
   if (!chip) return null
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.WEATHER}
       className="desktop-portal-utility__meta hover:text-[rgb(var(--color-text))]"
     >

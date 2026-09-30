@@ -51,7 +51,7 @@ export function CityNewspaperFooter({ cityName }: { cityName: string }) {
       data-testid="city-newspaper-footer"
     >
       <div className="mb-8">
-        <Link href="/" className="inline-flex flex-col items-start gap-1 no-underline" aria-label={`${cityName} NaHaber`}>
+        <Link prefetch={false} href="/" className="inline-flex flex-col items-start gap-1 no-underline" aria-label={`${cityName} NaHaber`}>
           <span className="font-serif text-lg font-black text-[rgb(var(--color-text))]">{cityName}</span>
           <BrandWordmark variant="default" size="lg" className="font-black text-2xl" />
         </Link>

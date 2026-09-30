@@ -93,7 +93,7 @@ export default function CerezPolitikasiPage() {
             bilgi@nahaber.com
           </a>{' '}
           adresiyle iletişime geçebilir veya{' '}
-          <Link href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] hover:underline">
+          <Link prefetch={false} href="/hukuk/kvkk" className="text-[rgb(var(--color-brand))] hover:underline">
             KVKK Politikamızı
           </Link>{' '}
           inceleyebilirsiniz.

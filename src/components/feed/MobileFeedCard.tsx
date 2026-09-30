@@ -28,7 +28,7 @@ function FeedCard({ href, image, title, timestamp, isVideo, priority }: CardProp
 
   return (
     <article className="sd-card">
-      <Link href={href} className="group block">
+      <Link prefetch={false} href={href} className="group block">
         {time ? (
           <p className="sd-card__time">
             <span className="sd-card__dot" aria-hidden="true" />

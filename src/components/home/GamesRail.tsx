@@ -22,7 +22,7 @@ const GAME_ACCENTS: Record<string, string> = {
 function GameCard({ game }: { game: GameCatalogItem }) {
   const accent = GAME_ACCENTS[game.slug] ?? 'from-violet-600 to-indigo-800'
   return (
-    <Link
+    <Link prefetch={false}
       href={game.playHref}
       className="group w-[72vw] max-w-[240px] shrink-0 overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition hover:border-violet-500/40 hover:shadow-md sm:w-[220px]"
     >
@@ -63,7 +63,7 @@ export function GamesRail({ variant = 'mobile' }: GamesRailProps) {
             <Gamepad2 className="h-5 w-5 text-violet-600" />
             <h2 className="text-xl font-black text-[rgb(var(--color-text))]">Oyunlar</h2>
           </div>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.GAMES}
             className="flex items-center gap-0.5 text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
           >
@@ -91,7 +91,7 @@ export function GamesRail({ variant = 'mobile' }: GamesRailProps) {
           <Gamepad2 className="h-5 w-5 shrink-0 text-violet-600" />
           <h2 className="truncate text-lg font-black text-[rgb(var(--color-text))]">Oyunlar</h2>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.GAMES}
           className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-brand))]"
         >

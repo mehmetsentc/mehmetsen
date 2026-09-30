@@ -30,7 +30,7 @@ export function BreakingNewsFeed() {
           <Zap className="h-4 w-4 text-red-500" />
           <h2 className="section-heading">Son Dakika</h2>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CATEGORY('son-dakika')}
           className="flex items-center gap-0.5 text-xs font-semibold text-red-500"
         >
@@ -41,7 +41,7 @@ export function BreakingNewsFeed() {
       <ul className="space-y-2">
         {posts.map((post) => (
           <li key={post.id}>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.NEWS_DETAIL(post.slug ?? post.id)}
               className="group flex items-start gap-2 rounded-lg p-1.5 transition-colors hover:bg-[rgb(var(--color-surface))]"
             >

@@ -36,7 +36,7 @@ export function ArticleRelatedGrid({ postId, categoryId }: ArticleRelatedGridPro
           const image = categoryPostImage(item) || FEED_FALLBACK_LOGO
           return (
             <article key={item.id} className="min-w-0">
-              <Link href={categoryPostHref(item)} className="group block">
+              <Link prefetch={false} href={categoryPostHref(item)} className="group block">
                 <div className="relative mb-2 aspect-[3/2] overflow-hidden bg-[rgb(var(--color-border))]">
                   <SafeNewsImage
                     src={image}

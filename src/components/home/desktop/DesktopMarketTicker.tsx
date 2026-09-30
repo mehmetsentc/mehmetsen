@@ -63,7 +63,7 @@ export function DesktopMarketTicker() {
 
   return (
     <div className="mb-4 flex items-center gap-0 overflow-hidden border-y border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
-      <Link
+      <Link prefetch={false}
         href={ROUTES.CATEGORY('ekonomi')}
         className="flex shrink-0 items-center gap-1.5 border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-brand))] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-white"
         aria-label="Piyasalar"

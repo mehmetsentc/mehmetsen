@@ -112,7 +112,7 @@ export function ImportScreen({
           <section className="mt-8">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-[rgb(var(--color-text))]">Aktif indirmeler</h2>
-              <Link href={links.href('/admin/media-studio/jobs')} className="text-sm font-medium text-[rgb(var(--color-text))]">
+              <Link prefetch={false} href={links.href('/admin/media-studio/jobs')} className="text-sm font-medium text-[rgb(var(--color-text))]">
                 Tümü
               </Link>
             </div>
@@ -146,7 +146,7 @@ export function ImportScreen({
                       {job.resultLabel ?? 'Tamamlandı'}
                     </p>
                     {job.workspaceId ? (
-                      <Link href={links.workspace(job.workspaceId)} className={`${primaryButton} mt-3 min-h-9 w-full px-3`}>
+                      <Link prefetch={false} href={links.workspace(job.workspaceId)} className={`${primaryButton} mt-3 min-h-9 w-full px-3`}>
                         <Pencil className="h-4 w-4" aria-hidden="true" />
                         Düzenle
                       </Link>

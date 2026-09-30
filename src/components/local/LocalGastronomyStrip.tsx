@@ -64,7 +64,7 @@ export function LocalGastronomyStrip() {
           <UtensilsCrossed className="h-4 w-4 text-[rgb(var(--color-muted))]" aria-hidden />
           <p className="text-sm font-bold text-[rgb(var(--color-text))]">Gastronomi</p>
         </div>
-        <Link
+        <Link prefetch={false}
           href={ROUTES.CATEGORY('gastronomi')}
           className="inline-flex items-center gap-0.5 text-xs font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-brand))]"
         >
@@ -80,7 +80,7 @@ export function LocalGastronomyStrip() {
             post.mediaItems?.find((m) => m.type === 'image')?.url ||
             null
           return (
-            <Link
+            <Link prefetch={false}
               key={post.id}
               href={href}
               className="flex w-[160px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] transition-shadow hover:shadow-md"

@@ -158,7 +158,7 @@ export function CategoryExperience({
         {multi ? (
           <div className="exp-section__head mb-4 flex items-end justify-between gap-3">
             <h2 className="exp-section__title">{sectionTitle(primaryId)}</h2>
-            <Link href={getCategorySectionHref(primaryId)} className="exp-section__more">
+            <Link prefetch={false} href={getCategorySectionHref(primaryId)} className="exp-section__more">
               Tümü
             </Link>
           </div>
@@ -195,7 +195,7 @@ export function CategoryExperience({
               <section key={sectionId} className="exp-section mb-10" aria-label={sectionTitle(sectionId)}>
                 <div className="exp-section__head mb-4 flex items-end justify-between gap-3">
                   <h2 className="exp-section__title">{sectionTitle(sectionId)}</h2>
-                  <Link href={getCategorySectionHref(sectionId)} className="exp-section__more">
+                  <Link prefetch={false} href={getCategorySectionHref(sectionId)} className="exp-section__more">
                     Tümü
                   </Link>
                 </div>

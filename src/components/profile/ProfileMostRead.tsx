@@ -58,7 +58,7 @@ function MostReadCard({ post }: { post: TimelinePost }) {
   )
 
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className="group flex w-[220px] min-w-[220px] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition-shadow hover:shadow-md sm:w-[260px] sm:min-w-[260px] md:w-[280px] md:min-w-[280px]"
     >

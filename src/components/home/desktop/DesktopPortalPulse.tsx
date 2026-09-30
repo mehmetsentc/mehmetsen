@@ -98,7 +98,7 @@ export function DesktopPortalPulse() {
       <div className="desktop-portal-split">
         {rates ? (
           <article className="desktop-portal-cat" style={{ borderTopColor: '#7C3AED' }}>
-            <Link href={ROUTES.CATEGORY('ekonomi')} className="desktop-portal-cat__kicker">
+            <Link prefetch={false} href={ROUTES.CATEGORY('ekonomi')} className="desktop-portal-cat__kicker">
               Döviz
             </Link>
             <ul className="desktop-portal-pulse__list">
@@ -129,7 +129,7 @@ export function DesktopPortalPulse() {
         )}
         {weather.length > 0 ? (
           <article className="desktop-portal-cat" style={{ borderTopColor: '#0284C7' }}>
-            <Link href={ROUTES.WEATHER} className="desktop-portal-cat__kicker">
+            <Link prefetch={false} href={ROUTES.WEATHER} className="desktop-portal-cat__kicker">
               Hava durumu
             </Link>
             <ul className="desktop-portal-pulse__list">

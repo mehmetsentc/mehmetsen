@@ -89,7 +89,7 @@ export function CityNewspaperServiceCards({
   return (
     <section className="desktop-portal-service" aria-label="Hava ve piyasalar">
       {weather ? (
-        <Link href={ROUTES.WEATHER} className="desktop-portal-weather-card">
+        <Link prefetch={false} href={ROUTES.WEATHER} className="desktop-portal-weather-card">
           <p className="desktop-portal-weather-card__kicker">Hava durumu</p>
           <p className="desktop-portal-weather-card__city" data-city-weather={citySlug}>
             {cityName}

@@ -75,11 +75,11 @@ export default function HakkimizdaPage() {
             Haberlerimiz doğrulanabilir kaynaklardan derlenir, editoryal standartlarımız
             çerçevesinde işlenir ve yayınlanır. Bağımsızlık, tarafsızlık, düzeltme politikası
             ve şeffaflık ilkelerimize{' '}
-            <Link href="/editoryal-ilkeler" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/editoryal-ilkeler" className="text-[rgb(var(--color-brand))] underline">
               Editoryal İlkeler
             </Link>{' '}
             sayfamızda yer veriyoruz. Yayın künyemiz için{' '}
-            <Link href="/kunye" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/kunye" className="text-[rgb(var(--color-brand))] underline">
               Künye
             </Link>{' '}
             sayfasına bakabilirsiniz.
@@ -98,11 +98,11 @@ export default function HakkimizdaPage() {
           <p>
             Platform; gündem, siyaset, ekonomi, spor, dünya, teknoloji, sağlık, kültür,
             turizm ve daha birçok kategoride içerik barındırır. Ayrıca şehir bazlı{' '}
-            <Link href="/yerel" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/yerel" className="text-[rgb(var(--color-brand))] underline">
               yerel haber
             </Link>{' '}
             akışı ve{' '}
-            <Link href="/events" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/events" className="text-[rgb(var(--color-brand))] underline">
               etkinlikler
             </Link>{' '}
             bölümü ile kullanıcıya günlük yaşamda işe yarayan bilgi sunmayı hedefleriz.
@@ -111,7 +111,7 @@ export default function HakkimizdaPage() {
           <h2>İletişim</h2>
           <p>
             Görüş, öneri, düzeltme talebi ve reklam iş birlikleri için{' '}
-            <Link href="/iletisim" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/iletisim" className="text-[rgb(var(--color-brand))] underline">
               iletişim sayfamızı
             </Link>{' '}
             ziyaret edebilir veya{' '}
@@ -119,7 +119,7 @@ export default function HakkimizdaPage() {
               bilgi@nahaber.com
             </a>{' '}
             adresine yazabilirsiniz. Gizlilik uygulamalarımız{' '}
-            <Link href="/gizlilik" className="text-[rgb(var(--color-brand))] underline">
+            <Link prefetch={false} href="/gizlilik" className="text-[rgb(var(--color-brand))] underline">
               Gizlilik Politikası
             </Link>{' '}
             sayfasındadır.

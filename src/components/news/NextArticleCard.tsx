@@ -65,7 +65,7 @@ export function NextArticleCard({ nextPost }: NextArticleCardProps) {
       </div>
 
       {/* Büyük kart */}
-      <Link
+      <Link prefetch={false}
         href={href}
         className="group block overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] transition-all hover:border-[rgb(var(--color-brand))] hover:shadow-lg"
       >

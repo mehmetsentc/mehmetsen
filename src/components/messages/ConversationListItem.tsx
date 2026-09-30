@@ -26,7 +26,7 @@ export function ConversationListItem({
     : truncateMessagePreview(null)
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.MESSAGES_CONVERSATION(conversation.id)}
       className={cn(
         'flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[rgb(var(--color-nav-hover))]',

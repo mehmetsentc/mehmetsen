@@ -117,21 +117,21 @@ export function MarketplaceBrowseClient({
               {item.placementScope} · {item.format} · {item.pricingModel}
             </p>
             <div className="flex gap-3 text-sm">
-              <Link
+              <Link prefetch={false}
                 href={`/reklam-alani/${item.inventoryId}`}
                 className="text-stone-900 underline underline-offset-2"
               >
                 Detayları Gör
               </Link>
               {advertiserId ? (
-                <Link
+                <Link prefetch={false}
                   href={`/reklam-alani/${item.inventoryId}?advertiserId=${advertiserId}`}
                   className="font-medium text-amber-800"
                 >
                   Talep Oluştur
                 </Link>
               ) : (
-                <Link href="/advertiser/onboarding" className="text-amber-800">
+                <Link prefetch={false} href="/advertiser/onboarding" className="text-amber-800">
                   Talep için giriş
                 </Link>
               )}

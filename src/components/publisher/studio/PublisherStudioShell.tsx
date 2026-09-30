@@ -85,7 +85,7 @@ export function PublisherStudioPicker() {
       <ul className="mt-6 space-y-2">
         {(data?.publishers ?? []).map((p) => (
           <li key={p.id}>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.PUBLISHER_STUDIO.PUBLISHER(p.slug)}
               className="block rounded-xl border border-[rgb(var(--color-border))] px-4 py-3 font-semibold hover:border-[rgb(var(--color-brand))]"
             >

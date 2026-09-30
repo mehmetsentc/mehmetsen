@@ -131,7 +131,7 @@ export function WorldCupStrip() {
       {!loading && (
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
           {news.map((item) => (
-            <Link
+            <Link prefetch={false}
               key={item.id}
               href={ROUTES.NEWS_DETAIL(item.slug)}
               className="group relative flex min-w-[160px] max-w-[160px] flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm transition-all active:scale-[0.98]"

@@ -29,7 +29,7 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
                   <span className="w-5 shrink-0 text-lg font-black tabular-nums text-[rgb(var(--color-brand))]">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <Link
+                  <Link prefetch={false}
                     href={newsItemDetailHref(item)}
                     className="line-clamp-3 font-serif text-sm font-semibold leading-snug text-[rgb(var(--color-text))] hover:underline"
                   >
@@ -38,7 +38,7 @@ export function DesktopRightRail({ mostRead, className }: DesktopRightRailProps)
                 </li>
               ))}
             </ol>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.CATEGORY('gundem')}
               className="mt-3 block text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-brand))] hover:underline"
             >

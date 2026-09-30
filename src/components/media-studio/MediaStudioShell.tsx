@@ -50,7 +50,7 @@ export function MediaStudioShell({
         className="sticky top-0 z-20 hidden h-screen w-[72px] shrink-0 flex-col items-center border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-4 md:flex"
         aria-label="Medya Stüdyosu"
       >
-        <Link
+        <Link prefetch={false}
           href={links.href('/admin/media-studio')}
           className={`mb-6 flex h-10 w-10 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] text-sm font-bold text-white ${focusRing}`}
           title="NaHaber"
@@ -99,7 +99,7 @@ export function MediaStudioShell({
               const active = isStudioNavActive(pathname, item.href, item.exact)
               const Icon = RAIL_ICON[item.href] ?? Plus
               return (
-                <Link
+                <Link prefetch={false}
                   key={item.href}
                   href={links.href(item.href)}
                   aria-current={active ? 'page' : undefined}
@@ -146,7 +146,7 @@ function RailLink({
   active: boolean
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       aria-current={active ? 'page' : undefined}
       aria-label={label}

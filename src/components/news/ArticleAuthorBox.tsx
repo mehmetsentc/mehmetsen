@@ -43,7 +43,7 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
       aria-label="Yazar bilgisi"
     >
       {href ? (
-        <Link href={href} className="shrink-0" aria-label={`${byline} yazar sayfası`}>
+        <Link prefetch={false} href={href} className="shrink-0" aria-label={`${byline} yazar sayfası`}>
           {avatar}
         </Link>
       ) : (
@@ -58,7 +58,7 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
               : category}
         </p>
         {href ? (
-          <Link
+          <Link prefetch={false}
             href={href}
             className="mt-0.5 block text-base font-bold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
           >
