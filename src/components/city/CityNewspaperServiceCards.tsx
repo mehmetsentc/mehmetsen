@@ -50,7 +50,7 @@ export function CityNewspaperServiceCards({
   useEffect(() => {
     const query = buildWeatherQuery(citySlug)
     const load = () => {
-      void fetch(`/api/weather?city=${encodeURIComponent(query)}&days=1`, { cache: 'no-store' })
+      void fetch(`/api/weather?city=${encodeURIComponent(query)}&days=1`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data: WeatherData | null) => {
           if (data) {

@@ -13,9 +13,11 @@ export async function GET(req: NextRequest) {
     const data = await fetchWeather(city, days)
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
-        'CDN-Cache-Control': 'no-store',
-        'Vercel-CDN-Cache-Control': 'no-store',
+        // FinOps: one shared CDN copy per city for 10 min instead of an edge call +
+        // WeatherAPI request on every widget mount. is_day/fetchedAt are computed at
+        // fetch time, so a card can lag sunset by at most ~10–20 min.
+        'Cache-Control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=600',
+        'CDN-Cache-Control': 'public, s-maxage=600, stale-while-revalidate=600',
       },
     })
   } catch (err) {

@@ -14,7 +14,7 @@ export function DesktopPortalWeather() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/weather?city=Istanbul&days=1', { cache: 'no-store' })
+    fetch('/api/weather?city=Istanbul&days=1')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data?.current || !data?.location) return

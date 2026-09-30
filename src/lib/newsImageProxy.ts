@@ -6,9 +6,17 @@
 const MIN_WIDTH = 64
 const MAX_WIDTH = 1200
 
+/**
+ * FinOps: fixed width buckets. Arbitrary widths (px×2, half-width srcset) made every
+ * card size a separate CDN object, so most /api/img hits were function invocations.
+ * Snap up to the next bucket so the same photo is resized once per bucket.
+ */
+export const IMAGE_WIDTH_BUCKETS = [64, 96, 160, 240, 320, 480, 640, 750, 960, 1200] as const
+
 export function clampImageWidth(width: number): number {
   if (!Number.isFinite(width)) return 640
-  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(width)))
+  const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(width)))
+  return IMAGE_WIDTH_BUCKETS.find((b) => b >= w) ?? MAX_WIDTH
 }
 
 /**

@@ -5,7 +5,24 @@ import { clampImageWidth, parsePublicImageUrl } from '@/lib/newsImageProxy'
 export const runtime = 'nodejs'
 
 const FETCH_TIMEOUT_MS = 8_000
-const MAX_BYTES = 6 * 1024 * 1024
+/** Publisher originals above 6 MB were 413'd and the card went blank. sharp's pixel
+ *  limit (24 MP) still bounds memory; the resized WebP is then CDN-cached for a week. */
+const MAX_BYTES = 15 * 1024 * 1024
+/** Failures are cached at the CDN too, so a dead or oversized image does not
+ *  re-invoke the function (and re-download the original) on every view. */
+const ERROR_CACHE = {
+  'Cache-Control': 'public, max-age=300, s-maxage=3600',
+  'CDN-Cache-Control': 'public, s-maxage=3600',
+}
+
+function fail(error: string, status: number) {
+  return NextResponse.json({ error }, { status, headers: ERROR_CACHE })
+}
+
+/** Too large to resize here: let the browser load the original instead of a blank card. */
+function redirectToOriginal(url: URL) {
+  return NextResponse.redirect(url.toString(), { status: 307, headers: ERROR_CACHE })
+}
 const BROWSER_UA =
   'Mozilla/5.0 (compatible; NaHaberImageProxy/1.0; +https://www.nahaber.com)'
 
@@ -61,25 +78,25 @@ export async function GET(request: Request) {
   try {
     const upstream = await fetchImage(parsed, 2)
     if (!upstream.ok || !upstream.body) {
-      return NextResponse.json({ error: `Upstream ${upstream.status}` }, { status: 502 })
+      return fail(`Upstream ${upstream.status}`, 502)
     }
 
     const declared = Number(upstream.headers.get('content-length') ?? '0')
     if (declared > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image too large' }, { status: 413 })
+      return redirectToOriginal(parsed)
     }
 
     const type = upstream.headers.get('content-type') || ''
     if (type && !type.startsWith('image/')) {
-      return NextResponse.json({ error: 'Not an image' }, { status: 415 })
+      return fail('Not an image', 415)
     }
     if (type.includes('svg')) {
-      return NextResponse.json({ error: 'SVG not allowed' }, { status: 415 })
+      return fail('SVG not allowed', 415)
     }
 
     const buffer = Buffer.from(await upstream.arrayBuffer())
     if (buffer.byteLength > MAX_BYTES) {
-      return NextResponse.json({ error: 'Image too large' }, { status: 413 })
+      return redirectToOriginal(parsed)
     }
 
     const webp = await sharp(buffer, { limitInputPixels: 24_000_000, failOn: 'none' })
@@ -95,10 +112,11 @@ export async function GET(request: Request) {
         'Cache-Control':
           'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
         'CDN-Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=2592000',
-        Vary: 'Accept',
+        // No `Vary: Accept`: the output is always WebP, and varying on Accept split the
+        // CDN copy per browser.
       },
     })
   } catch {
-    return NextResponse.json({ error: 'Resize failed' }, { status: 502 })
+    return fail('Resize failed', 502)
   }
 }

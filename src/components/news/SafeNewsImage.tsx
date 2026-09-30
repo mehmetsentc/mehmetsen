@@ -4,7 +4,12 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { shouldUseNextImage } from '@/lib/news/shouldUseNextImage'
-import { newsImageProxyPath, parsePublicImageUrl, widthHintFromSizes } from '@/lib/newsImageProxy'
+import {
+  clampImageWidth,
+  newsImageProxyPath,
+  parsePublicImageUrl,
+  widthHintFromSizes,
+} from '@/lib/newsImageProxy'
 
 type SafeNewsImageProps = {
   src: string
@@ -34,12 +39,12 @@ function hasObjectFitClass(className?: string): boolean {
 
 function proxiedRemote(src: string, sizes: string | undefined, priority: boolean) {
   if (!parsePublicImageUrl(src)) return null
-  const width = widthHintFromSizes(sizes, Boolean(priority))
+  const width = clampImageWidth(widthHintFromSizes(sizes, Boolean(priority)))
   const full = newsImageProxyPath(src, width)
   if (priority) {
     return { src: full, srcSet: undefined, sizes }
   }
-  const halfW = Math.max(64, Math.round(width / 2))
+  const halfW = clampImageWidth(Math.max(64, Math.round(width / 2)))
   const half = newsImageProxyPath(src, halfW)
   return {
     src: full,

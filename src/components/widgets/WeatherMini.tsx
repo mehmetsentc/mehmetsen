@@ -23,8 +23,7 @@ export function WeatherMini() {
     const query = buildWeatherQuery(slug, coords)
     try {
       const res = await fetch(
-        `/api/weather?city=${encodeURIComponent(query)}&days=1&_=${Date.now()}`,
-        { cache: 'no-store', headers: { Pragma: 'no-cache' } }
+        `/api/weather?city=${encodeURIComponent(query)}&days=1`
       )
       if (!res.ok) return
       const data = (await res.json()) as WeatherData

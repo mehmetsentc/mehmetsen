@@ -9,12 +9,14 @@ import {
 describe('newsImageProxy', () => {
   it('caps resize width', () => {
     expect(clampImageWidth(16)).toBe(64)
-    expect(clampImageWidth(326)).toBe(326)
+    expect(clampImageWidth(326)).toBe(480)
+    expect(clampImageWidth(480)).toBe(480)
+    expect(clampImageWidth(481)).toBe(640)
     expect(clampImageWidth(4000)).toBe(1200)
   })
 
   it('derives a 2x width from a css px size', () => {
-    expect(widthHintFromSizes('163px', false)).toBe(326)
+    expect(widthHintFromSizes('163px', false)).toBe(480)
     expect(widthHintFromSizes('(max-width: 768px) 100vw, 768px', true)).toBe(750)
     expect(widthHintFromSizes('(max-width: 768px) 100vw, 720px', false)).toBe(480)
     expect(widthHintFromSizes('100vw', true)).toBe(750)
@@ -22,7 +24,7 @@ describe('newsImageProxy', () => {
 
   it('builds a same-origin proxy path', () => {
     expect(newsImageProxyPath('https://indyturk.com/a.png', 828)).toBe(
-      '/api/img?url=https%3A%2F%2Findyturk.com%2Fa.png&w=828&q=45'
+      '/api/img?url=https%3A%2F%2Findyturk.com%2Fa.png&w=960&q=45'
     )
   })
 

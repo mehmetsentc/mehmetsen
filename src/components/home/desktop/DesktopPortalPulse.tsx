@@ -69,7 +69,7 @@ export function DesktopPortalPulse() {
     let cancelled = false
     void Promise.all(
       WEATHER_CITIES.map((city) =>
-        fetch(`/api/weather?city=${encodeURIComponent(city.q)}&days=1`, { cache: 'no-store' })
+        fetch(`/api/weather?city=${encodeURIComponent(city.q)}&days=1`)
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
             const temp = Number(data?.current?.temp_c)
