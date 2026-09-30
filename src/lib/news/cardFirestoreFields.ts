@@ -22,6 +22,7 @@ export const NEWS_CARD_FIRESTORE_FIELDS = [
   'authorUsername',
   'authorDisplayName',
   'authorPhotoURL',
+  'aiEditorId',
   'summary',
   'spot',
   'description',

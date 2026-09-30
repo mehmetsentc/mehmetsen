@@ -1,5 +1,3 @@
-export {
-  default,
-  generateMetadata,
-  revalidate,
-} from '../../../(main)/haber/[slug]/page'
+export { default, generateMetadata } from '../../../(main)/haber/[slug]/page'
+
+export const revalidate = 3600

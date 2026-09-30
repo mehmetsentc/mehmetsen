@@ -72,11 +72,10 @@ function hostArticleHtml(host: 'canakkale' | 'antalya', post: Post): string {
           createElement(CityBrandLockup, { cityName, provinceSlug: host, size: 'xl' })
         )
       ),
-      createElement(
-        CityCategoryProvider,
-        { categories: [] },
-        createElement(CityFooter, { cityName, provinceSlug: host })
-      ),
+      createElement(CityCategoryProvider, {
+        categories: [],
+        children: createElement(CityFooter, { cityName, provinceSlug: host }),
+      }),
       createElement(ArticleRelatedLinks, { post })
     )
   )

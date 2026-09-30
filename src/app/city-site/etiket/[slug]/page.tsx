@@ -1,1 +1,3 @@
-export { default, generateMetadata, revalidate } from '../../../(main)/etiket/[slug]/page'
+export { default, generateMetadata } from '../../../(main)/etiket/[slug]/page'
+
+export const revalidate = 300
