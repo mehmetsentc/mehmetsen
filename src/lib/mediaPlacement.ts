@@ -3,16 +3,14 @@ import type { MediaItem } from '@/types/post'
 /**
  * Haber sayfasında medya yerleşimini hesaplar.
  *
- * Kurallar (kullanıcı talebi):
- *   • Eğer en az bir VIDEO varsa: ilk video hero alır (en üstte). Geri kalan
- *     görseller paragraf araları arasına dağıtılır. (Birden fazla video
- *     pratikte ender — yine de hero=ilk video.)
- *   • Eğer video yoksa ve TEK görsel varsa: o görsel hero olur, inline
- *     görsel yoktur.
- *   • Eğer video yoksa ve BİRDEN FAZLA görsel varsa: ilk görsel hero,
- *     kalan görseller paragraflar arasına eşit aralıkla dağıtılır.
- *     (AI sıralama Admin tarafında zaten yapıldı; render-time sadece
- *     dağılımı belirler.)
+ * Kurallar:
+ *   • Görsel varsa hero görseldir. Video ayrıca varsa sayfa onu oynat
+ *     düğmesiyle açar; video hero'nun yerini almaz ve gövdeye basılmaz.
+ *   • Görsel yoksa ve video varsa: video hero olur.
+ *   • Tek görsel: o görsel hero olur, inline görsel yoktur.
+ *   • Birden fazla görsel: ilk görsel hero, kalanlar paragraflar arasına
+ *     eşit aralıkla dağıtılır. (AI sıralama Admin tarafında zaten yapıldı;
+ *     render-time sadece dağılımı belirler.)
  *
  * Çıktı: `paragraphs` listesinin nereye (hangi index'ten SONRA) hangi
  * `MediaItem`'ın yerleştirileceğini gösteren `Map<number, MediaItem>`.
@@ -41,8 +39,9 @@ export function planMediaPlacement(
     .sort((a, b) => a.order - b.order || a.idx - b.idx)
     .map((x) => x.m)
 
-  const firstVideo = ordered.find((m) => m.type === 'video')
-  const hero: MediaItem | null = firstVideo ?? ordered.find((m) => m.type === 'image') ?? ordered[0] ?? null
+  const firstImage = ordered.find((m) => m.type === 'image' && m.url.trim()) ?? null
+  const firstVideo = ordered.find((m) => m.type === 'video' && m.url.trim()) ?? null
+  const hero: MediaItem | null = firstImage ?? firstVideo ?? ordered[0] ?? null
 
   // Hero hariç inline'a girecek olan görseller (yalnızca image)
   const remaining = ordered.filter(

@@ -6,12 +6,13 @@ import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineName, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel } from '@/lib/postUtils'
+import { getArticleBylineName, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel, parseYouTubeVideoId } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { planMediaPlacement } from '@/lib/mediaPlacement'
+import { ArticleCoverPlay } from '@/components/news/ArticleCoverPlay'
 import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
@@ -167,6 +168,29 @@ function InlineImage({ item, title }: { item: MediaItem; title: string }) {
   )
 }
 
+function sameMediaUrl(a: string, b: string): boolean {
+  const left = a.trim()
+  const right = b.trim()
+  if (!left || !right) return false
+  if (left === right) return true
+  const idA = parseYouTubeVideoId(left)
+  const idB = parseYouTubeVideoId(right)
+  return Boolean(idA && idA === idB)
+}
+
+function attachedArticleVideo(post: Post): MediaItem | null {
+  const fromMedia = post.mediaItems?.find((item) => item.type === 'video' && item.url.trim())
+  if (fromMedia) return fromMedia
+  const block = post.bodyBlocks?.find((item) => item.type === 'video' && item.url.trim())
+  if (!block || block.type !== 'video') return null
+  return {
+    type: 'video',
+    url: block.url.trim(),
+    thumbnailUrl: post.coverImageUrl?.trim() || null,
+    caption: block.caption?.trim() || null,
+  }
+}
+
 /** Server-rendered article — crawlable before client JS. */
 export function NewsArticleStatic({
   post,
@@ -211,6 +235,16 @@ export function NewsArticleStatic({
     paragraphs,
     readMinutes,
   } = parseArticleContent(post)
+
+  const attachedVideo = attachedArticleVideo(post)
+  const mediaPlacement = planMediaPlacement(post.mediaItems, paragraphs.length)
+  const imageHero = mediaPlacement.hero?.type === 'image' ? mediaPlacement.hero : null
+  const articleBlocks =
+    imageHero && attachedVideo
+      ? displayBodyBlocks.filter(
+          (block) => block.type !== 'video' || !sameMediaUrl(block.url, attachedVideo.url)
+        )
+      : displayBodyBlocks
 
   return (
     <NewsArticlePage
@@ -293,24 +327,25 @@ export function NewsArticleStatic({
           </div>
         </header>
 
-        {/* ── Hero (video varsa video, yoksa ilk görsel) ─────────────── */}
-        {(() => {
-          const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
-          if (placement.hero?.type === 'video') {
-            return (
-              <VideoHero
-                item={placement.hero}
-                title={post.title}
-                posterFallback={imageUrl}
-                prerollAd={prerollAd}
-              />
-            )
-          }
-          if (placement.hero?.type === 'image') {
-            return <ImageHero item={placement.hero} title={coverAlt} />
-          }
-          return null
-        })()}
+        {/* Görsel + video: görsel kapakta kalır, oynat düğmesi videoyu açar. */}
+        {imageHero && attachedVideo ? (
+          <ArticleCoverPlay
+            image={imageHero}
+            video={attachedVideo}
+            title={coverAlt}
+            prerollAd={prerollAd}
+            prerollEnabled={isPublisherVideoPrerollEnabled()}
+          />
+        ) : mediaPlacement.hero?.type === 'video' ? (
+          <VideoHero
+            item={mediaPlacement.hero}
+            title={post.title}
+            posterFallback={imageUrl}
+            prerollAd={prerollAd}
+          />
+        ) : mediaPlacement.hero?.type === 'image' ? (
+          <ImageHero item={mediaPlacement.hero} title={coverAlt} />
+        ) : null}
 
         <NewsArticleBody className={ARTICLE_READER_BODY_CLASS}>
           <ArticleAudioPlayer post={post} />
@@ -331,17 +366,17 @@ export function NewsArticleStatic({
             />
           ) : null}
 
-          {hasBodyBlocks && displayBodyBlocks.length > 0 && (() => {
+          {hasBodyBlocks && articleBlocks.length > 0 && (() => {
             if (!adSlots?.mid) {
               return (
                 <ArticleBlocksRenderer
-                  blocks={displayBodyBlocks}
+                  blocks={articleBlocks}
                   title={post.title}
                   longform={post.articleLayout === 'longform'}
                 />
               )
             }
-            const { before, after } = splitBlocksForMidAd(displayBodyBlocks)
+            const { before, after } = splitBlocksForMidAd(articleBlocks)
             return (
               <>
                 {before.length > 0 ? (
@@ -374,7 +409,7 @@ export function NewsArticleStatic({
           )}
 
           {!hasBodyBlocks && !hasHtmlContent && paragraphs.length > 0 && (() => {
-            const placement = planMediaPlacement(post.mediaItems, paragraphs.length)
+            const placement = mediaPlacement
             const midAt = adSlots?.mid ? Math.max(1, Math.floor(paragraphs.length * 0.35)) : null
             return (
               <div className="article-prose news-body space-y-6 text-[17px] leading-[1.85] text-[rgb(var(--color-text))] sm:text-[18px]">
