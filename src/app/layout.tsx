@@ -301,11 +301,6 @@ gtag('consent','default',{
             style={{ width: 160, height: 160, background: 'transparent' }}
           />
         </div>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var s=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;if(!s){var el=document.getElementById('app-splash');if(el)el.remove()}})()`,
-          }}
-        />
         <DismissAppSplash />
         <script
           type="application/ld+json"
