@@ -156,7 +156,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
                 <Menu className={overlayFeed ? 'h-4 w-4' : 'h-6 w-6'} strokeWidth={overlayFeed ? 2 : 1.75} />
               </button>
 
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.FEED}
                 className="shrink-0 px-1"
                 aria-label="NaHaber"
@@ -178,7 +178,7 @@ export function Navbar({ onMenuClick }: NavbarProps = {}) {
               data-testid="header-primary-actions"
               data-testid-alias="global-nav-v2-icon-row"
             >
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.SEARCH}
                 className={isAra(pathname) ? iconActive : iconIdle}
                 aria-label="Ara"

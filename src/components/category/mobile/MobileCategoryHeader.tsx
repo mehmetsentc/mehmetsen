@@ -40,7 +40,7 @@ export function MobileCategoryHeader({
     <header className="mc-header" style={style}>
       {isSubcategory && parentName && parentSlug ? (
         <nav className="mc-breadcrumb" aria-label="Konum">
-          <Link href={ROUTES.CATEGORY(parentSlug)} className="mc-breadcrumb__link">
+          <Link prefetch={false} href={ROUTES.CATEGORY(parentSlug)} className="mc-breadcrumb__link">
             {parentName}
           </Link>
           <span className="mc-breadcrumb__sep" aria-hidden>
@@ -56,14 +56,14 @@ export function MobileCategoryHeader({
 
       {showSubNav ? (
         <nav className="mc-subnav scrollbar-hide" aria-label="Alt kategoriler" data-no-category-swipe>
-          <Link
+          <Link prefetch={false}
             href={`/kategori/${tabParentSlug}`}
             className={cn('mc-chip', !isSubcategory && 'is-active')}
           >
             Tümü
           </Link>
           {subTabs.map((sub) => (
-            <Link
+            <Link prefetch={false}
               key={sub.id}
               href={sub.href}
               className={cn('mc-chip', sub.active && 'is-active')}

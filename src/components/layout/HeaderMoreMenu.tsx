@@ -98,7 +98,7 @@ export function HeaderMoreMenu({
             className="header-more-menu__panel"
             style={{ top: pos.top, right: pos.right }}
           >
-            <Link
+            <Link prefetch={false}
               href={ROUTES.NOTIFICATIONS}
               role="menuitem"
               className={itemClass}
@@ -129,7 +129,7 @@ export function HeaderMoreMenu({
               Haber Ekle
             </button>
             {user ? (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.SETTINGS_PROFILE}
                 role="menuitem"
                 className={itemClass}
@@ -141,7 +141,7 @@ export function HeaderMoreMenu({
               </Link>
             ) : null}
             {user ? (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.SETTINGS}
                 role="menuitem"
                 className={itemClass}
@@ -152,7 +152,7 @@ export function HeaderMoreMenu({
                 Ayarlar
               </Link>
             ) : null}
-            <Link
+            <Link prefetch={false}
               href={ROUTES.MESSAGES}
               role="menuitem"
               className={cn(itemClass, 'relative')}

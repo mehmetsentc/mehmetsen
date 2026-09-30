@@ -65,14 +65,14 @@ export function CategoryBbcPageHeader({
           aria-label="Alt kategoriler"
           data-no-category-swipe
         >
-          <Link
+          <Link prefetch={false}
             href={`/kategori/${tabParentSlug}`}
             className={cn('bbc-category-chip', !isSubcategory && 'is-active')}
           >
             Tümü
           </Link>
           {subTabs.map((sub) => (
-            <Link
+            <Link prefetch={false}
               key={sub.id}
               href={sub.href}
               className={cn('bbc-category-chip', sub.active && 'is-active')}

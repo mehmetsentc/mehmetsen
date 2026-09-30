@@ -76,7 +76,7 @@ function SubcategoryTabs({
       className="nl-masthead-subnav"
       aria-label={`${tabParent?.name ?? 'Kategori'} alt bölümleri`}
     >
-      <Link
+      <Link prefetch={false}
         href={`/kategori/${tabParent!.slug}`}
         className={cn(
           'nl-masthead-subnav__link',
@@ -86,7 +86,7 @@ function SubcategoryTabs({
         Tümü
       </Link>
       {subcategories.map((sub) => (
-        <Link
+        <Link prefetch={false}
           key={sub.id}
           href={sub.href}
           aria-current={sub.active ? 'page' : undefined}
@@ -139,7 +139,7 @@ export function DesktopWebHeader({
       >
         <div className="nl-masthead-compact">
           <HeaderSidebarToggle compact />
-          <Link
+          <Link prefetch={false}
             href={homeHref}
             className="flex items-center pr-3"
             aria-label={cityTenant ? `${cityTenant.displayName} NaHaber Ana Sayfa` : 'NaHaber Ana Sayfa'}
@@ -159,7 +159,7 @@ export function DesktopWebHeader({
           <nav className="min-w-0 flex-1 overflow-x-auto scrollbar-hide" aria-label="Haber kategorileri">
             <DesktopSiteNavLinks variant="header-newspaper" className="justify-start" />
           </nav>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.SEARCH}
             className="flex h-8 w-8 shrink-0 items-center justify-center text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]"
             aria-label="Haber ara"
@@ -186,16 +186,16 @@ export function DesktopWebHeader({
           {cityTenant ? null : (
             <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
           )}
-          <Link href={ROUTES.WEATHER} className="nl-masthead-utility__meta hover:underline">
+          <Link prefetch={false} href={ROUTES.WEATHER} className="nl-masthead-utility__meta hover:underline">
             Hava Durumu
           </Link>
         </div>
         <p className="nl-masthead-utility__edition">{editionLabel}</p>
         <div className="nl-masthead-utility__right">
-          <Link href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
+          <Link prefetch={false} href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
             Hakkımızda
           </Link>
-          <Link href="/iletisim" className="nl-masthead-utility__meta hover:underline">
+          <Link prefetch={false} href="/iletisim" className="nl-masthead-utility__meta hover:underline">
             İletişim
           </Link>
           {UTILITY_SOCIAL.map((item) => (
@@ -209,7 +209,7 @@ export function DesktopWebHeader({
               {item.label}
             </a>
           ))}
-          <Link
+          <Link prefetch={false}
             href={ROUTES.SEARCH}
             className="flex h-8 w-8 items-center justify-center text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]"
             aria-label="Haber ara"
@@ -225,7 +225,7 @@ export function DesktopWebHeader({
         </div>
       </div>
 
-      <Link
+      <Link prefetch={false}
         href={homeHref}
         className="nl-masthead-brand block no-underline"
         aria-label={cityTenant ? `${cityTenant.displayName} NaHaber Ana Sayfa` : 'NaHaber Ana Sayfa'}

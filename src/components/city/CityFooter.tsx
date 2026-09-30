@@ -104,7 +104,7 @@ function FooterLinks({ items, external = false }: { items: readonly SimpleLink[]
           </li>
         ) : (
           <li key={l.label}>
-            <Link href={l.href} className={linkClass}>
+            <Link prefetch={false} href={l.href} className={linkClass}>
               {l.label}
             </Link>
           </li>
@@ -223,7 +223,7 @@ function LegalLinks() {
                 ·
               </span>
             ) : null}
-            <Link
+            <Link prefetch={false}
               href={l.href}
               className="text-[11px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
             >
@@ -308,7 +308,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
             <LegalLinks />
             <p className="m-0 text-[11px] leading-relaxed text-[rgb(var(--color-muted))]">
               © {year}{' '}
-              <Link
+              <Link prefetch={false}
                 href="https://nahaber.com"
                 className="font-medium text-[rgb(var(--color-text))] hover:underline"
               >
@@ -335,7 +335,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
                 <ul className="m-0 mt-2.5 flex list-none flex-col gap-2.5 border-t border-[rgb(var(--color-border))] p-0 pt-2.5">
                   {newsStatic.map((l) => (
                     <li key={l.href}>
-                      <Link href={l.href} className={linkClass}>
+                      <Link prefetch={false} href={l.href} className={linkClass}>
                         {l.label}
                       </Link>
                     </li>
@@ -352,7 +352,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
                   <ul className="m-0 mt-2.5 flex list-none flex-col gap-2.5 border-t border-[rgb(var(--color-border))] p-0 pt-2.5">
                     {LIFE_STATIC.map((l) => (
                       <li key={l.href}>
-                        <Link href={l.href} className={linkClass}>
+                        <Link prefetch={false} href={l.href} className={linkClass}>
                           {l.label}
                         </Link>
                       </li>
@@ -382,7 +382,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                 {HESAP.map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className={linkClass}>
+                    <Link prefetch={false} href={l.href} className={linkClass}>
                       {l.label}
                     </Link>
                   </li>
@@ -431,7 +431,7 @@ export function CityFooter({ cityName, provinceSlug, suppressNewsletter = false 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <p className="m-0 text-[11px] text-[rgb(var(--color-muted))]">
               © {year}{' '}
-              <Link href="https://nahaber.com" className="hover:underline">
+              <Link prefetch={false} href="https://nahaber.com" className="hover:underline">
                 NaHaber
               </Link>
               . Tüm hakları saklıdır.

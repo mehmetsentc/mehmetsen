@@ -66,7 +66,7 @@ function FooterLinkItem({ link, bold = false }: { link: FooterLink; bold?: boole
   }
 
   return (
-    <Link href={link.href} className={className}>
+    <Link prefetch={false} href={link.href} className={className}>
       {link.label}
     </Link>
   )
@@ -123,7 +123,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
         {/* Hızlı kategori linkleri — chip grid */}
         <div className="flex flex-wrap gap-2">
           {MOBILE_QUICK_LINKS.map((l) => (
-            <Link
+            <Link prefetch={false}
               key={l.href}
               href={l.href}
               className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-[12px] font-medium text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-surface))]"
@@ -163,7 +163,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
         {/* Yasal linkler */}
         <div className="flex flex-wrap gap-x-3 gap-y-2">
           {MOBILE_LEGAL_LINKS.map((l) => (
-            <Link
+            <Link prefetch={false}
               key={l.href}
               href={l.href}
               className="text-[11px] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:underline"
@@ -176,7 +176,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
         {/* Copyright */}
         <p className="text-[11px] text-[rgb(var(--color-muted))] border-t border-[rgb(var(--color-border))] pt-4">
           © {year}{' '}
-          <Link href={siteUrl} className="hover:underline font-medium text-[rgb(var(--color-text))]">
+          <Link prefetch={false} href={siteUrl} className="hover:underline font-medium text-[rgb(var(--color-text))]">
             NaHaber
           </Link>
           . Tüm hakları saklıdır.
@@ -188,7 +188,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
           ══════════════════════════════════════ */}
       <div className="hidden lg:block pt-8">
       <div className="mb-8">
-        <Link href={ROUTES.FEED} className="inline-flex items-center gap-2.5" aria-label="NaHaber Ana Sayfa">
+        <Link prefetch={false} href={ROUTES.FEED} className="inline-flex items-center gap-2.5" aria-label="NaHaber Ana Sayfa">
           <BrandLogo size="md" />
           <BrandWordmark variant="default" size="lg" className="font-black text-2xl" />
         </Link>
@@ -253,7 +253,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="m-0 text-[11px] text-[rgb(var(--color-muted))]">
             © {year}{' '}
-            <Link href={siteUrl} className="hover:underline">
+            <Link prefetch={false} href={siteUrl} className="hover:underline">
               NaHaber
             </Link>
             . Tüm hakları saklıdır.
@@ -263,7 +263,7 @@ export function DesktopHomeFooter({ suppressNewsletter = false }: DesktopHomeFoo
             <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
               {FOOTER_BOTTOM_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link
+                  <Link prefetch={false}
                     href={link.href}
                     className="text-[11px] text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))] hover:underline"
                   >

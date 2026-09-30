@@ -88,6 +88,21 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     const routes = [
+      // FinOps: bots crawl the public `nahaber.vercel.app` alias as a duplicate site.
+      // Root middleware.ts is not executed in this src/app layout, so the gate lives here.
+      // API/cron keep working on the alias; deployment URLs (nahaber-<hash>-*.vercel.app) untouched.
+      {
+        source: '/',
+        has: [{ type: 'host' as const, value: 'nahaber.vercel.app' }],
+        destination: 'https://www.nahaber.com/',
+        permanent: true,
+      },
+      {
+        source: '/:path((?!api/).*)',
+        has: [{ type: 'host' as const, value: 'nahaber.vercel.app' }],
+        destination: 'https://www.nahaber.com/:path',
+        permanent: true,
+      },
       { source: '/news/:slug', destination: '/haber/:slug', permanent: true },
       { source: '/local', destination: '/yerel', permanent: true },
       { source: '/local/:path*', destination: '/yerel/:path*', permanent: true },

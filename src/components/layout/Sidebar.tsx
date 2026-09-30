@@ -83,7 +83,7 @@ function NavLink({
   const active = isItemActive(pathname, item.href, item.id)
   const Icon = item.icon
   return (
-    <Link
+    <Link prefetch={false}
       href={item.href}
       onClick={onNavigate}
       data-accent={item.accent}
@@ -199,7 +199,7 @@ function SidebarInner({
         data-open={mobileOpen || desktopOpen ? 'true' : 'false'}
       >
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgb(var(--color-border))] px-4">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.FEED}
             onClick={closeDrawer}
             className="flex min-w-0 items-center gap-2"
@@ -235,7 +235,7 @@ function SidebarInner({
         <nav className="app-sidebar__nav flex-1 overflow-y-auto" aria-label="Ana menü">
           <div className="app-sidebar__section" data-testid="global-nav-v2-primary">
             <p className="app-sidebar__label">Gezinme</p>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.FEED}
               onClick={closeDrawer}
               className={cn(
@@ -249,7 +249,7 @@ function SidebarInner({
               <Home className="app-sidebar__icon" aria-hidden />
               <span>Ana Sayfa</span>
             </Link>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.FEED_V2}
               onClick={() => {
                 rememberFeedV2EntryOrigin(pathname)
@@ -269,7 +269,7 @@ function SidebarInner({
               <Zap className="app-sidebar__icon" aria-hidden />
               <span>Akış</span>
             </Link>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.SEARCH}
               onClick={closeDrawer}
               className={cn(
@@ -283,7 +283,7 @@ function SidebarInner({
               <Search className="app-sidebar__icon" aria-hidden />
               <span>Ara</span>
             </Link>
-            <Link
+            <Link prefetch={false}
               href={ROUTES.NOTIFICATIONS}
               onClick={closeDrawer}
               className={cn(
@@ -302,7 +302,7 @@ function SidebarInner({
               <span>Bildirimler</span>
             </Link>
             {publisherHref ? (
-              <Link
+              <Link prefetch={false}
                 href={publisherHref}
                 onClick={closeDrawer}
                 className={cn('app-sidebar__item', profileActive && 'is-active')}
@@ -346,7 +346,7 @@ function SidebarInner({
           {hydrated ? <SidebarThemeToggle /> : null}
           {hydrated && !loading && user ? (
             <>
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.PROFILE(user.username || user.uid)}
                 onClick={closeDrawer}
                 className="app-sidebar__item"
@@ -357,7 +357,7 @@ function SidebarInner({
                 Profilim
               </Link>
               {publisherHref ? (
-                <Link
+                <Link prefetch={false}
                   href={publisherHref}
                   onClick={closeDrawer}
                   className="app-sidebar__item"
@@ -368,7 +368,7 @@ function SidebarInner({
                   Yayıncı profilim
                 </Link>
               ) : null}
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.SETTINGS}
                 onClick={closeDrawer}
                 className="app-sidebar__item"
@@ -401,7 +401,7 @@ function SidebarInner({
             </>
           ) : null}
           {hydrated && !loading && !user ? (
-            <Link
+            <Link prefetch={false}
               href={ROUTES.LOGIN}
               onClick={closeDrawer}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[rgb(var(--color-brand))] px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700"

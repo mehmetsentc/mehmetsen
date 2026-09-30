@@ -38,7 +38,7 @@ function FooterAccountLinkItem({ link }: { link: FooterLink }) {
   }
 
   return (
-    <Link href={link.href} className={linkClassName}>
+    <Link prefetch={false} href={link.href} className={linkClassName}>
       {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
       {link.label}
     </Link>

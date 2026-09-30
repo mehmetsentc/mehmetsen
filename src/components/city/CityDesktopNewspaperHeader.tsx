@@ -52,7 +52,7 @@ export function CityDesktopNewspaperHeader({
         <div className="desktop-web-header__inner desktop-portal-utility__inner">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <CityDesktopMenuButton />
-            <Link href={withCityTenantHref(ROUTES.WEATHER, tenantSlug)} className="desktop-portal-utility__link">
+            <Link prefetch={false} href={withCityTenantHref(ROUTES.WEATHER, tenantSlug)} className="desktop-portal-utility__link">
               Hava Durumu
             </Link>
             <span className="desktop-portal-utility__meta hidden xl:inline">
@@ -60,10 +60,10 @@ export function CityDesktopNewspaperHeader({
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/hakkimizda" className="desktop-portal-utility__link">
+            <Link prefetch={false} href="/hakkimizda" className="desktop-portal-utility__link">
               Hakkımızda
             </Link>
-            <Link href="/iletisim" className="desktop-portal-utility__link">
+            <Link prefetch={false} href="/iletisim" className="desktop-portal-utility__link">
               İletişim
             </Link>
             {SOCIAL.map((item) => (
@@ -84,7 +84,7 @@ export function CityDesktopNewspaperHeader({
 
       <div className="desktop-portal-masthead">
         <div className="desktop-web-header__inner desktop-portal-masthead__inner city-portal-masthead-inner">
-          <Link
+          <Link prefetch={false}
             href={homeHref}
             className="desktop-portal-masthead__brand city-portal-masthead-brand no-underline"
             aria-label={`${cityName} NaHaber`}
@@ -119,7 +119,7 @@ export function CityDesktopNewspaperHeader({
               </li>
             ))}
           </ul>
-          <Link href={ROUTES.SEARCH} className="desktop-portal-nav__search" aria-label="Haber ara">
+          <Link prefetch={false} href={ROUTES.SEARCH} className="desktop-portal-nav__search" aria-label="Haber ara">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
               <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2.2" />
               <path d="M16 16l5 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
@@ -131,10 +131,10 @@ export function CityDesktopNewspaperHeader({
       {breaking ? (
         <div className="desktop-portal-breaking" aria-label="Son dakika">
           <div className="desktop-web-header__inner desktop-portal-breaking__inner flex items-center">
-            <Link href={withCityTenantHref('/kategori/son-dakika', tenantSlug)} className="desktop-portal-breaking__label">
+            <Link prefetch={false} href={withCityTenantHref('/kategori/son-dakika', tenantSlug)} className="desktop-portal-breaking__label">
               Son dakika
             </Link>
-            <Link href={newsItemDetailHref(breaking)} className="desktop-portal-breaking__story">
+            <Link prefetch={false} href={newsItemDetailHref(breaking)} className="desktop-portal-breaking__story">
               <span className="min-w-0 flex-1 truncate">{breaking.title}</span>
             </Link>
           </div>
