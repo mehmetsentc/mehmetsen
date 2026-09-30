@@ -152,7 +152,35 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return [
+    // The national `/` page is ISR and does not read the host. City apps open
+    // that URL. Rewrite before the file lookup so Antalya and Çanakkale never
+    // receive the cached nahaber.com homepage. Host or X-Forwarded-Host covers
+    // Cloudflare in front of Vercel.
+    const cityHomeRewrite = (host: string) => {
+      // Next anchors `has` values (^…$). Dots are regex; allow an optional
+      // port and a comma-separated proxy chain after the city host.
+      const value = `${host.replace(/\./g, '\\.')}(?::\\d+)?(?:,.*)?`
+      return [
+        {
+          source: '/',
+          has: [{ type: 'host' as const, value }],
+          destination: '/city-site',
+        },
+        {
+          source: '/',
+          has: [{ type: 'header' as const, key: 'x-forwarded-host', value }],
+          destination: '/city-site',
+        },
+      ]
+    }
+    return {
+      beforeFiles: [
+        ...cityHomeRewrite('antalya.nahaber.com'),
+        ...cityHomeRewrite('canakkale.nahaber.com'),
+        ...cityHomeRewrite('antalya.localhost'),
+        ...cityHomeRewrite('canakkale.localhost'),
+      ],
+      afterFiles: [
       { source: '/ara', destination: '/search' },
       { source: '/ara/:path*', destination: '/search/:path*' },
       { source: '/ayarlar/gizlilik-politikasi', destination: '/settings/privacy-policy' },
@@ -176,7 +204,8 @@ const nextConfig: NextConfig = {
       { source: '/kaydedilenler', destination: '/saved' },
       { source: '/fenomenler', destination: '/influencer' },
       { source: '/profil/:username', destination: '/profile/:username' },
-    ]
+      ],
+    }
   },
 
   // HTTP caching headers — Vercel CDN caches these globally (Pro)

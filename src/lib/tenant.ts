@@ -83,6 +83,25 @@ function extractCitySubdomain(hostname: string): string | null {
 }
 
 /**
+ * First city slug among Host / X-Forwarded-Host values.
+ * Cloudflare sometimes leaves the public city host only on X-Forwarded-Host
+ * while `Host` is the national origin. A national homepage cached at `/`
+ * then gets served to Antalya and Çanakkale.
+ */
+export function firstCitySlugFromHostHeaders(
+  hosts: Array<string | null | undefined>
+): string | null {
+  for (const raw of hosts) {
+    if (!raw) continue
+    for (const part of raw.split(',')) {
+      const slug = extractCitySubdomain(part.trim())
+      if (slug) return slug
+    }
+  }
+  return null
+}
+
+/**
  * Resolve tenant from Postgres city_sites table.
  * Falls back to hardcoded config if DATABASE_URL is unavailable.
  */
@@ -149,8 +168,11 @@ export async function resolveTenantFromRequest(
 ): Promise<CityTenant | null> {
   const hostname = request.headers.get('host') ?? ''
 
-  // 1. Subdomain detection
-  const subdomain = extractCitySubdomain(hostname)
+  // 1. Subdomain detection. Prefer the public host when a proxy rewrites Host.
+  const subdomain = firstCitySlugFromHostHeaders([
+    request.headers.get('x-forwarded-host'),
+    hostname,
+  ])
   if (subdomain) {
     return resolveTenantEdgeSafe(subdomain)
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getHardcodedTenant } from '@/lib/tenant'
+import { firstCitySlugFromHostHeaders, getHardcodedTenant } from '@/lib/tenant'
 
 describe('HARDCODED_TENANTS', () => {
   it('resolves Çanakkale city tenant', () => {
@@ -23,5 +23,20 @@ describe('HARDCODED_TENANTS', () => {
   it('returns null for unknown slugs', () => {
     expect(getHardcodedTenant('izmir')).toBeNull()
     expect(getHardcodedTenant('')).toBeNull()
+  })
+})
+
+describe('firstCitySlugFromHostHeaders', () => {
+  it('reads the city from X-Forwarded-Host when Host is the national origin', () => {
+    expect(
+      firstCitySlugFromHostHeaders(['antalya.nahaber.com', 'www.nahaber.com'])
+    ).toBe('antalya')
+    expect(
+      firstCitySlugFromHostHeaders(['canakkale.nahaber.com, www.nahaber.com', 'nahaber.com'])
+    ).toBe('canakkale')
+  })
+
+  it('ignores the national site', () => {
+    expect(firstCitySlugFromHostHeaders(['www.nahaber.com', 'nahaber.com'])).toBeNull()
   })
 })

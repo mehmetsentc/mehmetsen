@@ -359,6 +359,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Literal matcher. Health stays on the route. XML, RSS, and API paths are included.
-  matcher: ['/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)'],
+  // `/` is listed on its own: a single negative-lookahead matcher has missed
+  // the live homepage, and the cached national `/` then rendered on city hosts.
+  matcher: [
+    '/',
+    '/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)',
+  ],
 }
