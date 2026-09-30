@@ -1150,52 +1150,42 @@ export async function getSuggestedPostsServer(
 }
 
 
-/** Published posts matching a tag slug (indexable /etiket/[slug] pages). Cached 10 min per tag. */
+/** One array-contains-any read per tag, card fields only. Invalidated with news-post. */
+const TAG_LIST_LIMIT = 20
+
 const getPostsByTagCached = unstable_cache(
-  async (rawTag: string, limitCount: number): Promise<Post[]> => {
-    const variants = tagLookupVariants(rawTag)
+  async (rawTag: string): Promise<Post[]> => {
+    const variants = tagLookupVariants(rawTag).slice(0, 30)
     if (variants.length === 0) return []
 
     try {
       const db = getAdminFirestore()
-      const seen = new Set<string>()
-      const posts: Post[] = []
+      const snap = await selectNewsCardFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('tags', 'array-contains-any', variants)
+          .limit(TAG_LIST_LIMIT)
+      ).get()
 
-      await Promise.allSettled(
-        variants.map(async (variant) => {
-          const snap = await selectNewsCardFields(
-            db
-              .collection(NEWS_COLLECTION)
-              .where('status', '==', 'published')
-              .where('tags', 'array-contains', variant)
-              .limit(limitCount)
-          ).get()
-
-          for (const doc of snap.docs) {
-            if (seen.has(doc.id)) continue
-            const post = newsDocToPost(doc.id, doc.data() as NewsDocument)
-            if (post) {
-              seen.add(doc.id)
-              posts.push(post)
-            }
-          }
-        })
-      )
-
-      return posts.sort(
-        (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
-      )
+      return snap.docs
+        .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
+        .filter((post): post is Post => post !== null)
+        .sort(
+          (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
+        )
     } catch (error) {
       console.warn('[newsService.server] getPostsByTag failed:', error)
       return []
     }
   },
-  ['posts-by-tag-v1'],
-  { revalidate: 600, tags: ['news-post'] }
+  ['posts-by-tag-v2'],
+  { revalidate: 60 * 60 * 24, tags: ['news-post'] }
 )
 
-export async function getPostsByTag(rawTag: string, limitCount = 40): Promise<Post[]> {
-  return getPostsByTagCached(rawTag, limitCount)
+export async function getPostsByTag(rawTag: string, limitCount = TAG_LIST_LIMIT): Promise<Post[]> {
+  const posts = await getPostsByTagCached(rawTag)
+  return posts.slice(0, Math.max(0, limitCount))
 }
 
 function publicAuthorFromSeedEditor(username: string): PublicAuthorProfile | null {
