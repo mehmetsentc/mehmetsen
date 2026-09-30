@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
-/** App icon / favicon tile — same mark as the home-screen icon. */
-export const FEED_V2_BRAND_MARK_SRC = '/apple-touch-icon.png'
+/** Transparent splash mark. The home-screen icon has a white tile; this one does not. */
+export const FEED_V2_BRAND_MARK_SRC = '/brand/splash-mark.png'
 
 interface FeedV2BrandLoaderProps {
   className?: string

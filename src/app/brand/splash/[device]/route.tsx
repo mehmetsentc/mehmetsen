@@ -1,6 +1,17 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { ImageResponse } from 'next/og'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
+
+let splashMark: string | null = null
+
+async function splashMarkSrc(): Promise<string> {
+  if (splashMark) return splashMark
+  const buf = await readFile(join(process.cwd(), 'public/brand/splash-mark.png'))
+  splashMark = `data:image/png;base64,${buf.toString('base64')}`
+  return splashMark
+}
 
 /**
  * Dinamik iOS PWA splash screen üretici.
@@ -20,6 +31,8 @@ type DeviceSpec = {
 
 const DEVICE_DIMENSIONS: Record<string, DeviceSpec> = {
   // iPhone modelleri (portrait, fizyolojik piksel @scale)
+  'iphone-16-pro-max': { width: 1320, height: 2868 },   // 440×956 @3x
+  'iphone-16-pro':     { width: 1206, height: 2622 },   // 402×874 @3x
   'iphone-14-pro-max': { width: 1290, height: 2796 },   // 430×932 @3x
   'iphone-14-pro':     { width: 1179, height: 2556 },   // 393×852 @3x
   'iphone-14-plus':    { width: 1284, height: 2778 },   // 428×926 @3x
@@ -34,12 +47,7 @@ const DEVICE_DIMENSIONS: Record<string, DeviceSpec> = {
   'ipad-air':          { width: 1640, height: 2360 },   // 820×1180 @2x
 }
 
-const BRAND = {
-  bg: '#0a0a0a',
-  fg: '#dc2626',
-  text: '#ffffff',
-  muted: '#a3a3a3',
-}
+const SPLASH_BG = '#070b16'
 
 export async function GET(
   _req: Request,
@@ -49,69 +57,22 @@ export async function GET(
   const slug = device.replace(/\.png$/i, '').toLowerCase()
   const dims = DEVICE_DIMENSIONS[slug] ?? DEVICE_DIMENSIONS['iphone-14']!
 
-  const iconSize = Math.round(dims.width * 0.32)
-  const titleSize = Math.round(dims.width * 0.075)
-  const tagSize = Math.round(dims.width * 0.035)
+  const iconSize = Math.round(dims.width * 0.42)
+  const mark = await splashMarkSrc()
 
   return new ImageResponse(
     (
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: `radial-gradient(ellipse at center, #1a0a0a 0%, ${BRAND.bg} 70%)`,
+          background: SPLASH_BG,
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: iconSize,
-            height: iconSize,
-            borderRadius: iconSize * 0.22,
-            background: `linear-gradient(135deg, ${BRAND.fg} 0%, #991b1b 100%)`,
-            boxShadow: '0 30px 80px rgba(220, 38, 38, 0.35)',
-            marginBottom: iconSize * 0.18,
-          }}
-        >
-          <div
-            style={{
-              fontSize: iconSize * 0.42,
-              fontWeight: 900,
-              color: BRAND.text,
-              letterSpacing: '-0.04em',
-            }}
-          >
-            N
-          </div>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            fontSize: titleSize,
-            fontWeight: 800,
-            color: BRAND.text,
-            letterSpacing: '-0.03em',
-            marginBottom: titleSize * 0.25,
-          }}
-        >
-          NaHaber
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            fontSize: tagSize,
-            color: BRAND.muted,
-            fontWeight: 500,
-          }}
-        >
-          Türkiye&apos;nin anlık haber platformu
-        </div>
+        <img src={mark} alt="" width={iconSize} height={iconSize} />
       </div>
     ),
     {

@@ -5,7 +5,7 @@ import { FEED_V2_BRAND_MARK_SRC } from '@/components/feed/smart/FeedV2BrandLoade
 
 describe('Feed 2 brand loader', () => {
   it('uses the app favicon mark', () => {
-    expect(FEED_V2_BRAND_MARK_SRC).toBe('/apple-touch-icon.png')
+    expect(FEED_V2_BRAND_MARK_SRC).toBe('/brand/splash-mark.png')
   })
 
   it('route loading and first-load skeleton mount the brand loader', () => {

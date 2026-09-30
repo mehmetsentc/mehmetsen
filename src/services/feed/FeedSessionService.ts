@@ -12,6 +12,8 @@ export interface FeedSessionPayload {
   generation?: number
   /** ISO publishedAt boundary for older corpus fallback (exclusive upper bound). */
   olderThan?: string | null
+  /** Keyset partner of olderThan so the next archive page is one index range. */
+  archiveCursorId?: string | null
   /** True only when all refill tiers returned no new eligible unseen IDs. */
   corpusExhausted?: boolean
   /** Explicit Feed V2 category tab (e.g. magazin) — session exclusion scoped here. */
@@ -35,7 +37,10 @@ export class FeedSessionService {
     rankedIds: string[],
     seed?: number,
     extras?: Partial<
-      Pick<FeedSessionPayload, 'olderThan' | 'generation' | 'corpusExhausted' | 'category'>
+      Pick<
+        FeedSessionPayload,
+        'olderThan' | 'archiveCursorId' | 'generation' | 'corpusExhausted' | 'category'
+      >
     >
   ): FeedSessionPayload {
     return {
@@ -47,6 +52,7 @@ export class FeedSessionService {
       offset: 0,
       generation: extras?.generation ?? 0,
       olderThan: extras?.olderThan ?? null,
+      archiveCursorId: extras?.archiveCursorId ?? null,
       corpusExhausted: extras?.corpusExhausted ?? false,
       category: extras?.category ?? null,
     }
@@ -90,12 +96,13 @@ export class FeedSessionService {
   } {
     const start = payload.offset ?? 0
     const ids = payload.rankedIds.slice(start, start + limit)
-    const nextOffset = start + ids.length
-    const hasMoreInSnapshot = nextOffset < payload.rankedIds.length
+    // Keep only cards not yet sent so the URL cursor cannot grow with every
+    // card the reader has already seen.
+    const unread = payload.rankedIds.slice(start + ids.length)
     return {
       ids,
-      nextPayload: { ...payload, offset: nextOffset },
-      hasMoreInSnapshot,
+      nextPayload: { ...payload, rankedIds: unread, offset: 0 },
+      hasMoreInSnapshot: unread.length > 0,
     }
   }
 

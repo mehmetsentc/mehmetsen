@@ -917,7 +917,16 @@ export function SmartFeedClient({
             return !keys.some((k) => guestSeen.has(k))
           })
 
-          if (incoming.length > 0 || !page.hasMore || !page.nextCursor) {
+          const alreadyShown = append ? itemsRef.current : []
+          const fresh = incoming.filter(
+            (item) => !alreadyShown.some((existing) => feedItemsOverlap(existing, item))
+          )
+          if (
+            fresh.length > 0 ||
+            !page.hasMore ||
+            !page.nextCursor ||
+            page.nextCursor === pageCursor
+          ) {
             acceptedIncoming = incoming
             break
           }
@@ -3077,7 +3086,7 @@ export function SmartFeedClient({
             ) : null}
             {loadingMore ? (
               <div
-                className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always items-center justify-center bg-[rgb(var(--color-surface))]"
+                className="flex w-full items-center justify-center bg-[rgb(var(--color-surface))] py-8"
                 data-testid="smart-feed-loading-more"
               >
                 <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-text))]" />

@@ -31,6 +31,7 @@ const sourceSerif = Source_Serif_4({
 import { getSiteUrl } from '@/lib/seo'
 import { OneSignalProvider } from '@/components/OneSignalProvider'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
+import { DismissAppSplash } from '@/components/pwa/DismissAppSplash'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { ReaderNavTraceSurvivor } from '@/components/feed/smart/ReaderNavTraceSurvivor'
 import { PWAInstallPromptLazy } from '@/components/pwa/PWAInstallPromptLazy'
@@ -190,7 +191,11 @@ export const metadata: Metadata = {
     title: 'NaHaber',
     statusBarStyle: 'black-translucent',
     startupImage: [
-      // iPhone 14 Pro Max, 15 Pro Max
+      // iPhone 16 Pro Max — 440×956 @3x. Missing this query paints a black launch.
+      { url: '/brand/splash/iphone-16-pro-max.png', media: '(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)' },
+      // iPhone 16 Pro — 402×874 @3x
+      { url: '/brand/splash/iphone-16-pro.png', media: '(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)' },
+      // iPhone 14 Pro Max, 15 Pro Max, 16 Plus
       { url: '/brand/splash/iphone-14-pro-max.png', media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)' },
       // iPhone 14 Pro, 15 Pro
       { url: '/brand/splash/iphone-14-pro.png', media: '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)' },
@@ -274,6 +279,34 @@ gtag('consent','default',{
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
       </head>
       <body className={`${inter.variable} ${sourceSerif.variable} ${inter.className} font-sans antialiased`}>
+        <div
+          id="app-splash"
+          role="status"
+          aria-label="NaHaber yükleniyor"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#070b16',
+          }}
+        >
+          <img
+            src="/brand/splash-mark.png"
+            alt=""
+            width={160}
+            height={160}
+            style={{ width: 160, height: 160, background: 'transparent' }}
+          />
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var s=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;if(!s){var el=document.getElementById('app-splash');if(el)el.remove()}})()`,
+          }}
+        />
+        <DismissAppSplash />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

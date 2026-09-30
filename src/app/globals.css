@@ -5685,11 +5685,10 @@ iframe.reels-yt-frame {
 .feed-v2-brand-loader__mark {
   position: relative;
   z-index: 1;
-  width: 5.5rem;
-  height: 5.5rem;
-  border-radius: 1.35rem;
-  object-fit: cover;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  width: 9.5rem;
+  height: 9.5rem;
+  object-fit: contain;
+  background: transparent;
   animation: feed-v2-brand-breathe 1.6s ease-in-out infinite;
 }
 

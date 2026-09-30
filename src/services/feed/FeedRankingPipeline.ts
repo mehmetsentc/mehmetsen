@@ -383,17 +383,20 @@ export class FeedRankingPipeline {
 
     const { ids, nextPayload, hasMoreInSnapshot } = feedSessionService.slicePage(working, input.limit)
     if (!ids.length) {
+      const exhausted = nextPayload.corpusExhausted === true
       return {
         ranked: [],
-        session: { ...nextPayload, corpusExhausted: true },
-        sessionToken: feedSessionService.encode({ ...nextPayload, corpusExhausted: true }),
+        session: { ...nextPayload, corpusExhausted: exhausted },
+        sessionToken: feedSessionService.encode({ ...nextPayload, corpusExhausted: exhausted }),
         rankingVersion,
-        candidateCounts: { ...candidateCounts, session_resume: 0, hasMore: 0 },
+        candidateCounts: { ...candidateCounts, session_resume: 0, hasMore: exhausted ? 0 : 1 },
       }
     }
 
     const rows = await feedCandidateService.fetchByIds(ids)
-    const ordered = feedSessionService.reorderBySession(rows, nextPayload)
+    // nextPayload only keeps unread ids. Order this page from the snapshot
+    // that still contains the ids we just sliced.
+    const ordered = feedSessionService.reorderBySession(rows, working)
     const scored = feedScoringService.scoreAll(ordered, ctx, input.mode, input.seenArticles, input.seenClusters)
 
     // Optimistic has-more: more in snapshot OR corpus not proven exhausted

@@ -159,6 +159,28 @@ describe('P18.3C 100-card unique pagination simulation', () => {
     expect(new Set(returned).size).toBe(returned.length)
     expect(returned.length).toBeGreaterThan(FEED_SESSION_RANKED_SOFT_CAP)
   })
+
+  it('keeps the page cursor small after hundreds of cards', () => {
+    const supply = Array.from({ length: 400 }, (_, i) => `id_${String(i).padStart(20, '0')}`)
+    let session = feedSessionService.create('personal', supply.slice(0, 40), undefined, {
+      olderThan: '2026-01-01T00:00:00.000Z',
+      archiveCursorId: 'id_00000000000000000039',
+    })
+    let supplyOffset = 40
+    for (let page = 0; page < 20; page += 1) {
+      if (session.rankedIds.length - session.offset < 15 && !session.corpusExhausted) {
+        const nextBatch = supply.slice(supplyOffset, supplyOffset + 20)
+        supplyOffset += 20
+        session = feedSessionService.appendWindow(session, nextBatch)
+      }
+      const { ids, nextPayload } = feedSessionService.slicePage(session, 15)
+      expect(ids.length).toBeGreaterThan(0)
+      session = nextPayload
+      const token = feedSessionService.encode(session)
+      expect(token.length).toBeLessThan(4000)
+    }
+    expect(session.rankedIds.length).toBeLessThan(80)
+  })
 })
 
 describe('P18.3C card + containment source guards', () => {
