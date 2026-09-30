@@ -1,5 +1,6 @@
 import type { FeedMode, ScoredFeedCandidate } from '@/types/smartFeed'
 import { FEED_RANKING_CONFIG_V1 } from '@/lib/feed/rankingConfig'
+import { feedCategoryFamily } from '@/lib/feed/personalFeedCompose'
 
 export class FeedDiversityEngine {
   rerank(
@@ -27,7 +28,7 @@ export class FeedDiversityEngine {
 
         let adj = row.score
         const pub = row.publisherId ?? '_unknown'
-        const cat = (row.category ?? '_general').toLowerCase()
+        const cat = feedCategoryFamily(row.category)
 
         const pubRepeats = publisherWindow.filter((p) => p === pub).length
         const catRepeats = categoryWindow.filter((c) => c === cat).length
@@ -35,9 +36,13 @@ export class FeedDiversityEngine {
         adj -= catRepeats * 0.05 * FEED_RANKING_CONFIG_V1.baseWeights.diversityPenalty
 
         // Diversity enforcement: prevent 3+ consecutive cards from the same category or publisher
+        if (mode === 'personal' && cat === 'yerel' && categoryWindow[categoryWindow.length - 1] === 'yerel') {
+          adj -= 0.6
+        }
+
         if (picked.length >= 2) {
-          const prev1Cat = (picked[picked.length - 1].category ?? '_general').toLowerCase()
-          const prev2Cat = (picked[picked.length - 2].category ?? '_general').toLowerCase()
+          const prev1Cat = feedCategoryFamily(picked[picked.length - 1].category)
+          const prev2Cat = feedCategoryFamily(picked[picked.length - 2].category)
           if (cat === prev1Cat && cat === prev2Cat) {
             adj -= 0.35 // heavily penalize 3rd consecutive from same category
           }
@@ -71,7 +76,7 @@ export class FeedDiversityEngine {
       if (chosen.clusterId) usedClusters.add(chosen.clusterId)
 
       publisherWindow.push(chosen.publisherId ?? '_unknown')
-      categoryWindow.push((chosen.category ?? '_general').toLowerCase())
+      categoryWindow.push(feedCategoryFamily(chosen.category))
       if (publisherWindow.length > windowSize) publisherWindow.shift()
       if (categoryWindow.length > windowSize) categoryWindow.shift()
     }

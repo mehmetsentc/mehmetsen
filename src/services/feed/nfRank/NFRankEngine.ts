@@ -27,6 +27,7 @@ import {
   normalizeKnownCitySlug,
   personalLocalScopeFromContext,
 } from '@/lib/feed/personalLocalScope'
+import { feedCategoryFamily } from '@/lib/feed/personalFeedCompose'
 
 /** Bounded session intent — does NOT permanently mutate long-term profile. */
 export interface NfSessionIntent {
@@ -624,7 +625,10 @@ export class NFRankEngine {
 
         let adj = item.score
         const pub = item.row.publisherId ?? '_unknown'
-        const cat = (item.row.category ?? '_general').toLowerCase()
+        const cat = feedCategoryFamily(item.row.category)
+        if (mode === 'personal' && cat === 'yerel' && categoryWindow[categoryWindow.length - 1] === 'yerel') {
+          adj -= 0.6
+        }
 
         const pubRepeats = publisherWindow.filter((p) => p === pub).length
         const catRepeats = categoryWindow.filter((c) => c === cat).length
@@ -678,7 +682,7 @@ export class NFRankEngine {
       }
 
       publisherWindow.push(chosen.row.publisherId ?? '_unknown')
-      categoryWindow.push((chosen.row.category ?? '_general').toLowerCase())
+      categoryWindow.push(feedCategoryFamily(chosen.row.category))
       if (publisherWindow.length > cfg.diversity.windowSize) publisherWindow.shift()
       if (categoryWindow.length > cfg.diversity.windowSize) categoryWindow.shift()
 

@@ -22,6 +22,7 @@ import {
   filterPersonalLocalInventory,
   personalLocalScopeFromContext,
 } from '@/lib/feed/personalLocalScope'
+import { shapePersonalInventory } from '@/lib/feed/personalFeedCompose'
 
 export type NfRankPipelineMode = 'off' | 'shadow' | 'live'
 
@@ -322,6 +323,12 @@ export class FeedRankingPipeline {
       }
     } else if (flat.length < input.limit && (input.mode === 'local' || input.lockCity)) {
       candidateCounts.LOCAL_NO_NATIONWIDE_FILL = 1
+    }
+
+    if (input.mode === 'personal' && !input.lockCity) {
+      const before = flat.length
+      flat = shapePersonalInventory(flat, Date.now())
+      candidateCounts.personal_stale_local_trimmed = before - flat.length
     }
 
     const { ranked, shadowComparison } = rankWindow(
