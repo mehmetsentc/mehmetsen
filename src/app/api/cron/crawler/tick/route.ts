@@ -6,8 +6,8 @@ import { runCrawlerTick } from '@/services/crawler/workers/tick'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 /** Crawler-only: discover/extract/cluster/enqueue. Paid AI is /api/cron/crawler-ai-worker.
- *  120s matches the 90s tick budget so a slow source cannot hold Neon open for 5 minutes. */
-export const maxDuration = 120
+ *  180s covers the 150s tick so a slow source cannot hold Neon open for 5 minutes. */
+export const maxDuration = 180
 
 async function handle(request: Request) {
   if (!(await isNewsroomAuthorized(request))) {

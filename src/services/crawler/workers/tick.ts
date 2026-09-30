@@ -171,8 +171,8 @@ export async function runCrawlerTick(opts?: {
     }
   }
 
-  // Wide pool: PAUSED/DISABLED rows used to starve ACTIVE fetches when they
-  // occupied the oldest slots and were silently skipped.
+  // Newest pending first. Marking every paused URL in that pool used to spend
+  // the whole tick on writes and left Ham Haberler empty.
   const pendingPool = await store.listPendingFetch(Math.max(limits.maxFetchPerTick * 20, 100))
   const sourceMap = new Map<string, NewsSourceRecord>()
   for (const item of pendingPool) {
@@ -182,22 +182,11 @@ export async function runCrawlerTick(opts?: {
     }
   }
   const fetchable: typeof pendingPool = []
+  const parked: typeof pendingPool = []
   for (const item of pendingPool) {
     const source = sourceMap.get(item.sourceId)
-    if (!source || source.status === 'DISABLED') {
-      await store.updateDiscoveredUrl(item.id, {
-        status: 'FAILED',
-        logicalQueue: 'FAILED_QUEUE',
-        failureReason: 'source_disabled',
-      })
-      continue
-    }
-    if (source.status === 'PAUSED') {
-      await store.updateDiscoveredUrl(item.id, {
-        status: 'FAILED',
-        logicalQueue: 'FAILED_QUEUE',
-        failureReason: 'source_paused',
-      })
+    if (!source || source.status === 'DISABLED' || source.status === 'PAUSED') {
+      parked.push(item)
       continue
     }
     fetchable.push(item)
@@ -522,6 +511,20 @@ export async function runCrawlerTick(opts?: {
       extractionMethod: extracted.extractionMethod,
       confidence: extracted.extractionConfidence,
     })
+  }
+
+  // A few paused URLs per tick. Never ahead of fetches, and never the whole pool.
+  let parkedMarked = 0
+  for (const item of parked) {
+    if (parkedMarked >= 10) break
+    if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
+    const source = sourceMap.get(item.sourceId)
+    await store.updateDiscoveredUrl(item.id, {
+      status: 'FAILED',
+      logicalQueue: 'FAILED_QUEUE',
+      failureReason: !source || source.status === 'DISABLED' ? 'source_disabled' : 'source_paused',
+    })
+    parkedMarked += 1
   }
 
   const clustered = await runClusterTick({ store, now, startedAt: tickStarted })

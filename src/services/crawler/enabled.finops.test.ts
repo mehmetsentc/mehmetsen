@@ -28,14 +28,15 @@ describe('minimum-cost crawler switch', () => {
     expect(isGlobalCrawlerEnabled()).toBe(true)
   })
 
-  it('keeps each tick short so Neon can suspend between half-hour runs', () => {
+  it('fetches a useful batch and still finishes inside the half-hour gap', () => {
     vi.stubEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', '')
     vi.stubEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', '')
     vi.stubEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', '')
     const limits = crawlerTickLimits()
     expect(limits.maxSourcesPerTick).toBe(25)
-    expect(limits.maxFetchPerTick).toBe(20)
-    expect(limits.maxTickRuntimeMs).toBe(90_000)
+    expect(limits.maxFetchPerTick).toBe(40)
+    expect(limits.maxTickRuntimeMs).toBe(150_000)
+    expect(limits.maxTickRuntimeMs).toBeLessThan(3 * 60_000)
   })
 
   it('leaves paid AI closed unless a flag is explicitly true', () => {
