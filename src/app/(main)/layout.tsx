@@ -1,10 +1,13 @@
 import { ArticleLiftOriginCapture } from '@/components/articleLift/ArticleLiftOriginCapture'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { getActiveTenant } from '@/lib/tenantContext'
-import { resolveTenant } from '@/lib/tenant'
-import { getCityNavPresence } from '@/services/cityNewsService.server'
+import { MainLayoutClient } from '@/components/layout/MainLayoutClient'
 
-export default async function MainLayout({
+/**
+ * National chrome only. City hosts are rewritten to /city-site/* in
+ * middleware, so this layout must not read the request header or cookie
+ * store — that opt-out made every /haber and /etiket response private and
+ * uncached (Cache-Control: private, no-cache, no-store).
+ */
+export default function MainLayout({
   children,
   modal,
 }: {
@@ -19,37 +22,6 @@ export default async function MainLayout({
   // purely additive.
   modal: React.ReactNode
 }) {
-  const hostCitySlug = await getCitySlugFromHeaders()
-  const activeTenant = hostCitySlug ? null : await getActiveTenant()
-  const citySlug = hostCitySlug ?? activeTenant?.provinceSlug ?? activeTenant?.slug ?? null
-
-  if (citySlug) {
-    // City subdomain: full city chrome (ScrollHeader + category pills).
-    // CityStaticLayout lacked ScrollHeaderProvider and crashed desktop /kategori/*.
-    const tenant = await resolveTenant(citySlug)
-    const provinceSlug = tenant?.provinceSlug ?? citySlug
-    const cityName = tenant?.displayName ?? citySlug
-    const { categories, hasSpor } = await getCityNavPresence(provinceSlug)
-
-    const { CityLayoutClient } = await import('@/components/city/CityLayoutClient')
-    return (
-      <>
-        <ArticleLiftOriginCapture />
-        <CityLayoutClient
-          tenantSlug={tenant?.slug ?? citySlug}
-          displayName={cityName}
-          provinceSlug={provinceSlug}
-          categories={categories}
-          hasSpor={hasSpor}
-        >
-          {children}
-        </CityLayoutClient>
-        {modal}
-      </>
-    )
-  }
-
-  const { MainLayoutClient } = await import('@/components/layout/MainLayoutClient')
   return (
     <>
       <ArticleLiftOriginCapture />

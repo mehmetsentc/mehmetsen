@@ -5,8 +5,6 @@ import { NewsArticleInteractive } from '@/components/news/NewsArticleInteractive
 import { getNewsBySlug } from '@/services/newsService.server'
 import { isPubliclyVisibleStatus } from '@/lib/postUtils'
 import { canResolveArticleDetail, classifyPublicRead, publicReadMetaFromPost } from '@/services/editorial/publicReadPolicy'
-import { getActiveTenant } from '@/lib/tenantContext'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { ArticleLiftShell } from '@/components/articleLift/ArticleLiftShell'
 import { ArticleLiftHardNavFallback } from '@/components/articleLift/ArticleLiftHardNavFallback'
 import { ROUTES } from '@/constants/routes'
@@ -91,15 +89,11 @@ export default async function ArticleLiftInterceptedPage({ params }: PageProps) 
   // reaching this file at all is already an edge case the canonical page
   // itself will correct on the next direct visit/refresh.
 
-  const tenant = await getActiveTenant()
-  const hostCitySlug = tenant ? null : await getCitySlugFromHeaders()
-  const citySlug = tenant?.provinceSlug ?? hostCitySlug
-
   return (
     <ArticleLiftShell articleId={post.id}>
       <ArticleCopyGuard />
       <NewsArticleStatic post={post} />
-      <NewsArticleInteractive post={post} citySlug={citySlug} />
+      <NewsArticleInteractive post={post} />
     </ArticleLiftShell>
   )
 }

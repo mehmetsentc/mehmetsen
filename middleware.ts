@@ -43,7 +43,8 @@ const CITY_PATH_REWRITES: Record<string, string> = {
 /**
  * National browsing paths that should NOT render on city subdomains.
  * These get redirected to city home (`/`) so users never see national content.
- * Article pages (/haber/[slug]) pass through; /kategori/[slug] rewrites to city-site.
+ * /kategori/[slug], /haber/[slug] and /etiket/[slug] rewrite to city-site
+ * so city chrome comes from city-site/layout, not the national (main) layout.
  */
 const CITY_REDIRECT_TO_HOME = new Set([
   '/discover',
@@ -61,6 +62,32 @@ const CITY_REDIRECT_TO_HOME = new Set([
 function isCityRedirectPath(pathname: string): boolean {
   return CITY_REDIRECT_TO_HOME.has(pathname)
 }
+
+/**
+ * Public HTML that must stay CDN-cacheable on the national host.
+ * A Set-Cookie (or request cookie mutation) marks the response private on
+ * Vercel, which is why cookieless article hits never reached HIT.
+ */
+function isPublicCdnPath(pathname: string): boolean {
+  if (pathname === '/' || pathname === '/yerel') return true
+  return (
+    /^\/haber\/[^/]+\/?$/.test(pathname) ||
+    /^\/etiket\/[^/]+\/?$/.test(pathname) ||
+    /^\/kategori\/[^/]+\/?$/.test(pathname) ||
+    /^\/yerel\/[^/]+\/?$/.test(pathname) ||
+    /^\/yazar\/[^/]+\/?$/.test(pathname) ||
+    /^\/muzeler\/?$/.test(pathname)
+  )
+}
+
+/** City footer / institutional pages that live under (main) and need city chrome. */
+const CITY_MAIN_STATIC_REWRITES = new Set([
+  '/muzeler',
+  '/hakkimizda',
+  '/kunye',
+  '/editoryal-ilkeler',
+  '/iletisim',
+])
 
 function detectCountry(request: NextRequest): string {
   const fromHeader =
@@ -248,11 +275,31 @@ export async function middleware(request: NextRequest) {
       return buildCityRewrite(request, `/city-site/kategori/${categoryMatch[1]}`, tenant)
     }
 
+    // Article + tag pages reuse the national page module under city-site chrome.
+    // Canonical stays www (generateMetadata does not read the host).
+    const articleMatch = cleanPath.match(/^\/haber\/([^/]+)$/)
+    if (articleMatch) {
+      return buildCityRewrite(request, `/city-site/haber/${articleMatch[1]}`, tenant)
+    }
+    const tagMatch = cleanPath.match(/^\/etiket\/([^/]+)$/)
+    if (tagMatch) {
+      return buildCityRewrite(request, `/city-site/etiket/${tagMatch[1]}`, tenant)
+    }
+    if (CITY_MAIN_STATIC_REWRITES.has(cleanPath)) {
+      return buildCityRewrite(request, `/city-site${cleanPath}`, tenant)
+    }
+
     // Direct path rewrites (/, /feed, /etkinlik, /spor, /ilceler, /yerel)
     const rewriteTarget = CITY_PATH_REWRITES[cleanPath]
     if (rewriteTarget) {
       return buildCityRewrite(request, rewriteTarget, tenant)
     }
+  }
+
+  // Cacheable national documents must not mint cookies. Bots never store
+  // them, so every cookieless hit would otherwise be a CDN bypass.
+  if (!tenant && isPublicCdnPath(pathname)) {
+    return NextResponse.next()
   }
 
   const country = detectCountry(request)
