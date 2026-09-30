@@ -50,14 +50,15 @@ export function isNfRankShadowEnabled(): boolean {
 }
 
 /**
- * FEED_V2_NFRANK_ENABLED — default false.
- * Live NFRank ordering for /feed-v2 only (requires user allowlist/global + SMART_FEED_RANKING).
+ * FEED_V2_NFRANK_ENABLED — default true.
+ * Live NFRank ordering for /feed-v2 only (requires SMART_FEED + SMART_FEED_RANKING_V1).
+ * Set FEED_V2_NFRANK_ENABLED=false to keep shadow scoring without changing visible order.
  */
 export function isNfRankLiveEnabled(): boolean {
   const v = process.env.FEED_V2_NFRANK_ENABLED?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes') return true
   if (v === '0' || v === 'false' || v === 'no') return false
-  return false
+  return true
 }
 
 /** GLOBAL_NAV_V2 — default ON (header + drawer + bottom dock). Kill with GLOBAL_NAV_V2=0 / NEXT_PUBLIC_GLOBAL_NAV_V2=0 */

@@ -148,10 +148,10 @@ describe('NFRank V1 config + flags', () => {
   })
 
 
-  it('live flag defaults off; shadow defaults on', () => {
+  it('live flag defaults on; shadow defaults on', () => {
     delete process.env.FEED_V2_NFRANK_ENABLED
     delete process.env.FEED_V2_NFRANK_SHADOW_ENABLED
-    expect(isNfRankLiveEnabled()).toBe(false)
+    expect(isNfRankLiveEnabled()).toBe(true)
     expect(isNfRankShadowEnabled()).toBe(true)
   })
 

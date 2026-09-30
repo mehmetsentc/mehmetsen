@@ -109,7 +109,7 @@ describe('non-local + safety', () => {
 
   it('22–25. contracts / isolation markers', () => {
     delete process.env.FEED_V2_NFRANK_ENABLED
-    expect(isNfRankLiveEnabled()).toBe(false)
+    expect(isNfRankLiveEnabled()).toBe(true)
     expect(USER_FEATURE_DEPENDENCIES.NFRANK_V1).toEqual(['SMART_FEED', 'SMART_FEED_RANKING_V1'])
     expect(USER_ROLLOUT_FEATURE_KEYS).toContain('NFRANK_V1')
     const src = readFileSync(join(process.cwd(), 'src/lib/geo/resolveArticleGeo.ts'), 'utf8')

@@ -265,7 +265,7 @@ describe('finalizeCanonicalArticleGeo persistence', () => {
     expect(pipelineSrc).not.toContain('LOCAL_NEARBY')
     expect(pipelineSrc).not.toContain('geoRelevance')
     delete process.env.FEED_V2_NFRANK_ENABLED
-    expect(isNfRankLiveEnabled()).toBe(false)
+    expect(isNfRankLiveEnabled()).toBe(true)
     expect(USER_FEATURE_DEPENDENCIES.NFRANK_V1).toEqual([
       'SMART_FEED',
       'SMART_FEED_RANKING_V1',

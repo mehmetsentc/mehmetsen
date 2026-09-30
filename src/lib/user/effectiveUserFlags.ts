@@ -54,7 +54,7 @@ export async function isSmartFeedTelemetryEffectiveForUser(userId: string | null
   return isFeatureEnabledForUser(userId, 'SMART_FEED_TELEMETRY')
 }
 
-/** NFRank live — Feed V2 only; requires NFRANK_V1 grant/global (default off). */
+/** NFRank live — Feed V2 only; requires NFRANK_V1 grant/global (default on). */
 export async function isNfRankLiveEffectiveForUser(userId: string | null | undefined): Promise<boolean> {
   return isFeatureEnabledForUser(userId, 'NFRANK_V1')
 }

@@ -208,9 +208,9 @@ describe('PHASE P17.4B — Exact Firebase UID Feature Access Resolution & Cohort
       expect(await isNfRankLiveEffectiveForUser(CANONICAL_PILOT_UID)).toBe(false)
     })
 
-    it('global FEED_V2_NFRANK_ENABLED remains off by default (no accidental cohort-wide live)', () => {
+    it('global FEED_V2_NFRANK_ENABLED defaults on so /feed-v2 uses visible personal order', () => {
       delete process.env.FEED_V2_NFRANK_ENABLED
-      expect(isGlobalUserFeatureEnabled('NFRANK_V1')).toBe(false)
+      expect(isGlobalUserFeatureEnabled('NFRANK_V1')).toBe(true)
     })
 
     it('grantPilotBundle source still excludes NFRANK_V1 and FEED_READER_V1', async () => {
