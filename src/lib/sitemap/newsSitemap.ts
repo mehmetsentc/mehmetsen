@@ -36,10 +36,11 @@ export const NEWS_SITEMAP_WINDOW_MS = 48 * 60 * 60 * 1000
 export const NEWS_SITEMAP_MAX_ENTRIES = 1000
 /** Defensive ceiling for raw rows inside the 48h window (per source). */
 export const NEWS_SITEMAP_RAW_CAP = 5000
-export const NEWS_SITEMAP_REVALIDATE_S = 6 * 60 * 60
+/** 30 minutes. Field projection keeps a refresh at or under the 1,000-URL cap. */
+export const NEWS_SITEMAP_REVALIDATE_S = 30 * 60
 export const NEWS_SITEMAP_LANGUAGE = 'tr'
 
-export const NEWS_SITEMAP_CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=21600'
+export const NEWS_SITEMAP_CACHE_CONTROL = 'public, s-maxage=1800, stale-while-revalidate=1800'
 export const NEWS_SITEMAP_ERROR_CACHE_CONTROL = 'no-store'
 
 /**

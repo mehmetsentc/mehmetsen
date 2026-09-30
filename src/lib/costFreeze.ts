@@ -2,6 +2,25 @@
  * Compile-time production cost freeze.
  * Rollback to freeze: set true and redeploy. Cron list stays the cost-safe minimum.
  */
+/** Search files must stay XML/plain text during a cost freeze. GSC rejects HTML sitemaps. */
+const SEO_DISCOVERY_FILE =
+  /^\/(robots\.txt|sitemap\.xml|news-sitemap\.xml|images-sitemap\.xml|video-sitemap\.xml)$/
+const SEO_DISCOVERY_DIR = /^\/(sitemaps|news-sitemaps)\//
+
+export function isSeoDiscoveryPath(pathname: string): boolean {
+  return SEO_DISCOVERY_FILE.test(pathname) || SEO_DISCOVERY_DIR.test(pathname)
+}
+
+export type CostFreezeDecision = 'pass' | 'api' | 'html'
+
+/** What a frozen request should return. Discovery files always pass through. */
+export function costFreezeDecision(pathname: string): CostFreezeDecision {
+  if (pathname === '/api/health' || pathname.startsWith('/api/health/')) return 'pass'
+  if (isSeoDiscoveryPath(pathname)) return 'pass'
+  if (pathname.startsWith('/api/')) return 'api'
+  return 'html'
+}
+
 export const COST_FREEZE_ENABLED = false
 
 export const COST_FREEZE_MESSAGE = 'NaHaber kısa süreli bakım çalışmasındadır.'

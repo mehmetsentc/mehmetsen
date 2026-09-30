@@ -43,7 +43,7 @@ describe('SEO-2B news sitemap routes', () => {
     const res = await ROOT()
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/xml')
-    expect(res.headers.get('cache-control')).toBe('public, s-maxage=21600, stale-while-revalidate=21600')
+    expect(res.headers.get('cache-control')).toBe('public, s-maxage=1800, stale-while-revalidate=1800')
     const xml = await res.text()
     expect(XMLValidator.validate(xml)).toBe(true)
     expect(xml).toContain('<urlset')
@@ -88,11 +88,12 @@ describe('SEO-2B news sitemap routes', () => {
     expect(xml).not.toContain('canakkale.nahaber.com')
   })
 
-  it('genuinely empty window → 200 empty urlset', async () => {
+  it('genuinely empty window → 200 empty urlset that is not cached', async () => {
     state.entries = []
     const res = await ROOT()
     expect(res.status).toBe(200)
     expect(await res.text()).not.toContain('<url>')
+    expect(res.headers.get('cache-control')).toBe('no-store')
   })
 
   it('source failure / cap exceeded → 503 + no-store, never an empty 200', async () => {

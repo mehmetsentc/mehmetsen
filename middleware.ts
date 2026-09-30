@@ -3,6 +3,7 @@ import {
   COST_FREEZE_ENABLED,
   COST_FREEZE_HTML,
   COST_FREEZE_MESSAGE,
+  costFreezeDecision,
 } from '@/lib/costFreeze'
 import {
   COUNTRY_COOKIE,
@@ -168,10 +169,9 @@ function buildCityRewrite(
 export async function middleware(request: NextRequest) {
   if (COST_FREEZE_ENABLED) {
     const { pathname } = request.nextUrl
-    if (pathname === '/api/health' || pathname.startsWith('/api/health/')) {
-      return NextResponse.next()
-    }
-    if (pathname.startsWith('/api/')) {
+    const decision = costFreezeDecision(pathname)
+    if (decision === 'pass') return NextResponse.next()
+    if (decision === 'api') {
       return NextResponse.json(
         { status: 'maintenance', frozen: true, message: COST_FREEZE_MESSAGE },
         {

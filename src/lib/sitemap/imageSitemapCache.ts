@@ -3,11 +3,16 @@ export const IMAGE_SITEMAP_REVALIDATE_S = 6 * 60 * 60
 
 export type ImageSitemapCacheState = 'hit' | 'miss' | 'stale'
 
+export function sitemapXmlHasEntries(xml: string): boolean {
+  return xml.includes('<url>') || xml.includes('<sitemap>')
+}
+
 export function createTtlSingleCache(
   load: () => Promise<string>,
   ttlMs: number,
   now: () => number = Date.now,
-  circuitOpen: () => boolean = () => false
+  circuitOpen: () => boolean = () => false,
+  options?: { serveStaleOnError?: boolean; skipEmpty?: boolean }
 ) {
   let entry: { xml: string; at: number } | null = null
   let inflight: Promise<string> | null = null
@@ -22,8 +27,15 @@ export function createTtlSingleCache(
     if (!inflight) {
       const pending = load()
         .then((xml) => {
+          if (options?.skipEmpty && !sitemapXmlHasEntries(xml)) {
+            return entry ? entry.xml : xml
+          }
           entry = { xml, at: now() }
           return xml
+        })
+        .catch((error: unknown) => {
+          if (options?.serveStaleOnError && entry) return entry.xml
+          throw error
         })
         .finally(() => {
           if (inflight === pending) inflight = null
