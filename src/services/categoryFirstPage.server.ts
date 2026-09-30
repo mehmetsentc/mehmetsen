@@ -8,6 +8,7 @@ import { isKibrisScopedNews, isNationalBreakingEligible } from '@/lib/featuredSc
 import { featuredPinTime } from '@/lib/featuredPins'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
+import { selectNewsCardFields } from '@/lib/news/cardFirestoreFields'
 import type { TimelinePost } from '@/types/post'
 
 /** Cross-request public first page. Rollback: delete this module and inline the fetch. */
@@ -51,7 +52,11 @@ function mapNewsDocToTimelinePost(doc: {
     authorId: (d.authorId as string | undefined) ?? '',
     title: (d.title as string | undefined) ?? '',
     spot: (d.spot as string | undefined) ?? (d.summary as string | undefined) ?? '',
-    content: (d.content as string | undefined) ?? '',
+    content:
+      (d.summary as string | undefined) ??
+      (d.spot as string | undefined) ??
+      (d.description as string | undefined) ??
+      '',
     summary: (d.summary as string | undefined) ?? (d.spot as string | undefined) ?? '',
     categoryId: (d.categoryId as string | undefined) ?? '',
     originalCategoryId: (d.originalCategoryId as string | undefined) ?? '',
@@ -90,20 +95,18 @@ async function fetchCategoryFirstPage(categoryId: string): Promise<TimelinePost[
   const db = getAdminFirestore()
   const baseQ = db.collection(Collections.NEWS).where('status', '==', 'published')
 
-  const snap =
+  const family = getHomeFeedCategoryFamily(categoryId)
+  const listQuery =
     categoryId === 'son-dakika'
-      ? await baseQ.where('isBreaking', '==', true).orderBy('publishedAt', 'desc').limit(40).get()
-      : await (() => {
-          const family = getHomeFeedCategoryFamily(categoryId)
-          return (
-            family.length > 1
-              ? baseQ.where('categoryId', 'in', family)
-              : baseQ.where('categoryId', '==', categoryId)
-          )
-            .orderBy('publishedAt', 'desc')
-            .limit(20)
-            .get()
-        })()
+      ? baseQ.where('isBreaking', '==', true).orderBy('publishedAt', 'desc').limit(40)
+      : (family.length > 1
+          ? baseQ.where('categoryId', 'in', family)
+          : baseQ.where('categoryId', '==', categoryId)
+        )
+          .orderBy('publishedAt', 'desc')
+          .limit(20)
+
+  const snap = await selectNewsCardFields(listQuery).get()
 
   let posts = snap.docs.map((doc) => mapNewsDocToTimelinePost(doc))
 
@@ -128,11 +131,9 @@ async function fetchCategoryFirstPage(categoryId: string): Promise<TimelinePost[
         originalCategoryId: post.originalCategoryId,
       })
     try {
-      const featSnap = await baseQ
-        .where('featured', '==', true)
-        .orderBy('publishedAt', 'desc')
-        .limit(40)
-        .get()
+      const featSnap = await selectNewsCardFields(
+        baseQ.where('featured', '==', true).orderBy('publishedAt', 'desc').limit(40)
+      ).get()
       const pinned = featSnap.docs
         .map((doc) => {
           const data = doc.data() as Record<string, unknown>
@@ -158,11 +159,9 @@ async function fetchCategoryFirstPage(categoryId: string): Promise<TimelinePost[
     }
 
     try {
-      const breakingSnap = await baseQ
-        .where('isBreaking', '==', true)
-        .orderBy('publishedAt', 'desc')
-        .limit(30)
-        .get()
+      const breakingSnap = await selectNewsCardFields(
+        baseQ.where('isBreaking', '==', true).orderBy('publishedAt', 'desc').limit(30)
+      ).get()
       const kibrisBreaking = breakingSnap.docs
         .map((doc) => mapNewsDocToTimelinePost(doc))
         .filter((post) => belongsOnKibrisPage(post))

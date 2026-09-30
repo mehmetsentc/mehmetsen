@@ -6,6 +6,7 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
+import { selectNewsCardFields } from '@/lib/news/cardFirestoreFields'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import {
   CATEGORY_STORY_WINDOW_MS,
@@ -86,14 +87,15 @@ async function queryPublishedByCategory(
   try {
     const family = getHomeFeedCategoryFamily(categoryId)
     const baseQuery = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
-    const snap = await (
-      family.length > 1
-        ? baseQuery.where('categoryId', 'in', family)
-        : baseQuery.where('categoryId', '==', categoryId)
-    )
-      .orderBy('publishedAt', 'desc')
-      .limit(itemLimit)
-      .get()
+    const snap = await selectNewsCardFields(
+      (
+        family.length > 1
+          ? baseQuery.where('categoryId', 'in', family)
+          : baseQuery.where('categoryId', '==', categoryId)
+      )
+        .orderBy('publishedAt', 'desc')
+        .limit(itemLimit)
+    ).get()
     return snap.docs
   } catch (error) {
     const code = (error as { code?: number }).code
@@ -357,12 +359,13 @@ let lastSuccessfulPoolAt = 0
 
 async function fetchHomeNewsPool(poolSize: number): Promise<NewsItem[]> {
   try {
-    const snap = await getAdminFirestore()
-      .collection(NEWS_COLLECTION)
-      .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
-      .limit(poolSize)
-      .get()
+    const snap = await selectNewsCardFields(
+      getAdminFirestore()
+        .collection(NEWS_COLLECTION)
+        .where('status', '==', 'published')
+        .orderBy('publishedAt', 'desc')
+        .limit(poolSize)
+    ).get()
     const items = mapAdminDocs(snap.docs)
     if (items.length > 0) {
       lastSuccessfulPool = items
@@ -1105,23 +1108,19 @@ const getSuggestedPostsCached = unstable_cache(
       let q = db.collection(NEWS_COLLECTION).where('status', '==', 'published')
 
       if (citySlug) {
-        const snap = await q
-          .where('citySlug', '==', citySlug)
-          .orderBy('publishedAt', 'desc')
-          .limit(fetchLimit)
-          .get()
+        const snap = await selectNewsCardFields(
+          q.where('citySlug', '==', citySlug).orderBy('publishedAt', 'desc').limit(fetchLimit)
+        ).get()
         return snap.docs
           .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
           .filter((post): post is Post => post !== null)
       }
 
       const snap = categoryId
-        ? await q
-            .where('categoryId', '==', categoryId)
-            .orderBy('publishedAt', 'desc')
-            .limit(fetchLimit)
-            .get()
-        : await q.orderBy('publishedAt', 'desc').limit(fetchLimit).get()
+        ? await selectNewsCardFields(
+            q.where('categoryId', '==', categoryId).orderBy('publishedAt', 'desc').limit(fetchLimit)
+          ).get()
+        : await selectNewsCardFields(q.orderBy('publishedAt', 'desc').limit(fetchLimit)).get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
@@ -1164,12 +1163,13 @@ const getPostsByTagCached = unstable_cache(
 
       await Promise.allSettled(
         variants.map(async (variant) => {
-          const snap = await db
-            .collection(NEWS_COLLECTION)
-            .where('status', '==', 'published')
-            .where('tags', 'array-contains', variant)
-            .limit(limitCount)
-            .get()
+          const snap = await selectNewsCardFields(
+            db
+              .collection(NEWS_COLLECTION)
+              .where('status', '==', 'published')
+              .where('tags', 'array-contains', variant)
+              .limit(limitCount)
+          ).get()
 
           for (const doc of snap.docs) {
             if (seen.has(doc.id)) continue
@@ -1234,13 +1234,14 @@ const getPostsByCityDeskCached = unstable_cache(
     if (!spec) return []
     try {
       const db = getAdminFirestore()
-      const snap = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('citySlug', '==', citySlug)
-        .orderBy('publishedAt', 'desc')
-        .limit(Math.min(Math.max(limitCount * 4, 40), 160))
-        .get()
+      const snap = await selectNewsCardFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('citySlug', '==', citySlug)
+          .orderBy('publishedAt', 'desc')
+          .limit(Math.min(Math.max(limitCount * 4, 40), 160))
+      ).get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
@@ -1327,13 +1328,14 @@ const getPostsByAuthorIdCached = unstable_cache(
   async (authorId: string, limitCount: number): Promise<Post[]> => {
     try {
       const db = getAdminFirestore()
-      const snap = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('authorId', '==', authorId)
-        .orderBy('publishedAt', 'desc')
-        .limit(limitCount)
-        .get()
+      const snap = await selectNewsCardFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('authorId', '==', authorId)
+          .orderBy('publishedAt', 'desc')
+          .limit(limitCount)
+      ).get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
@@ -1343,12 +1345,13 @@ const getPostsByAuthorIdCached = unstable_cache(
       console.warn('[newsService.server] getPostsByAuthorId indexed query failed, falling back:', error)
       try {
         const db = getAdminFirestore()
-        const snap = await db
-          .collection(NEWS_COLLECTION)
-          .where('status', '==', 'published')
-          .orderBy('publishedAt', 'desc')
-          .limit(200)
-          .get()
+        const snap = await selectNewsCardFields(
+          db
+            .collection(NEWS_COLLECTION)
+            .where('status', '==', 'published')
+            .orderBy('publishedAt', 'desc')
+            .limit(200)
+        ).get()
 
         return snap.docs
           .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
@@ -1396,12 +1399,13 @@ const getPostsBySourceCached = unstable_cache(
   async (normalizedSource: string, limitCount: number): Promise<Post[]> => {
     try {
       const db = getAdminFirestore()
-      const snap = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(Math.max(limitCount * 8, 400))
-        .get()
+      const snap = await selectNewsCardFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .orderBy('publishedAt', 'desc')
+          .limit(Math.max(limitCount * 8, 400))
+      ).get()
 
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
