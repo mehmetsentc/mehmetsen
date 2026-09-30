@@ -279,28 +279,6 @@ gtag('consent','default',{
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
       </head>
       <body className={`${inter.variable} ${sourceSerif.variable} ${inter.className} font-sans antialiased`}>
-        <div
-          id="app-splash"
-          role="status"
-          aria-label="NaHaber yükleniyor"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#070b16',
-          }}
-        >
-          <img
-            src="/brand/splash-mark.png"
-            alt=""
-            width={160}
-            height={160}
-            style={{ width: 160, height: 160, background: 'transparent' }}
-          />
-        </div>
         <DismissAppSplash />
         <script
           type="application/ld+json"
