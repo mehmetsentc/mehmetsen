@@ -73,7 +73,7 @@ export function CategoryNav({
               <Link
                 key={cat.href}
                 href={cat.href}
-                prefetch
+                prefetch={false}
                 className={contextRailChipClass(isActive)}
                 aria-current={isActive ? 'page' : undefined}
               >

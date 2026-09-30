@@ -165,6 +165,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // FinOps: bots crawl the public `nahaber.vercel.app` alias as a duplicate site, and every
+  // hit renders pages from Neon/Firestore. Send page traffic to the canonical host.
+  // API/cron and deployment URLs (nahaber-<hash>-*.vercel.app) are untouched.
+  const hostHeader = (request.headers.get('host') || '').toLowerCase()
+  if (hostHeader === 'nahaber.vercel.app' && !pathname.startsWith('/api/')) {
+    const target = new URL(request.nextUrl.pathname + request.nextUrl.search, 'https://www.nahaber.com')
+    return NextResponse.redirect(target, 308)
+  }
+
   if (pathname.startsWith('/admin')) {
     const token = request.cookies.get(CMS_SESSION_COOKIE)?.value
     const session = await verifyCmsSessionToken(token)

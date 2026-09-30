@@ -87,7 +87,6 @@ const MobileNavLink = memo(function MobileNavLink({
   return (
     <Link
       href={href}
-      prefetch
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       data-testid={testId}
@@ -168,7 +167,6 @@ function MobileNavInner() {
         ))}
         <Link
           href={profileHref}
-          prefetch
           aria-label="Profilim"
           aria-current={profileActive ? 'page' : undefined}
           data-testid="header-nav-profil"

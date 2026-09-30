@@ -55,7 +55,7 @@ function FeedMediaCardInner({
   return (
     <Link
       href={href}
-      prefetch
+      prefetch={false}
       className={cn(
         'feed-media-card group block',
         isVideo ? 'feed-media-card-video' : 'feed-media-card-photo',
