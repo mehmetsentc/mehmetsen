@@ -75,6 +75,26 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     'ImagesiftBot',
   ]
 
+  // FINOPS-SEO-1: third-party SEO-tool crawlers. They do not feed any search
+  // engine index, yet they crawled every uncached article/tag page (~40% of all
+  // requests) and drove Firestore reads + egress. Search engines (Googlebot*,
+  // bingbot, YandexBot, Applebot) and link-preview bots are NOT listed here.
+  const SEO_TOOL_BOTS = [
+    'SemrushBot',
+    'SiteAuditBot',
+    'AhrefsBot',
+    'AhrefsSiteAudit',
+    'MJ12bot',
+    'DotBot',
+    'DataForSeoBot',
+    'BLEXBot',
+    'Barkrowler',
+    'PetalBot',
+    'SeekportBot',
+    'Reflectionbot',
+    'Baiduspider',
+  ]
+
   if (citySlug) {
     // ── City subdomain ──────────────────────────────────────────────────────
     return {
@@ -96,6 +116,10 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         },
         {
           userAgent: AI_BOTS,
+          disallow: '/',
+        },
+        {
+          userAgent: SEO_TOOL_BOTS,
           disallow: '/',
         },
       ],
@@ -132,6 +156,10 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       },
       {
         userAgent: AI_BOTS,
+        disallow: '/',
+      },
+      {
+        userAgent: SEO_TOOL_BOTS,
         disallow: '/',
       },
     ],

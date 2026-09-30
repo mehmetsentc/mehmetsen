@@ -47,7 +47,7 @@ describe('SEO-2C robots sitemap declarations', () => {
     expect(star.allow).toBe('/')
     expect(star.disallow).toContain('/admin/')
     expect(ruleFor(r, 'GPTBot')?.disallow).toBe('/')
-    expect(rulesOf(r)).toHaveLength(4)
+    expect(rulesOf(r)).toHaveLength(5)
   })
 
   it('www: all four national sitemaps, including news', async () => {
@@ -73,6 +73,6 @@ describe('SEO-2C robots sitemap declarations', () => {
     expect(ruleFor(r, 'Googlebot-Image')?.allow).toEqual(['/haber/', '/kategori/', '/yerel/', '/', '/images-sitemap.xml'])
     expect(ruleFor(r, 'Googlebot-Video')?.allow).toEqual(['/haber/', '/reels', '/video', '/video-sitemap.xml'])
     expect(ruleFor(r, 'GPTBot')?.disallow).toBe('/')
-    expect(rulesOf(r)).toHaveLength(5)
+    expect(rulesOf(r)).toHaveLength(6)
   })
 })
