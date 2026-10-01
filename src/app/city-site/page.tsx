@@ -24,7 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImage = `${mainOrigin}/brand/og-default.png`
 
   return {
-    title: `${cityName} Haberleri — ${siteName}`,
+    // Brand already in the title: bypass the root `%s | NaHaber` template.
+    title: { absolute: `${cityName} Haberleri — ${siteName}` },
     description: `${cityName} son dakika yerel haberler, gündem, etkinlikler ve spor haberleri. ${cityName} şehrinden en güncel haberleri ${siteName}'de takip edin.`,
     alternates: {
       canonical: cityOrigin,
