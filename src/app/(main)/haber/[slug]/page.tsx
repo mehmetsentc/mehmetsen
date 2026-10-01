@@ -98,13 +98,9 @@ export default async function NewsDetailPage({ params }: PageProps) {
     slug = decodeURIComponent(rawSlug)
   } catch {}
 
-  let post = null
-
-  try {
-    post = await getCachedNews(slug)
-  } catch {
-    // Client fallback
-  }
+  // A load error must not become a 404: ISR would cache it for the revalidate
+  // window. Throwing keeps the previous page (or a non-cached 500).
+  const post = await getCachedNews(slug)
 
   if (!post) {
     notFound()
