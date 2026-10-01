@@ -33,10 +33,21 @@ describe('SEO-6 P0 public routes are on-demand ISR', () => {
     expect(src).not.toContain('noStore')
   })
 
-  it('city hosts reach city-site/kategori for any id casing (lowercased)', () => {
-    const mw = read('middleware.ts')
-    expect(mw).toContain('cleanPath.match(/^\\/kategori\\/([a-z0-9-]+)$/i)')
-    expect(mw).toContain('`/city-site/kategori/${categoryMatch[1].toLowerCase()}`')
+  it('city hosts reach city-site/kategori via next.config host rewrites', async () => {
+    // Root middleware.ts is not compiled (src/ layout); next.config is the router.
+    const { default: config } = await import('../../../next.config')
+    const rewrites = (await config.rewrites!()) as {
+      beforeFiles: Array<{ source: string; destination: string; has?: Array<{ value?: string }> }>
+    }
+    for (const city of ['canakkale', 'antalya']) {
+      const hit = rewrites.beforeFiles.filter(
+        (r) =>
+          r.source === '/kategori/:id' &&
+          r.destination === '/city-site/kategori/:id' &&
+          r.has?.some((h) => h.value?.startsWith(`${city}\\.nahaber\\.com`))
+      )
+      expect(hit).toHaveLength(2)
+    }
     const cityPage = read('src/app/city-site/kategori/[id]/page.tsx')
     expect(cityPage).toContain('buildCityCategoryMetadata(tenant.slug, id)')
   })

@@ -156,22 +156,29 @@ const nextConfig: NextConfig = {
     // that URL. Rewrite before the file lookup so Antalya and Çanakkale never
     // receive the cached nahaber.com homepage. Host or X-Forwarded-Host covers
     // Cloudflare in front of Vercel.
+    // The ISR national `/kategori/:id` does not read the host either (SEO-6), so
+    // city category pages need the same host rewrite. Root middleware.ts is not
+    // compiled (src/ layout), so these rewrites are the only city routing.
     const cityHomeRewrite = (host: string) => {
       // Next anchors `has` values (^…$). Dots are regex; allow an optional
       // port and a comma-separated proxy chain after the city host.
       const value = `${host.replace(/\./g, '\\.')}(?::\\d+)?(?:,.*)?`
-      return [
-        {
-          source: '/',
-          has: [{ type: 'host' as const, value }],
-          destination: '/city-site',
-        },
-        {
-          source: '/',
-          has: [{ type: 'header' as const, key: 'x-forwarded-host', value }],
-          destination: '/city-site',
-        },
+      const routes: Array<[string, string]> = [
+        ['/', '/city-site'],
+        ['/kategori/:id', '/city-site/kategori/:id'],
       ]
+      return routes.flatMap(([source, destination]) => [
+        {
+          source,
+          has: [{ type: 'host' as const, value }],
+          destination,
+        },
+        {
+          source,
+          has: [{ type: 'header' as const, key: 'x-forwarded-host', value }],
+          destination,
+        },
+      ])
     }
     return {
       beforeFiles: [

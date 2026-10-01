@@ -1,7 +1,7 @@
 /**
  * SEO-1B — route-level metadata tests for city landing pages served on
  * `{city}.nahaber.com`. Hub routes are host-aware public routes; `/kategori/{id}`
- * is rewritten by middleware to `city-site/kategori` so the www category page
+ * is rewritten by next.config (host) to `city-site/kategori` so the www category page
  * stays host-independent (CDN cacheable, SEO-6).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'

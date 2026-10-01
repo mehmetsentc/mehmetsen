@@ -159,7 +159,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// National only: city hosts are rewritten to /city-site/kategori by middleware, so
+// National only: city hosts are rewritten to /city-site/kategori (next.config), so
 // this page must not read the host (any dynamic API drops it off the CDN).
 export const revalidate = 300
 

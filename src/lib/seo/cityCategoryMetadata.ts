@@ -5,7 +5,7 @@ import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 
 /**
  * SEO-1B city category metadata for `{city}.nahaber.com/kategori/{id}`, served by
- * `/city-site/kategori/[id]` (middleware rewrite). The www category page never
+ * `/city-site/kategori/[id]` (next.config host rewrite). The www category page never
  * reads the host so it can stay on the CDN.
  */
 export function buildCityCategoryMetadata(citySlug: string, id: string): Metadata {
