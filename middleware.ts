@@ -1,3 +1,5 @@
+// NOT COMPILED: this project uses src/app, so Next only loads src/middleware.ts.
+// City rewrites and maintenance live in next.config.ts.
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COST_FREEZE_ENABLED,
