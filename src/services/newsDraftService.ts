@@ -4,7 +4,7 @@
  */
 import type { Firestore } from 'firebase-admin/firestore'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
-import { buildNewsSlug, isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { buildNewsSlug, isPlaceholderDraftSlug, needsPublicSlug } from '@/lib/newsSlug'
 import { countPlainWords } from '@/lib/contentQuality'
 import type { NewsDraftDocument } from '@/types/news'
 import {
@@ -492,7 +492,7 @@ export const newsDraftService = {
     const now = Date.now()
     const draftId = doc.rssFingerprint.slice(0, 12)
     let slug = options?.preferredSlug?.trim() || ''
-    if (slug && isPlaceholderDraftSlug(slug)) slug = ''
+    if (slug && needsPublicSlug(slug, options?.newsId)) slug = ''
     if (slug && (await slugTaken(db, slug, options?.newsId))) slug = ''
     if (!slug) slug = await allocateUniqueSlug(db, doc.title, draftId, options?.newsId)
 
@@ -759,7 +759,9 @@ export const newsDraftService = {
     })
 
     let slug = data.slug?.trim() || ''
-    if (!slug || isPlaceholderDraftSlug(slug)) {
+    // Id-shaped slugs are only replaced before first publication; a live URL is never renamed.
+    const idSlugNeedsUpgrade = data.status !== 'published' && needsPublicSlug(slug, newsId)
+    if (!slug || isPlaceholderDraftSlug(slug) || idSlugNeedsUpgrade) {
       slug = await allocateUniqueSlug(db, data.title ?? 'haber', newsId, newsId)
     }
 

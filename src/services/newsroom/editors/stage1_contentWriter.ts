@@ -23,6 +23,7 @@ import {
 import { getAiUsageContext } from '@/lib/ai/usage/context'
 import { hashAiInput } from '@/lib/ai/usage/hash'
 import { NAHABER_HEADLINE_STYLE } from '@/lib/ai/editorial/headlineStyle'
+import { cutAtSentence, cutAtWord } from './fallbackText'
 
 export interface WrittenArticle {
   title: string
@@ -422,24 +423,16 @@ export async function writeArticle(input: WriterInput): Promise<WrittenArticle> 
   }
 
   console.warn(`[stage1] DeepSeek başarısız — ham fallback: "${input.originalTitle.slice(0, 60)}"`)
-  // Ortadan kesme — son cümle sonuna kadar al (onay kuyruğuna “…canlarını” gibi yarım spot basmamak için)
-  const cutAtSentence = (text: string, max: number) => {
-    const t = text.trim()
-    if (t.length <= max) return t
-    const slice = t.slice(0, max)
-    const lastStop = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf('!'), slice.lastIndexOf('?'))
-    if (lastStop > max * 0.4) return slice.slice(0, lastStop + 1).trim()
-    const lastSpace = slice.lastIndexOf(' ')
-    return (lastSpace > 40 ? slice.slice(0, lastSpace) : slice).trim()
-  }
+  // Raw fallback: never cut a word in half (see fallbackText.ts).
   const fallback = (input.originalContent || input.originalSummary || input.originalTitle).trim()
   const spotSrc = (input.originalSummary || '').trim()
   return {
-    title: input.originalTitle.slice(0, 70),
+    // Full source title: 70 chars is only an editor hint in the CMS.
+    title: input.originalTitle.replace(/\s+/g, ' ').trim(),
     spot: cutAtSentence(spotSrc, 400),
     summary: cutAtSentence(input.originalSummary || input.originalTitle, 120),
     content: cutAtSentence(fallback, 800),
-    seoTitle: input.originalTitle.slice(0, 65),
+    seoTitle: cutAtWord(input.originalTitle, 65),
     seoDescription: cutAtSentence(input.originalSummary || input.originalTitle, 160),
     aiWritten: false,
   }

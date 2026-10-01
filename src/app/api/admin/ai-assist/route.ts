@@ -29,10 +29,18 @@ export const dynamic = 'force-dynamic'
 /** DeepSeek + araştırma + görsel analizi 120s'i aşıyordu → Vercel HTML 504. */
 export const maxDuration = 300
 
-/** Leave headroom under maxDuration so the handler can still return JSON. */
-const AI_ASSIST_DEADLINE_MS = 250_000
-const DEEPSEEK_FIRST_MS = 60_000
+/**
+ * www.nahaber.com is behind Cloudflare, which closes a proxied request after
+ * 100 s (HTTP 524). Anything past that never reaches the editor, so the whole
+ * request (research + DeepSeek) must answer with JSON before ~95 s.
+ * The first DeepSeek call gets whatever time is left; a retry only runs when
+ * the first call failed fast (429/5xx/empty) and there is still room.
+ */
+const AI_ASSIST_DEADLINE_MS = 92_000
+const DEEPSEEK_FIRST_MS = 80_000
 const DEEPSEEK_RETRY_MS = 40_000
+const DEEPSEEK_MIN_RETRY_MS = 15_000
+const DEADLINE_HEADROOM_MS = 6_000
 
 type AssistMode =
   | 'create'
@@ -281,7 +289,7 @@ async function callAi(
 
   // DeepSeek primary — V4 thinking kapalı + boş yanıtta retry (süre kalırsa)
   if (process.env.DEEPSEEK_API_KEY?.trim()) {
-    const firstTimeout = Math.min(DEEPSEEK_FIRST_MS, Math.max(12_000, remain() - DEEPSEEK_RETRY_MS - 8_000))
+    const firstTimeout = Math.min(DEEPSEEK_FIRST_MS, Math.max(12_000, remain() - DEADLINE_HEADROOM_MS))
     try {
       return await callDeepSeekOnce(systemPrompt, userMessage, {
         timeoutMs: firstTimeout,
@@ -294,8 +302,8 @@ async function callAi(
       const shouldRetry = /timeout|aborted|AbortError|boş yanıt|0 karakter|HTTP 429|HTTP 5\d\d/i.test(
         msg
       )
-      const retryBudget = Math.min(DEEPSEEK_RETRY_MS, remain() - 8_000)
-      if (shouldRetry && retryBudget >= 12_000) {
+      const retryBudget = Math.min(DEEPSEEK_RETRY_MS, remain() - DEADLINE_HEADROOM_MS)
+      if (shouldRetry && retryBudget >= DEEPSEEK_MIN_RETRY_MS) {
         try {
           console.warn('[ai-assist] DeepSeek retry')
           return await callDeepSeekOnce(systemPrompt, userMessage, {

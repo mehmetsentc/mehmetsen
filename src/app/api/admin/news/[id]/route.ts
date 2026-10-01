@@ -26,7 +26,7 @@ import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
 import { demoteExcessFeaturedPins } from '@/lib/featuredPins'
 import { HOME_FEATURED_LIMIT } from '@/types/newsItem'
 import { ROUTES } from '@/constants/routes'
-import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { isPlaceholderDraftSlug, needsPublicSlug } from '@/lib/newsSlug'
 import { allocateUniqueSlug } from '@/services/newsDraftService'
 import {
   applyCanonicalArticleGeoWrite,
@@ -540,13 +540,16 @@ export async function PUT(request: Request, context: RouteContext) {
         }
       }
 
-      // Published articles must not keep CMS draft placeholders (`taslak-*`).
+      // Published articles must not keep CMS draft placeholders (`taslak-*`)
+      // or the Firestore id that crawler drafts start with as their slug.
       if (willBePublished) {
         const nextSlug =
           (typeof update.slug === 'string' && update.slug.trim()) ||
           (typeof body.slug === 'string' && body.slug.trim()) ||
           (typeof prevData?.slug === 'string' ? prevData.slug.trim() : '')
-        if (!nextSlug || isPlaceholderDraftSlug(nextSlug)) {
+        const wasPublished = String(prevData?.status || '') === 'published'
+        // Id-shaped slugs are replaced only on first publication; live URLs are never renamed.
+        if (!nextSlug || isPlaceholderDraftSlug(nextSlug) || (!wasPublished && needsPublicSlug(nextSlug, id))) {
           const title =
             (typeof update.title === 'string' && update.title.trim()) ||
             (typeof body.title === 'string' && body.title.trim()) ||

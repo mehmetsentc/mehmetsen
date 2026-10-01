@@ -29,6 +29,25 @@ export function isPlaceholderDraftSlug(slug: string | null | undefined): boolean
   return false
 }
 
+/**
+ * True when a slug is really a Firestore document id (20 alphanumerics, e.g.
+ * `sEDYp1z9ZwljxvUhQPUN`), either equal to `docId` or shaped like one.
+ * Crawler drafts start with the id as slug; publishing them as-is gives a
+ * meaningless URL and publicReadPolicy treats slug == id as a quarantine signal.
+ */
+export function isDocIdLikeSlug(slug: string | null | undefined, docId?: string | null): boolean {
+  const s = (slug ?? '').trim()
+  if (!s) return false
+  const id = (docId ?? '').trim()
+  if (id && s.toLowerCase() === id.toLowerCase()) return true
+  return /^[A-Za-z0-9]{20}$/.test(s) && /\d/.test(s) && /[A-Za-z]/.test(s)
+}
+
+/** A public article needs a title-based slug when it has a placeholder or an id slug. */
+export function needsPublicSlug(slug: string | null | undefined, docId?: string | null): boolean {
+  return isPlaceholderDraftSlug(slug) || isDocIdLikeSlug(slug, docId)
+}
+
 /** True when a full URL points at a draft placeholder path. */
 export function urlContainsDraftSlug(url: string | null | undefined): boolean {
   const u = (url ?? '').trim().toLowerCase()

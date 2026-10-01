@@ -694,7 +694,8 @@ export function AdminNewsEditor({
           ...(districtSlug ? { districtSlug } : {}),
           isBreaking,
         }),
-        signal: AbortSignal.timeout(280_000),
+        // Server answers within ~95 s (Cloudflare closes proxied requests at 100 s).
+        signal: AbortSignal.timeout(100_000),
       })
       const data = await parseApiResponse<ProfessionalAiResult>(res)
       if (!res.ok) throw new Error(data.error || 'AI editör haberi hazırlayamadı')
