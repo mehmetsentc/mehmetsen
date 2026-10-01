@@ -1,7 +1,12 @@
 import type { Metadata } from 'next'
 import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
-import { getPrimaryVideo, getPostCoverAlt, getArticleBylineName } from '@/lib/postUtils'
+import {
+  articleDateModified,
+  getPrimaryVideo,
+  getPostCoverAlt,
+  getArticleBylineName,
+} from '@/lib/postUtils'
 import { publicAuthorUrl, resolvePublicAuthorIdentity } from '@/lib/seo/publicAuthorIdentity'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { DEFAULT_CATEGORIES, getParentCategory } from '@/constants/config'
@@ -151,7 +156,7 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const image = getPostShareImage(post)
   const coverAlt = getPostCoverAlt(post)
   const datePublished = post.publishedAt || post.createdAt
-  const dateModified = post.updatedAt || datePublished
+  const dateModified = articleDateModified(post)
   const description =
     post.summary?.trim() ||
     post.content?.trim().slice(0, 300) ||
@@ -231,7 +236,7 @@ export function buildVideoObjectJsonLd(post: Post): Record<string, unknown> | nu
   const url = buildPostShareUrl(post)
   const thumbnailUrl = (video.thumbnailUrl?.trim() || getPostShareImage(post) || '').trim()
   const datePublished = post.publishedAt || post.createdAt
-  const dateModified = post.updatedAt || datePublished
+  const dateModified = articleDateModified(post)
   const description =
     post.summary?.trim() ||
     post.seoDescription?.trim() ||
@@ -401,7 +406,7 @@ export function buildPostMetadata(
   const image = coverImage || generatedOgUrl
 
   const datePublished = post.publishedAt || post.createdAt
-  const dateModified = post.updatedAt || datePublished
+  const dateModified = articleDateModified(post)
 
   const seoKeywords: string[] | undefined = (post as Post & { seoKeywords?: string[] }).seoKeywords
   const keywords = [

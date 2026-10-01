@@ -6,7 +6,7 @@ import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineText, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel, parseYouTubeVideoId } from '@/lib/postUtils'
+import { articleDateModified, getArticleBylineText, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel, parseYouTubeVideoId } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
@@ -202,7 +202,8 @@ export function NewsArticleStatic({
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
   const publishedAt = post.publishedAt ?? post.createdAt
-  const updatedAt = post.updatedAt && post.updatedAt !== publishedAt ? post.updatedAt : null
+  const modifiedAt = articleDateModified(post)
+  const updatedAt = modifiedAt !== publishedAt ? modifiedAt : null
   const formatPublished = (value: string | null | undefined): string => {
     if (!value) return ''
     const date = new Date(value)

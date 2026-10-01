@@ -145,6 +145,20 @@ export function getArticleBylineName(post: Post): string {
   return resolvePublicAuthorIdentity(post).name
 }
 
+/** max(updatedAt, publishedAt): an article is never modified before it was published. */
+export function articleDateModified(
+  post: Pick<Post, 'updatedAt' | 'publishedAt' | 'createdAt'>
+): string {
+  const published = post.publishedAt || post.createdAt
+  const updated = post.updatedAt
+  if (!updated) return published
+  const u = Date.parse(updated)
+  const p = Date.parse(published)
+  if (Number.isNaN(u)) return published
+  if (Number.isNaN(p)) return updated
+  return u > p ? updated : published
+}
+
 /** Visible article header byline: AI personas carry the “AI Editör” disclosure. */
 export function getArticleBylineText(post: Post): string {
   const identity = resolvePublicAuthorIdentity(post)
