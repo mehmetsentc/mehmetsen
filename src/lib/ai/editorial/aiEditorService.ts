@@ -64,12 +64,36 @@ export async function getAiEditorBySlug(slug: string): Promise<AiEditorDocument 
   return { id: doc.id, ...(doc.data() as Omit<AiEditorDocument, 'id'>) }
 }
 
+/**
+ * FinOps: the full roster (~1.5k docs) was re-read on every CMS view and pipeline
+ * route — ~340k Firestore reads/day (Query Insights, 30 Sep–1 Oct). Keep one
+ * in-process copy for 5 minutes; writes in this module drop it immediately.
+ */
+const AI_EDITORS_CACHE_TTL_MS = 5 * 60 * 1000
+const AI_EDITORS_FETCH_CAP = 4000
+let aiEditorsCache: { at: number; editors: AiEditorDocument[] } | null = null
+
+export function invalidateAiEditorsCache(): void {
+  aiEditorsCache = null
+}
+
 export async function listAiEditors(opts?: {
   status?: AiEditorStatus
   limit?: number
 }): Promise<AiEditorDocument[]> {
+  const cap = Math.max(1, opts?.limit ?? AI_EDITORS_FETCH_CAP)
+  if (!aiEditorsCache || Date.now() - aiEditorsCache.at > AI_EDITORS_CACHE_TTL_MS) {
+    aiEditorsCache = { at: Date.now(), editors: await fetchAllAiEditors() }
+  }
+  let out = aiEditorsCache.editors
+  if (opts?.status) out = out.filter((e) => e.status === opts.status)
+  out = [...out].sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+  return out.slice(0, cap)
+}
+
+async function fetchAllAiEditors(): Promise<AiEditorDocument[]> {
   const db = getAdminFirestore()
-  const cap = Math.max(1, opts?.limit ?? 4000)
+  const cap = AI_EDITORS_FETCH_CAP
   const editors: AiEditorDocument[] = []
   let last: QueryDocumentSnapshot | undefined
   while (editors.length < cap) {
@@ -84,10 +108,7 @@ export async function listAiEditors(opts?: {
     last = snap.docs[snap.docs.length - 1]
     if (snap.size < pageSize) break
   }
-  let out = editors
-  if (opts?.status) out = out.filter((e) => e.status === opts.status)
-  out.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
-  return out.slice(0, cap)
+  return editors
 }
 
 export async function getActivePrompt(
@@ -151,6 +172,7 @@ export async function setPromptVersion(params: {
     version: nextVersion,
   })
   await batch.commit()
+  invalidateAiEditorsCache()
   return doc
 }
 
@@ -293,6 +315,7 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
     { merge: true }
   )
   await batch.commit()
+  invalidateAiEditorsCache()
 
   if (input.prompts) {
     for (const [promptType, content] of Object.entries(input.prompts)) {
@@ -328,6 +351,7 @@ export async function applyScaleQualityOutcome(
       scaleDailyNewsYmd: daily.scaleDailyNewsYmd,
       updatedAt: Date.now(),
     })
+  invalidateAiEditorsCache()
 }
 
 export async function updateAiEditor(
@@ -379,6 +403,7 @@ export async function updateAiEditor(
     { merge: true }
   )
   await batch.commit()
+  invalidateAiEditorsCache()
   void changedBy
   return next
 }

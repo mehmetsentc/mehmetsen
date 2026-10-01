@@ -49,14 +49,32 @@ export async function getNewsroomAgent(id: string): Promise<NewsroomAgent | null
   return { id: snap.id, ...(snap.data() as Omit<NewsroomAgent, 'id'>) }
 }
 
+/**
+ * FinOps: the agent roster was read whole (~190 docs) 1.7k times a day — ~335k
+ * Firestore reads (Query Insights, 30 Sep–1 Oct). One in-process copy for 5 minutes;
+ * writes in this module drop it immediately.
+ */
+const AGENTS_CACHE_TTL_MS = 5 * 60 * 1000
+let agentsCache: { at: number; agents: NewsroomAgent[] } | null = null
+
+export function invalidateNewsroomAgentsCache(): void {
+  agentsCache = null
+}
+
 export async function listNewsroomAgentsFromDb(opts?: {
   status?: NewsroomAgent['status']
   limit?: number
 }): Promise<NewsroomAgent[]> {
-  const snap = await agentsCol().limit(500).get()
-  let agents = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<NewsroomAgent, 'id'>) }))
+  if (!agentsCache || Date.now() - agentsCache.at > AGENTS_CACHE_TTL_MS) {
+    const snap = await agentsCol().limit(500).get()
+    agentsCache = {
+      at: Date.now(),
+      agents: snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<NewsroomAgent, 'id'>) })),
+    }
+  }
+  let agents = agentsCache.agents
   if (opts?.status) agents = agents.filter((a) => a.status === opts.status)
-  agents.sort((a, b) => a.displayName.localeCompare(b.displayName, 'tr'))
+  agents = [...agents].sort((a, b) => a.displayName.localeCompare(b.displayName, 'tr'))
   return agents.slice(0, opts?.limit ?? 400)
 }
 
@@ -83,6 +101,7 @@ export async function recomputeSubordinates(all?: NewsroomAgent[]): Promise<void
     ops++
   }
   if (ops > 0) await batch.commit()
+  invalidateNewsroomAgentsCache()
 }
 
 export async function seedCoreOrgAgents(): Promise<{
@@ -102,6 +121,7 @@ export async function seedCoreOrgAgents(): Promise<{
     const agent = specToAgent(spec, now)
     if (!existing.exists) {
       await ref.set(agent)
+      invalidateNewsroomAgentsCache()
       created.push(spec.id)
     } else {
       await ref.set(
@@ -116,6 +136,7 @@ export async function seedCoreOrgAgents(): Promise<{
         },
         { merge: true }
       )
+      invalidateNewsroomAgentsCache()
       updated.push(spec.id)
     }
   }
@@ -139,6 +160,7 @@ export async function seedCoreOrgAgents(): Promise<{
     batch.update(agentsCol().doc(a.id), { allowedAgentIds: allowed, updatedAt: Date.now() })
   }
   await batch.commit()
+  invalidateNewsroomAgentsCache()
 
   if (created.length === 0 && updated.length === 0) skipped.push('noop')
   return { created, updated, skipped }
@@ -194,6 +216,7 @@ export async function seedCitySmmAgents(): Promise<{ created: string[]; updated:
     const snap = await ref.get()
     if (!snap.exists) {
       await ref.set(agent)
+      invalidateNewsroomAgentsCache()
       created.push(id)
     } else {
       const prev = snap.data() as NewsroomAgent
@@ -206,6 +229,7 @@ export async function seedCitySmmAgents(): Promise<{ created: string[]; updated:
         },
         { merge: true }
       )
+      invalidateNewsroomAgentsCache()
       updated.push(id)
     }
   }
@@ -272,6 +296,7 @@ export async function syncLocalEditorsFromAiEditors(): Promise<{
     const snap = await ref.get()
     if (!snap.exists) {
       await ref.set(agent)
+      invalidateNewsroomAgentsCache()
       created.push(id)
     } else {
       await ref.set(
@@ -281,6 +306,7 @@ export async function syncLocalEditorsFromAiEditors(): Promise<{
         },
         { merge: true }
       )
+      invalidateNewsroomAgentsCache()
       updated.push(id)
     }
   }
