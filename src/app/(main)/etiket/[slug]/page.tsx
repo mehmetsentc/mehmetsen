@@ -15,6 +15,12 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 
 export const revalidate = 300
 
+// Without generateStaticParams Next renders this param route on every request
+// (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.
+export function generateStaticParams() {
+  return []
+}
+
 interface Props {
   params: Promise<{ slug: string }>
 }

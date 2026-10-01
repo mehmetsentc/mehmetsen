@@ -15,6 +15,12 @@ import { AuthorProfileClient } from '@/components/author/AuthorProfileClient'
 
 export const revalidate = 180
 
+// Without generateStaticParams Next renders this param route on every request
+// (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.
+export function generateStaticParams() {
+  return []
+}
+
 interface Props {
   params: Promise<{ username: string }>
 }

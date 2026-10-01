@@ -34,6 +34,12 @@ import { publisherAdInventoryService } from '@/services/publisher/publisherAdInv
 // strip refresh on their own shorter caches.
 export const revalidate = 3600
 
+// Without generateStaticParams Next renders this param route on every request
+// (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.
+export function generateStaticParams() {
+  return []
+}
+
 // Deduplicate: generateMetadata + page both need the post — fetch once per request
 const getCachedNews = cache((slug: string) => getNewsBySlug(slug))
 

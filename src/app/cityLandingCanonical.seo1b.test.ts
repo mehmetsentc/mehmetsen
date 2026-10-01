@@ -1,9 +1,11 @@
 /**
  * SEO-1B — route-level metadata tests for city landing pages served on
- * `{city}.nahaber.com` (production path: host-aware public routes, not
- * `city-site/*`, because the root `middleware.ts` is not compiled).
+ * `{city}.nahaber.com`. Hub routes are host-aware public routes; `/kategori/{id}`
+ * is rewritten by middleware to `city-site/kategori` so the www category page
+ * stays host-independent (CDN cacheable, SEO-6).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildCityCategoryMetadata } from '@/lib/seo/cityCategoryMetadata'
 
 let currentHost = 'www.nahaber.com'
 
@@ -62,6 +64,7 @@ const eczaneIlce = () => import('@/app/nobetci-eczaneler/[district]/page')
 const isIlanlari = () => import('@/app/is-ilanlari/page')
 const etkinlik = () => import('@/app/etkinlik/page')
 const kategori = () => import('@/app/(main)/kategori/[id]/page')
+const cityKategori = () => import('@/app/city-site/kategori/[id]/page')
 
 function expectSelf(m: Meta, url: string) {
   expect(m.alternates?.canonical).toBe(url)
@@ -83,7 +86,7 @@ describe('SEO-1B city landing pages → self canonical', () => {
   })
 
   it('2. canakkale /kategori/spor', async () => {
-    const m = await meta('canakkale.nahaber.com', kategori, { id: 'spor' })
+    const m = await meta('canakkale.nahaber.com', cityKategori, { id: 'spor' })
     expectSelf(m, 'https://canakkale.nahaber.com/kategori/spor')
     expect(m.title).toBe('Çanakkale Spor Haberleri')
   })
@@ -94,7 +97,7 @@ describe('SEO-1B city landing pages → self canonical', () => {
   })
 
   it('4. antalya /kategori/spor', async () => {
-    const m = await meta('antalya.nahaber.com', kategori, { id: 'spor' })
+    const m = await meta('antalya.nahaber.com', cityKategori, { id: 'spor' })
     expectSelf(m, 'https://antalya.nahaber.com/kategori/spor')
   })
 
@@ -121,10 +124,10 @@ describe('SEO-1B city landing pages → self canonical', () => {
   })
 
   it('6b. invalid category / unsafe id → no self canonical', async () => {
-    const bogus = await meta('canakkale.nahaber.com', kategori, { id: 'olmayan-kategori' })
+    const bogus = await meta('canakkale.nahaber.com', cityKategori, { id: 'olmayan-kategori' })
     expect(bogus.alternates).toBeUndefined()
     expect(bogus.robots).toEqual({ index: false, follow: false })
-    const upper = await meta('canakkale.nahaber.com', kategori, { id: 'SPOR' })
+    const upper = await meta('canakkale.nahaber.com', cityKategori, { id: 'SPOR' })
     // resolves (lowercased) → canonical is the lowercase route
     expect(upper.alternates?.canonical).toBe('https://canakkale.nahaber.com/kategori/spor')
   })
@@ -132,7 +135,10 @@ describe('SEO-1B city landing pages → self canonical', () => {
   it('7. synthetic third city: izmir /ilceler/karsiyaka', async () => {
     const m = await meta('izmir.nahaber.com', ilce, { slug: 'karsiyaka' })
     expectSelf(m, 'https://izmir.nahaber.com/ilceler/karsiyaka')
-    expectSelf(await meta('izmir.nahaber.com', kategori, { id: 'siyaset' }), 'https://izmir.nahaber.com/kategori/siyaset')
+    expectSelf(
+      buildCityCategoryMetadata('izmir', 'siyaset') as Meta,
+      'https://izmir.nahaber.com/kategori/siyaset'
+    )
   })
 })
 
@@ -148,6 +154,9 @@ describe('SEO-1B www regression (citySlug = null branch unchanged)', () => {
         expect(m.alternates?.canonical).toBe(`https://www.nahaber.com/kategori/${id}`)
         expect(m.openGraph?.url).toBe(`https://www.nahaber.com/kategori/${id}`)
       }
+      // The www page never reads the host (city hosts are rewritten to city-site).
+      const onCityHost = await meta('canakkale.nahaber.com', kategori, { id: 'spor' })
+      expect(onCityHost.alternates?.canonical).toBe('https://www.nahaber.com/kategori/spor')
     } finally {
       process.env.VERCEL_ENV = prevEnv
       process.env.NEXT_PUBLIC_APP_URL = prevUrl

@@ -51,7 +51,12 @@ describe('FINOPS-EMERGENCY-002 category first-page shared cache', () => {
   })
 
   it('does not cache city-host category (already city-news 120s)', () => {
-    expect(page).toContain('getCityCategoryFeedInitialData')
+    const cityPage = readFileSync(
+      join(process.cwd(), 'src/app/city-site/kategori/[id]/page.tsx'),
+      'utf8'
+    )
+    expect(cityPage).toContain('getCityCategoryFeedInitialData')
+    expect(page).not.toContain('getCitySlugFromHeaders')
     expect(svc).not.toContain('getCitySlugFromHeaders')
   })
 })

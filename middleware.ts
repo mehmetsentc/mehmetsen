@@ -270,9 +270,13 @@ export async function middleware(request: NextRequest) {
     }
 
     // Category page: /kategori/siyaset → /city-site/kategori/siyaset (city-scoped family)
-    const categoryMatch = cleanPath.match(/^\/kategori\/([a-z0-9-]+)$/)
+    const categoryMatch = cleanPath.match(/^\/kategori\/([a-z0-9-]+)$/i)
     if (categoryMatch) {
-      return buildCityRewrite(request, `/city-site/kategori/${categoryMatch[1]}`, tenant)
+      return buildCityRewrite(
+        request,
+        `/city-site/kategori/${categoryMatch[1].toLowerCase()}`,
+        tenant
+      )
     }
 
     // Article + tag pages reuse the national page module under city-site chrome.

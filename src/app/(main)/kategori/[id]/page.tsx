@@ -4,14 +4,9 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories, getParentCategory, type CategoryDef } from '@/constants/config'
-import { getCityCategoryName } from '@/constants/cities'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
-import { CityNewspaperCategoryPage } from '@/components/city/CityNewspaperCategoryPage'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
-import { resolveCityCategoryRoute } from '@/lib/cityCategoryRoute'
-import { getCitySlugFromHeaders } from '@/lib/cityHost'
-import { buildCityPageMetadata } from '@/lib/seo/cityPageMetadata'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 import { getThemedCategorySectionIds } from '@/constants/categorySections'
@@ -20,7 +15,6 @@ import {
   filterThemedSectionIds,
   shouldHideEmptyScopedCategories,
 } from '@/lib/scopedCategoryPresence'
-import { getCityCategoryFeedInitialData } from '@/services/cityNewsService.server'
 import { prefetchCategoryPosts } from '@/services/categoryFirstPage.server'
 import { getActiveScopedCategoryIds } from '@/services/scopedCategoryPresence.server'
 import { getWorldCup2026Data } from '@/services/sportsApi/worldCup2026'
@@ -123,26 +117,6 @@ function getCategoryKeywords(cat: CategoryDef, siteName: string): string[] {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
 
-  // City subdomain: city-scoped title (middleware rewrite may be unavailable).
-  const citySlug = await getCitySlugFromHeaders()
-  if (citySlug) {
-    const resolved = resolveCityCategoryRoute(id)
-    if (!resolved) return { title: 'Kategori', robots: { index: false, follow: false } }
-    const cityName = getCityCategoryName(citySlug)
-    const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
-    const title = `${cityName} ${resolved.label} Haberleri`
-    const description = `${cityName} ${resolved.label.toLowerCase()} haberleri. ${siteName}'de ${cityName} gündemini takip edin.`
-    // Self-canonical for the resolved city category route (lowercase route id;
-    // unsafe ids make the helper return null → previous metadata).
-    const routeId = id.trim().toLowerCase()
-    return (
-      buildCityPageMetadata({ citySlug, segments: ['kategori', routeId], title, description }) ?? {
-        title,
-        description,
-      }
-    )
-  }
-
   const cat = getCategoryMeta(id)
   if (!cat) return { title: 'Kategori', robots: { index: false, follow: false } }
 
@@ -185,35 +159,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+// National only: city hosts are rewritten to /city-site/kategori by middleware, so
+// this page must not read the host (any dynamic API drops it off the CDN).
+export const revalidate = 300
+
 export function generateStaticParams() {
-  // City hosts need per-request Host detection — do not statically shell this route.
-  // National pages still render on demand (and via CDN once headers opt into dynamic).
   return []
 }
 
-/** Host-aware (city vs national) — must not serve a shared static shell across subdomains. */
-export const dynamic = 'force-dynamic'
-
 export default async function CategoryPage({ params }: Props) {
   const { id } = await params
-
-  // City subdomain: city-scoped Ana Feed layout (siyaset family incl. yerel-siyaset).
-  // Middleware rewrite to /city-site/kategori is best-effort; this path is host-aware.
-  const citySlug = await getCitySlugFromHeaders()
-  if (citySlug) {
-    const resolved = resolveCityCategoryRoute(id)
-    if (!resolved) notFound()
-
-    const cityName = getCityCategoryName(citySlug)
-    const homeFeedData = await getCityCategoryFeedInitialData(citySlug, resolved.categoryId)
-    return (
-      <CityNewspaperCategoryPage
-        homeFeedData={homeFeedData}
-        cityName={cityName}
-        sectionTitle={`${cityName} ${resolved.label} Haberleri`}
-      />
-    )
-  }
 
   const cat = getCategoryMeta(id)
   if (!cat) notFound()
