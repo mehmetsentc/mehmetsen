@@ -6,7 +6,7 @@ import { ChevronRight, Clock, Hash, MapPin, User } from 'lucide-react'
 import type { MediaItem, Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { getArticleBylineName, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel, parseYouTubeVideoId } from '@/lib/postUtils'
+import { getArticleBylineText, getPostCoverAlt, getPostPublicSource, formatPublicSourceLabel, parseYouTubeVideoId } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { parseArticleContent } from '@/lib/articleBodyUtils'
@@ -210,7 +210,7 @@ export function NewsArticleStatic({
   }
   const publishedLabel = formatPublished(publishedAt)
   const updatedLabel = formatPublished(updatedAt)
-  const bylineName = getArticleBylineName(post)
+  const bylineName = getArticleBylineText(post)
   const publicSource = getPostPublicSource(post)
   const hasTags = post.tags.length > 0
   const hasCity = Boolean(post.city || post.citySlug)

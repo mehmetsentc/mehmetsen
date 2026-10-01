@@ -166,11 +166,14 @@ export function buildNewsArticleJsonLd(post: Post): Record<string, unknown> {
   const articleBody = rawContent.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 5000)
 
   const identity = resolvePublicAuthorIdentity(post)
-  const author = {
-    '@type': identity.type,
-    name: identity.name,
-    url: publicAuthorUrl(identity, siteUrl),
-  }
+  // AI personas are not people: structured data names the newsroom as author.
+  const author = identity.aiDisclosure
+    ? { '@type': 'Organization', name: siteName, url: siteUrl }
+    : {
+        '@type': identity.type,
+        name: identity.name,
+        url: publicAuthorUrl(identity, siteUrl),
+      }
 
   return {
     '@context': 'https://schema.org',

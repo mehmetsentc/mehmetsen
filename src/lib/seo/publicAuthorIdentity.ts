@@ -212,14 +212,14 @@ export function resolvePublicAuthorIdentity(input: PublicAuthorInput): PublicAut
         type: 'Person',
         name,
         profileSlug,
-        aiDisclosure: false,
+        aiDisclosure: true,
       }
     }
     return {
       type: 'Organization',
       name: brand,
       profileSlug,
-      aiDisclosure: false,
+      aiDisclosure: true,
     }
   }
 

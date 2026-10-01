@@ -48,9 +48,16 @@ function articleAuthor(p: Post) {
 function expectSameEntity(feed: { name: string; slug: string | null }, article: ReturnType<typeof articleAuthor>) {
   expect(feed.name).toBe(article.identity.name)
   expect(feed.slug).toBe(article.identity.profileSlug)
-  expect(article.ld.name).toBe(article.identity.name)
-  expect(article.ld['@type']).toBe(article.identity.type)
-  expect(new URL(article.ld.url).pathname).toBe(article.path)
+  if (article.identity.aiDisclosure) {
+    // SEO-6: AI personas are disclosed; JSON-LD credits the newsroom, not a Person.
+    expect(article.ld['@type']).toBe('Organization')
+    expect(article.ld.name).toBe('NaHaber')
+    expect(new URL(article.ld.url).pathname).toBe('/')
+  } else {
+    expect(article.ld.name).toBe(article.identity.name)
+    expect(article.ld['@type']).toBe(article.identity.type)
+    expect(new URL(article.ld.url).pathname).toBe(article.path)
+  }
   if (feed.slug) {
     expect(article.path).toBe(`/yazar/${feed.slug}`)
     expect(feed.slug.includes('ai_editor_')).toBe(false)

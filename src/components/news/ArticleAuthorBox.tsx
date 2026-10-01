@@ -67,6 +67,11 @@ export function ArticleAuthorBox({ post }: ArticleAuthorBoxProps) {
         ) : (
           <p className="mt-0.5 text-base font-bold text-[rgb(var(--color-text))]">{byline}</p>
         )}
+        {identity.aiDisclosure ? (
+          <p className="mt-1 text-xs font-semibold text-[rgb(var(--color-brand))]">
+            NaHaber AI Editörü
+          </p>
+        ) : null}
         {publicSource ? (
           <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">Kaynak: {publicSource}</p>
         ) : null}

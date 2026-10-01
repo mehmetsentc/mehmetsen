@@ -144,3 +144,9 @@ export function getPostPublicSource(post: Pick<Post, 'source'>): string {
 export function getArticleBylineName(post: Post): string {
   return resolvePublicAuthorIdentity(post).name
 }
+
+/** Visible article header byline: AI personas carry the “AI Editör” disclosure. */
+export function getArticleBylineText(post: Post): string {
+  const identity = resolvePublicAuthorIdentity(post)
+  return identity.aiDisclosure ? `${identity.name} · AI Editör` : identity.name
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Post } from '@/types/post'
 import { buildNewsArticleJsonLd } from '@/lib/seo'
+import { getArticleBylineText } from '@/lib/postUtils'
 import {
   publicAuthorPath,
   publicAuthorUrl,
@@ -57,7 +58,7 @@ describe('public author identity', () => {
     expect(author.url).toBe(publicAuthorUrl(identity, new URL(author.url).origin))
   })
 
-  it('shows the editor name, not an AI desk label', () => {
+  it('shows the AI persona name with disclosure; JSON-LD credits the newsroom', () => {
     const p = post({
       authorId: 'ai_editor_il-izmir-yasam',
       authorUsername: 'il-izmir-yasam',
@@ -73,11 +74,23 @@ describe('public author identity', () => {
     expect(identity.type).toBe('Person')
     expect(identity.name).toBe('Gökhan Çelik')
     expect(identity.name).not.toMatch(/AI Editör|Masası/)
+    expect(identity.aiDisclosure).toBe(true)
+    expect(publicAuthorPath(identity)).toBe('/yazar/il-izmir-yasam')
+    expect(author['@type']).toBe('Organization')
+    expect(author.name).toBe('NaHaber')
+    expect(new URL(author.url).pathname).toBe('/')
+    expect(getArticleBylineText(p)).toBe('Gökhan Çelik · AI Editör')
+  })
+
+  it('keeps a human editor as Person with the matching profile URL and no AI label', () => {
+    const p = post({ authorUsername: 'mehmet-yilmaz', authorDisplayName: 'Mehmet Yılmaz' })
+    const identity = resolvePublicAuthorIdentity(p)
+    const author = authorOf(p)
     expect(identity.aiDisclosure).toBe(false)
     expect(author['@type']).toBe('Person')
-    expect(author.name).toBe(identity.name)
-    expect(new URL(author.url).pathname).toBe('/yazar/il-izmir-yasam')
-    expect(publicAuthorPath(identity)).toBe('/yazar/il-izmir-yasam')
+    expect(author.name).toBe('Mehmet Yılmaz')
+    expect(new URL(author.url).pathname).toBe('/yazar/mehmet-yilmaz')
+    expect(getArticleBylineText(p)).toBe('Mehmet Yılmaz')
   })
 
   it('does not attach an AI persona to /yazar/mehmetsentc', () => {

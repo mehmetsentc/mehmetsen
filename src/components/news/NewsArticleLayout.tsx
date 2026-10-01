@@ -8,7 +8,7 @@ import { ChevronRight, Clock, Eye, Hash, MapPin, User } from 'lucide-react'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { getCategoryLabel } from '@/lib/newsMapper'
-import { formatCount, getArticleBylineName, getPostCoverAlt } from '@/lib/postUtils'
+import { formatCount, getArticleBylineText, getPostCoverAlt } from '@/lib/postUtils'
 import { formatTagLabel } from '@/lib/tags'
 import { cityCategoryId } from '@/lib/location'
 import { Badge } from '@/components/ui/Badge'
@@ -37,7 +37,7 @@ export function NewsArticleLayout({ post, suggested }: NewsArticleLayoutProps) {
   const tier = useNetworkTier()
   const imageUrl = post.coverImageUrl?.trim() || null
   const categoryLabel = getCategoryLabel(post.categoryId)
-  const bylineName = getArticleBylineName(post)
+  const bylineName = getArticleBylineText(post)
   const publishedAt = post.publishedAt ?? post.createdAt
   const publishedLabel = publishedAt
     ? format(new Date(publishedAt), 'd MMMM yyyy, HH:mm', { locale: tr })
