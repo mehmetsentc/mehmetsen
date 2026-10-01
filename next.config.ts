@@ -143,7 +143,9 @@ const nextConfig: NextConfig = {
     // matcher never intercepted the live homepage, so this redirect is the gate.
     return [
       {
-        source: '/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico).*)',
+        // Crawl discovery must keep serving XML/text (GSC "sitemap is HTML" on 29 Sep).
+        source:
+          '/((?!api/health|bakim.html|_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|news-sitemap\\.xml|sitemaps/|news-sitemaps/|images-sitemap\\.xml|video-sitemap\\.xml|sitemap-[a-z]+\\.xml|sitemap/).*)',
         destination: '/bakim.html',
         permanent: false,
       },
