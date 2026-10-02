@@ -12,6 +12,7 @@ import { assignMembershipRole, futureAiUnitsForEvent, independentSourceCount } f
 import { clusterHasPublishedOutput } from '../gate/quality'
 import { dispatchCrawlerArticleToNewsroom } from '../dispatch'
 import type { CrawlerStore } from '../store/types'
+import { loadArticlesTextByIds, loadSourcesByIds } from '../store/batchLoad'
 import type { NewsClusterRecord, NewsSourceRecord, RawArticleRecord } from '../types'
 
 export interface ClusterTickResult {
@@ -227,12 +228,15 @@ async function recomputeCluster(
   if (!cluster) return
   const memberships = await store.listMemberships(clusterId)
   const members: Array<{ article: RawArticleRecord; source: NewsSourceRecord | null; membershipId: string }> = []
+  const articles = await loadArticlesTextByIds(store, memberships.map((m) => m.articleId))
+  const sources = await loadSourcesByIds(
+    store,
+    [...articles.values()].map((a) => a.sourceId)
+  )
   for (const m of memberships) {
-    const article = await (store.getRawArticleText
-      ? store.getRawArticleText(m.articleId)
-      : store.getRawArticle(m.articleId))
+    const article = articles.get(m.articleId)
     if (!article) continue
-    members.push({ article, source: await store.getSource(article.sourceId), membershipId: m.id })
+    members.push({ article, source: sources.get(article.sourceId) ?? null, membershipId: m.id })
   }
   if (!members.length) return
   const primary = selectPrimaryArticle(members)

@@ -435,6 +435,10 @@ export interface CrawlerStore {
   flushMetricBatch?(): Promise<number>
   /** Same as getRawArticle but articleBodyHtml is null. */
   getRawArticleText?(id: string): Promise<RawArticleRecord | null>
+  /** FinOps: one round-trip for many ids (text columns only). Missing ids are absent. */
+  getRawArticlesTextByIds?(ids: string[]): Promise<Map<string, RawArticleRecord>>
+  /** FinOps: one round-trip for many source ids. Missing ids are absent. */
+  getSourcesByIds?(ids: string[]): Promise<Map<string, NewsSourceRecord>>
   getTodayMetrics(now?: Date): Promise<Record<string, number>>
   countActiveSources(): Promise<number>
   countFailedSources(): Promise<number>

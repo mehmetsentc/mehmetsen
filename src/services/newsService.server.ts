@@ -354,7 +354,11 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
   return unstable_cache(
     () => loadNewsBySlug(normalized),
     ['news-by-slug-v1', normalized],
-    { revalidate: 3600, tags: ['news-post', `news:${normalized}`] }
+    // FinOps 2 Oct: no global 'news-post' tag. Every auto-publish dropped every
+    // article's cache, so each bot/user view re-read Firestore and Postgres
+    // (~11k PG lookups/day, ~0.02% hits). Publish/edit/unpublish paths all call
+    // revalidatePublishedNews(slug), which drops this article's own tag.
+    { revalidate: 3600, tags: [`news:${normalized}`] }
   )()
 }
 

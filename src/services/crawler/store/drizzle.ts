@@ -363,6 +363,19 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     return rows[0] ? mapSource(rows[0]) : null
   }
 
+  async getSourcesByIds(ids: string[]): Promise<Map<string, NewsSourceRecord>> {
+    const out = new Map<string, NewsSourceRecord>()
+    const unique = [...new Set(ids.filter(Boolean))]
+    for (let i = 0; i < unique.length; i += 200) {
+      const rows = await this.db()
+        .select()
+        .from(newsSources)
+        .where(inArray(newsSources.id, unique.slice(i, i + 200)))
+      for (const row of rows) out.set(row.id, mapSource(row))
+    }
+    return out
+  }
+
   async insertSource(input: InsertSourceInput): Promise<NewsSourceRecord> {
     const id = newCrawlerId('src')
     const now = new Date()
@@ -673,6 +686,23 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .limit(1)
     if (!rows[0]) return null
     return mapRaw({ ...rows[0], articleBodyHtml: null } as typeof rawArticles.$inferSelect)
+  }
+
+  async getRawArticlesTextByIds(ids: string[]): Promise<Map<string, RawArticleRecord>> {
+    const out = new Map<string, RawArticleRecord>()
+    const unique = [...new Set(ids.filter(Boolean))]
+    if (!unique.length) return out
+    const { articleBodyHtml: _html, ...columns } = getTableColumns(rawArticles)
+    for (let i = 0; i < unique.length; i += 200) {
+      const rows = await this.db()
+        .select(columns)
+        .from(rawArticles)
+        .where(inArray(rawArticles.id, unique.slice(i, i + 200)))
+      for (const row of rows) {
+        out.set(row.id, mapRaw({ ...row, articleBodyHtml: null } as typeof rawArticles.$inferSelect))
+      }
+    }
+    return out
   }
 
   async listRecentArticles(limit = 50): Promise<RawArticleRecord[]> {

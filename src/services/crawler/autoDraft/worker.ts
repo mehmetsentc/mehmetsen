@@ -6,6 +6,7 @@
 
 import type { AiDispatchStore } from '../aiDispatch/store'
 import type { CrawlerStore } from '../store/types'
+import { loadArticlesTextByIds, loadSourcesByIds } from '../store/batchLoad'
 import type { NewsClusterRecord } from '../types'
 import { crawlerAiDispatchConfig, isCrawlerAiProviderWired, getCrawlerAiProviderReadiness } from '../aiDispatch/flags'
 import type { MemberEvidence } from '../aiDispatch/types'
@@ -59,11 +60,13 @@ function bump(reasons: Record<string, number>, key: string) {
 async function membersFor(crawlerStore: CrawlerStore, clusterId: string): Promise<MemberEvidence[]> {
   const memberships = await crawlerStore.listMemberships(clusterId)
   const out: MemberEvidence[] = []
+  const [articles, sources] = await Promise.all([
+    loadArticlesTextByIds(crawlerStore, memberships.map((m) => m.articleId)),
+    loadSourcesByIds(crawlerStore, memberships.map((m) => m.sourceId)),
+  ])
   for (const m of memberships) {
-    const article = await (crawlerStore.getRawArticleText
-      ? crawlerStore.getRawArticleText(m.articleId)
-      : crawlerStore.getRawArticle(m.articleId))
-    const source = await crawlerStore.getSource(m.sourceId)
+    const article = articles.get(m.articleId) ?? null
+    const source = sources.get(m.sourceId) ?? null
     if (!article) continue
     out.push({
       articleId: article.id,
