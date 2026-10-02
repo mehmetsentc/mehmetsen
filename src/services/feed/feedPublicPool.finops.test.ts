@@ -24,7 +24,7 @@ describe('feed public candidate pool', () => {
     await runWithFeedFsCache(() => readFeedQuery({ get }, key, second))
 
     expect(FEED_PUBLIC_POOL_TTL_MS).toBeGreaterThanOrEqual(30_000)
-    expect(FEED_PUBLIC_POOL_TTL_MS).toBeLessThanOrEqual(60_000)
+    expect(FEED_PUBLIC_POOL_TTL_MS).toBeLessThanOrEqual(120_000)
     expect(get).toHaveBeenCalledTimes(1)
     expect(first.documentsRead).toBe(1)
     expect(second.documentsRead).toBe(0)

@@ -16,7 +16,8 @@ export type FeedFsReadStats = {
 const als = new AsyncLocalStorage<Map<string, CachedSnap>>()
 
 /** Public windows only. Keys are query shape, never user/seen/like state. */
-export const FEED_PUBLIC_POOL_TTL_MS = 45_000
+/** FinOps 2 Oct: 45s cost ~600k category reads/day; 2 min keeps feeds fresh enough. */
+export const FEED_PUBLIC_POOL_TTL_MS = 120_000
 const PUBLIC_POOL_MAX = 48
 const publicPools = new Map<string, { at: number; snap: CachedSnap }>()
 
