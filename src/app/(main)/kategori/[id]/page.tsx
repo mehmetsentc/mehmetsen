@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { DEFAULT_CATEGORIES, getSubcategories, getParentCategory, type CategoryDef } from '@/constants/config'
 import { CategoryPageClient } from '@/components/category/CategoryPageClient'
 import { CategoryStructuredData } from '@/components/category/CategoryStructuredData'
+import { LatestNewsLinkList } from '@/components/category/LatestNewsLinkList'
 import { TimelineItemSkeleton } from '@/components/ui/Skeleton'
 import { getSiteUrl, buildCategoryOgUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
@@ -250,6 +251,8 @@ export default async function CategoryPage({ params }: Props) {
           worldCupData={worldCupData}
         />
       </Suspense>
+      {/* SEO-8: crawlable hub of the newest indexable stories (no extra Firestore reads). */}
+      {cat.id === 'son-dakika' ? <LatestNewsLinkList /> : null}
     </>
   )
 }

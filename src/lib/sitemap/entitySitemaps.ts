@@ -26,10 +26,15 @@ export async function buildDistrictsSitemap(_base: string): Promise<string> {
   return urlsetXml(entries)
 }
 
+/** Category slugs that next.config permanently redirects to another URL. */
+export const REDIRECTED_CATEGORY_SLUGS: ReadonlySet<string> = new Set(['otomotiv', 'etkinlikler'])
+
 export async function buildCategoriesSitemap(base: string): Promise<string> {
   const entries: MetadataRoute.Sitemap = DEFAULT_CATEGORIES.filter(
     (c) => c.id !== TEKRARLAYAN_CATEGORY_ID
   )
+    // A sitemap must list final URLs only; these slugs 301 elsewhere (next.config).
+    .filter((c) => !REDIRECTED_CATEGORY_SLUGS.has(c.slug ?? c.id))
     .filter(() => evaluateCategorySeo('_', 10).indexable)
     .map((cat) => ({
       url: `${base}${ROUTES.CATEGORY(cat.slug ?? cat.id)}`,

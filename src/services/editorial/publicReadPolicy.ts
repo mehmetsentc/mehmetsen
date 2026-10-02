@@ -8,6 +8,7 @@
  */
 
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
+import { isTrendBoilerplateSlug } from '@/lib/seo/trendBoilerplateSlugs'
 import { isAutomationIdentity, KNOWN_AUTOMATION_UIDS } from './humanReviewGate'
 
 export type PublicReadClass =
@@ -99,6 +100,8 @@ function hasLegacyQuarantineSignals(meta: PublicReadArticleMeta): boolean {
   if (hasTestOrPrivateSignals(meta)) return true
   if (hasAutomationActorSignal(meta)) return true
   if (isPlaceholderDraftSlug(meta.slug)) return true
+  // SEO-9: audited T1 "neden gündemde" template pages (static list).
+  if (isTrendBoilerplateSlug(meta.slug)) return true
   // Slug missing or collapsed to id-only — keep detail continuity, quarantine discovery.
   const slug = (meta.slug ?? '').trim()
   const id = (meta.id ?? '').trim()

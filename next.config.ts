@@ -134,6 +134,8 @@ const nextConfig: NextConfig = {
       { source: '/kune', destination: '/kunye', permanent: true },
       { source: '/kategori/otomotiv', destination: '/kategori/otomobil', permanent: true },
       { source: '/kategori/etkinlikler', destination: '/etkinlikler', permanent: true },
+      // SEO-8: /son-dakika was a 404; the breaking-news hub lives at /kategori/son-dakika.
+      { source: '/son-dakika', destination: '/kategori/son-dakika', permanent: true },
       { source: '/konu/:slug', destination: '/etiket/:slug', permanent: true },
       { source: '/sitemap-news-:n.xml', destination: '/sitemap/:n.xml', permanent: false },
       { source: '/burclar', destination: '/kategori/astroloji', permanent: true },
