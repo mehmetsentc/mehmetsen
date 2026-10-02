@@ -66,15 +66,58 @@ export async function getAiEditorBySlug(slug: string): Promise<AiEditorDocument 
 
 /**
  * FinOps: the full roster (~1.5k docs) was re-read on every CMS view and pipeline
- * route — ~340k Firestore reads/day (Query Insights, 30 Sep–1 Oct). Keep one
- * in-process copy for 5 minutes; writes in this module drop it immediately.
+ * route — ~340k Firestore reads/day (Query Insights, 30 Sep–1 Oct). A 5-minute
+ * in-process copy alone still cost ~345k/day (2 Oct), because every refresh
+ * re-reads all ~1.5k docs. Now each instance keeps its copy and, every 5 minutes,
+ * spends ONE read on the most recently updated editor; it re-reads the full roster
+ * only when that changes (every write here sets updatedAt) or after 6 hours, which
+ * also picks up deletes and script edits that skip updatedAt. Writes in this module
+ * drop the local copy immediately.
  */
-const AI_EDITORS_CACHE_TTL_MS = 5 * 60 * 1000
+const AI_EDITORS_PROBE_MS = 5 * 60 * 1000
+const AI_EDITORS_MAX_AGE_MS = 6 * 60 * 60 * 1000
 const AI_EDITORS_FETCH_CAP = 4000
-let aiEditorsCache: { at: number; editors: AiEditorDocument[] } | null = null
+let aiEditorsCache: {
+  fetchedAt: number
+  probedAt: number
+  fingerprint: string | null
+  editors: AiEditorDocument[]
+} | null = null
 
 export function invalidateAiEditorsCache(): void {
   aiEditorsCache = null
+}
+
+/** One-read change marker: id + updatedAt of the most recently updated editor. */
+async function aiEditorsFingerprint(): Promise<string | null> {
+  try {
+    const snap = await getAdminFirestore()
+      .collection(Collections.AI_EDITORS)
+      .orderBy('updatedAt', 'desc')
+      .limit(1)
+      .get()
+    const doc = snap.docs[0]
+    if (!doc) return 'empty'
+    return `${doc.id}:${JSON.stringify(doc.get('updatedAt') ?? null)}`
+  } catch {
+    return null
+  }
+}
+
+async function loadAiEditorsRoster(): Promise<AiEditorDocument[]> {
+  const now = Date.now()
+  const c = aiEditorsCache
+  if (c && now - c.fetchedAt < AI_EDITORS_MAX_AGE_MS) {
+    if (now - c.probedAt < AI_EDITORS_PROBE_MS) return c.editors
+    const fp = await aiEditorsFingerprint()
+    if (fp !== null && c.fingerprint !== null && fp === c.fingerprint) {
+      c.probedAt = now
+      return c.editors
+    }
+  }
+  const [editors, fingerprint] = await Promise.all([fetchAllAiEditors(), aiEditorsFingerprint()])
+  aiEditorsCache = { fetchedAt: now, probedAt: now, fingerprint, editors }
+  return editors
 }
 
 export async function listAiEditors(opts?: {
@@ -82,10 +125,7 @@ export async function listAiEditors(opts?: {
   limit?: number
 }): Promise<AiEditorDocument[]> {
   const cap = Math.max(1, opts?.limit ?? AI_EDITORS_FETCH_CAP)
-  if (!aiEditorsCache || Date.now() - aiEditorsCache.at > AI_EDITORS_CACHE_TTL_MS) {
-    aiEditorsCache = { at: Date.now(), editors: await fetchAllAiEditors() }
-  }
-  let out = aiEditorsCache.editors
+  let out = await loadAiEditorsRoster()
   if (opts?.status) out = out.filter((e) => e.status === opts.status)
   out = [...out].sort((a, b) => a.name.localeCompare(b.name, 'tr'))
   return out.slice(0, cap)
