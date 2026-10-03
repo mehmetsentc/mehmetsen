@@ -1401,8 +1401,15 @@ export async function getPostsByAuthorId(authorId: string, limitCount = 40): Pro
  * and filters in memory, same fallback strategy as getCityNewsByDistrict.
  * Cached 30 min per source, same as the author profile equivalent.
  */
-const getPostsBySourceCached = unstable_cache(
-  async (normalizedSource: string, limitCount: number): Promise<Post[]> => {
+/**
+ * FinOps 3 Oct: each source page scanned the newest 400 docs under its own cache
+ * key (~311 scans / ~124k reads a day, mostly bots walking /kaynak pages). Every
+ * source filters the same recent window, so share one 400-doc pool for 30 minutes.
+ */
+const SOURCE_POOL_SIZE = 400
+
+const getRecentSourcePoolCached = unstable_cache(
+  async (): Promise<Post[]> => {
     try {
       const db = getAdminFirestore()
       const snap = await selectNewsCardFields(
@@ -1410,26 +1417,29 @@ const getPostsBySourceCached = unstable_cache(
           .collection(NEWS_COLLECTION)
           .where('status', '==', 'published')
           .orderBy('publishedAt', 'desc')
-          .limit(Math.max(limitCount * 8, 400))
+          .limit(SOURCE_POOL_SIZE)
       ).get()
-
       return snap.docs
         .map((doc) => newsDocToPost(doc.id, doc.data() as NewsDocument))
         .filter((post): post is Post => post !== null)
-        .filter(
-          (post) =>
-            formatPublicSourceLabel(post.source).trim().toLocaleLowerCase('tr-TR') ===
-            normalizedSource
-        )
-        .slice(0, limitCount)
     } catch (error) {
-      console.warn('[newsService.server] getPostsBySource failed:', error)
+      console.warn('[newsService.server] getPostsBySource pool failed:', error)
       return []
     }
   },
-  ['posts-by-source-v1'],
+  ['posts-by-source-pool-v1'],
   { revalidate: 1800, tags: ['source'] }
 )
+
+async function getPostsBySourceCached(normalizedSource: string, limitCount: number): Promise<Post[]> {
+  const pool = await getRecentSourcePoolCached()
+  return pool
+    .filter(
+      (post) =>
+        formatPublicSourceLabel(post.source).trim().toLocaleLowerCase('tr-TR') === normalizedSource
+    )
+    .slice(0, limitCount)
+}
 
 export async function getPostsBySource(source: string, limitCount = 40): Promise<Post[]> {
   const normalized = formatPublicSourceLabel(source).trim().toLocaleLowerCase('tr-TR')

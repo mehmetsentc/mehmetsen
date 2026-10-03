@@ -19,6 +19,7 @@ import {
 import { selectSmartFeedSummary } from '@/lib/feed/smartFeedSummary'
 import { isPublisherProfileSlug } from '@/lib/publisher/profileSlug'
 import { feedSeenService } from '@/services/feed/FeedSeenService'
+import { isPgFeedActive } from '@/services/feed/pgFeedActive'
 import {
   emptyFeedFsStats,
   logFeedFsFallback,
@@ -627,9 +628,11 @@ export class FeedCandidateService {
           try {
             while (bucket.length < perCategoryQuota && attempts < maxAttempts) {
               attempts += 1
+              // FinOps 3 Oct: a floor of 20 read ≥40 docs per child category to keep
+              // ~4 (yerel = 81 provinces → thousands of reads per request).
               const batchSize = Math.min(
                 FS_SUPPLEMENT_BATCH,
-                Math.max(perCategoryQuota - bucket.length, 20) * 2
+                Math.max(perCategoryQuota - bucket.length, 4) * 2
               )
               let q: FirebaseFirestore.Query = db
                 .collection(Collections.NEWS)
@@ -743,6 +746,7 @@ export class FeedCandidateService {
    */
   private async canonicalizeFirestoreRows(rows: FeedCandidateRow[]): Promise<FeedCandidateRow[]> {
     if (!rows.length || !hasDatabaseUrl()) return rows
+    if (!(await isPgFeedActive())) return rows
     const fsIds = [...new Set(rows.map((r) => r.articleId))].slice(0, 500)
     if (!fsIds.length) return rows
     try {
@@ -822,7 +826,8 @@ export class FeedCandidateService {
 
     const seed = new Set<string>(opts.excludeArticleIds ? [...opts.excludeArticleIds] : [])
     for (const row of primary) seed.add(row.articleId)
-    const exclude = await feedSeenService.expandArticleIdentities(seed)
+    const pgActive = await isPgFeedActive()
+    const exclude = pgActive ? await feedSeenService.expandArticleIdentities(seed) : seed
 
     const remaining = categoryHierarchyUnderfilled
       ? Math.max(target - primary.length, Math.ceil(target * 0.5))
@@ -889,6 +894,7 @@ export class FeedCandidateService {
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('RECENT', { ...opts, needed: opts.limit })
     }
+    if (!(await isPgFeedActive())) return this.mergeWithLegacySupplement('RECENT', [], opts)
 
     try {
       const db = requireDb()
@@ -922,6 +928,7 @@ export class FeedCandidateService {
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('BREAKING', { ...opts, needed: opts.limit })
     }
+    if (!(await isPgFeedActive())) return this.mergeWithLegacySupplement('BREAKING', [], opts)
 
     try {
       const db = requireDb()
@@ -957,6 +964,7 @@ export class FeedCandidateService {
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('FEATURED', { ...opts, needed: opts.limit })
     }
+    if (!(await isPgFeedActive())) return this.mergeWithLegacySupplement('FEATURED', [], opts)
 
     try {
       const db = requireDb()
@@ -991,6 +999,7 @@ export class FeedCandidateService {
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('POPULAR', { ...opts, needed: opts.limit })
     }
+    if (!(await isPgFeedActive())) return this.mergeWithLegacySupplement('POPULAR', [], opts)
 
     try {
       const db = requireDb()
@@ -1346,6 +1355,7 @@ export class FeedCandidateService {
     if (!hasDatabaseUrl()) {
       return this.fetchFirestoreFallback('DISCOVERY', { ...opts, needed: opts.limit })
     }
+    if (!(await isPgFeedActive())) return this.mergeWithLegacySupplement('DISCOVERY', [], opts)
 
     try {
       const db = requireDb()
