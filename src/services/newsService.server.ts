@@ -1164,7 +1164,7 @@ export async function getSuggestedPostsServer(
 }
 
 
-/** One array-contains-any read per tag, card fields only. Invalidated with news-post. */
+/** One array-contains-any read per tag, card fields only. Refreshed hourly. */
 const TAG_LIST_LIMIT = 20
 
 const getPostsByTagCached = unstable_cache(
@@ -1194,7 +1194,9 @@ const getPostsByTagCached = unstable_cache(
     }
   },
   ['posts-by-tag-v2'],
-  { revalidate: 60 * 60 * 24, tags: ['news-post'] }
+  // FinOps 3 Oct: no 'news-post' tag — every publish dropped every tag page (~15k
+  // tag queries/day, mostly bots). New stories reach tag pages within the hour.
+  { revalidate: 60 * 60, tags: ['posts-by-tag'] }
 )
 
 export async function getPostsByTag(rawTag: string, limitCount = TAG_LIST_LIMIT): Promise<Post[]> {

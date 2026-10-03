@@ -126,6 +126,9 @@ import {
   NO_COVER_IMAGE_REASON,
 } from '@/lib/newsCoverImage'
 
+/** FinOps: broad list-cache busts from auto-publish at most once per 5 minutes. */
+const PIPELINE_BROAD_REVALIDATE_MS = 5 * 60 * 1000
+
 /** Minimum total content length (chars) to proceed to AI rewrite. */
 const QUALITY_MIN_CHARS = 500
 
@@ -2218,11 +2221,11 @@ export async function processNewsroomArticle(
       try {
         const { revalidatePath } = await import('next/cache')
         const { revalidateHomeFeedCaches, revalidatePublishedNews } = await import('@/lib/revalidateHome')
-        revalidateHomeFeedCaches()
+        revalidateHomeFeedCaches({ throttleBroadMs: PIPELINE_BROAD_REVALIDATE_MS })
         if (resolvedCategory) revalidatePath(`/kategori/${resolvedCategory}`)
         if (isYerelCategoryTree(resolvedCategory)) revalidatePath('/yerel')
         if (slug) revalidatePath(`/haber/${slug}`)
-        revalidatePublishedNews(slug)
+        revalidatePublishedNews(slug, { throttleBroadMs: PIPELINE_BROAD_REVALIDATE_MS })
         if (personaAuthors?.authorUsername) {
           revalidatePath(`/yazar/${personaAuthors.authorUsername}`)
         }

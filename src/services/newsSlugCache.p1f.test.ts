@@ -7,13 +7,13 @@ function read(rel: string) {
 }
 
 describe('P1-F getNewsBySlug cache', () => {
-  it('caches the slug lookup for an hour on news-post and news:{slug}', () => {
+  it('caches the slug lookup for an hour on news:{slug} only (FinOps: no global news-post bust)', () => {
     const news = read('src/services/newsService.server.ts')
     const start = news.indexOf('export async function getNewsBySlug')
-    const block = news.slice(start, start + 500)
+    const block = news.slice(start, start + 1200)
     expect(block).toContain('unstable_cache')
     expect(block).toContain('revalidate: 3600')
-    expect(block).toContain("tags: ['news-post', `news:${normalized}`]")
+    expect(block).toContain('tags: [`news:${normalized}`]')
   })
 
   it('publish, edit, and unpublish revalidate those tags and the article path', () => {
