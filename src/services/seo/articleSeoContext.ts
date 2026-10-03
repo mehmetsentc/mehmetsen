@@ -8,6 +8,37 @@ import { eventPageService } from '@/services/seo/eventPageService'
 import { publisherService } from '@/services/publisher/publisherService'
 import { isPublisherPlatformEnabled } from '@/lib/publisher/featureFlag'
 import { publisherRepository } from '@/services/publisher/publisherRepository'
+import { unstable_cache } from 'next/cache'
+
+/**
+ * FinOps 3 Oct: every article render looked up its publisher (and event) in
+ * Postgres (~27k lookups over two days), keeping Neon awake between crawler ticks.
+ * Publishers and event titles change rarely; share the answer across renders.
+ */
+const resolvePublisherCached = unstable_cache(
+  async (kind: 'slug' | 'id' | 'source', key: string): Promise<{ slug: string; name: string } | null> => {
+    const pub =
+      kind === 'slug'
+        ? await publisherService.getPublicPublisherBySlug(key)
+        : kind === 'id'
+          ? await publisherRepository.findById(key)
+          : await publisherRepository.findPublisherBySourceId(key)
+    return pub ? { slug: pub.slug, name: pub.displayName } : null
+  },
+  ['article-seo-publisher-v1'],
+  { revalidate: 6 * 60 * 60, tags: ['publisher-lookup'] }
+)
+
+const resolveEventCached = unstable_cache(
+  async (key: string): Promise<{ slug: string; title: string; sourceCount: number } | null> => {
+    const cluster = await eventPageService.getBySlug(key)
+    return cluster
+      ? { slug: cluster.slug, title: cluster.canonicalTitle, sourceCount: cluster.uniqueSourceCount }
+      : null
+  },
+  ['article-seo-event-v1'],
+  { revalidate: 30 * 60, tags: ['event-lookup'] }
+)
 
 export type { ArticleSeoContext }
 
@@ -45,14 +76,11 @@ export async function getArticleSeoContext(
   if (isPublisherPlatformEnabled() && hasDatabaseUrl()) {
     try {
       if (publisherSlug) {
-        const pub = await publisherService.getPublicPublisherBySlug(publisherSlug)
-        if (pub) publisher = { slug: pub.slug, name: pub.displayName }
+        publisher = await resolvePublisherCached('slug', publisherSlug)
       } else if (publisherId) {
-        const pub = await publisherRepository.findById(publisherId)
-        if (pub) publisher = { slug: pub.slug, name: pub.displayName }
+        publisher = await resolvePublisherCached('id', publisherId)
       } else if (sourceId) {
-        const pub = await publisherRepository.findPublisherBySourceId(sourceId)
-        if (pub) publisher = { slug: pub.slug, name: pub.displayName }
+        publisher = await resolvePublisherCached('source', sourceId)
       }
     } catch {
       // best-effort
@@ -62,14 +90,7 @@ export async function getArticleSeoContext(
   const eventKey = eventSlug || clusterId
   if (isEventPagesEnabled() && hasDatabaseUrl() && eventKey) {
     try {
-      const cluster = await eventPageService.getBySlug(eventKey)
-      if (cluster) {
-        event = {
-          slug: cluster.slug,
-          title: cluster.canonicalTitle,
-          sourceCount: cluster.uniqueSourceCount,
-        }
-      }
+      event = await resolveEventCached(eventKey)
     } catch {
       // best-effort
     }

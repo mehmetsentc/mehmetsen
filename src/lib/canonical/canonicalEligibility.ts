@@ -184,6 +184,40 @@ export const getCanonicalNewsBySlugCached = unstable_cache(
   { revalidate: 60, tags: ['news-post', 'canonical-news'] }
 )
 
+/**
+ * FinOps 3 Oct: the PG canonical table holds a handful of published rows (5 on 3 Oct),
+ * yet every article render queried Postgres by slug (~27k lookups, ~0 hits) and kept
+ * Neon awake between crawler ticks. Keep the small identity list in the shared data
+ * cache for 30 minutes and only query by slug when it can match.
+ */
+const CANONICAL_IDENTITY_CAP = 5000
+
+const getCanonicalIdentityList = unstable_cache(
+  async (): Promise<string[] | null> => {
+    if (!hasDatabaseUrl()) return []
+    try {
+      const rows = await getDb()
+        .select({ id: news.id, slug: news.slug, legacyFirestoreId: news.legacyFirestoreId })
+        .from(news)
+        .where(canonicalPublishedWhere())
+        .limit(CANONICAL_IDENTITY_CAP + 1)
+      if (rows.length > CANONICAL_IDENTITY_CAP) return null
+      const out: string[] = []
+      for (const r of rows) {
+        if (r.id) out.push(r.id)
+        if (r.slug) out.push(r.slug)
+        if (r.legacyFirestoreId) out.push(r.legacyFirestoreId)
+      }
+      return out
+    } catch (error) {
+      console.warn('[canonicalEligibility] identity list error:', error)
+      return null
+    }
+  },
+  ['canonical-news-identities-v1'],
+  { revalidate: 1800, tags: ['canonical-news'] }
+)
+
 export async function getCanonicalNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
@@ -192,6 +226,12 @@ export async function getCanonicalNewsBySlug(slug: string): Promise<Post | null>
   try {
     decoded = decodeURIComponent(normalized).trim()
   } catch {}
+
+  const identities = await getCanonicalIdentityList()
+  // null = list unavailable or too large: fall back to the per-slug lookup.
+  if (identities && !identities.includes(decoded) && !identities.includes(normalized)) {
+    return null
+  }
 
   const post = await getCanonicalNewsBySlugCached(decoded)
   if (!post && decoded !== normalized) {
