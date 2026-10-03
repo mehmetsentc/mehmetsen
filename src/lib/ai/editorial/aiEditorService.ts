@@ -373,25 +373,48 @@ export async function createAiEditor(input: CreateAiEditorInput): Promise<AiEdit
   return editor
 }
 
+/**
+ * FinOps 3 Oct: this ran on every pipeline publish, bumped updatedAt and dropped the
+ * roster cache, so every publish forced a full ~2k-doc roster re-read (~530k reads/day).
+ * Now it reads the one editor doc fresh inside a transaction (also fixes stale counts),
+ * patches the cached copy in place, and only bumps updatedAt (which makes other
+ * instances re-read the roster) when routing-relevant state changes: policy unlock or
+ * the daily cap being reached.
+ */
 export async function applyScaleQualityOutcome(
   editor: AiEditorDocument,
   gatePassed: boolean
 ): Promise<void> {
   if (!editor.scaleHardened) return
-  const next = nextScaleGateState(editor, gatePassed)
-  const daily = nextScaleDailyCount(editor, turkeyYmdNow())
-  await getAdminFirestore()
-    .collection(Collections.AI_EDITORS)
-    .doc(editor.id)
-    .update({
+  const db = getAdminFirestore()
+  const ref = db.collection(Collections.AI_EDITORS).doc(editor.id)
+  const today = turkeyYmdNow()
+  const patch = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) return null
+    const fresh = { ...editor, ...(snap.data() as Omit<AiEditorDocument, 'id'>), id: editor.id }
+    const next = nextScaleGateState(fresh, gatePassed)
+    const daily = nextScaleDailyCount(fresh, today)
+    const routingChanged =
+      next.publishPolicy !== fresh.publishPolicy ||
+      next.maxDailyNews !== fresh.maxDailyNews ||
+      daily.scaleDailyNewsCount >= next.maxDailyNews
+    const update: Partial<AiEditorDocument> & { scaleUpdatedAt: number } = {
       consecutiveQualityGatePasses: next.consecutiveQualityGatePasses,
       publishPolicy: next.publishPolicy,
       maxDailyNews: next.maxDailyNews,
       scaleDailyNewsCount: daily.scaleDailyNewsCount,
       scaleDailyNewsYmd: daily.scaleDailyNewsYmd,
-      updatedAt: Date.now(),
-    })
-  invalidateAiEditorsCache()
+      scaleUpdatedAt: Date.now(),
+      ...(routingChanged ? { updatedAt: Date.now() } : {}),
+    }
+    tx.update(ref, update)
+    return update
+  })
+  if (!patch) return
+  const cached = aiEditorsCache?.editors.find((e) => e.id === editor.id)
+  if (cached) Object.assign(cached, patch)
+  Object.assign(editor, patch)
 }
 
 export async function updateAiEditor(

@@ -28,6 +28,25 @@ function toRail(rows: FeedCandidateRow[]) {
 }
 
 /**
+ * FinOps 3 Oct: rails are not personal (featured/popular ignore userId) but ran on
+ * every article view, often reading 80–290 Firestore docs and returning nothing.
+ * Keep each (category, city, lockCity) answer in-process for 5 minutes.
+ */
+const RAILS_TTL_MS = 5 * 60 * 1000
+const RAILS_CACHE_MAX = 64
+const railsCache = new Map<string, { at: number; body: { featured: unknown; popular: unknown } }>()
+
+function rememberRails(key: string, body: { featured: unknown; popular: unknown }) {
+  railsCache.delete(key)
+  railsCache.set(key, { at: Date.now(), body })
+  while (railsCache.size > RAILS_CACHE_MAX) {
+    const oldest = railsCache.keys().next().value
+    if (oldest === undefined) break
+    railsCache.delete(oldest)
+  }
+}
+
+/**
  * Horizontal engagement rails for a feed-v2 tab (featured + popular).
  * City tenants (Çanakkale / Antalya) use the local corpus only.
  */
@@ -65,6 +84,12 @@ export async function GET(request: Request) {
     citySlug,
   }
 
+  const cacheKey = `${category ?? ''}|${citySlug ?? ''}|${lockCity ? 1 : 0}`
+  const hit = railsCache.get(cacheKey)
+  if (hit && Date.now() - hit.at < RAILS_TTL_MS) {
+    return NextResponse.json(hit.body)
+  }
+
   try {
     if (lockCity && citySlug) {
       const local = filterRailItemsForCity(
@@ -74,10 +99,12 @@ export async function GET(request: Request) {
       const featuredRows = local.filter((row) => row.isFeatured || row.isEditorPick)
       const featuredIds = new Set(featuredRows.map((row) => row.articleId))
       const popularRows = local.filter((row) => !featuredIds.has(row.articleId))
-      return NextResponse.json({
+      const body = {
         featured: toRail(featuredRows.length > 0 ? featuredRows : local),
         popular: toRail(popularRows),
-      })
+      }
+      rememberRails(cacheKey, body)
+      return NextResponse.json(body)
     }
 
     const [featured, popular] = await Promise.all([
@@ -85,10 +112,12 @@ export async function GET(request: Request) {
       feedCandidateService.fetchPopular(opts),
     ])
 
-    return NextResponse.json({
+    const body = {
       featured: toRail(featured),
       popular: toRail(popular),
-    })
+    }
+    rememberRails(cacheKey, body)
+    return NextResponse.json(body)
   } catch (err) {
     console.error('[api/feed/v2/rails]', err)
     return NextResponse.json({ featured: [], popular: [] })
