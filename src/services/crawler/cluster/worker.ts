@@ -76,6 +76,9 @@ export async function runClusterTick(opts: {
   void dispatchCrawlerArticleToNewsroom()
 
   const pending = await opts.store.listPendingClusterArticles(limits.maxClusterArticlesPerTick)
+  // FinOps 3 Oct: representative articles were read one row per candidate cluster per
+  // article (~210k single-row PG reads/day). Batch per article and reuse within the tick.
+  const repMemo = new Map<string, RawArticleRecord | null>()
   for (const article of pending) {
     if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
     if (Date.now() - clusterStarted > limits.maxClusterRuntimeMs) break
@@ -104,11 +107,16 @@ export async function runClusterTick(opts: {
       .slice(0, limits.maxClusterCandidatesPerArticle)
 
     let best: { cluster: NewsClusterRecord; score: ReturnType<typeof scoreClusterMatch> } | null = null
+    const missingRepIds = candidates
+      .map((c) => c.representativeArticleId)
+      .filter((id): id is string => Boolean(id) && !repMemo.has(id as string))
+    if (missingRepIds.length) {
+      const loaded = await loadArticlesTextByIds(opts.store, missingRepIds)
+      for (const id of missingRepIds) repMemo.set(id, loaded.get(id) ?? null)
+    }
     for (const cluster of candidates) {
       const rep = cluster.representativeArticleId
-        ? await (opts.store.getRawArticleText
-            ? opts.store.getRawArticleText(cluster.representativeArticleId)
-            : opts.store.getRawArticle(cluster.representativeArticleId))
+        ? repMemo.get(cluster.representativeArticleId) ?? null
         : null
       const scored = scoreClusterMatch(
         fp,

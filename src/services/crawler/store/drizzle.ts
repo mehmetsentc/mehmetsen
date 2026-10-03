@@ -768,21 +768,27 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       )
       .orderBy(desc(newsClusters.lastSeenAt))
       .limit(80)
+    // FinOps 3 Oct: one IN query for all representatives instead of one per cluster.
+    const repIds = [
+      ...new Set(rows.map((row) => row.representativeArticleId).filter((id): id is string => Boolean(id))),
+    ]
+    const reps = new Map<string, { title: string | null; simhash: string | null }>()
+    if (repIds.length) {
+      const arts = await this.db()
+        .select({ id: rawArticles.id, title: rawArticles.title, simhash: rawArticles.simhash })
+        .from(rawArticles)
+        .where(inArray(rawArticles.id, repIds))
+      for (const a of arts) reps.set(a.id, { title: a.title ?? null, simhash: a.simhash ?? null })
+    }
     const out = []
     for (const row of rows) {
       const cluster = mapCluster(row)
-      let representativeTitle: string | null = null
-      let representativeSimhash: string | null = null
-      if (row.representativeArticleId) {
-        const arts = await this.db()
-          .select()
-          .from(rawArticles)
-          .where(eq(rawArticles.id, row.representativeArticleId))
-          .limit(1)
-        representativeTitle = arts[0]?.title ?? null
-        representativeSimhash = arts[0]?.simhash ?? null
-      }
-      out.push({ ...cluster, representativeTitle, representativeSimhash })
+      const rep = row.representativeArticleId ? reps.get(row.representativeArticleId) : undefined
+      out.push({
+        ...cluster,
+        representativeTitle: rep?.title ?? null,
+        representativeSimhash: rep?.simhash ?? null,
+      })
     }
     return out
   }
