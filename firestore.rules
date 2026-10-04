@@ -22,14 +22,26 @@ service cloud.firestore {
       return hasUserDoc() ? userDoc().data.role : '';
     }
 
+    // Phase 1 (Çanakkale pilot): staff carrying `cmsScope` (city / category managers)
+    // never get direct client-SDK CMS privileges. They act only through server API
+    // routes that enforce province AND category scope (src/lib/cms/staffScopeHttp.ts).
+    // super_admin is never scoped. Missing `cmsScope` = unchanged legacy behavior.
+    function isScopedStaff() {
+      return hasUserDoc()
+        && userRole() != 'super_admin'
+        && userDoc().data.get('cmsScope', null) != null;
+    }
+
     function isCmsPublisher() {
       return isSignedIn()
-        && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor'];
+        && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor']
+        && !isScopedStaff();
     }
 
     function isCmsStaff() {
       return isSignedIn()
-        && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor', 'author', 'video_editor'];
+        && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor', 'author', 'video_editor']
+        && !isScopedStaff();
     }
 
     function isAdmin() {
@@ -84,7 +96,7 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (isOwner(userId)
             && !request.resource.data.diff(resource.data).affectedKeys()
-                .hasAny(['role', 'permissions', 'isAdmin', 'admin']));
+                .hasAny(['role', 'permissions', 'isAdmin', 'admin', 'cmsScope']));
       allow delete: if false;
     }
 

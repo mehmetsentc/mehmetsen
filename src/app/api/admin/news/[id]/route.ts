@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { contentScopeOf, isScopeRestricted } from '@/lib/cms/rbacScope'
+import { denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
@@ -388,8 +390,9 @@ async function syncPostsMirror(id: string, update: Record<string, unknown>) {
 
 /** PUT /api/admin/news/[id] — manually update a news article */
 export async function PUT(request: Request, context: RouteContext) {
-  const auth = await verifyCmsToken(request, 'news:edit')
+  const auth = await verifyCmsToken(request, 'news:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const scoped = isScopeRestricted(auth.scope)
 
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
@@ -400,6 +403,8 @@ export async function PUT(request: Request, context: RouteContext) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
+  // Scoped staff: national homepage pin (Öne Çıkan) is a global surface.
+  if (scoped && body.featured === true) return staffScopeForbidden()
   if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
     // Allow editors to publish when pinning Öne Çıkan (otherwise pin is invisible live).
     if (!(body.featured === true || body.localFeatured === true)) {
@@ -442,6 +447,8 @@ export async function PUT(request: Request, context: RouteContext) {
     const newsSnap = await newsRef.get()
     if (newsSnap.exists) {
       const prevData = newsSnap.data()
+      const deniedBefore = denyIfOutsideStaffScope(auth, contentScopeOf(prevData))
+      if (deniedBefore) return deniedBefore
 
       // Atomic canonical geo: if any geo identity field is in the PATCH,
       // recompute/validate the complete state. Headline-only saves omit geo keys
@@ -480,6 +487,11 @@ export async function PUT(request: Request, context: RouteContext) {
       }
 
       applyBreakingToggle(update, body, prevData)
+
+      // Authorize the resulting canonical state too: a scoped editor cannot move an
+      // article out of (or into) their province/category by editing geo/category.
+      const deniedAfter = denyIfOutsideStaffScope(auth, contentScopeOf({ ...prevData, ...update }))
+      if (deniedAfter) return deniedAfter
 
       // Guarantee published articles always carry a numeric `publishedAt`. Category
       // and home listings order by `publishedAt`, and Firestore's orderBy silently
@@ -615,6 +627,13 @@ export async function PUT(request: Request, context: RouteContext) {
       const draftUpdate = { ...update }
       delete draftUpdate.status
 
+      const draftDenied = denyIfOutsideStaffScope(
+        auth,
+        contentScopeOf(draftSnap.data()),
+        contentScopeOf({ ...draftSnap.data(), ...draftUpdate })
+      )
+      if (draftDenied) return draftDenied
+
       // Öne Çıkan → otomatik yayına al (UI status=published gönderir; featured da yeterli)
       const shouldPublish =
         body.status === 'published' || body.featured === true || body.localFeatured === true
@@ -671,6 +690,8 @@ export async function PUT(request: Request, context: RouteContext) {
     const postsRef = db.collection(Collections.POSTS).doc(id)
     const postsSnap = await postsRef.get()
     if (postsSnap.exists) {
+      // Legacy posts carry no reliable geo/category identity → never for scoped staff.
+      if (scoped) return staffScopeForbidden()
       // Homepage Öne Çıkan reads `news` only — mirror pin fields when the CMS
       // hit a posts-only document (legacy / user post ids).
       if (body.featured === true) {
@@ -703,14 +724,17 @@ export async function PUT(request: Request, context: RouteContext) {
 
 /** DELETE /api/admin/news/[id] — archive (soft) or permanently delete an article */
 export async function DELETE(request: Request, context: RouteContext) {
-  const auth = await verifyCmsToken(request, 'news:edit')
+  const auth = await verifyCmsToken(request, 'news:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const scoped = isScopeRestricted(auth.scope)
 
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
   const url = new URL(request.url)
   const permanent = url.searchParams.get('permanent') === 'true'
+  // Irreversible hard delete stays with unscoped staff; scoped staff may archive.
+  if (scoped && permanent) return staffScopeForbidden()
 
   try {
     const db = getAdminFirestore()
@@ -722,6 +746,8 @@ export async function DELETE(request: Request, context: RouteContext) {
 
     let slug: string | undefined
     if (newsSnap.exists) {
+      const deniedNews = denyIfOutsideStaffScope(auth, contentScopeOf(newsSnap.data()))
+      if (deniedNews) return deniedNews
       categoryId = newsSnap.data()?.categoryId as string | undefined
       slug = newsSnap.data()?.slug as string | undefined
       if (permanent) {
@@ -743,6 +769,8 @@ export async function DELETE(request: Request, context: RouteContext) {
       const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(id)
       const draftSnap = await draftRef.get()
       if (!draftSnap.exists) return NextResponse.json({ error: 'Article not found' }, { status: 404 })
+      const deniedDraft = denyIfOutsideStaffScope(auth, contentScopeOf(draftSnap.data()))
+      if (deniedDraft) return deniedDraft
       categoryId = draftSnap.data()?.categoryId as string | undefined
       collection = 'newsDrafts'
       await draftRef.delete()

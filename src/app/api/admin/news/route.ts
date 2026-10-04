@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { contentScopeOf, isScopeRestricted } from '@/lib/cms/rbacScope'
+import { denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { Firestore } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
@@ -91,8 +93,9 @@ async function slugTaken(db: Firestore, slug: string): Promise<boolean> {
 
 /** POST /api/admin/news — admin manual create */
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'news:create')
+  const auth = await verifyCmsToken(request, 'news:create', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const scoped = isScopeRestricted(auth.scope)
 
   let body: CreatePayload
   try {
@@ -104,6 +107,8 @@ export async function POST(request: Request) {
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'Başlık gerekli' }, { status: 400 })
   }
+  // Scoped staff: national homepage pin (Öne Çıkan) is a global surface.
+  if (scoped && body.featured === true) return staffScopeForbidden()
   const willForcePublishViaFeatured = body.featured === true || body.localFeatured === true
   if (
     body.status?.trim() === 'published' &&
@@ -166,6 +171,15 @@ export async function POST(request: Request) {
     const newsRef = body.draftId?.trim()
       ? db.collection(Collections.NEWS).doc(body.draftId.trim())
       : db.collection(Collections.NEWS).doc()
+
+    // Scoped staff cannot overwrite an existing document outside their scope via draftId.
+    if (scoped && body.draftId?.trim()) {
+      const existing = await newsRef.get()
+      if (existing.exists) {
+        const denied = denyIfOutsideStaffScope(auth, contentScopeOf(existing.data()))
+        if (denied) return denied
+      }
+    }
 
     const payload: Record<string, unknown> = {
       title: body.title.trim(),
@@ -290,6 +304,10 @@ export async function POST(request: Request) {
       }
       Object.assign(payload, canonicalArticleGeoToPersistFields(geoResult.state))
     }
+
+    // Authorize against the canonical (server-resolved) geo + category, never raw body.
+    const scopeDenied = denyIfOutsideStaffScope(auth, contentScopeOf(payload))
+    if (scopeDenied) return scopeDenied
 
     const additionalImages = sanitizeAdditionalImages(body.additionalImages)
     payload.additionalImages = additionalImages

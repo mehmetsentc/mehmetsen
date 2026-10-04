@@ -56,7 +56,9 @@ export async function isNewsroomAuthorized(request: Request): Promise<boolean> {
         const decoded = await getAdminAuth().verifyIdToken(token)
         const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
         const role = userDoc.data()?.role
-        if (role === 'admin' || getBootstrapAdminUids().includes(decoded.uid)) return true
+        if (getBootstrapAdminUids().includes(decoded.uid)) return true
+        // Legacy `admin` role: scoped staff (`cmsScope` set) never pass this global path.
+        if (role === 'admin' && userDoc.data()?.cmsScope == null) return true
       } catch {
         // fall through
       }
