@@ -39,10 +39,19 @@ const loadPgFeedActive = unstable_cache(
 )
 
 /** True when the PG primary feed path can return anything. Errors keep the PG path. */
+const PG_FEED_ACTIVE_MEMO_MS = 30 * 60 * 1000
+let pgFeedActiveMemo: { at: number; value: boolean } | null = null
+
 export async function isPgFeedActive(): Promise<boolean> {
   if (!hasDatabaseUrl()) return false
+  const now = Date.now()
+  if (pgFeedActiveMemo && now - pgFeedActiveMemo.at < PG_FEED_ACTIVE_MEMO_MS) {
+    return pgFeedActiveMemo.value
+  }
   try {
-    return await loadPgFeedActive()
+    const value = await loadPgFeedActive()
+    pgFeedActiveMemo = { at: now, value }
+    return value
   } catch {
     return true
   }

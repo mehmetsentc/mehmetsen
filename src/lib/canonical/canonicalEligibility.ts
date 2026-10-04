@@ -218,6 +218,25 @@ const getCanonicalIdentityList = unstable_cache(
   { revalidate: 1800, tags: ['canonical-news'] }
 )
 
+/**
+ * FinOps 4 Oct: pg_stat_statements still showed ~12 identity-list queries/min after
+ * 4c10e85, so the shared data cache is not holding it on this path. Keep an
+ * in-process copy for the same 30 minutes as a floor.
+ */
+const CANONICAL_IDENTITY_MEMO_MS = 30 * 60 * 1000
+let canonicalIdentityMemo: { at: number; value: string[] | null } | null = null
+
+async function getCanonicalIdentityListMemo(): Promise<string[] | null> {
+  const now = Date.now()
+  if (canonicalIdentityMemo && now - canonicalIdentityMemo.at < CANONICAL_IDENTITY_MEMO_MS) {
+    return canonicalIdentityMemo.value
+  }
+  const value = await getCanonicalIdentityList()
+  // Do not pin an unavailable list (null) for 30 minutes; retry next time.
+  if (value !== null) canonicalIdentityMemo = { at: now, value }
+  return value
+}
+
 export async function getCanonicalNewsBySlug(slug: string): Promise<Post | null> {
   const normalized = slug.trim()
   if (!normalized) return null
@@ -227,7 +246,7 @@ export async function getCanonicalNewsBySlug(slug: string): Promise<Post | null>
     decoded = decodeURIComponent(normalized).trim()
   } catch {}
 
-  const identities = await getCanonicalIdentityList()
+  const identities = await getCanonicalIdentityListMemo()
   // null = list unavailable or too large: fall back to the per-slug lookup.
   if (identities && !identities.includes(decoded) && !identities.includes(normalized)) {
     return null
