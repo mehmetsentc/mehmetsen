@@ -48,6 +48,33 @@ service cloud.firestore {
       return isCmsPublisher();
     }
 
+    // SEC-CMS-ROLE-ESCALATION-1 — users/{uid} fields that grant or limit server-side
+    // authority. Single list, mirrored by AUTHORIZATION_SENSITIVE_USER_FIELDS in
+    // src/lib/cms/authorizationSensitiveUserFields.ts:
+    //   role        → resolveCmsRoleFromFirestore (verifyCmsToken, cms-sync, newsroomAuth,
+    //                 events/sync, iskur-jobs) and every role check in these rules
+    //   permissions → /api/admin/gmail/callback (`permissions.includes('system:settings')`)
+    //   cmsScope    → Phase 1 staff scope (verifyCmsToken / rbacScope, isScopedStaff above)
+    //   isAdmin, admin → legacy privileged keys (no current reader; kept closed)
+    function authorizationSensitiveUserFields() {
+      return ['role', 'permissions', 'cmsScope', 'isAdmin', 'admin'];
+    }
+
+    // Covers add, change AND removal of a key (diff().affectedKeys()), so update(),
+    // set() overwrite and set(merge) cannot delete `role` / `cmsScope` either.
+    function touchesAuthorizationSensitiveUserFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(authorizationSensitiveUserFields());
+    }
+
+    // Only a super_admin (Firestore role, set by /api/auth/cms-sync from
+    // SUPER_ADMIN_EMAIL) may change another account's authority from a client.
+    // Matches the server matrix: `users:assign_role` belongs to super_admin only.
+    // super_admin is never scoped (isScopedStaff excludes it).
+    function isUserAuthorityAdministrator() {
+      return isSignedIn() && userRole() == 'super_admin';
+    }
+
     // likeService / saveService / commentService / postService increment these on `news`.
     function newsEngagementCounterFields() {
       return ['likesCount', 'savesCount', 'commentCount', 'commentsCount', 'viewsCount', 'sharesCount'];
@@ -88,15 +115,20 @@ service cloud.firestore {
     // username range/limit queries). `read` covers both `get` and `list`.
     match /users/{userId} {
       allow read: if true;
+      // Self-signup creates a plain user doc. No authority field may be supplied
+      // except role absent / 'user' / null (permissions, cmsScope, isAdmin, admin: never).
       allow create: if isOwner(userId)
         && (!('role' in request.resource.data)
             || request.resource.data.role == 'user'
-            || request.resource.data.role == null);
-      // Owners may update profile fields but cannot escalate role / privileged keys.
-      allow update: if isAdmin()
-        || (isOwner(userId)
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                .hasAny(['role', 'permissions', 'isAdmin', 'admin', 'cmsScope']));
+            || request.resource.data.role == null)
+        && !request.resource.data.keys()
+            .hasAny(['permissions', 'cmsScope', 'isAdmin', 'admin']);
+      // Profile / moderation fields: CMS publishers (any user) and owners (self).
+      // Authority fields: super_admin only. Editors and managing editors can no longer
+      // change roles, scopes or permissions — their own or anyone else's.
+      allow update: if (isAdmin() || isOwner(userId))
+        && (!touchesAuthorizationSensitiveUserFields() || isUserAuthorityAdministrator());
+      // No client delete → no delete / recreate path around field rules.
       allow delete: if false;
     }
 
