@@ -29,6 +29,23 @@ const resolvePublisherCached = unstable_cache(
   { revalidate: 6 * 60 * 60, tags: ['publisher-lookup'] }
 )
 
+/** In-process floor under the data cache (FinOps 5 Oct: ~70 publisher lookups/h still hit PG). */
+const PUBLISHER_MEMO_MS = 6 * 60 * 60 * 1000
+const publisherMemo = new Map<string, { at: number; value: { slug: string; name: string } | null }>()
+
+async function resolvePublisherMemo(
+  kind: 'slug' | 'id' | 'source',
+  key: string
+): Promise<{ slug: string; name: string } | null> {
+  const memoKey = `${kind}:${key}`
+  const hit = publisherMemo.get(memoKey)
+  if (hit && Date.now() - hit.at < PUBLISHER_MEMO_MS) return hit.value
+  const value = await resolvePublisherCached(kind, key)
+  if (publisherMemo.size > 2000) publisherMemo.clear()
+  publisherMemo.set(memoKey, { at: Date.now(), value })
+  return value
+}
+
 const resolveEventCached = unstable_cache(
   async (key: string): Promise<{ slug: string; title: string; sourceCount: number } | null> => {
     const cluster = await eventPageService.getBySlug(key)
@@ -76,11 +93,11 @@ export async function getArticleSeoContext(
   if (isPublisherPlatformEnabled() && hasDatabaseUrl()) {
     try {
       if (publisherSlug) {
-        publisher = await resolvePublisherCached('slug', publisherSlug)
+        publisher = await resolvePublisherMemo('slug', publisherSlug)
       } else if (publisherId) {
-        publisher = await resolvePublisherCached('id', publisherId)
+        publisher = await resolvePublisherMemo('id', publisherId)
       } else if (sourceId) {
-        publisher = await resolvePublisherCached('source', sourceId)
+        publisher = await resolvePublisherMemo('source', sourceId)
       }
     } catch {
       // best-effort

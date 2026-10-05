@@ -143,8 +143,24 @@ async function resolveTenantFromDb(slug: string): Promise<CityTenant | null> {
  * Resolve a CityTenant from a slug.
  * Priority: Postgres (if DATABASE_URL set) → hardcoded fallback.
  */
+/**
+ * FinOps 5 Oct: city tenant rows almost never change, but every city-host request
+ * re-read city_sites (~18/h), which keeps Neon from scaling to zero. Keep each
+ * answer (including "not found") in-process for 10 minutes.
+ */
+const TENANT_MEMO_MS = 10 * 60 * 1000
+const tenantMemo = new Map<string, { at: number; value: CityTenant | null }>()
+
 export async function resolveTenant(slug: string): Promise<CityTenant | null> {
-  const dbTenant = await resolveTenantFromDb(slug)
+  const hit = tenantMemo.get(slug)
+  let dbTenant: CityTenant | null
+  if (hit && Date.now() - hit.at < TENANT_MEMO_MS) {
+    dbTenant = hit.value
+  } else {
+    dbTenant = await resolveTenantFromDb(slug)
+    if (tenantMemo.size > 200) tenantMemo.clear()
+    tenantMemo.set(slug, { at: Date.now(), value: dbTenant })
+  }
   if (dbTenant) return dbTenant
 
   return getHardcodedTenant(slug)
