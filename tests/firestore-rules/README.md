@@ -18,3 +18,15 @@ RULES_FILE=/path/to/deployed.rules npm test
 
 Requires Java 11+ and network access to download the emulator once
 (`storage.googleapis.com`).
+
+Test files share one emulator and call `clearFirestore()`, so they must run
+sequentially (`--test-concurrency=1`, already in `npm test`).
+
+Without firebase-tools (e.g. jar fetched manually; verify MD5
+`9b43a6daa590678de9b7df6d68260395` for v1.19.8):
+
+```bash
+java -jar cloud-firestore-emulator-v1.19.8.jar --host=127.0.0.1 --port=8089 &
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8089 node --test --test-concurrency=1 \
+  users.rules.test.mjs users.rules.supplement.test.mjs
+```
