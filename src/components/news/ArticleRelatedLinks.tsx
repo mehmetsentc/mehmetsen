@@ -8,10 +8,13 @@ import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { formatTagLabel } from '@/lib/tags'
 import { buildPostSharePath } from '@/lib/seo/structuredData'
 import { getCityHostDiscoveryLink, getDistrictDiscoveryLink } from '@/lib/seo/localDiscoveryExperiment'
+import type { ArticleLatestLink } from '@/lib/seo/articleLatestLinks'
 
 /** ArticleSeoContext plus optional related posts for the internal-link aside. */
 export type ArticleRelatedLinksContext = Partial<ArticleSeoContext> & {
   relatedPosts?: Post[]
+  /** SEO-10: fresh indexable stories (same category first) from the cached news-sitemap window. */
+  latestLinks?: ArticleLatestLink[]
 }
 
 interface ArticleRelatedLinksProps {
@@ -29,6 +32,10 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
   const publisher = context?.publisher
   const event = context?.event
   const related = (context?.relatedPosts ?? []).filter((p) => p.id !== post.id).slice(0, 4)
+  const relatedPaths = new Set(related.map((p) => buildPostSharePath(p)))
+  const latest = (context?.latestLinks ?? []).filter(
+    (l) => l.slug !== post.slug && !relatedPaths.has(ROUTES.NEWS_DETAIL(l.slug))
+  )
   // SEO-1D.1: Çanakkale-only city-host + district links (structured fields only).
   const cityHostLink = getCityHostDiscoveryLink(citySlug)
   const districtLink = getDistrictDiscoveryLink(citySlug, post.districtSlug)
@@ -147,6 +154,33 @@ export function ArticleRelatedLinks({ post, context }: ArticleRelatedLinksProps)
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {latest.length > 0 ? (
+        <div className="mt-4 border-t border-[rgb(var(--color-border))] pt-4" data-seo-article-latest>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            Son eklenen haberler
+          </h3>
+          <ul className="space-y-2">
+            {latest.map((item) => (
+              <li key={item.slug}>
+                <Link prefetch={false}
+                  href={ROUTES.NEWS_DETAIL(item.slug)}
+                  className="line-clamp-2 text-sm font-medium text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]"
+                >
+                  {item.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link prefetch={false}
+            href={ROUTES.CATEGORY('son-dakika')}
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[rgb(var(--color-brand))] hover:underline"
+          >
+            Tüm son dakika haberleri
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </div>
       ) : null}
     </aside>

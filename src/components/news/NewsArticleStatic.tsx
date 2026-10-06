@@ -19,6 +19,7 @@ import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
 import { ArticleAudioPlayer } from '@/components/news/ArticleAudioPlayer'
 import { ArticleGallery } from '@/components/news/ArticleGallery'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
+import type { ArticleLatestLink } from '@/lib/seo/articleLatestLinks'
 import { ArticleRelatedLinks } from '@/components/news/ArticleRelatedLinks'
 import { HaberEndRecommendations } from '@/components/news/HaberEndRecommendations'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
@@ -42,6 +43,8 @@ import {
 interface NewsArticleStaticProps {
   post: Post
   relatedPosts?: Post[]
+  /** SEO-10: fresh story links for the internal-link aside. */
+  latestLinks?: ArticleLatestLink[]
   /** Optional SEO internal-link context (publisher / event). Same contract as getArticleSeoContext. */
   seoContext?: ArticleSeoContext | null
   /** P8/P10 article ad slots — never included in JSON-LD. */
@@ -195,6 +198,7 @@ function attachedArticleVideo(post: Post): MediaItem | null {
 export function NewsArticleStatic({
   post,
   relatedPosts = [],
+  latestLinks = [],
   seoContext = null,
   adSlots = null,
   prerollAd = null,
@@ -460,6 +464,7 @@ export function NewsArticleStatic({
               publisher: seoContext?.publisher ?? null,
               event: seoContext?.event ?? null,
               relatedPosts,
+              latestLinks,
             }}
           />
 

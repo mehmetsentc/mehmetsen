@@ -59,7 +59,13 @@ export class NewsSitemapCapExceededError extends Error {
 }
 
 /** Compact cached entry. Sorted newest publishedAt first. */
-export type NewsSitemapEntry = { slug: string; publishedMs: number; title: string }
+export type NewsSitemapEntry = {
+  slug: string
+  publishedMs: number
+  title: string
+  /** SEO-10: optional; only used for internal links, never emitted in the XML. */
+  categoryId?: string
+}
 
 export type PgNewsCandidate = {
   post: Post
@@ -94,7 +100,10 @@ function evaluateNewsCandidate(input: {
   if (!ev) return null
   const title = cleanTitle(input.title)
   if (!title) return null
-  return { slug: ev.slug, publishedMs: ev.publishedMs, title }
+  const categoryId = input.post?.categoryId?.trim()
+  return categoryId
+    ? { slug: ev.slug, publishedMs: ev.publishedMs, title, categoryId }
+    : { slug: ev.slug, publishedMs: ev.publishedMs, title }
 }
 
 /**

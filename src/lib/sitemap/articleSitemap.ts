@@ -75,6 +75,8 @@ export const ARTICLE_SITEMAP_FIRESTORE_FIELDS = [
   'needsAdminReview',
   'seoNoindex',
   'publisherType',
+  // SEO-10: lets cached news-sitemap entries feed per-category article links (no extra reads).
+  'categoryId',
 ] as const
 
 export async function loadFirestoreMonthDocs(

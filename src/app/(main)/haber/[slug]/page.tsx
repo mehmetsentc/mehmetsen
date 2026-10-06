@@ -23,6 +23,8 @@ import {
 import { ROUTES } from '@/constants/routes'
 import { ARTICLE_LCP_WIDTH, getLcpPreload } from '@/lib/lcpImage'
 import { getArticleSeoContext } from '@/services/seo/articleSeoContext'
+import { getNewsSitemapEntries } from '@/lib/sitemap/newsSitemapLoader'
+import { pickArticleLatestLinks } from '@/lib/seo/articleLatestLinks'
 import { hasDatabaseUrl } from '@/db'
 import {
   isArticleAdSlotsEnabled,
@@ -135,6 +137,17 @@ export default async function NewsDetailPage({ params }: PageProps) {
 
   const seoContext = await getArticleSeoContext(post)
 
+  // SEO-10: fresh internal links from the cached news-sitemap window (no extra reads).
+  let latestLinks: ReturnType<typeof pickArticleLatestLinks> = []
+  try {
+    latestLinks = pickArticleLatestLinks(await getNewsSitemapEntries(), {
+      categoryId: post.categoryId,
+      excludeSlugs: [post.slug ?? ''],
+    })
+  } catch {
+    latestLinks = []
+  }
+
   let adSlots: { before: React.ReactNode; mid: React.ReactNode; after: React.ReactNode } | null =
     null
   let prerollAd: import('@/types/publisherManagedAds').ResolvedPublisherAd | null = null
@@ -221,6 +234,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
       <NewsArticleStatic
         post={post}
         relatedPosts={relatedPosts}
+        latestLinks={latestLinks}
         seoContext={seoContext}
         adSlots={adSlots}
         prerollAd={

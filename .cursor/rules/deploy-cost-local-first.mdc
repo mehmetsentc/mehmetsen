@@ -23,3 +23,8 @@ alwaysApply: true
 - `ignoreCommand` → `node scripts/vercel-ignored-build.mjs`
 - `[deploy]` yoksa build atlanır; günde en fazla ~2 prod build (24s pencere).
 - Docs/markdown-only değişiklikler build tetiklemez.
+
+## SEO etkisi (SEO-10, 7 Eki 2026)
+
+- `[force-deploy]` da günde **en fazla 1** olmalı. Her deploy JS dosya hash'lerini değiştiriyor; Googlebot taramasının ~%70'i JS dosyalarına gidiyor ve yeni haber HTML'ine az bütçe kalıyor (GSC Tarama istatistikleri). 3–6 Eki'de ~12 force-deploy oldu.
+- Finops/SEO düzeltmeleri acil değilse biriktirilip tek batch commit ile çıkılsın.
