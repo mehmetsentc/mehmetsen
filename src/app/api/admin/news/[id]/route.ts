@@ -10,6 +10,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
 import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveResearch'
 import { newsDraftService } from '@/services/newsDraftService'
+import { isUgcDraft } from '@/lib/editorial/ugcPublicationBoundary'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
@@ -659,6 +660,23 @@ export async function PUT(request: Request, context: RouteContext) {
           await draftRef.update(draftUpdate)
         }
         const result = await newsDraftService.approveDraft(id, { uid: auth.uid })
+        // UGC is normalized at approval (stored placement stripped). An explicit
+        // Öne Çıkan action in THIS human request is re-applied to the canonical doc.
+        if (
+          isUgcDraft(draftSnap.data()) &&
+          result.newsId &&
+          (body.featured === true || body.localFeatured === true)
+        ) {
+          const pinnedAt = Date.now()
+          await db.collection(Collections.NEWS).doc(result.newsId).update({
+            ...(body.featured === true
+              ? { featured: true, isEditorPick: true, featuredAt: pinnedAt }
+              : {}),
+            ...(body.localFeatured === true
+              ? { localFeatured: true, localFeaturedAt: pinnedAt }
+              : {}),
+          })
+        }
         if (body.featured === true && result.newsId) {
           try {
             await demoteExcessFeaturedPins(db, {

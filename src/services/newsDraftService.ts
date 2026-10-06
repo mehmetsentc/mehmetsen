@@ -16,6 +16,13 @@ import {
   applyCanonicalArticleGeoWrite,
   canonicalArticleGeoToPersistFields,
 } from '@/lib/geo/canonicalArticleGeoWrite'
+import {
+  UGC_REQUIRES_INDIVIDUAL_REVIEW,
+  buildUgcBylineFromUserDoc,
+  crawlerRawArticleIdForPublication,
+  isUgcDraft,
+  normalizeUgcDraftForPublication,
+} from '@/lib/editorial/ugcPublicationBoundary'
 
 export type { HumanPublicationActor }
 
@@ -265,9 +272,13 @@ function resolveSourceLabel(
   return 'NaHaber'
 }
 
-async function markRawArticlePublished(rssGuid: string | undefined, newsId: string): Promise<void> {
-  const rawArticleId = String(rssGuid || '').trim()
-  if (!rawArticleId.startsWith('raw_')) return
+/**
+ * Crawler raw-article publication state. UGC can never drive it
+ * (SEC-UGC-INTEGRITY-REPAIR-1: client-chosen rssGuid=raw_… is ignored for UGC).
+ */
+async function markRawArticlePublished(publishedFrom: unknown, newsId: string): Promise<void> {
+  const rawArticleId = crawlerRawArticleIdForPublication(publishedFrom)
+  if (!rawArticleId) return
   const { syncCrawlerEditorial } = await import('@/services/crawler/editorial/newsLink')
   await syncCrawlerEditorial({
     rawArticleId,
@@ -616,9 +627,15 @@ export const newsDraftService = {
     })
   },
 
+  /**
+   * Publish one draft under HUMAN_EDITOR authority.
+   * `mode: 'bulk'` (bulk-approve / flush-pending) refuses UGC outright; UGC is only
+   * published via an explicit individual review and is normalized at this boundary.
+   */
   async approveDraft(
     draftId: string,
-    actor: HumanPublicationActor
+    actor: HumanPublicationActor,
+    options?: { mode?: 'individual' | 'bulk' }
   ): Promise<{ newsId: string; slug: string }> {
     if (!actor?.uid) {
       throw new Error(
@@ -634,9 +651,30 @@ export const newsDraftService = {
       throw new Error('Draft not found')
     }
 
-    const draft = draftSnap.data() as NewsDraftDocument
-    if (draft.draftStatus === 'approved') {
+    const storedDraft = draftSnap.data() as NewsDraftDocument
+    if (storedDraft.draftStatus === 'approved') {
       throw new Error('Draft already approved')
+    }
+
+    const ugc = isUgcDraft(storedDraft)
+    if (ugc && options?.mode === 'bulk') {
+      throw new Error(
+        `${UGC_REQUIRES_INDIVIDUAL_REVIEW}: reader submissions require explicit individual review`
+      )
+    }
+
+    let draft = storedDraft
+    if (ugc) {
+      // Byline from the submitter's own profile only — never from draft fields.
+      const authorId = String(storedDraft.authorId || '').trim()
+      const userSnap = authorId
+        ? await db.collection(Collections.USERS).doc(authorId).get()
+        : null
+      const byline = buildUgcBylineFromUserDoc(userSnap?.exists ? userSnap.data() : null)
+      draft = normalizeUgcDraftForPublication(
+        storedDraft as unknown as Record<string, unknown>,
+        byline
+      ) as unknown as NewsDraftDocument
     }
 
     // Boş spot/içerik ile yayın engeli (bulk-approve / flush dahil)
@@ -693,7 +731,7 @@ export const newsDraftService = {
       updatedAt: now,
     })
 
-    await markRawArticlePublished(draft.rssGuid, newsRef.id)
+    await markRawArticlePublished(draft, newsRef.id)
 
     return { newsId: newsRef.id, slug }
   },
@@ -781,7 +819,7 @@ export const newsDraftService = {
         // Upgrade leftover draft placeholders even on review-clear path
         ...(isPlaceholderDraftSlug(data.slug) ? { slug } : {}),
       })
-      await markRawArticlePublished(data.rssGuid, newsId)
+      await markRawArticlePublished(data, newsId)
       return { newsId, slug }
     }
 
@@ -811,7 +849,7 @@ export const newsDraftService = {
           }
         : {}),
     })
-    await markRawArticlePublished(data.rssGuid, newsId)
+    await markRawArticlePublished(data, newsId)
 
     return { newsId, slug }
   },

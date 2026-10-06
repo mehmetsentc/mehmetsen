@@ -15,6 +15,7 @@ import { enableAutoPublishForActiveEditors } from '@/lib/ai/editorial/aiEditorSe
 import type { NewsroomArticleInput, EditorId, NewsroomEditorType } from '@/services/newsroom/types'
 import { NO_COVER_IMAGE_REASON } from '@/lib/newsCoverImage'
 import { isLegacyDirectAiEnabled } from '@/services/crawler/legacyFlags'
+import { isUgcDraft } from '@/lib/editorial/ugcPublicationBoundary'
 
 const HARD_SKIP_REASONS = new Set([
   'ai_editor_requires_approval',
@@ -105,6 +106,8 @@ export async function reprocessPendingDrafts(): Promise<DraftReprocessStats> {
   const candidates = snap.docs
     .filter((d) => {
       const data = d.data()
+      // Reader submissions (UGC) never enter AI reprocess / auto-publish (SEC-UGC-INTEGRITY-REPAIR-1).
+      if (isUgcDraft(data)) return false
       const attempts = Number(data.autoReprocessCount ?? 0)
       if (attempts >= NEWSROOM_DRAFT_REPROCESS_MAX_ATTEMPTS) return false
       const reasons = Array.isArray(data.moderationReasons)

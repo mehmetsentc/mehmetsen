@@ -4,12 +4,14 @@
  * Tek tuş: önce taze RSS çek (breaking + gündem + ANKA), sonra yalnızca
  * bu koşuda / son dakikalarda oluşan kuyruk kalemlerini AI ile yazıp yayınla.
  * Eski 800+ backlog boşaltılmaz.
+ * Okur haberleri (UGC) bu toplu onaya asla girmez (SEC-UGC-INTEGRITY-REPAIR-1).
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore, Collections } from '@/lib/firebase/admin'
 import { processNewsQueue } from '@/services/newsroom/queue/queueProcessor'
 import { newsDraftService } from '@/services/newsDraftService'
+import { partitionBulkApprovalCandidates } from '@/lib/editorial/ugcPublicationBoundary'
 import { runBreakingWorker } from '@/services/newsroom/workers/breakingWorker'
 import { runGundemWorker } from '@/services/newsroom/workers/gundemWorker'
 import { runAnkaBreakingWorker } from '@/services/newsroom/workers/ankaBreakingWorker'
@@ -106,6 +108,8 @@ export async function POST(request: Request) {
     total: 0,
     /** P18.1: flush must not invent a human UID — only approve when CMS actor is present. */
     blockedWithoutActor: 0,
+    /** Reader submissions (UGC) — never bulk-approved; explicit review only. */
+    ugcExcluded: 0,
   }
   if (approveDrafts) {
     if (!auth.uid) {
@@ -128,7 +132,10 @@ export async function POST(request: Request) {
           .get()
       )
 
-    const docs = snap.docs.filter((d) => {
+    const { eligible, ugcExcluded } = partitionBulkApprovalCandidates(snap.docs, (d) => d.data())
+    draftApprove.ugcExcluded = ugcExcluded.length
+
+    const docs = eligible.filter((d) => {
       const createdAt = (d.data() as { createdAt?: number }).createdAt ?? 0
       return createdAt >= minCreatedAt
     })
@@ -137,7 +144,7 @@ export async function POST(request: Request) {
     for (const doc of docs) {
       try {
         // Authenticated CMS user who triggered flush is the publication actor.
-        await newsDraftService.approveDraft(doc.id, { uid: auth.uid })
+        await newsDraftService.approveDraft(doc.id, { uid: auth.uid }, { mode: 'bulk' })
         draftApprove.approved += 1
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

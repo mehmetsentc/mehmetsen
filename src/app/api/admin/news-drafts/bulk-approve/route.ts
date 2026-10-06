@@ -3,12 +3,15 @@
  *
  * Tüm pending_review taslakları toplu onaylar.
  * Opsiyonel body: { minConfidence: number } — sadece bu skorun üstündekileri onayla.
+ * Okur haberleri (UGC) toplu onaya asla girmez — yalnızca tekil editör incelemesi
+ * (SEC-UGC-INTEGRITY-REPAIR-1).
  */
 import { NextResponse } from 'next/server'
 import { verifyAdminRequest } from '@/lib/adminAuth'
 import { newsDraftService } from '@/services/newsDraftService'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/firestore'
+import { partitionBulkApprovalCandidates } from '@/lib/editorial/ugcPublicationBoundary'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +36,10 @@ export async function POST(request: Request) {
     .limit(500)
     .get()
 
-  const docs = snap.docs.filter(d => {
+  // UGC never enters bulk approval (server-enforced; approveDraft also refuses in bulk mode).
+  const { eligible, ugcExcluded } = partitionBulkApprovalCandidates(snap.docs, (d) => d.data())
+
+  const docs = eligible.filter(d => {
     const conf = (d.data() as { confidenceScore?: number }).confidenceScore ?? 100
     return conf >= minConfidence
   })
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
 
   for (const doc of docs) {
     try {
-      const result = await newsDraftService.approveDraft(doc.id, { uid: admin.uid })
+      const result = await newsDraftService.approveDraft(doc.id, { uid: admin.uid }, { mode: 'bulk' })
       approved++
       if (result.slug) publishedSlugs.push(result.slug)
       const data = doc.data() as {
@@ -93,6 +99,7 @@ export async function POST(request: Request) {
     total: docs.length,
     approved,
     skipped,
+    ugcExcluded: ugcExcluded.length,
     errors: errors.slice(0, 20),
   })
 }
