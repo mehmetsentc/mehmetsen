@@ -1406,7 +1406,12 @@ export async function getPostsByAuthorId(authorId: string, limitCount = 40): Pro
  * key (~311 scans / ~124k reads a day, mostly bots walking /kaynak pages). Every
  * source filters the same recent window, so share one 400-doc pool for 30 minutes.
  */
-const SOURCE_POOL_SIZE = 400
+// FinOps 6 Oct: 400 card docs exceeded the 2 MB data-cache item limit, so the
+// "30-minute" pool was rebuilt ~250x/day (Query Insights). 150 fits; an
+// in-process floor covers instances between data-cache hits.
+const SOURCE_POOL_SIZE = 150
+const SOURCE_POOL_MEMO_MS = 30 * 60 * 1000
+let sourcePoolMemo: { at: number; posts: Post[] } | null = null
 
 const getRecentSourcePoolCached = unstable_cache(
   async (): Promise<Post[]> => {
@@ -1427,12 +1432,18 @@ const getRecentSourcePoolCached = unstable_cache(
       return []
     }
   },
-  ['posts-by-source-pool-v1'],
+  ['posts-by-source-pool-v2'],
   { revalidate: 1800, tags: ['source'] }
 )
 
 async function getPostsBySourceCached(normalizedSource: string, limitCount: number): Promise<Post[]> {
-  const pool = await getRecentSourcePoolCached()
+  let pool: Post[]
+  if (sourcePoolMemo && Date.now() - sourcePoolMemo.at < SOURCE_POOL_MEMO_MS) {
+    pool = sourcePoolMemo.posts
+  } else {
+    pool = await getRecentSourcePoolCached()
+    if (pool.length) sourcePoolMemo = { at: Date.now(), posts: pool }
+  }
   return pool
     .filter(
       (post) =>
