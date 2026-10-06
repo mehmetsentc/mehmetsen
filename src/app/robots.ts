@@ -95,6 +95,16 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     'Baiduspider',
   ]
 
+  // FinOps 6 Oct: Amazon's search crawler walked noindex tag pages on the city
+  // host every ~10s (Vercel logs), each an uncached Firestore tag query. It may
+  // still crawl articles and categories; only the noindex /etiket/ pages are off.
+  const TAG_CRAWL_LIMITED_BOTS = ['Amzn-SearchBot']
+  const tagLimitedRule = {
+    userAgent: TAG_CRAWL_LIMITED_BOTS,
+    allow: '/',
+    disallow: [...commonDisallow, '/etiket/'],
+  }
+
   if (citySlug) {
     // ── City subdomain ──────────────────────────────────────────────────────
     return {
@@ -122,6 +132,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           userAgent: SEO_TOOL_BOTS,
           disallow: '/',
         },
+        tagLimitedRule,
       ],
       // SEO-2C: city hosts own no NewsArticle URLs (article canonicals are www),
       // so their /news-sitemap.xml is permanently empty and is not advertised.
@@ -162,6 +173,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         userAgent: SEO_TOOL_BOTS,
         disallow: '/',
       },
+      tagLimitedRule,
     ],
     sitemap: [
       `${siteUrl}/sitemap.xml`,
