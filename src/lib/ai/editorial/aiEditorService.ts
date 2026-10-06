@@ -131,6 +131,24 @@ export async function listAiEditors(opts?: {
   return out.slice(0, cap)
 }
 
+/**
+ * FinOps 6 Oct: serverless instances restart often, and each cold start re-read the
+ * full roster (~2k docs incl. bio, model assignments, local config, source lists) —
+ * ~115k reads and several GiB of Firestore egress a day. Routing, agents and the CMS
+ * list only need these fields; callers that build prompts hydrate the chosen editor
+ * with getAiEditorById (one read).
+ */
+const AI_EDITOR_ROSTER_FIELDS = [
+  'authorUid', 'name', 'slug', 'avatarUrl', 'title', 'shortBio', 'columnName',
+  'primarySpecialization', 'specializations', 'categoryIds', 'managedCategories',
+  'citySlug', 'countrySlug', 'districtSlug', 'editorLayer', 'languages', 'status',
+  'isAI', 'verified', 'capabilities', 'publishPolicy', 'maxDailyNews', 'maxDailyColumns',
+  'maxDailyVideos', 'personaType', 'desk', 'editorialMission', 'temperature',
+  'fallbackEditorSlug', 'assignableForNews', 'scaleHardened', 'autoPublishUnlockThreshold',
+  'consecutiveQualityGatePasses', 'scaleDailyNewsCount', 'scaleDailyNewsYmd', 'version',
+  'createdAt', 'updatedAt', 'joinDate', 'lastActiveAt', 'createdBy', 'managerAgentId',
+] as const
+
 async function fetchAllAiEditors(): Promise<AiEditorDocument[]> {
   const db = getAdminFirestore()
   const cap = AI_EDITORS_FETCH_CAP
@@ -138,7 +156,11 @@ async function fetchAllAiEditors(): Promise<AiEditorDocument[]> {
   let last: QueryDocumentSnapshot | undefined
   while (editors.length < cap) {
     const pageSize = Math.min(400, cap - editors.length)
-    let q = db.collection(Collections.AI_EDITORS).orderBy('__name__').limit(pageSize)
+    let q = db
+      .collection(Collections.AI_EDITORS)
+      .select(...AI_EDITOR_ROSTER_FIELDS)
+      .orderBy('__name__')
+      .limit(pageSize)
     if (last) q = q.startAfter(last)
     const snap = await q.get()
     if (snap.empty) break

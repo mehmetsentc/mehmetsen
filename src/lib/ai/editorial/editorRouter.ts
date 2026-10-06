@@ -483,7 +483,9 @@ export async function routeAiEditor(input: EditorRouteInput): Promise<AiEditorDo
   }
 
   const editors = await activeEditors()
-  return pickAiEditorFromList(editors, input)
+  const picked = pickAiEditorFromList(editors, input)
+  // Roster rows are a field projection (FinOps); prompts need the full document.
+  return picked ? ((await getAiEditorById(picked.id)) ?? picked) : null
 }
 
 export async function routeEditorial(input: EditorRouteInput): Promise<EditorialRouteResult> {
@@ -504,7 +506,12 @@ export async function routeEditorial(input: EditorRouteInput): Promise<Editorial
     }
   }
   const editors = await activeEditors()
-  return routeEditorialFromList(editors, input)
+  const routed = routeEditorialFromList(editors, input)
+  if (routed.editor) {
+    const full = await getAiEditorById(routed.editor.id)
+    if (full) return { ...routed, editor: full }
+  }
+  return routed
 }
 
 export function authorFieldsFromEditor(editor: AiEditorDocument): {

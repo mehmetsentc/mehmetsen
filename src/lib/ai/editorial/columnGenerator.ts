@@ -1,6 +1,6 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { listAiEditors } from '@/lib/ai/editorial/aiEditorService'
+import { getAiEditorById, listAiEditors } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import { authorFieldsFromEditor } from '@/lib/ai/editorial/editorRouter'
@@ -32,8 +32,10 @@ export async function runDailyColumnGeneration(limit = 3): Promise<{
   const db = getAdminFirestore()
   const today = dayKey()
 
-  for (const editor of editors.slice(0, limit)) {
+  for (const rosterEditor of editors.slice(0, limit)) {
     attempted++
+    // Roster rows are a field projection (FinOps); column prompts need the full doc.
+    const editor = (await getAiEditorById(rosterEditor.id)) ?? rosterEditor
     const fingerprint = `column:${editor.id}:${today}`
     const existing = await db
       .collection(Collections.NEWS_DRAFTS)
