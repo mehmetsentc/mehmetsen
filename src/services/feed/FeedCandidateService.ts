@@ -30,6 +30,14 @@ import {
 const DEFAULT_POOL_SIZE = 150
 /** Bounded FS supplement batches — avoid scanning the full legacy corpus. */
 const FS_SUPPLEMENT_BATCH = 80
+/**
+ * FinOps 7 Oct: windows were read at 2x the rows needed (Query Insights: category
+ * LIMIT 72 for 36-row tabs, ~93k reads/day). 1.25x + 4 still leaves room for
+ * seen/cluster rejections; underfilled windows keep paging (max attempts unchanged).
+ */
+function fsOverfetch(rowsNeeded: number): number {
+  return Math.ceil(rowsNeeded * 1.25) + 4
+}
 const FS_SUPPLEMENT_MAX_ATTEMPTS = 4
 /**
  * Older-window / large-exclude cap. Default 4 (was 8).
@@ -579,7 +587,7 @@ export class FeedCandidateService {
           attempts += 1
           const batchSize = Math.min(
             FS_SUPPLEMENT_BATCH,
-            Math.max(needed - rows.length, 20) * 2
+            fsOverfetch(Math.max(needed - rows.length, 20))
           )
           let q = projectFeedQuery(buildBase()).limit(batchSize)
           if (lastDoc) {
@@ -632,7 +640,7 @@ export class FeedCandidateService {
               // ~4 (yerel = 81 provinces → thousands of reads per request).
               const batchSize = Math.min(
                 FS_SUPPLEMENT_BATCH,
-                Math.max(perCategoryQuota - bucket.length, 4) * 2
+                fsOverfetch(Math.max(perCategoryQuota - bucket.length, 4))
               )
               let q: FirebaseFirestore.Query = db
                 .collection(Collections.NEWS)
@@ -1160,7 +1168,7 @@ export class FeedCandidateService {
         attempts += 1
         const batchSize = Math.min(
           FS_SUPPLEMENT_BATCH,
-          Math.max(needed - districtHits.length - cityHits.length, 20) * 2
+          fsOverfetch(Math.max(needed - districtHits.length - cityHits.length, 20))
         )
         let q: FirebaseFirestore.Query = db
           .collection(Collections.NEWS)
