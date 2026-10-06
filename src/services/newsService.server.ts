@@ -828,20 +828,24 @@ const getCategoryStoryPoolCached = unstable_cache(
   async () => {
     try {
       const since = Date.now() - CATEGORY_STORY_WINDOW_MS
-      const snap = await getAdminFirestore()
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('publishedAt', '>=', since)
-        .orderBy('publishedAt', 'desc')
-        .limit(CATEGORY_STORY_FETCH_LIMIT)
-        .get()
+      // FinOps 6 Oct: card fields only — full docs (body/html) made this ~200+
+      // doc pool the heaviest Firestore egress per call, and too large for the
+      // data cache, so it re-ran ~250x/day.
+      const snap = await selectNewsCardFields(
+        getAdminFirestore()
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('publishedAt', '>=', since)
+          .orderBy('publishedAt', 'desc')
+          .limit(CATEGORY_STORY_FETCH_LIMIT)
+      ).get()
       return mapAdminDocs(snap.docs)
     } catch (error) {
       console.warn('[newsService.server] category story pool failed:', error)
       return []
     }
   },
-  ['category-story-pool-v1'],
+  ['category-story-pool-v2'],
   { revalidate: 60, tags: ['home-feed'] }
 )
 
