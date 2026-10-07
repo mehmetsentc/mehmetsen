@@ -14,8 +14,9 @@
  * (Çanakkale first; other provinces are opened one by one with a code change).
  */
 import type { CmsRole } from '@/types/cms'
-import type { StaffContentScope, StaffScopeState, StaffTier } from '@/lib/cms/rbacScope'
+import type { StaffContentScope, StaffScopeState, StaffSection, StaffTier } from '@/lib/cms/rbacScope'
 import { staffTierOf } from '@/lib/cms/rbacScope'
+import { STAFF_RIGHTS, isStaffRight } from '@/lib/cms/staffRights'
 
 export const STAFF_HIERARCHY_ACTIVE_PROVINCES: readonly string[] = ['canakkale']
 
@@ -112,11 +113,64 @@ function isProvinceGeneralOf(actor: StaffIdentity, province: string): boolean {
   )
 }
 
-/** Target may be touched only if it is a plain user or a district-tier editor of `province`. */
+const SUBORDINATE_TIERS: readonly StaffTier[] = ['district_general', 'district_category', 'section_editor']
+
+/** Target may be touched only if it is a plain user or a subordinate editor of `province`. */
 function targetIsManageableByProvinceEditor(target: StaffIdentity, province: string): boolean {
   if (target.role === 'user' && target.scope.kind === 'unscoped') return true
-  const tier = staffTierOf(target.scope)
-  return (tier === 'district_general' || tier === 'district_category') && provinceOf(target.scope) === province
+  return SUBORDINATE_TIERS.includes(staffTierOf(target.scope)) && provinceOf(target.scope) === province
+}
+
+export interface SectionInput {
+  districtSlug?: string | null
+  categoryId?: string | null
+  rights?: unknown
+}
+
+export const MAX_STAFF_SECTIONS = 50
+
+/**
+ * Phase 2D: validate a section editor's areas (all in ONE province) + per-area rights.
+ * Rights start empty and are granted one by one. Returns the exact cmsScope to store.
+ */
+export function buildSections(
+  provinceSlug: string,
+  input: SectionInput[],
+  deps: HierarchyDeps
+): { ok: true; role: CmsRole; cmsScope: { provinceSlugs: string[]; sections: StaffSection[] } } | Denied {
+  const province = String(provinceSlug ?? '').trim()
+  if (!deps.isProvinceSlug(province)) return deny('INVALID_PROVINCE', 'Geçersiz il')
+  if (!isStaffHierarchyActiveProvince(province)) return deny('PROVINCE_NOT_ACTIVE', 'Bu il için editör yapısı henüz açılmadı')
+  if (!Array.isArray(input) || input.length === 0) return deny('NO_SECTIONS', 'En az bir bölüm seçin')
+  if (input.length > MAX_STAFF_SECTIONS) return deny('TOO_MANY_SECTIONS', 'Çok fazla bölüm')
+  const sections: StaffSection[] = []
+  for (const raw of input) {
+    const d = String(raw?.districtSlug ?? '').trim() || null
+    const c = String(raw?.categoryId ?? '').trim() || null
+    if (d && !deps.isDistrictOfProvince(d, province)) return deny('INVALID_DISTRICT', 'İlçe bu ile ait değil')
+    if (c && !deps.isKnownCategory(c)) return deny('INVALID_CATEGORY', 'Geçersiz kategori')
+    if (!d && !c) return deny('SECTION_TOO_BROAD', 'Bölüm için ilçe veya kategori seçin (tüm il = il genel editörü)')
+    if (!Array.isArray(raw?.rights) || !(raw.rights as unknown[]).every(isStaffRight)) {
+      return deny('INVALID_RIGHTS', 'Geçersiz yetki')
+    }
+    if (sections.some((s) => s.districtSlug === d && s.categoryId === c)) {
+      return deny('DUPLICATE_SECTION', 'Aynı bölüm iki kez seçildi')
+    }
+    sections.push({ districtSlug: d, categoryId: c, rights: STAFF_RIGHTS.filter((r) => (raw.rights as unknown[]).includes(r)) })
+  }
+  return { ok: true, role: 'editor', cmsScope: { provinceSlugs: [province], sections } }
+}
+
+/** May `actor` set `target`'s sections in `province`? */
+export function canSetSections(actor: StaffIdentity, target: StaffIdentity, province: string): HierarchyDecision {
+  if (actor.uid === target.uid) return deny('SELF_ASSIGNMENT', 'Kendi yetkinizi değiştiremezsiniz')
+  if (target.role === 'super_admin') return deny('TARGET_SUPER_ADMIN', 'Süper admin değiştirilemez')
+  if (actor.role === 'super_admin') return { ok: true }
+  if (!isProvinceGeneralOf(actor, province)) return deny('NOT_ALLOWED', 'Bu atamayı yapma yetkiniz yok')
+  if (!targetIsManageableByProvinceEditor(target, province)) {
+    return deny('TARGET_OUT_OF_REACH', 'Bu kullanıcı sizin ilinizdeki bir editör veya normal kullanıcı değil')
+  }
+  return { ok: true }
 }
 
 /** May `actor` give `target` the tier in `req`? (shape already validated by buildAssignment) */
@@ -143,8 +197,8 @@ export function canRevoke(actor: StaffIdentity, target: StaffIdentity): Hierarch
   if (actor.role === 'super_admin') return { ok: true }
   const province = provinceOf(target.scope)
   if (!province || !isProvinceGeneralOf(actor, province)) return deny('NOT_ALLOWED', 'Bu işlemi yapma yetkiniz yok')
-  if (tier !== 'district_general' && tier !== 'district_category') {
-    return deny('NOT_ALLOWED', 'Yalnızca ilçe editörlerini kaldırabilirsiniz')
+  if (!SUBORDINATE_TIERS.includes(tier)) {
+    return deny('NOT_ALLOWED', 'Yalnızca ilçe/bölüm editörlerini kaldırabilirsiniz')
   }
   return { ok: true }
 }

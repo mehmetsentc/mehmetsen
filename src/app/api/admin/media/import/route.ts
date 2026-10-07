@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { allStaffRights } from '@/lib/cms/rbacScope'
 import { getAdminStorage } from '@/lib/firebase/admin'
 
 export const runtime = 'nodejs'
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
   // (the file is not tied to a story; the story save itself is scope-checked).
   const auth = await verifyCmsToken(request, 'news:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!allStaffRights(auth.scope).includes('media')) {
+    return NextResponse.json({ error: 'Resim/video ekleme yetkiniz yok', code: 'STAFF_RIGHT_MISSING' }, { status: 403 })
+  }
 
   let url: string
   try {

@@ -3,7 +3,8 @@ import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { contentScopeOf, isScopeRestricted } from '@/lib/cms/rbacScope'
-import { denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
+import { denyIfMissingStaffRights, denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
+import { requiredRightsForUpdate } from '@/lib/cms/staffRights'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
@@ -514,6 +515,14 @@ export async function PUT(request: Request, context: RouteContext) {
       // article out of (or into) their province/category by editing geo/category.
       const deniedAfter = denyIfOutsideStaffScope(auth, contentScopeOf({ ...prevData, ...update }))
       if (deniedAfter) return deniedAfter
+      // Phase 2D: every right the edit needs, on the section before AND after the edit.
+      const rightDenied = denyIfMissingStaffRights(
+        auth,
+        requiredRightsForUpdate(body as unknown as Record<string, unknown>, prevData),
+        contentScopeOf(prevData),
+        contentScopeOf({ ...prevData, ...update })
+      )
+      if (rightDenied) return rightDenied
 
       // Guarantee published articles always carry a numeric `publishedAt`. Category
       // and home listings order by `publishedAt`, and Firestore's orderBy silently
@@ -655,6 +664,13 @@ export async function PUT(request: Request, context: RouteContext) {
         contentScopeOf({ ...draftSnap.data(), ...draftUpdate })
       )
       if (draftDenied) return draftDenied
+      const draftRightDenied = denyIfMissingStaffRights(
+        auth,
+        requiredRightsForUpdate(body as unknown as Record<string, unknown>, draftSnap.data()),
+        contentScopeOf(draftSnap.data()),
+        contentScopeOf({ ...draftSnap.data(), ...draftUpdate })
+      )
+      if (draftRightDenied) return draftRightDenied
 
       // Öne Çıkan → otomatik yayına al (UI status=published gönderir; featured da yeterli)
       const shouldPublish =
@@ -787,6 +803,8 @@ export async function DELETE(request: Request, context: RouteContext) {
     if (newsSnap.exists) {
       const deniedNews = denyIfOutsideStaffScope(auth, contentScopeOf(newsSnap.data()))
       if (deniedNews) return deniedNews
+      const noPublish = denyIfMissingStaffRights(auth, ['publish'], contentScopeOf(newsSnap.data()))
+      if (noPublish) return noPublish
       categoryId = newsSnap.data()?.categoryId as string | undefined
       slug = newsSnap.data()?.slug as string | undefined
       if (permanent) {
@@ -810,6 +828,8 @@ export async function DELETE(request: Request, context: RouteContext) {
       if (!draftSnap.exists) return NextResponse.json({ error: 'Article not found' }, { status: 404 })
       const deniedDraft = denyIfOutsideStaffScope(auth, contentScopeOf(draftSnap.data()))
       if (deniedDraft) return deniedDraft
+      const noPublishDraft = denyIfMissingStaffRights(auth, ['publish'], contentScopeOf(draftSnap.data()))
+      if (noPublishDraft) return noPublishDraft
       categoryId = draftSnap.data()?.categoryId as string | undefined
       collection = 'newsDrafts'
       await draftRef.delete()

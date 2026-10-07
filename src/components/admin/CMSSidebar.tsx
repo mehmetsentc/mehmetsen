@@ -23,7 +23,7 @@ import { isMediaStudioEnabled } from '@/media-studio/featureFlag'
 import { MEDIA_STUDIO_HREF, MEDIA_STUDIO_LABEL, insertMediaStudioNav } from '@/media-studio/nav'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
-import { getCachedStaffScope, subscribeStaffScope, type MyStaffScope } from '@/lib/cms/staffScopeClient'
+import { getCachedStaffScope, scopeHasRight, subscribeStaffScope, type MyStaffScope } from '@/lib/cms/staffScopeClient'
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   trend: Flame,
@@ -200,9 +200,13 @@ function scopedNavGroups(scope: MyStaffScope): NavGroup[] {
     { href: '/admin/news', label: 'Haberlerim', icon: Newspaper, requiredPermissions: ['news:read'], exact: true },
     { href: '/admin/news?filter=pending', label: 'Onay Bekleyenler', icon: Clock, requiredPermissions: ['news:read'] },
     { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'] },
-    { href: '/admin/news/create', label: 'Yeni Haber', icon: Zap, requiredPermissions: ['news:create'] },
-    { href: '/admin/ads', label: 'Reklamlarım', icon: LayoutGrid, requiredPermissions: ['news:read'] },
   ]
+  if (scopeHasRight(scope, 'create')) {
+    items.push({ href: '/admin/news/create', label: 'Yeni Haber', icon: Zap, requiredPermissions: ['news:create'] })
+  }
+  if (scopeHasRight(scope, 'ads') || scope.canManageStaff) {
+    items.push({ href: '/admin/ads', label: 'Reklamlarım', icon: LayoutGrid, requiredPermissions: ['news:read'] })
+  }
   if (scope.canManageStaff) {
     items.push({ href: '/admin/ekip', label: 'Ekibim', icon: Users, requiredPermissions: ['news:read'] })
   }

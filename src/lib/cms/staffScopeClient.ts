@@ -15,6 +15,13 @@ export interface MyStaffScope {
   districtSlug: string | null
   categoryId: string | null
   canManageStaff: boolean
+  /** Phase 2D: rights held in at least one section. */
+  rights?: string[]
+}
+
+export function scopeHasRight(scope: MyStaffScope | null | undefined, right: string): boolean {
+  if (!scope?.scoped) return true
+  return (scope.rights ?? []).includes(right)
 }
 
 let cached: MyStaffScope | null = null
@@ -72,8 +79,11 @@ export function clearStaffScopeCache(): void {
 
 /** Admin paths a scoped editor may open; everything else redirects to /admin/news. */
 export function isScopedEditorPathAllowed(pathname: string, scope: MyStaffScope): boolean {
+  if (pathname === '/admin/news/create' || pathname.startsWith('/admin/news/create/')) {
+    return scopeHasRight(scope, 'create')
+  }
   if (pathname === '/admin/news' || pathname.startsWith('/admin/news/')) return true
-  if (pathname === '/admin/ads' || pathname.startsWith('/admin/ads/')) return true
+  if (pathname === '/admin/ads' || pathname.startsWith('/admin/ads/')) return scopeHasRight(scope, 'ads') || scope.canManageStaff
   if (scope.canManageStaff && (pathname === '/admin/ekip' || pathname.startsWith('/admin/ekip/'))) return true
   return false
 }

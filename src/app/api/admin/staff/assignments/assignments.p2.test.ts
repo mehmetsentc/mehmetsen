@@ -167,3 +167,33 @@ describe('GET staff list', () => {
     expect((await get('t-ezine', 'canakkale')).status).toBe(403)
   })
 })
+
+describe('POST set_sections (Phase 2D)', () => {
+  it('il genel editörü gives a reader several areas with rights one by one', async () => {
+    const res = await post('t-cnk', {
+      action: 'set_sections', targetUid: 'u-reader', provinceSlug: 'canakkale',
+      sections: [
+        { districtSlug: 'ezine', categoryId: null, rights: ['edit'] },
+        { districtSlug: 'biga', categoryId: 'spor', rights: [] },
+      ],
+    })
+    expect(res.status).toBe(200)
+    expect(user('u-reader')).toMatchObject({
+      role: 'editor',
+      cmsScope: { provinceSlugs: ['canakkale'], sections: [
+        { districtSlug: 'ezine', categoryId: null, rights: ['edit'] },
+        { districtSlug: 'biga', categoryId: 'spor', rights: [] },
+      ] },
+    })
+    const list = await (await get('t-cnk', 'canakkale')).json()
+    expect(list.staff.find((s: { uid: string }) => s.uid === 'u-reader')).toMatchObject({ tier: 'section_editor' })
+  })
+  it('district editors / other provinces cannot set sections; bad rights rejected', async () => {
+    const body = { action: 'set_sections', targetUid: 'u-reader2', provinceSlug: 'canakkale', sections: [{ districtSlug: 'biga', rights: ['edit'] }] }
+    expect((await post('t-ezine', body)).status).toBe(403)
+    expect((await post('t-ant', body)).status).toBe(403)
+    expect((await post('t-cnk', { ...body, sections: [{ districtSlug: 'biga', rights: ['root'] }] })).status).toBe(400)
+    expect(user('u-reader2')).toEqual({ role: 'user' })
+  })
+})
+

@@ -16,7 +16,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params
-  const outOfScope = await denyIfDocOutsideStaffScope(admin, 'newsDrafts', id)
+  const outOfScope = await denyIfDocOutsideStaffScope(admin, 'newsDrafts', id, 'publish')
   if (outOfScope) return outOfScope
   let reason: string | undefined
   try {

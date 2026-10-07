@@ -70,6 +70,7 @@ function seed() {
   user('t-ezine', 'u-ezine', { role: 'editor', cmsScope: { provinceSlugs: ['canakkale'], districtSlugs: ['ezine'] } })
   user('t-merkez-spor', 'u-ms', { role: 'editor', cmsScope: { provinceSlugs: ['canakkale'], districtSlugs: ['merkez'], categoryIds: ['spor'] } })
   user('t-global', 'u-global', { role: 'editor' })
+  user('t-sec', 'u-sec', { role: 'editor', cmsScope: { provinceSlugs: ['canakkale'], sections: [{ districtSlug: 'ezine', categoryId: null, rights: ['edit'] }] } })
   const news = colMap('news')
   news.set('n-ezine', { title: 'Ezine', citySlug: 'canakkale', districtSlug: 'ezine', categoryId: 'gundem', status: 'published', createdAt: now - 1 })
   news.set('n-biga', { title: 'Biga', citySlug: 'canakkale', districtSlug: 'biga', categoryId: 'gundem', status: 'published', createdAt: now - 2 })
@@ -153,3 +154,18 @@ describe('GET /api/admin/me/scope', () => {
     expect(await (await meScope(req('/x', 't-global'))).json()).toMatchObject({ scoped: false, canManageStaff: false })
   })
 })
+
+describe('Phase 2D rights per area', () => {
+  it('edit-only editor: can change text, cannot publish, approve, archive or change media', async () => {
+    expect(await ids(await listScoped(req('/api/admin/news/scoped?view=all', 't-sec')))).toEqual(['n-ezine'])
+    expect((await putOne(req('/x', 't-sec', 'PUT', { title: 'Yeni başlık' }), ctx('n-ezine'))).status).toBe(200)
+    const pub = await putOne(req('/x', 't-sec', 'PUT', { status: 'published', title: 'Yeni başlık' }), ctx('n-ezine'))
+    expect(pub.status).toBe(200) // already published → unchanged status needs nothing
+    expect((await putOne(req('/x', 't-sec', 'PUT', { status: 'archived' }), ctx('n-ezine'))).status).toBe(403)
+    expect((await putOne(req('/x', 't-sec', 'PUT', { thumbnail: 'https://i/x.jpg' }), ctx('n-ezine'))).status).toBe(403)
+    expect((await putOne(req('/x', 't-sec', 'PUT', { tags: ['yeni'] }), ctx('n-ezine'))).status).toBe(403)
+    expect((await approveDraftRoute(req('/x', 't-sec', 'POST'), ctx('d-ezine'))).status).toBe(403)
+    expect(approveDraft).not.toHaveBeenCalled()
+  })
+})
+

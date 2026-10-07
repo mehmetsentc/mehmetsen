@@ -28,11 +28,14 @@ import { staffTierOf, type StaffScopeState } from '@/lib/cms/rbacScope'
 import {
   ASSIGNABLE_TIERS,
   buildAssignment,
+  buildSections,
   canAssign,
+  canSetSections,
   canManageProvinceStaff,
   canRevoke,
   type AssignableTier,
   type HierarchyDeps,
+  type SectionInput,
   type StaffIdentity,
 } from '@/lib/cms/staffHierarchy'
 
@@ -51,13 +54,14 @@ const deps: HierarchyDeps = {
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status })
 
 function scopeSummary(state: StaffScopeState) {
-  if (state.kind !== 'scoped') return { tier: staffTierOf(state) }
-  const { provinceSlugs, districtSlugs, categoryIds } = state.scope
+  if (state.kind !== 'scoped') return { tier: staffTierOf(state), sections: null }
+  const { provinceSlugs, districtSlugs, categoryIds, sections } = state.scope
   return {
     tier: staffTierOf(state),
     provinceSlug: provinceSlugs[0] ?? null,
     districtSlug: districtSlugs[0] ?? null,
     categoryId: categoryIds[0] ?? null,
+    sections: sections ?? null,
   }
 }
 
@@ -88,7 +92,9 @@ export async function GET(request: Request) {
   // Exact username lookup (public profile handle) to pick an assignee.
   const lookup = new URL(request.url).searchParams.get('lookup')?.trim() ?? ''
   if (lookup) {
-    const hit = await getAdminFirestore().collection(Collections.USERS).where('username', '==', lookup).limit(2).get()
+    // E-posta araması yalnızca süper admin için (PII); diğerleri kullanıcı adıyla arar.
+    const field = lookup.includes('@') && auth.role === 'super_admin' ? 'email' : 'username'
+    const hit = await getAdminFirestore().collection(Collections.USERS).where(field, '==', lookup).limit(2).get()
     if (hit.docs.length !== 1) return json({ user: null })
     const d = hit.docs[0]!
     const data = d.data() as Record<string, unknown>
@@ -132,10 +138,18 @@ export async function POST(request: Request) {
   if (!body) return json({ error: 'Geçersiz istek' }, 400)
   const action = body.action
   const targetUid = typeof body.targetUid === 'string' ? body.targetUid.trim() : ''
-  if (action !== 'assign' && action !== 'revoke') return json({ error: 'Geçersiz işlem' }, 400)
+  if (action !== 'assign' && action !== 'revoke' && action !== 'set_sections') {
+    return json({ error: 'Geçersiz işlem' }, 400)
+  }
   if (!UID_RE.test(targetUid)) return json({ error: 'Geçersiz kullanıcı' }, 400)
 
   let built: ReturnType<typeof buildAssignment> | null = null
+  let builtSections: ReturnType<typeof buildSections> | null = null
+  const sectionsProvince = String(body.provinceSlug ?? '').trim()
+  if (action === 'set_sections') {
+    builtSections = buildSections(sectionsProvince, (body.sections ?? []) as SectionInput[], deps)
+    if (!builtSections.ok) return json({ error: builtSections.message, code: builtSections.code }, 400)
+  }
   if (action === 'assign') {
     const tier = body.tier as AssignableTier
     if (!ASSIGNABLE_TIERS.includes(tier)) return json({ error: 'Geçersiz editör seviyesi' }, 400)
@@ -161,7 +175,11 @@ export async function POST(request: Request) {
       const target = await resolveTargetIdentity(targetUid, before)
 
       let after: { role: string; cmsScope: Record<string, unknown> | null }
-      if (action === 'assign' && built?.ok) {
+      if (action === 'set_sections' && builtSections?.ok) {
+        const decision = canSetSections(actor, target, sectionsProvince)
+        if (!decision.ok) return { status: 403, body: { error: decision.message, code: decision.code } }
+        after = { role: builtSections.role, cmsScope: builtSections.cmsScope as unknown as Record<string, unknown> }
+      } else if (action === 'assign' && built?.ok) {
         const decision = canAssign(actor, target, {
           tier: body.tier as AssignableTier,
           provinceSlug: String(body.provinceSlug ?? ''),

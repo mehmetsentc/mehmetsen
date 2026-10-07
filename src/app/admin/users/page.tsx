@@ -16,6 +16,15 @@ import { CMS_ROLE_LABELS, CMS_ROLE_COLORS, type CmsRole } from '@/types/cms'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import type { UserRole } from '@/types/user'
+import { Pencil, UserPlus } from 'lucide-react'
+import {
+  StaffAccessEditor,
+  describeStaffAccess,
+  staffAccessFromUserDoc,
+  type StaffAccessTarget,
+} from '@/components/admin/staff/StaffAccessEditor'
+import { FindStaffUserDialog } from '@/components/admin/staff/FindStaffUserDialog'
+import { STAFF_HIERARCHY_ACTIVE_PROVINCES } from '@/lib/cms/staffHierarchy'
 
 interface UserRow {
   uid: string
@@ -28,6 +37,8 @@ interface UserRow {
   postsCount: number
   followersCount: number
   createdAt: string
+  /** Phase 2D: il/ilçe/bölüm editörlüğü (display). */
+  access: StaffAccessTarget
 }
 
 const ROLE_FILTERS = ['all', 'user', 'author', 'editor', 'managing_editor', 'admin', 'super_admin']
@@ -43,6 +54,9 @@ export default function UsersAdminPage() {
   const [hasMore, setHasMore] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [finding, setFinding] = useState(false)
+  const [editingAccess, setEditingAccess] = useState<StaffAccessTarget | null>(null)
+  const canManageEditors = can('users:assign_role')
 
   const loadUsers = useCallback(async (reset = true) => {
     setLoading(true)
@@ -75,6 +89,7 @@ export default function UsersAdminPage() {
           postsCount: (data.postsCount as number) ?? 0,
           followersCount: (data.followersCount as number) ?? 0,
           createdAt,
+          access: staffAccessFromUserDoc(d.id, data as Record<string, unknown>),
         }
       })
       setUsers(prev => reset ? rows : [...prev, ...rows])
@@ -129,7 +144,21 @@ export default function UsersAdminPage() {
 
   return (
     <div className="flex flex-col">
-      <CMSHeader title="Kullanıcı Yönetimi" subtitle="Tüm platform kullanıcıları" />
+      <CMSHeader
+        title="Kullanıcı Yönetimi"
+        subtitle="Tüm platform kullanıcıları"
+        actions={
+          canManageEditors ? (
+            <button
+              type="button"
+              onClick={() => setFinding(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <UserPlus className="h-4 w-4" /> Editör ekle
+            </button>
+          ) : null
+        }
+      />
       <div className="p-6 space-y-4">
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
@@ -169,7 +198,7 @@ export default function UsersAdminPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
-                  {['Kullanıcı', 'Rol', 'Haberler', 'Takipçi', 'Katılım', 'Durum', 'İşlem'].map(h => (
+                  {['Kullanıcı', 'Rol', 'Editörlük', 'Haberler', 'Takipçi', 'Katılım', 'Durum', 'İşlem'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">{h}</th>
                   ))}
                 </tr>
@@ -177,10 +206,10 @@ export default function UsersAdminPage() {
               <tbody className="divide-y divide-[rgb(var(--color-border))]">
                 {loading && filteredUsers.length === 0 ? (
                   Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i}><td colSpan={7} className="px-5 py-3"><div className="h-7 animate-pulse rounded bg-[rgb(var(--color-surface))]" /></td></tr>
+                    <tr key={i}><td colSpan={8} className="px-5 py-3"><div className="h-7 animate-pulse rounded bg-[rgb(var(--color-surface))]" /></td></tr>
                   ))
                 ) : filteredUsers.length === 0 ? (
-                  <tr><td colSpan={7} className="px-5 py-10 text-center text-sm text-[rgb(var(--color-muted))]">Kullanıcı bulunamadı</td></tr>
+                  <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-[rgb(var(--color-muted))]">Kullanıcı bulunamadı</td></tr>
                 ) : filteredUsers.map(user => (
                   <tr key={user.uid} className={cn('transition-colors hover:bg-[rgb(var(--color-surface))]', user.isBlocked && 'opacity-60')}>
                     <td className="px-5 py-4">
@@ -212,6 +241,9 @@ export default function UsersAdminPage() {
                         </span>
                       )}
                     </td>
+                    <td className="max-w-[260px] px-5 py-4 text-xs text-[rgb(var(--color-muted))]">
+                      {describeStaffAccess(user.access) || '—'}
+                    </td>
                     <td className="px-5 py-4 text-sm text-[rgb(var(--color-text))]">{user.postsCount}</td>
                     <td className="px-5 py-4 text-sm text-[rgb(var(--color-text))]">{user.followersCount}</td>
                     <td className="px-5 py-4 text-xs text-[rgb(var(--color-muted))]">
@@ -226,6 +258,16 @@ export default function UsersAdminPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                      {canManageEditors && user.role !== 'super_admin' && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingAccess(user.access)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-500/20"
+                        >
+                          <Pencil className="h-3 w-3" /> Düzenle
+                        </button>
+                      )}
                       {can('users:ban') && user.role !== 'super_admin' && (
                         <button
                           disabled={actionLoading === user.uid}
@@ -238,6 +280,7 @@ export default function UsersAdminPage() {
                           {user.isBlocked ? 'Engeli Kaldır' : 'Engelle'}
                         </button>
                       )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -257,6 +300,28 @@ export default function UsersAdminPage() {
           )}
         </div>
       </div>
+      {finding && (
+        <FindStaffUserDialog
+          province={STAFF_HIERARCHY_ACTIVE_PROVINCES[0] ?? 'canakkale'}
+          allowEmail
+          onClose={() => setFinding(false)}
+          onFound={(u) => {
+            setFinding(false)
+            setEditingAccess(u)
+          }}
+        />
+      )}
+      {editingAccess && (
+        <StaffAccessEditor
+          target={editingAccess}
+          isSuperAdmin={isSuperAdmin}
+          onClose={() => setEditingAccess(null)}
+          onSaved={() => {
+            setLastDoc(null)
+            void loadUsers(true)
+          }}
+        />
+      )}
     </div>
   )
 }

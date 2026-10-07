@@ -5,6 +5,7 @@
 import type { CmsPermission, CmsRole } from '@/types/cms'
 import { hasPermission } from '@/types/cms'
 import type { PermissionScope, ScopedPermissionGrant } from '@/types/newsroomOs'
+import { STAFF_RIGHTS, isStaffRight, type StaffRight } from '@/lib/cms/staffRights'
 
 export interface ResourceScopeContext {
   citySlug?: string | null
@@ -99,11 +100,28 @@ export function isGlobalGrant(grant: ScopedPermissionGrant): boolean {
 //   scope that restricts nothing is treated as a mistake, not as "global").
 // super_admin and env bootstrap admins are never scoped (resolved in cmsAuthServer).
 
+/**
+ * Phase 2D — one responsibility area of a section editor inside its single province.
+ * districtSlug null = whole province; categoryId null = every category.
+ * `rights` are granted one by one (new sections start empty).
+ */
+export interface StaffSection {
+  districtSlug: string | null
+  categoryId: string | null
+  rights: StaffRight[]
+}
+
 export interface StaffContentScope {
   /** Canonical province slugs (e.g. `canakkale`). Empty = no province restriction. */
   provinceSlugs: string[]
   /** District slugs of the single scoped province (e.g. `merkez`). Empty = whole province. */
   districtSlugs: string[]
+  /**
+   * Phase 2D: section editor (several areas in ONE province, rights per area).
+   * When present, districtSlugs/categoryIds are unused. Absent = legacy shape with
+   * every right (il genel editörü, Phase 1 shapes).
+   */
+  sections?: StaffSection[]
   /** Category ids (e.g. `spor`). Empty = no category restriction. */
   categoryIds: string[]
 }
@@ -167,6 +185,9 @@ export function parseStaffScope(
   if (provinceSlugs === null) return { kind: 'invalid', reason: 'invalid_province_slugs' }
   const categoryIds = parseDimension(obj.categoryIds, normalizeCategory, (v) => CATEGORY_ID_RE.test(v))
   if (categoryIds === null) return { kind: 'invalid', reason: 'invalid_category_ids' }
+  if (obj.sections !== undefined && obj.sections !== null) {
+    return parseSections(obj.sections, provinceSlugs, isDistrictOfProvince)
+  }
   const districtSlugs = parseDimension(obj.districtSlugs, normalizeCategory, (v) => DISTRICT_SLUG_RE.test(v))
   if (districtSlugs === null) return { kind: 'invalid', reason: 'invalid_district_slugs' }
   if (districtSlugs.length > 0) {
@@ -180,6 +201,77 @@ export function parseStaffScope(
     return { kind: 'invalid', reason: 'empty_scope' }
   }
   return { kind: 'scoped', scope: { provinceSlugs, districtSlugs, categoryIds } }
+}
+
+const MAX_SECTIONS = 50
+
+function parseSections(
+  raw: unknown,
+  provinceSlugs: string[],
+  isDistrictOfProvince: ((d: string, p: string) => boolean) | undefined
+): StaffScopeState {
+  if (provinceSlugs.length !== 1) return { kind: 'invalid', reason: 'sections_require_single_province' }
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_SECTIONS) {
+    return { kind: 'invalid', reason: 'invalid_sections' }
+  }
+  const province = provinceSlugs[0]!
+  const sections: StaffSection[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return { kind: 'invalid', reason: 'invalid_section' }
+    const o = item as Record<string, unknown>
+    const d = o.districtSlug === null || o.districtSlug === undefined || o.districtSlug === '' ? null : o.districtSlug
+    const c = o.categoryId === null || o.categoryId === undefined || o.categoryId === '' ? null : o.categoryId
+    if (d !== null && (typeof d !== 'string' || !DISTRICT_SLUG_RE.test(d) || !isDistrictOfProvince?.(d, province))) {
+      return { kind: 'invalid', reason: 'district_not_in_province' }
+    }
+    if (c !== null && (typeof c !== 'string' || !CATEGORY_ID_RE.test(c))) return { kind: 'invalid', reason: 'invalid_category_ids' }
+    // A whole-province, all-category section would equal the il genel editörü — not a section.
+    if (d === null && c === null) return { kind: 'invalid', reason: 'section_too_broad' }
+    if (!Array.isArray(o.rights) || !o.rights.every(isStaffRight)) return { kind: 'invalid', reason: 'invalid_rights' }
+    const rights = STAFF_RIGHTS.filter((r) => (o.rights as unknown[]).includes(r))
+    if (sections.some((s) => s.districtSlug === d && s.categoryId === c)) return { kind: 'invalid', reason: 'duplicate_section' }
+    sections.push({ districtSlug: d as string | null, categoryId: c as string | null, rights })
+  }
+  return { kind: 'scoped', scope: { provinceSlugs: [province], districtSlugs: [], categoryIds: [], sections } }
+}
+
+function sectionMatches(section: StaffSection, ctx: ResourceScopeContext): boolean {
+  const district = typeof ctx.districtSlug === 'string' ? normalizeCategory(ctx.districtSlug) : ''
+  const category = typeof ctx.categoryId === 'string' ? normalizeCategory(ctx.categoryId) : ''
+  if (section.districtSlug !== null && district !== section.districtSlug) return false
+  if (section.categoryId !== null && category !== section.categoryId) return false
+  return true
+}
+
+/** Sections of a section editor matching the resource (empty for legacy shapes). */
+function matchingSections(state: StaffScopeState, ctx: ResourceScopeContext): StaffSection[] {
+  if (state.kind !== 'scoped' || !state.scope.sections) return []
+  if (!canAccessProvince(state, ctx.citySlug)) return []
+  return state.scope.sections.filter((s) => sectionMatches(s, ctx))
+}
+
+/**
+ * Phase 2D right check on a resource. Unscoped staff and legacy scoped shapes
+ * (il genel editörü, Phase 1) hold every right inside their scope.
+ */
+export function hasStaffRight(
+  state: StaffScopeState,
+  resource: ResourceScopeContext | null | undefined,
+  right: StaffRight
+): boolean {
+  if (state.kind === 'unscoped') return true
+  if (state.kind === 'invalid') return false
+  const ctx = resource ?? {}
+  if (!state.scope.sections) return canAccessContentScope(state, ctx)
+  return matchingSections(state, ctx).some((s) => s.rights.includes(right))
+}
+
+/** Union of rights the identity holds anywhere (UI gating only). */
+export function allStaffRights(state: StaffScopeState): StaffRight[] {
+  if (state.kind === 'unscoped') return [...STAFF_RIGHTS]
+  if (state.kind === 'invalid') return []
+  if (!state.scope.sections) return [...STAFF_RIGHTS]
+  return STAFF_RIGHTS.filter((r) => state.scope.sections!.some((s) => s.rights.includes(r)))
 }
 
 /** True when the identity carries any scope restriction (including invalid → deny). */
@@ -228,6 +320,7 @@ export function canAccessContentScope(
   if (state.kind === 'unscoped') return true
   if (state.kind === 'invalid') return false
   const ctx = resource ?? {}
+  if (state.scope.sections) return matchingSections(state, ctx).length > 0
   return (
     canAccessProvince(state, ctx.citySlug) &&
     canAccessDistrict(state, ctx.districtSlug) &&
@@ -242,12 +335,15 @@ export type StaffTier =
   | 'province_category'
   | 'district_general'
   | 'district_category'
+  /** Phase 2D: several areas in one province with per-area rights. */
+  | 'section_editor'
   /** Any other valid shape (multi-province, category-only) — legacy, never assignable. */
   | 'custom'
 
 /** Classify a scope into the Phase 2 hierarchy tier. */
 export function staffTierOf(state: StaffScopeState): StaffTier {
   if (state.kind !== 'scoped') return state.kind
+  if (state.scope.sections) return 'section_editor'
   const { provinceSlugs, districtSlugs, categoryIds } = state.scope
   if (provinceSlugs.length !== 1) return 'custom'
   if (districtSlugs.length === 0) {
@@ -268,6 +364,7 @@ export function canManageProvinceSettings(state: StaffScopeState, provinceSlug: 
   if (state.kind === 'invalid') return false
   if (state.scope.categoryIds.length > 0) return false
   if (state.scope.districtSlugs.length > 0) return false
+  if (state.scope.sections) return false
   if (state.scope.provinceSlugs.length === 0) return false
   const slug = typeof provinceSlug === 'string' ? normalizeProvince(provinceSlug) : ''
   return Boolean(slug) && state.scope.provinceSlugs.includes(slug)

@@ -5,7 +5,7 @@
  */
 import { NextResponse } from 'next/server'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
-import { staffTierOf } from '@/lib/cms/rbacScope'
+import { allStaffRights, staffTierOf } from '@/lib/cms/rbacScope'
 import { canManageProvinceStaff } from '@/lib/cms/staffHierarchy'
 
 export const runtime = 'nodejs'
@@ -25,5 +25,8 @@ export async function GET(request: Request) {
     districtSlug: scope?.districtSlugs[0] ?? null,
     categoryId: scope?.categoryIds[0] ?? null,
     canManageStaff: provinceSlug ? canManageProvinceStaff(auth, provinceSlug) : auth.role === 'super_admin',
+    /** Phase 2D: rights held in at least one section (UI gating; server re-checks). */
+    rights: allStaffRights(auth.scope),
+    sections: scope?.sections ?? null,
   })
 }

@@ -9,12 +9,40 @@ import {
   canAccessContentScope,
   canManageProvinceSettings,
   contentScopeOf,
+  hasStaffRight,
   isScopeRestricted,
   type ResourceScopeContext,
   type StaffScopeState,
 } from '@/lib/cms/rbacScope'
 
 export const STAFF_SCOPE_FORBIDDEN_ERROR = 'Bu işlem yetki kapsamınız (il/ilçe/kategori) dışında'
+
+import { STAFF_RIGHT_LABELS, type StaffRight } from '@/lib/cms/staffRights'
+
+export function staffRightForbidden(right: StaffRight): NextResponse {
+  return NextResponse.json(
+    { error: `Bu işlem için "${STAFF_RIGHT_LABELS[right]}" yetkiniz yok`, code: 'STAFF_RIGHT_MISSING', right },
+    { status: 403 }
+  )
+}
+
+/**
+ * Phase 2D: every required right must be held on EVERY resource state (before/after).
+ * Unscoped staff and legacy scoped shapes hold all rights inside their scope.
+ */
+export function denyIfMissingStaffRights(
+  auth: { scope: StaffScopeState },
+  rights: Iterable<StaffRight>,
+  ...resources: Array<ResourceScopeContext | null | undefined>
+): NextResponse | null {
+  if (!isScopeRestricted(auth.scope)) return null
+  for (const right of rights) {
+    for (const r of resources) {
+      if (!hasStaffRight(auth.scope, r, right)) return staffRightForbidden(right)
+    }
+  }
+  return null
+}
 
 export function staffScopeForbidden(): NextResponse {
   return NextResponse.json({ error: STAFF_SCOPE_FORBIDDEN_ERROR, code: 'STAFF_SCOPE_FORBIDDEN' }, { status: 403 })
@@ -53,13 +81,15 @@ export function denyIfCannotManageProvince(
 export async function denyIfDocOutsideStaffScope(
   auth: { scope: StaffScopeState },
   collectionName: string,
-  id: string
+  id: string,
+  requiredRight?: StaffRight
 ): Promise<NextResponse | null> {
   if (!isScopeRestricted(auth.scope)) return null
   const { getAdminFirestore } = await import('@/lib/firebase/admin')
   const snap = await getAdminFirestore().collection(collectionName).doc(id).get()
   if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return canAccessContentScope(auth.scope, contentScopeOf(snap.data() as Record<string, unknown>))
-    ? null
-    : staffScopeForbidden()
+  const ctx = contentScopeOf(snap.data() as Record<string, unknown>)
+  if (!canAccessContentScope(auth.scope, ctx)) return staffScopeForbidden()
+  if (requiredRight && !hasStaffRight(auth.scope, ctx, requiredRight)) return staffRightForbidden(requiredRight)
+  return null
 }

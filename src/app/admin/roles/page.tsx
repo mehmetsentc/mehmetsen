@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { STAFF_RIGHTS, STAFF_RIGHT_LABELS } from '@/lib/cms/staffRights'
 import {
   AdminOsMetricGrid,
   AdminOsPageShell,
@@ -102,8 +103,29 @@ export default function RolesPage() {
         <Link href="/admin/users" className="font-semibold text-[rgb(var(--color-brand))]">
           Adminler / Kullanıcılar
         </Link>
-        . Scoped RBAC: `rbacScope.ts` foundation aktif.
+. İl / ilçe / kategori editörleri için{' '}
+        <Link href="/admin/ekip" className="font-semibold text-[rgb(var(--color-brand))]">
+          İl Ekipleri
+        </Link>
+        .
       </p>
+      <section className="mt-4 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
+        <h2 className="font-semibold">Bölüm editörü yetkileri</h2>
+        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
+          İl genel editörü ilin tamamından sorumludur. Bölüm editörleri bir ildeki bir veya birden fazla ilçe/kategori
+          bölümünden sorumludur; her bölümde aşağıdaki yetkiler tek tek açılır (yeni editörde hepsi kapalı gelir).
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {STAFF_RIGHTS.map((r) => (
+            <span key={r} className="rounded-full border border-[rgb(var(--color-border))] px-3 py-1 text-xs font-medium">
+              {STAFF_RIGHT_LABELS[r]}
+            </span>
+          ))}
+        </div>
+        <Link href="/admin/ekip" className="mt-3 inline-flex rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+          Editör ekle / düzenle
+        </Link>
+      </section>
     </AdminOsPageShell>
   )
 }

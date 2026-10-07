@@ -34,10 +34,25 @@ function scopedProvince(scope: StaffScopeState): string | null {
   return scope.kind === 'scoped' && scope.scope.provinceSlugs.length === 1 ? scope.scope.provinceSlugs[0]! : null
 }
 
+/**
+ * Section editors (Phase 2D): sections holding `ads` whose ilçe covers the ad
+ * (district-less section = whole province). Category is not applied to ads.
+ */
+function adSectionsFor(actor: AdActor, ad: AdTarget) {
+  if (actor.scope.kind !== 'scoped' || !actor.scope.scope.sections) return null
+  if (scopedProvince(actor.scope) !== ad.provinceSlug) return []
+  const district = ad.districtSlug ?? null
+  return actor.scope.scope.sections.filter(
+    (s) => s.rights.includes('ads') && (s.districtSlug === null || s.districtSlug === district)
+  )
+}
+
 /** Can this actor see / edit / delete the ad? */
 export function canManageAd(actor: AdActor, ad: AdTarget): boolean {
   if (actor.scope.kind === 'unscoped') return true
   if (actor.scope.kind === 'invalid' || !ad.provinceSlug) return false
+  const sections = adSectionsFor(actor, ad)
+  if (sections) return sections.length > 0
   // A province-wide ad (no districtSlug) is outside a district editor's reach.
   return canAccessProvince(actor.scope, ad.provinceSlug) && canAccessDistrict(actor.scope, ad.districtSlug ?? '')
 }
@@ -65,6 +80,18 @@ export function forcedAdTarget(
   if (actor.scope.kind !== 'scoped') return { ok: false, error: 'Yetki kapsamı geçersiz' }
   const province = scopedProvince(actor.scope)
   if (!province) return { ok: false, error: 'Yerel reklam için tek bir il kapsamı gerekli' }
+  const sections = actor.scope.scope.sections
+  if (sections) {
+    const withAds = sections.filter((s) => s.rights.includes('ads'))
+    if (withAds.length === 0) return { ok: false, error: 'Reklam ekleme yetkiniz yok' }
+    const requested = String(requestedDistrict ?? '').trim() || null
+    const districts = [...new Set(withAds.map((s) => s.districtSlug))]
+    const chosen = requested ?? (districts.length === 1 ? districts[0]! : null)
+    const allowed = withAds.some((s) => s.districtSlug === null || s.districtSlug === chosen)
+    if (!allowed) return { ok: false, error: 'Bu ilçe için reklam yetkiniz yok' }
+    if (chosen && !isDistrictOfProvince(chosen, province)) return { ok: false, error: 'İlçe bu ile ait değil' }
+    return { ok: true, provinceSlug: province, districtSlug: chosen }
+  }
   const own = actor.scope.scope.districtSlugs
   if (own.length === 1) return { ok: true, provinceSlug: province, districtSlug: own[0]! }
   const district = String(requestedDistrict ?? '').trim()

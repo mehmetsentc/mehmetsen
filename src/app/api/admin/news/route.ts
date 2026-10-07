@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { contentScopeOf, isScopeRestricted } from '@/lib/cms/rbacScope'
-import { denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
+import { denyIfMissingStaffRights, denyIfOutsideStaffScope, staffScopeForbidden } from '@/lib/cms/staffScopeHttp'
+import { requiredRightsForCreate, requiredRightsForUpdate } from '@/lib/cms/staffRights'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import type { Firestore } from 'firebase-admin/firestore'
 import { hasPermission } from '@/types/cms'
@@ -180,6 +181,12 @@ export async function POST(request: Request) {
       if (existing.exists) {
         const denied = denyIfOutsideStaffScope(auth, contentScopeOf(existing.data()))
         if (denied) return denied
+        const noRight = denyIfMissingStaffRights(
+          auth,
+          requiredRightsForUpdate(body as unknown as Record<string, unknown>, existing.data()),
+          contentScopeOf(existing.data())
+        )
+        if (noRight) return noRight
       }
     }
 
@@ -310,6 +317,13 @@ export async function POST(request: Request) {
     // Authorize against the canonical (server-resolved) geo + category, never raw body.
     const scopeDenied = denyIfOutsideStaffScope(auth, contentScopeOf(payload))
     if (scopeDenied) return scopeDenied
+    // Phase 2D: per-editor rights (haber ekleme / resim / yayınlama) on the target section.
+    const rightDenied = denyIfMissingStaffRights(
+      auth,
+      requiredRightsForCreate(body as unknown as Record<string, unknown>),
+      contentScopeOf(payload)
+    )
+    if (rightDenied) return rightDenied
 
     const additionalImages = sanitizeAdditionalImages(body.additionalImages)
     payload.additionalImages = additionalImages
