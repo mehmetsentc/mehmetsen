@@ -109,6 +109,8 @@ export async function POST(request: Request) {
   }
   // Scoped staff: national homepage pin (Öne Çıkan) is a global surface.
   if (scoped && body.featured === true) return staffScopeForbidden()
+  // Phase 2: scoped editors publish under their own byline, never an AI persona.
+  if (scoped && typeof body.aiEditorId === 'string' && body.aiEditorId.trim()) return staffScopeForbidden()
   const willForcePublishViaFeatured = body.featured === true || body.localFeatured === true
   if (
     body.status?.trim() === 'published' &&

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { verifyAdminRequest } from '@/lib/adminAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { denyIfDocOutsideStaffScope } from '@/lib/cms/staffScopeHttp'
 import { newsDraftService } from '@/services/newsDraftService'
 
 export const runtime = 'nodejs'
@@ -9,12 +10,15 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 /** Approve legacy `news` docs with status pending (pre-migration). */
 export async function POST(request: Request, context: RouteContext) {
-  const admin = await verifyAdminRequest(request)
+  // Phase 2: scoped (il/ilçe/kategori) editors may act only inside their scope.
+  const admin = await verifyCmsToken(request, 'news:publish', { scopeAware: true })
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const { id } = await context.params
+  const outOfScope = await denyIfDocOutsideStaffScope(admin, 'news', id)
+  if (outOfScope) return outOfScope
 
   try {
     const result = await newsDraftService.approveLegacyPending(id, { uid: admin.uid })

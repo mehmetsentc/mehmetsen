@@ -8,12 +8,13 @@ import { NextResponse } from 'next/server'
 import {
   canAccessContentScope,
   canManageProvinceSettings,
+  contentScopeOf,
   isScopeRestricted,
   type ResourceScopeContext,
   type StaffScopeState,
 } from '@/lib/cms/rbacScope'
 
-export const STAFF_SCOPE_FORBIDDEN_ERROR = 'Bu işlem yetki kapsamınız (il/kategori) dışında'
+export const STAFF_SCOPE_FORBIDDEN_ERROR = 'Bu işlem yetki kapsamınız (il/ilçe/kategori) dışında'
 
 export function staffScopeForbidden(): NextResponse {
   return NextResponse.json({ error: STAFF_SCOPE_FORBIDDEN_ERROR, code: 'STAFF_SCOPE_FORBIDDEN' }, { status: 403 })
@@ -42,4 +43,23 @@ export function denyIfCannotManageProvince(
 ): NextResponse | null {
   if (!isScopeRestricted(auth.scope)) return null
   return canManageProvinceSettings(auth.scope, provinceSlug) ? null : staffScopeForbidden()
+}
+
+/**
+ * Phase 2: load `collection/id` with the Admin SDK and deny when a scoped actor is
+ * outside the document's province/district/category. Unscoped staff always pass.
+ * Returns a NextResponse (403/404) or null.
+ */
+export async function denyIfDocOutsideStaffScope(
+  auth: { scope: StaffScopeState },
+  collectionName: string,
+  id: string
+): Promise<NextResponse | null> {
+  if (!isScopeRestricted(auth.scope)) return null
+  const { getAdminFirestore } = await import('@/lib/firebase/admin')
+  const snap = await getAdminFirestore().collection(collectionName).doc(id).get()
+  if (!snap.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return canAccessContentScope(auth.scope, contentScopeOf(snap.data() as Record<string, unknown>))
+    ? null
+    : staffScopeForbidden()
 }

@@ -39,6 +39,7 @@ import type { ArticleBlock } from '@/lib/articleBlocks'
 import type { AdminNewsItem } from '@/services/adminNewsService'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import { parseApiResponse } from '@/lib/parseApiResponse'
+import { getCachedStaffScope } from '@/lib/cms/staffScopeClient'
 import {
   SOCIAL_HEADLINE_MAX,
   SOCIAL_SUMMARY_MAX,
@@ -266,6 +267,16 @@ export function AdminNewsEditor({
   const [status, setStatus] = useState<string>(post?.status ?? (mode === 'create' ? 'pending' : 'draft'))
   const [citySlug, setCitySlug] = useState((post as (Post & { citySlug?: string }) | undefined)?.citySlug?.trim() ?? '')
   const [districtSlug, setDistrictSlug] = useState(post?.districtSlug?.trim() ?? '')
+  // Phase 2: a new article by an il/ilçe/kategori editor starts inside their scope
+  // (the server rejects anything outside it).
+  useEffect(() => {
+    if (post) return
+    const scope = getCachedStaffScope()
+    if (!scope?.scoped) return
+    if (scope.provinceSlug) setCitySlug((v) => v || scope.provinceSlug!)
+    if (scope.districtSlug) setDistrictSlug((v) => v || scope.districtSlug!)
+    if (scope.categoryId) setCategoryId((v) => v || scope.categoryId!)
+  }, [post])
   const [countrySlug, setCountrySlug] = useState(() => {
     // Domestic articles store citySlug for location; don't resolve country from 'Türkiye'
     // — doing so makes countrySlug truthy and hides the city dropdown on re-edit.

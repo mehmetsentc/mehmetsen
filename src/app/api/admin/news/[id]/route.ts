@@ -11,6 +11,7 @@ import { hasPermission } from '@/types/cms'
 import { sanitizeGroundingSources, type GroundingSource } from '@/lib/ai/liveResearch'
 import { newsDraftService } from '@/services/newsDraftService'
 import { isUgcDraft } from '@/lib/editorial/ugcPublicationBoundary'
+import { getScopedAdminDoc } from '@/lib/cms/scopedAdminDocs'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
@@ -389,6 +390,24 @@ async function syncPostsMirror(id: string, update: Record<string, unknown>) {
   }
 }
 
+/**
+ * GET /api/admin/news/[id] — Phase 2: editor screen load for scoped editors
+ * (no client Firestore access to newsDrafts). Scope-checked; unscoped staff allowed.
+ */
+export async function GET(request: Request, context: RouteContext) {
+  const auth = await verifyCmsToken(request, 'news:read', { scopeAware: true })
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id } = await context.params
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const result = await getScopedAdminDoc(auth.scope, id)
+  if (result.status !== 200) {
+    return result.status === 403
+      ? staffScopeForbidden()
+      : NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  return NextResponse.json(result.doc)
+}
+
 /** PUT /api/admin/news/[id] — manually update a news article */
 export async function PUT(request: Request, context: RouteContext) {
   const auth = await verifyCmsToken(request, 'news:edit', { scopeAware: true })
@@ -406,6 +425,8 @@ export async function PUT(request: Request, context: RouteContext) {
   }
   // Scoped staff: national homepage pin (Öne Çıkan) is a global surface.
   if (scoped && body.featured === true) return staffScopeForbidden()
+  // Phase 2: scoped editors publish under their own byline, never an AI persona.
+  if (scoped && typeof body.aiEditorId === 'string' && body.aiEditorId.trim()) return staffScopeForbidden()
   if (body.status?.trim() === 'published' && !hasPermission(auth.role, 'news:publish')) {
     // Allow editors to publish when pinning Öne Çıkan (otherwise pin is invisible live).
     if (!(body.featured === true || body.localFeatured === true)) {

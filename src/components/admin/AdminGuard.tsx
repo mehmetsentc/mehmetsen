@@ -1,12 +1,17 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { ROUTES } from '@/constants/routes'
 import { canAccessCms } from '@/lib/cmsAuth'
 import { AdminAccessDenied } from '@/components/admin/AdminAccessDenied'
+import {
+  isScopedEditorPathAllowed,
+  loadMyStaffScope,
+  type MyStaffScope,
+} from '@/lib/cms/staffScopeClient'
 
 const IS_DEV = process.env.NODE_ENV === 'development'
 
@@ -23,7 +28,28 @@ function AdminSpinner({ label }: { label?: string }) {
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname() || '/admin'
   const deniedToastShown = useRef(false)
+  // Phase 2: il/ilçe/kategori editors only see their own section.
+  const [staffScope, setStaffScope] = useState<MyStaffScope | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (loading || !user || !canAccessCms(user)) return
+    let alive = true
+    void loadMyStaffScope().then((s) => {
+      if (alive) setStaffScope(s)
+    })
+    return () => {
+      alive = false
+    }
+  }, [user, loading])
+
+  const scopedBlocked =
+    staffScope?.scoped === true && !isScopedEditorPathAllowed(pathname, staffScope)
+
+  useEffect(() => {
+    if (scopedBlocked) router.replace('/admin/news')
+  }, [scopedBlocked, router])
 
   useEffect(() => {
     if (loading) return
@@ -53,6 +79,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   if (!canAccessCms(user)) {
     return <AdminAccessDenied uid={user.uid} showSetupGuide={IS_DEV} />
   }
+
+  if (staffScope === undefined || scopedBlocked) return <AdminSpinner />
 
   return <>{children}</>
 }

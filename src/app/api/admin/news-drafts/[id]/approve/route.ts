@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { verifyAdminRequest } from '@/lib/adminAuth'
+import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { denyIfDocOutsideStaffScope } from '@/lib/cms/staffScopeHttp'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
 import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import { notifyPublishedArticle } from '@/lib/indexNow'
@@ -12,12 +13,15 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function POST(request: Request, context: RouteContext) {
-  const admin = await verifyAdminRequest(request)
+  // Phase 2: scoped (il/ilçe/kategori) editors may act only inside their scope.
+  const admin = await verifyCmsToken(request, 'news:publish', { scopeAware: true })
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const { id } = await context.params
+  const outOfScope = await denyIfDocOutsideStaffScope(admin, Collections.NEWS_DRAFTS, id)
+  if (outOfScope) return outOfScope
 
   try {
     const result = await newsDraftService.approveDraft(id, { uid: admin.uid })

@@ -23,6 +23,7 @@ import { isMediaStudioEnabled } from '@/media-studio/featureFlag'
 import { MEDIA_STUDIO_HREF, MEDIA_STUDIO_LABEL, insertMediaStudioNav } from '@/media-studio/nav'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
+import { getCachedStaffScope, subscribeStaffScope, type MyStaffScope } from '@/lib/cms/staffScopeClient'
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   trend: Flame,
@@ -122,6 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/canonical-drafts/rights', label: 'Yayın Hakları', icon: Shield, requiredPermissions: ['news:edit'], badge: 'P18' },
       { href: '/admin/categories', label: 'Kategoriler', icon: Tag, requiredPermissions: ['news:read'] },
       { href: '/admin/locations', label: '81 İl', icon: Building2, requiredPermissions: ['locations:manage'], badge: 'YENİ' },
+      { href: '/admin/ekip', label: 'İl Ekipleri', icon: Users, requiredPermissions: ['users:assign_role'] },
       { href: '/admin/publishers', label: 'Publisherlar', icon: Landmark, requiredPermissions: ['system:settings'], badge: 'P1' },
       { href: '/admin/videos', label: 'Medya Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
@@ -190,6 +192,22 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
+
+
+/** Phase 2: navigation for il/ilçe/kategori editors — only their own section. */
+function scopedNavGroups(scope: MyStaffScope): NavGroup[] {
+  const items: NavItem[] = [
+    { href: '/admin/news', label: 'Haberlerim', icon: Newspaper, requiredPermissions: ['news:read'], exact: true },
+    { href: '/admin/news?filter=pending', label: 'Onay Bekleyenler', icon: Clock, requiredPermissions: ['news:read'] },
+    { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'] },
+    { href: '/admin/news/create', label: 'Yeni Haber', icon: Zap, requiredPermissions: ['news:create'] },
+    { href: '/admin/ads', label: 'Reklamlarım', icon: LayoutGrid, requiredPermissions: ['news:read'] },
+  ]
+  if (scope.canManageStaff) {
+    items.push({ href: '/admin/ekip', label: 'Ekibim', icon: Users, requiredPermissions: ['news:read'] })
+  }
+  return [{ id: 'scoped-desk', label: 'Bölümüm', items }]
+}
 
 function isActive(pathname: string, search: string, href: string, exact = false): boolean {
   const [path, query = ''] = href.split('?')
@@ -405,9 +423,13 @@ export function CMSSidebar() {
     })
   }
 
+  // Phase 2: scoped (il/ilçe/kategori) editors see only their own section.
+  const [staffScope, setStaffScope] = useState<MyStaffScope | null>(() => getCachedStaffScope())
+  useEffect(() => subscribeStaffScope(setStaffScope), [])
+
   const visibleGroups = useMemo(
     () =>
-      NAV_GROUPS.map((group) => ({
+      (staffScope?.scoped ? scopedNavGroups(staffScope) : NAV_GROUPS).map((group) => ({
         ...group,
         items: insertMediaStudioNav(
           group.items.filter(
@@ -423,7 +445,7 @@ export function CMSSidebar() {
             : null
         ),
       })).filter((group) => group.items.length > 0),
-    [can]
+    [can, staffScope]
   )
 
   return (

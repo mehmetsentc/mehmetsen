@@ -85,6 +85,25 @@ export async function GET(request: Request) {
   if (!deps.isProvinceSlug(province)) return json({ error: 'Geçersiz il' }, 400)
   if (!canManageProvinceStaff(auth, province)) return json({ error: 'Forbidden', code: 'STAFF_SCOPE_FORBIDDEN' }, 403)
 
+  // Exact username lookup (public profile handle) to pick an assignee.
+  const lookup = new URL(request.url).searchParams.get('lookup')?.trim() ?? ''
+  if (lookup) {
+    const hit = await getAdminFirestore().collection(Collections.USERS).where('username', '==', lookup).limit(2).get()
+    if (hit.docs.length !== 1) return json({ user: null })
+    const d = hit.docs[0]!
+    const data = d.data() as Record<string, unknown>
+    const role = resolveCmsRoleFromFirestore(data.role as string | undefined)
+    return json({
+      user: {
+        uid: d.id,
+        username: data.username ?? null,
+        displayName: typeof data.displayName === 'string' ? data.displayName : null,
+        role,
+        ...scopeSummary(resolveStaffScopeFromUserData(role, data)),
+      },
+    })
+  }
+
   const snap = await getAdminFirestore()
     .collection(Collections.USERS)
     .where('cmsScope.provinceSlugs', 'array-contains', province)

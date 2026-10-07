@@ -21,6 +21,7 @@ import { buildFeedTeaser } from '@/lib/newsContentCleanup'
 import { mapNewsSnapshot, type NewsDocument } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { postService } from '@/services/postService'
+import { adminApiFetch, isScopedEditorSession } from '@/lib/cms/staffScopeClient'
 import type { MediaItem, Post, PostStatus } from '@/types/post'
 
 /** Match citySlug including district → province aliases. */
@@ -360,6 +361,45 @@ function mapAdminNewsDocs(
   return posts
 }
 
+// ─── Phase 2: scoped (il/ilçe/kategori) editors read through the server ────────
+type ScopedRow = { id: string; source: 'news' | 'newsDrafts'; data: NewsDocument }
+
+function scopedRowToItem(row: ScopedRow): AdminNewsItem {
+  return row.source === 'newsDrafts'
+    ? draftDocToPost(row.id, row.data)
+    : withSocialFlags(adminNewsDocToPost(row.id, row.data), row.data as Record<string, unknown>, 'news')
+}
+
+function scopedViewFor(filter: AdminNewsFilter): 'all' | 'published' | 'draft' | 'pending' | 'removed' {
+  if (filter === 'published' || filter === 'draft' || filter === 'pending' || filter === 'removed') return filter
+  return 'all'
+}
+
+/** Cursor carried through the `lastDoc` slot for the scoped list (opaque to callers). */
+type ScopedCursor = { __scopedBefore: number }
+
+async function listScoped(
+  filter: AdminNewsFilter,
+  lastDoc: QueryDocumentSnapshot | undefined,
+  categoryId: string | undefined,
+  sort: AdminNewsSort
+): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+  const before = (lastDoc as unknown as ScopedCursor | undefined)?.__scopedBefore
+  const qs = new URLSearchParams({ view: scopedViewFor(filter) })
+  if (before) qs.set('before', String(before))
+  const res = await adminApiFetch(`/api/admin/news/scoped?${qs}`)
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(data.error ?? 'Liste alınamadı')
+  }
+  const body = (await res.json()) as { items: ScopedRow[]; nextBefore: number | null }
+  let posts = body.items.map(scopedRowToItem)
+  if (categoryId) posts = posts.filter((p) => p.categoryId === categoryId)
+  if (sort === 'views') posts.sort((a, b) => (b.viewsCount ?? 0) - (a.viewsCount ?? 0))
+  const cursor = body.nextBefore ? ({ __scopedBefore: body.nextBefore } as unknown as QueryDocumentSnapshot) : null
+  return { posts, lastDoc: cursor, hasMore: Boolean(body.nextBefore) }
+}
+
 async function fetchAdminNewsSnap(constraints: QueryConstraint[]) {
   return getDocs(query(collection(db, VIDEO_FEED_COLLECTION), ...constraints))
 }
@@ -373,6 +413,7 @@ export const adminNewsService = {
     citySlug?: string,
     sort: AdminNewsSort = 'date'
   ): Promise<{ posts: AdminNewsItem[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }> {
+    if (isScopedEditorSession()) return listScoped(filter, lastDoc, categoryId, sort)
     const pinTab = filter === 'featured' || filter === 'local-featured'
     const pageSize = pinTab && !limitOverride ? 500 : (limitOverride ?? PAGE_SIZE)
     if (filter === 'pending') {
@@ -516,6 +557,15 @@ export const adminNewsService = {
   },
 
   async getById(id: string): Promise<Post | null> {
+    if (isScopedEditorSession()) {
+      const res = await adminApiFetch(`/api/admin/news/${encodeURIComponent(id)}`)
+      if (res.status === 404) return null
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error ?? 'Haber yüklenemedi')
+      }
+      return scopedRowToItem((await res.json()) as ScopedRow)
+    }
     const snap = await getDoc(doc(db, VIDEO_FEED_COLLECTION, id))
     if (snap.exists()) {
       return adminNewsDocToPost(snap.id, snap.data() as NewsDocument)
@@ -553,6 +603,18 @@ export const adminNewsService = {
       return
     }
 
+    if (isScopedEditorSession()) {
+      // Scoped editors have no client write on `news`; the scope-checked PUT does it.
+      const res = await adminApiFetch(`/api/admin/news/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'draft' }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error ?? 'İşlem başarısız')
+      }
+      return
+    }
     const now = Date.now()
     await updateDoc(doc(db, VIDEO_FEED_COLLECTION, id), {
       status: 'draft',
@@ -587,6 +649,11 @@ export const adminNewsService = {
     }
     if (source === 'newsDrafts') {
       await adminFetch(`/api/admin/news-drafts/${id}/reject`, 'POST', { reason })
+      return
+    }
+    if (isScopedEditorSession()) {
+      // Scoped editors: archive through the scope-checked server route instead.
+      await adminFetch(`/api/admin/news/${id}`, 'DELETE' as never)
       return
     }
     const now = Date.now()
