@@ -17,7 +17,9 @@ export const maxDuration = 60
  * Doğrudan görsel/video dosyaları Storage'a yüklenir.
  */
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'news:edit')
+  // Phase 2: il/ilçe/kategori editors may import images for their own stories too
+  // (the file is not tied to a story; the story save itself is scope-checked).
+  const auth = await verifyCmsToken(request, 'news:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let url: string

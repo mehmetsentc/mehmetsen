@@ -30,6 +30,12 @@ const TIER_LABEL: Record<string, string> = {
 
 type Tier = 'province_general' | 'district_general' | 'district_category'
 
+/** What each tier can do inside its own section (enforced server-side). */
+function rightsFor(tier: string): string[] {
+  const base = ['Haber ekleme', 'Düzenleme', 'Resim/video ekleme', 'Bilgi ekleme', 'Onaylama/yayınlama', 'Reklam ekleme']
+  return tier === 'province_general' ? [...base, 'Reklam onayı', 'Editör atama'] : base
+}
+
 export default function StaffTeamPage() {
   const [province, setProvince] = useState<string>(() => getCachedStaffScope()?.provinceSlug ?? 'canakkale')
   const [isSuper, setIsSuper] = useState(false)
@@ -181,19 +187,20 @@ export default function StaffTeamPage() {
               <th className="p-3">Seviye</th>
               <th className="p-3">İlçe</th>
               <th className="p-3">Kategori</th>
+              <th className="p-3">Yetkiler (kendi bölümünde)</th>
               <th className="p-3" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="p-3" colSpan={5}>
+                <td className="p-3" colSpan={6}>
                   Yükleniyor…
                 </td>
               </tr>
             ) : staff.length === 0 ? (
               <tr>
-                <td className="p-3" colSpan={5}>
+                <td className="p-3" colSpan={6}>
                   Henüz editör yok.
                 </td>
               </tr>
@@ -204,6 +211,15 @@ export default function StaffTeamPage() {
                   <td className="p-3">{TIER_LABEL[row.tier] ?? row.tier}</td>
                   <td className="p-3">{row.districtSlug ? districtName(row.districtSlug) : 'Tüm il'}</td>
                   <td className="p-3">{row.categoryId ? categoryName(row.categoryId) : 'Tümü'}</td>
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-1">
+                      {rightsFor(row.tier).map((r) => (
+                        <span key={r} className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                   <td className="p-3 text-right">
                     {(isSuper || row.tier.startsWith('district')) && (
                       <button type="button" className="text-red-600 hover:underline" onClick={() => void revoke(row)}>
