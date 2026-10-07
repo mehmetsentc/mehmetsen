@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { isDistrictOfProvince, verifyCmsToken } from '@/lib/cmsAuthServer'
+import { canApproveAd, canManageAd, forcedAdTarget, LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
 import { getSlotDefinition } from '@/constants/adSlots'
 import { docToAdBanner } from '@/lib/adBannerUtils'
 import type { AdBannerFormat, AdBannerPage, AdBannerSize } from '@/types/adBanner'
@@ -65,14 +66,17 @@ function parseBody(raw: Record<string, unknown>) {
 }
 
 export async function GET(request: Request) {
-  const auth = await verifyCmsToken(request, 'seo:edit')
+  // Phase 2: scoped editors see only their il/ilçe ads.
+  const auth = await verifyCmsToken(request, 'seo:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const db = getAdminFirestore()
-    const snap = await db.collection(Collections.AD_BANNERS).limit(200).get()
+    const snap = await db.collection(Collections.AD_BANNERS).limit(500).get()
     const banners = snap.docs
       .map((d) => docToAdBanner(d.id, d.data() as Record<string, unknown>))
+      .filter((b) => canManageAd(auth, b))
+      .map((b) => ({ ...b, canApprove: canApproveAd(auth, b) }))
       .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
     return NextResponse.json({ banners })
   } catch (err) {
@@ -82,7 +86,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await verifyCmsToken(request, 'seo:edit')
+  const auth = await verifyCmsToken(request, 'seo:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: Record<string, unknown>
@@ -95,10 +99,32 @@ export async function POST(request: Request) {
   const parsed = parseBody(body)
   if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
 
+  // Phase 2: national ads stay with global staff; scoped editors create local ads only.
+  let geo: Record<string, unknown> = {}
+  if (auth.scope.kind !== 'unscoped') {
+    if (parsed.data.format === 'html') {
+      return NextResponse.json({ error: 'Yerel reklamlarda HTML kullanılamaz' }, { status: 400 })
+    }
+    if (!parsed.data.slotId.startsWith(LOCAL_AD_SLOT_PREFIX)) {
+      return NextResponse.json({ error: 'Yerel reklamlar yalnızca Yerel Haber alanlarına eklenir' }, { status: 400 })
+    }
+    const target = forcedAdTarget(auth, typeof body.districtSlug === 'string' ? body.districtSlug : null, isDistrictOfProvince)
+    if (!target.ok) return NextResponse.json({ error: target.error }, { status: 403 })
+    const approver = canApproveAd(auth, target)
+    geo = {
+      provinceSlug: target.provinceSlug,
+      districtSlug: target.districtSlug,
+      status: approver ? 'approved' : 'pending',
+      submittedByUid: auth.uid,
+      reviewedBy: approver ? auth.uid : null,
+    }
+  }
+
   try {
     const db = getAdminFirestore()
     const ref = await db.collection(Collections.AD_BANNERS).add({
       ...parsed.data,
+      ...geo,
       createdBy: auth.email,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

@@ -13,10 +13,15 @@ const AdSlotContext = createContext<AdSlotContextValue>({ ads: {}, loading: true
 export function AdSlotProvider({
   page,
   categoryId,
+  citySlug,
+  districtSlug,
   children,
 }: {
   page: 'home' | 'category'
   categoryId?: string
+  /** Phase 2: il / ilçe context for local ads. */
+  citySlug?: string | null
+  districtSlug?: string | null
   children: React.ReactNode
 }) {
   const [ads, setAds] = useState<Record<string, AdBannerPublic | null>>({})
@@ -25,8 +30,10 @@ export function AdSlotProvider({
   const query = useMemo(() => {
     const params = new URLSearchParams({ page })
     if (categoryId) params.set('categoryId', categoryId)
+    if (citySlug) params.set('citySlug', citySlug)
+    if (citySlug && districtSlug) params.set('districtSlug', districtSlug)
     return `/api/ads?${params.toString()}`
-  }, [page, categoryId])
+  }, [page, categoryId, citySlug, districtSlug])
 
   useEffect(() => {
     let cancelled = false

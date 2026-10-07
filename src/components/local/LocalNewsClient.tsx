@@ -49,7 +49,7 @@ function LocalNewsBody({ breakingItems = [], initialCitySlug }: LocalNewsClientP
       {!isDesktop ? <LocalNewsMobile state={state} /> : null}
 
       {isDesktop ? (
-        <AdSlotProvider page="category" categoryId="yerel-haber">
+        <AdSlotProvider page="category" categoryId="yerel-haber" citySlug={state.city?.slug ?? null}>
           <DesktopLocalNewsPage state={state} />
         </AdSlotProvider>
       ) : null}

@@ -3,6 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { canApproveAd, canManageAd, LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
 import { getSlotDefinition } from '@/constants/adSlots'
 import { docToAdBanner } from '@/lib/adBannerUtils'
 
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic'
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await verifyCmsToken(request, 'seo:edit')
+  const auth = await verifyCmsToken(request, 'seo:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await context.params
@@ -53,11 +54,37 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (body.startsAt !== undefined) updates.startsAt = body.startsAt || null
   if (body.endsAt !== undefined) updates.endsAt = body.endsAt || null
 
+  const scoped = auth.scope.kind !== 'unscoped'
+  if (scoped) {
+    if (updates.format === 'html' || (body.htmlContent !== undefined && body.htmlContent)) {
+      return NextResponse.json({ error: 'Yerel reklamlarda HTML kullanılamaz' }, { status: 400 })
+    }
+    if (typeof updates.slotId === 'string' && !updates.slotId.startsWith(LOCAL_AD_SLOT_PREFIX)) {
+      return NextResponse.json({ error: 'Yerel reklamlar yalnızca Yerel Haber alanlarına eklenir' }, { status: 400 })
+    }
+  }
+
   try {
     const db = getAdminFirestore()
     const ref = db.collection(Collections.AD_BANNERS).doc(id)
     const existing = await ref.get()
     if (!existing.exists) return NextResponse.json({ error: 'Bulunamadı' }, { status: 404 })
+    const current = docToAdBanner(existing.id, existing.data() as Record<string, unknown>)
+    // Phase 2: scope + approval. Targeting (il/ilçe) is never editable here.
+    if (!canManageAd(auth, current)) return NextResponse.json({ error: 'Yetki kapsamı dışında' }, { status: 403 })
+    const approver = canApproveAd(auth, current)
+    if (body.status !== undefined) {
+      if (!approver) return NextResponse.json({ error: 'Onay yetkiniz yok' }, { status: 403 })
+      if (body.status !== 'approved' && body.status !== 'rejected' && body.status !== 'pending') {
+        return NextResponse.json({ error: 'Geçersiz durum' }, { status: 400 })
+      }
+      updates.status = body.status
+      updates.reviewedBy = auth.uid
+    } else if (current.provinceSlug && !approver) {
+      // Any content change by a non-approver needs a fresh approval.
+      updates.status = 'pending'
+      updates.reviewedBy = null
+    }
 
     await ref.update(updates)
     const doc = await ref.get()
@@ -69,13 +96,19 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const auth = await verifyCmsToken(request, 'seo:edit')
+  const auth = await verifyCmsToken(request, 'seo:edit', { scopeAware: true })
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await context.params
   try {
     const db = getAdminFirestore()
-    await db.collection(Collections.AD_BANNERS).doc(id).delete()
+    const ref = db.collection(Collections.AD_BANNERS).doc(id)
+    const existing = await ref.get()
+    if (!existing.exists) return NextResponse.json({ error: 'Bulunamadı' }, { status: 404 })
+    if (!canManageAd(auth, docToAdBanner(existing.id, existing.data() as Record<string, unknown>))) {
+      return NextResponse.json({ error: 'Yetki kapsamı dışında' }, { status: 403 })
+    }
+    await ref.delete()
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[api/admin/ads DELETE]', err)

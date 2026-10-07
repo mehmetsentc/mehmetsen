@@ -50,11 +50,36 @@ export function hasAdImageContent(
   return Boolean(ad.imageUrl?.trim() || ad.imageUrlLight?.trim() || ad.imageUrlDark?.trim())
 }
 
-/** Aynı slota birden fazla banner — en yüksek priority kazanır */
-export function pickBestBannerForSlot(banners: AdBanner[], slotId: string): AdBanner | null {
+/** Phase 2: page geo context for local (il/ilçe) ads. */
+export interface AdGeoContext {
+  citySlug?: string | null
+  districtSlug?: string | null
+}
+
+/** Legacy banners have no status → approved. */
+export function isAdBannerApproved(banner: Pick<AdBanner, 'status'>): boolean {
+  return (banner.status ?? 'approved') === 'approved'
+}
+
+/** National banners match everywhere; local banners only on their il (and ilçe). */
+export function adBannerMatchesGeo(banner: Pick<AdBanner, 'provinceSlug' | 'districtSlug'>, geo: AdGeoContext = {}): boolean {
+  if (!banner.provinceSlug) return true
+  if (!geo.citySlug || geo.citySlug !== banner.provinceSlug) return false
+  return !banner.districtSlug || geo.districtSlug === banner.districtSlug
+}
+
+function geoSpecificity(banner: Pick<AdBanner, 'provinceSlug' | 'districtSlug'>): number {
+  if (banner.districtSlug) return 2
+  return banner.provinceSlug ? 1 : 0
+}
+
+/** Aynı slota birden fazla banner — en özel (ilçe > il > ulusal), sonra en yüksek priority kazanır */
+export function pickBestBannerForSlot(banners: AdBanner[], slotId: string, geo: AdGeoContext = {}): AdBanner | null {
   const now = Date.now()
   const matching = banners.filter((b) => {
     if (!isAdBannerActive(b, now)) return false
+    if (!isAdBannerApproved(b)) return false
+    if (!adBannerMatchesGeo(b, geo)) return false
     if (b.slotId === slotId) return true
     // category-all-* fallback for specific category slots
     if (b.slotId.startsWith('category-all-')) {
@@ -65,7 +90,9 @@ export function pickBestBannerForSlot(banners: AdBanner[], slotId: string): AdBa
   })
 
   if (matching.length === 0) return null
-  return matching.sort((a, b) => b.priority - a.priority)[0] ?? null
+  return (
+    matching.sort((a, b) => geoSpecificity(b) - geoSpecificity(a) || b.priority - a.priority)[0] ?? null
+  )
 }
 
 export function docToAdBanner(id: string, raw: Record<string, unknown>): AdBanner {
@@ -101,5 +128,10 @@ export function docToAdBanner(id: string, raw: Record<string, unknown>): AdBanne
     createdAt: ts(raw.createdAt),
     updatedAt: ts(raw.updatedAt),
     createdBy: raw.createdBy != null ? String(raw.createdBy) : null,
+    provinceSlug: typeof raw.provinceSlug === 'string' && raw.provinceSlug ? raw.provinceSlug : null,
+    districtSlug: typeof raw.districtSlug === 'string' && raw.districtSlug ? raw.districtSlug : null,
+    status: raw.status === 'pending' || raw.status === 'rejected' ? raw.status : 'approved',
+    submittedByUid: typeof raw.submittedByUid === 'string' ? raw.submittedByUid : null,
+    reviewedBy: typeof raw.reviewedBy === 'string' ? raw.reviewedBy : null,
   }
 }

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getCategoryAdSlotIds, getHomeAdSlotIds } from '@/constants/adSlots'
-import { docToAdBanner, pickBestBannerForSlot, toPublicAdBanner } from '@/lib/adBannerUtils'
+import { docToAdBanner, pickBestBannerForSlot, toPublicAdBanner, type AdGeoContext } from '@/lib/adBannerUtils'
+import { getDistrictsForProvince, isTurkishProvinceSlug } from '@/constants/cities'
 import type { AdBannerPublic } from '@/types/adBanner'
 
 export const runtime = 'nodejs'
@@ -13,6 +14,16 @@ export async function GET(request: Request) {
   const page = searchParams.get('page')
   const categoryId = searchParams.get('categoryId')
   const slotsParam = searchParams.get('slots')
+  // Phase 2: local pages pass their il (and ilçe) so il/ilçe ads can match.
+  const citySlug = searchParams.get('citySlug')?.trim().toLowerCase() || ''
+  const districtSlug = searchParams.get('districtSlug')?.trim().toLowerCase() || ''
+  const geo: AdGeoContext = {}
+  if (citySlug && isTurkishProvinceSlug(citySlug)) {
+    geo.citySlug = citySlug
+    if (districtSlug && getDistrictsForProvince(citySlug).some((d) => d.slug === districtSlug)) {
+      geo.districtSlug = districtSlug
+    }
+  }
 
   let slotIds: string[] = []
   if (slotsParam) {
@@ -32,7 +43,7 @@ export async function GET(request: Request) {
 
     const ads: Record<string, AdBannerPublic | null> = {}
     for (const slotId of slotIds) {
-      const best = pickBestBannerForSlot(all, slotId)
+      const best = pickBestBannerForSlot(all, slotId, geo)
       ads[slotId] = best ? toPublicAdBanner(best) : null
     }
 

@@ -14,6 +14,17 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
+import { getCachedStaffScope } from '@/lib/cms/staffScopeClient'
+import { LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
+import { getDistrictsForProvince } from '@/constants/cities'
+
+type AdminAdRow = AdBanner & { canApprove?: boolean }
+
+const AD_STATUS_LABEL: Record<string, string> = {
+  pending: 'Onay bekliyor',
+  approved: 'Onaylı',
+  rejected: 'Reddedildi',
+}
 
 const EMPTY_FORM = {
   name: '',
@@ -30,6 +41,8 @@ const EMPTY_FORM = {
   priority: 0,
   startsAt: '',
   endsAt: '',
+  /** Phase 2: il genel editörü may target one ilçe (district editors are forced). */
+  districtSlug: '',
 }
 
 type ImageThemeVariant = 'light' | 'dark'
@@ -37,7 +50,14 @@ type ImageThemeVariant = 'light' | 'dark'
 export default function AdminAdsPage() {
   const { can } = useCmsAuth()
   const { user } = useAuth()
-  const [banners, setBanners] = useState<AdBanner[]>([])
+  const [banners, setBanners] = useState<AdminAdRow[]>([])
+  // Phase 2: il/ilçe editors manage local ads only (Yerel Haber slots, no HTML, approval).
+  const staffScope = getCachedStaffScope()
+  const scopedAds = staffScope?.scoped === true
+  const scopedDistricts = useMemo(
+    () => (scopedAds && staffScope?.provinceSlug && !staffScope.districtSlug ? getDistrictsForProvince(staffScope.provinceSlug) : []),
+    [scopedAds, staffScope?.provinceSlug, staffScope?.districtSlug]
+  )
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -52,7 +72,13 @@ export default function AdminAdsPage() {
   const imageDarkInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
-  const slotGroups = useMemo(() => getAdminAdSlotGroups(), [])
+  const slotGroups = useMemo(() => {
+    const groups = getAdminAdSlotGroups()
+    if (!scopedAds) return groups
+    return groups
+      .map((g) => ({ ...g, slots: g.slots.filter((slot) => slot.id.startsWith(LOCAL_AD_SLOT_PREFIX)) }))
+      .filter((g) => g.slots.length > 0)
+  }, [scopedAds])
   const bannerStorageId = editing?.id ?? uploadDraftId
 
   const authHeaders = useCallback(async () => {
@@ -83,7 +109,11 @@ export default function AdminAdsPage() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm(EMPTY_FORM)
+    setForm(
+      scopedAds
+        ? { ...EMPTY_FORM, slotId: slotGroups[0]?.slots[0]?.id ?? `${LOCAL_AD_SLOT_PREFIX}top` }
+        : EMPTY_FORM
+    )
     setUploadDraftId(crypto.randomUUID())
     setShowForm(true)
   }
@@ -106,6 +136,7 @@ export default function AdminAdsPage() {
       priority: banner.priority,
       startsAt: banner.startsAt ? banner.startsAt.slice(0, 16) : '',
       endsAt: banner.endsAt ? banner.endsAt.slice(0, 16) : '',
+      districtSlug: banner.districtSlug ?? '',
     })
     setShowForm(true)
   }
@@ -221,6 +252,19 @@ export default function AdminAdsPage() {
     }
   }
 
+  const handleReview = async (banner: AdminAdRow, status: 'approved' | 'rejected') => {
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/ads/${banner.id}`, { method: 'PATCH', headers, body: JSON.stringify({ status }) })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'İşlem başarısız')
+      toast.success(status === 'approved' ? 'Reklam onaylandı' : 'Reklam reddedildi')
+      await load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'İşlem başarısız')
+    }
+  }
+
   const filtered = filterSlot ? banners.filter((b) => b.slotId === filterSlot) : banners
 
   if (!can('seo:edit')) {
@@ -295,6 +339,25 @@ export default function AdminAdsPage() {
                     <td className="px-4 py-3">
                       <p className="font-semibold text-[rgb(var(--color-text))]">{banner.name}</p>
                       <p className="text-xs text-[rgb(var(--color-muted))]">Öncelik: {banner.priority}</p>
+                      {banner.provinceSlug ? (
+                        <p className="text-xs text-[rgb(var(--color-muted))]">
+                          Yerel: {banner.provinceSlug}
+                          {banner.districtSlug ? ` / ${banner.districtSlug}` : ''} ·{' '}
+                          <span className={banner.status === 'approved' ? 'text-emerald-600' : banner.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>
+                            {AD_STATUS_LABEL[banner.status ?? 'approved']}
+                          </span>
+                        </p>
+                      ) : null}
+                      {banner.canApprove && banner.status === 'pending' ? (
+                        <div className="mt-1 flex gap-2 text-xs">
+                          <button type="button" className="font-semibold text-emerald-600 hover:underline" onClick={() => void handleReview(banner, 'approved')}>
+                            Onayla
+                          </button>
+                          <button type="button" className="font-semibold text-red-600 hover:underline" onClick={() => void handleReview(banner, 'rejected')}>
+                            Reddet
+                          </button>
+                        </div>
+                      ) : null}
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
                       <p className="text-[rgb(var(--color-text))]">{AD_SLOT_MAP[banner.slotId]?.label ?? banner.slotId}</p>
@@ -367,6 +430,24 @@ export default function AdminAdsPage() {
                 </select>
               </div>
 
+              {scopedDistricts.length > 0 && !editing ? (
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">İlçe (boş = tüm il)</label>
+                  <select
+                    value={form.districtSlug}
+                    onChange={(e) => setForm((f) => ({ ...f, districtSlug: e.target.value }))}
+                    className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-3 py-2 text-sm"
+                  >
+                    <option value="">Tüm il</option>
+                    {scopedDistricts.map((d) => (
+                      <option key={d.slug} value={d.slug}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               <div>
                 <label className="mb-2 block text-xs font-semibold text-[rgb(var(--color-muted))]">Format</label>
                 <div className="flex gap-2">
@@ -374,7 +455,7 @@ export default function AdminAdsPage() {
                     ['image', ImageIcon, 'Görsel'],
                     ['video', Video, 'Video'],
                     ['html', Code, 'HTML'],
-                  ] as const).map(([key, Icon, label]) => (
+                  ] as const).filter(([key]) => !(scopedAds && key === 'html')).map(([key, Icon, label]) => (
                     <button
                       key={key}
                       type="button"
