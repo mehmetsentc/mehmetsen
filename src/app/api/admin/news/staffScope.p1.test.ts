@@ -173,7 +173,7 @@ describe('Phase 1 — verifyCmsToken scope resolution', () => {
 
   it('scope-aware routes receive the parsed scope', async () => {
     const a = await verifyCmsToken(req('/x', 't-sports'), 'news:edit', { scopeAware: true })
-    expect(a?.scope).toEqual({ kind: 'scoped', scope: { provinceSlugs: ['canakkale'], categoryIds: ['spor'] } })
+    expect(a?.scope).toEqual({ kind: 'scoped', scope: { provinceSlugs: ['canakkale'], districtSlugs: [], categoryIds: ['spor'] } })
   })
 
   it('role permission is still enforced before scope', async () => {

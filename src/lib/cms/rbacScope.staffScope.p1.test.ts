@@ -23,14 +23,14 @@ describe('Phase 1 staff scope — parseStaffScope', () => {
   it('city manager: province only', () => {
     expect(parse({ provinceSlugs: ['canakkale'], categoryIds: [] })).toEqual({
       kind: 'scoped',
-      scope: { provinceSlugs: ['canakkale'], categoryIds: [] },
+      scope: { provinceSlugs: ['canakkale'], districtSlugs: [], categoryIds: [] },
     })
   })
 
   it('category manager: province + category (normalized, deduped)', () => {
     expect(parse({ provinceSlugs: [' Canakkale ', 'canakkale'], categoryIds: ['SPOR'] })).toEqual({
       kind: 'scoped',
-      scope: { provinceSlugs: ['canakkale'], categoryIds: ['spor'] },
+      scope: { provinceSlugs: ['canakkale'], districtSlugs: [], categoryIds: ['spor'] },
     })
   })
 
@@ -110,9 +110,9 @@ describe('Phase 1 staff scope — content access matrix', () => {
   })
 
   it('contentScopeOf reads canonical doc fields with legacy category fallback', () => {
-    expect(contentScopeOf({ citySlug: 'canakkale', categoryId: 'spor' })).toEqual({ citySlug: 'canakkale', categoryId: 'spor' })
-    expect(contentScopeOf({ citySlug: 'canakkale', category: 'spor' })).toEqual({ citySlug: 'canakkale', categoryId: 'spor' })
-    expect(contentScopeOf({ citySlug: 5, categoryId: null })).toEqual({ citySlug: '', categoryId: '' })
-    expect(contentScopeOf(undefined)).toEqual({ citySlug: '', categoryId: '' })
+    expect(contentScopeOf({ citySlug: 'canakkale', categoryId: 'spor' })).toEqual({ citySlug: 'canakkale', districtSlug: '', categoryId: 'spor' })
+    expect(contentScopeOf({ citySlug: 'canakkale', category: 'spor' })).toEqual({ citySlug: 'canakkale', districtSlug: '', categoryId: 'spor' })
+    expect(contentScopeOf({ citySlug: 5, categoryId: null })).toEqual({ citySlug: '', districtSlug: '', categoryId: '' })
+    expect(contentScopeOf(undefined)).toEqual({ citySlug: '', districtSlug: '', categoryId: '' })
   })
 })

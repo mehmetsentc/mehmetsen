@@ -13,7 +13,7 @@ import {
   UNSCOPED_STAFF,
   type StaffScopeState,
 } from '@/lib/cms/rbacScope'
-import { isTurkishProvinceSlug, normalizeCitySlug } from '@/constants/cities'
+import { getDistrictsForProvince, isTurkishProvinceSlug, normalizeCitySlug } from '@/constants/cities'
 
 export interface VerifyCmsTokenOptions {
   /**
@@ -37,13 +37,18 @@ function isCanonicalProvinceSlug(slug: string): boolean {
   return isTurkishProvinceSlug(slug) && normalizeCitySlug(slug) === slug
 }
 
+/** District slug belongs to that exact province (Phase 2; `merkez` repeats across il). */
+export function isDistrictOfProvince(districtSlug: string, provinceSlug: string): boolean {
+  return getDistrictsForProvince(provinceSlug).some((d) => d.slug === districtSlug)
+}
+
 /** Resolve `users/{uid}.cmsScope` for a non-super-admin staff identity. */
 export function resolveStaffScopeFromUserData(
   role: CmsRole,
   userData: Record<string, unknown> | undefined
 ): StaffScopeState {
   if (role === 'super_admin') return UNSCOPED_STAFF
-  return parseStaffScope(userData?.cmsScope, isCanonicalProvinceSlug)
+  return parseStaffScope(userData?.cmsScope, isCanonicalProvinceSlug, isDistrictOfProvince)
 }
 
 /** Server-side: verify Bearer token + resolve CMS role from Firestore */

@@ -77,7 +77,16 @@ export function isGlobalGrant(grant: ScopedPermissionGrant): boolean {
 // ─── Human staff content scope (Phase 1 — Çanakkale pilot) ─────────────────────
 //
 // Stored on the existing staff identity document: Firestore `users/{uid}.cmsScope`
-//   { provinceSlugs?: string[]; categoryIds?: string[] }
+//   { provinceSlugs?: string[]; districtSlugs?: string[]; categoryIds?: string[] }
+//
+// Phase 2 (81-il hierarchy) adds the district dimension. Tiers:
+//   province_general   { provinceSlugs:[p] }                              il genel editörü
+//   province_category  { provinceSlugs:[p], categoryIds:[c] }             (Phase 1 shape)
+//   district_general   { provinceSlugs:[p], districtSlugs:[d] }           ilçe genel editörü
+//   district_category  { provinceSlugs:[p], districtSlugs:[d], categoryIds:[c] }
+// A district scope needs EXACTLY one province and every district must belong to it
+// (district slugs such as `merkez` repeat across provinces). District-scoped staff never
+// see district-less (province-only) content — that belongs to the province editor.
 //
 // Semantics (deterministic, fail-closed):
 // - `cmsScope` missing / null      → UNSCOPED legacy staff (current production behavior).
@@ -93,6 +102,8 @@ export function isGlobalGrant(grant: ScopedPermissionGrant): boolean {
 export interface StaffContentScope {
   /** Canonical province slugs (e.g. `canakkale`). Empty = no province restriction. */
   provinceSlugs: string[]
+  /** District slugs of the single scoped province (e.g. `merkez`). Empty = whole province. */
+  districtSlugs: string[]
   /** Category ids (e.g. `spor`). Empty = no category restriction. */
   categoryIds: string[]
 }
@@ -105,6 +116,7 @@ export type StaffScopeState =
 export const UNSCOPED_STAFF: StaffScopeState = Object.freeze({ kind: 'unscoped' }) as StaffScopeState
 
 const CATEGORY_ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
+const DISTRICT_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 
 function normalizeProvince(raw: string): string {
   return raw.trim().toLocaleLowerCase('en-US')
@@ -137,7 +149,9 @@ function parseDimension(
  */
 export function parseStaffScope(
   raw: unknown,
-  isProvinceSlug: (slug: string) => boolean
+  isProvinceSlug: (slug: string) => boolean,
+  /** Injected district→province check; absent → any district dimension is invalid. */
+  isDistrictOfProvince?: (districtSlug: string, provinceSlug: string) => boolean
 ): StaffScopeState {
   if (raw === undefined || raw === null) return UNSCOPED_STAFF
   if (typeof raw !== 'object' || Array.isArray(raw)) {
@@ -153,10 +167,19 @@ export function parseStaffScope(
   if (provinceSlugs === null) return { kind: 'invalid', reason: 'invalid_province_slugs' }
   const categoryIds = parseDimension(obj.categoryIds, normalizeCategory, (v) => CATEGORY_ID_RE.test(v))
   if (categoryIds === null) return { kind: 'invalid', reason: 'invalid_category_ids' }
+  const districtSlugs = parseDimension(obj.districtSlugs, normalizeCategory, (v) => DISTRICT_SLUG_RE.test(v))
+  if (districtSlugs === null) return { kind: 'invalid', reason: 'invalid_district_slugs' }
+  if (districtSlugs.length > 0) {
+    if (provinceSlugs.length !== 1) return { kind: 'invalid', reason: 'district_requires_single_province' }
+    const province = provinceSlugs[0]!
+    if (!isDistrictOfProvince || !districtSlugs.every((d) => isDistrictOfProvince(d, province))) {
+      return { kind: 'invalid', reason: 'district_not_in_province' }
+    }
+  }
   if (provinceSlugs.length === 0 && categoryIds.length === 0) {
     return { kind: 'invalid', reason: 'empty_scope' }
   }
-  return { kind: 'scoped', scope: { provinceSlugs, categoryIds } }
+  return { kind: 'scoped', scope: { provinceSlugs, districtSlugs, categoryIds } }
 }
 
 /** True when the identity carries any scope restriction (including invalid → deny). */
@@ -184,7 +207,20 @@ export function canAccessCategory(state: StaffScopeState, categoryId: string | n
   return Boolean(id) && categoryIds.includes(id)
 }
 
-/** Content check: province AND category (intersection). */
+/**
+ * District dimension (empty = whole province). District-scoped staff never pass on
+ * district-less content; the province check must pass as well (slugs repeat across il).
+ */
+export function canAccessDistrict(state: StaffScopeState, districtSlug: string | null | undefined): boolean {
+  if (state.kind === 'unscoped') return true
+  if (state.kind === 'invalid') return false
+  const { districtSlugs } = state.scope
+  if (districtSlugs.length === 0) return true
+  const slug = typeof districtSlug === 'string' ? normalizeCategory(districtSlug) : ''
+  return Boolean(slug) && districtSlugs.includes(slug)
+}
+
+/** Content check: province AND district AND category (intersection). */
 export function canAccessContentScope(
   state: StaffScopeState,
   resource: ResourceScopeContext | null | undefined
@@ -192,7 +228,35 @@ export function canAccessContentScope(
   if (state.kind === 'unscoped') return true
   if (state.kind === 'invalid') return false
   const ctx = resource ?? {}
-  return canAccessProvince(state, ctx.citySlug) && canAccessCategory(state, ctx.categoryId)
+  return (
+    canAccessProvince(state, ctx.citySlug) &&
+    canAccessDistrict(state, ctx.districtSlug) &&
+    canAccessCategory(state, ctx.categoryId)
+  )
+}
+
+export type StaffTier =
+  | 'unscoped'
+  | 'invalid'
+  | 'province_general'
+  | 'province_category'
+  | 'district_general'
+  | 'district_category'
+  /** Any other valid shape (multi-province, category-only) — legacy, never assignable. */
+  | 'custom'
+
+/** Classify a scope into the Phase 2 hierarchy tier. */
+export function staffTierOf(state: StaffScopeState): StaffTier {
+  if (state.kind !== 'scoped') return state.kind
+  const { provinceSlugs, districtSlugs, categoryIds } = state.scope
+  if (provinceSlugs.length !== 1) return 'custom'
+  if (districtSlugs.length === 0) {
+    if (categoryIds.length === 0) return 'province_general'
+    return categoryIds.length === 1 ? 'province_category' : 'custom'
+  }
+  if (districtSlugs.length !== 1) return 'custom'
+  if (categoryIds.length === 0) return 'district_general'
+  return categoryIds.length === 1 ? 'district_category' : 'custom'
 }
 
 /**
@@ -203,6 +267,7 @@ export function canManageProvinceSettings(state: StaffScopeState, provinceSlug: 
   if (state.kind === 'unscoped') return true
   if (state.kind === 'invalid') return false
   if (state.scope.categoryIds.length > 0) return false
+  if (state.scope.districtSlugs.length > 0) return false
   if (state.scope.provinceSlugs.length === 0) return false
   const slug = typeof provinceSlug === 'string' ? normalizeProvince(provinceSlug) : ''
   return Boolean(slug) && state.scope.provinceSlugs.includes(slug)
@@ -214,6 +279,7 @@ export function contentScopeOf(data: Record<string, unknown> | null | undefined)
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return {
     citySlug: str(d.citySlug),
+    districtSlug: str(d.districtSlug),
     categoryId: str(d.categoryId) || str(d.category),
   }
 }
