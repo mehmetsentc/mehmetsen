@@ -129,6 +129,7 @@ import { parseFeedV2TabFromSearch, resolveFeedV2TabForArticleCategory, type Feed
 import { CITY_CATEGORY_EVENT, useOptionalCityCategoryFilter } from '@/store/cityCategoryContext'
 import { cn } from '@/lib/utils'
 import type { FeedItemDto, FeedMode, FeedPageDto } from '@/types/smartFeed'
+import { FeedReaderInterstitial, useReaderInterstitial } from '@/components/feed/smart/FeedReaderInterstitial'
 
 /** Keep a sliding DOM window; spacers preserve global scroll indices. */
 const WINDOW_MAX = 25
@@ -354,6 +355,8 @@ export function SmartFeedClient({
     openSource?: 'swipe' | 'swipe_affordance' | 'haberi_oku' | 'unknown'
   } | null>(null)
   const readerGenerationRef = useRef(0)
+  // Story-open full-screen ad (flagged, frequency-capped; see readerInterstitialPolicy).
+  const readerInterstitial = useReaderInterstitial(readerSession)
   /** Feed V3 bottom-sheet article session (presentation === 'sheet'). */
   const [sheetArticle, setSheetArticle] = useState<{
     item: FeedItemDto
@@ -3151,6 +3154,9 @@ export function SmartFeedClient({
           Gating on progress>0.001 skipped the off-screen first paint, so Haberi Oku
           first mounted at progress=1 (hard cut, no page-turn) on WebKit/iOS.
         */}
+        {readerInterstitial.ad ? (
+          <FeedReaderInterstitial ad={readerInterstitial.ad} onClose={readerInterstitial.close} />
+        ) : null}
         {readerSession ? (
           <FeedArticleReader
             key={`reader-${readerSession.generation}`}

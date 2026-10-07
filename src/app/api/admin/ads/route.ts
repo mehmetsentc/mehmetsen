@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isDistrictOfProvince, verifyCmsToken } from '@/lib/cmsAuthServer'
-import { canApproveAd, canManageAd, forcedAdTarget, LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
+import { canApproveAd, canManageAd, forcedAdTarget, isLocalAdSlot } from '@/lib/cms/adScope'
 import { getSlotDefinition } from '@/constants/adSlots'
 import { docToAdBanner } from '@/lib/adBannerUtils'
 import type { AdBannerFormat, AdBannerPage, AdBannerSize } from '@/types/adBanner'
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     if (parsed.data.format === 'html') {
       return NextResponse.json({ error: 'Yerel reklamlarda HTML kullanılamaz' }, { status: 400 })
     }
-    if (!parsed.data.slotId.startsWith(LOCAL_AD_SLOT_PREFIX)) {
+    if (!isLocalAdSlot(parsed.data.slotId)) {
       return NextResponse.json({ error: 'Yerel reklamlar yalnızca Yerel Haber alanlarına eklenir' }, { status: 400 })
     }
     const target = forcedAdTarget(auth, typeof body.districtSlug === 'string' ? body.districtSlug : null, isDistrictOfProvince)

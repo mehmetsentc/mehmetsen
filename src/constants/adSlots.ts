@@ -16,6 +16,11 @@ const HOME_SLOTS: AdSlotDefinition[] = [
   { id: 'leaderboard-bottom', label: 'Ana Sayfa — Alt (970×250)', page: 'home', position: 'bottom', size: 'large' },
 ]
 
+/** Feed 2: full-screen ad when a story opens (frequency-capped, see readerInterstitialPolicy). */
+const FEED_SLOTS: AdSlotDefinition[] = [
+  { id: 'feed-reader-interstitial', label: 'Feed 2 — Haber açılışı (tam ekran, 5 sn sonra kapatılabilir)', page: 'home', position: 'top', size: 'interstitial' },
+]
+
 const CATEGORY_POSITIONS = [
   { position: 'top' as const, size: 'large' as const, label: 'Üst (970×250)' },
   { position: 'skyscraper' as const, size: 'skyscraper' as const, label: 'Skyscraper (300×600)' },
@@ -29,6 +34,7 @@ function categorySlotId(categoryId: string, position: string): string {
 
 export const AD_SLOT_DEFINITIONS: AdSlotDefinition[] = [
   ...HOME_SLOTS,
+  ...FEED_SLOTS,
   ...DEFAULT_CATEGORIES.flatMap((cat) =>
     CATEGORY_POSITIONS.map((p) => ({
       id: categorySlotId(cat.id, p.position),
@@ -76,6 +82,7 @@ export function getCategoryAdSlotIds(categoryId: string): string[] {
 export function getAdminAdSlotGroups(): Array<{ label: string; slots: AdSlotDefinition[] }> {
   return [
     { label: 'Ana Sayfa', slots: HOME_SLOTS },
+    { label: 'Feed 2 — Haber açılışı', slots: FEED_SLOTS },
     {
       label: 'Tüm Kategoriler (genel)',
       slots: CATEGORY_POSITIONS.map((p) => ({

@@ -1,6 +1,6 @@
 export type AdBannerFormat = 'image' | 'video' | 'html'
 
-export type AdBannerSize = 'leaderboard' | 'large' | 'skyscraper'
+export type AdBannerSize = 'leaderboard' | 'large' | 'skyscraper' | 'interstitial'
 
 export type AdBannerPage = 'home' | 'category' | 'all_categories'
 

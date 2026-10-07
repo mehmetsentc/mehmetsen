@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
-import { canApproveAd, canManageAd, LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
+import { canApproveAd, canManageAd, isLocalAdSlot } from '@/lib/cms/adScope'
 import { getSlotDefinition } from '@/constants/adSlots'
 import { docToAdBanner } from '@/lib/adBannerUtils'
 
@@ -59,7 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (updates.format === 'html' || (body.htmlContent !== undefined && body.htmlContent)) {
       return NextResponse.json({ error: 'Yerel reklamlarda HTML kullanılamaz' }, { status: 400 })
     }
-    if (typeof updates.slotId === 'string' && !updates.slotId.startsWith(LOCAL_AD_SLOT_PREFIX)) {
+    if (typeof updates.slotId === 'string' && !isLocalAdSlot(updates.slotId)) {
       return NextResponse.json({ error: 'Yerel reklamlar yalnızca Yerel Haber alanlarına eklenir' }, { status: 400 })
     }
   }

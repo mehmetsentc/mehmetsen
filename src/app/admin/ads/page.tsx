@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { getCachedStaffScope } from '@/lib/cms/staffScopeClient'
-import { LOCAL_AD_SLOT_PREFIX } from '@/lib/cms/adScope'
+import { LOCAL_AD_SLOT_PREFIX, isLocalAdSlot } from '@/lib/cms/adScope'
 import { getDistrictsForProvince } from '@/constants/cities'
 
 type AdminAdRow = AdBanner & { canApprove?: boolean }
@@ -76,7 +76,7 @@ export default function AdminAdsPage() {
     const groups = getAdminAdSlotGroups()
     if (!scopedAds) return groups
     return groups
-      .map((g) => ({ ...g, slots: g.slots.filter((slot) => slot.id.startsWith(LOCAL_AD_SLOT_PREFIX)) }))
+      .map((g) => ({ ...g, slots: g.slots.filter((slot) => isLocalAdSlot(slot.id)) }))
       .filter((g) => g.slots.length > 0)
   }, [scopedAds])
   const bannerStorageId = editing?.id ?? uploadDraftId

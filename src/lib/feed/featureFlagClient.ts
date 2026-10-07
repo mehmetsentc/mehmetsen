@@ -26,3 +26,13 @@ export function isGlobalNavV2EnabledClient(): boolean {
   if (v === '1' || v === 'true' || v === 'yes') return true
   return true
 }
+
+/**
+ * Feed 2 story-open full-screen ad — default OFF.
+ * Enable with NEXT_PUBLIC_FEED_READER_INTERSTITIAL_ENABLED=1 (Vercel env + redeploy).
+ * Nothing shows until an approved ad exists for the `feed-reader-interstitial` slot.
+ */
+export function isFeedReaderInterstitialEnabledClient(): boolean {
+  const v = process.env.NEXT_PUBLIC_FEED_READER_INTERSTITIAL_ENABLED?.trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}

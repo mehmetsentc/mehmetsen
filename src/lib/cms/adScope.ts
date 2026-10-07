@@ -19,6 +19,12 @@ import {
 } from '@/lib/cms/rbacScope'
 
 export const LOCAL_AD_SLOT_PREFIX = 'category-yerel-haber-'
+/** Feed 2 story-open ad: geo-matched by the story's il, so local editors may use it. */
+export const LOCAL_FEED_INTERSTITIAL_SLOT = 'feed-reader-interstitial'
+
+export function isLocalAdSlot(slotId: string): boolean {
+  return slotId.startsWith(LOCAL_AD_SLOT_PREFIX) || slotId === LOCAL_FEED_INTERSTITIAL_SLOT
+}
 
 export interface AdActor {
   role: CmsRole
