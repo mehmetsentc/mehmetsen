@@ -1,4 +1,5 @@
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import {
@@ -104,19 +105,32 @@ async function aiEditorsFingerprint(): Promise<string | null> {
   }
 }
 
+let aiEditorsInflight: Promise<AiEditorDocument[]> | null = null
+
 async function loadAiEditorsRoster(): Promise<AiEditorDocument[]> {
   const now = Date.now()
   const c = aiEditorsCache
-  if (c && now - c.fetchedAt < AI_EDITORS_MAX_AGE_MS) {
-    if (now - c.probedAt < AI_EDITORS_PROBE_MS) return c.editors
-    const fp = await aiEditorsFingerprint()
-    if (fp !== null && c.fingerprint !== null && fp === c.fingerprint) {
-      c.probedAt = now
-      return c.editors
-    }
+  if (c && now - c.fetchedAt < AI_EDITORS_MAX_AGE_MS && now - c.probedAt < AI_EDITORS_PROBE_MS) {
+    return c.editors
   }
-  const [editors, fingerprint] = await Promise.all([fetchAllAiEditors(), aiEditorsFingerprint()])
-  aiEditorsCache = { fetchedAt: now, probedAt: now, fingerprint, editors }
+  // FinOps 8 Oct: concurrent requests on a cold instance each re-read the full roster.
+  if (!aiEditorsInflight) {
+    aiEditorsInflight = refreshAiEditorsRoster(now).finally(() => {
+      aiEditorsInflight = null
+    })
+  }
+  return aiEditorsInflight
+}
+
+async function refreshAiEditorsRoster(now: number): Promise<AiEditorDocument[]> {
+  const c = aiEditorsCache
+  const fp = await aiEditorsFingerprint()
+  if (c && now - c.fetchedAt < AI_EDITORS_MAX_AGE_MS && fp !== null && c.fingerprint !== null && fp === c.fingerprint) {
+    c.probedAt = now
+    return c.editors
+  }
+  const editors = await fetchAllAiEditors(fp)
+  aiEditorsCache = { fetchedAt: now, probedAt: now, fingerprint: fp, editors }
   return editors
 }
 
@@ -149,26 +163,75 @@ const AI_EDITOR_ROSTER_FIELDS = [
   'createdAt', 'updatedAt', 'joinDate', 'lastActiveAt', 'createdBy', 'managerAgentId',
 ] as const
 
-async function fetchAllAiEditors(): Promise<AiEditorDocument[]> {
-  const db = getAdminFirestore()
+/** Firestore Timestamps do not survive the JSON data cache; editor dates are stored as ms. */
+function toCacheSafe(value: unknown): unknown {
+  if (value && typeof value === 'object') {
+    const maybe = value as { toMillis?: () => number }
+    if (typeof maybe.toMillis === 'function') return maybe.toMillis()
+    if (Array.isArray(value)) return value.map(toCacheSafe)
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = toCacheSafe(v)
+    return out
+  }
+  return value
+}
+
+const AI_EDITORS_PAGE_SIZE = 400
+
+async function fetchAiEditorsPage(afterId: string | null, pageSize: number): Promise<AiEditorDocument[]> {
+  let q = getAdminFirestore()
+    .collection(Collections.AI_EDITORS)
+    .select(...AI_EDITOR_ROSTER_FIELDS)
+    .orderBy('__name__')
+    .limit(pageSize)
+  if (afterId) q = q.startAfter(afterId)
+  const snap = await q.get()
+  return snap.docs.map(
+    (d: QueryDocumentSnapshot) =>
+      toCacheSafe({ id: d.id, ...(d.data() as Omit<AiEditorDocument, 'id'>) }) as AiEditorDocument
+  )
+}
+
+/**
+ * FinOps 8 Oct: every cold serverless instance re-read the whole roster (~2k docs,
+ * ~113k reads/day). Pages are now shared across instances through the Next data
+ * cache, keyed by the roster fingerprint (any write here bumps updatedAt → new key;
+ * 6h revalidate still picks up deletes/script edits). One page of 400 projected
+ * docs stays well under the 2MB item limit. Outside Next (scripts) or on a cache
+ * error it falls back to a direct read.
+ */
+const getAiEditorsPageCached = unstable_cache(
+  async (_fingerprint: string, afterId: string | null, pageSize: number) => fetchAiEditorsPage(afterId, pageSize),
+  ['ai-editors-roster-page-v1'],
+  { revalidate: AI_EDITORS_MAX_AGE_MS / 1000, tags: ['ai-editors-roster'] }
+)
+
+async function readAiEditorsPage(
+  fingerprint: string | null,
+  afterId: string | null,
+  pageSize: number
+): Promise<AiEditorDocument[]> {
+  if (fingerprint) {
+    try {
+      return await getAiEditorsPageCached(fingerprint, afterId, pageSize)
+    } catch {
+      // fall through to a direct read
+    }
+  }
+  return fetchAiEditorsPage(afterId, pageSize)
+}
+
+async function fetchAllAiEditors(fingerprint: string | null): Promise<AiEditorDocument[]> {
   const cap = AI_EDITORS_FETCH_CAP
   const editors: AiEditorDocument[] = []
-  let last: QueryDocumentSnapshot | undefined
+  let afterId: string | null = null
   while (editors.length < cap) {
-    const pageSize = Math.min(400, cap - editors.length)
-    let q = db
-      .collection(Collections.AI_EDITORS)
-      .select(...AI_EDITOR_ROSTER_FIELDS)
-      .orderBy('__name__')
-      .limit(pageSize)
-    if (last) q = q.startAfter(last)
-    const snap = await q.get()
-    if (snap.empty) break
-    for (const d of snap.docs) {
-      editors.push({ id: d.id, ...(d.data() as Omit<AiEditorDocument, 'id'>) })
-    }
-    last = snap.docs[snap.docs.length - 1]
-    if (snap.size < pageSize) break
+    const pageSize = Math.min(AI_EDITORS_PAGE_SIZE, cap - editors.length)
+    const page = await readAiEditorsPage(fingerprint, afterId, pageSize)
+    if (page.length === 0) break
+    editors.push(...page)
+    afterId = page[page.length - 1]!.id
+    if (page.length < pageSize) break
   }
   return editors
 }

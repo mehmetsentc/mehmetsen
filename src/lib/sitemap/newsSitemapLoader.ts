@@ -95,6 +95,36 @@ const getNewsSitemapEntriesCached = unstable_cache(
   { revalidate: NEWS_SITEMAP_REVALIDATE_S, tags: ['news-sitemap'] }
 )
 
+/**
+ * FinOps: in-process floor under the data cache. Article pages (SEO-10 latest links)
+ * and both news-sitemap routes call this; when the data cache misses on a warm
+ * instance, every caller rescanned the 48h window (~840 reads each). 10 min stays well
+ * inside the route's own 30-min TTL, so Google News freshness is unchanged.
+ * Empty results are not pinned; errors are never cached.
+ */
+export const NEWS_SITEMAP_MEMO_MS = 10 * 60 * 1000
+let newsSitemapMemo: { at: number; value: NewsSitemapEntry[] } | null = null
+let newsSitemapInflight: Promise<NewsSitemapEntry[]> | null = null
+
+export function __resetNewsSitemapMemoForTests(): void {
+  newsSitemapMemo = null
+  newsSitemapInflight = null
+}
+
 export async function getNewsSitemapEntries(): Promise<NewsSitemapEntry[]> {
-  return getNewsSitemapEntriesCached()
+  const now = Date.now()
+  if (newsSitemapMemo && now - newsSitemapMemo.at < NEWS_SITEMAP_MEMO_MS) {
+    return newsSitemapMemo.value
+  }
+  if (!newsSitemapInflight) {
+    newsSitemapInflight = getNewsSitemapEntriesCached()
+      .then((value) => {
+        if (value.length > 0) newsSitemapMemo = { at: Date.now(), value }
+        return value
+      })
+      .finally(() => {
+        newsSitemapInflight = null
+      })
+  }
+  return newsSitemapInflight
 }

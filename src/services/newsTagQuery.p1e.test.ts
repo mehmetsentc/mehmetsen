@@ -11,14 +11,16 @@ describe('P1-E tag list query', () => {
   const end = news.indexOf('function publicAuthorFromSeedEditor')
   const block = news.slice(start, end)
 
-  it('uses one projected array-contains-any read, cached 24h on news-post', () => {
+  it('uses one projected array-contains-any read, cached 3h on its own tag', () => {
     expect(block).toContain("'array-contains-any'")
     expect(block).not.toContain("'array-contains'")
     expect(block).not.toContain('Promise.allSettled')
     expect(block).toContain('limit(TAG_LIST_LIMIT)')
     expect(block).toContain('TAG_LIST_LIMIT = 20')
     expect(block).toContain('selectNewsCardFields')
-    expect(block).toContain('revalidate: 60 * 60 * 24')
-    expect(block).toContain("tags: ['news-post']")
+    // FinOps: own tag (publishes do not drop every tag page) and a 3h TTL.
+    expect(block).toContain('revalidate: 3 * 60 * 60')
+    expect(block).toContain("tags: ['posts-by-tag']")
+    expect(block).not.toContain("tags: ['news-post']")
   })
 })

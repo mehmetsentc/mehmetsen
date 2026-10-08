@@ -6,7 +6,7 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
-import { selectNewsCardFields } from '@/lib/news/cardFirestoreFields'
+import { NEWS_CARD_FIRESTORE_FIELDS, selectNewsCardFields } from '@/lib/news/cardFirestoreFields'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import {
   CATEGORY_STORY_WINDOW_MS,
@@ -1168,7 +1168,7 @@ export async function getSuggestedPostsServer(
 }
 
 
-/** One array-contains-any read per tag, card fields only. Refreshed hourly. */
+/** One array-contains-any read per tag, card fields only. Refreshed every 3 hours. */
 const TAG_LIST_LIMIT = 20
 
 const getPostsByTagCached = unstable_cache(
@@ -1199,8 +1199,9 @@ const getPostsByTagCached = unstable_cache(
   },
   ['posts-by-tag-v2'],
   // FinOps 3 Oct: no 'news-post' tag — every publish dropped every tag page (~15k
-  // tag queries/day, mostly bots). New stories reach tag pages within the hour.
-  { revalidate: 60 * 60, tags: ['posts-by-tag'] }
+  // tag queries/day, mostly bots). FinOps 8 Oct: 3h (was 1h) — ~7.5k distinct tag reads/day,
+  // almost all crawler hits; new stories reach tag pages within 3 hours.
+  { revalidate: 3 * 60 * 60, tags: ['posts-by-tag'] }
 )
 
 export async function getPostsByTag(rawTag: string, limitCount = TAG_LIST_LIMIT): Promise<Post[]> {
@@ -1489,6 +1490,13 @@ export const getCategoryFeedPage = unstable_cache(
  * publishedAt >= 24h önce filtresi + bellekte viewsCount desc sort (composite index gerekmez).
  * Fallback: all-time viewsCount desc (24h'de yeterli makale yoksa).
  */
+type MostReadSelectable<Q> = Q & { select?: (...fields: string[]) => Q }
+/** No-op for query mocks without select(), like selectNewsCardFields. */
+function selectMostReadFields<Q>(query: MostReadSelectable<Q>): Q {
+  if (typeof query.select !== 'function') return query
+  return query.select(...NEWS_CARD_FIRESTORE_FIELDS, 'viewsCount', 'views')
+}
+
 const getMostReadPostsCached = unstable_cache(
   async (limitCount: number): Promise<NewsItem[]> => {
     try {
@@ -1496,13 +1504,15 @@ const getMostReadPostsCached = unstable_cache(
       const since24h = Date.now() - 24 * 60 * 60 * 1000
 
       // Son 24h makaleleri publishedAt'e göre çek; viewsCount'u bellekte sırala
-      const snap24h = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('publishedAt', '>=', since24h)
-        .orderBy('publishedAt', 'desc')
-        .limit(200)
-        .get()
+      // FinOps 8 Oct: card fields + view counters only (was full docs incl. article HTML).
+      const snap24h = await selectMostReadFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('publishedAt', '>=', since24h)
+          .orderBy('publishedAt', 'desc')
+          .limit(200)
+      ).get()
 
       if (!snap24h.empty) {
         const items24h = mapAdminDocs(snap24h.docs)
@@ -1511,12 +1521,13 @@ const getMostReadPostsCached = unstable_cache(
       }
 
       // Fallback: tüm zamanların en çok okunanları (24h'de yeterli haber yoksa)
-      const snapAll = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .orderBy('viewsCount', 'desc')
-        .limit(limitCount)
-        .get()
+      const snapAll = await selectMostReadFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .orderBy('viewsCount', 'desc')
+          .limit(limitCount)
+      ).get()
       const itemsAll = mapAdminDocs(snapAll.docs)
       if (itemsAll.length > 0) return itemsAll
     } catch (error) {
@@ -1524,8 +1535,9 @@ const getMostReadPostsCached = unstable_cache(
     }
     return []
   },
-  ['most-read-24h-v2'],
-  { revalidate: 300, tags: ['news-post'] }
+  ['most-read-24h-v3'],
+  // FinOps 8 Oct: 15 min (was 5) — a "most read" ranking does not need minute freshness.
+  { revalidate: 900, tags: ['news-post'] }
 )
 
 export async function getMostReadPosts(limitCount = 40): Promise<NewsItem[]> {

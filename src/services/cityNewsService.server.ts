@@ -276,7 +276,9 @@ const getCityNewsCached = unstable_cache(
     }
   },
   ['city-news-feed-v4'],
-  { revalidate: 120, tags: ['city-news'] }
+  // FinOps 8 Oct: 5 min (was 2). Each miss re-reads up to 120 full city docs; publish
+  // paths still drop the 'city-news' tag, so new stories are not held back by this TTL.
+  { revalidate: 300, tags: ['city-news'] }
 )
 
 /**
