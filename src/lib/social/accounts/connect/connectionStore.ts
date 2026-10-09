@@ -46,7 +46,7 @@ export interface ConnectedAccountInput {
 }
 
 export type SaveConnectionResult =
-  | { ok: true; accountId: string; created: boolean; status: SocialAccountStatus; ownership: SocialAccountOwnership }
+  | { ok: true; accountId: string; created: boolean; status: SocialAccountStatus; ownership: SocialAccountOwnership; migratedFromLegacy?: boolean }
   | {
       ok: false
       code:
@@ -111,7 +111,14 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
       const existing = snap.exists ? parseSocialAccount(accountId, snap.data()) : null
       if (snap.exists && !existing) return { ok: false as const, code: 'write_failed' as const }
       if (input.reconnectAccountId && !existing) return { ok: false as const, code: 'reconnect_target_missing' as const }
-      if (existing?.connectionMethod === 'legacy') return { ok: false as const, code: 'legacy_account_exists' as const }
+      // Legacy kayıt: yalnızca açık "yeniden bağla" ile ve aynı dış kimlikle
+      // (accountId = platform_dışKimlik) OAuth'a geçirilebilir. Yeni bağlantı
+      // akışı legacy kaydı sessizce devralamaz. Kimlik eşleşmesi yukarıda
+      // (reconnectAccountId === accountId) doğrulandı; kayıt kimliği değişmediği
+      // için ortak yayın kilidi (ledger anahtarı) aynı kalır.
+      if (existing?.connectionMethod === 'legacy' && input.reconnectAccountId !== accountId) {
+        return { ok: false as const, code: 'legacy_account_exists' as const }
+      }
       if (existing && !input.reconnectAccountId && !sameOwnership(existing.ownership, input.ownership)) {
         return { ok: false as const, code: 'owned_elsewhere' as const }
       }
@@ -149,8 +156,15 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
       if (!parseSocialAccount(accountId, account)) return { ok: false as const, code: 'invalid_input' as const }
 
       tx.set(secretRef, { ...secret })
-      tx.set(accountRef, { ...account })
-      return { ok: true as const, accountId, created: !existing, status, ownership: account.ownership }
+      tx.set(accountRef, { ...account, ...(existing?.connectionMethod === 'legacy' ? { migratedFromLegacyAt: input.now } : {}) })
+      return {
+        ok: true as const,
+        accountId,
+        created: !existing,
+        status,
+        ownership: account.ownership,
+        ...(existing?.connectionMethod === 'legacy' ? { migratedFromLegacy: true } : {}),
+      }
     })
   } catch {
     return { ok: false, code: 'write_failed' }

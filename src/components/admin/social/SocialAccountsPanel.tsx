@@ -76,7 +76,7 @@ export const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   account_mismatch: { ok: false, text: 'Yeniden bağlamada farklı bir hesapla giriş yapıldı. Mevcut bağlantı değişmedi.' },
   owned_elsewhere: { ok: false, text: 'Bu hesap başka bir il/yayıncıya bağlı. Sessizce yeniden atanmadı.' },
   test_account_not_allowed: { ok: false, text: 'Test ortamı: bu hesap izin listesinde değil; kaydedilmedi.' },
-  legacy_account_exists: { ok: false, text: 'Bu hesap mevcut (legacy) Onyeditivi bağlantısına ait; değiştirilmedi.' },
+  legacy_account_exists: { ok: false, text: 'Bu hesap mevcut (legacy) Onyeditivi bağlantısına ait; değiştirilmedi. Geçiş için hesabın satırındaki “Platform girişiyle yeniden bağla”yı kullanın.' },
   reconnect_target_missing: { ok: false, text: 'Yeniden bağlanacak hesap kaydı bulunamadı.' },
   encryption_unavailable: { ok: false, text: 'Sunucuda şifreleme anahtarı yok; bağlantı kaydedilmedi.' },
   platform_error: { ok: false, text: 'Platformla iletişimde hata oluştu. Mevcut bağlantılar değişmedi.' },
@@ -420,11 +420,15 @@ export function SocialAccountsPanel() {
                         <PlayCircle className="h-3.5 w-3.5" aria-hidden /> Etkinleştir
                       </button>
                     )}
-                    {a.connectionMethod !== 'legacy' && (
-                      <button type="button" disabled={busy !== null || !data.config[a.platform].ready} onClick={() => void startConnect({}, `/api/admin/social/accounts/${encodeURIComponent(a.id)}/reconnect`)} className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40">
-                        <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Yeniden bağla
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      disabled={busy !== null || !data.config[a.platform].ready}
+                      onClick={() => void startConnect({}, `/api/admin/social/accounts/${encodeURIComponent(a.id)}/reconnect`)}
+                      title={a.connectionMethod === 'legacy' ? 'Aynı hesapla platform girişi yapılırsa bu kayıt yeni bağlantı yöntemine geçer; farklı hesapla giriş yapılırsa hiçbir şey değişmez.' : undefined}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" aria-hidden /> {a.connectionMethod === 'legacy' ? 'Platform girişiyle yeniden bağla' : 'Yeniden bağla'}
+                    </button>
                   </div>
                 </li>
               ))}

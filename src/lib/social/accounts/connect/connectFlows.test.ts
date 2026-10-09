@@ -672,6 +672,72 @@ describe('yeniden bağlantı, sahiplik ve atomik kayıt', () => {
     expect(result(await connectInstagram())).toBe('legacy_account_exists')
     expect(fs.store.get('socialAccounts/instagram_17840000000000001')).toMatchObject({ connectionMethod: 'legacy' })
   })
+
+  describe('legacy (Onyeditivi) → OAuth geçişi yalnızca açık yeniden bağlama ile', () => {
+    const LEGACY_ID = 'instagram_17840000000000001'
+    async function seedLegacy() {
+      await fs.collection('socialAccounts').doc(LEGACY_ID).set({
+        id: LEGACY_ID,
+        platform: 'instagram',
+        externalId: '17840000000000001',
+        connectionMethod: 'legacy',
+        status: 'active',
+        ownership: { citySlug: 'canakkale', publisherId: null },
+        instagram: { igUserId: '17840000000000001', linkedFacebookPageId: null },
+        displayName: 'Onyeditivi',
+        createdAt: 1111,
+      })
+      await fs.collection('socialAccountSecrets').doc(LEGACY_ID).set({ kind: 'legacy', legacySource: 'env', updatedAt: 1111 })
+    }
+
+    it('aynı dış hesapla yeniden bağlama legacy kaydı OAuth hesabına çevirir; kimlik, sahiplik ve kilit anahtarı korunur', async () => {
+      await seedLegacy()
+      const a = await begin('instagram', 'admin1', 'antalya', LEGACY_ID)
+      expect(result(await callback('instagram', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('connected')
+      const acc = fs.store.get(`socialAccounts/${LEGACY_ID}`) as Record<string, unknown>
+      expect(acc).toMatchObject({
+        id: LEGACY_ID,
+        connectionMethod: 'instagram_login',
+        externalId: '17840000000000001',
+        ownership: { citySlug: 'canakkale', publisherId: null }, // istekteki 'antalya' değil, kayıttaki sahiplik
+        createdAt: 1111,
+      })
+      expect(typeof acc.migratedFromLegacyAt).toBe('number')
+      const sec = fs.store.get(`socialAccountSecrets/${LEGACY_ID}`) as Record<string, unknown>
+      expect(sec.kind).not.toBe('legacy')
+      expect(JSON.stringify(sec)).not.toContain('IGAA')
+      expect(fs.docs('socialAccounts')).toHaveLength(1) // mükerrer hesap yok; ledger anahtarı (hesap kimliği) aynı
+      const audit = fs.docs('cmsAuditLogs').map((d) => d.data).find((x) => x.action === 'social.account.connect')
+      expect(audit).toMatchObject({ entityId: LEGACY_ID, after: { migratedFromLegacy: true, created: false } })
+    })
+
+    it('farklı hesapla giriş yapılırsa geçiş olmaz; legacy kayıt ve legacy sır aynen kalır', async () => {
+      await seedLegacy()
+      const before = structuredClone(fs.store.get(`socialAccounts/${LEGACY_ID}`))
+      const beforeSec = structuredClone(fs.store.get(`socialAccountSecrets/${LEGACY_ID}`))
+      const a = await begin('instagram', 'admin1', 'antalya', LEGACY_ID)
+      meta.igUserId = '17840000000000999'
+      expect(result(await callback('instagram', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('account_mismatch')
+      expect(fs.store.get(`socialAccounts/${LEGACY_ID}`)).toEqual(before)
+      expect(fs.store.get(`socialAccountSecrets/${LEGACY_ID}`)).toEqual(beforeSec)
+      expect(fs.store.has('socialAccounts/instagram_17840000000000999')).toBe(false)
+    })
+
+    it('kayıt yazımı başarısızsa legacy bağlantı bozulmaz', async () => {
+      await seedLegacy()
+      const before = structuredClone(fs.store.get(`socialAccounts/${LEGACY_ID}`))
+      const beforeSec = structuredClone(fs.store.get(`socialAccountSecrets/${LEGACY_ID}`))
+      vi.spyOn(fs, 'runTransaction').mockRejectedValueOnce(new Error('aborted'))
+      expect(await saveConnectedAccount({
+        platform: 'instagram', connectionMethod: 'instagram_login', externalId: '17840000000000001', displayName: 'x', username: null,
+        platformAccountType: 'BUSINESS', accessToken: 'IGAA_LONG', tokenType: 'instagram_user', tokenExpiresAt: null, tokenExpiryVerified: false,
+        grantedPermissions: null, permissionsVerifiedAt: null, ownership: { citySlug: 'canakkale', publisherId: null },
+        reconnectAccountId: LEGACY_ID, actorUid: 'admin1', now: NOW,
+      })).toEqual({ ok: false, code: 'write_failed' })
+      expect(fs.store.get(`socialAccounts/${LEGACY_ID}`)).toEqual(before)
+      expect(fs.store.get(`socialAccountSecrets/${LEGACY_ID}`)).toEqual(beforeSec)
+    })
+  })
 })
 
 // ── Status + management API ─────────────────────────────────────────────────

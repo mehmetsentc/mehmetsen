@@ -130,8 +130,10 @@ export async function startConnection(input: {
     if (!isWellFormedAccountId(id)) return { ok: false, status: 400, code: 'invalid_account_id' }
     const account = await getSocialAccount(id)
     if (!account) return { ok: false, status: 404, code: 'not_found' }
-    if (account.connectionMethod === 'legacy') return { ok: false, status: 409, code: 'legacy_account' }
-    if (account.connectionMethod !== METHOD_FOR_PLATFORM[account.platform]) {
+    // Legacy (Onyeditivi) kaydı: yalnızca AYNI dış hesapla OAuth'a geçiş için
+    // "yeniden bağla" başlatılabilir. Sahiplik kayıttan alınır; geçiş yalnızca
+    // callback'te kimlik eşleşip yeni token doğrulanınca, tek transaction'da yazılır.
+    if (account.connectionMethod !== 'legacy' && account.connectionMethod !== METHOD_FOR_PLATFORM[account.platform]) {
       return { ok: false, status: 409, code: 'unsupported_connection_method' }
     }
     platform = account.platform
@@ -296,7 +298,7 @@ async function finishSave(
     action: consumed.reconnectAccountId ? 'social.account.connect' : 'social.account.create',
     entityType: 'socialAccount',
     entityId: save.accountId,
-    after: { status: save.status, citySlug: save.ownership.citySlug, created: save.created },
+    after: { status: save.status, citySlug: save.ownership.citySlug, created: save.created, migratedFromLegacy: save.migratedFromLegacy === true },
   })
   return outcome(save.status === 'active' ? 'connected' : 'connected_needs_attention', { account: save.accountId })
 }
@@ -489,7 +491,7 @@ export async function selectFacebookPage(input: {
     action: consumed.reconnectAccountId ? 'social.account.connect' : 'social.account.create',
     entityType: 'socialAccount',
     entityId: save.accountId,
-    after: { status: save.status, citySlug: save.ownership.citySlug, created: save.created },
+    after: { status: save.status, citySlug: save.ownership.citySlug, created: save.created, migratedFromLegacy: save.migratedFromLegacy === true },
   })
   return { ok: true, accountId: save.accountId, status: save.status }
 }
