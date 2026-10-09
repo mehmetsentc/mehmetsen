@@ -3,6 +3,7 @@
  * POST /api/admin/social/facebook-app — save app id/secret/name + optional page token
  * DELETE — clear site custom app
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText } from '@/lib/social/safeLog'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
@@ -21,6 +22,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -63,6 +66,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -123,6 +128,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

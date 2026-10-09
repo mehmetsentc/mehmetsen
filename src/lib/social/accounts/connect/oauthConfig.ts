@@ -20,6 +20,7 @@
  *
  * Secrets never leave the server; status reports list env var NAMES only.
  */
+import { isSocialTestMode, socialTestEnvStatus, testOAuthBaseUrl } from '../../testEnvironment'
 import 'server-only'
 import { getSiteUrl } from '@/lib/seo'
 import { hasSecretEncryptionKey } from '@/lib/crypto/secretCrypto'
@@ -64,6 +65,8 @@ const APP_ID_RE = /^[0-9]{5,25}$/
 
 /** Trusted origin for callbacks. Returns null when not safe to use. */
 export function oauthBaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  // Test (preview) ortamı: yalnızca açık SOCIAL_OAUTH_BASE_URL; site/production URL'sine düşülmez.
+  if (isSocialTestMode(env)) return testOAuthBaseUrl(env)
   const raw = env.SOCIAL_OAUTH_BASE_URL?.trim() || getSiteUrl()
   let u: URL
   try {
@@ -95,6 +98,7 @@ export function getPlatformConfigStatus(
   if (!base) missing.push('SOCIAL_OAUTH_BASE_URL')
   if (!hasSecretEncryptionKey()) missing.push('SECRET_ENCRYPTION_KEY')
   if (!env.CMS_SESSION_SECRET?.trim()) missing.push('CMS_SESSION_SECRET')
+  for (const name of socialTestEnvStatus(env).problems) if (!missing.includes(name)) missing.push(name)
   return { ready: missing.length === 0, missing, redirectUri: base ? `${base}${CALLBACK_PATHS[platform]}` : null }
 }
 
@@ -117,7 +121,8 @@ export function getPlatformOAuthConfig(
 
 /** Fixed panel return URL — no caller-provided return URLs are accepted. */
 export function panelReturnUrl(params: Record<string, string>): string {
-  const base = oauthBaseUrl() ?? getSiteUrl()
+  // Test ortamında güvenilir kök yoksa production sitesine değil, göreli panele dönülür.
+  const base = oauthBaseUrl() ?? (isSocialTestMode() ? '' : getSiteUrl())
   const q = new URLSearchParams({ panel: 'accounts', ...params })
   return `${base}/admin/social?${q.toString()}`
 }

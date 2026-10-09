@@ -10,6 +10,7 @@
  *
  * DİKKAT: Bu route sadece test içindir. Production'da kaldırın.
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText } from '@/lib/social/safeLog'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -42,6 +43,8 @@ function buildArticleUrl(id: string, data: Record<string, unknown>): string | nu
 }
 
 async function handleRequest(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }

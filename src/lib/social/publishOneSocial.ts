@@ -34,6 +34,7 @@ import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks
 import { publishToTarget, type PublishTargets, type TargetablePlatform } from '@/lib/social/accounts/targetedPublish'
 import { imageModeProblem, type ImageMode, type PublishFormat } from '@/lib/social/accounts/capabilities'
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
+import { isSocialTestMode, socialTestEnvStatus, TEST_ENV_TEXT } from '@/lib/social/testEnvironment'
 import { isVerifiedPublish, legacyAccountId, type LegacyPublishOptions } from './accounts/legacyLock'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
@@ -415,6 +416,16 @@ export async function publishOneSocial(
   }
   if (hasTargets && (!manual || !options.actorUid)) {
     return skipped(newsId, 'Hedef hesap yalnızca yetkili manuel paylaşımda kullanılabilir')
+  }
+  // Test (preview) ortamı: yalnızca yetkili manuel + açık hedefli yayın; legacy,
+  // X, cron/after() otomatik yayını kapalı. Yapılandırma eksikse hiç yayın yok.
+  if (isSocialTestMode()) {
+    if (socialTestEnvStatus().problems.length > 0) return skipped(newsId, TEST_ENV_TEXT.misconfigured)
+    if (!manual || !options.actorUid) return skipped(newsId, TEST_ENV_TEXT.autoDisabled)
+    const plat = overrides?.platforms
+    if (!plat || plat.twitter) return skipped(newsId, plat?.twitter ? TEST_ENV_TEXT.twitterDisabled : TEST_ENV_TEXT.legacyDisabled)
+    const wanted = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
+    if (wanted.length === 0 || wanted.some((p) => !targets[p])) return skipped(newsId, TEST_ENV_TEXT.legacyDisabled)
   }
 
   try {

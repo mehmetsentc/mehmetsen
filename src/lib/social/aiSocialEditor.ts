@@ -315,6 +315,9 @@ export async function generateSocialContent(
   description: string,
   cityName = 'Çanakkale'
 ): Promise<AISocialContent | null> {
+  // Test (preview) ortamında sosyal AI çağrılmaz; yerel metin yedeği kullanılır.
+  const { isSocialTestMode } = await import('./testEnvironment')
+  if (isSocialTestMode()) return null
   const { mayAutomatedCrawlerUseAi, isManualEditorAiEnabled } = await import(
     '@/services/crawler/automatedAiPolicy'
   )

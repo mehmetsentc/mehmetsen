@@ -2,6 +2,7 @@
  * GET /api/admin/social/facebook-app/callback
  * Facebook OAuth redirect — exchanges code, stores Page token for custom app.
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText } from '@/lib/social/safeLog'
 import {
@@ -28,6 +29,8 @@ function redirectAdmin(query: Record<string, string>): NextResponse {
 }
 
 export async function GET(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const url = new URL(request.url)
   const code = url.searchParams.get('code')?.trim() || ''
   const state = url.searchParams.get('state')?.trim() || ''

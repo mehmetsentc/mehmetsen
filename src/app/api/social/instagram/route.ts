@@ -7,6 +7,7 @@
  * Body: SocialPublishPayload (JSON)
  * Returns: SocialPublishResult (JSON)
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { publishToInstagram } from '@/lib/social/instagram'
@@ -16,6 +17,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   if (!(await isNewsroomAuthorized(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

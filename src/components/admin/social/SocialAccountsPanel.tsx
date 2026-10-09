@@ -19,7 +19,8 @@ import type { SocialAccountPlatform, SocialAccountPublic, SocialAccountStatus } 
 import { publishableKinds, type ContentKind } from '@/lib/social/accounts/capabilities'
 
 type ConfigStatus = { ready: boolean; missing: string[]; redirectUri: string | null }
-type AccountsResponse = { accounts: SocialAccountPublic[]; config: Record<SocialAccountPlatform, ConfigStatus> }
+type TestEnvStatus = { active: boolean; problems: string[]; warnings: string[]; allowedAccountCount: number }
+type AccountsResponse = { accounts: SocialAccountPublic[]; config: Record<SocialAccountPlatform, ConfigStatus>; testEnvironment?: TestEnvStatus }
 type PageRow = { id: string; name: string; eligible: boolean }
 
 export const PLATFORM_LABEL: Record<SocialAccountPlatform, string> = {
@@ -74,6 +75,7 @@ export const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   not_professional: { ok: false, text: 'Instagram hesabı profesyonel (İşletme/İçerik Üretici) değil.' },
   account_mismatch: { ok: false, text: 'Yeniden bağlamada farklı bir hesapla giriş yapıldı. Mevcut bağlantı değişmedi.' },
   owned_elsewhere: { ok: false, text: 'Bu hesap başka bir il/yayıncıya bağlı. Sessizce yeniden atanmadı.' },
+  test_account_not_allowed: { ok: false, text: 'Test ortamı: bu hesap izin listesinde değil; kaydedilmedi.' },
   legacy_account_exists: { ok: false, text: 'Bu hesap mevcut (legacy) Onyeditivi bağlantısına ait; değiştirilmedi.' },
   reconnect_target_missing: { ok: false, text: 'Yeniden bağlanacak hesap kaydı bulunamadı.' },
   encryption_unavailable: { ok: false, text: 'Sunucuda şifreleme anahtarı yok; bağlantı kaydedilmedi.' },
@@ -264,6 +266,21 @@ export function SocialAccountsPanel() {
       <p role="note" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
         Hesap bağlamak otomatik paylaşımı açmaz. Bağlanan hesaplar henüz paylaşım hattına dahil değildir; Onyeditivi’nin mevcut paylaşımı aynen devam eder.
       </p>
+
+      {data?.testEnvironment?.active && (
+        <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-semibold">Test ortamı (preview)</p>
+          <p>
+            Onyeditivi bağlantısı, X, cron ve otomatik paylaşım kapalı. Yalnızca izin listesindeki {data.testEnvironment.allowedAccountCount} test hesabı bağlanabilir ve bunlara yalnızca manuel paylaşım yapılır.
+          </p>
+          {data.testEnvironment.problems.length > 0 && (
+            <p className="mt-1">Eksik/hatalı yapılandırma (bağlantı ve yayın kapalı): {data.testEnvironment.problems.join(', ')}</p>
+          )}
+          {data.testEnvironment.warnings.length > 0 && (
+            <p className="mt-1">Test ortamında tanımlı olmaması önerilenler: {data.testEnvironment.warnings.join(', ')}</p>
+          )}
+        </div>
+      )}
 
       {resultBanner && resultCode !== 'facebook_select' && (
         <p role="status" className={cn('rounded-lg px-3 py-2 text-sm', resultBanner.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200' : 'bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-200')}>

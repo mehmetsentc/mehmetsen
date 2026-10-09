@@ -11,6 +11,7 @@
  * - Errors returned to the browser are short safe codes + redacted text.
  */
 import 'server-only'
+import { testModeAccountProblem, TEST_ENV_TEXT } from '../testEnvironment'
 import { isWellFormedAccountId, loadSocialAccount } from './accountStore'
 import { resolvePublishTarget, type ResolveTargetErrorCode } from './resolvePublishTarget'
 import { requiredFormats, supportedFormats, type ComposerMode, type PublishFormat } from './capabilities'
@@ -50,6 +51,8 @@ export async function preflightTargets(targets: PublishTargets, mode: ComposerMo
   for (const platform of TARGETABLE_PLATFORMS) {
     const accountId = targets[platform]
     if (!accountId) continue
+    const testProblem = testModeAccountProblem(accountId)
+    if (testProblem) return { ok: false, platform, code: testProblem }
     const r = await resolvePublishTarget(accountId, { expectedPlatform: platform, now })
     if (!r.ok) return { ok: false, platform, code: r.code }
     const formatErr = await formatProblem(accountId, platform, mode)
@@ -95,6 +98,19 @@ export async function publishToTarget(input: {
   now?: () => number
 }): Promise<TargetedPublishResult> {
   const now = input.now ?? Date.now
+  // Test (preview) ortamı: yalnızca izin listesindeki hesap; ledger kaydı da açılmaz.
+  const testProblem = testModeAccountProblem(input.accountId)
+  if (testProblem) {
+    const res: TargetedPublishResult = {
+      success: false,
+      accountId: input.accountId,
+      code: testProblem,
+      ledgerStatus: 'not_claimed',
+      error: testProblem === 'test_env_misconfigured' ? TEST_ENV_TEXT.misconfigured : TEST_ENV_TEXT.targetNotAllowed,
+    }
+    await audit(input, res)
+    return res
+  }
   // Same real account as the legacy Onyeditivi credentials → the same record id
   // (shared lock) and Onyeditivi's old post ids on the news doc also count.
   const legacyId = await legacyAccountId(input.platform).catch(() => null)

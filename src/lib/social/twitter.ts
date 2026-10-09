@@ -5,6 +5,7 @@
 import crypto from 'crypto'
 import { errorLogFields, safeErrorText, socialLog } from './safeLog'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
+import { isSocialTestMode, TEST_ENV_TEXT } from './testEnvironment'
 import { clampAtWordBoundary } from './feedCaption'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 
@@ -112,6 +113,8 @@ function buildTweetText(payload: SocialPublishPayload, bodyOverride?: string): s
 export async function publishToTwitter(
   payload: SocialPublishPayload
 ): Promise<SocialPublishResult> {
+  // Test (preview) ortamında X yayını kapalı (X ortak kilit kapsamında değil).
+  if (isSocialTestMode()) return { success: false, code: 'test_env_twitter_disabled', error: TEST_ENV_TEXT.twitterDisabled }
   const apiKey           = process.env.X_API_KEY?.trim()
   const apiSecret        = process.env.X_API_SECRET?.trim()
   const accessToken      = process.env.X_ACCESS_TOKEN?.trim()

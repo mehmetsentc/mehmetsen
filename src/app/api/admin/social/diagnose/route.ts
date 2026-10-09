@@ -4,6 +4,7 @@
  * Facebook & Instagram token / permission / image URL teşhis aracı.
  * Admin panelinden tetiklenir — paylaşım neden çalışmıyor bunu gösterir.
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText, sanitizeFreeText } from '@/lib/social/safeLog'
 import { FACEBOOK_GRAPH_BASE, THREADS_GRAPH_BASE } from '@/lib/social/graphConfig'
@@ -41,6 +42,8 @@ async function graphGet(path: string, token: string): Promise<{ ok: boolean; dat
 }
 
 export async function GET(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'news:edit')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

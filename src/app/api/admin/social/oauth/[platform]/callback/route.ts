@@ -24,7 +24,10 @@ export async function GET(request: Request, context: RouteContext) {
     params: url.searchParams,
     cookieHeader: request.headers.get('cookie'),
   })
-  const res = NextResponse.redirect(out.redirect, { status: 303 })
+  // Test ortamında güvenilir kök yoksa yönlendirme göreli panel yoludur (production'a düşmez).
+  const res = out.redirect.startsWith('/')
+    ? new NextResponse(null, { status: 303, headers: { Location: out.redirect } })
+    : NextResponse.redirect(out.redirect, { status: 303 })
   res.headers.set('Cache-Control', 'no-store')
   res.headers.set('Referrer-Policy', 'no-referrer')
   return applyCookies(res, out.cookies)

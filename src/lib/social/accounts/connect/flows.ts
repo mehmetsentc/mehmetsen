@@ -223,6 +223,7 @@ const SAVE_RESULT_CODE: Record<Exclude<SaveConnectionResult, { ok: true }>['code
   encryption_unavailable: 'encryption_unavailable',
   invalid_input: 'platform_error',
   write_failed: 'write_failed',
+  test_account_not_allowed: 'test_account_not_allowed',
 }
 
 export async function handleOAuthCallback(input: {

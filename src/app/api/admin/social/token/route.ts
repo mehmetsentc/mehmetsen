@@ -2,6 +2,7 @@
  * GET  /api/admin/social/token  — yalnızca yapılandırma durumu (token veya parçası DÖNMEZ)
  * POST /api/admin/social/token  — yeni token'ı doğrular ve Firestore'a kaydeder (denetim kaydı yazılır)
  */
+import { testModeLegacyRouteBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { platformError, safeErrorText } from '@/lib/social/safeLog'
 import { FACEBOOK_GRAPH_BASE } from '@/lib/social/graphConfig'
@@ -53,6 +54,8 @@ async function validateFbToken(token: string): Promise<{
 }
 
 export async function GET(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -73,6 +76,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const testBlock = testModeLegacyRouteBlock()
+  if (testBlock) return testBlock
   const auth = await verifyCmsToken(request, 'system:settings')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

@@ -20,6 +20,7 @@
  *   existing "credentials eksik" error (no id is invented)
  */
 import 'server-only'
+import { isSocialTestMode, TEST_ENV_TEXT } from '../testEnvironment'
 import { resolveLegacyCredentials } from './resolvePublishTarget'
 import { accountIdFor, isValidExternalId, type SocialAccountPlatform } from './types'
 import type { PublishFormat } from './capabilities'
@@ -75,6 +76,11 @@ export async function withLegacyPublishLock(
   now: () => number = Date.now,
 ): Promise<LockedPublishResult> {
   const opts = input.options ?? {}
+  if (isSocialTestMode()) {
+    // Test ortamı: hedefsiz (legacy) yayın hiç çalışmaz — kimlik bilgisi de okunmaz.
+    socialLog('warn', 'publish', 'legacy_blocked', { platform: input.platform, newsId: input.newsId, code: 'test_env_legacy_disabled' })
+    return { success: false, error: TEST_ENV_TEXT.legacyDisabled, code: 'test_env_legacy_disabled', ledgerStatus: 'not_claimed' }
+  }
   const accountId = await legacyAccountId(input.platform)
   if (!accountId) {
     // Not configured → adapter returns its existing safe "credentials eksik" error.

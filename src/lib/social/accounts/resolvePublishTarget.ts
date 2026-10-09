@@ -13,6 +13,7 @@
  * The returned target carries `accessToken` as a non-enumerable property.
  */
 import 'server-only'
+import { isSocialTestMode } from '../testEnvironment'
 import { isWellFormedAccountId, loadSocialAccount } from './accountStore'
 import { decryptAccessToken, LEGACY_CREDENTIAL_SOURCES, readSecretRecord, type SocialTokenType } from './secretStore'
 import { apiBaseFor } from './apiHosts'
@@ -85,6 +86,8 @@ interface LegacyCredentials {
 }
 
 export async function resolveLegacyCredentials(platform: SocialAccountPlatform): Promise<LegacyCredentials | null> {
+  // Test (preview) ortamında Onyeditivi token'ları hiç okunmaz.
+  if (isSocialTestMode()) return null
   if (platform === 'facebook') {
     const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
     if (!creds.pageId || !creds.accessToken) return null

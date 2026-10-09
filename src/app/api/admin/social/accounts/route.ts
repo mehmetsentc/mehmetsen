@@ -6,6 +6,7 @@
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { allConfigStatuses, listManagedAccounts } from '@/lib/social/accounts/connect/flows'
 import { toPublicSocialAccount } from '@/lib/social/accounts/types'
+import { socialTestEnvStatus } from '@/lib/social/testEnvironment'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,5 +22,7 @@ export async function GET(request: Request) {
       Object.entries(config).map(([k, v]) => [k, { ready: v.ready, missing: v.missing, redirectUri: v.redirectUri }]),
     ),
     autoShareEnabledByConnection: false,
+    // Test (preview) ortamı durumu — yalnızca değişken ADLARI, değer yok.
+    testEnvironment: socialTestEnvStatus(),
   })
 }

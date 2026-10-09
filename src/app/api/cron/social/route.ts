@@ -15,6 +15,7 @@
  *
  * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
+import { testModeAutomationBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText, sanitizeFreeText } from '@/lib/social/safeLog'
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
@@ -759,6 +760,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 }
 
 async function handleRequest(request: Request) {
+  const testBlock = testModeAutomationBlock()
+  if (testBlock) return testBlock
   if (!(await isNewsroomAuthorized(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
