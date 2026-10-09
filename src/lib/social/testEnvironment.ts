@@ -141,16 +141,29 @@ function presentSecret(v: string | undefined): boolean {
 
 export interface SocialTestEnvStatus {
   active: boolean
-  /** Engelleyici sorunlar (değişken adları). Boşsa test ortamı yayına hazır. */
+  /**
+   * Engelleyici sorunlar (değişken adları). Boşsa hesap BAĞLAMA hazır
+   * (yalnızca Auth + Firestore gerekir; medya ve yayın ayrı kapılardan geçer).
+   */
   problems: string[]
+  /** Medya yükleme (görselli yayın) için eksikler. Boş değilse yükleme kapalı. */
+  mediaProblems: string[]
+  /** Yayın için eksikler (ör. kesin hesap izin listesi). Boş değilse yayın kapalı. */
+  publishProblems: string[]
   /** Engellemeyen ama düzeltilmesi önerilen ayarlar (değişken adları). */
   warnings: string[]
   allowedAccountCount: number
+  /** Kimliği henüz bilinmeyen hesabın BAĞLANABİLECEĞİ platformlar (yayın değil). */
+  connectPlatforms: string[]
 }
 
 export function socialTestEnvStatus(env: Env = process.env): SocialTestEnvStatus {
-  if (!isSocialTestMode(env)) return { active: false, problems: [], warnings: [], allowedAccountCount: 0 }
+  if (!isSocialTestMode(env)) {
+    return { active: false, problems: [], mediaProblems: [], publishProblems: [], warnings: [], allowedAccountCount: 0, connectPlatforms: [] }
+  }
   const problems: string[] = []
+  const mediaProblems: string[] = []
+  const publishProblems: string[] = []
   const warnings: string[] = []
 
   const testProject = env.SOCIAL_TEST_FIREBASE_PROJECT_ID?.trim() || ''
@@ -167,12 +180,17 @@ export function socialTestEnvStatus(env: Env = process.env): SocialTestEnvStatus
   }
   const bucket = (env.FIREBASE_STORAGE_BUCKET?.trim() || env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || '').replace(/^gs:\/\//, '')
   const bucketProject = bucket.split('.')[0] ?? ''
-  if (!bucket || isProductionProject(bucketProject, env) || (testProject && bucketProject !== testProject)) {
-    problems.push(env.FIREBASE_STORAGE_BUCKET?.trim() ? 'FIREBASE_STORAGE_BUCKET' : 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET')
+  const bucketName = env.FIREBASE_STORAGE_BUCKET?.trim() ? 'FIREBASE_STORAGE_BUCKET' : 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+  if (bucket && (isProductionProject(bucketProject, env) || (testProject && bucketProject !== testProject))) {
+    // Tanımlı ama başka/production projesine ait kova: her şeyi durdurur.
+    problems.push(bucketName)
+  } else if (!bucket) {
+    // OAuth-only test: kova yoksa bağlantı çalışır, medya yükleme kapalı kalır.
+    mediaProblems.push(bucketName)
   }
   if (!testOAuthBaseUrl(env)) problems.push('SOCIAL_OAUTH_BASE_URL')
   const allowed = testAllowedAccountIds(env)
-  if (allowed.size === 0) problems.push('SOCIAL_TEST_ALLOWED_ACCOUNT_IDS')
+  if (allowed.size === 0) publishProblems.push('SOCIAL_TEST_ALLOWED_ACCOUNT_IDS')
 
   // Production verisine/kullanıcılarına dokunan kimlik bilgileri: SMM test
   // önizlemesinde TANIMLI OLMAMALI (ya da 'disabled' ile geçersiz kılınmalı).
@@ -188,7 +206,15 @@ export function socialTestEnvStatus(env: Env = process.env): SocialTestEnvStatus
   for (const name of ['GLOBAL_CRAWLER_ENABLED', 'NEWS_CRAWLER_ENABLED', 'CRAWLER_AI_DISPATCH_ENABLED', 'LEGACY_DIRECT_AI_ENABLED', 'MANUAL_EDITOR_AI_ENABLED', 'POSTGRES_READS_ENABLED']) {
     if (flag(env[name])) warnings.push(name)
   }
-  return { active: true, problems, warnings, allowedAccountCount: allowed.size }
+  return {
+    active: true,
+    problems,
+    mediaProblems,
+    publishProblems,
+    warnings,
+    allowedAccountCount: allowed.size,
+    connectPlatforms: testConnectPlatforms(env),
+  }
 }
 
 export const TEST_ENV_TEXT = {
@@ -197,13 +223,52 @@ export const TEST_ENV_TEXT = {
   autoDisabled: 'Test ortamında otomatik / zamanlanmış sosyal yayın kapalı',
   targetNotAllowed: 'Bu hesap test ortamı izin listesinde değil — yayın yapılmadı',
   twitterDisabled: 'Test ortamında X yayını kapalı',
+  mediaDisabled: 'Test ortamında medya depolaması yapılandırılmadı — görsel yüklenmedi',
 } as const
 
 /** Test modunda, verilen hesap için sosyal işlem yapılabilir mi? (null = evet) */
+/**
+ * YAYIN kapısı: yalnızca SOCIAL_TEST_ALLOWED_ACCOUNT_IDS içindeki KESİN hesap
+ * kimliği. Joker karakter yok; liste boşsa hiçbir hesaba yayın yapılmaz.
+ */
 export function testModeAccountProblem(accountId: string, env: Env = process.env): 'test_env_misconfigured' | 'test_env_target_not_allowed' | null {
   if (!isSocialTestMode(env)) return null
   if (socialTestEnvStatus(env).problems.length > 0) return 'test_env_misconfigured'
   return testAllowedAccountIds(env).has(accountId) ? null : 'test_env_target_not_allowed'
+}
+
+const CONNECT_PLATFORMS = new Set(['facebook', 'instagram', 'threads'])
+
+/** SOCIAL_TEST_CONNECT_PLATFORMS → açıkça adı verilen platformlar (joker yok). */
+export function testConnectPlatforms(env: Env = process.env): string[] {
+  return (env.SOCIAL_TEST_CONNECT_PLATFORMS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s, i, a) => CONNECT_PLATFORMS.has(s) && a.indexOf(s) === i)
+}
+
+/**
+ * BAĞLANTI kapısı (OAuth-only test). Dış hesap kimliği önceden bilinmeyebilir:
+ * hesap ya kesin izin listesinde olmalı ya da platformu
+ * SOCIAL_TEST_CONNECT_PLATFORMS içinde açıkça adlandırılmış olmalı. Bağlanan
+ * hesabın kimliği panelde (token olmadan) görünür; yayın için ayrıca
+ * SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'e eklenmesi gerekir. Meta geliştirme
+ * modunda yalnızca uygulamada rolü olan (Tester) hesaplar izin verebilir.
+ */
+export function testModeConnectProblem(accountId: string, env: Env = process.env): 'test_env_misconfigured' | 'test_account_not_allowed' | null {
+  if (!isSocialTestMode(env)) return null
+  if (socialTestEnvStatus(env).problems.length > 0) return 'test_env_misconfigured'
+  if (testAllowedAccountIds(env).has(accountId)) return null
+  const platform = accountId.split('_')[0] ?? ''
+  return testConnectPlatforms(env).includes(platform) ? null : 'test_account_not_allowed'
+}
+
+/** MEDYA kapısı: test modunda kova test projesine ait ve tanımlı olmalı. */
+export function testModeMediaProblem(env: Env = process.env): string | null {
+  if (!isSocialTestMode(env)) return null
+  const st = socialTestEnvStatus(env)
+  if (st.problems.length > 0) return 'test_env_misconfigured'
+  return st.mediaProblems[0] ?? null
 }
 
 /**

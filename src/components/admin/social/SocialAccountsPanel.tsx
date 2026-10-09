@@ -19,7 +19,7 @@ import type { SocialAccountPlatform, SocialAccountPublic, SocialAccountStatus } 
 import { publishableKinds, type ContentKind } from '@/lib/social/accounts/capabilities'
 
 type ConfigStatus = { ready: boolean; missing: string[]; redirectUri: string | null }
-type TestEnvStatus = { active: boolean; problems: string[]; warnings: string[]; allowedAccountCount: number }
+type TestEnvStatus = { active: boolean; problems: string[]; mediaProblems?: string[]; publishProblems?: string[]; warnings: string[]; allowedAccountCount: number; connectPlatforms?: string[] }
 type AccountsResponse = { accounts: SocialAccountPublic[]; config: Record<SocialAccountPlatform, ConfigStatus>; testEnvironment?: TestEnvStatus }
 type PageRow = { id: string; name: string; eligible: boolean }
 
@@ -271,10 +271,18 @@ export function SocialAccountsPanel() {
         <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
           <p className="font-semibold">Test ortamı (preview)</p>
           <p>
-            Onyeditivi bağlantısı, X, cron ve otomatik paylaşım kapalı. Yalnızca izin listesindeki {data.testEnvironment.allowedAccountCount} test hesabı bağlanabilir ve bunlara yalnızca manuel paylaşım yapılır.
+            Onyeditivi bağlantısı, X, cron ve otomatik paylaşım kapalı. Bağlantıya açık platformlar:{' '}
+            {data.testEnvironment.connectPlatforms?.length ? data.testEnvironment.connectPlatforms.join(', ') : 'yok'}. Yayın yalnızca
+            izin listesindeki {data.testEnvironment.allowedAccountCount} hesaba ve yalnızca manuel yapılır.
           </p>
           {data.testEnvironment.problems.length > 0 && (
             <p className="mt-1">Eksik/hatalı yapılandırma (bağlantı ve yayın kapalı): {data.testEnvironment.problems.join(', ')}</p>
+          )}
+          {(data.testEnvironment.publishProblems?.length ?? 0) > 0 && (
+            <p className="mt-1">Yayın kapalı (eksik): {data.testEnvironment.publishProblems!.join(', ')}</p>
+          )}
+          {(data.testEnvironment.mediaProblems?.length ?? 0) > 0 && (
+            <p className="mt-1">Medya yükleme kapalı (eksik): {data.testEnvironment.mediaProblems!.join(', ')}</p>
           )}
           {data.testEnvironment.warnings.length > 0 && (
             <p className="mt-1">Test ortamında tanımlı olmaması önerilenler: {data.testEnvironment.warnings.join(', ')}</p>
@@ -389,6 +397,11 @@ export function SocialAccountsPanel() {
                       {PLATFORM_LABEL[a.platform]} · {a.ownership.citySlug ? `İl: ${TURKISH_PROVINCES.find((p) => p.slug === a.ownership.citySlug)?.name ?? a.ownership.citySlug}` : ''}
                       {a.ownership.publisherId ? ` · Yayıncı: ${a.ownership.publisherId}` : ''} · Biçimler: {accountFormatsLabel(a)}
                     </p>
+                    {data?.testEnvironment?.active && (
+                      <p className="text-xs text-[rgb(var(--color-muted))]">
+                        Hesap kimliği (izin listesi için): <code>{a.id}</code>
+                      </p>
+                    )}
                     <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       <span className={cn('font-semibold', a.status === 'active' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300')}>{STATUS_LABEL[a.status]}</span>
                       {a.statusReason && <span className="text-[rgb(var(--color-muted))]">{a.statusReason}</span>}

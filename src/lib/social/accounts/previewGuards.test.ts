@@ -73,7 +73,7 @@ const ENV_KEYS = [
   'SOCIAL_FB_APP_ID', 'SOCIAL_FB_APP_SECRET', 'SECRET_ENCRYPTION_KEY', 'CMS_SESSION_SECRET', 'CRON_SECRET',
   'INSTAGRAM_BUSINESS_ID', 'THREADS_USER_ID', 'THREADS_ACCESS_TOKEN', 'FACEBOOK_PAGE_ACCESS_TOKEN', 'DATABASE_URL',
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_TOKEN_SECRET', 'MANUAL_EDITOR_AI_ENABLED', 'GLOBAL_CRAWLER_ENABLED',
-  'DEEPSEEK_API_KEY', 'ONESIGNAL_REST_API_KEY', 'VERCEL_GIT_COMMIT_REF', 'SOCIAL_PRODUCTION_FIREBASE_PROJECT_IDS', 'VERCEL_PROJECT_PRODUCTION_URL',
+  'DEEPSEEK_API_KEY', 'ONESIGNAL_REST_API_KEY', 'SOCIAL_TEST_CONNECT_PLATFORMS', 'VERCEL_GIT_COMMIT_REF', 'SOCIAL_PRODUCTION_FIREBASE_PROJECT_IDS', 'VERCEL_PROJECT_PRODUCTION_URL',
 ] as const
 let saved: Record<string, string | undefined> = {}
 
@@ -210,7 +210,7 @@ describe('test ortamı yapılandırma denetimi', () => {
     expect(isSocialTestMode()).toBe(false)
     setEnv({ VERCEL_ENV: 'production' })
     expect(isSocialTestMode()).toBe(false)
-    expect(socialTestEnvStatus()).toEqual({ active: false, problems: [], warnings: [], allowedAccountCount: 0 })
+    expect(socialTestEnvStatus()).toEqual({ active: false, problems: [], mediaProblems: [], publishProblems: [], warnings: [], allowedAccountCount: 0, connectPlatforms: [] })
     expect(testModeAccountProblem(FB_OTHER)).toBeNull()
   })
 
@@ -224,9 +224,7 @@ describe('test ortamı yapılandırma denetimi', () => {
       'SOCIAL_TEST_FIREBASE_PROJECT_ID',
       'FIREBASE_ADMIN_PROJECT_ID',
       'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-      'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
       'SOCIAL_OAUTH_BASE_URL',
-      'SOCIAL_TEST_ALLOWED_ACCOUNT_IDS',
       // beforeEach production benzeri legacy Threads / X token'larını tanımlıyor
       'THREADS_ACCESS_TOKEN',
       'X_ACCESS_TOKEN',
@@ -257,7 +255,8 @@ describe('test ortamı yapılandırma denetimi', () => {
       expect(socialTestEnvStatus().problems, bad).toEqual(['SOCIAL_OAUTH_BASE_URL'])
     }
     readyPreview({ SOCIAL_TEST_ALLOWED_ACCOUNT_IDS: 'facebook_x, ../etc' })
-    expect(socialTestEnvStatus().problems).toEqual(['SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'])
+    expect(socialTestEnvStatus().problems).toEqual([])
+    expect(socialTestEnvStatus().publishProblems).toEqual(['SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'])
   })
 
   it('production verisine bağlı sırlar engelleyici; maliyetli anahtarlar uyarı; çıktı yalnızca ad içerir', () => {
@@ -378,6 +377,56 @@ describe('test ortamında yayın sınırları', () => {
   it('sosyal AI metin üretimi çağrılmaz', async () => {
     readyPreview({ MANUAL_EDITOR_AI_ENABLED: 'true' })
     expect(await generateSocialContent('Başlık', 'Metin', 'Antalya')).toBeNull()
+  })
+})
+
+// ── 3b. OAuth-only (Görev 9) ────────────────────────────────────────────────
+describe('OAuth-only test: bağlantı Auth+Firestore ile; medya ve yayın ayrı kapılar', () => {
+  const oauthOnly = () =>
+    readyPreview({ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: undefined, SOCIAL_TEST_ALLOWED_ACCOUNT_IDS: undefined, SOCIAL_TEST_CONNECT_PLATFORMS: 'threads' })
+  const conn = {
+    connectionMethod: 'threads_oauth' as const, displayName: 'T', username: null, platformAccountType: null,
+    accessToken: 'THQ_NEW_TOKEN', tokenType: 'threads_user' as const, tokenExpiresAt: null, tokenExpiryVerified: true,
+    grantedPermissions: [...requiredPermissionsFor('threads', 'threads_oauth')], permissionsVerifiedAt: NOW,
+    ownership: { citySlug: 'antalya', publisherId: null }, reconnectAccountId: null, actorUid: 'admin1', now: NOW,
+  }
+
+  it('kova ve izin listesi yokken bağlantı hazır; medya ve yayın kapalı', () => {
+    oauthOnly()
+    const st = socialTestEnvStatus()
+    expect(st.problems).toEqual([])
+    expect(st.mediaProblems).toEqual(['NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'])
+    expect(st.publishProblems).toEqual(['SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'])
+    expect(st.connectPlatforms).toEqual(['threads'])
+  })
+
+  it('kimliği bilinmeyen Threads hesabı bağlanabilir; adı verilmeyen platform ve joker reddedilir', async () => {
+    oauthOnly()
+    const ok = await saveConnectedAccount({ ...conn, platform: 'threads', externalId: '99001' })
+    expect(ok).toMatchObject({ ok: true, accountId: 'threads_99001' })
+    const fb = await saveConnectedAccount({
+      ...conn, platform: 'facebook', connectionMethod: 'facebook_login', tokenType: 'facebook_page', externalId: '7777',
+      grantedPermissions: [...requiredPermissionsFor('facebook', 'facebook_login')],
+    } as never)
+    expect(fb).toMatchObject({ ok: false, code: 'test_account_not_allowed' })
+    setEnv({ SOCIAL_TEST_CONNECT_PLATFORMS: '*' })
+    expect(socialTestEnvStatus().connectPlatforms).toEqual([])
+    expect(await saveConnectedAccount({ ...conn, platform: 'threads', externalId: '99002' })).toMatchObject({ ok: false, code: 'test_account_not_allowed' })
+  })
+
+  it('bağlı ama izin listesinde olmayan hesaba yayın yok; medya kovası yokken görselli yayın da yok', async () => {
+    oauthOnly()
+    await saveConnectedAccount({ ...conn, platform: 'threads', externalId: '99001' })
+    const r = await manual({ targets: { threads: 'threads_99001' }, overrides: { platforms: { facebook: false, instagram: false, threads: true, twitter: false } } })
+    expect(r.skipped).toBe(true)
+    setEnv({ SOCIAL_TEST_ALLOWED_ACCOUNT_IDS: 'threads_99001' })
+    const r2 = await manual({ targets: { threads: 'threads_99001' }, overrides: { platforms: { facebook: false, instagram: false, threads: true, twitter: false } } })
+    expect(r2.skipped).toBe(true)
+    expect(r2.reason).toMatch(/medya/)
+    const { uploadSocialImage } = await import('../storageUploader')
+    expect(await uploadSocialImage(Buffer.from([1, 2, 3]), 'n1')).toBeNull()
+    expect(meta()).toEqual([])
+    expect(fs.docs('socialPublishRecords')).toHaveLength(0)
   })
 })
 

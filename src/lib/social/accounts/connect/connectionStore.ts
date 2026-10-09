@@ -10,7 +10,7 @@
  * - A legacy (Onyeditivi) record is never overwritten by an OAuth connection.
  */
 import 'server-only'
-import { testModeAccountProblem } from '../../testEnvironment'
+import { testModeConnectProblem } from '../../testEnvironment'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { buildEncryptedSecretRecord, SecretEncryptionUnavailableError, type SocialTokenType } from '../secretStore'
@@ -98,7 +98,7 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
   }
 
   // Test (preview) ortamı: yalnızca izin listesindeki test hesapları kaydedilir.
-  if (testModeAccountProblem(accountId)) return { ok: false, code: 'test_account_not_allowed' }
+  if (testModeConnectProblem(accountId)) return { ok: false, code: 'test_account_not_allowed' }
 
   const db = getAdminFirestore()
   const accountRef = db.collection(Collections.SOCIAL_ACCOUNTS).doc(accountId)

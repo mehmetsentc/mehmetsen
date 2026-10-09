@@ -420,7 +420,10 @@ export async function publishOneSocial(
   // Test (preview) ortamı: yalnızca yetkili manuel + açık hedefli yayın; legacy,
   // X, cron/after() otomatik yayını kapalı. Yapılandırma eksikse hiç yayın yok.
   if (isSocialTestMode()) {
-    if (socialTestEnvStatus().problems.length > 0) return skipped(newsId, TEST_ENV_TEXT.misconfigured)
+    const testStatus = socialTestEnvStatus()
+    if (testStatus.problems.length > 0 || testStatus.publishProblems.length > 0) return skipped(newsId, TEST_ENV_TEXT.misconfigured)
+    // Görselli yayın için medya kovası hazır olmalı (OAuth-only testte kapalı kalır).
+    if (testStatus.mediaProblems.length > 0) return skipped(newsId, TEST_ENV_TEXT.mediaDisabled)
     if (!manual || !options.actorUid) return skipped(newsId, TEST_ENV_TEXT.autoDisabled)
     const plat = overrides?.platforms
     if (!plat || plat.twitter) return skipped(newsId, plat?.twitter ? TEST_ENV_TEXT.twitterDisabled : TEST_ENV_TEXT.legacyDisabled)

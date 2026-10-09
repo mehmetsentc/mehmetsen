@@ -14,6 +14,7 @@
 import { randomUUID } from 'crypto'
 import { getAdminStorage } from '@/lib/firebase/admin'
 import { safeErrorText } from './safeLog'
+import { testModeMediaProblem } from './testEnvironment'
 
 const FOLDER = 'social-images'
 
@@ -59,6 +60,12 @@ export async function uploadSocialImage(
   newsId: string,
   filenameHint?: string
 ): Promise<string | null> {
+  // Test (preview) ortamı: medya kovası hazır değilse hiçbir yükleme yapılmaz.
+  const mediaProblem = testModeMediaProblem()
+  if (mediaProblem) {
+    console.warn(`[storageUploader] test ortamı: medya yükleme kapalı (${mediaProblem})`)
+    return null
+  }
   try {
     const storage = getAdminStorage()
     const bucket = storage.bucket()
