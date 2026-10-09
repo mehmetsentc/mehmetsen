@@ -22,7 +22,7 @@
  */
 import { isSocialTestMode, socialTestEnvStatus, testOAuthBaseUrl } from '../../testEnvironment'
 import 'server-only'
-import { getSiteUrl } from '@/lib/seo'
+import { CANONICAL_PRODUCTION_URL, getSiteUrl } from '@/lib/seo'
 import { hasSecretEncryptionKey } from '@/lib/crypto/secretCrypto'
 import type { SocialAccountPlatform } from '../types'
 
@@ -67,7 +67,11 @@ const APP_ID_RE = /^[0-9]{5,25}$/
 export function oauthBaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
   // Test (preview) ortamı: yalnızca açık SOCIAL_OAUTH_BASE_URL; site/production URL'sine düşülmez.
   if (isSocialTestMode(env)) return testOAuthBaseUrl(env)
-  const raw = env.SOCIAL_OAUTH_BASE_URL?.trim() || getSiteUrl()
+  // Production: callback kökü Meta'ya kayıtlı adresle birebir aynı olmalı. Açık
+  // SOCIAL_OAUTH_BASE_URL yoksa NEXT_PUBLIC_APP_URL'nin biçimine (www'siz, sonda
+  // eğik çizgi vb.) bağlı kalmadan kanonik production kökü kullanılır.
+  const fallback = env.VERCEL_ENV === 'production' ? CANONICAL_PRODUCTION_URL : getSiteUrl()
+  const raw = env.SOCIAL_OAUTH_BASE_URL?.trim() || fallback
   let u: URL
   try {
     u = new URL(raw)

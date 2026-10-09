@@ -297,6 +297,17 @@ describe('callback kökü güvenilir test yapılandırmasından', () => {
     setEnv({ VERCEL_ENV: 'production', NEXT_PUBLIC_APP_URL: 'https://www.nahaber.com' })
     expect(oauthBaseUrl()).toBe('https://www.nahaber.com')
   })
+
+  it('production callback kökü NEXT_PUBLIC_APP_URL biçiminden bağımsız olarak kanonik www kökü', () => {
+    for (const appUrl of ['https://nahaber.com', 'https://nahaber.com/', '', 'https://nahaber-abc123-shenteam1.vercel.app']) {
+      setEnv({ VERCEL_ENV: 'production', NEXT_PUBLIC_APP_URL: appUrl })
+      expect(oauthBaseUrl()).toBe('https://www.nahaber.com')
+      expect(getPlatformConfigStatus('threads').redirectUri).toBe('https://www.nahaber.com/api/admin/social/oauth/threads/callback')
+    }
+    // Açık SOCIAL_OAUTH_BASE_URL önceliklidir
+    setEnv({ VERCEL_ENV: 'production', SOCIAL_OAUTH_BASE_URL: 'https://www.nahaber.com/' })
+    expect(oauthBaseUrl()).toBe('https://www.nahaber.com')
+  })
 })
 
 // ── 3. Legacy / otomatik / X kapalı; hedef izin listesi sunucuda ───────────
