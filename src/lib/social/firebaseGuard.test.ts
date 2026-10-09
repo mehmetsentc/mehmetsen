@@ -146,6 +146,8 @@ describe('production adları tek sabite bağlı değil', () => {
     expect(firebaseTargetProblem({ projectId: 'nahaber-staging', bucket: null, credential: 'cert' }, base)).toMatch(/production projesi/)
     expect(firebaseTargetProblem({ projectId: 'other-prod', bucket: null, credential: 'cert' }, { ...base, SOCIAL_TEST_FIREBASE_PROJECT_ID: 't1' })).toMatch(/FIREBASE_ADMIN_PROJECT_ID/)
     expect(firebaseTargetProblem({ projectId: 't1', bucket: 't1.appspot.com', credential: 'cert' }, { ...base, SOCIAL_TEST_FIREBASE_PROJECT_ID: 't1' })).toBeNull()
+    expect(firebaseTargetProblem({ projectId: 't1', bucket: 'disabled', credential: 'cert' }, { ...base, SOCIAL_TEST_FIREBASE_PROJECT_ID: 't1' })).toBeNull()
+    expect(firebaseTargetProblem({ projectId: 't1', bucket: 'nahaberapp.appspot.com', credential: 'cert' }, { ...base, SOCIAL_TEST_FIREBASE_PROJECT_ID: 't1' })).toMatch(/STORAGE_BUCKET/)
   })
 
   it('istemci yapılandırması (NEXT_PUBLIC_*) aynı kurala tabi', () => {

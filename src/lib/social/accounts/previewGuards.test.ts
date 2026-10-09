@@ -398,6 +398,10 @@ describe('OAuth-only test: bağlantı Auth+Firestore ile; medya ve yayın ayrı 
     expect(st.mediaProblems).toEqual(['NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'])
     expect(st.publishProblems).toEqual(['SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'])
     expect(st.connectPlatforms).toEqual(['threads'])
+    // Vercel'de dal bazında 'disabled' ile geçersiz kılınan kova = kova yok
+    setEnv({ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'disabled' })
+    expect(socialTestEnvStatus().problems).toEqual([])
+    expect(socialTestEnvStatus().mediaProblems).toEqual(['NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'])
   })
 
   it('kimliği bilinmeyen Threads hesabı bağlanabilir; adı verilmeyen platform ve joker reddedilir', async () => {

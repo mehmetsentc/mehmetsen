@@ -133,6 +133,11 @@ export const COST_SECRET_NAMES: readonly string[] = [
   'OPENROUTER_API_KEY', 'LLAMA_API_KEY', 'SERPER_API_KEY', 'JINA_API_KEY', 'APIFY_TOKEN',
 ]
 
+/** Kova değeri: boş veya 'disabled' / 'off' / 'none' → kova yok. */
+function bucketValue(v: string | undefined): string {
+  return presentSecret(v) ? v!.trim() : ''
+}
+
 /** Boş ya da açıkça 'disabled' / 'off' / '0' değer = tanımsız sayılır (Vercel'de dal bazlı geçersiz kılma için). */
 function presentSecret(v: string | undefined): boolean {
   const s = v?.trim().toLowerCase()
@@ -178,9 +183,10 @@ export function socialTestEnvStatus(env: Env = process.env): SocialTestEnvStatus
   if (!client || isProductionProject(client, env) || (testProject && client !== testProject)) {
     problems.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID')
   }
-  const bucket = (env.FIREBASE_STORAGE_BUCKET?.trim() || env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || '').replace(/^gs:\/\//, '')
+  // 'disabled' / boş = kova yok (OAuth-only test; Vercel'de dal bazlı geçersiz kılma).
+  const bucket = (bucketValue(env.FIREBASE_STORAGE_BUCKET) || bucketValue(env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET)).replace(/^gs:\/\//, '')
   const bucketProject = bucket.split('.')[0] ?? ''
-  const bucketName = env.FIREBASE_STORAGE_BUCKET?.trim() ? 'FIREBASE_STORAGE_BUCKET' : 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+  const bucketName = bucketValue(env.FIREBASE_STORAGE_BUCKET) ? 'FIREBASE_STORAGE_BUCKET' : 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
   if (bucket && (isProductionProject(bucketProject, env) || (testProject && bucketProject !== testProject))) {
     // Tanımlı ama başka/production projesine ait kova: her şeyi durdurur.
     problems.push(bucketName)
@@ -324,7 +330,7 @@ export function firebaseTargetProblem(
   if (!pid || isProductionProject(pid, env) || pid !== testProject) {
     return target.credential === 'client' ? 'NEXT_PUBLIC_FIREBASE_PROJECT_ID' : 'FIREBASE_ADMIN_PROJECT_ID / FIREBASE_SERVICE_ACCOUNT_JSON'
   }
-  const bucket = (target.bucket ?? '').trim().replace(/^gs:\/\//, '')
+  const bucket = bucketValue(target.bucket ?? undefined).replace(/^gs:\/\//, '')
   if (bucket) {
     const bucketProject = bucket.split('.')[0] ?? ''
     if (isProductionProject(bucketProject, env) || bucketProject !== testProject) {
