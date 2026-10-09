@@ -25,6 +25,11 @@
 export const PRODUCTION_FIREBASE_PROJECT_IDS: readonly string[] = ['nahaberapp']
 /** Production alan adları — test OAuth callback kökü bunlar olamaz. */
 const PRODUCTION_HOST_RE = /(^|\.)nahaber\.com$/i
+/** Vercel production alias'ları (proje adı sabit: .vercel/project.json → nahaber). */
+const PRODUCTION_VERCEL_HOSTS = ['nahaber.vercel.app']
+/** SMM test önizlemesi için ayrılmış dallar: bu dalların preview'ı test ortamı sayılır. */
+const SMM_TEST_BRANCHES = ['feat/social-multi-account-foundation']
+const SMM_TEST_BRANCH_PREFIX = 'smm-test/'
 
 type Env = NodeJS.ProcessEnv | Record<string, string | undefined>
 
@@ -67,8 +72,22 @@ function adminProjectId(env: Env): string | null {
   return env.FIREBASE_ADMIN_PROJECT_ID?.trim() || env.GCLOUD_PROJECT?.trim() || null
 }
 
-function isProductionProject(id: string | null | undefined): boolean {
-  return !!id && PRODUCTION_FIREBASE_PROJECT_IDS.includes(id.trim())
+/** Production proje listesi: sabit + SOCIAL_PRODUCTION_FIREBASE_PROJECT_IDS (virgüllü). */
+function productionProjectIds(env: Env): string[] {
+  const extra = (env.SOCIAL_PRODUCTION_FIREBASE_PROJECT_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  return [...PRODUCTION_FIREBASE_PROJECT_IDS, ...extra]
+}
+
+function isProductionProject(id: string | null | undefined, env: Env = process.env): boolean {
+  return !!id && productionProjectIds(env).includes(id.trim())
+}
+
+function isProductionHost(host: string, env: Env): boolean {
+  const h = host.toLowerCase()
+  if (PRODUCTION_HOST_RE.test(h)) return true
+  if (PRODUCTION_VERCEL_HOSTS.includes(h)) return true
+  const prodUrl = env.VERCEL_PROJECT_PRODUCTION_URL?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  return !!prodUrl && prodUrl === h
 }
 
 /** Callback kökü: yalnızca SOCIAL_OAUTH_BASE_URL, https, production alanı değil. */
@@ -85,8 +104,39 @@ export function testOAuthBaseUrl(env: Env = process.env): string | null {
     return null
   }
   if (u.username || u.password || u.search || u.hash || (u.pathname && u.pathname !== '/')) return null
-  if (PRODUCTION_HOST_RE.test(u.hostname)) return null
+  if (isProductionHost(u.hostname, env)) return null
   return u.origin
+}
+
+/**
+ * Production verisine veya gerçek kullanıcılara erişen sırlar (Neon, push,
+ * e-posta, R2 yazma, legacy sosyal token'lar, X). SMM test önizlemesinde
+ * tanımlıysa engelleyici sorun sayılır.
+ */
+export const PROD_LINKED_SECRET_NAMES: readonly string[] = [
+  'DATABASE_URL',
+  'DATABASE_URL_UNPOOLED',
+  'FACEBOOK_PAGE_ACCESS_TOKEN',
+  'ONYEDITIVI_FB_PAGE_ACCESS_TOKEN',
+  'INSTAGRAM_ACCESS_TOKEN',
+  'THREADS_ACCESS_TOKEN',
+  'X_ACCESS_TOKEN',
+  'X_ACCESS_TOKEN_SECRET',
+  'ONESIGNAL_REST_API_KEY',
+  'GMAIL_CLIENT_SECRET',
+  'GMAIL_TOKEN_ENCRYPTION_KEY',
+  'R2_SECRET_ACCESS_KEY',
+]
+/** Maliyet doğuran dış servis anahtarları — uyarı. */
+export const COST_SECRET_NAMES: readonly string[] = [
+  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'DEEPSEEK_API_KEY', 'GROQ_API_KEY',
+  'OPENROUTER_API_KEY', 'LLAMA_API_KEY', 'SERPER_API_KEY', 'JINA_API_KEY', 'APIFY_TOKEN',
+]
+
+/** Boş ya da açıkça 'disabled' / 'off' / '0' değer = tanımsız sayılır (Vercel'de dal bazlı geçersiz kılma için). */
+function presentSecret(v: string | undefined): boolean {
+  const s = v?.trim().toLowerCase()
+  return !!s && s !== 'disabled' && s !== 'off' && s !== '0' && s !== 'none'
 }
 
 export interface SocialTestEnvStatus {
@@ -105,38 +155,37 @@ export function socialTestEnvStatus(env: Env = process.env): SocialTestEnvStatus
 
   const testProject = env.SOCIAL_TEST_FIREBASE_PROJECT_ID?.trim() || ''
   if (!testProject) problems.push('SOCIAL_TEST_FIREBASE_PROJECT_ID')
-  else if (isProductionProject(testProject)) problems.push('SOCIAL_TEST_FIREBASE_PROJECT_ID (production projesi)')
+  else if (isProductionProject(testProject, env)) problems.push('SOCIAL_TEST_FIREBASE_PROJECT_ID (production projesi)')
 
   const admin = adminProjectId(env)
-  if (!admin || isProductionProject(admin) || (testProject && admin !== testProject)) {
+  if (!admin || isProductionProject(admin, env) || (testProject && admin !== testProject)) {
     problems.push(env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim() ? 'FIREBASE_SERVICE_ACCOUNT_JSON' : 'FIREBASE_ADMIN_PROJECT_ID')
   }
   const client = env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() || ''
-  if (!client || isProductionProject(client) || (testProject && client !== testProject)) {
+  if (!client || isProductionProject(client, env) || (testProject && client !== testProject)) {
     problems.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID')
   }
   const bucket = (env.FIREBASE_STORAGE_BUCKET?.trim() || env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || '').replace(/^gs:\/\//, '')
   const bucketProject = bucket.split('.')[0] ?? ''
-  if (!bucket || isProductionProject(bucketProject) || (testProject && bucketProject !== testProject)) {
+  if (!bucket || isProductionProject(bucketProject, env) || (testProject && bucketProject !== testProject)) {
     problems.push(env.FIREBASE_STORAGE_BUCKET?.trim() ? 'FIREBASE_STORAGE_BUCKET' : 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET')
   }
   if (!testOAuthBaseUrl(env)) problems.push('SOCIAL_OAUTH_BASE_URL')
   const allowed = testAllowedAccountIds(env)
   if (allowed.size === 0) problems.push('SOCIAL_TEST_ALLOWED_ACCOUNT_IDS')
 
-  // Kod tarafından zaten engellenen / sosyal akışın kullanmadığı, ama test
-  // ortamında tanımlı olmaması gereken production bağlantıları.
-  for (const name of [
-    'FACEBOOK_PAGE_ACCESS_TOKEN',
-    'ONYEDITIVI_FB_PAGE_ACCESS_TOKEN',
-    'INSTAGRAM_ACCESS_TOKEN',
-    'THREADS_ACCESS_TOKEN',
-    'X_ACCESS_TOKEN',
-    'DATABASE_URL',
-  ]) {
-    if (env[name]?.trim()) warnings.push(name)
+  // Production verisine/kullanıcılarına dokunan kimlik bilgileri: SMM test
+  // önizlemesinde TANIMLI OLMAMALI (ya da 'disabled' ile geçersiz kılınmalı).
+  // Vercel'de bunlar "Production and Preview" kapsamında olduğu için preview'a
+  // kendiliğinden gelir; tanımlıysa sosyal işlem yapılmaz.
+  for (const name of PROD_LINKED_SECRET_NAMES) {
+    if (presentSecret(env[name])) problems.push(name)
   }
-  for (const name of ['GLOBAL_CRAWLER_ENABLED', 'NEWS_CRAWLER_ENABLED', 'CRAWLER_AI_DISPATCH_ENABLED', 'MANUAL_EDITOR_AI_ENABLED', 'POSTGRES_READS_ENABLED']) {
+  // Maliyet / dış etki: engellemez, uyarır (sosyal AI kodda zaten kapalı).
+  for (const name of COST_SECRET_NAMES) {
+    if (presentSecret(env[name])) warnings.push(name)
+  }
+  for (const name of ['GLOBAL_CRAWLER_ENABLED', 'NEWS_CRAWLER_ENABLED', 'CRAWLER_AI_DISPATCH_ENABLED', 'LEGACY_DIRECT_AI_ENABLED', 'MANUAL_EDITOR_AI_ENABLED', 'POSTGRES_READS_ENABLED']) {
     if (flag(env[name])) warnings.push(name)
   }
   return { active: true, problems, warnings, allowedAccountCount: allowed.size }
@@ -170,4 +219,60 @@ export function testModeLegacyRouteBlock(env: Env = process.env): Response | nul
 export function testModeAutomationBlock(env: Env = process.env): Response | null {
   if (!isSocialTestMode(env)) return null
   return Response.json({ error: TEST_ENV_TEXT.autoDisabled, code: 'test_env_auto_disabled' }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+}
+
+
+// ── Firebase hedef koruması (Görev 8) ───────────────────────────────────────
+
+/**
+ * SMM test önizlemesi BEYAN EDİLMİŞ mi? (Firebase init seviyesindeki koruma
+ * yalnızca bu durumda çalışır; diğer dalların preview'ları etkilenmez.)
+ *   - SOCIAL_TEST_MODE=1 ya da SOCIAL_TEST_FIREBASE_PROJECT_ID tanımlı, veya
+ *   - Vercel preview'da SMM test dalı (VERCEL_GIT_COMMIT_REF).
+ * Production'da (VERCEL_ENV=production) ASLA etkin değildir: yanlış kapsamla
+ * eklenmiş bir değişken production'ı durduramaz.
+ */
+export function isSmmTestDeclared(env: Env = process.env): boolean {
+  if (env.VERCEL_ENV === 'production') return false
+  if (flag(env.SOCIAL_TEST_MODE) || !!env.SOCIAL_TEST_FIREBASE_PROJECT_ID?.trim() || !!env.NEXT_PUBLIC_SOCIAL_TEST_FIREBASE_PROJECT_ID?.trim()) return true
+  const ref = (env.VERCEL_GIT_COMMIT_REF ?? env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF ?? '').trim()
+  return (env.VERCEL_ENV === 'preview' || env.NEXT_PUBLIC_VERCEL_ENV === 'preview') &&
+    (SMM_TEST_BRANCHES.includes(ref) || ref.startsWith(SMM_TEST_BRANCH_PREFIX))
+}
+
+/**
+ * Firebase'e GERÇEKTEN bağlanılacak hedef (projectId, kova, kimlik türü)
+ * test projesi değilse sorun döndürür (yalnızca değişken adı). null = izinli.
+ * Admin SDK `initializeApp` ve istemci `initializeApp` ÖNCESİNDE çağrılır.
+ */
+export function firebaseTargetProblem(
+  target: { projectId: string | null | undefined; bucket: string | null | undefined; credential: 'cert' | 'adc' | 'client' },
+  env: Env = process.env,
+): string | null {
+  if (!isSmmTestDeclared(env)) return null
+  const testProject = (env.SOCIAL_TEST_FIREBASE_PROJECT_ID ?? env.NEXT_PUBLIC_SOCIAL_TEST_FIREBASE_PROJECT_ID ?? '').trim()
+  if (!testProject) return 'SOCIAL_TEST_FIREBASE_PROJECT_ID'
+  if (isProductionProject(testProject, env)) return 'SOCIAL_TEST_FIREBASE_PROJECT_ID (production projesi)'
+  // ADC'de hedef proje kimlik dosyasından/ortamdan çıkarılır — doğrulanamaz.
+  if (target.credential === 'adc') return 'FIREBASE_SERVICE_ACCOUNT_JSON / FIREBASE_ADMIN_* (ADC test ortamında kapalı)'
+  const pid = target.projectId?.trim() || ''
+  if (!pid || isProductionProject(pid, env) || pid !== testProject) {
+    return target.credential === 'client' ? 'NEXT_PUBLIC_FIREBASE_PROJECT_ID' : 'FIREBASE_ADMIN_PROJECT_ID / FIREBASE_SERVICE_ACCOUNT_JSON'
+  }
+  const bucket = (target.bucket ?? '').trim().replace(/^gs:\/\//, '')
+  if (bucket) {
+    const bucketProject = bucket.split('.')[0] ?? ''
+    if (isProductionProject(bucketProject, env) || bucketProject !== testProject) {
+      return target.credential === 'client' ? 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET' : 'FIREBASE_STORAGE_BUCKET / NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+    }
+  }
+  return null
+}
+
+/** Hata mesajı yalnızca değişken adı içerir; değer içermez. */
+export class SmmTestFirebaseGuardError extends Error {
+  constructor(readonly variable: string) {
+    super(`SMM test ortamı: Firebase hedefi test projesi değil (${variable}) — production'a bağlanılmadı`)
+    this.name = 'SmmTestFirebaseGuardError'
+  }
 }

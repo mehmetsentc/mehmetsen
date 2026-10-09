@@ -73,6 +73,7 @@ const ENV_KEYS = [
   'SOCIAL_FB_APP_ID', 'SOCIAL_FB_APP_SECRET', 'SECRET_ENCRYPTION_KEY', 'CMS_SESSION_SECRET', 'CRON_SECRET',
   'INSTAGRAM_BUSINESS_ID', 'THREADS_USER_ID', 'THREADS_ACCESS_TOKEN', 'FACEBOOK_PAGE_ACCESS_TOKEN', 'DATABASE_URL',
   'X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_TOKEN_SECRET', 'MANUAL_EDITOR_AI_ENABLED', 'GLOBAL_CRAWLER_ENABLED',
+  'DEEPSEEK_API_KEY', 'ONESIGNAL_REST_API_KEY', 'VERCEL_GIT_COMMIT_REF', 'SOCIAL_PRODUCTION_FIREBASE_PROJECT_IDS', 'VERCEL_PROJECT_PRODUCTION_URL',
 ] as const
 let saved: Record<string, string | undefined> = {}
 
@@ -98,6 +99,10 @@ function readyPreview(extra: Partial<Record<(typeof ENV_KEYS)[number], string | 
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: `${TEST_PROJECT}.firebasestorage.app`,
     SOCIAL_OAUTH_BASE_URL: 'https://nahaber-git-smm-test.vercel.app',
     SOCIAL_TEST_ALLOWED_ACCOUNT_IDS: `${FB_A}, not-an-id`,
+    // Production'a bağlı sırlar dal bazında 'disabled' ile geçersiz kılınmış
+    THREADS_ACCESS_TOKEN: 'disabled',
+    X_ACCESS_TOKEN: 'disabled',
+    X_ACCESS_TOKEN_SECRET: 'disabled',
     ...extra,
   })
 }
@@ -222,6 +227,10 @@ describe('test ortamı yapılandırma denetimi', () => {
       'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
       'SOCIAL_OAUTH_BASE_URL',
       'SOCIAL_TEST_ALLOWED_ACCOUNT_IDS',
+      // beforeEach production benzeri legacy Threads / X token'larını tanımlıyor
+      'THREADS_ACCESS_TOKEN',
+      'X_ACCESS_TOKEN',
+      'X_ACCESS_TOKEN_SECRET',
     ])
   })
 
@@ -251,12 +260,20 @@ describe('test ortamı yapılandırma denetimi', () => {
     expect(socialTestEnvStatus().problems).toEqual(['SOCIAL_TEST_ALLOWED_ACCOUNT_IDS'])
   })
 
-  it('uyarılar yalnızca değişken adı içerir, değer içermez', () => {
+  it('production verisine bağlı sırlar engelleyici; maliyetli anahtarlar uyarı; çıktı yalnızca ad içerir', () => {
     readyPreview({ FACEBOOK_PAGE_ACCESS_TOKEN: 'EAAG_SECRET_VALUE', DATABASE_URL: 'postgres://user:pw@host/db', MANUAL_EDITOR_AI_ENABLED: 'true', GLOBAL_CRAWLER_ENABLED: 'false' })
+    process.env.DEEPSEEK_API_KEY = 'sk-deepseek-secret'
+    process.env.ONESIGNAL_REST_API_KEY = 'os-secret'
     const st = socialTestEnvStatus()
-    expect(st.warnings).toEqual(['FACEBOOK_PAGE_ACCESS_TOKEN', 'THREADS_ACCESS_TOKEN', 'X_ACCESS_TOKEN', 'DATABASE_URL', 'MANUAL_EDITOR_AI_ENABLED'])
-    expect(JSON.stringify(st)).not.toMatch(/EAAG_SECRET_VALUE|postgres:|pw@|LEGACY_TH_TOKEN/)
+    expect(st.problems).toEqual(['DATABASE_URL', 'FACEBOOK_PAGE_ACCESS_TOKEN', 'ONESIGNAL_REST_API_KEY'])
+    expect(st.warnings).toEqual(['DEEPSEEK_API_KEY', 'MANUAL_EDITOR_AI_ENABLED'])
+    expect(JSON.stringify(st)).not.toMatch(/EAAG_SECRET_VALUE|postgres:|pw@|LEGACY_TH_TOKEN|sk-deepseek|os-secret/)
     expect(st.allowedAccountCount).toBe(1)
+    // 'disabled' ile dal bazında geçersiz kılınan değer tanımsız sayılır
+    readyPreview({ DATABASE_URL: 'disabled', ONESIGNAL_REST_API_KEY: 'disabled', FACEBOOK_PAGE_ACCESS_TOKEN: undefined } as never)
+    delete process.env.DEEPSEEK_API_KEY
+    expect(socialTestEnvStatus().problems).toEqual([])
+    delete process.env.ONESIGNAL_REST_API_KEY
   })
 })
 

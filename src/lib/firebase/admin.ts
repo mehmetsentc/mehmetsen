@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth } from 'firebase-admin/auth'
 import { getStorage, type Storage } from 'firebase-admin/storage'
 import { Collections } from '@/lib/firebase/collections'
+import { firebaseTargetProblem, SmmTestFirebaseGuardError } from '@/lib/social/testEnvironment'
 
 let adminApp: App | undefined
 let adminDb: Firestore | undefined
@@ -46,7 +47,15 @@ function readServiceAccountFromEnv():
 function getAdminApp(): App {
   if (adminApp) return adminApp
   if (getApps().length > 0) {
-    adminApp = getApps()[0]!
+    const existing = getApps()[0]!
+    // Başka bir modülün başlattığı uygulama da aynı kurala tabi.
+    const smmExisting = firebaseTargetProblem({
+      projectId: existing.options.projectId ?? null,
+      bucket: existing.options.storageBucket ?? null,
+      credential: 'cert',
+    })
+    if (smmExisting) throw new SmmTestFirebaseGuardError(smmExisting)
+    adminApp = existing
     return adminApp
   }
 
@@ -56,6 +65,14 @@ function getAdminApp(): App {
     undefined
 
   const serviceAccount = readServiceAccountFromEnv()
+  // SMM test önizlemesi: gerçekte bağlanılacak proje/kova test projesi değilse
+  // initializeApp'TEN ÖNCE durulur (production'a hiçbir istek gitmez).
+  const smmProblem = firebaseTargetProblem({
+    projectId: serviceAccount ? serviceAccount.projectId : process.env.FIREBASE_ADMIN_PROJECT_ID?.trim() || process.env.GCLOUD_PROJECT,
+    bucket: storageBucket,
+    credential: serviceAccount ? 'cert' : 'adc',
+  })
+  if (smmProblem) throw new SmmTestFirebaseGuardError(smmProblem)
   if (serviceAccount) {
     adminApp = initializeApp({
       credential: cert(serviceAccount),
