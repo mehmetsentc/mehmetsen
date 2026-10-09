@@ -8,6 +8,7 @@
  * Admin manuel paylaşımda options + result döner.
  */
 import { getAdminFirestore } from '@/lib/firebase/admin'
+import { safeErrorText } from './safeLog'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue } from 'firebase-admin/firestore'
 import { publishToFacebook, publishFacebookStory } from '@/lib/social/facebook'
@@ -21,7 +22,7 @@ import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
-import { buildSocialImagePayload, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
+import { buildSocialImagePayload, collectNewsImageUrls, materializeBrandedOgForPublish } from '@/lib/social/carouselImages'
 import { buildOgSocialUrl, buildOgStoryUrl } from '@/lib/social/ogCacheVersion'
 import {
   buildPublicArticleUrl,
@@ -30,6 +31,10 @@ import {
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
 import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
+import { publishToTarget, type PublishTargets, type TargetablePlatform } from '@/lib/social/accounts/targetedPublish'
+import { imageModeProblem, type ImageMode, type PublishFormat } from '@/lib/social/accounts/capabilities'
+import { singleCoverPayload } from '@/lib/social/imagePolicy'
+import { isVerifiedPublish, legacyAccountId, type LegacyPublishOptions } from './accounts/legacyLock'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -278,6 +283,14 @@ export interface SocialPublishOverrides {
     twitter?: boolean
     threads?: boolean
   }
+  /**
+   * Post görsel biçimi (composer'da açık seçim).
+   *   single   → yalnızca markalı tek görsel (kaydırmalı hazırlanmaz)
+   *   carousel → yalnızca kaydırmalı; desteklemeyen platform seçiliyse veya
+   *              en az 2 görsel hazırlanamazsa paylaşım YAPILMAZ (sessiz tek görsel yok)
+   *   (yok)    → eski otomatik davranış (cron / after / eski istemciler)
+   */
+  imageMode?: ImageMode
 }
 
 export interface PublishOneSocialOptions {
@@ -292,6 +305,31 @@ export interface PublishOneSocialOptions {
   manual?: boolean
   /** Composer'dan gelen metin / platform override'ları. */
   overrides?: SocialPublishOverrides
+  /**
+   * Açık hedef hesaplar (yalnızca manuel). Hedefi verilmeyen platform eski
+   * Onyeditivi yolunu kullanır. Hedef başarısızsa legacy'ye geri düşülmez.
+   */
+  targets?: PublishTargets
+  /** Hedefli yayında denetim/ledger için işlemi yapan CMS kullanıcısı. */
+  actorUid?: string
+  /**
+   * Yalnızca bu `socialPublishRecords` kaydı için: operatör platformda kontrol
+   * etti ve yeniden yayımlamayı onayladı. Başka kayıtlara/hesaplara uygulanmaz.
+   */
+  acknowledgeUncertainRecordId?: string
+  /** Operatörün gördüğü deneme kimliği; kayıt bu denemede değilse onay geçersizdir. */
+  acknowledgeUncertainAttemptId?: string
+  /** Tanılama etiketi: composer | after | uncertain_republish … */
+  trigger?: string
+  /**
+   * Ledger kilidinde `succeeded` kaydını aşma izni. Varsayılan = `force`.
+   * Belirsiz kayıt yeniden yayımı `false` verir: haber belgesi bayrakları
+   * (yalnızca seçilen platform için) sıfırlanır ama arada başarıya dönmüş
+   * bir kayıt yine engellenir.
+   */
+  ledgerForce?: boolean
+  /** force sıfırlamasını yalnızca bu istekte seçili platformlarla sınırla. */
+  scopedForce?: boolean
 }
 
 export interface PublishOneSocialResult {
@@ -346,11 +384,38 @@ export function isStoryEligible(data: Record<string, unknown>): boolean {
  * `force: true` ile mevcut yayın bayrakları sıfırlanıp yeniden paylaşılır.
  * `mode` ile yalnızca post / story / both seçilir.
  */
+/**
+ * Haber belgesi muhasebesi için: ledger "zaten yayımlandı" deyip doğrulanmış
+ * dış kimliği döndürdüyse (yeniden yayın YAPILMADAN) eksik legacy alanı
+ * uzlaştırılır. Kimlik yoksa başarı sayılmaz.
+ */
+function reconcileForNewsDoc(r: SocialPublishResult): SocialPublishResult {
+  if (r.success) return r
+  if (isVerifiedPublish(r)) return { ...r, success: true }
+  // Başarısız sonuçtaki olası kimlik haber belgesine yazılmaz.
+  const { platformId: _drop, ...rest } = r
+  void _drop
+  return rest
+}
+
 export async function publishOneSocial(
   newsId: string,
   options: PublishOneSocialOptions = {},
 ): Promise<PublishOneSocialResult> {
   const { mode, force = false, manual = false, overrides } = options
+  const targets: PublishTargets = options.targets ?? {}
+  const hasTargets = Object.keys(targets).length > 0
+  // Haber belgesindeki Onyeditivi alanları için: hedefsiz çağrı ya da açık hedefin
+  // legacy Onyeditivi hesabıyla aynı anahtar olması (ortak kilit, ortak alanlar).
+  // legacyAccountId yalnızca hedef verilen platformlar için çözülür.
+  const legacyTarget = {
+    facebook: !targets.facebook || targets.facebook === (await legacyAccountId('facebook')),
+    instagram: !targets.instagram || targets.instagram === (await legacyAccountId('instagram')),
+    threads: !targets.threads || targets.threads === (await legacyAccountId('threads')),
+  }
+  if (hasTargets && (!manual || !options.actorUid)) {
+    return skipped(newsId, 'Hedef hesap yalnızca yetkili manuel paylaşımda kullanılabilir')
+  }
 
   try {
     const db  = getAdminFirestore()
@@ -407,8 +472,8 @@ export async function publishOneSocial(
           `[publishOneSocial] draft slug upgraded ${newsId}: ${currentSlug || '(empty)'} → ${publicSlug}`
         )
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        console.error(`[publishOneSocial] slug upgrade failed ${newsId}:`, msg)
+        const msg = safeErrorText(err)
+        console.error(`[publishOneSocial] slug upgrade failed ${newsId}:`, safeErrorText(msg))
         return skipped(newsId, 'Yayın SEO slug atanamadı — sosyal paylaşım ertelendi')
       }
     }
@@ -445,8 +510,10 @@ export async function publishOneSocial(
         data.storyPublished !== true
     }
 
-    // Force değilse ve zaten yayınlandıysa atla (mode/manual açıkken)
-    if (!force) {
+    // Force değilse ve zaten yayınlandıysa atla (mode/manual açıkken).
+    // Hedefli isteklerde bu haber-düzeyi Onyeditivi bayrakları hedef hesabı engellemez;
+    // hedefler hesap bazlı ledger ile, legacy platformlar kendi alanlarıyla denetlenir.
+    if (!force && !hasTargets) {
       if (shouldPost && isSocialFeedComplete(data)) shouldPost = false
       if (shouldStory && data.storyPublished === true) shouldStory = false
     }
@@ -469,10 +536,10 @@ export async function publishOneSocial(
     let wantTw = overrides?.platforms?.twitter !== false  // X varsayılan: açık
     let wantTh = overrides?.platforms?.threads !== false  // Threads varsayılan: açık
     if (!force) {
-      if (wantFb && typeof data.facebookPostId === 'string' && data.facebookPostId) wantFb = false
-      if (wantIg && typeof data.instagramMediaId === 'string' && data.instagramMediaId) wantIg = false
+      if (wantFb && !targets.facebook && typeof data.facebookPostId === 'string' && data.facebookPostId) wantFb = false
+      if (wantIg && !targets.instagram && typeof data.instagramMediaId === 'string' && data.instagramMediaId) wantIg = false
       if (wantTw && typeof data.twitterTweetId === 'string' && data.twitterTweetId) wantTw = false
-      if (wantTh && typeof data.threadsPostId === 'string' && data.threadsPostId) wantTh = false
+      if (wantTh && !targets.threads && typeof data.threadsPostId === 'string' && data.threadsPostId) wantTh = false
     }
 
     if (shouldPost && !wantFb && !wantIg && !wantTw && !wantTh) {
@@ -482,8 +549,56 @@ export async function publishOneSocial(
       return skipped(newsId, 'Hikâye için Facebook veya Instagram seçilmeli')
     }
 
+    // ── Görsel biçimi: desteklenmeyen kaydırmalı istek medya hazırlığından ÖNCE reddedilir ──
+    const imageMode = overrides?.imageMode
+    if (shouldPost && imageMode === 'carousel') {
+      const postPlatforms = (['facebook', 'instagram', 'threads'] as const).filter((p) =>
+        p === 'facebook' ? wantFb : p === 'instagram' ? wantIg : wantTh,
+      )
+      if (wantTw || imageModeProblem(imageMode, [...postPlatforms])) {
+        return skipped(
+          newsId,
+          'Kaydırmalı gönderi yalnızca Instagram’da destekleniyor — Facebook / Threads / X için tek görsel seçin. Paylaşım yapılmadı.',
+        )
+      }
+      if (collectNewsImageUrls(data).length < 2) {
+        return skipped(newsId, 'Kaydırmalı gönderi için haberde en az 2 görsel gerekli. Paylaşım yapılmadı.')
+      }
+    }
+
+    // Hedefli istekte, legacy hikâye platformları Onyeditivi'nin storyPublished bayrağını korur.
+    const legacyStoryBlocked = hasTargets && !force && data.storyPublished === true
+
     // ── Force: bayrakları sıfırla ────────────────────────────────────────────
-    if (force) {
+    if (force && (hasTargets || options.scopedForce === true)) {
+      // Yalnızca bu istekte legacy (hedefsiz) kalan platformların Onyeditivi alanları sıfırlanır.
+      const reset: Record<string, unknown> = {}
+      const legacyPostFb = shouldPost && wantFb && !targets.facebook
+      const legacyPostIg = shouldPost && wantIg && !targets.instagram
+      if (legacyPostFb) reset.facebookPostId = FieldValue.delete()
+      if (legacyPostIg) reset.instagramMediaId = FieldValue.delete()
+      if (shouldPost && wantTw) reset.twitterTweetId = FieldValue.delete()
+      if (legacyPostFb || legacyPostIg) {
+        reset.socialPublished = false
+        reset.socialPublishedAt = FieldValue.delete()
+      }
+      const legacyStoryFb = shouldStory && wantFb && !targets.facebook
+      const legacyStoryIg = shouldStory && wantIg && !targets.instagram
+      if (legacyStoryFb) reset.facebookStoryId = FieldValue.delete()
+      if (legacyStoryIg) reset.instagramStoryId = FieldValue.delete()
+      if (legacyStoryFb || legacyStoryIg) {
+        reset.storyPublished = false
+        reset.storyPublishedAt = FieldValue.delete()
+      }
+      if (Object.keys(reset).length > 0) {
+        await db.collection(Collections.NEWS).doc(newsId).update(reset).catch(() => {})
+        data = {
+          ...data,
+          ...(legacyPostFb || legacyPostIg ? { socialPublished: false } : {}),
+          ...(legacyStoryFb || legacyStoryIg ? { storyPublished: false } : {}),
+        }
+      }
+    } else if (force) {
       const reset: Record<string, unknown> = {}
       if (shouldPost) {
         reset.socialPublished = false
@@ -644,7 +759,7 @@ export async function publishOneSocial(
         socialHashtags: socialContent.hashtags,
       })
     } catch (err) {
-      console.warn(`[publishOneSocial] social fields pre-save failed ${newsId}:`, err)
+      console.warn(`[publishOneSocial] social fields pre-save failed ${newsId}:`, safeErrorText(err))
     }
 
     const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
@@ -666,7 +781,18 @@ export async function publishOneSocial(
 
     // Hybrid carousel: 2+ kaynak görsel → slide1 branded OG + orijinaller
     // Markalı OG Storage'a sabitlenir; lacivert/kapaksız kart Meta'ya gitmez.
-    const imagePayload = shouldPost
+    const imagePayload = shouldPost && imageMode === 'single'
+      ? {
+          // Açık tek görsel seçimi: kaydırmalı hazırlanmaz.
+          imageUrl: await materializeBrandedOgForPublish(socialImageUrl, newsId, coverImage, 'post', {
+            title: socialContent.headline || title,
+            summary: socialContent.storySummary,
+            categoryId: catId,
+            isBreaking: isBreakingNews,
+          }),
+          mode: 'single' as const,
+        }
+      : shouldPost
       ? await buildSocialImagePayload(newsId, socialImageUrl, data, {
           fallbackImageUrl: coverImage,
           context: {
@@ -677,6 +803,10 @@ export async function publishOneSocial(
           },
         })
       : { imageUrl: socialImageUrl, mode: 'single' as const }
+
+    if (shouldPost && imageMode === 'carousel' && (imagePayload.mode !== 'carousel' || !('imageUrls' in imagePayload) || !imagePayload.imageUrls || imagePayload.imageUrls.length < 2)) {
+      return skipped(newsId, 'Kaydırmalı görseller hazırlanamadı (en az 2 erişilebilir görsel gerekli). Paylaşım yapılmadı.')
+    }
 
     const storyImageUrl = shouldStory
       ? await materializeBrandedOgForPublish(storyOgUrl, newsId, coverImage, 'story', {
@@ -694,6 +824,37 @@ export async function publishOneSocial(
       title: title.slice(0, 120),
     }
 
+    /** Legacy (hedefsiz) adaptör çağrıları: ortak ledger kilidi (accounts/legacyLock). */
+    const ledgerForce = options.ledgerForce ?? force
+    const legacyOpts: LegacyPublishOptions = {
+      force: ledgerForce,
+      actorUid: options.actorUid,
+      trigger: options.trigger ?? (options.manual ? 'composer' : 'after'),
+      acknowledgeUncertainRecordId: options.acknowledgeUncertainRecordId ?? null,
+      acknowledgeUncertainAttemptId: options.acknowledgeUncertainAttemptId ?? null,
+    }
+    const composerMode = (shouldPost && shouldStory ? 'both' : shouldStory ? 'story' : 'post') as 'post' | 'story' | 'both'
+    /** Explicit-target publish: ledger claim → re-resolve → adapter. Never falls back to legacy. */
+    const targeted = (
+      platform: TargetablePlatform,
+      format: PublishFormat,
+      accountId: string,
+      run: (target: unknown) => Promise<SocialPublishResult>,
+    ) =>
+      publishToTarget({
+        newsId,
+        platform,
+        format,
+        mode: composerMode,
+        accountId,
+        force: ledgerForce,
+        acknowledgeUncertainRecordId: options.acknowledgeUncertainRecordId ?? null,
+        acknowledgeUncertainAttemptId: options.acknowledgeUncertainAttemptId ?? null,
+        actorUid: options.actorUid!,
+        trigger: legacyOpts.trigger,
+        publish: (t) => run(t),
+      })
+
     // ── POST (Çanakkale / manuel) ────────────────────────────────────────────
     if (shouldPost) {
       const payload: SocialPublishPayload = {
@@ -701,7 +862,8 @@ export async function publishOneSocial(
         title,
         description: socialContent.caption,
         imageUrl: imagePayload.imageUrl,
-        ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
+        ...('imageUrls' in imagePayload && imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
+        ...(imageMode ? { imageMode } : {}),
         articleUrl,
         hashtags: socialContent.hashtags,
         cityName,
@@ -710,7 +872,7 @@ export async function publishOneSocial(
 
       console.log(
         `[publishOneSocial] POST ${imagePayload.mode} — ${newsId}` +
-          (imagePayload.imageUrls ? ` (${imagePayload.imageUrls.length} slides)` : '')
+          ('imageUrls' in imagePayload && imagePayload.imageUrls ? ` (${imagePayload.imageUrls.length} slides)` : '')
       )
 
       let fbResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
@@ -719,40 +881,60 @@ export async function publishOneSocial(
       let thResult: SocialPublishResult = { success: false, error: wantTh ? 'not attempted' : 'skipped' }
 
       if (wantFb) {
-        try { fbResult = await publishToFacebook(payload) }
-        catch (err) { fbResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        if (targets.facebook) fbResult = await targeted('facebook', 'post', targets.facebook, (t) => publishToFacebook(singleCoverPayload(payload, 'facebook'), t as never))
+        else {
+          try { fbResult = await publishToFacebook(singleCoverPayload(payload, 'facebook'), undefined, legacyOpts) }
+          catch (err) { fbResult = { success: false, error: safeErrorText(err) } }
+        }
         await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantIg) {
-        try { igResult = await publishToInstagram(payload) }
-        catch (err) { igResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        if (targets.instagram) igResult = await targeted('instagram', 'post', targets.instagram, (t) => publishToInstagram(payload, t as never))
+        else {
+          try { igResult = await publishToInstagram(payload, undefined, legacyOpts) }
+          catch (err) { igResult = { success: false, error: safeErrorText(err) } }
+        }
         await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantTw) {
         try { twResult = await publishToTwitter(payload) }
-        catch (err) { twResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        catch (err) { twResult = { success: false, error: safeErrorText(err) } }
         if (wantTh) await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantTh) {
-        try { thResult = await publishToThreads(payload) }
-        catch (err) { thResult = { success: false, error: err instanceof Error ? err.message : String(err) } }
+        if (targets.threads) thResult = await targeted('threads', 'post', targets.threads, (t) => publishToThreads(singleCoverPayload(payload, 'threads'), t as never))
+        else {
+          try { thResult = await publishToThreads(singleCoverPayload(payload, 'threads'), undefined, legacyOpts) }
+          catch (err) { thResult = { success: false, error: safeErrorText(err) } }
+        }
       }
 
       result.post = { attempted: true, facebook: fbResult, instagram: igResult, twitter: twResult, threads: thResult }
 
+      // Haber belgesindeki Onyeditivi alanlarına YALNIZCA legacy (hedefsiz) sonuçlar yazılır;
+      // başka bir hesabın başarısı Onyeditivi'yi "paylaşıldı" saymaz (cron davranışı korunur).
+      // Açık hedef Onyeditivi'nin kendi hesap anahtarıysa (aynı dış hesap) legacy sayılır.
+      const notTargeted: SocialPublishResult = { success: false, error: 'targeted' }
+      const lFb = legacyTarget.facebook ? reconcileForNewsDoc(fbResult) : notTargeted
+      const lIg = legacyTarget.instagram ? reconcileForNewsDoc(igResult) : notTargeted
+      const lTh = legacyTarget.threads ? reconcileForNewsDoc(thResult) : notTargeted
+      const lWantFb = wantFb && legacyTarget.facebook
+      const lWantIg = wantIg && legacyTarget.instagram
+      const anyLegacy = lWantFb || lWantIg || wantTw || (wantTh && legacyTarget.threads)
+
       // Threads TEXT fallback "başarı" sayılınca socialPublished=true oluyordu → IG/FB bir daha denenmiyordu.
       // Tamamlama: FB veya IG başarılı (veya ikisi de istenmiyor ve X/Threads oldu).
-      const primaryOk = fbResult.success || igResult.success
+      const primaryOk = lFb.success || lIg.success
       const textOnlyOk =
-        !wantFb &&
-        !wantIg &&
-        (twResult.success || thResult.success)
+        !lWantFb &&
+        !lWantIg &&
+        (twResult.success || lTh.success)
       const alreadyHadPrimary = hasMetaFeedPublish(data)
 
-      if (primaryOk || textOnlyOk || twResult.success || thResult.success || alreadyHadPrimary) {
+      if (anyLegacy && (primaryOk || textOnlyOk || twResult.success || lTh.success || alreadyHadPrimary)) {
         const update: Record<string, unknown> = {
           socialHeadline:      socialContent.headline,
           socialStorySummary:  socialContent.storySummary,
@@ -762,10 +944,10 @@ export async function publishOneSocial(
         if (imagePayload.imageUrl || socialImageUrl) {
           update.socialImageUrl = imagePayload.imageUrl || socialImageUrl
         }
-        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
-        if (igResult.platformId) update.instagramMediaId = igResult.platformId
+        if (lFb.platformId) update.facebookPostId   = lFb.platformId
+        if (lIg.platformId) update.instagramMediaId = lIg.platformId
         if (twResult.platformId) update.twitterTweetId   = twResult.platformId
-        if (thResult.platformId) update.threadsPostId    = thResult.platformId
+        if (lTh.platformId) update.threadsPostId    = lTh.platformId
 
         if (primaryOk || textOnlyOk || alreadyHadPrimary) {
           update.socialPublished = true
@@ -779,8 +961,8 @@ export async function publishOneSocial(
 
         await db.collection(Collections.NEWS).doc(newsId).update(update)
         console.log(`[publishOneSocial] POST ✓ ${newsId} — FB:${fbResult.success} IG:${igResult.success} X:${twResult.success} TH:${thResult.success}`)
-      } else {
-        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${fbResult.error} | IG: ${igResult.error} | X: ${twResult.error} | TH: ${thResult.error}`)
+      } else if (anyLegacy) {
+        console.warn(`[publishOneSocial] POST ✗ ${newsId} — FB: ${safeErrorText(fbResult.error ?? '')} | IG: ${safeErrorText(igResult.error ?? '')} | X: ${safeErrorText(twResult.error ?? '')} | TH: ${safeErrorText(thResult.error ?? '')}`)
       }
 
       if (shouldStory) await new Promise(r => setTimeout(r, 2000))
@@ -800,40 +982,51 @@ export async function publishOneSocial(
       let igStoryResult: SocialPublishResult = { success: false, error: wantIg ? 'not attempted' : 'skipped' }
       let fbStoryResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
 
-      if (wantIg) {
+      if (wantIg && targets.instagram) {
+        igStoryResult = await targeted('instagram', 'story', targets.instagram, (t) => publishInstagramStory(storyPayload, t as never))
+        if (wantFb) await new Promise(r => setTimeout(r, 2000))
+      } else if (wantIg && legacyStoryBlocked) {
+        igStoryResult = { success: false, error: 'Onyeditivi hikâyesi zaten paylaşılmış (yeniden paylaşmak için force)' }
+      } else if (wantIg) {
         try {
-          igStoryResult = await publishInstagramStory(storyPayload)
-          console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+          igStoryResult = await publishInstagramStory(storyPayload, undefined, legacyOpts)
+          console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : safeErrorText(igStoryResult.error ?? '')}`)
         } catch (err) {
-          igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+          igStoryResult = { success: false, error: safeErrorText(err) }
         }
         if (wantFb) await new Promise(r => setTimeout(r, 2000))
       }
 
-      if (wantFb) {
+      if (wantFb && targets.facebook) {
+        fbStoryResult = await targeted('facebook', 'story', targets.facebook, (t) => publishFacebookStory(storyPayload, t as never))
+      } else if (wantFb && legacyStoryBlocked) {
+        fbStoryResult = { success: false, error: 'Onyeditivi hikâyesi zaten paylaşılmış (yeniden paylaşmak için force)' }
+      } else if (wantFb) {
         try {
-          fbStoryResult = await publishFacebookStory(storyPayload)
-          console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+          fbStoryResult = await publishFacebookStory(storyPayload, undefined, legacyOpts)
+          console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : safeErrorText(fbStoryResult.error ?? '')}`)
         } catch (err) {
-          fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+          fbStoryResult = { success: false, error: safeErrorText(err) }
         }
       }
 
       result.story = { attempted: true, facebook: fbStoryResult, instagram: igStoryResult }
 
-      if (igStoryResult.success || fbStoryResult.success) {
+      const lIgStory = legacyTarget.instagram ? reconcileForNewsDoc(igStoryResult) : { success: false } as SocialPublishResult
+      const lFbStory = legacyTarget.facebook ? reconcileForNewsDoc(fbStoryResult) : { success: false } as SocialPublishResult
+      if (lIgStory.success || lFbStory.success) {
         const storyUpdate: Record<string, unknown> = {
           storyPublished:   true,
           storyPublishedAt: FieldValue.serverTimestamp(),
           socialHeadline: socialContent.headline,
           socialStorySummary: socialContent.storySummary,
         }
-        if (igStoryResult.platformId) storyUpdate.instagramStoryId = igStoryResult.platformId
-        if (fbStoryResult.platformId) storyUpdate.facebookStoryId  = fbStoryResult.platformId
+        if (lIgStory.platformId) storyUpdate.instagramStoryId = lIgStory.platformId
+        if (lFbStory.platformId) storyUpdate.facebookStoryId  = lFbStory.platformId
         await db.collection(Collections.NEWS).doc(newsId).update(storyUpdate)
         console.log(`[publishOneSocial] STORY ✓ ${newsId} — IG:${igStoryResult.success} FB:${fbStoryResult.success}`)
       } else {
-        console.warn(`[publishOneSocial] STORY ✗ ${newsId} — IG: ${igStoryResult.error} | FB: ${fbStoryResult.error}`)
+        console.warn(`[publishOneSocial] STORY ✗ ${newsId} — IG: ${safeErrorText(igStoryResult.error ?? '')} | FB: ${safeErrorText(fbStoryResult.error ?? '')}`)
       }
     }
 
@@ -864,12 +1057,12 @@ export async function publishOneSocial(
     return result
   } catch (err) {
     // Fire-and-forget: hata yutulur, cron bir sonraki çalışmada tekrar dener
-    console.error('[publishOneSocial] Beklenmeyen hata:', err)
+    console.error('[publishOneSocial] Beklenmeyen hata:', safeErrorText(err))
     return {
       ok: false,
       newsId,
       skipped: false,
-      reason: err instanceof Error ? err.message : String(err),
+      reason: safeErrorText(err),
     }
   }
 }

@@ -33,6 +33,10 @@ import {
   type SocialAutoShareSettings,
 } from '@/lib/social/autoShareSettings'
 import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
+import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
+import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
+import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -91,19 +95,33 @@ interface PlatformToggles {
   threads: boolean
 }
 
+type PlatformShareResult = { success: boolean; error?: string; accountId?: string; code?: string; ledgerStatus?: string }
+
 interface LastShareResult {
   ok: boolean
   message: string
   post?: {
-    facebook: { success: boolean; error?: string }
-    instagram: { success: boolean; error?: string }
-    twitter?: { success: boolean; error?: string }
-    threads?: { success: boolean; error?: string }
+    facebook: PlatformShareResult
+    instagram: PlatformShareResult
+    twitter?: PlatformShareResult
+    threads?: PlatformShareResult
   }
   story?: {
-    facebook: { success: boolean; error?: string }
-    instagram: { success: boolean; error?: string }
+    facebook: PlatformShareResult
+    instagram: PlatformShareResult
   }
+}
+
+/** ✓ only for a platform-confirmed result; ? when the outcome is uncertain. */
+function resultMark(r?: PlatformShareResult): string {
+  if (!r) return '—'
+  if (r.success) return '✓'
+  if (r.ledgerStatus === 'uncertain') return '? (belirsiz)'
+  // Kilit/kayıt nedeniyle YAYIN YAPILMADI — hata değil, durum bilgisi.
+  if (r.code === 'already_published') return '= (zaten paylaşılmış)'
+  if (r.code === 'in_progress') return '… (başka yayın sürüyor)'
+  if (r.code === 'uncertain_previous_attempt') return '? (önceki deneme belirsiz)'
+  return '✗'
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -245,9 +263,10 @@ export default function SocialPage() {
     if (status === 'published' || status === 'pending' || status === 'all') {
       setStatusFilter(status)
     }
-    if (panel === 'automation') {
+    if (panel === 'automation' || panel === 'accounts') {
+      const target = panel === 'accounts' ? 'smm-accounts' : 'smm-automation'
       const t = window.setTimeout(() => {
-        document.getElementById('smm-automation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 120)
       return () => window.clearTimeout(t)
     }
@@ -271,6 +290,9 @@ export default function SocialPage() {
   const [forceReshare, setForceReshare] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [lastResult, setLastResult] = useState<LastShareResult | null>(null)
+  const [targetSel, setTargetSel] = useState<TargetSelection>(DEFAULT_TARGETS)
+  /** Post görsel biçimi — varsayılan açık tek görsel; kaydırmalı yalnızca destekleyen platformlarda. */
+  const [imageMode, setImageMode] = useState<ImageMode>('single')
   const [previewTick, setPreviewTick] = useState(0)
 
   // Tools
@@ -759,6 +781,10 @@ export default function SocialPage() {
   }
 
   // ── Share ──────────────────────────────────────────────────────────────────
+  const carouselPostPlatforms = (['facebook', 'instagram', 'threads'] as const).filter((p) => platforms[p])
+  const carouselProblem =
+    (shareMode !== 'story' && platforms.twitter) || imageModeProblem('carousel', [...carouselPostPlatforms]) !== null || carouselPostPlatforms.length === 0
+
   const shareSelected = async () => {
     if (!user || !selected || sharing) return
 
@@ -774,13 +800,29 @@ export default function SocialPage() {
       toast.error('Manşet gerekli')
       return
     }
+    if (shareMode !== 'story' && imageMode === 'carousel' && carouselProblem) {
+      toast.error('Kaydırmalı gönderi yalnızca Instagram’da destekleniyor — tek görsel seçin veya diğer platformları kapatın')
+      return
+    }
+
+    // Explicit targets (non-legacy) are checked per account on the server;
+    // Onyeditivi's "already shared" flags only apply when a legacy platform is involved.
+    const explicitTargets: Record<string, string> = {}
+    if (platforms.facebook && targetSel.facebook !== LEGACY_TARGET) explicitTargets.facebook = targetSel.facebook
+    if (platforms.instagram && targetSel.instagram !== LEGACY_TARGET) explicitTargets.instagram = targetSel.instagram
+    if (shareMode !== 'story' && platforms.threads && targetSel.threads !== LEGACY_TARGET) explicitTargets.threads = targetSel.threads
+    const legacyInvolved =
+      (platforms.facebook && !explicitTargets.facebook) ||
+      (platforms.instagram && !explicitTargets.instagram) ||
+      (shareMode !== 'story' && ((platforms.threads && !explicitTargets.threads) || platforms.twitter))
 
     const alreadyPost = !!selected.socialPublished
     const alreadyStory = !!selected.storyPublished
     const needsForce =
-      (shareMode === 'post' && alreadyPost) ||
-      (shareMode === 'story' && alreadyStory) ||
-      (shareMode === 'both' && (alreadyPost || alreadyStory))
+      legacyInvolved &&
+      ((shareMode === 'post' && alreadyPost) ||
+        (shareMode === 'story' && alreadyStory) ||
+        (shareMode === 'both' && (alreadyPost || alreadyStory)))
 
     if (needsForce && !forceReshare) {
       toast.error('Bu haber zaten paylaşılmış — «Yeniden paylaş»ı açın')
@@ -822,9 +864,14 @@ export default function SocialPage() {
       if (shareMode === 'story' && !body.caption) {
         body.caption = storySummary.trim()
       }
+      if (Object.keys(explicitTargets).length > 0) {
+        body.targets = explicitTargets
+      }
+      if (shareMode !== 'story') body.imageMode = imageMode
 
       const res = await fetch('/api/admin/social/force-reshare', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -833,6 +880,8 @@ export default function SocialPage() {
       })
       const data = await res.json() as {
         error?: string
+        code?: string
+        platform?: string
         results?: Array<{
           ok: boolean
           reason?: string
@@ -843,7 +892,21 @@ export default function SocialPage() {
 
       const r0 = data.results?.[0]
       if (!res.ok) {
-        const msg = data.error ?? r0?.reason ?? 'Paylaşım başarısız'
+        const targetCodeText: Record<string, string> = {
+          paused: 'Hedef hesap duraklatılmış',
+          needs_reauth: 'Hedef hesabın yeniden bağlanması gerekiyor',
+          disabled: 'Hedef hesap devre dışı',
+          token_expired: 'Hedef hesabın erişim süresi dolmuş',
+          publish_permission_missing: 'Hedef hesabın yayın izni eksik',
+          publish_permission_unverified: 'Hedef hesabın yayın izni doğrulanmadı',
+          format_unsupported: 'Hedef hesap bu biçimi desteklemiyor',
+          forbidden: 'Hedef hesaba paylaşım için merkez yönetici yetkisi gerekli',
+          platform_mismatch: 'Hedef hesap bu platforma ait değil',
+          not_found: 'Hedef hesap bulunamadı',
+        }
+        const msg =
+          (data.code && targetCodeText[data.code] ? `${data.platform ? `${data.platform}: ` : ''}${targetCodeText[data.code]}` : null) ??
+          data.error ?? r0?.reason ?? 'Paylaşım başarısız'
         toast.error(msg, { id: toastId })
         setLastResult({ ok: false, message: msg, post: r0?.post, story: r0?.story })
         return
@@ -852,14 +915,21 @@ export default function SocialPage() {
       const parts: string[] = []
       if (r0?.post) {
         parts.push(
-          `Post FB:${r0.post.facebook.success ? '✓' : '✗'} IG:${r0.post.instagram.success ? '✓' : '✗'}` +
-          (r0.post.threads ? ` Th:${r0.post.threads.success ? '✓' : '✗'}` : '') +
-          (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'}` : '')
+          `Post FB:${resultMark(r0.post.facebook)} IG:${resultMark(r0.post.instagram)}` +
+          (r0.post.threads ? ` Th:${resultMark(r0.post.threads)}` : '') +
+          (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'} (kilitsiz)` : '')
         )
       }
       if (r0?.story) {
-        parts.push(`Hikâye FB:${r0.story.facebook.success ? '✓' : '✗'} IG:${r0.story.instagram.success ? '✓' : '✗'}`)
+        parts.push(`Hikâye FB:${resultMark(r0.story.facebook)} IG:${resultMark(r0.story.instagram)}`)
       }
+      const targetedNotes = [
+        ...Object.entries(r0?.post ?? {}),
+        ...Object.entries(r0?.story ?? {}),
+      ]
+        .filter(([, v]) => v && (v as PlatformShareResult).accountId && !(v as PlatformShareResult).success && (v as PlatformShareResult).error)
+        .map(([k, v]) => `${k}: ${(v as PlatformShareResult).error}`)
+      if (targetedNotes.length) parts.push(targetedNotes.join(' · '))
       const msg = parts.join(' · ') || 'Paylaşıldı'
       toast.success(msg, { id: toastId })
       setLastResult({ ok: true, message: msg, post: r0?.post, story: r0?.story })
@@ -867,6 +937,8 @@ export default function SocialPage() {
       setRows((prev) => prev.map((r) => {
         if (r.id !== selected.id) return r
         const next = { ...r, socialHeadline: headline.trim(), socialCaption: caption.trim(), socialStorySummary: storySummary.trim(), socialHashtags: parseHashtagInput(hashtagsRaw) }
+        // Onyeditivi "paylaşıldı" rozetleri yalnızca legacy platform paylaşımında güncellenir.
+        if (!legacyInvolved) return next
         if (shareMode === 'post' || shareMode === 'both') {
           next.socialPublished = true
           next.socialPublishedAt = Date.now()
@@ -1351,6 +1423,10 @@ export default function SocialPage() {
             </p>
           </div>
         )}
+
+        <SocialAccountsPanel />
+
+        <UncertainPublishPanel />
 
         <SocialAutomationDesk
           draft={autoShareDraft}
@@ -2001,7 +2077,66 @@ export default function SocialPage() {
                         </PlatformToggle>
                       )}
                     </div>
+                    {shareMode !== 'story' && platforms.twitter && (
+                      <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                        X, mükerrer yayın kilidi ve belirsiz sonuç kaydı kapsamında değil — eşzamanlı veya tekrarlanan isteklerde X'e ikinci gönderi gidebilir.
+                      </p>
+                    )}
+                    <div className="mt-3">
+                      <ComposerTargetPicker
+                        mode={shareMode}
+                        enabled={{ facebook: platforms.facebook, instagram: platforms.instagram, threads: platforms.threads }}
+                        value={targetSel}
+                        onChange={setTargetSel}
+                      />
+                    </div>
                   </div>
+
+                  {/* Görsel biçimi (yalnızca post) — seçilebilir = platform ∩ NaHaber uygulaması */}
+                  {shareMode !== 'story' && (
+                    <div>
+                      <FieldLabel>Görsel biçimi</FieldLabel>
+                      <div className="flex gap-2" role="radiogroup" aria-label="Görsel biçimi">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={imageMode === 'single'}
+                          onClick={() => setImageMode('single')}
+                          className={cn(
+                            'flex-1 rounded-lg border px-3 py-2 text-sm font-semibold',
+                            imageMode === 'single' ? 'border-blue-600 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))]',
+                          )}
+                        >
+                          Tek görsel
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={imageMode === 'carousel'}
+                          disabled={carouselProblem && imageMode !== 'carousel'}
+                          onClick={() => setImageMode('carousel')}
+                          title={carouselProblem ? 'Kaydırmalı yalnızca Instagram’da destekleniyor' : undefined}
+                          className={cn(
+                            'flex-1 rounded-lg border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50',
+                            imageMode === 'carousel' ? 'border-blue-600 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))]',
+                          )}
+                        >
+                          Kaydırmalı (yalnızca Instagram)
+                        </button>
+                      </div>
+                      {imageMode === 'carousel' && carouselProblem && (
+                        <p role="alert" className="mt-2 text-xs font-semibold text-red-600">
+                          Seçili platformlardan en az biri kaydırmalı gönderiyi desteklemiyor (Facebook, Threads ve X’te
+                          NaHaber yalnızca tek görsel yayınlar). Tek görsele geçin veya yalnızca Instagram’ı seçin — ilk
+                          görsele sessizce düşürülmez.
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
+                        Kaydırmalı için haberde en az 2 görsel gerekir; hazırlanamazsa paylaşım yapılmaz. Reels ve video
+                        paylaşımı henüz desteklenmiyor.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Headline */}
                   <div>

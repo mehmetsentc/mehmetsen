@@ -31,6 +31,14 @@ export interface SocialPublishResult {
   /** Facebook Meta App ID used for this post (attribution source) */
   appId?: string | null
   appName?: string | null
+  /** Explicit target account (multi-account manual publish). Absent = legacy Onyeditivi. */
+  accountId?: string
+  /** Safe machine code for targeted publishes (never raw Meta text). */
+  code?: string
+  /** Ledger outcome (targeted and legacy-locked publishes). */
+  ledgerStatus?: string
+  /** `socialPublishRecords` id — set when the result is ledger-tracked. */
+  ledgerRecordId?: string
 }
 
 /** Combined result from the cron runner for one news item. */
@@ -77,6 +85,12 @@ export interface SocialPublishPayload {
    * Yoksa veya 1 eleman → tek görsel akışı.
    */
   imageUrls?: string[]
+  /**
+   * Composer'ın açık görsel seçimi. `carousel` iken adaptör tek görsele
+   * sessizce düşmez; kaydırmalıyı uygulamayan adaptör istek atmadan reddeder.
+   * Yoksa eski otomatik davranış.
+   */
+  imageMode?: 'single' | 'carousel'
   articleUrl?: string
   /** Post hashtag listesi; yoksa publisher varsayılan kullanır. */
   hashtags?: string[]

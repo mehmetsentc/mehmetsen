@@ -13,18 +13,27 @@
  *
  * Feed post links:
  *   Graph API `POST /{ig-user-id}/media` has caption, image_url, alt_text, etc. —
- *   NO dedicated `link` / `link_sticker_url` for IMAGE feed posts (link_sticker_url
- *   is Stories-only). For verified / professional accounts Meta may render a URL
- *   inside the caption as clickable; we always put the full article URL in the caption.
+ *   NO dedicated link field for IMAGE feed posts. For verified / professional
+ *   accounts Meta may render a URL inside the caption as clickable; we always put
+ *   the full article URL in the caption.
+ *
+ * Stories: Meta's IG User Media reference (Story Limitations) states
+ *   "Publishing stickers (i.e., link, poll, location) is not supported" — so the
+ *   story container carries no link/sticker parameter (Görev 6).
  */
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
 import { buildFeedCaption, isIncompleteCaption, isThinSocialCaption } from './feedCaption'
 import { resolveCarouselUrls } from './carouselImages'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
+import { FACEBOOK_GRAPH_BASE } from './graphConfig'
+import { errorLogFields, platformError, PlatformApiError, safeErrorText, socialLog } from './safeLog'
+import type { InstagramPublishTarget } from './accounts/targetTypes'
+import { INVALID_TARGET_ERROR, isUsableInstagramTarget } from './accounts/targetGuards'
+import { withLegacyPublishLock, type LegacyPublishOptions, type LockedPublishResult } from './accounts/legacyLock'
 
-const GRAPH_API_VERSION = 'v21.0'
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+/** Legacy (Onyeditivi) path: Instagram API with Facebook Login. */
+const GRAPH_BASE = FACEBOOK_GRAPH_BASE
 
 const IG_CAPTION_LIMIT = 2200
 const CONTAINER_POLL_MS = 1500
@@ -63,9 +72,7 @@ async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<s
     !isThinSocialCaption(metaBody, deepseekBody)
 
   if (!metaOk) {
-    console.warn(
-      `[instagram] Meta AI caption rejected (thin/incomplete) news=${payload.newsId} — DeepSeek body`,
-    )
+    socialLog('warn', 'instagram', 'caption', { corr: payload.newsId, result: 'meta_ai_rejected' })
     return buildInstagramCaption(payload)
   }
 
@@ -100,9 +107,10 @@ async function createMediaContainer(
   igBusinessId: string,
   accessToken: string,
   imageUrl: string,
-  caption: string
+  caption: string,
+  base: string = GRAPH_BASE
 ): Promise<string> {
-  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+  const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -115,7 +123,7 @@ async function createMediaContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Container creation HTTP ${res.status}`)
+    throw platformError('instagram', 'medya kapsayıcısı', res.status, json)
   }
 
   return json.id
@@ -125,9 +133,10 @@ async function createMediaContainer(
 async function createCarouselItemContainer(
   igBusinessId: string,
   accessToken: string,
-  imageUrl: string
+  imageUrl: string,
+  base: string = GRAPH_BASE
 ): Promise<string> {
-  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+  const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -140,7 +149,7 @@ async function createCarouselItemContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Carousel item HTTP ${res.status}`)
+    throw platformError('instagram', 'kaydırmalı öğe', res.status, json)
   }
 
   return json.id
@@ -151,9 +160,10 @@ async function createCarouselParentContainer(
   igBusinessId: string,
   accessToken: string,
   childIds: string[],
-  caption: string
+  caption: string,
+  base: string = GRAPH_BASE
 ): Promise<string> {
-  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+  const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -167,7 +177,7 @@ async function createCarouselParentContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Carousel parent HTTP ${res.status}`)
+    throw platformError('instagram', 'kaydırmalı kapsayıcı', res.status, json)
   }
 
   return json.id
@@ -178,27 +188,29 @@ async function createCarouselParentContainer(
  */
 async function waitForContainerReady(
   containerId: string,
-  accessToken: string
+  accessToken: string,
+  base: string = GRAPH_BASE
 ): Promise<void> {
   for (let i = 0; i < CONTAINER_POLL_MAX; i++) {
     const res = await fetch(
-      `${GRAPH_BASE}/${containerId}?fields=status_code&access_token=${encodeURIComponent(accessToken)}`
+      `${base}/${containerId}?fields=status_code&access_token=${encodeURIComponent(accessToken)}`
     )
     const json = (await res.json()) as {
       status_code?: string
       error?: { message?: string }
     }
     if (json.error) {
-      throw new Error(json.error.message ?? 'Container status error')
+      throw platformError('instagram', 'kapsayıcı durumu', res.status, json)
     }
     const status = (json.status_code ?? '').toUpperCase()
     if (status === 'FINISHED') return
     if (status === 'ERROR' || status === 'EXPIRED') {
-      throw new Error(`Container ${containerId} status=${status}`)
+      throw new Error(`Instagram kapsayıcısı işlenemedi (durum ${status})`)
     }
     await new Promise((r) => setTimeout(r, CONTAINER_POLL_MS))
   }
-  throw new Error(`Container ${containerId} timed out waiting for FINISHED`)
+  // Not "timed out": this happens BEFORE media_publish, so it is a certain (not uncertain) failure.
+  throw new Error('Instagram kapsayıcısı hazır olmadı; yayınlama adımına geçilmedi')
 }
 
 /**
@@ -208,9 +220,10 @@ async function waitForContainerReady(
 async function publishMediaContainer(
   igBusinessId: string,
   accessToken: string,
-  containerId: string
+  containerId: string,
+  base: string = GRAPH_BASE
 ): Promise<string> {
-  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media_publish`, {
+  const res = await fetch(`${base}/${igBusinessId}/media_publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -222,7 +235,7 @@ async function publishMediaContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Publish HTTP ${res.status}`)
+    throw platformError('instagram', 'yayınlama', res.status, json)
   }
 
   return json.id
@@ -231,27 +244,23 @@ async function publishMediaContainer(
 /**
  * Story için medya container'ı oluştur.
  * media_type=STORIES → Instagram Hikaye olarak yayınlanır.
- * link_sticker_url → profesyonel hesaplarda tıklanabilir haber linki (desteklenirse).
- *
- * Meta resmi olarak sticker yayınını desteklemediğini söyler; bazı Business hesaplarda
- * link_sticker_url yine de kabul edilir. Hata olursa çağıran taraf link olmadan yeniden dener.
+ * Link / anket / konum sticker'ı API ile yayımlanamaz (Meta: Story Limitations);
+ * bu yüzden hiçbir link parametresi gönderilmez.
  */
 async function createStoryContainer(
   igBusinessId: string,
   accessToken: string,
   imageUrl: string,
-  articleUrl?: string
+  base: string = GRAPH_BASE
 ): Promise<string> {
-  const link = articleUrl?.trim()
   // application/x-www-form-urlencoded — Graph API story alanlarında JSON'dan daha güvenilir
   const params = new URLSearchParams({
     image_url: imageUrl,
     media_type: 'STORIES',
     access_token: accessToken,
   })
-  if (link) params.set('link_sticker_url', link)
 
-  const res = await fetch(`${GRAPH_BASE}/${igBusinessId}/media`, {
+  const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),
@@ -260,31 +269,44 @@ async function createStoryContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string; code?: number } }
 
   if (!res.ok || json.error || !json.id) {
-    throw new Error(json.error?.message ?? `Story container HTTP ${res.status}`)
+    throw platformError('instagram', 'hikâye kapsayıcısı', res.status, json)
   }
 
   return json.id
 }
 
-function isLinkStickerError(msg: string): boolean {
-  const m = msg.toLowerCase()
-  return (
-    m.includes('link_sticker') ||
-    m.includes('link sticker') ||
-    m.includes('invalid parameter') ||
-    m.includes('unsupported') ||
-    m.includes('not supported') ||
-    m.includes('stickers')
-  )
+/**
+ * Credentials + host for one Instagram publish.
+ *   - no target → legacy: INSTAGRAM_BUSINESS_ID + getSocialTokens(), graph.facebook.com
+ *   - target    → the target's IG user, token and host (graph.instagram.com for
+ *                 Instagram Login, graph.facebook.com for Facebook Login)
+ */
+async function resolveInstagramCredentials(
+  target?: InstagramPublishTarget,
+): Promise<{ igBusinessId: string | undefined; accessToken: string; base: string }> {
+  if (target) {
+    socialLog('log', 'instagram', 'target', { account: target.accountId, method: target.connectionMethod })
+    return { igBusinessId: target.igUserId, accessToken: target.accessToken, base: target.apiBase }
+  }
+  const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
+  const { igToken: accessToken } = await getSocialTokens()
+  return { igBusinessId, accessToken, base: GRAPH_BASE }
 }
 
 /**
- * Instagram Hikaye yayınla (1080×1920 story görsel + mümkünse link sticker).
- * Önce articleUrl ile dener; link reddedilirse link olmadan tekrar dener (hikaye yine yayınlanır).
+ * Instagram Hikaye yayınla (1080×1920 story görsel). Link sticker API ile
+ * desteklenmediği için gönderilmez; tek kapsayıcı isteği yapılır.
  */
-export async function publishInstagramStory(payload: SocialPublishPayload): Promise<SocialPublishResult> {
-  const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
-  const { igToken: accessToken } = await getSocialTokens()
+async function publishInstagramStoryUnlocked(
+  payload: SocialPublishPayload,
+  /** Optional explicit account. Omitted → legacy env/Firestore credentials (unchanged). */
+  target?: InstagramPublishTarget,
+): Promise<SocialPublishResult> {
+  if (target !== undefined && !isUsableInstagramTarget(target)) {
+    socialLog('error', 'instagram', 'story', { corr: payload.newsId, result: 'invalid_target' })
+    return { success: false, error: INVALID_TARGET_ERROR }
+  }
+  const { igBusinessId, accessToken, base } = await resolveInstagramCredentials(target)
 
   if (!igBusinessId || !accessToken) {
     return { success: false, error: 'INSTAGRAM_BUSINESS_ID veya access token eksik' }
@@ -294,44 +316,19 @@ export async function publishInstagramStory(payload: SocialPublishPayload): Prom
   }
 
   const imageUrl = payload.imageUrl.trim()
-  const articleUrl = payload.articleUrl?.trim() || undefined
 
   try {
-    let containerId: string
-    let usedLink = false
+    const containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, base)
 
-    if (articleUrl) {
-      try {
-        containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, articleUrl)
-        usedLink = true
-      } catch (linkErr) {
-        const linkMsg = linkErr instanceof Error ? linkErr.message : String(linkErr)
-        console.warn(
-          `[instagram] story link_sticker_url reddedildi (${payload.newsId}): ${linkMsg} — link olmadan yeniden deneniyor`
-        )
-        if (!isLinkStickerError(linkMsg) && /rate limit|oauth|permission|token/i.test(linkMsg)) {
-          throw linkErr
-        }
-        containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, undefined)
-      }
-    } else {
-      console.warn(`[instagram] story articleUrl eksik — link sticker olmadan yayınlanacak: ${payload.newsId}`)
-      containerId = await createStoryContainer(igBusinessId, accessToken, imageUrl, undefined)
-    }
-
-    console.log(
-      `[instagram] story container created for ${payload.newsId}: ${containerId}` +
-        (usedLink ? ' (link_sticker_url=yes)' : ' (link_sticker_url=no)')
-    )
+    socialLog('log', 'instagram', 'story_container', { corr: payload.newsId, result: 'created' })
     await new Promise(r => setTimeout(r, 1000))
 
-    const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)
-    console.log(`[instagram] story published for ${payload.newsId} → ${mediaId}`)
+    const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId, base)
+    socialLog('log', 'instagram', 'story', { corr: payload.newsId, result: 'published', mediaId })
     return { success: true, platformId: mediaId }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[instagram] story failed for ${payload.newsId}:`, msg)
-    return { success: false, error: msg }
+    socialLog('error', 'instagram', 'story', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
+    return { success: false, error: safeErrorText(err) }
   }
 }
 
@@ -340,19 +337,21 @@ async function publishSingleImage(
   accessToken: string,
   newsId: string,
   imageUrl: string,
-  caption: string
+  caption: string,
+  base: string = GRAPH_BASE
 ): Promise<SocialPublishResult> {
-  console.log(`[instagram] single — ${newsId}`)
+  socialLog('log', 'instagram', 'single', { corr: newsId, result: 'start' })
   const containerId = await createMediaContainer(
     igBusinessId,
     accessToken,
     imageUrl,
-    caption
+    caption,
+    base
   )
-  console.log(`[instagram] container created for news ${newsId}: ${containerId}`)
+  socialLog('log', 'instagram', 'single', { corr: newsId, result: 'container_created' })
   await new Promise((resolve) => setTimeout(resolve, 1000))
-  const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId)
-  console.log(`[instagram] published news ${newsId} → media ${mediaId}`)
+  const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId, base)
+  socialLog('log', 'instagram', 'single', { corr: newsId, result: 'published', mediaId })
   return { success: true, platformId: mediaId }
 }
 
@@ -366,68 +365,94 @@ async function publishCarousel(
   newsId: string,
   imageUrls: string[],
   caption: string,
-  fallbackImageUrl: string
+  fallbackImageUrl: string,
+  base: string = GRAPH_BASE,
+  /** Explicit carousel choice: never degrade to a single image. */
+  strict = false,
 ): Promise<SocialPublishResult> {
-  console.log(`[instagram] carousel — ${newsId} (${imageUrls.length} slides)`)
+  socialLog('log', 'instagram', 'carousel', { corr: newsId, result: 'start', slides: imageUrls.length })
 
   const childIds: string[] = []
   for (let i = 0; i < imageUrls.length; i++) {
     const url = imageUrls[i]
     try {
-      const id = await createCarouselItemContainer(igBusinessId, accessToken, url)
-      await waitForContainerReady(id, accessToken)
+      const id = await createCarouselItemContainer(igBusinessId, accessToken, url, base)
+      await waitForContainerReady(id, accessToken, base)
       childIds.push(id)
-      console.log(`[instagram] carousel child ${i + 1}/${imageUrls.length} ready: ${id}`)
+      socialLog('log', 'instagram', 'carousel_child', { corr: newsId, slide: i + 1, result: 'ready' })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.warn(`[instagram] carousel child skip ${i + 1} (${newsId}): ${msg}`)
+      socialLog('warn', 'instagram', 'carousel_child', { corr: newsId, slide: i + 1, result: 'skipped', ...errorLogFields(err) })
     }
   }
 
   if (childIds.length < 2) {
-    console.warn(
-      `[instagram] carousel insufficient children (${childIds.length}) → single fallback — ${newsId}`
-    )
+    if (strict) {
+      socialLog('warn', 'instagram', 'carousel_children', { corr: newsId, ready: childIds.length, result: 'rejected_strict' })
+      return { success: false, error: 'Instagram kaydırmalı öğeleri hazırlanamadı (en az 2 gerekli) — tek görsele düşülmedi, yayın yapılmadı' }
+    }
+    socialLog('warn', 'instagram', 'carousel_children', { corr: newsId, ready: childIds.length, result: 'single_fallback' })
     return publishSingleImage(
       igBusinessId,
       accessToken,
       newsId,
       fallbackImageUrl,
-      caption
+      caption,
+      base
     )
   }
 
+  let publishStep = false
   try {
     const parentId = await createCarouselParentContainer(
       igBusinessId,
       accessToken,
       childIds,
-      caption
+      caption,
+      base
     )
-    console.log(`[instagram] carousel parent created for ${newsId}: ${parentId}`)
-    await waitForContainerReady(parentId, accessToken)
-    const mediaId = await publishMediaContainer(igBusinessId, accessToken, parentId)
-    console.log(`[instagram] carousel published ${newsId} → media ${mediaId} (${childIds.length} slides)`)
+    socialLog('log', 'instagram', 'carousel', { corr: newsId, result: 'parent_created' })
+    await waitForContainerReady(parentId, accessToken, base)
+    publishStep = true
+    const mediaId = await publishMediaContainer(igBusinessId, accessToken, parentId, base)
+    socialLog('log', 'instagram', 'carousel', { corr: newsId, result: 'published', mediaId, slides: childIds.length })
     return { success: true, platformId: mediaId }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn(`[instagram] carousel publish failed → single fallback (${newsId}): ${msg}`)
+    // media_publish sent and the answer was lost (not a clear platform
+    // rejection): the carousel may be live — a single-image fallback could
+    // double-post. Surface the transport error (→ uncertain), never fall back.
+    if (publishStep && !(err instanceof PlatformApiError)) throw err
+    // Server-side / unknown Meta error on media_publish (HTTP 5xx, code 1/2):
+    // the carousel may still have gone live → no single-image fallback either.
+    if (publishStep && err instanceof PlatformApiError && (err.fields.status >= 500 || err.fields.code === 1 || err.fields.code === 2)) {
+      return { success: false, error: safeErrorText(err) }
+    }
+    if (strict) {
+      socialLog('warn', 'instagram', 'carousel', { corr: newsId, result: 'failed_strict', ...errorLogFields(err) })
+      return { success: false, error: safeErrorText(err) }
+    }
+    socialLog('warn', 'instagram', 'carousel', { corr: newsId, result: 'failed_single_fallback', ...errorLogFields(err) })
     return publishSingleImage(
       igBusinessId,
       accessToken,
       newsId,
       fallbackImageUrl,
-      caption
+      caption,
+      base
     )
   }
 }
 
 /** Full two-step Instagram publish flow (single or carousel). */
-export async function publishToInstagram(
-  payload: SocialPublishPayload
+async function publishToInstagramUnlocked(
+  payload: SocialPublishPayload,
+  /** Optional explicit account. Omitted → legacy env/Firestore credentials (unchanged). */
+  target?: InstagramPublishTarget
 ): Promise<SocialPublishResult> {
-  const igBusinessId = process.env.INSTAGRAM_BUSINESS_ID?.trim()
-  const { igToken: accessToken } = await getSocialTokens()
+  if (target !== undefined && !isUsableInstagramTarget(target)) {
+    socialLog('error', 'instagram', 'post', { corr: payload.newsId, result: 'invalid_target' })
+    return { success: false, error: INVALID_TARGET_ERROR }
+  }
+  const { igBusinessId, accessToken, base } = await resolveInstagramCredentials(target)
 
   if (!igBusinessId || !accessToken) {
     return {
@@ -456,19 +481,60 @@ export async function publishToInstagram(
         payload.newsId,
         carouselUrls,
         caption,
-        singleUrl
+        singleUrl,
+        base,
+        payload.imageMode === 'carousel',
       )
+    }
+    if (payload.imageMode === 'carousel') {
+      return { success: false, error: 'Kaydırmalı için en az 2 görsel gerekli — tek görsele düşülmedi, yayın yapılmadı' }
     }
     return await publishSingleImage(
       igBusinessId,
       accessToken,
       payload.newsId,
       singleUrl,
-      caption
+      caption,
+      base
     )
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[instagram] publish failed for news ${payload.newsId}:`, msg)
-    return { success: false, error: msg }
+    socialLog('error', 'instagram', 'publish', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
+    return { success: false, error: safeErrorText(err) }
   }
+}
+
+// ── Shared publish lock (legacy path) ──────────────────────────────────────────
+
+/**
+ * publishToInstagram — explicit target: the caller (publishToTarget) already holds the
+ * account-scoped ledger claim. No target: legacy Onyeditivi credentials,
+ * guarded by the shared ledger lock (see accounts/legacyLock.ts).
+ */
+export async function publishToInstagram(
+  payload: SocialPublishPayload,
+  target?: InstagramPublishTarget,
+  legacy?: LegacyPublishOptions,
+): Promise<LockedPublishResult> {
+  if (target !== undefined) return publishToInstagramUnlocked(payload, target)
+  return withLegacyPublishLock(
+    { platform: 'instagram', format: 'post', newsId: payload.newsId, options: legacy },
+    () => publishToInstagramUnlocked(payload),
+  )
+}
+
+/**
+ * publishInstagramStory — explicit target: the caller (publishToTarget) already holds the
+ * account-scoped ledger claim. No target: legacy Onyeditivi credentials,
+ * guarded by the shared ledger lock (see accounts/legacyLock.ts).
+ */
+export async function publishInstagramStory(
+  payload: SocialPublishPayload,
+  target?: InstagramPublishTarget,
+  legacy?: LegacyPublishOptions,
+): Promise<LockedPublishResult> {
+  if (target !== undefined) return publishInstagramStoryUnlocked(payload, target)
+  return withLegacyPublishLock(
+    { platform: 'instagram', format: 'story', newsId: payload.newsId, options: legacy },
+    () => publishInstagramStoryUnlocked(payload),
+  )
 }

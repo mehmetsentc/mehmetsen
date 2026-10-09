@@ -372,5 +372,24 @@ service cloud.firestore {
       // Yazma yalnızca Admin SDK (API /api/games/scores)
       allow write: if false;
     }
+
+    // ── Sosyal hesaplar (çoklu hesap SMM) — yalnızca Admin SDK ──────────────
+    // Metaveri, şifreli erişim anahtarları ve tek kullanımlık OAuth state
+    // kayıtları tarayıcıdan okunamaz/yazılamaz (super_admin dahil).
+    match /socialAccounts/{accountId} {
+      allow read, write: if false;
+    }
+    match /socialAccountSecrets/{accountId} {
+      allow read, write: if false;
+    }
+    match /socialOAuthStates/{stateId} {
+      allow read, write: if false;
+    }
+    match /socialConnectSessions/{sessionId} {
+      allow read, write: if false;
+    }
+    match /socialPublishRecords/{recordId} {
+      allow read, write: if false;
+    }
   }
 }

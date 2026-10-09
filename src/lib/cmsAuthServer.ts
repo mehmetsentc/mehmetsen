@@ -63,32 +63,75 @@ export async function verifyCmsToken(
   if (!token) return null
 
   try {
-    const { getAdminAuth, getAdminFirestore } = await import('@/lib/firebase/admin')
+    const { getAdminAuth } = await import('@/lib/firebase/admin')
     const decoded = await getAdminAuth().verifyIdToken(token)
-    const email = decoded.email ?? ''
+    return await resolveCmsAuthForIdentity(
+      { uid: decoded.uid, email: decoded.email ?? '' },
+      requiredPermission,
+      options,
+    )
+  } catch {
+    return null
+  }
+}
 
-    if (isSuperAdminEmailServer(email)) {
-      if (requiredPermission && !hasPermission('super_admin', requiredPermission)) return null
-      return { uid: decoded.uid, role: 'super_admin', email, scope: UNSCOPED_STAFF }
-    }
+/**
+ * Role/scope resolution for an already-authenticated identity. Shared by
+ * verifyCmsToken (Bearer ID token) and resolveCmsAuthForUid (re-checks during
+ * flows without a Bearer token, e.g. OAuth callbacks). Same rules, one place.
+ */
+async function resolveCmsAuthForIdentity(
+  identity: { uid: string; email: string },
+  requiredPermission?: CmsPermission,
+  options?: VerifyCmsTokenOptions
+): Promise<CmsAuthContext | null> {
+  const { uid, email } = identity
 
-    if (getBootstrapAdminUids().includes(decoded.uid)) {
-      const role: CmsRole = 'managing_editor'
-      if (requiredPermission && !hasPermission(role, requiredPermission)) return null
-      return { uid: decoded.uid, role, email, scope: UNSCOPED_STAFF }
-    }
+  if (isSuperAdminEmailServer(email)) {
+    if (requiredPermission && !hasPermission('super_admin', requiredPermission)) return null
+    return { uid, role: 'super_admin', email, scope: UNSCOPED_STAFF }
+  }
 
-    const userDoc = await getAdminFirestore().collection('users').doc(decoded.uid).get()
-    const userData = userDoc.data()
-    const role = resolveCmsRoleFromFirestore(userData?.role as string | undefined)
-
-    if (!CMS_STAFF_ROLES.includes(role)) return null
+  if (getBootstrapAdminUids().includes(uid)) {
+    const role: CmsRole = 'managing_editor'
     if (requiredPermission && !hasPermission(role, requiredPermission)) return null
+    return { uid, role, email, scope: UNSCOPED_STAFF }
+  }
 
-    const scope = resolveStaffScopeFromUserData(role, userData as Record<string, unknown> | undefined)
-    if (isScopeRestricted(scope) && !options?.scopeAware) return null
+  const { getAdminFirestore } = await import('@/lib/firebase/admin')
+  const userDoc = await getAdminFirestore().collection('users').doc(uid).get()
+  const userData = userDoc.data()
+  const role = resolveCmsRoleFromFirestore(userData?.role as string | undefined)
 
-    return { uid: decoded.uid, role, email, scope }
+  if (!CMS_STAFF_ROLES.includes(role)) return null
+  if (requiredPermission && !hasPermission(role, requiredPermission)) return null
+
+  const scope = resolveStaffScopeFromUserData(role, userData as Record<string, unknown> | undefined)
+  if (isScopeRestricted(scope) && !options?.scopeAware) return null
+
+  return { uid, role, email, scope }
+}
+
+/**
+ * Re-resolve a staff member's CURRENT authorization by uid (no Bearer token).
+ * Reads the Firebase Auth record (email, disabled flag) and `users/{uid}` again,
+ * so a role or scope revoked after a flow started is enforced. Fail-closed.
+ */
+export async function resolveCmsAuthForUid(
+  uid: string,
+  requiredPermission?: CmsPermission,
+  options?: VerifyCmsTokenOptions
+): Promise<CmsAuthContext | null> {
+  if (typeof uid !== 'string' || !uid.trim()) return null
+  try {
+    const { getAdminAuth } = await import('@/lib/firebase/admin')
+    const record = await getAdminAuth().getUser(uid)
+    if (record.disabled) return null
+    return await resolveCmsAuthForIdentity(
+      { uid: record.uid, email: record.email ?? '' },
+      requiredPermission,
+      options,
+    )
   } catch {
     return null
   }

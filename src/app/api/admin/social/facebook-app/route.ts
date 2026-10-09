@@ -4,6 +4,7 @@
  * DELETE — clear site custom app
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText } from '@/lib/social/safeLog'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import {
   PRIMARY_FACEBOOK_SITE_ID,
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
         : 'App kaydedildi. Page Access Token için OAuth ile bağlayın veya token yapıştırın.',
     })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = safeErrorText(err)
     console.error('[facebook-app] save failed:', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

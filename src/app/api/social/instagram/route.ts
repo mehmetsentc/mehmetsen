@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'newsId ve title zorunlu' }, { status: 400 })
   }
 
-  const result = await publishToInstagram(payload)
+  const result = await publishToInstagram(payload, undefined, { trigger: 'api_social' })
 
   return NextResponse.json(result, {
     status: result.success ? 200 : 502,

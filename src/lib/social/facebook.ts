@@ -17,6 +17,10 @@
 import sharp from 'sharp'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { resolveFacebookCredentials } from './facebookCredentials'
+import { FACEBOOK_GRAPH_BASE } from './graphConfig'
+import { errorLogFields, platformError, safeErrorText, socialLog } from './safeLog'
+import type { FacebookPublishTarget } from './accounts/targetTypes'
+import { INVALID_TARGET_ERROR, isUsableFacebookTarget } from './accounts/targetGuards'
 import { PRIMARY_FACEBOOK_SITE_ID } from './facebookAppStore'
 import {
   checkFacebookRateLimit,
@@ -32,9 +36,10 @@ import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle }
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 import { generateSocialContent } from './aiSocialEditor'
 import { rewriteForSocial, rewriteForPlatform, logAiRewrite } from '@/services/metaAiRewriteService'
+import { withLegacyPublishLock, type LegacyPublishOptions, type LockedPublishResult } from './accounts/legacyLock'
+import { singleImageGuard } from './imagePolicy'
 
-const GRAPH_API_VERSION = 'v21.0'
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+const GRAPH_BASE = FACEBOOK_GRAPH_BASE
 const GRAPH_UA = 'NaHaber/1.0 (+https://www.nahaber.com)'
 const MIN_IMAGE_WIDTH = 800
 const ALLOWED_HASHTAGS = new Set(['#çanakkale', '#sondakika'])
@@ -208,8 +213,7 @@ async function validatePublicImage(
     }
     return { ok: true, url, width }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return { ok: false, reason: `Facebook: görsel kontrolü başarısız (${msg}) — atlandı` }
+    return { ok: false, reason: `Facebook: görsel kontrolü başarısız (${safeErrorText(err)}) — atlandı` }
   }
 }
 
@@ -220,9 +224,11 @@ async function addDetailComment(
   postId: string,
   articleUrl: string,
   commentOpener = 'Haberin detayı:',
+  /** Onyeditivi attribution line; null for non-Onyeditivi target accounts. */
+  sourceLine: string | null = 'Kaynak: onyeditivi.com',
 ): Promise<void> {
   const opener = (commentOpener || 'Haberin detayı:').replace(/https?:\/\/\S+/gi, '').trim() || 'Haberin detayı:'
-  const message = `${opener} ${articleUrl}\n\nKaynak: onyeditivi.com`
+  const message = sourceLine ? `${opener} ${articleUrl}\n\n${sourceLine}` : `${opener} ${articleUrl}`
   try {
     const res = await fetch(`${GRAPH_BASE}/${postId}/comments`, {
       method: 'POST',
@@ -240,15 +246,12 @@ async function addDetailComment(
       error?: { message?: string; code?: number }
     }
     if (res.ok && !json.error) {
-      console.log(`[facebook] detail comment ok post_id=${postId} comment_id=${json.id ?? '?'}`)
+      socialLog('log', 'facebook', 'detail_comment', { result: 'ok', postId, commentId: json.id ?? null })
     } else {
-      console.error(
-        `[facebook] detail comment failed post_id=${postId}:`,
-        json.error ?? { status: res.status },
-      )
+      socialLog('error', 'facebook', 'detail_comment', { result: 'failed', postId, ...errorLogFields(platformError('facebook', 'yorum', res.status, json)) })
     }
   } catch (err) {
-    console.error(`[facebook] detail comment error post_id=${postId}:`, err)
+    socialLog('error', 'facebook', 'detail_comment', { result: 'exception', postId, ...errorLogFields(err) })
   }
 }
 
@@ -262,7 +265,7 @@ async function publishPhotoPost(
   newsId: string,
   imageUrl: string,
   caption: string,
-): Promise<SocialPublishResult & { raw?: unknown }> {
+): Promise<SocialPublishResult> {
   const body: Record<string, unknown> = {
     url: imageUrl,
     caption,
@@ -271,7 +274,7 @@ async function publishPhotoPost(
     access_token: accessToken,
   }
 
-  console.log(`[facebook] photos POST news=${newsId} page=${pageId}`)
+  socialLog('log', 'facebook', 'photos', { corr: newsId, pageId, result: 'request' })
   const res = await fetch(`${GRAPH_BASE}/${pageId}/photos`, {
     method: 'POST',
     headers: {
@@ -287,20 +290,16 @@ async function publishPhotoPost(
     error?: { message?: string; code?: number; type?: string; error_user_msg?: string }
   }
 
-  console.log(`[facebook] photos response news=${newsId}:`, JSON.stringify(json))
-
   if (!res.ok || json.error || !json.id) {
-    const msg = json.error?.message ?? `HTTP ${res.status}`
-    console.error(`[facebook] publish failed news=${newsId}:`, json.error ?? msg)
-    return { success: false, error: msg, raw: json }
+    const err = platformError('facebook', 'fotoğraf paylaşımı', res.status, json)
+    socialLog('error', 'facebook', 'photos', { corr: newsId, pageId, result: 'failed', ...errorLogFields(err) })
+    return { success: false, error: err.message }
   }
 
   // Prefer post_id for comments (Page photo id ≠ feed post id in some responses)
   const platformId = json.post_id || json.id
-  console.log(
-    `[facebook] published news=${newsId} post_id=${platformId} photo_id=${json.id}`,
-  )
-  return { success: true, platformId, raw: json }
+  socialLog('log', 'facebook', 'photo_post', { corr: newsId, result: 'published', postId: platformId })
+  return { success: true, platformId }
 }
 
 // ── Story (unchanged path; keep IG/FB stories working) ───────────────────────
@@ -310,12 +309,26 @@ async function publishPhotoPost(
  * 1) Fotoğrafı unpublished yükle → photo_id
  * 2) POST /{pageId}/photo_stories
  */
-export async function publishFacebookStory(
+async function publishFacebookStoryUnlocked(
   payload: SocialPublishPayload,
+  /** Optional explicit account. Omitted → legacy Onyeditivi credentials (unchanged). */
+  target?: FacebookPublishTarget,
 ): Promise<SocialPublishResult> {
-  const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
-  const pageId = creds.pageId
-  const accessToken = creds.accessToken
+  if (target !== undefined && !isUsableFacebookTarget(target)) {
+    socialLog('error', 'facebook', 'story', { corr: payload.newsId, result: 'invalid_target' })
+    return { success: false, error: INVALID_TARGET_ERROR }
+  }
+  let pageId: string
+  let accessToken: string
+  if (target) {
+    pageId = target.pageId
+    accessToken = target.accessToken
+    socialLog('log', 'facebook', 'story', { corr: payload.newsId, account: target.accountId, method: target.connectionMethod })
+  } else {
+    const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
+    pageId = creds.pageId
+    accessToken = creds.accessToken
+  }
 
   if (!pageId || !accessToken) {
     return { success: false, error: 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik' }
@@ -343,10 +356,11 @@ export async function publishFacebookStory(
     })
     const uploadJson = (await uploadRes.json()) as { id?: string; error?: { message?: string } }
     if (!uploadRes.ok || uploadJson.error || !uploadJson.id) {
-      console.warn(
-        `[facebook] story unpublished upload failed (${payload.newsId}): ` +
-          `${uploadJson.error?.message ?? uploadRes.status} — url fallback`,
-      )
+      socialLog('warn', 'facebook', 'story_upload', {
+        corr: payload.newsId,
+        result: 'failed_url_fallback',
+        ...errorLogFields(platformError('facebook', 'hikâye yükleme', uploadRes.status, uploadJson)),
+      })
       return await publishFacebookStoryViaUrl(pageId, accessToken, payload.newsId, imageUrl, articleUrl)
     }
 
@@ -358,12 +372,11 @@ export async function publishFacebookStory(
       photoId,
       articleUrl,
     )
-    console.log(`[facebook] story published for news ${payload.newsId} → ${platformId}`)
+    socialLog('log', 'facebook', 'story', { corr: payload.newsId, result: 'published', postId: platformId })
     return { success: true, platformId }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[facebook] story unexpected error for news ${payload.newsId}:`, msg)
-    return { success: false, error: msg }
+    socialLog('error', 'facebook', 'story', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
+    return { success: false, error: safeErrorText(err) }
   }
 }
 
@@ -396,7 +409,7 @@ async function publishPhotoStoryWithOptionalLink(
       error?: { message?: string }
     }
     if (!res.ok || json.error) {
-      throw new Error(json.error?.message ?? `photo_stories HTTP ${res.status}`)
+      throw platformError('facebook', 'hikâye paylaşımı', res.status, json)
     }
     return json.post_id ?? json.id ?? photoId
   }
@@ -404,14 +417,13 @@ async function publishPhotoStoryWithOptionalLink(
   if (articleUrl) {
     try {
       const id = await tryPublish(true)
-      console.log(`[facebook] story link attached for ${newsId}`)
+      socialLog('log', 'facebook', 'story_link', { corr: newsId, result: 'attached' })
       return id
     } catch (linkErr) {
-      const msg = linkErr instanceof Error ? linkErr.message : String(linkErr)
-      console.warn(`[facebook] story link reddedildi (${newsId}): ${msg} — link olmadan yeniden deneniyor`)
+      socialLog('warn', 'facebook', 'story_link', { corr: newsId, result: 'rejected_retry_without_link', ...errorLogFields(linkErr) })
     }
   } else {
-    console.warn(`[facebook] story articleUrl eksik — link olmadan yayınlanacak: ${newsId}`)
+    socialLog('warn', 'facebook', 'story_link', { corr: newsId, result: 'no_article_url' })
   }
   return tryPublish(false)
 }
@@ -439,7 +451,7 @@ async function publishFacebookStoryViaUrl(
     })
     const json = (await res.json()) as { post_id?: string; id?: string; error?: { message?: string } }
     if (!res.ok || json.error) {
-      throw new Error(json.error?.message ?? `HTTP ${res.status}`)
+      throw platformError('facebook', 'hikâye paylaşımı', res.status, json)
     }
     return json.post_id ?? json.id
   }
@@ -449,21 +461,19 @@ async function publishFacebookStoryViaUrl(
     if (articleUrl) {
       try {
         platformId = await tryOnce(true)
-        console.log(`[facebook] story (url) link attached for ${newsId}`)
+        socialLog('log', 'facebook', 'story_link', { corr: newsId, result: 'attached', via: 'url' })
       } catch (linkErr) {
-        const msg = linkErr instanceof Error ? linkErr.message : String(linkErr)
-        console.warn(`[facebook] story (url) link reddedildi (${newsId}): ${msg}`)
+        socialLog('warn', 'facebook', 'story_link', { corr: newsId, result: 'rejected_retry_without_link', ...errorLogFields(linkErr) })
         platformId = await tryOnce(false)
       }
     } else {
       platformId = await tryOnce(false)
     }
-    console.log(`[facebook] story published for news ${newsId} → ${platformId}`)
+    socialLog('log', 'facebook', 'story', { corr: newsId, result: 'published', via: 'url', postId: platformId ?? null })
     return { success: true, platformId }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[facebook] story failed for news ${newsId}:`, msg)
-    return { success: false, error: msg }
+    socialLog('error', 'facebook', 'story', { corr: newsId, result: 'failed', ...errorLogFields(err) })
+    return { success: false, error: safeErrorText(err) }
   }
 }
 
@@ -473,34 +483,60 @@ async function publishFacebookStoryViaUrl(
  * Publish a photo post to the Facebook Page.
  * Skips (success:false) when image missing/narrow/broken or rate-limited.
  */
-export async function publishToFacebook(
+async function publishToFacebookUnlocked(
   payload: SocialPublishPayload,
+  /** Optional explicit account. Omitted → legacy Onyeditivi credentials (unchanged). */
+  target?: FacebookPublishTarget,
 ): Promise<SocialPublishResult> {
-  const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
-  const pageId = creds.pageId
-  const accessToken = creds.accessToken
-
-  const credMeta = {
-    credentialMode: creds.mode,
-    appId: creds.appId,
-    appName: creds.appName,
-  } as const
-
-  if (!pageId || !accessToken) {
-    const err =
-      creds.mode === 'custom'
-        ? 'BYO Facebook pageId/token eksik'
-        : 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik'
-    console.error(`[facebook] ${err}`)
-    return { success: false, error: err, ...credMeta }
+  if (target !== undefined && !isUsableFacebookTarget(target)) {
+    socialLog('error', 'facebook', 'photo_post', { corr: payload.newsId, result: 'invalid_target' })
+    return { success: false, error: INVALID_TARGET_ERROR }
   }
 
-  console.log(
-    `[facebook] publish mode=${creds.mode} source=${creds.source} site=${creds.siteId} app_id=${creds.appId ?? 'none'} appName=${creds.appName ?? '?'} news=${payload.newsId}`,
-  )
+  let pageId: string
+  let accessToken: string
+  let credMeta: Pick<SocialPublishResult, 'credentialMode' | 'appId' | 'appName'>
+  /**
+   * Onyeditivi page (no target, or its legacy account record): keep the
+   * page-level hourly limiter, deferral and news-doc credential fields.
+   * Other accounts get per-account limits in the queue task, not this limiter.
+   */
+  const legacyPage = !target || target.connectionMethod === 'legacy'
 
-  // Deferred queue (hourly overflow)
-  try {
+  if (target) {
+    pageId = target.pageId
+    accessToken = target.accessToken
+    credMeta = {
+      ...(target.legacyCredentialMode ? { credentialMode: target.legacyCredentialMode } : {}),
+      appId: target.appId,
+      appName: target.appName,
+    }
+    socialLog('log', 'facebook', 'photo_post', { corr: payload.newsId, account: target.accountId, method: target.connectionMethod })
+  } else {
+    const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
+    pageId = creds.pageId
+    accessToken = creds.accessToken
+
+    credMeta = {
+      credentialMode: creds.mode,
+      appId: creds.appId,
+      appName: creds.appName,
+    }
+
+    if (!pageId || !accessToken) {
+      const err =
+        creds.mode === 'custom'
+          ? 'BYO Facebook pageId/token eksik'
+          : 'FACEBOOK_PAGE_ID veya FACEBOOK_PAGE_ACCESS_TOKEN eksik'
+      socialLog('error', 'facebook', 'photo_post', { corr: payload.newsId, result: 'credentials_missing', mode: creds.mode })
+      return { success: false, error: err, ...credMeta }
+    }
+
+    socialLog('log', 'facebook', 'photo_post', { corr: payload.newsId, mode: creds.mode, source: creds.source, site: creds.siteId, appId: creds.appId ?? 'none' })
+  }
+
+  // Deferred queue (hourly overflow) — Onyeditivi page only
+  if (legacyPage) try {
     const db = getAdminFirestore()
     const doc = await db.collection(Collections.NEWS).doc(payload.newsId).get()
     const deferredUntil = doc.exists
@@ -514,14 +550,14 @@ export async function publishToFacebook(
           : 0
     if (untilMs > Date.now()) {
       const msg = `Facebook: kuyruk bekleniyor (deferredUntil=${new Date(untilMs).toISOString()})`
-      console.log(`[facebook] ${msg} news=${payload.newsId}`)
+      socialLog('log', 'facebook', 'photo_post', { corr: payload.newsId, result: 'deferred' })
       return { success: false, error: msg, ...credMeta }
     }
   } catch (err) {
-    console.warn(`[facebook] deferred check failed news=${payload.newsId}:`, err)
+    socialLog('warn', 'facebook', 'deferred_check', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
   }
 
-  const rate = await checkFacebookRateLimit(payload.title)
+  const rate = legacyPage ? await checkFacebookRateLimit(payload.title) : { allowed: true as const }
   if (!rate.allowed) {
     if (rate.deferUntil) {
       try {
@@ -530,10 +566,10 @@ export async function publishToFacebook(
           .doc(payload.newsId)
           .update({ facebookDeferredUntil: rate.deferUntil })
       } catch (err) {
-        console.warn(`[facebook] could not set facebookDeferredUntil:`, err)
+        socialLog('warn', 'facebook', 'deferred_set', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
       }
     }
-    console.log(`[facebook] rate skip news=${payload.newsId}: ${rate.reason}`)
+    socialLog('log', 'facebook', 'photo_post', { corr: payload.newsId, result: 'rate_limited' })
     return { success: false, error: rate.reason, ...credMeta }
   }
 
@@ -543,13 +579,13 @@ export async function publishToFacebook(
 
   if (!imageCandidate) {
     const msg = 'Facebook: image_url yok — atlandı'
-    console.error(`[facebook] ${msg} news=${payload.newsId}`)
+    socialLog('error', 'facebook', 'photo_post', { corr: payload.newsId, result: 'no_image' })
     return { success: false, error: msg, ...credMeta }
   }
 
   const imageCheck = await validatePublicImage(imageCandidate)
   if (!imageCheck.ok) {
-    console.error(`[facebook] ${imageCheck.reason} news=${payload.newsId}`)
+    socialLog('error', 'facebook', 'photo_post', { corr: payload.newsId, result: 'image_rejected' })
     return { success: false, error: imageCheck.reason, ...credMeta }
   }
 
@@ -609,25 +645,31 @@ export async function publishToFacebook(
       return { ...result, ...credMeta }
     }
 
-    await recordFacebookPublish(payload.title, result.platformId)
+    if (legacyPage) await recordFacebookPublish(payload.title, result.platformId)
 
-    try {
+    if (legacyPage) try {
       await getAdminFirestore()
         .collection(Collections.NEWS)
         .doc(payload.newsId)
         .update({
           facebookDeferredUntil: FieldValue.delete(),
-          facebookAppId: creds.appId ?? null,
-          facebookCredentialMode: creds.mode,
+          facebookAppId: credMeta.appId ?? null,
+          facebookCredentialMode: credMeta.credentialMode,
         })
     } catch {
       /* ignore */
     }
 
     if (articleUrl) {
-      await addDetailComment(accessToken, result.platformId, articleUrl, commentOpener)
+      await addDetailComment(
+        accessToken,
+        result.platformId,
+        articleUrl,
+        commentOpener,
+        legacyPage ? undefined : null,
+      )
     } else {
-      console.warn(`[facebook] articleUrl eksik — yorum eklenmedi news=${payload.newsId}`)
+      socialLog('warn', 'facebook', 'detail_comment', { corr: payload.newsId, result: 'no_article_url' })
     }
 
     await logAiRewrite({
@@ -643,14 +685,11 @@ export async function publishToFacebook(
       cacheKey,
     }).catch(() => {})
 
-    console.log(
-      `[facebook] published ok news=${payload.newsId} post_id=${result.platformId} mode=${creds.mode} app_id=${creds.appId ?? 'none'}`,
-    )
+    socialLog('log', 'facebook', 'photo_post', { corr: payload.newsId, result: 'ok', postId: result.platformId, mode: credMeta.credentialMode ?? 'target', appId: credMeta.appId ?? 'none' })
     return { success: true, platformId: result.platformId, ...credMeta }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error(`[facebook] unexpected error news=${payload.newsId}:`, err)
-    return { success: false, error: msg, ...credMeta }
+    socialLog('error', 'facebook', 'publish', { corr: payload.newsId, result: 'exception', ...errorLogFields(err) })
+    return { success: false, error: safeErrorText(err), ...credMeta }
   }
 }
 
@@ -782,9 +821,7 @@ export async function testFacebookPost(
   const caption =
     `${aiPreview.caption}\n\n📍 ${cityName}` +
     (aiPreview.hashtags.length ? `\n\n${aiPreview.hashtags.join(' ')}` : '')
-  console.log(
-    `[facebook] testFacebookPost news=${id} ai=${aiPreview.source} caption=\n${caption}`,
-  )
+  socialLog('log', 'facebook', 'test_post', { corr: id, ai: aiPreview.source, captionLength: caption.length })
   await logAiRewrite({
     newsId: id,
     title,
@@ -797,7 +834,7 @@ export async function testFacebookPost(
     cacheKey: aiPreview.cacheKey,
   }).catch(() => {})
 
-  const result = await publishToFacebook(payload)
+  const result = await publishToFacebook(payload, undefined, { trigger: 'test_facebook' })
   const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
 
   if (result.success && result.platformId) {
@@ -810,7 +847,7 @@ export async function testFacebookPost(
         socialCaption: socialContent.caption,
         socialHashtags: socialContent.hashtags,
       })
-      .catch((err) => console.warn('[facebook] testFacebookPost firestore update:', err))
+      .catch((err) => socialLog('warn', 'facebook', 'test_post_update', { corr: id, ...errorLogFields(err) }))
   }
 
   return {
@@ -834,4 +871,45 @@ export async function testFacebookPost(
       error: aiPreview.error,
     },
   }
+}
+
+// ── Shared publish lock (legacy path) ──────────────────────────────────────────
+
+/**
+ * publishToFacebook — explicit target: the caller (publishToTarget) already holds the
+ * account-scoped ledger claim. No target: legacy Onyeditivi credentials,
+ * guarded by the shared ledger lock (see accounts/legacyLock.ts).
+ */
+export async function publishToFacebook(
+  payload: SocialPublishPayload,
+  target?: FacebookPublishTarget,
+  legacy?: LegacyPublishOptions,
+): Promise<LockedPublishResult> {
+  // Tek görsel uygulanır: kaydırmalı istek ya da açık 'single' seçimi olmayan
+  // çoklu görsel, medya hazırlığı/kilit/platform isteğinden ÖNCE reddedilir —
+  // sessizce ilk görsele düşürülmez (bkz. imagePolicy.ts).
+  const imageBlock = singleImageGuard(payload, 'facebook')
+  if (imageBlock) return imageBlock
+  if (target !== undefined) return publishToFacebookUnlocked(payload, target)
+  return withLegacyPublishLock(
+    { platform: 'facebook', format: 'post', newsId: payload.newsId, options: legacy },
+    () => publishToFacebookUnlocked(payload),
+  )
+}
+
+/**
+ * publishFacebookStory — explicit target: the caller (publishToTarget) already holds the
+ * account-scoped ledger claim. No target: legacy Onyeditivi credentials,
+ * guarded by the shared ledger lock (see accounts/legacyLock.ts).
+ */
+export async function publishFacebookStory(
+  payload: SocialPublishPayload,
+  target?: FacebookPublishTarget,
+  legacy?: LegacyPublishOptions,
+): Promise<LockedPublishResult> {
+  if (target !== undefined) return publishFacebookStoryUnlocked(payload, target)
+  return withLegacyPublishLock(
+    { platform: 'facebook', format: 'story', newsId: payload.newsId, options: legacy },
+    () => publishFacebookStoryUnlocked(payload),
+  )
 }

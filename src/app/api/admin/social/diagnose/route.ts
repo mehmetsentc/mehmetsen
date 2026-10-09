@@ -5,17 +5,28 @@
  * Admin panelinden tetiklenir — paylaşım neden çalışmıyor bunu gösterir.
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText, sanitizeFreeText } from '@/lib/social/safeLog'
+import { FACEBOOK_GRAPH_BASE, THREADS_GRAPH_BASE } from '@/lib/social/graphConfig'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const GRAPH = 'https://graph.facebook.com/v21.0'
+const GRAPH = FACEBOOK_GRAPH_BASE
 
 interface DiagStep {
   name: string
   ok: boolean
   detail: string
+}
+
+/**
+ * Meta error text echoed in diagnostics is untrusted (may contain tokens or
+ * request URLs) — every step detail passes through the shared sanitizer
+ * before it reaches the browser.
+ */
+function safeSteps(steps: DiagStep[]): DiagStep[] {
+  return steps.map((s) => ({ ...s, detail: sanitizeFreeText(s.detail, 600) }))
 }
 
 async function graphGet(path: string, token: string): Promise<{ ok: boolean; data: unknown; status: number }> {
@@ -25,7 +36,7 @@ async function graphGet(path: string, token: string): Promise<{ ok: boolean; dat
     const data = await res.json()
     return { ok: res.ok, data, status: res.status }
   } catch (e) {
-    return { ok: false, data: { error: String(e) }, status: 0 }
+    return { ok: false, data: { error: { message: safeErrorText(e) } }, status: 0 }
   }
 }
 
@@ -117,7 +128,7 @@ export async function GET(request: Request) {
   })
 
   if (!fbToken) {
-    return NextResponse.json({ steps, summary: 'Facebook token bulunamadı — Firestore veya Vercel env ayarlayın.' })
+    return NextResponse.json({ steps: safeSteps(steps), summary: 'Facebook token bulunamadı — Firestore veya Vercel env ayarlayın.' })
   }
 
   // ── 2. Token geçerliliği (/me) ────────────────────────────────────────────
@@ -316,7 +327,7 @@ export async function GET(request: Request) {
   } else {
     try {
       const thRes = await fetch(
-        `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url&access_token=${encodeURIComponent(threadsToken)}`
+        `${THREADS_GRAPH_BASE}/me?fields=id,username,threads_profile_picture_url&access_token=${encodeURIComponent(threadsToken)}`
       )
       const thData = await thRes.json() as {
         id?: string; username?: string; error?: { message?: string; code?: number; type?: string; error_subcode?: number }
@@ -352,7 +363,7 @@ export async function GET(request: Request) {
       testBody.set('text', 'NaHaber bağlantı testi — bu gönderi yayınlanmayacak')
       testBody.set('media_type', 'TEXT')
       const testRes = await fetch(
-        `https://graph.threads.net/v1.0/${threadsUserId}/threads`,
+        `${THREADS_GRAPH_BASE}/${threadsUserId}/threads`,
         { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: testBody.toString() }
       )
       const testJson = await testRes.json() as {
@@ -387,5 +398,5 @@ export async function GET(request: Request) {
     ? '✅ Tüm kontroller geçti — paylaşım çalışıyor olmalı'
     : `❌ ${failedSteps.length} sorun tespit edildi: ${failedSteps.map(s => s.name).join(', ')}`
 
-  return NextResponse.json({ summary, steps })
+  return NextResponse.json({ summary, steps: safeSteps(steps) })
 }

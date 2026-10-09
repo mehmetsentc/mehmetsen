@@ -3,6 +3,7 @@
  * Facebook OAuth redirect — exchanges code, stores Page token for custom app.
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText } from '@/lib/social/safeLog'
 import {
   PRIMARY_FACEBOOK_SITE_ID,
   getDecryptedAppSecret,
@@ -100,7 +101,8 @@ export async function GET(request: Request) {
       pageId: page.pageId,
     })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    // Meta error text is untrusted — only the sanitized form is logged / redirected.
+    const msg = safeErrorText(err)
     console.error('[facebook-app/callback] failed:', msg)
     return redirectAdmin({ fbApp: 'error', message: msg, siteId })
   }

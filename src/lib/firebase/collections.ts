@@ -113,7 +113,16 @@ export const Collections = {
   LEARNING_PROPOSALS: 'learningProposals',
   ALGORITHM_PROPOSALS: 'algorithmProposals',
   ALGORITHM_CONFIGS: 'algorithmConfigs',
+  /** Social account metadata (no secrets). Admin SDK only — closed to clients in firestore.rules. */
   SOCIAL_ACCOUNTS: 'socialAccounts',
+  /** Encrypted social access tokens / legacy credential references. Admin SDK only. */
+  SOCIAL_ACCOUNT_SECRETS: 'socialAccountSecrets',
+  /** Single-use OAuth state records for social account connections. Admin SDK only. */
+  SOCIAL_OAUTH_STATES: 'socialOAuthStates',
+  /** Short-lived server-side connection sessions (e.g. Facebook page selection). Admin SDK only. */
+  SOCIAL_CONNECT_SESSIONS: 'socialConnectSessions',
+  /** Account-scoped manual publish ledger (claim/lease, result per news+account+format). Admin SDK only. */
+  SOCIAL_PUBLISH_RECORDS: 'socialPublishRecords',
   SMM_QUEUE: 'smmQueue',
   SMM_MATRIX: 'smmContentMatrix',
   AUTOMATION_RULES: 'automationRules',

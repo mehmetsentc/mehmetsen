@@ -3,6 +3,7 @@
  * Harici bağımlılık gerektirmez; Node.js crypto modülü kullanır.
  */
 import crypto from 'crypto'
+import { errorLogFields, safeErrorText, socialLog } from './safeLog'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { clampAtWordBoundary } from './feedCaption'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
@@ -170,17 +171,16 @@ export async function publishToTwitter(
     if (res.ok && data.data) {
       const tweetData = data.data as Record<string, unknown>
       const tweetId = typeof tweetData.id === 'string' ? tweetData.id : undefined
-      console.log(`[twitter] Tweet yayınlandı — id: ${tweetId}`)
+      socialLog('log', 'twitter', 'published', { tweetId })
       return { success: true, platformId: tweetId }
     }
 
     // Hata durumu
-    const errDetail = JSON.stringify(data).slice(0, 300)
-    console.error(`[twitter] API hatası ${res.status}: ${errDetail}`)
-    return { success: false, error: `HTTP ${res.status}: ${errDetail}` }
+    // Platform body is untrusted text — only the HTTP status is surfaced.
+    socialLog('error', 'twitter', 'publish_rejected', { status: res.status })
+    return { success: false, error: `X yayınlama reddedildi (HTTP ${res.status})` }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[twitter] fetch hatası:', msg)
-    return { success: false, error: msg }
+    socialLog('error', 'twitter', 'publish_error', errorLogFields(err))
+    return { success: false, error: safeErrorText(err) }
   }
 }

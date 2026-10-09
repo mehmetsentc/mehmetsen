@@ -16,6 +16,9 @@
  * Auth: Bearer CRON_SECRET  veya ?secret=CRON_SECRET
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText, sanitizeFreeText } from '@/lib/social/safeLog'
+import { singleCoverPayload } from '@/lib/social/imagePolicy'
+import { isVerifiedPublish } from '@/lib/social/accounts/legacyLock'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -88,7 +91,7 @@ async function resolveArticleUrl(
       slug = await ensurePublicNewsSlug(db, id, title, slug)
       data.slug = slug
     } catch (err) {
-      console.error(`[cron/social] slug upgrade failed ${id}:`, err)
+      console.error(`[cron/social] slug upgrade failed ${id}:`, safeErrorText(err))
       return null
     }
   }
@@ -152,7 +155,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   if (!fbCreds.accessToken) {
     const msg =
       'Facebook token eksik — Admin’de BYO app bağlayın veya FACEBOOK_PAGE_ACCESS_TOKEN / ONYEDITIVI_FB_PAGE_ACCESS_TOKEN ayarlayın'
-    console.error('[cron/social]', msg)
+    console.error('[cron/social]', safeErrorText(msg))
     return { processed: 0, succeeded: 0, failed: 0, items: [], error: msg }
   }
   console.log(
@@ -190,7 +193,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           .limit(BATCH_LIMIT * 5)
           .get()
           .catch((err) => {
-            console.warn('[cron/social] citySlug in-query failed:', err)
+            console.warn('[cron/social] citySlug in-query failed:', safeErrorText(err))
             return null
           })
       )
@@ -206,7 +209,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         .limit(BATCH_LIMIT * 5)
         .get()
         .catch((err) => {
-          console.warn('[cron/social] legacy Çanakkale city query failed:', err)
+          console.warn('[cron/social] legacy Çanakkale city query failed:', safeErrorText(err))
           return null
         })
     }
@@ -350,7 +353,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           socialStorySummary: storySummary,
         })
       } catch (err) {
-        console.warn(`[cron/social] story AI fields update failed ${id}:`, err)
+        console.warn(`[cron/social] story AI fields update failed ${id}:`, safeErrorText(err))
       }
 
       const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
@@ -390,20 +393,20 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
       let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
       try {
-        igStoryResult = await publishInstagramStory(storyPayload)
-        console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : igStoryResult.error}`)
+        igStoryResult = await publishInstagramStory(storyPayload, undefined, { trigger: 'cron' })
+        console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : safeErrorText(igStoryResult.error ?? '')}`)
       } catch (err) {
-        igStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        igStoryResult = { success: false, error: safeErrorText(err) }
       }
 
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
 
       let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
       try {
-        fbStoryResult = await publishFacebookStory(storyPayload)
-        console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : fbStoryResult.error}`)
+        fbStoryResult = await publishFacebookStory(storyPayload, undefined, { trigger: 'cron' })
+        console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : safeErrorText(fbStoryResult.error ?? '')}`)
       } catch (err) {
-        fbStoryResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        fbStoryResult = { success: false, error: safeErrorText(err) }
       }
 
       if (igStoryResult.success || fbStoryResult.success) {
@@ -418,7 +421,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           storySucceeded++
           storyItemLogs.push({ newsId: id, title, ok: true })
         } catch (err) {
-          console.error(`[cron/social] Story Firestore update failed for ${id}:`, err)
+          console.error(`[cron/social] Story Firestore update failed for ${id}:`, safeErrorText(err))
           storyFailed++
           storyItemLogs.push({ newsId: id, title, ok: false, error: 'firestore update failed' })
         }
@@ -435,7 +438,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
     }
   } catch (err) {
-    console.error('[cron/social] Story loop error:', err)
+    console.error('[cron/social] Story loop error:', safeErrorText(err))
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -569,7 +572,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         socialHashtags: socialContent.hashtags,
       })
     } catch (err) {
-      console.warn(`[cron/social] social fields pre-save failed ${id}:`, err)
+      console.warn(`[cron/social] social fields pre-save failed ${id}:`, safeErrorText(err))
     }
 
     const catId = typeof data.categoryId === 'string' ? data.categoryId : String(data.category || 'gundem')
@@ -587,7 +590,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         ? data.updatedAt
         : undefined,
     })
-    console.log(`[cron/social] OG görsel → ${socialImageUrl}`)
+    console.log(`[cron/social] OG görsel → ${sanitizeFreeText(socialImageUrl, 120)}`)
 
     const imagePayload = await buildSocialImagePayload(id, socialImageUrl, data, {
       fallbackImageUrl: originalImageUrl,
@@ -614,7 +617,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
     if (imagePayload.imageUrl.includes('-raw-')) {
       console.error(
-        `[cron/social] WARNING raw cover without manşet overlay — ${id} url=${imagePayload.imageUrl.slice(0, 120)}`,
+        `[cron/social] WARNING raw cover without manşet overlay — ${id} url=${sanitizeFreeText(imagePayload.imageUrl, 120)}`,
       )
     }
 
@@ -642,9 +645,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
     if (!skipFb) {
       try {
-        fbResult = await publishToFacebook(payload)
+        fbResult = await publishToFacebook(singleCoverPayload(payload, 'facebook'), undefined, { trigger: 'cron' })
       } catch (err) {
-        fbResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        fbResult = { success: false, error: safeErrorText(err) }
       }
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
     }
@@ -656,9 +659,9 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
     if (!skipIg) {
       try {
-        igResult = await publishToInstagram(payload)
+        igResult = await publishToInstagram(payload, undefined, { trigger: 'cron' })
       } catch (err) {
-        igResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        igResult = { success: false, error: safeErrorText(err) }
       }
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
     }
@@ -672,7 +675,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
       try {
         twResult = await publishToTwitter(payload)
       } catch (err) {
-        twResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        twResult = { success: false, error: safeErrorText(err) }
       }
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
     }
@@ -684,18 +687,23 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
     if (!skipTh) {
       try {
-        thResult = await publishToThreads(payload)
-        console.log(`[cron/social] Threads → ${id}: ${thResult.success ? '✓' : thResult.error}`)
+        thResult = await publishToThreads(singleCoverPayload(payload, 'threads'), undefined, { trigger: 'cron' })
+        console.log(`[cron/social] Threads → ${id}: ${thResult.success ? '✓' : safeErrorText(thResult.error ?? '')}`)
       } catch (err) {
-        thResult = { success: false, error: err instanceof Error ? err.message : String(err) }
+        thResult = { success: false, error: safeErrorText(err) }
       }
     }
 
     // ── Firestore güncelle ────────────────────────────────────────────────
-    const hasFb = skipFb || fbResult.success
-    const hasIg = skipIg || igResult.success
+    // Ledger "zaten yayımlandı" + doğrulanmış dış kimlik → yeniden yayın yok,
+    // yalnızca eksik legacy alanı uzlaştırılır. Kimliksiz sonuç başarı sayılmaz.
+    const fbDone = isVerifiedPublish(fbResult)
+    const igDone = isVerifiedPublish(igResult)
+    const thDone = isVerifiedPublish(thResult)
+    const hasFb = skipFb || fbDone
+    const hasIg = skipIg || igDone
     const primaryOk = hasFb || hasIg
-    const anyNewOk = fbResult.success || igResult.success || twResult.success || thResult.success
+    const anyNewOk = fbDone || igDone || twResult.success || thDone
 
     if (anyNewOk || primaryOk) {
       try {
@@ -705,10 +713,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
           socialStorySummary:  socialContent.storySummary,
           socialHashtags:    socialContent.hashtags,
         }
-        if (fbResult.platformId) update.facebookPostId   = fbResult.platformId
-        if (igResult.platformId) update.instagramMediaId = igResult.platformId
-        if (twResult.platformId) update.twitterTweetId   = twResult.platformId
-        if (thResult.platformId) update.threadsPostId    = thResult.platformId
+        if (fbDone && fbResult.platformId) update.facebookPostId   = fbResult.platformId
+        if (igDone && igResult.platformId) update.instagramMediaId = igResult.platformId
+        if (twResult.success && twResult.platformId) update.twitterTweetId = twResult.platformId
+        if (thDone && thResult.platformId) update.threadsPostId    = thResult.platformId
 
         if (primaryOk) {
           update.socialPublished = true
@@ -722,16 +730,16 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         }
         await db.collection(Collections.NEWS).doc(id).update(update)
       } catch (err) {
-        console.error(`[cron/social] Firestore update failed for ${id}:`, err)
+        console.error(`[cron/social] Firestore update failed for ${id}:`, safeErrorText(err))
         failed++
       }
     } else {
       failed++
       console.warn(`[cron/social] Tüm platformlar başarısız — ${id}`)
-      console.warn(`  FB: ${fbResult.error}`)
-      console.warn(`  IG: ${igResult.error}`)
-      console.warn(`  X:  ${twResult.error}`)
-      console.warn(`  TH: ${thResult.error}`)
+      console.warn(`  FB: ${safeErrorText(fbResult.error ?? '')}`)
+      console.warn(`  IG: ${safeErrorText(igResult.error ?? '')}`)
+      console.warn(`  X:  ${safeErrorText(twResult.error ?? '')}`)
+      console.warn(`  TH: ${safeErrorText(thResult.error ?? '')}`)
     }
 
     const markedDone = primaryOk
@@ -758,8 +766,8 @@ async function handleRequest(request: Request) {
     const result = await runSocialCron()
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Social cron failed'
-    console.error('[cron/social] fatal error:', err)
+    const message = err instanceof Error ? safeErrorText(err) : 'Social cron failed'
+    console.error('[cron/social] fatal error:', safeErrorText(err))
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

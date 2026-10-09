@@ -13,6 +13,7 @@
 
 import { randomUUID } from 'crypto'
 import { getAdminStorage } from '@/lib/firebase/admin'
+import { safeErrorText } from './safeLog'
 
 const FOLDER = 'social-images'
 
@@ -109,7 +110,7 @@ export async function uploadSocialImage(
     console.error(`[storageUploader] uploaded but unreachable by HTTP — ${filename}`)
     return null
   } catch (err) {
-    console.error('[storageUploader] upload error:', err)
+    console.error('[storageUploader] upload error:', safeErrorText(err))
     return null
   }
 }

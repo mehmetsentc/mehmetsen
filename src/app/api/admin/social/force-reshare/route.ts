@@ -11,6 +11,8 @@
  * Auth: CMS token (news:publish) veya CRON_SECRET
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText } from '@/lib/social/safeLog'
+import { singleCoverPayload } from '@/lib/social/imagePolicy'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -33,6 +35,11 @@ import { buildOgSocialUrl } from '@/lib/social/ogCacheVersion'
 import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
+import { parseTargetsInput, preflightTargets, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
+import { canManageSocialAccounts } from '@/lib/social/accounts/authz'
+import { isSameOriginRequest } from '@/lib/social/accounts/connect/routeHelpers'
+import { writeSocialAudit } from '@/lib/social/accounts/audit'
+import { imageModeProblem, parseImageMode } from '@/lib/social/accounts/capabilities'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -134,12 +141,15 @@ function parseOverrides(body: Record<string, unknown>): SocialPublishOverrides |
       threads: p.threads !== false,
     }
   }
+  const im = parseImageMode(body.imageMode)
+  if (im === 'single' || im === 'carousel') out.imageMode = im
   if (
     !out.headline &&
     !out.caption &&
     !out.storySummary &&
     !out.hashtags &&
-    !out.platforms
+    !out.platforms &&
+    !out.imageMode
   ) {
     return undefined
   }
@@ -152,9 +162,10 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization') ?? ''
   const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`
 
+  let actor: Awaited<ReturnType<typeof verifyCmsToken>> = null
   if (!isCron) {
-    const auth = await verifyCmsToken(request, 'news:publish')
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    actor = await verifyCmsToken(request, 'news:publish')
+    if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   let requestedLimit = 2
@@ -164,6 +175,8 @@ export async function POST(request: Request) {
   let force = true // manuel/toplu yeniden paylaşımda varsayılan force
   let manual = false
   let overrides: SocialPublishOverrides | undefined
+  let targetsRaw: unknown = undefined
+  let imageModeInvalid = false
 
   try {
     const body = await request.json() as Record<string, unknown>
@@ -180,7 +193,59 @@ export async function POST(request: Request) {
     if (typeof body.force === 'boolean') force = body.force
     if (typeof body.manual === 'boolean') manual = body.manual
     overrides = parseOverrides(body)
+    if (parseImageMode(body.imageMode) === 'invalid') imageModeInvalid = true
+    targetsRaw = body.targets
   } catch { /* varsayılan 2 */ }
+
+  // ── Görsel biçimi: platform yeteneği ∩ adaptör uygulaması (UI ile aynı kural) ──
+  if (imageModeInvalid) {
+    return NextResponse.json({ error: 'Geçersiz görsel biçimi', code: 'image_mode_invalid' }, { status: 400 })
+  }
+  if (overrides?.imageMode === 'carousel' && (mode ?? 'post') !== 'story') {
+    const pl = overrides.platforms
+    const postPlatforms = (['facebook', 'instagram', 'threads'] as const).filter((p) => (pl ? pl[p] !== false : true))
+    const wantsX = pl?.twitter === true
+    if (wantsX || imageModeProblem('carousel', [...postPlatforms])) {
+      return NextResponse.json(
+        {
+          error: 'Kaydırmalı gönderi yalnızca Instagram’da destekleniyor — Facebook / Threads / X için tek görsel seçin',
+          code: 'carousel_unsupported',
+        },
+        { status: 400 },
+      )
+    }
+  }
+
+  // ── Açık hedef hesaplar (çoklu hesap) ─────────────────────────────────────
+  // Yalnızca merkez yönetici, tek haber, açık mod, aynı origin. Hedefi olmayan
+  // platformlar eski Onyeditivi yolunu kullanır; hedef hatası legacy'ye düşmez.
+  const parsedTargets = parseTargetsInput(targetsRaw)
+  if (!parsedTargets.ok) {
+    return NextResponse.json({ error: parsedTargets.code, code: parsedTargets.code, platform: parsedTargets.platform }, { status: 400 })
+  }
+  const publishTargets: PublishTargets = { ...parsedTargets.targets }
+  // Platform anahtarı kapalıysa o platformun hedefi yok sayılır (yayın zaten denenmez).
+  if (overrides?.platforms) {
+    for (const k of Object.keys(publishTargets) as Array<keyof PublishTargets>) {
+      if (overrides.platforms[k] === false) delete publishTargets[k]
+    }
+  }
+  const hasTargets = Object.keys(publishTargets).length > 0
+  if (hasTargets) {
+    if (isCron || !actor) return NextResponse.json({ error: 'targets_require_cms_user', code: 'targets_require_cms_user' }, { status: 403 })
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'bad_origin', code: 'bad_origin' }, { status: 403 })
+    if (!canManageSocialAccounts(actor)) {
+      return NextResponse.json({ error: 'Hedef hesaba paylaşım için merkez yönetici yetkisi gerekli', code: 'forbidden' }, { status: 403 })
+    }
+    if (specificIds.length !== 1 || specificSlugs.length > 0) {
+      return NextResponse.json({ error: 'Hedef hesapla yalnızca tek haber paylaşılabilir', code: 'single_news_required' }, { status: 400 })
+    }
+    if (!mode) return NextResponse.json({ error: 'Paylaşım biçimi gerekli', code: 'mode_required' }, { status: 400 })
+    const pre = await preflightTargets(publishTargets, mode, Date.now())
+    if (!pre.ok) {
+      return NextResponse.json({ error: pre.code, code: pre.code, platform: pre.platform }, { status: 409 })
+    }
+  }
 
   // Belirli ID/slug ile çağrı → publishOneSocial pipeline (post/story/both)
   const isTargeted = specificIds.length > 0 || specificSlugs.length > 0
@@ -217,8 +282,34 @@ export async function POST(request: Request) {
         force,
         manual: true,
         overrides,
+        trigger: 'composer',
+        ...(actor ? { actorUid: actor.uid } : {}),
+        // Belirsiz kayıt onayı burada YOK: yalnızca kayıt-bazlı
+        // /api/admin/social/publish-records/[id]/republish uç noktası verir.
+        ...(hasTargets ? { targets: publishTargets } : {}),
       })
       results.push(r)
+      if (actor) {
+        const summarize = (x?: { success: boolean; accountId?: string; code?: string; ledgerStatus?: string; platformId?: string }) =>
+          x ? { ok: x.success, account: x.accountId ?? 'legacy', code: x.code ?? null, status: x.ledgerStatus ?? null, externalPostId: x.platformId ?? null } : null
+        await writeSocialAudit({
+          actorId: actor.uid,
+          action: 'social.publish.manual',
+          entityType: 'socialAccount',
+          entityId: id,
+          meta: {
+            newsId: id,
+            mode: mode ?? 'post',
+            force,
+            targets: hasTargets ? publishTargets : {},
+            skipped: r.skipped,
+            post: r.post
+              ? { facebook: summarize(r.post.facebook), instagram: summarize(r.post.instagram), threads: summarize(r.post.threads), twitter: summarize(r.post.twitter) }
+              : null,
+            story: r.story ? { facebook: summarize(r.story.facebook), instagram: summarize(r.story.instagram) } : null,
+          },
+        })
+      }
       if (targetIds.length > 1) await new Promise(res => setTimeout(res, 1500))
     }
 
@@ -321,6 +412,8 @@ export async function POST(request: Request) {
   )
 
   const results = []
+  // Toplu yeniden paylaşım "force" anlamını korur; aktif kilit / belirsiz kayıt yine engeller.
+  const bulkLegacy = { force: true, trigger: 'force_reshare_bulk', ...(actor ? { actorUid: actor.uid } : {}) }
 
   for (const doc of targets) {
     const data = doc.data() as Record<string, unknown>
@@ -377,7 +470,7 @@ export async function POST(request: Request) {
         socialHashtags: socialContent.hashtags,
       })
     } catch (err) {
-      console.warn(`[force-reshare] social fields pre-save failed ${id}:`, err)
+      console.warn(`[force-reshare] social fields pre-save failed ${id}:`, safeErrorText(err))
     }
 
     const socialImageUrl = buildOgSocialUrl(id, {
@@ -414,23 +507,23 @@ export async function POST(request: Request) {
     let twResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
     let thResult: { success: boolean; error?: string; platformId?: string } = { success: false, error: 'not attempted' }
 
-    try { fbResult = await publishToFacebook(payload) }
-    catch (e) { fbResult = { success: false, error: String(e) } }
+    try { fbResult = await publishToFacebook(singleCoverPayload(payload, 'facebook'), undefined, bulkLegacy) }
+    catch (e) { fbResult = { success: false, error: safeErrorText(e) } }
 
     await new Promise(r => setTimeout(r, 2000))
 
-    try { igResult = await publishToInstagram(payload) }
-    catch (e) { igResult = { success: false, error: String(e) } }
+    try { igResult = await publishToInstagram(payload, undefined, bulkLegacy) }
+    catch (e) { igResult = { success: false, error: safeErrorText(e) } }
 
     await new Promise(r => setTimeout(r, 2000))
 
     try { twResult = await publishToTwitter(payload) }
-    catch (e) { twResult = { success: false, error: String(e) } }
+    catch (e) { twResult = { success: false, error: safeErrorText(e) } }
 
     await new Promise(r => setTimeout(r, 2000))
 
-    try { thResult = await publishToThreads(payload) }
-    catch (e) { thResult = { success: false, error: String(e) } }
+    try { thResult = await publishToThreads(singleCoverPayload(payload, 'threads'), undefined, bulkLegacy) }
+    catch (e) { thResult = { success: false, error: safeErrorText(e) } }
 
     // Threads/X-only "başarı" socialPublished=true yazmamalı — IG/FB retry kilitlenir.
     const primaryOk = fbResult.success || igResult.success

@@ -3,11 +3,12 @@
  * Global app OAuth / manual token paste remains available via /api/admin/social/token.
  */
 import 'server-only'
+import { platformError } from './safeLog'
 import { encryptSecret, decryptSecret } from '@/lib/crypto/secretCrypto'
 import { getSiteUrl } from '@/lib/seo'
+import { FACEBOOK_GRAPH_BASE, FACEBOOK_OAUTH_DIALOG_BASE } from './graphConfig'
 
-const GRAPH_VERSION = 'v21.0'
-const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`
+const GRAPH = FACEBOOK_GRAPH_BASE
 
 export const FACEBOOK_BYO_SCOPES = [
   'pages_show_list',
@@ -53,7 +54,7 @@ export function buildFacebookLoginUrl(appId: string, state: string): string {
     scope: FACEBOOK_BYO_SCOPES,
     response_type: 'code',
   })
-  return `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params.toString()}`
+  return `${FACEBOOK_OAUTH_DIALOG_BASE}?${params.toString()}`
 }
 
 export async function exchangeCodeForUserToken(params: {
@@ -70,7 +71,7 @@ export async function exchangeCodeForUserToken(params: {
   const res = await fetch(`${GRAPH}/oauth/access_token?${q.toString()}`)
   const json = (await res.json()) as { access_token?: string; error?: { message?: string } }
   if (!res.ok || !json.access_token) {
-    throw new Error(json.error?.message ?? `OAuth code exchange failed HTTP ${res.status}`)
+    throw platformError('facebook', 'OAuth kod değişimi', res.status, json)
   }
   return json.access_token
 }
@@ -89,7 +90,7 @@ export async function exchangeForLongLivedUserToken(params: {
   const res = await fetch(`${GRAPH}/oauth/access_token?${q.toString()}`)
   const json = (await res.json()) as { access_token?: string; error?: { message?: string } }
   if (!res.ok || !json.access_token) {
-    throw new Error(json.error?.message ?? `Long-lived token exchange failed HTTP ${res.status}`)
+    throw platformError('facebook', 'uzun ömürlü token değişimi', res.status, json)
   }
   return json.access_token
 }
@@ -106,7 +107,7 @@ export async function fetchPageAccessToken(params: {
     error?: { message?: string }
   }
   if (!res.ok || json.error) {
-    throw new Error(json.error?.message ?? `me/accounts failed HTTP ${res.status}`)
+    throw platformError('facebook', 'sayfa listesi', res.status, json)
   }
   const pages = (json.data ?? []).filter((p) => p.id && p.access_token)
   if (pages.length === 0) {

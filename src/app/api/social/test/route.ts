@@ -11,6 +11,7 @@
  * DİKKAT: Bu route sadece test içindir. Production'da kaldırın.
  */
 import { NextResponse } from 'next/server'
+import { safeErrorText } from '@/lib/social/safeLog'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
@@ -157,13 +158,13 @@ async function handleRequest(request: Request) {
   }
 
   let fbResult, igResult
-  try { fbResult = await publishToFacebook(payload) }
-  catch (e) { fbResult = { success: false, error: String(e) } }
+  try { fbResult = await publishToFacebook(payload, undefined, { trigger: 'test' }) }
+  catch (e) { fbResult = { success: false, error: safeErrorText(e) } }
 
   await new Promise(r => setTimeout(r, 1500))
 
-  try { igResult = await publishToInstagram(payload) }
-  catch (e) { igResult = { success: false, error: String(e) } }
+  try { igResult = await publishToInstagram(payload, undefined, { trigger: 'test' }) }
+  catch (e) { igResult = { success: false, error: safeErrorText(e) } }
 
   steps.facebook  = fbResult
   steps.instagram = igResult

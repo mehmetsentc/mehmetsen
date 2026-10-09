@@ -14,6 +14,7 @@ import {
 } from './ogImageEmbed'
 import { uploadSocialImage } from './storageUploader'
 import { createStoryCardSharp, createPostCardSharp } from './imageOverlay'
+import { safeErrorText, sanitizeFreeText } from './safeLog'
 
 /** Instagram carousel üst limiti */
 export const IG_CAROUSEL_MAX = 10
@@ -163,7 +164,7 @@ export async function ensurePublicCarouselImageUrl(
   })
   if (!jpeg) {
     console.warn(
-      `[carouselImages] rehost failed for slide ${slideIndex} (${newsId}): ${url.slice(0, 100)}`
+      `[carouselImages] rehost failed for slide ${slideIndex} (${newsId}): ${sanitizeFreeText(url, 100)}`
     )
     return null
   }
@@ -281,7 +282,7 @@ export async function materializeBrandedOgForPublish(
       } catch (err) {
         console.warn(
           `[carouselImages] OG materialize HTTP failed attempt ${attempt + 1} — ${newsId}:`,
-          err instanceof Error ? err.message : err,
+          safeErrorText(err),
         )
         await sleep(500 * (attempt + 1))
       }
@@ -319,7 +320,7 @@ export async function materializeBrandedOgForPublish(
         isBreaking = d.isBreaking === true || categoryId === 'son-dakika'
       }
     } catch (err) {
-      console.warn(`[carouselImages] direct firestore context fetch failed for ${newsId}:`, err)
+      console.warn(`[carouselImages] direct firestore context fetch failed for ${newsId}:`, safeErrorText(err))
     }
   }
 
@@ -359,7 +360,7 @@ export async function materializeBrandedOgForPublish(
         }
       }
     } catch (sharpErr) {
-      console.error(`[carouselImages] in-process Sharp card composite failed — ${newsId} (${kind}):`, sharpErr)
+      console.error(`[carouselImages] in-process Sharp card composite failed — ${newsId} (${kind}):`, safeErrorText(sharpErr))
     }
   }
 

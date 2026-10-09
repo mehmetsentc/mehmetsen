@@ -6,7 +6,7 @@
  * manşet ve article URL korunur.
  *
  * Instagram Graph API feed publish: yalnızca `caption` alanı var —
- * ayrı `link` / `link_sticker_url` yok (sticker sadece STORIES).
+ * ayrı link alanı yok (hikâyelerde de link sticker API ile yayımlanamaz).
  * Mavi onay / profesyonel hesaplarda caption içindeki URL tıklanabilir olur;
  * Meta bunu hesap tarafında açar, API'ye özel link alanı gerekmez.
  */

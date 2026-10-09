@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Firestore rules runtime tests (SEC-CMS-ROLE-ESCALATION-1 + Phase 1 + SEC-UGC-INTEGRITY-REPAIR-1). Needs the Firestore emulator; never touches production.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-nahaber-rules \"node --test --test-concurrency=1 users.rules.test.mjs users.rules.supplement.test.mjs newsDrafts.ugc.rules.test.mjs\""
+    "test": "firebase emulators:exec --only firestore --project demo-nahaber-rules \"node --test --test-concurrency=1 users.rules.test.mjs users.rules.supplement.test.mjs newsDrafts.ugc.rules.test.mjs socialAccounts.rules.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

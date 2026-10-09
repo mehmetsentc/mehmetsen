@@ -1,17 +1,20 @@
 /**
- * GET  /api/admin/social/token  — mevcut token bilgisini döner (maskelenmiş)
- * POST /api/admin/social/token  — yeni token'ı doğrular ve Firestore'a kaydeder
+ * GET  /api/admin/social/token  — yalnızca yapılandırma durumu (token veya parçası DÖNMEZ)
+ * POST /api/admin/social/token  — yeni token'ı doğrular ve Firestore'a kaydeder (denetim kaydı yazılır)
  */
 import { NextResponse } from 'next/server'
+import { platformError, safeErrorText } from '@/lib/social/safeLog'
+import { FACEBOOK_GRAPH_BASE } from '@/lib/social/graphConfig'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { invalidateTokenCache } from '@/lib/social/tokenStore'
+import { writeSocialAudit } from '@/lib/social/accounts/audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const GRAPH = 'https://graph.facebook.com/v21.0'
+const GRAPH = FACEBOOK_GRAPH_BASE
 
 async function validateFbToken(token: string): Promise<{
   ok: boolean
@@ -27,7 +30,7 @@ async function validateFbToken(token: string): Promise<{
     const meRes = await fetch(`${GRAPH}/me?access_token=${token}`)
     const meData = await meRes.json() as { name?: string; id?: string; error?: { message?: string } }
     if (!meRes.ok || meData.error) {
-      return { ok: false, error: meData.error?.message ?? `HTTP ${meRes.status}` }
+      return { ok: false, error: platformError('facebook', 'token doğrulama', meRes.status, meData).message }
     }
 
     // İzin kontrolü — PAGE token'larda /me/permissions genelde boş (normal)
@@ -45,7 +48,7 @@ async function validateFbToken(token: string): Promise<{
 
     return { ok: true, name: meData.name, type: isLikelyPageToken ? 'PAGE' : undefined, permissions, note }
   } catch (e) {
-    return { ok: false, error: String(e) }
+    return { ok: false, error: safeErrorText(e) }
   }
 }
 
@@ -63,8 +66,6 @@ export async function GET(request: Request) {
   return NextResponse.json({
     hasFbToken: !!fbToken,
     hasIgToken: !!igToken,
-    fbTokenPreview: fbToken ? fbToken.slice(0, 12) + '…' : null,
-    igTokenPreview: igToken ? igToken.slice(0, 12) + '…' : null,
     updatedAt: data.updatedAt ?? null,
     updatedBy: data.updatedBy ?? null,
     source: fbToken ? 'firestore' : 'env',
@@ -111,6 +112,19 @@ export async function POST(request: Request) {
 
   // Bellek cache'i temizle
   invalidateTokenCache()
+
+  await writeSocialAudit({
+    actorId: auth.uid,
+    action: 'social.legacy_token.update',
+    entityType: 'socialConfig',
+    entityId: 'config/socialMedia',
+    after: {
+      hasFacebookPageToken: true,
+      hasInstagramToken: Boolean(igToken),
+      validatedName: validation.name ?? null,
+      permissions: validation.permissions ?? [],
+    },
+  })
 
   return NextResponse.json({
     ok: true,

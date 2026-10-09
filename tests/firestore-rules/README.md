@@ -29,5 +29,6 @@ Without firebase-tools (e.g. jar fetched manually; verify MD5
 ```bash
 java -jar cloud-firestore-emulator-v1.19.8.jar --host=127.0.0.1 --port=8089 &
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8089 node --test --test-concurrency=1 \
-  users.rules.test.mjs users.rules.supplement.test.mjs newsDrafts.ugc.rules.test.mjs
+  users.rules.test.mjs users.rules.supplement.test.mjs newsDrafts.ugc.rules.test.mjs \
+  socialAccounts.rules.test.mjs
 ```
