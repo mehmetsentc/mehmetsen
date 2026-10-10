@@ -10,7 +10,16 @@ import { REQUIRED_PUBLISH_PERMISSIONS } from '../types'
 import { metaRequired, metaRequest, query } from './metaHttp'
 import type { PlatformOAuthConfig } from './oauthConfig'
 
-export const FACEBOOK_LOGIN_SCOPES = REQUIRED_PUBLISH_PERMISSIONS.facebook_login
+/**
+ * Requested in the login dialog (scope flow). `business_management` is NOT a
+ * publish requirement and is never checked as required: it is requested only
+ * because Pages a person manages through a business portfolio (Meta Business
+ * Suite, task-based access) are left out of /me/accounts without it — the API
+ * then answers 200 with an empty list. Pages with a direct role are listed
+ * either way, so declining it does not block the connection.
+ */
+export const FACEBOOK_OPTIONAL_LOGIN_SCOPES = ['business_management'] as const
+export const FACEBOOK_LOGIN_SCOPES = [...REQUIRED_PUBLISH_PERMISSIONS.facebook_login, ...FACEBOOK_OPTIONAL_LOGIN_SCOPES]
 /** Page task required to publish (Pages API). */
 export const FACEBOOK_REQUIRED_PAGE_TASK = 'CREATE_CONTENT'
 export const FACEBOOK_PAGES_PER_REQUEST = 100

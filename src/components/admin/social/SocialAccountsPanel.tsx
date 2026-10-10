@@ -70,7 +70,10 @@ export const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   permission_declined: { ok: false, text: 'Gerekli yayın izinleri reddedildi. Bağlantı yapılmadı.' },
   permission_missing: { ok: false, text: 'Gerekli yayın izinleri verilmedi. Bağlantı yapılmadı.' },
   permission_unverified: { ok: false, text: 'Yayın izinleri doğrulanamadı; mevcut bağlantı korunarak işlem durduruldu.' },
-  no_pages: { ok: false, text: 'Bu Facebook kullanıcısının yönetebildiği sayfa yok.' },
+  no_pages: {
+    ok: false,
+    text: 'Facebook bu girişte hiç sayfa döndürmedi. Sayfa bir işletme portföyü (Business Suite) üzerinden yönetiliyorsa girişte işletme erişimine izin verip sayfayı seçerek yeniden deneyin.',
+  },
   no_eligible_pages: { ok: false, text: 'İçerik oluşturma yetkiniz olan sayfa bulunamadı.' },
   not_professional: { ok: false, text: 'Instagram hesabı profesyonel (İşletme/İçerik Üretici) değil.' },
   account_mismatch: { ok: false, text: 'Yeniden bağlamada farklı bir hesapla giriş yapıldı. Mevcut bağlantı değişmedi.' },

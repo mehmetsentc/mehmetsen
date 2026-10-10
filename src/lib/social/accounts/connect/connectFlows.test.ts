@@ -51,9 +51,13 @@ const meta = {
   threadsUserId: '',
   /** Meta'nın gerçek biçimi: token yanıtında user_id tırnaksız JSON sayısı. */
   threadsUserIdAsNumber: false,
+  fbNoPages: false,
+  fbAccountsError: false,
 }
 const META_DEFAULTS = () => ({
   threadsUserIdAsNumber: false,
+  fbNoPages: false,
+  fbAccountsError: false,
   fbDeclined: [] as string[],
   fbGranted: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'public_profile'],
   igPermissions: 'instagram_business_basic,instagram_business_content_publish' as string | null,
@@ -105,6 +109,8 @@ async function metaFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       })
     }
     if (p.endsWith('/me/accounts')) {
+      if (meta.fbAccountsError) return jsonRes({ error: { message: 'boom EAAG_LEAK', code: 190 } }, 400)
+      if (meta.fbNoPages) return jsonRes({ data: [] })
       if (!q.get('after')) {
         return jsonRes({
           data: [
@@ -333,7 +339,9 @@ describe('bağlantı başlatma', () => {
     const fb = await begin('facebook')
     expect(new URL(fb.authorizeUrl).searchParams.get('client_id')).toBe('1111111')
     expect(new URL(fb.authorizeUrl).host).toBe('www.facebook.com')
-    expect(new URL(fb.authorizeUrl).searchParams.get('scope')).toBe('pages_show_list,pages_read_engagement,pages_manage_posts')
+    // business_management: işletme portföyü (Business Suite) üzerinden yönetilen
+    // sayfalar onsuz /me/accounts'ta dönmez (200 + boş liste → "sayfa yok").
+    expect(new URL(fb.authorizeUrl).searchParams.get('scope')).toBe('pages_show_list,pages_read_engagement,pages_manage_posts,business_management')
     const th = await begin('threads')
     expect(new URL(th.authorizeUrl).searchParams.get('client_id')).toBe('3333333')
   })
@@ -535,6 +543,24 @@ describe('Facebook sayfa seçimi', () => {
     meta.fbDeclined = []
     const b = await begin('facebook')
     expect(result(await callback('facebook', { state: b.state, code: 'AUTHCODE123' }, b.cookieHeader))).toBe('permission_missing')
+    expect(fs.docs('socialConnectSessions')).toHaveLength(0)
+  })
+
+  it('business_management isteğe bağlıdır: reddedilse de yayın izinleri tamsa sayfa seçimine geçilir', async () => {
+    meta.fbGranted = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']
+    meta.fbDeclined = ['business_management']
+    const a = await begin('facebook')
+    expect(result(await callback('facebook', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('facebook_select')
+  })
+
+  it('izinler tam ama Meta boş sayfa listesi döndürürse no_pages (hata boş listeye çevrilmez)', async () => {
+    meta.fbNoPages = true
+    const a = await begin('facebook')
+    expect(result(await callback('facebook', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('no_pages')
+    meta.fbNoPages = false
+    meta.fbAccountsError = true
+    const b = await begin('facebook')
+    expect(result(await callback('facebook', { state: b.state, code: 'AUTHCODE123' }, b.cookieHeader))).toBe('platform_error')
     expect(fs.docs('socialConnectSessions')).toHaveLength(0)
   })
 
