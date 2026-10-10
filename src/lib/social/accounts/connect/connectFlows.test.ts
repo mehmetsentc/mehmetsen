@@ -111,19 +111,19 @@ async function metaFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     if (p.endsWith('/me/accounts')) {
       if (meta.fbAccountsError) return jsonRes({ error: { message: 'boom EAAG_LEAK', code: 190 } }, 400)
       if (meta.fbNoPages) return jsonRes({ data: [] })
+      // Meta: access_token yalnızca fields içinde istenirse döner.
+      const withToken = (q.get('fields') ?? '').split(',').includes('access_token')
+      const pg = (id: string, name: string, tasks: string[]) => ({ id, name, tasks, ...(withToken ? { access_token: `EAAG_PAGE_${id}` } : {}) })
       if (!q.get('after')) {
         return jsonRes({
-          data: [
-            { id: '5001', name: 'Antalya Haber', tasks: ['CREATE_CONTENT', 'MANAGE'] },
-            { id: '5002', name: 'Salt Okunur Sayfa', tasks: ['ANALYZE'] },
-          ],
+          data: [pg('5001', 'Antalya Haber', ['CREATE_CONTENT', 'MANAGE']), pg('5002', 'Salt Okunur Sayfa', ['ANALYZE'])],
           paging: {
             cursors: { after: 'CUR1' },
             next: 'https://graph.facebook.com/v21.0/me/accounts?access_token=EAAG_LONG_USER&after=CUR1',
           },
         })
       }
-      return jsonRes({ data: [{ id: '5003', name: 'Ankara Haber', tasks: ['CREATE_CONTENT'] }], paging: { cursors: { after: 'CUR2' } } })
+      return jsonRes({ data: [pg('5003', 'Ankara Haber', ['CREATE_CONTENT'])], paging: { cursors: { after: 'CUR2' } } })
     }
     if (p.endsWith('/debug_token')) {
       const pid = (q.get('input_token') ?? '').replace('EAAG_PAGE_', '')
@@ -131,8 +131,11 @@ async function metaFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     }
     const m = p.match(/\/(\d+)$/)
     if (m) {
-      const tasks = m[1] === '5002' ? ['ANALYZE'] : ['CREATE_CONTENT']
-      return jsonRes({ id: m[1], name: `Sayfa ${m[1]}`, access_token: `EAAG_PAGE_${m[1]}`, tasks })
+      // Meta: Page düğümünde `tasks` alanı yok → (#100) var olmayan alan (production 00:55 hatası).
+      if ((q.get('fields') ?? '').split(',').includes('tasks')) {
+        return jsonRes({ error: { message: '(#100) Tried accessing nonexisting field (tasks) EAAG_LEAK', type: 'OAuthException', code: 100 } }, 400)
+      }
+      return jsonRes({ id: m[1], name: `Sayfa ${m[1]}`, access_token: `EAAG_PAGE_${m[1]}` })
     }
   }
   if (u.host === 'api.instagram.com' && p === '/oauth/access_token') {
@@ -596,8 +599,17 @@ describe('Facebook sayfa seçimi', () => {
     expect(await selectFacebookPage({ ctx: admin, sessionId, pageId: '5002', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'page_not_eligible' })
     expect(fs.docs('socialAccounts')).toHaveLength(0)
 
+    const before = calls.length
     const r = await selectFacebookPage({ ctx: admin, sessionId, pageId: '5003', cookieHeader, now: NOW + 2000 })
     expect(r).toMatchObject({ ok: true, accountId: 'facebook_5003', status: 'active' })
+    // Sayfa token'ı /me/accounts kenarından (2. sayfadaki 5003 için sayfalama ile) alınır;
+    // Page düğümüne `tasks` alanıyla istek gitmez (Meta: code 100).
+    const selCalls = calls.slice(before).map((c) => new URL(c.url))
+    expect(selCalls.filter((u) => u.pathname.endsWith('/me/accounts')).map((u) => u.searchParams.get('fields'))).toEqual([
+      'id,name,access_token,tasks',
+      'id,name,access_token,tasks',
+    ])
+    expect(selCalls.some((u) => /\/5003$/.test(u.pathname))).toBe(false)
     expect(fs.store.get('socialAccounts/facebook_5003')).toMatchObject({
       connectionMethod: 'facebook_login',
       tokenExpiresAt: null,

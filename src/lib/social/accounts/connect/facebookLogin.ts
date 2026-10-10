@@ -127,17 +127,43 @@ export async function listFacebookPages(userToken: string): Promise<{ pages: Fac
   return { pages, truncated: true }
 }
 
-/** Fetch the page token for a page the user selected, using the user token. */
+/**
+ * Fetch the page token (and the user's tasks) for the selected page from the
+ * /me/accounts edge, server-side.
+ *
+ * Not `GET /{page-id}?fields=…,tasks`: `tasks` is not a field of the Page node
+ * (Meta answers 400 / code 100), and the Page node's `access_token` is only
+ * returned for a direct Page role — Pages managed through a business
+ * portfolio get their token on /me/accounts (with business_management).
+ */
 export async function fetchFacebookPageToken(
   userToken: string,
   pageId: string,
 ): Promise<{ id: string; name: string; accessToken: string; tasks: string[] }> {
-  const r = await metaRequired<{ id?: string; name?: string; access_token?: string; tasks?: string[] }>(
-    'facebook.page',
-    query(`${FACEBOOK_GRAPH_BASE}/${encodeURIComponent(pageId)}`, { fields: 'id,name,access_token,tasks', access_token: userToken }),
-  )
-  if (r.id !== pageId || !r.access_token) throw new Error('facebook_page_mismatch')
-  return { id: r.id, name: r.name ?? r.id, accessToken: r.access_token, tasks: Array.isArray(r.tasks) ? r.tasks : [] }
+  let after: string | null = null
+  for (let i = 0; i < FACEBOOK_MAX_PAGE_REQUESTS; i++) {
+    const params: Record<string, string> = {
+      fields: 'id,name,access_token,tasks',
+      limit: String(FACEBOOK_PAGES_PER_REQUEST),
+      access_token: userToken,
+    }
+    if (after) params.after = after
+    const r = await metaRequired<{
+      data?: Array<{ id?: string; name?: string; access_token?: string; tasks?: string[] }>
+      paging?: { cursors?: { after?: string }; next?: string }
+    }>('facebook.page', query(`${FACEBOOK_GRAPH_BASE}/me/accounts`, params))
+    const p = (r.data ?? []).find((x) => x.id === pageId)
+    if (p) {
+      if (!p.access_token) throw new Error('facebook_page_mismatch')
+      const tasks = Array.isArray(p.tasks) ? p.tasks.filter((t) => typeof t === 'string') : []
+      return { id: pageId, name: (p.name ?? pageId).slice(0, 200), accessToken: p.access_token, tasks }
+    }
+    // Never follow `paging.next` (it embeds the token) — rebuild from the cursor.
+    const nextAfter = r.paging?.next ? r.paging?.cursors?.after : undefined
+    if (!nextAfter) break
+    after = nextAfter
+  }
+  throw new Error('facebook_page_mismatch')
 }
 
 /**
