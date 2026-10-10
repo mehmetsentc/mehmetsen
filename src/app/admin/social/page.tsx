@@ -36,6 +36,7 @@ import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
 import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { readJsonResponse, unreadableResponseText } from '@/lib/social/shareResultText'
 import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -878,7 +879,7 @@ export default function SocialPage() {
         },
         body: JSON.stringify(body),
       })
-      const data = await res.json() as {
+      const parsed = await readJsonResponse<{
         error?: string
         code?: string
         platform?: string
@@ -888,7 +889,14 @@ export default function SocialPage() {
           post?: LastShareResult['post']
           story?: LastShareResult['story']
         }>
+      }>(res)
+      if (!parsed.ok) {
+        const msg = unreadableResponseText(parsed.status)
+        toast.error(msg, { id: toastId })
+        setLastResult({ ok: false, message: msg })
+        return
       }
+      const data = parsed.data
 
       const r0 = data.results?.[0]
       if (!res.ok) {

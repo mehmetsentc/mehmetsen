@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Facebook, Instagram, Loader2, Share2, Smartphone, X } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
+import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
 
 export type SocialShareMode = 'story' | 'post'
 
@@ -64,51 +66,81 @@ export function MobileSocialShareSheet({
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Varsayılan "Onyeditivi (mevcut bağlantı)"; OAuth hesabı yalnızca açık seçimle.
+  const [targets, setTargets] = useState<TargetSelection>(DEFAULT_TARGETS)
 
   if (!open) return null
 
   const anySelected = platforms.some((p) => flags[p.key])
 
-  async function share(force: boolean) {
+  async function share(forceRequested: boolean) {
     if (!anySelected || busy) return
 
-    const platformNames: string[] = []
-    if (flags.facebook) platformNames.push('FB')
-    if (flags.instagram) platformNames.push('IG')
-    if (mode === 'post' && flags.twitter) platformNames.push('X')
-    if (mode === 'post' && flags.threads) platformNames.push('Th')
+    const explicitTargets: Record<string, string> = {}
+    if (flags.facebook && targets.facebook !== LEGACY_TARGET) explicitTargets.facebook = targets.facebook
+    if (flags.instagram && targets.instagram !== LEGACY_TARGET) explicitTargets.instagram = targets.instagram
+    if (mode === 'post' && flags.threads && targets.threads !== LEGACY_TARGET) explicitTargets.threads = targets.threads
+    const legacyInvolved =
+      (flags.facebook && !explicitTargets.facebook) ||
+      (flags.instagram && !explicitTargets.instagram) ||
+      (mode === 'post' && ((flags.threads && !explicitTargets.threads) || flags.twitter))
+    const force = forceRequested && legacyInvolved
 
     setBusy(true)
     setError(null)
     try {
       const token = (await auth.currentUser?.getIdToken()) ?? ''
-      const res = await fetch('/api/admin/social/force-reshare', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ids: [postId],
-          mode,
-          manual: true,
-          force,
-          platforms: {
-            facebook: flags.facebook,
-            instagram: flags.instagram,
-            twitter: mode === 'post' ? flags.twitter : false,
-            threads: mode === 'post' ? flags.threads : false,
+      let res: Response
+      try {
+        res = await fetch('/api/admin/social/force-reshare', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
-        }),
-      })
-      const data = (await res.json()) as {
-        error?: string
-        results?: Array<{ ok: boolean; reason?: string }>
+          body: JSON.stringify({
+            ids: [postId],
+            mode,
+            manual: true,
+            force,
+            platforms: {
+              facebook: flags.facebook,
+              instagram: flags.instagram,
+              twitter: mode === 'post' ? flags.twitter : false,
+              threads: mode === 'post' ? flags.threads : false,
+            },
+            ...(Object.keys(explicitTargets).length > 0 ? { targets: explicitTargets } : {}),
+          }),
+        })
+      } catch {
+        throw new Error(unreadableResponseText(0))
       }
+      const parsed = await readJsonResponse<{
+        error?: string
+        results?: Array<{
+          ok: boolean
+          reason?: string
+          post?: Record<string, ShareResultLike | undefined>
+          story?: Record<string, ShareResultLike | undefined>
+        }>
+      }>(res)
+      if (!parsed.ok) throw new Error(unreadableResponseText(parsed.status))
+      const data = parsed.data
       const r0 = data.results?.[0]
+      const lines: string[] = []
+      for (const [prefix, set] of [['Post', r0?.post], ['Hikâye', r0?.story]] as const) {
+        if (!set) continue
+        for (const [key, label] of [['facebook', 'FB'], ['instagram', 'IG'], ['threads', 'Th'], ['twitter', 'X']] as const) {
+          if (flags[key] && key in set) lines.push(describeShareResult(`${prefix} ${label}`, set[key]))
+        }
+      }
+      if (res.ok && !lines.some((l) => l.includes(': ✓'))) {
+        throw new Error(lines.join('\n') || 'Paylaşım yapılmadı')
+      }
       if (!res.ok) {
-        const msg = data.error ?? r0?.reason ?? 'Paylaşım başarısız'
-        if (!force && /zaten|force/i.test(msg)) {
+        const msg = [data.error ?? r0?.reason ?? 'Paylaşım başarısız', ...lines].join('\n')
+        if (!force && legacyInvolved && /zaten|force/i.test(msg)) {
           const ok = window.confirm(
             mode === 'story'
               ? 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaş?'
@@ -180,7 +212,16 @@ export function MobileSocialShareSheet({
           ))}
         </div>
 
-        {error ? <p className="px-4 pt-2 text-sm text-red-600">{error}</p> : null}
+        <div className="px-4 pt-2">
+          <ComposerTargetPicker
+            mode={mode}
+            enabled={{ facebook: flags.facebook, instagram: flags.instagram, threads: mode === 'post' && flags.threads }}
+            value={targets}
+            onChange={setTargets}
+          />
+        </div>
+
+        {error ? <p className="whitespace-pre-line px-4 pt-2 text-sm text-red-600">{error}</p> : null}
 
         <div className="flex gap-2 px-3 pb-3 pt-4">
           <button
