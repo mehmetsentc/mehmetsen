@@ -174,7 +174,10 @@ const tick = (publish?: typeof publishOneSocial) => runAutomationTick({ now: () 
 beforeEach(async () => {
   fs = new FakeFirestore()
   h.db = fs
-  h.users = { admin1: { email: 'me@nahaber.com' } }
+  h.users = { admin1: { email: 'me@nahaber.com' }, editor1: { email: 'ed@nahaber.com' }, scoped1: { email: 'il@nahaber.com' } }
+  await fs.collection('users').doc('admin1').set({ role: 'managing_editor' })
+  await fs.collection('users').doc('editor1').set({ role: 'editor' })
+  await fs.collection('users').doc('scoped1').set({ role: 'managing_editor', cmsScope: { kind: 'city', citySlugs: ['antalya'] } })
   process.env.SECRET_ENCRYPTION_KEY = 'e'.repeat(64)
   process.env.NEXT_PUBLIC_APP_URL = 'https://www.nahaber.com'
   process.env.INSTAGRAM_BUSINESS_ID = '2001'
@@ -493,5 +496,72 @@ describe('iptal, sınırlar, hatalar', () => {
     expect(r.skipped).toBe(true)
     expect(publishes()).toHaveLength(0)
     expect((await listRules()).length).toBe(0)
+  })
+})
+
+describe('yönetim API’leri (merkez yönetici)', () => {
+  const ORIGIN = 'https://www.nahaber.com'
+  const req = (path: string, uid: string | null, init: { method?: string; body?: unknown } = {}) =>
+    new Request(`${ORIGIN}${path}`, {
+      method: init.method ?? 'GET',
+      headers: {
+        ...(uid ? { authorization: `Bearer tok-${uid}` } : {}),
+        origin: ORIGIN,
+        'content-type': 'application/json',
+      },
+      ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+    })
+
+  it('yetkisiz / editör / il kapsamlı kullanıcı kural göremez ve oluşturamaz', async () => {
+    const { GET, POST } = await import('@/app/api/admin/social/automation/rules/route')
+    expect((await GET(req('/api/admin/social/automation/rules', null))).status).toBe(401)
+    expect([401, 403]).toContain((await GET(req('/api/admin/social/automation/rules', 'editor1'))).status)
+    expect([401, 403]).toContain((await POST(req('/api/admin/social/automation/rules', 'scoped1', { method: 'POST', body: ruleInput() }))).status)
+    expect(fs.docs('socialAutomationRules')).toHaveLength(0)
+  })
+
+  it('oluşturulan kural kapalıdır; istemcinin gönderdiği enabled/ownership yok sayılır; açmak onay ister', async () => {
+    const { POST } = await import('@/app/api/admin/social/automation/rules/route')
+    const res = await POST(req('/api/admin/social/automation/rules', 'admin1', { method: 'POST', body: { ...ruleInput(), enabled: true, ownership: { citySlug: 'ankara' } } }))
+    expect(res.status).toBe(201)
+    const { rule } = (await res.json()) as { rule: { id: string; enabled: boolean; ownership: { citySlug: string }; summary: string } }
+    expect(rule.enabled).toBe(false)
+    expect(rule.ownership.citySlug).toBe('antalya')
+    expect(rule.summary).toContain('İl: Antalya')
+    const { PATCH } = await import('@/app/api/admin/social/automation/rules/[id]/route')
+    const ctx = { params: Promise.resolve({ id: rule.id }) }
+    expect((await PATCH(req(`/api/admin/social/automation/rules/${rule.id}`, 'admin1', { method: 'PATCH', body: { action: 'enable' } }), ctx)).status).toBe(400)
+    const ok = await PATCH(req(`/api/admin/social/automation/rules/${rule.id}`, 'admin1', { method: 'PATCH', body: { action: 'enable', confirm: true } }), { params: Promise.resolve({ id: rule.id }) })
+    expect(ok.status).toBe(200)
+    expect(fs.store.get(`socialAutomationRules/${rule.id}`)).toMatchObject({ enabled: true })
+    const audits = fs.docs('cmsAuditLogs').map((d) => d.data.action)
+    expect(audits).toEqual(expect.arrayContaining(['social.automation.rule_create', 'social.automation.rule_enable']))
+  })
+
+  it('önizleme eşleşen haberleri gerekçesiyle döner ve hiçbir şey yayımlamaz', async () => {
+    await seedNews('n1')
+    await seedNews('n2', { citySlug: 'ankara', cityName: 'Ankara' })
+    const { POST } = await import('@/app/api/admin/social/automation/preview/route')
+    const res = await POST(req('/api/admin/social/automation/preview', 'admin1', { method: 'POST', body: ruleInput() }))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { matched: number; items: Array<{ newsId: string; match: boolean; reasons: string[] }> }
+    expect(body.items.find((i) => i.newsId === 'n1')?.match).toBe(true)
+    expect(body.items.find((i) => i.newsId === 'n2')?.reasons[0]).toContain('İl eşleşmedi')
+    expect(publishes()).toHaveLength(0)
+    expect(fs.docs('smmQueue')).toHaveLength(0)
+  })
+
+  it('devir onaysız yapılmaz', async () => {
+    const { POST } = await import('@/app/api/admin/social/automation/handoff/route')
+    expect((await POST(req('/api/admin/social/automation/handoff', 'admin1', { method: 'POST', body: { accountId: FB_ONY.id, on: true } }))).status).toBe(400)
+    expect((await POST(req('/api/admin/social/automation/handoff', 'admin1', { method: 'POST', body: { accountId: FB_ONY.id, on: true, confirm: true } }))).status).toBe(200)
+  })
+
+  it('cron ucu sırsız çağrıyı reddeder', async () => {
+    process.env.CRON_SECRET = 'cron-secret-value'
+    const { GET } = await import('@/app/api/cron/social-automation/route')
+    expect((await GET(new Request(`${ORIGIN}/api/cron/social-automation`))).status).toBe(401)
+    const ok = await GET(new Request(`${ORIGIN}/api/cron/social-automation`, { headers: { authorization: 'Bearer cron-secret-value' } }))
+    expect(ok.status).toBe(200)
   })
 })

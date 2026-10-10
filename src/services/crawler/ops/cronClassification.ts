@@ -61,6 +61,7 @@ export const CRON_PATH_AUDIT: CronAuditRow[] = [
   { path: '/api/cron/newsroom/borsa', class: CRON_CLASS_B, note: 'Markets structured data' },
   { path: '/api/cron/youtube-rss', class: CRON_CLASS_B, note: 'Video RSS, not article body extraction' },
   { path: '/api/cron/social', class: CRON_CLASS_B, note: 'Social republish, not discovery' },
+  { path: '/api/cron/social-automation', class: CRON_CLASS_B, note: 'Account-bound social automation worker (rules off by default)' },
   { path: '/api/cron/newsroom/ai-pipeline', class: CRON_CLASS_C, note: 'Legacy newsroom AI — direct AI blocked' },
   { path: '/api/cron/newsroom/ai-columns', class: CRON_CLASS_C, note: 'Legacy columns AI — direct AI blocked' },
   { path: '/api/cron/newsroom/process-queue', class: CRON_CLASS_C, note: 'Queue drain skipped unless LEGACY_DIRECT_AI_ENABLED' },
