@@ -9,7 +9,6 @@ import {
   AdminOsPageShell,
 } from '@/components/admin/os/AdminOsPageShell'
 import { auth } from '@/lib/firebase/auth'
-import toast from 'react-hot-toast'
 
 type QueueItem = {
   id: string
@@ -54,38 +53,15 @@ export default function SmmQueuePage() {
     void load()
   }, [load])
 
-  const enqueueSample = async () => {
-    try {
-      const res = await fetch('/api/admin/os-ops', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({
-          resource: 'smm-queue',
-          citySlug: 'canakkale',
-          platform: 'facebook',
-        }),
-      })
-      if (!res.ok) throw new Error('fail')
-      toast.success('Kuyruğa eklendi')
-      void load()
-    } catch {
-      toast.error('Eklenemedi (social:publish gerekir)')
-    }
-  }
-
   return (
     <AdminOsPageShell
       title="SMM Paylaşım Kuyruğu"
       subtitle="Idempotent publish · retry · dead-letter — smmQueue koleksiyonu"
       actions={
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void enqueueSample()}
-            className="rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-xs font-bold text-white"
-          >
-            Test kuyruk kaydı
-          </button>
+          <Link href="/admin/social/automation" className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold">
+            Otomasyon kuralları
+          </Link>
           <Link href="/admin/social" className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-semibold">
             Sosyal hesaplar
           </Link>
@@ -104,7 +80,7 @@ export default function SmmQueuePage() {
       {items.length === 0 && !loading ? (
         <AdminOsEmptyState
           title="Kuyruk boş"
-          description="Test kaydı ekleyebilir veya mevcut /admin/social üzerinden manuel paylaşım yapabilirsiniz. Auto-share cron Çanakkale path’i hâlâ çalışır."
+          description="Hesap bazlı otomasyon işleri burada listelenir. Manuel paylaşım /admin/social üzerinden yapılır."
           href="/admin/social"
           hrefLabel="Sosyal panele git"
         />
