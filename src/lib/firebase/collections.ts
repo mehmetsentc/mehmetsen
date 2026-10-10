@@ -123,6 +123,12 @@ export const Collections = {
   SOCIAL_CONNECT_SESSIONS: 'socialConnectSessions',
   /** Account-scoped manual publish ledger (claim/lease, result per news+account+format). Admin SDK only. */
   SOCIAL_PUBLISH_RECORDS: 'socialPublishRecords',
+  /** Account-bound automation rules (one target account each). Admin SDK only. */
+  SOCIAL_AUTOMATION_RULES: 'socialAutomationRules',
+  /** Per-account automation counters (daily count, last send). Admin SDK only. */
+  SOCIAL_AUTOMATION_COUNTERS: 'socialAutomationCounters',
+  /** Automation reconcile cursors + legacy (Onyeditivi) handoff records. Admin SDK only. */
+  SOCIAL_AUTOMATION_STATE: 'socialAutomationState',
   SMM_QUEUE: 'smmQueue',
   SMM_MATRIX: 'smmContentMatrix',
   AUTOMATION_RULES: 'automationRules',

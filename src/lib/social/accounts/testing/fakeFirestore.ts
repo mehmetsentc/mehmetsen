@@ -41,6 +41,10 @@ export class FakeFirestore {
     return run
   }
 
+  async getAll(...refs: FakeDocRef[]) {
+    return Promise.all(refs.map((r) => r.get()))
+  }
+
   nextId(): string {
     this.autoId += 1
     return `auto-${this.autoId}`
@@ -67,8 +71,11 @@ class FakeCollection {
   select() {
     return this
   }
-  where(field: string, op: '==', value: unknown) {
+  where(field: string, op: FilterOp, value: unknown) {
     return new FakeQuery(this.db, this.name, [[field, op, value]], null)
+  }
+  orderBy(field: string, dir: 'asc' | 'desc' = 'asc') {
+    return new FakeQuery(this.db, this.name, [], null, [field, dir])
   }
   limit(n: number) {
     return new FakeQuery(this.db, this.name, [], n)
@@ -80,24 +87,59 @@ class FakeCollection {
   }
 }
 
-/** Equality-only query subset (where … == …, limit) — enough for ledger listings. */
+type FilterOp = '==' | '<' | '<=' | '>' | '>=' | 'in' | 'array-contains'
+
+function cmp(a: unknown, b: unknown): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b
+  return String(a).localeCompare(String(b))
+}
+
+function passes(v: unknown, op: FilterOp, want: unknown): boolean {
+  switch (op) {
+    case '==':
+      return v === want
+    case 'in':
+      return Array.isArray(want) && want.includes(v)
+    case 'array-contains':
+      return Array.isArray(v) && v.includes(want)
+    default:
+      // Firestore range filters only match values of the same type.
+      if (typeof v !== typeof want || v === null || v === undefined) return false
+      if (op === '<') return cmp(v, want) < 0
+      if (op === '<=') return cmp(v, want) <= 0
+      if (op === '>') return cmp(v, want) > 0
+      return cmp(v, want) >= 0
+  }
+}
+
+/** Query subset: where (==, ranges, in, array-contains), orderBy, limit, select. */
 class FakeQuery {
   constructor(
     private db: FakeFirestore,
     private name: string,
-    private filters: Array<[string, '==', unknown]>,
+    private filters: Array<[string, FilterOp, unknown]>,
     private max: number | null,
+    private order: [string, 'asc' | 'desc'] | null = null,
   ) {}
-  where(field: string, op: '==', value: unknown) {
-    if (op !== '==') throw new Error('FakeQuery: only == supported')
-    return new FakeQuery(this.db, this.name, [...this.filters, [field, op, value]], this.max)
+  where(field: string, op: FilterOp, value: unknown) {
+    return new FakeQuery(this.db, this.name, [...this.filters, [field, op, value]], this.max, this.order)
+  }
+  orderBy(field: string, dir: 'asc' | 'desc' = 'asc') {
+    return new FakeQuery(this.db, this.name, this.filters, this.max, [field, dir])
   }
   limit(n: number) {
-    return new FakeQuery(this.db, this.name, this.filters, n)
+    return new FakeQuery(this.db, this.name, this.filters, n, this.order)
+  }
+  select() {
+    return this
   }
   async get() {
     this.db.reads += 1
-    let docs = this.db.docs(this.name).filter((d) => this.filters.every(([f, , v]) => d.data[f] === v))
+    let docs = this.db.docs(this.name).filter((d) => this.filters.every(([f, op, v]) => passes(d.data[f], op, v)))
+    if (this.order) {
+      const [f, dir] = this.order
+      docs = docs.filter((d) => d.data[f] !== undefined).sort((a, b) => (dir === 'asc' ? 1 : -1) * cmp(a.data[f], b.data[f]))
+    }
     if (this.max !== null) docs = docs.slice(0, this.max)
     return { docs: docs.map((d) => ({ id: d.id, data: () => structuredClone(d.data) })), size: docs.length, empty: docs.length === 0 }
   }
@@ -123,6 +165,10 @@ export class FakeDocRef {
     const prev = this.db.store.get(this.path)
     if (!prev) throw new NotFound(this.path)
     this.db.store.set(this.path, { ...prev, ...structuredClone(data) })
+    this.db.writes += 1
+  }
+  async delete() {
+    this.db.store.delete(this.path)
     this.db.writes += 1
   }
 }

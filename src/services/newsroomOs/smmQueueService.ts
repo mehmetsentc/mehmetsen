@@ -9,7 +9,8 @@ export type SmmQueueItem = {
   newsId?: string | null
   citySlug?: string | null
   platform?: string | null
-  status: 'queued' | 'processing' | 'published' | 'failed' | 'dead'
+  /** cancelled / uncertain / skipped: account-bound automation jobs (kind: 'account_automation'). */
+  status: 'queued' | 'processing' | 'published' | 'failed' | 'dead' | 'cancelled' | 'uncertain' | 'skipped'
   priority?: string
   errorMessage?: string | null
   scheduledAt?: number | null

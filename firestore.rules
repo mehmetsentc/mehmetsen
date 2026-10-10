@@ -391,5 +391,14 @@ service cloud.firestore {
     match /socialPublishRecords/{recordId} {
       allow read, write: if false;
     }
+    match /socialAutomationRules/{ruleId} {
+      allow read, write: if false;
+    }
+    match /socialAutomationCounters/{accountId} {
+      allow read, write: if false;
+    }
+    match /socialAutomationState/{docId} {
+      allow read, write: if false;
+    }
   }
 }

@@ -21,12 +21,20 @@ export type SocialAuditAction =
   | 'social.publish'
   | 'social.publish.manual'
   | 'social.publish.uncertain_ack'
+  | 'social.automation.rule_create'
+  | 'social.automation.rule_update'
+  | 'social.automation.rule_enable'
+  | 'social.automation.rule_disable'
+  | 'social.automation.rule_delete'
+  | 'social.automation.legacy_handoff'
+  | 'social.automation.legacy_handback'
+  | 'social.automation.publish'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null
