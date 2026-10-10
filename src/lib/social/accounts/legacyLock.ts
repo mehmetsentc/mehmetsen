@@ -27,6 +27,9 @@ import type { PublishFormat } from './capabilities'
 import { CLAIM_TEXT, claimPublish, classifyOutcome, finishPublish, UNCERTAIN_TEXT } from './publishLedger'
 import type { SocialPublishResult } from '../types'
 import { errorLogFields, socialLog } from '../safeLog'
+import { isLegacyHandedOff, LEGACY_AUTO_TRIGGERS } from '../automation/handoff'
+
+export const LEGACY_HANDED_OFF_TEXT = 'Bu hesap hesap bazlı otomasyona devredildi — eski otomatik paylaşım yolu atladı'
 
 export interface LegacyPublishOptions {
   /** Re-publish over a succeeded record / old post id. Never bypasses a live lock or an uncertain record. */
@@ -87,6 +90,18 @@ export async function withLegacyPublishLock(
     return run()
   }
   const actorUid = opts.actorUid || 'system:legacy'
+
+  // Hesap bazlı otomasyona devredilmiş hesap: eski OTOMATİK yol (cron / after) yayın yapmaz.
+  // Manuel legacy paylaşım etkilenmez. Devir kaydı okunamazsa güvenli tarafta kalınır.
+  if (opts.trigger && LEGACY_AUTO_TRIGGERS.has(opts.trigger)) {
+    const handedOff = await isLegacyHandedOff(accountId).catch(() => null)
+    if (handedOff !== false) {
+      socialLog('log', 'publish', 'legacy_blocked', { platform: input.platform, format: input.format, newsId: input.newsId, account: accountId, code: handedOff ? 'legacy_handed_off' : 'handoff_unreadable' })
+      return handedOff
+        ? { success: false, error: LEGACY_HANDED_OFF_TEXT, code: 'legacy_handed_off', ledgerStatus: 'not_claimed' }
+        : { success: false, error: 'Devir kaydı okunamadı — eski otomatik paylaşım yapılmadı', code: 'handoff_unreadable', ledgerStatus: 'not_claimed' }
+    }
+  }
 
   let claim: Awaited<ReturnType<typeof claimPublish>>
   try {

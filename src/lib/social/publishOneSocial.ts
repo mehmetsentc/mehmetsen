@@ -36,6 +36,7 @@ import { imageModeProblem, type ImageMode, type PublishFormat } from '@/lib/soci
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
 import { isSocialTestMode, socialTestEnvStatus, TEST_ENV_TEXT } from '@/lib/social/testEnvironment'
 import { isVerifiedPublish, legacyAccountId, type LegacyPublishOptions } from './accounts/legacyLock'
+import { DISTRICT_TO_PROVINCE_SLUG, getCityCategoryName, isTurkishProvinceSlug } from '@/constants/cities'
 
 // ── Çanakkale slug listesi (cron/social ile aynı) ─────────────────────────────
 const CANAKKALE_SLUGS = new Set([
@@ -331,6 +332,31 @@ export interface PublishOneSocialOptions {
   ledgerForce?: boolean
   /** force sıfırlamasını yalnızca bu istekte seçili platformlarla sınırla. */
   scopedForce?: boolean
+  /**
+   * Hesap bazlı otomasyon işi (automation/worker). Yalnızca tek bir açık hedef
+   * hesap + tek platform ile geçerlidir; AI metin üretimi çağrılmaz, eski
+   * Onyeditivi yoluna asla düşülmez, `force` kullanılmaz.
+   */
+  automation?: { jobId: string; attemptId: string }
+}
+
+/** Actor id the automation worker publishes as (ledger / audit). */
+export const AUTOMATION_ACTOR_UID = 'system:social-automation'
+
+/** Automation call shape: exactly one explicit target, that platform only, no X, no force. */
+export function automationCallProblem(options: PublishOneSocialOptions): string | null {
+  if (!options.automation) return null
+  if (options.manual) return 'automation_manual_conflict'
+  if (options.actorUid !== AUTOMATION_ACTOR_UID) return 'automation_actor'
+  if (options.force || options.ledgerForce || options.acknowledgeUncertainRecordId) return 'automation_force'
+  if (options.mode !== 'post' && options.mode !== 'story') return 'automation_mode'
+  const t = Object.entries(options.targets ?? {}).filter(([, v]) => !!v)
+  if (t.length !== 1) return 'automation_target'
+  const plat = options.overrides?.platforms
+  if (!plat || plat.twitter) return 'automation_platforms'
+  const on = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
+  if (on.length !== 1 || on[0] !== t[0][0]) return 'automation_platforms'
+  return null
 }
 
 export interface PublishOneSocialResult {
@@ -414,7 +440,11 @@ export async function publishOneSocial(
     instagram: !targets.instagram || targets.instagram === (await legacyAccountId('instagram')),
     threads: !targets.threads || targets.threads === (await legacyAccountId('threads')),
   }
-  if (hasTargets && (!manual || !options.actorUid)) {
+  const automation = !!options.automation
+  if (automation) {
+    const problem = automationCallProblem(options)
+    if (problem) return skipped(newsId, `Geçersiz otomasyon çağrısı (${problem})`)
+  } else if (hasTargets && (!manual || !options.actorUid)) {
     return skipped(newsId, 'Hedef hesap yalnızca yetkili manuel paylaşımda kullanılabilir')
   }
   // Test (preview) ortamı: yalnızca yetkili manuel + açık hedefli yayın; legacy,
@@ -465,7 +495,8 @@ export async function publishOneSocial(
     }
 
     // Global otomatik paylaşım ayarları (manuel paylaşımı etkilemez)
-    const autoShare = manual ? null : await getAutoShareSettings()
+    // Hesap bazlı otomasyonun kendi kuralları var; eski global ayarlar ona uygulanmaz.
+    const autoShare = manual || automation ? null : await getAutoShareSettings()
     if (autoShare && !autoShare.autoOnPublish && !mode) {
       // CMS yayınında anlık paylaşım kapalı — cron ayrı çalışır
       console.log(`[publishOneSocial] autoOnPublish kapalı — anlık paylaşım atlandı: ${newsId}`)
@@ -667,7 +698,12 @@ export async function publishOneSocial(
       )
       return skipped(newsId, 'Herkese açık haber URL’si yok (taslak slug) — paylaşım engellendi')
     }
-    const cityName   = typeof data.cityName === 'string' ? data.cityName : 'Çanakkale'
+    // Otomasyon Çanakkale varsaymaz: haberin il adı, yoksa il slug'ından ad, yoksa "Türkiye".
+    const cityName   = typeof data.cityName === 'string' && data.cityName.trim()
+      ? data.cityName
+      : automation
+        ? automationCityName(typeof data.citySlug === 'string' ? data.citySlug : '')
+        : 'Çanakkale'
 
     // ── AI içerik üretimi (override yoksa) ───────────────────────────────────
     const storedHeadline = typeof data.socialHeadline === 'string' ? data.socialHeadline.trim() : ''
@@ -681,7 +717,8 @@ export async function publishOneSocial(
       !!(overrides?.headline?.trim()) &&
       !!(overrides?.caption?.trim() || overrides?.storySummary?.trim())
 
-    let socialContent = hasFullOverride || cmsSocialReady
+    // Otomasyon sürekli AI çağırmaz: CMS sosyal metni ya da başlık/spot kullanılır.
+    let socialContent = hasFullOverride || cmsSocialReady || automation
       ? null
       : await generateSocialContent(title, bodyText.length > 100 ? bodyText : spot, cityName)
 
@@ -704,7 +741,9 @@ export async function publishOneSocial(
         })(),
         // caption: buildFeedCaption zaten "📰 {başlık}" ekler — gövde sadece özet olsun
         caption: (cmsSocialReady && storedCaption ? storedCaption : spot.trim()) || '',
-        hashtags: ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
+        hashtags: automation
+          ? automationHashtags(cityName === 'Türkiye' ? '' : cityName)
+          : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText: (typeof data.imageAlt === 'string' && data.imageAlt.trim()) || title,
       }
     }
@@ -765,7 +804,8 @@ export async function publishOneSocial(
 
     // OG görseli Firestore'dan socialHeadline/socialStorySummary okur —
     // paylaşmadan önce kaydet ki taze OG doğru metni kullansın.
-    try {
+    // Otomasyon, editörün hazır sosyal metnini yeniden yazmaz.
+    if (!(automation && cmsSocialReady)) try {
       await db.collection(Collections.NEWS).doc(newsId).update({
         socialHeadline: socialContent.headline,
         socialStorySummary: socialContent.storySummary,
@@ -843,7 +883,7 @@ export async function publishOneSocial(
     const legacyOpts: LegacyPublishOptions = {
       force: ledgerForce,
       actorUid: options.actorUid,
-      trigger: options.trigger ?? (options.manual ? 'composer' : 'after'),
+      trigger: automation ? 'automation' : options.trigger ?? (options.manual ? 'composer' : 'after'),
       acknowledgeUncertainRecordId: options.acknowledgeUncertainRecordId ?? null,
       acknowledgeUncertainAttemptId: options.acknowledgeUncertainAttemptId ?? null,
     }
@@ -1079,6 +1119,18 @@ export async function publishOneSocial(
       reason: safeErrorText(err),
     }
   }
+}
+
+function automationCityName(citySlug: string): string {
+  const slug = citySlug.trim().toLowerCase()
+  const province = isTurkishProvinceSlug(slug) ? slug : DISTRICT_TO_PROVINCE_SLUG[slug] ?? ''
+  return province ? getCityCategoryName(province) : 'Türkiye'
+}
+
+/** İl adından güvenli hashtag (otomasyon; Çanakkale varsayılmaz). */
+export function automationHashtags(cityName: string): string[] {
+  const city = cityName.replace(/[^\p{L}\p{N}]+/gu, '')
+  return ['#NaHaber', ...(city ? [`#${city}`] : []), '#Haber']
 }
 
 // ── Görsel URL yardımcısı (harici kullanım için) ──────────────────────────────

@@ -19,7 +19,8 @@ import { testModeAutomationBlock } from '@/lib/social/testEnvironment'
 import { NextResponse } from 'next/server'
 import { safeErrorText, sanitizeFreeText } from '@/lib/social/safeLog'
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
-import { isVerifiedPublish } from '@/lib/social/accounts/legacyLock'
+import { isVerifiedPublish, legacyAccountId } from '@/lib/social/accounts/legacyLock'
+import { readLegacyHandoffs } from '@/lib/social/automation/handoff'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
@@ -149,6 +150,27 @@ async function isAlreadyPublished(
   return snap.docs.some((d) => isSocialFeedComplete(d.data() as Record<string, unknown>))
 }
 
+/**
+ * Platforms whose legacy Onyeditivi account was explicitly handed off to
+ * account-bound automation. Read once per run (one document). Unreadable →
+ * treated as handed off (fail closed); the lock re-checks per publish anyway.
+ */
+async function handedOffLegacyPlatforms(): Promise<Set<'facebook' | 'instagram' | 'threads'>> {
+  const out = new Set<'facebook' | 'instagram' | 'threads'>()
+  let handoffs: Record<string, unknown>
+  try {
+    handoffs = await readLegacyHandoffs()
+  } catch {
+    return new Set(['facebook', 'instagram', 'threads'])
+  }
+  if (Object.keys(handoffs).length === 0) return out
+  for (const p of ['facebook', 'instagram', 'threads'] as const) {
+    const id = await legacyAccountId(p).catch(() => null)
+    if (id && handoffs[id]) out.add(p)
+  }
+  return out
+}
+
 async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   // Token: BYO (Firestore/env) → global FACEBOOK_PAGE_ACCESS_TOKEN
   const { resolveFacebookCredentials } = await import('@/lib/social/facebookCredentials')
@@ -164,10 +186,12 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
   )
 
   const db = getAdminFirestore()
-  const [categoryRules, autoShare] = await Promise.all([
+  const [categoryRules, autoShare, handedOff] = await Promise.all([
     getCategoryRulesDoc(),
     getAutoShareSettings(),
+    handedOffLegacyPlatforms(),
   ])
+  if (handedOff.size > 0) console.log(`[cron/social] legacy handoff → atlanan platformlar: ${[...handedOff].join(',')}`)
   console.log(
     `[cron/social] autoShare autoPost=${autoShare.autoPost} autoStory=${autoShare.autoStory} autoOnPublish=${autoShare.autoOnPublish} cities=${autoShare.enabledCitySlugs.join(',')}`
   )
@@ -228,6 +252,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const candidates = merged.filter((doc) => {
       const d = doc.data() as Record<string, unknown>
       if (isSocialFeedComplete(d) || d.hasVideo || d.isVideo) return false
+      // FB+IG devredildiyse eski yol bir haberi yalnızca bir kez işler (X / Threads için).
+      if (handedOff.has('facebook') && handedOff.has('instagram') && d.socialPublished === true) return false
       const slug = String(d.citySlug ?? '').toLowerCase()
       const inEnabled = citySet.has(slug) || (citySet.has('canakkale') && isCanakkale(d))
       if (!inEnabled) return false
@@ -267,6 +293,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
   if (!autoShare.autoStory) {
     console.log('[cron/social] autoStory kapalı — hikâye batch atlandı')
+  } else if (handedOff.has('instagram') && handedOff.has('facebook')) {
+    console.log('[cron/social] FB+IG hesap bazlı otomasyona devredildi — eski hikâye batch atlandı')
   } else try {
     // publishedAt number — draft onayında createdAt eski kalabiliyor
     const storySnap = await db
@@ -392,8 +420,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
         articleUrl,
       }
 
-      let igStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      try {
+      let igStoryResult: SocialPublishResult = { success: false, error: handedOff.has('instagram') ? 'handed off' : 'not attempted' }
+      if (!handedOff.has('instagram')) try {
         igStoryResult = await publishInstagramStory(storyPayload, undefined, { trigger: 'cron' })
         console.log(`[cron/social] IG Story → ${id}: ${igStoryResult.success ? '✓' : safeErrorText(igStoryResult.error ?? '')}`)
       } catch (err) {
@@ -402,8 +430,8 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
 
       await new Promise(r => setTimeout(r, INTER_ITEM_DELAY_MS))
 
-      let fbStoryResult: SocialPublishResult = { success: false, error: 'not attempted' }
-      try {
+      let fbStoryResult: SocialPublishResult = { success: false, error: handedOff.has('facebook') ? 'handed off' : 'not attempted' }
+      if (!handedOff.has('facebook')) try {
         fbStoryResult = await publishFacebookStory(storyPayload, undefined, { trigger: 'cron' })
         console.log(`[cron/social] FB Story → ${id}: ${fbStoryResult.success ? '✓' : safeErrorText(fbStoryResult.error ?? '')}`)
       } catch (err) {
@@ -464,10 +492,13 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     }
 
     // Platform ID varsa yeniden paylaşma (Threads-only partial recovery)
-    const skipFb = typeof data.facebookPostId === 'string' && !!data.facebookPostId.trim()
-    const skipIg = typeof data.instagramMediaId === 'string' && !!data.instagramMediaId.trim()
+    const hadFb = typeof data.facebookPostId === 'string' && !!data.facebookPostId.trim()
+    const hadIg = typeof data.instagramMediaId === 'string' && !!data.instagramMediaId.trim()
+    // Devredilen platform eski yoldan hiç çağrılmaz.
+    const skipFb = hadFb || handedOff.has('facebook')
+    const skipIg = hadIg || handedOff.has('instagram')
     const skipTw = typeof data.twitterTweetId === 'string' && !!data.twitterTweetId.trim()
-    const skipTh = typeof data.threadsPostId === 'string' && !!data.threadsPostId.trim()
+    const skipTh = (typeof data.threadsPostId === 'string' && !!data.threadsPostId.trim()) || handedOff.has('threads')
 
     // Spot / özet metin (AI için kısa bağlam)
     const spot: string =
@@ -642,7 +673,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     // ── Facebook ──────────────────────────────────────────────────────────
     let fbResult: SocialPublishResult = {
       success: false,
-      error: skipFb ? 'already published' : 'not attempted',
+      error: hadFb ? 'already published' : skipFb ? 'handed off' : 'not attempted',
     }
     if (!skipFb) {
       try {
@@ -656,7 +687,7 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     // ── Instagram ─────────────────────────────────────────────────────────
     let igResult: SocialPublishResult = {
       success: false,
-      error: skipIg ? 'already published' : 'not attempted',
+      error: hadIg ? 'already published' : skipIg ? 'handed off' : 'not attempted',
     }
     if (!skipIg) {
       try {
@@ -701,9 +732,10 @@ async function runSocialCron(): Promise<SocialCronResult & { error?: string }> {
     const fbDone = isVerifiedPublish(fbResult)
     const igDone = isVerifiedPublish(igResult)
     const thDone = isVerifiedPublish(thResult)
-    const hasFb = skipFb || fbDone
-    const hasIg = skipIg || igDone
-    const primaryOk = hasFb || hasIg
+    const hasFb = hadFb || fbDone
+    const hasIg = hadIg || igDone
+    // FB ve IG ikisi de devredildiyse eski yolun bu haberle Meta akışı işi bitmiştir (tekrar denenmez).
+    const primaryOk = hasFb || hasIg || (handedOff.has('facebook') && handedOff.has('instagram'))
     const anyNewOk = fbDone || igDone || twResult.success || thDone
 
     if (anyNewOk || primaryOk) {
