@@ -26,6 +26,43 @@ export class MetaCallError extends Error {
   }
 }
 
+/**
+ * JSON.parse that keeps large integer literals exact.
+ *
+ * Meta returns some ids as bare JSON numbers (e.g. Threads token exchange:
+ * `"user_id": 17841405793187218`). Ids above Number.MAX_SAFE_INTEGER lose
+ * precision in JSON.parse, so a later `String(id)` yields a different id and
+ * Graph answers 400 / code 100 / subcode 33. Integer literals with 16+ digits
+ * outside string values are turned into JSON strings before parsing; callers
+ * already treat ids as strings. String contents are never modified.
+ */
+export function parseMetaJson(text: string): unknown {
+  let out = ''
+  let i = 0
+  const n = text.length
+  while (i < n) {
+    const ch = text[i]
+    if (ch === '"') {
+      let j = i + 1
+      while (j < n && text[j] !== '"') j += text[j] === '\\' ? 2 : 1
+      out += text.slice(i, j + 1)
+      i = j + 1
+      continue
+    }
+    if (ch === '-' || (ch >= '0' && ch <= '9')) {
+      let j = i + 1
+      while (j < n && /[0-9eE+\-.]/.test(text[j])) j++
+      const tok = text.slice(i, j)
+      out += /^-?[0-9]{16,}$/.test(tok) ? `"${tok}"` : tok
+      i = j
+      continue
+    }
+    out += ch
+    i++
+  }
+  return JSON.parse(out)
+}
+
 function errorInfo(status: number, body: unknown): MetaErrorInfo {
   return platformErrorFields(status, body)
 }
@@ -49,7 +86,7 @@ export async function metaRequest<T>(
   }
   let body: unknown = null
   try {
-    body = await res.json()
+    body = parseMetaJson(await res.text())
   } catch {
     body = null
   }

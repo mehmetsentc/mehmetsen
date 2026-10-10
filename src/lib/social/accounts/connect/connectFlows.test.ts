@@ -49,8 +49,11 @@ const meta = {
   threadsDebugOk: true,
   threadsScopes: [] as string[],
   threadsUserId: '',
+  /** Meta'nın gerçek biçimi: token yanıtında user_id tırnaksız JSON sayısı. */
+  threadsUserIdAsNumber: false,
 }
 const META_DEFAULTS = () => ({
+  threadsUserIdAsNumber: false,
   fbDeclined: [] as string[],
   fbGranted: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'public_profile'],
   igPermissions: 'instagram_business_basic,instagram_business_content_publish' as string | null,
@@ -140,6 +143,13 @@ async function metaFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     }
   }
   if (u.host === 'graph.threads.com' && p === '/oauth/access_token') {
+    if (meta.threadsUserIdAsNumber) {
+      // Ham metin: JSON.stringify sayıyı yuvarlayacağı için yanıt elle yazılır.
+      return new Response(`{"access_token":"THQ_SHORT","token_type":"bearer","user_id":${meta.threadsUserId}}`, {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
     return jsonRes({ access_token: 'THQ_SHORT', user_id: meta.threadsUserId })
   }
   if (u.host === 'graph.threads.net') {
@@ -494,6 +504,24 @@ describe('Threads', () => {
     const b = await begin('threads')
     expect(result(await callback('threads', { state: b.state, code: 'AUTHCODE123' }, b.cookieHeader))).toBe('permission_missing')
     expect(fs.store.has('socialAccounts/threads_4440002')).toBe(false)
+  })
+
+  it('büyük sayısal user_id (MAX_SAFE_INTEGER üstü) yuvarlanmadan profil isteğine ve kayda gider', async () => {
+    // Production hatası: 17 haneli kimlik JSON.parse ile yuvarlanınca profil isteği
+    // var olmayan bir kimliğe gidip 400/100/33 döndü.
+    const realId = '39373226298991729'
+    expect(String(Number(realId))).not.toBe(realId) // ön koşul: Number dönüşümü bu kimliği bozar
+    meta.threadsUserId = realId
+    meta.threadsUserIdAsNumber = true
+    const a = await begin('threads')
+    expect(result(await callback('threads', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('connected')
+    const profileCall = calls.find((c) => new URL(c.url).pathname.startsWith('/v1.0/') && !c.url.includes('debug_token'))
+    expect(new URL(profileCall!.url).pathname).toBe(`/v1.0/${realId}`)
+    expect(fs.store.get(`socialAccounts/threads_${realId}`)).toMatchObject({
+      externalId: realId,
+      status: 'active',
+      grantedPermissions: ['threads_basic', 'threads_content_publish'],
+    })
   })
 })
 
