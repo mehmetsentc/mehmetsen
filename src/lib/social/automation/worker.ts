@@ -108,19 +108,32 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
       report.processed.push({ jobId: job.id, status: 'queued', code: 'tick_budget' })
       continue
     }
-    let outcome: JobOutcome
-    try {
-      outcome = await processJob(job, rules, publish, contentProblem, now)
-    } catch (err) {
-      // An exception may have happened after the platform call → uncertain, never retried.
-      socialLog('error', 'cron', 'job_error', { job: job.id, error: safeErrorText(err).slice(0, 200) })
-      outcome = { status: 'uncertain', code: 'exception', message: 'Beklenmeyen hata — platformda kontrol edin; otomatik tekrar yok.' }
-    }
-    await finishJob(job.id, job.attemptId!, outcome, now())
+    const outcome = await runClaimedJob(job, rules, publish, contentProblem, now)
     report.processed.push({ jobId: job.id, status: outcome.status, code: outcome.code })
   }
   report.durationMs = now() - started
   return report
+}
+
+/** Process one claimed job and record the outcome (exceptions → uncertain, never retried). */
+export async function runClaimedJob(
+  job: AutomationJob,
+  rules: AutomationRule[],
+  publish: Publisher,
+  contentProblem: (d: Record<string, unknown>) => string | null,
+  now: () => number,
+): Promise<JobOutcome> {
+  let outcome: JobOutcome
+  try {
+    outcome = await processJob(job, rules, publish, contentProblem, now)
+  } catch (err) {
+    // An exception may have happened after the platform call → uncertain, never retried.
+    socialLog('error', 'cron', 'job_error', { job: job.id, error: safeErrorText(err).slice(0, 200) })
+    outcome = { status: 'uncertain', code: 'exception', message: 'Beklenmeyen hata — platformda kontrol edin; otomatik tekrar yok.' }
+  }
+  await finishJob(job.id, job.attemptId!, outcome, now())
+  socialLog('log', 'cron', 'automation_job', { job: job.id, account: job.accountId, format: job.format, status: outcome.status, code: outcome.code })
+  return outcome
 }
 
 function resultFor(job: AutomationJob, r: PublishOneSocialResult): SocialPublishResult | null {
@@ -142,7 +155,12 @@ export async function processJob(
   if (!snap.exists) return { status: 'cancelled', code: 'news_removed', message: 'Haber silinmiş' }
   const data = snap.data() as Record<string, unknown>
   const facts = newsFactsFrom(job.newsId, data)
+  if (job.eligibleAt != null) facts.eligibleAt = Math.max(job.eligibleAt, facts.publishedAt ?? 0)
   if (facts.status !== 'published') return { status: 'cancelled', code: 'news_unpublished', message: 'Haber artık yayında değil' }
+  // İleri tarihli haber: yayın saati gelene kadar bekler (deneme sayılmaz).
+  if (facts.publishedAt !== null && facts.publishedAt > t) {
+    return { status: 'queued', dueAt: facts.publishedAt, code: 'not_live', countAttempt: false }
+  }
   const problem = contentProblem(data)
   if (problem) return { status: 'skipped', code: problem, message: CONTENT_PROBLEM_TEXT[problem] ?? problem }
 
@@ -160,13 +178,14 @@ export async function processJob(
   }
 
   // ── Freshness, quiet hours, interval, daily cap ──
-  if (facts.publishedAt !== null && t - facts.publishedAt > STALE_AFTER_MS) {
+  const liveAt = facts.eligibleAt ?? facts.publishedAt
+  if (liveAt !== null && t - liveAt > STALE_AFTER_MS) {
     return { status: 'skipped', code: 'stale', message: 'Haber 12 saatten eski — otomatik paylaşılmadı' }
   }
   const limits = strictestLimits(matching)
   const quietUntil = quietDeferral(t, limits.quietHours)
   if (quietUntil !== null) {
-    if (facts.publishedAt !== null && quietUntil - facts.publishedAt > STALE_AFTER_MS) {
+    if (liveAt !== null && quietUntil - liveAt > STALE_AFTER_MS) {
       return { status: 'skipped', code: 'stale', message: 'Sessiz saatler bitene kadar haber eskiyecek' }
     }
     return { status: 'queued', dueAt: quietUntil, code: 'quiet_hours', countAttempt: false }
@@ -174,7 +193,7 @@ export async function processJob(
   const slot = await reserveSlot(job.accountId, limits, t)
   if (!slot.ok) {
     if (slot.reason === 'daily_limit') return { status: 'skipped', code: 'daily_limit', message: `Günlük sınır (${limits.dailyLimit}) doldu` }
-    if (facts.publishedAt !== null && slot.retryAt - facts.publishedAt > STALE_AFTER_MS) {
+    if (liveAt !== null && slot.retryAt - liveAt > STALE_AFTER_MS) {
       return { status: 'skipped', code: 'stale', message: 'Paylaşım aralığı nedeniyle haber eskiyecek' }
     }
     return { status: 'queued', dueAt: slot.retryAt, code: 'min_interval', countAttempt: false }
@@ -185,7 +204,8 @@ export async function processJob(
   const result = await publish(job.newsId, {
     mode: job.format,
     targets: { [job.platform]: job.accountId },
-    overrides: { platforms: { facebook: job.platform === 'facebook', instagram: job.platform === 'instagram', threads: job.platform === 'threads', twitter: false } },
+    // Tek görselli gönderi (kaydırmalı otomasyonda yok); AI yeniden yazımı publishOneSocial'da kapalı.
+    overrides: { platforms: { facebook: job.platform === 'facebook', instagram: job.platform === 'instagram', threads: job.platform === 'threads', twitter: false }, imageMode: 'single' },
     actorUid: AUTOMATION_ACTOR_UID,
     automation: { jobId: job.id, attemptId: job.attemptId! },
     trigger: 'automation',

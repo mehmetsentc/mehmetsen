@@ -716,10 +716,12 @@ export const newsDraftService = {
     })
 
     const slug = await allocateUniqueSlug(db, draft.title, draftId)
-    const newsRef = await db.collection(Collections.NEWS).add({
+    const publishedDoc = {
       ...draftToPublishedNews(draft, slug, now),
       ...publicationProvenanceFields(authz),
-    })
+    }
+    const newsRef = await db.collection(Collections.NEWS).add(publishedDoc)
+    await socialAutomationHook(newsRef.id, publishedDoc as Record<string, unknown>)
 
     await draftRef.update({
       draftStatus: 'approved',
@@ -850,7 +852,22 @@ export const newsDraftService = {
         : {}),
     })
     await markRawArticlePublished(data, newsId)
+    await socialAutomationHook(newsId, { ...(data as Record<string, unknown>), status: 'published', slug })
 
     return { newsId, slug }
   },
+}
+
+/**
+ * Hesap bazlı sosyal otomasyon: yayına geçen haber için iş kaydı yanıt dönmeden
+ * kalıcı yazılır (kural yoksa okuma yapmaz). Hata yayını asla bozmaz; işi
+ * 5 dakikalık çalışan alır (çağıran rota isterse after() ile hemen başlatır).
+ */
+async function socialAutomationHook(newsId: string, data: Record<string, unknown>): Promise<void> {
+  try {
+    const { onNewsWritten } = await import('@/lib/social/automation/events')
+    await onNewsWritten({ newsId, data, becamePublished: true, wasPublished: false, now: Date.now() })
+  } catch {
+    /* never block publication */
+  }
 }

@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { startAutomationJobsForNews } from '@/lib/social/automation/events'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { denyIfDocOutsideStaffScope } from '@/lib/cms/staffScopeHttp'
@@ -25,6 +26,8 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const result = await newsDraftService.approveDraft(id, { uid: admin.uid })
+    // Otomasyon işleri approveDraft içinde kalıcı yazıldı; burada yalnızca hemen başlatılır.
+    after(() => startAutomationJobsForNews(result.newsId))
 
     try {
       const db = getAdminFirestore()

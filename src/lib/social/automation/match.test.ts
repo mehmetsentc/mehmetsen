@@ -15,6 +15,7 @@ function news(over: Partial<NewsFacts> = {}): NewsFacts {
     originalCategoryId: '',
     featured: false,
     localFeatured: false,
+    eligibleAt: null,
     ...over,
   }
 }

@@ -16,6 +16,7 @@ import { getScopedAdminDoc } from '@/lib/cms/scopedAdminDocs'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
+import { onNewsWritten, startAutomationJobs, startAutomationJobsForNews } from '@/lib/social/automation/events'
 import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import {
   authorizePublication,
@@ -602,6 +603,21 @@ export async function PUT(request: Request, context: RouteContext) {
       }
 
       await newsRef.update(update)
+
+      // Hesap bazlı otomasyon: iş kaydı yanıt dönmeden kalıcı yazılır (yayın olayı kaydı);
+      // after() yalnızca hemen başlatır — kaybolursa 5 dakikalık çalışan işler.
+      {
+        const merged = { ...(prevData ?? {}), ...update } as Record<string, unknown>
+        const prevStatusForAuto = String(prevData?.status || '')
+        const dueAutomation = await onNewsWritten({
+          newsId: id,
+          data: merged,
+          becamePublished: prevStatusForAuto !== 'published' && String(merged.status ?? '') === 'published',
+          wasPublished: prevStatusForAuto === 'published',
+          now: Date.now(),
+        })
+        if (dueAutomation.length > 0) after(() => startAutomationJobs(dueAutomation))
+      }
       const rssGuid = String(prevData?.rssGuid || '').trim()
       if (rssGuid.startsWith('raw_')) {
         const nextStatus = String(update.status || body.status || prevData?.status || 'draft')
@@ -731,6 +747,8 @@ export async function PUT(request: Request, context: RouteContext) {
         if (isCanakkaleArticle(draftData) || isStoryEligible(draftData)) {
           after(() => publishOneSocial(result.newsId))
         }
+        // Otomasyon işleri approveDraft içinde kalıcı yazıldı; burada yalnızca hemen başlatılır.
+        if (result.newsId) after(() => startAutomationJobsForNews(result.newsId))
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })
       }
 
@@ -810,6 +828,7 @@ export async function DELETE(request: Request, context: RouteContext) {
       if (permanent) {
         await newsRef.delete()
         try { await db.collection(Collections.POSTS).doc(id).delete() } catch { /* ok */ }
+        await onNewsWritten({ newsId: id, data: null, becamePublished: false, wasPublished: newsSnap.data()?.status === 'published', now: Date.now() })
       } else {
         const softDeleteUpdate = {
           status: 'archived',
@@ -821,6 +840,7 @@ export async function DELETE(request: Request, context: RouteContext) {
         }
         await newsRef.update(softDeleteUpdate)
         try { await db.collection(Collections.POSTS).doc(id).update(softDeleteUpdate) } catch { /* ok */ }
+        await onNewsWritten({ newsId: id, data: { ...newsSnap.data(), status: 'archived', publishedAt: null }, becamePublished: false, wasPublished: newsSnap.data()?.status === 'published', now: Date.now() })
       }
     } else {
       const draftRef = db.collection(Collections.NEWS_DRAFTS).doc(id)

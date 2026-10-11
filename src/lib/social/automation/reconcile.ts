@@ -30,7 +30,7 @@ import type { SocialAccountPlatform } from '../accounts/types'
 export const RECONCILE_LAG_MS = 2 * 60 * 1000
 export const RECONCILE_PAGE = 100
 export const RECONCILE_MAX_PAGES = 3
-export const FEATURED_EVERY_MS = 15 * 60 * 1000
+export const FEATURED_EVERY_MS = 60 * 60 * 1000
 export const FEATURED_WINDOW_MS = 12 * 60 * 60 * 1000
 const STATE_DOC = 'reconcile'
 
@@ -68,8 +68,8 @@ export function plannedJobs(
   docs: NewsDoc[],
   rules: AutomationRule[],
   contentProblem: (d: Record<string, unknown>) => string | null,
-): Array<{ newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string }> {
-  const out = new Map<string, { newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string }>()
+): Array<{ newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }> {
+  const out = new Map<string, { newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }>()
   for (const doc of docs) {
     if (contentProblem(doc.data)) continue
     const facts = newsFactsFrom(doc.id, doc.data)
@@ -94,6 +94,7 @@ export function plannedJobs(
             ruleIds: [rule.id],
             citySlug: facts.citySlug || null,
             title: typeof doc.data.title === 'string' ? doc.data.title : '',
+            eligibleAt: facts.eligibleAt,
           })
         }
       }
@@ -108,7 +109,7 @@ async function enqueuePlanned(plan: ReturnType<typeof plannedJobs>, now: number)
   let n = 0
   for (const p of plan) {
     if (existing.has(jobIdFor(p.newsId, p.accountId, p.format))) continue
-    const r = await enqueueJob({ ...p, newsTitle: p.title, dueAt: now, now })
+    const r = await enqueueJob({ ...p, newsTitle: p.title, dueAt: Math.max(now, p.eligibleAt ?? now), now })
     if (r === 'created') n++
   }
   return n

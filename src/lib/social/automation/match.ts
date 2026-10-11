@@ -24,6 +24,13 @@ export interface NewsFacts {
   originalCategoryId: string
   featured: boolean
   localFeatured: boolean
+  /**
+   * When the news became publicly published for automation purposes: the
+   * later of `publishedAt` and the moment a CMS hook saw it go live (a draft
+   * carrying an old date, or a queue approval without `publishedAt`). Compared
+   * with the rule's `enabledAt` — no backfill. Defaults to `publishedAt`.
+   */
+  eligibleAt: number | null
 }
 
 export function newsFactsFrom(id: string, d: Record<string, unknown>): NewsFacts {
@@ -45,6 +52,7 @@ export function newsFactsFrom(id: string, d: Record<string, unknown>): NewsFacts
     originalCategoryId: str(d.originalCategoryId),
     featured: d.featured === true || d.isFeatured === true,
     localFeatured: d.localFeatured === true,
+    eligibleAt: publishedAt,
   }
 }
 
@@ -167,8 +175,9 @@ export function evaluateRuleConditions(rule: AutomationRuleInput, n: NewsFacts):
 export function evaluateRule(rule: AutomationRule, n: NewsFacts): RuleEvaluation {
   if (!rule.enabled || rule.enabledAt === null) return { match: false, reasons: ['Kural kapalı'] }
   if (n.status !== 'published') return { match: false, reasons: ['Haber yayında değil'] }
-  if (n.publishedAt === null) return { match: false, reasons: ['Yayın zamanı yok'] }
-  if (n.publishedAt < rule.enabledAt) return { match: false, reasons: ['Kural açılmadan önce yayımlanmış (geriye dönük paylaşım yok)'] }
+  const at = n.eligibleAt ?? n.publishedAt
+  if (at === null) return { match: false, reasons: ['Yayın zamanı yok'] }
+  if (at < rule.enabledAt) return { match: false, reasons: ['Kural açılmadan önce yayımlanmış (geriye dönük paylaşım yok)'] }
   return evaluateRuleConditions(rule, n)
 }
 

@@ -43,6 +43,21 @@ export async function listRules(opts: { enabledOnly?: boolean } = {}): Promise<A
   return snap.docs.map((d) => ({ ...(d.data() as AutomationRule), id: d.id }))
 }
 
+const RULES_TTL_MS = 30_000
+let rulesCache: { at: number; rules: AutomationRule[] } | null = null
+
+/** Enabled rules, cached per instance for 30 s (CMS write hooks). The worker reads fresh. */
+export async function enabledRulesCached(now: number): Promise<AutomationRule[]> {
+  if (rulesCache && now - rulesCache.at < RULES_TTL_MS && now >= rulesCache.at) return rulesCache.rules
+  const rules = await listRules({ enabledOnly: true })
+  rulesCache = { at: now, rules }
+  return rules
+}
+
+export function invalidateRulesCache(): void {
+  rulesCache = null
+}
+
 export async function getRule(id: string): Promise<AutomationRule | null> {
   if (!isRuleId(id)) return null
   const s = await rulesCol().doc(id).get()
@@ -88,6 +103,7 @@ export async function createRule(input: AutomationRuleInput, actorUid: string, n
     updatedAt: now,
     updatedBy: actorUid,
   }
+  invalidateRulesCache()
   await rulesCol().doc(id).create({ ...rule })
   await writeSocialAudit({ actorId: actorUid, action: 'social.automation.rule_create', entityType: 'socialAutomationRule', entityId: id, after: ruleAuditView(rule) })
   return { ok: true, rule }
@@ -111,6 +127,7 @@ export async function updateRule(id: string, input: AutomationRuleInput, actorUi
     updatedAt: now,
     updatedBy: actorUid,
   }
+  invalidateRulesCache()
   await rulesCol().doc(id).set({ ...rule })
   await writeSocialAudit({ actorId: actorUid, action: 'social.automation.rule_update', entityType: 'socialAutomationRule', entityId: id, before: ruleAuditView(before), after: ruleAuditView(rule) })
   return { ok: true, rule }
@@ -141,6 +158,7 @@ export async function setRuleEnabled(
     updatedBy: actorUid,
   }
   await rulesCol().doc(id).set({ ...rule })
+  invalidateRulesCache()
   let cancelledJobs = 0
   if (!enabled && before.enabled) {
     // Spare jobs another enabled rule of the same account still covers (pre-send recheck re-evaluates them).
@@ -161,6 +179,7 @@ export async function deleteRule(id: string, actorUid: string): Promise<Ok<objec
   const before = await getRule(id)
   if (!before) return { ok: false, code: 'not_found', message: 'Kural bulunamadı', status: 404 }
   if (before.enabled) return { ok: false, code: 'rule_enabled', message: 'Önce kuralı kapatın', status: 409 }
+  invalidateRulesCache()
   await rulesCol().doc(id).delete()
   await writeSocialAudit({ actorId: actorUid, action: 'social.automation.rule_delete', entityType: 'socialAutomationRule', entityId: id, before: ruleAuditView(before) })
   return { ok: true }

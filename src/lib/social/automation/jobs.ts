@@ -46,6 +46,8 @@ export interface AutomationJob {
   attempts: number
   citySlug: string | null
   newsTitle: string
+  /** Automation publish moment of the news (see NewsFacts.eligibleAt). */
+  eligibleAt: number | null
   errorCode: string | null
   errorMessage: string | null
   externalPostId: string | null
@@ -79,6 +81,7 @@ export async function enqueueJob(input: {
   ruleIds: string[]
   citySlug: string | null
   newsTitle: string
+  eligibleAt?: number | null
   dueAt: number
   now: number
 }): Promise<'created' | 'exists'> {
@@ -99,6 +102,7 @@ export async function enqueueJob(input: {
     attempts: 0,
     citySlug: input.citySlug,
     newsTitle: input.newsTitle.slice(0, 160),
+    eligibleAt: input.eligibleAt ?? null,
     errorCode: null,
     errorMessage: null,
     externalPostId: null,
@@ -127,6 +131,79 @@ export async function existingJobIds(ids: string[]): Promise<Set<string>> {
     for (const s of snaps) if (s.exists) out.add(s.id)
   }
   return out
+}
+
+/** Every automation job of one news (equality query, bounded). */
+export async function listJobsForNews(newsId: string): Promise<AutomationJob[]> {
+  const snap = await col().where('newsId', '==', newsId).limit(30).get()
+  return snap.docs.map((d) => ({ ...(d.data() as AutomationJob), id: d.id })).filter((j) => j.kind === AUTOMATION_JOB_KIND)
+}
+
+/** Statuses a re-evaluation may bring back to the queue (nothing was sent). */
+export const REVIVABLE_CODES: ReadonlySet<string> = new Set(['no_matching_rule', 'conditions_changed', 'news_unpublished', 'news_removed', 'not_live'])
+
+/**
+ * Re-evaluation result for one existing job (transactional):
+ *   - `queued` → keep, move `autoDueAt` to `dueAt`
+ *   - `cancelled` with a revivable code → back to `queued` at `dueAt`
+ *   - `cancel` → a queued job that no longer matches
+ * Published / processing / uncertain / failed jobs are never touched.
+ */
+export async function reviseJob(
+  jobId: string,
+  action: { kind: 'requeue'; dueAt: number; eligibleAt: number | null; ruleIds: string[] } | { kind: 'cancel'; code: string },
+  now: number,
+): Promise<'requeued' | 'cancelled' | 'unchanged'> {
+  const db = getAdminFirestore()
+  const ref = col().doc(jobId)
+  return db.runTransaction(async (tx) => {
+    const s = await tx.get(ref)
+    if (!s.exists) return 'unchanged' as const
+    const j = s.data() as AutomationJob
+    if (action.kind === 'cancel') {
+      if (j.status !== 'queued') return 'unchanged' as const
+      tx.update(ref, { status: 'cancelled', autoDueAt: null, errorCode: action.code, updatedAt: now, history: withHistory(j, 'cancelled', action.code, now) })
+      return 'cancelled' as const
+    }
+    const revivable = j.status === 'cancelled' && REVIVABLE_CODES.has(j.errorCode ?? '')
+    if (j.status !== 'queued' && !revivable) return 'unchanged' as const
+    if (j.status === 'queued' && j.autoDueAt === action.dueAt) return 'unchanged' as const
+    tx.update(ref, {
+      status: 'queued',
+      autoDueAt: action.dueAt,
+      scheduledAt: action.dueAt,
+      eligibleAt: j.eligibleAt ?? action.eligibleAt,
+      ruleIds: action.ruleIds.slice(0, 20),
+      errorCode: revivable ? 'reevaluated' : j.errorCode,
+      updatedAt: now,
+      history: withHistory(j, 'queued', revivable ? 'reevaluated' : 'due_changed', now),
+    })
+    return 'requeued' as const
+  })
+}
+
+/** Claim one specific job (used right after a CMS publish). Same rules as claimDueJobs. */
+export async function claimJobById(jobId: string, now: number): Promise<AutomationJob | null> {
+  const db = getAdminFirestore()
+  const ref = col().doc(jobId)
+  return db.runTransaction(async (tx) => {
+    const s = await tx.get(ref)
+    if (!s.exists) return null
+    const j = s.data() as AutomationJob
+    if (j.kind !== AUTOMATION_JOB_KIND || j.status !== 'queued' || j.autoDueAt === null || j.autoDueAt > now) return null
+    const attemptId = randomBytes(12).toString('hex')
+    const next: Partial<AutomationJob> = {
+      status: 'processing',
+      attemptId,
+      attempts: (j.attempts ?? 0) + 1,
+      autoDueAt: null,
+      autoLeaseUntil: now + JOB_LEASE_MS,
+      updatedAt: now,
+      history: withHistory(j, 'processing', 'publish_hook', now),
+    }
+    tx.update(ref, next)
+    return { ...j, ...next, id: jobId } as AutomationJob
+  })
 }
 
 /**
