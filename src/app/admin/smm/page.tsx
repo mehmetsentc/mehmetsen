@@ -217,12 +217,10 @@ export default function SmmNetworkPage() {
     for (const [slug, agent] of byCity) {
       if (agent.status === 'active') set.add(slug)
     }
-    // Çanakkale shares exist even if SMM agent seed is incomplete — show on map
-    if (sharedPosts.length > 0 && focusCity) set.add(focusCity)
-    // Always mark canakkale active when it has live social pipeline (current prod)
-    if (byCity.has('canakkale') || focusCity === 'canakkale') set.add('canakkale')
+    // Yalnızca gerçek ajan durumu; il adı koda sabitlenmez. Bağlı hesap /
+    // otomasyon durumu için «İl Ağı» (/admin/social/network) kullanılır.
     return set
-  }, [byCity, focusCity, sharedPosts.length])
+  }, [byCity])
 
   const rows = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase('tr-TR')
@@ -238,7 +236,7 @@ export default function SmmNetworkPage() {
         ...p,
         agent,
         health: live
-          ? agent?.status === 'active' || p.slug === 'canakkale'
+          ? agent?.status === 'active'
             ? 'active'
             : 'warning'
           : agent
@@ -354,8 +352,8 @@ export default function SmmNetworkPage() {
       <div className="mb-6">
         <TurkeySmmMap activeSlugs={activeSlugs} className="min-h-[240px]" />
         <p className="mt-2 text-[11px] text-slate-500">
-          İl üzerine tıklayınca o şehrin paylaşılan haberleri açılır. Şu an canlı paylaşım hattı:
-          Çanakkale.
+          Harita SMM ajan durumunu gösterir. Bağlı sosyal hesaplar, yayın izni ve açık otomasyon
+          kuralları için <a href="/admin/social/network" className="underline">İl Ağı</a>.
         </p>
       </div>
 

@@ -1574,7 +1574,7 @@ export default function SocialPage() {
         <details className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] [&::-webkit-details-marker]:hidden">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            Facebook App / BYO
+            Gelişmiş ayarlar (teknik) — Onyeditivi BYO Facebook uygulaması
             <span className="ml-1 text-[10px] font-medium text-[rgb(var(--color-muted))]">
               {byoStatus?.activeMode === 'custom' ? 'özel app aktif' : 'global app'}
             </span>

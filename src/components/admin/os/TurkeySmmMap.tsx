@@ -20,19 +20,28 @@ const PROVINCE_FILL = '#ffffff'
 const PROVINCE_ACTIVE = '#dcfce7'
 const PROVINCE_STROKE = '#1e293b'
 
-function resolveStatus(slug: string, activeSlugs?: Set<string>): DotStatus {
+function resolveStatus(slug: string, activeSlugs?: Set<string>, warnSlugs?: Set<string>): DotStatus {
   if (activeSlugs?.has(slug)) return 'active'
+  if (warnSlugs?.has(slug)) return 'warn'
   return 'unknown'
 }
 
 export function TurkeySmmMap({
   activeSlugs,
+  warnSlugs,
   className,
   showLegend = true,
+  hrefFor = (slug: string) => `/admin/smm?city=${encodeURIComponent(slug)}`,
+  legend,
 }: {
   activeSlugs?: Set<string>
+  /** Amber dots (e.g. connected account without enabled automation). */
+  warnSlugs?: Set<string>
   className?: string
   showLegend?: boolean
+  hrefFor?: (slug: string) => string
+  /** Custom legend labels; default keeps the SMM agent wording. */
+  legend?: { active: string; warn: string; unknown: string }
 }) {
   const nameBySlug = new Map(TURKISH_PROVINCES.map((p) => [p.slug, p.name]))
   const activeCount = activeSlugs?.size ?? 0
@@ -85,11 +94,11 @@ export function TurkeySmmMap({
         {/* Province layer centered vertically in padded canvas */}
         <g transform="translate(0 18)">
           {TURKEY_PROVINCE_PATHS.map((p) => {
-            const status = resolveStatus(p.slug, activeSlugs)
+            const status = resolveStatus(p.slug, activeSlugs, warnSlugs)
             const isActive = status === 'active'
             const label = nameBySlug.get(p.slug) ?? p.name
             return (
-              <a key={p.slug} href={`/admin/smm?city=${encodeURIComponent(p.slug)}`}>
+              <a key={p.slug} href={hrefFor(p.slug)}>
                 <path
                   d={p.d}
                   fill={isActive ? PROVINCE_ACTIVE : PROVINCE_FILL}
@@ -105,10 +114,10 @@ export function TurkeySmmMap({
           })}
 
           {TURKEY_PROVINCE_PATHS.map((p) => {
-            const status = resolveStatus(p.slug, activeSlugs)
+            const status = resolveStatus(p.slug, activeSlugs, warnSlugs)
             const label = nameBySlug.get(p.slug) ?? p.name
             return (
-              <a key={`${p.slug}-dot`} href={`/admin/smm?city=${encodeURIComponent(p.slug)}`}>
+              <a key={`${p.slug}-dot`} href={hrefFor(p.slug)}>
                 <g filter={status === 'active' ? 'url(#smm-dot-glow)' : undefined}>
                   {status === 'active' ? (
                     <circle cx={p.cx} cy={p.cy} r={4.2} fill="rgba(34,197,94,0.4)" />
@@ -131,7 +140,22 @@ export function TurkeySmmMap({
         </g>
       </svg>
 
-      {showLegend ? (
+      {showLegend && legend ? (
+        <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/80 px-3 py-2 text-[10px] text-[rgb(var(--color-muted))]">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            {legend.active} ({activeCount})
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            {legend.warn} ({warnSlugs?.size ?? 0})
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-slate-400" />
+            {legend.unknown}
+          </span>
+        </div>
+      ) : showLegend ? (
         <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/80 px-3 py-2 text-[10px] text-[rgb(var(--color-muted))]">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.8)]" />

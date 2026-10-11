@@ -131,6 +131,6 @@ export function panelReturnUrl(params: Record<string, string>, returnTo: 'admin'
     // Kişisel / yayıncı hesapları: kullanıcı ayarlarındaki «Sosyal hesaplarım».
     return `${base}/settings/social?${new URLSearchParams(params).toString()}`
   }
-  const q = new URLSearchParams({ panel: 'accounts', ...params })
-  return `${base}/admin/social?${q.toString()}`
+  // Merkez / il hesapları: yönetim panelindeki «Hesaplar» sekmesi.
+  return `${base}/admin/social/accounts?${new URLSearchParams(params).toString()}`
 }

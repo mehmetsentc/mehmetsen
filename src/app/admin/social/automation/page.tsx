@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { AutomationRulesPanel } from '@/components/admin/social/AutomationRulesPanel'
+import { SocialAdminNav } from '@/components/admin/social/SocialAdminNav'
 
 export default function SocialAutomationRulesPage() {
   return (
@@ -17,6 +18,7 @@ export default function SocialAutomationRulesPage() {
         </div>
       }
     >
+      <SocialAdminNav />
       <AutomationRulesPanel />
     </AdminOsPageShell>
   )

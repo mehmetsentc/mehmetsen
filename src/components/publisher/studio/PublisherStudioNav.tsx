@@ -7,6 +7,7 @@ import {
   FileText,
   LayoutGrid,
   Megaphone,
+  Share2,
   Users,
   UserCircle,
 } from 'lucide-react'
@@ -31,9 +32,12 @@ const NAV = [
 export function PublisherStudioNav({
   slug,
   displayName,
+  publisherId,
 }: {
   slug: string
   displayName: string
+  /** When set, links to this publisher's social accounts / rules / history. */
+  publisherId?: string
 }) {
   const pathname = usePathname()
 
@@ -78,6 +82,15 @@ export function PublisherStudioNav({
             </Link>
           )
         })}
+        {publisherId ? (
+          <Link prefetch={false}
+            href={`/settings/social?owner=${encodeURIComponent(`publisher:${publisherId}`)}`}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[rgb(var(--color-muted))] transition-colors hover:text-[rgb(var(--color-text))]"
+          >
+            <Share2 className="h-4 w-4 shrink-0" aria-hidden />
+            Sosyal hesaplar
+          </Link>
+        ) : null}
       </nav>
     </aside>
   )

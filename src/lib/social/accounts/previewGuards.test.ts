@@ -286,7 +286,7 @@ describe('callback kökü güvenilir test yapılandırmasından', () => {
     expect(st.redirectUri).toBeNull()
     expect(st.missing).toEqual(expect.arrayContaining(['SOCIAL_OAUTH_BASE_URL', 'SOCIAL_TEST_FIREBASE_PROJECT_ID']))
     // Güvenilir kök yoksa panele dönüş göreli yoldur (production sitesine gitmez)
-    expect(panelReturnUrl({ social: 'x' })).toBe('/admin/social?panel=accounts&social=x')
+    expect(panelReturnUrl({ social: 'x' })).toBe('/admin/social/accounts?social=x')
     readyPreview({ NEXT_PUBLIC_APP_URL: 'https://www.nahaber.com', SOCIAL_FB_APP_ID: '123456789', SOCIAL_FB_APP_SECRET: 'x' })
     const ok = getPlatformConfigStatus('facebook')
     expect(ok.ready).toBe(true)

@@ -32,7 +32,7 @@ type RulesResponse = {
   counters: Record<string, { today: number; lastSentAt: number | null }>
   reconcile: { cursor: number | null; updatedAt: number | null }
 }
-type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[] }
+type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
 const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
 const FORMAT_TEXT: Record<PublishFormat, string> = { post: 'Gönderi', story: 'Hikâye' }
@@ -132,7 +132,14 @@ function fmtTime(ms: number | null): string {
   return ms ? new Date(ms).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
 }
 
-export function AutomationRulesPanel() {
+type AccountRow = SocialAccountPublic & { canManage?: boolean; canPublish?: boolean }
+
+/**
+ * `admin`: central desk (also legacy handoff, counters, worker state).
+ * `self`: any user — only accounts they manage (personal / publisher / il).
+ * Both use the same server-checked /api/social/rules endpoints.
+ */
+export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: 'admin' | 'self'; ownerFilter?: (a: SocialAccountPublic) => boolean } = {}) {
   const [data, setData] = useState<RulesResponse | null>(null)
   const [jobs, setJobs] = useState<AutomationJobPublic[]>([])
   const [loading, setLoading] = useState(true)
@@ -144,17 +151,31 @@ export function AutomationRulesPanel() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [r, j] = await Promise.all([
-      api<RulesResponse>('/api/admin/social/automation/rules'),
-      api<{ jobs: AutomationJobPublic[] }>('/api/admin/social/automation/jobs?days=7'),
+    const admin = mode === 'admin'
+    const [rules, accounts, extra, j] = await Promise.all([
+      api<{ rules: RuleRow[] }>('/api/social/rules'),
+      api<{ accounts: AccountRow[] }>('/api/social/accounts'),
+      admin ? api<RulesResponse>('/api/admin/social/automation/rules') : Promise.resolve(null),
+      admin
+        ? api<{ jobs: AutomationJobPublic[] }>('/api/admin/social/automation/jobs?days=7')
+        : api<{ jobs: AutomationJobPublic[] }>('/api/social/history'),
     ])
-    if (r.ok) {
-      setData(r.data)
+    if (rules.ok && accounts.ok) {
+      const visible = accounts.data.accounts.filter((a) => !ownerFilter || ownerFilter(a))
+      const ids = new Set(visible.map((a) => a.id))
+      setData({
+        rules: rules.data.rules.filter((r) => ids.has(r.accountId)),
+        accounts: visible,
+        legacyAccountIds: extra && extra.ok ? extra.data.legacyAccountIds : { facebook: null, instagram: null, threads: null },
+        handoffs: extra && extra.ok ? extra.data.handoffs : {},
+        counters: extra && extra.ok ? extra.data.counters : {},
+        reconcile: extra && extra.ok ? extra.data.reconcile : { cursor: null, updatedAt: -1 },
+      })
       setLoadError(null)
-    } else setLoadError(r.error)
+    } else setLoadError(!rules.ok ? rules.error : !accounts.ok ? accounts.error : 'Yüklenemedi')
     if (j.ok) setJobs(j.data.jobs)
     setLoading(false)
-  }, [])
+  }, [mode, ownerFilter])
 
   useEffect(() => {
     void load()
@@ -164,7 +185,7 @@ export function AutomationRulesPanel() {
 
   async function toggle(rule: RuleRow, enable: boolean) {
     setBusy(rule.id)
-    const r = await api<{ cancelledJobs: number }>(`/api/admin/social/automation/rules/${rule.id}`, {
+    const r = await api<{ cancelledJobs: number }>(`/api/social/rules/${rule.id}`, {
       method: 'PATCH',
       body: JSON.stringify(enable ? { action: 'enable', confirm: true } : { action: 'disable' }),
     })
@@ -177,7 +198,7 @@ export function AutomationRulesPanel() {
 
   async function remove(rule: RuleRow) {
     setBusy(rule.id)
-    const r = await api(`/api/admin/social/automation/rules/${rule.id}`, { method: 'DELETE' })
+    const r = await api(`/api/social/rules/${rule.id}`, { method: 'DELETE' })
     setBusy(null)
     if (!r.ok) return toast.error(r.error)
     toast.success('Kural silindi')
@@ -193,7 +214,7 @@ export function AutomationRulesPanel() {
     void load()
   }
 
-  const activeAccounts = (data?.accounts ?? []).filter((a) => a.connectionMethod !== 'legacy')
+  const activeAccounts = (data?.accounts ?? []).filter((a) => a.connectionMethod !== 'legacy' && (a as AccountRow).canManage !== false)
 
   return (
     <div className="space-y-5">
@@ -220,7 +241,7 @@ export function AutomationRulesPanel() {
 
       {loadError ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadError}</p> : null}
 
-      {data && data.reconcile.updatedAt === null ? (
+      {mode !== 'admin' ? null : data && data.reconcile.updatedAt === null ? (
         <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           Otomasyon çalışanı henüz hiç çalışmadı. Açık kural olsa bile paylaşım için <code>/api/cron/social-automation</code> ucunun zamanlanmış olması gerekir.
@@ -235,6 +256,7 @@ export function AutomationRulesPanel() {
           initial={editing.input}
           ruleId={editing.id}
           accounts={activeAccounts}
+          staff={mode === 'admin'}
           onCancel={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
@@ -266,7 +288,13 @@ export function AutomationRulesPanel() {
                   </div>
                   <p className="mt-1 text-sm text-[rgb(var(--color-text))]">
                     Hedef: <b>{accountLabel(acc, rule.accountId)}</b>
-                    {rule.ownership.citySlug ? ` · sahip il: ${TURKISH_PROVINCES.find((p) => p.slug === rule.ownership.citySlug)?.name ?? rule.ownership.citySlug}` : ' · merkez'}
+                    {rule.ownership.ownerUid
+                      ? ' · kişisel hesap'
+                      : rule.ownership.publisherId
+                        ? ' · yayıncı hesabı'
+                        : rule.ownership.citySlug
+                          ? ` · sahip il: ${TURKISH_PROVINCES.find((p) => p.slug === rule.ownership.citySlug)?.name ?? rule.ownership.citySlug}`
+                          : ' · merkez'}
                   </p>
                   <p className={cn('mt-0.5 flex items-center gap-1 text-xs', health.ok ? 'text-emerald-700' : 'text-red-700')}>
                     {health.ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />} {health.text}
@@ -347,7 +375,7 @@ export function AutomationRulesPanel() {
         </div>
       ) : null}
 
-      <LegacyHandoffSection data={data} busy={busy} onHandoff={handoff} accountsById={accountsById} />
+      {mode === 'admin' ? <LegacyHandoffSection data={data} busy={busy} onHandoff={handoff} accountsById={accountsById} /> : null}
 
       <section className="space-y-2">
         <h3 className="text-base font-bold text-[rgb(var(--color-text))]">Otomatik paylaşım işleri (son 7 gün)</h3>
@@ -456,12 +484,14 @@ function RuleForm({
   initial,
   ruleId,
   accounts,
+  staff = false,
   onCancel,
   onSaved,
 }: {
   initial: AutomationRuleInput
   ruleId: string | null
   accounts: SocialAccountPublic[]
+  staff?: boolean
   onCancel: () => void
   onSaved: () => void
 }) {
@@ -491,8 +521,8 @@ function RuleForm({
     setSaving(true)
     setError(null)
     const r = ruleId
-      ? await api(`/api/admin/social/automation/rules/${ruleId}`, { method: 'PATCH', body: JSON.stringify({ rule: input }) })
-      : await api('/api/admin/social/automation/rules', { method: 'POST', body: JSON.stringify(input) })
+      ? await api(`/api/social/rules/${ruleId}`, { method: 'PATCH', body: JSON.stringify({ rule: input }) })
+      : await api('/api/social/rules', { method: 'POST', body: JSON.stringify(input) })
     setSaving(false)
     if (!r.ok) return setError(r.error)
     toast.success(ruleId ? 'Kural güncellendi' : 'Kural kapalı olarak kaydedildi')
@@ -502,7 +532,7 @@ function RuleForm({
   async function runPreview() {
     setPreviewing(true)
     setError(null)
-    const r = await api<{ matched: number; scanned: number; items: PreviewItem[] }>('/api/admin/social/automation/preview', { method: 'POST', body: JSON.stringify(input) })
+    const r = await api<{ matched: number; scanned: number; items: PreviewItem[] }>('/api/social/rules/preview', { method: 'POST', body: JSON.stringify(input) })
     setPreviewing(false)
     if (!r.ok) return setError(r.error)
     setPreview(r.data)
@@ -730,12 +760,58 @@ function RuleForm({
                   <p className="text-xs text-[rgb(var(--color-muted))]">
                     {fmtTime(i.publishedAt)} · {i.citySlug ?? '—'} · {i.categoryId ?? '—'} — {i.reasons.join(' · ')}
                   </p>
+                  {i.action ? <p className="text-xs text-amber-700">Gerekli işlem: {i.action}</p> : null}
+                  {staff && i.eligibilityCode === 'needs_social_review' ? <EligibilityQuickAction newsId={i.newsId} onDone={() => void runPreview()} /> : null}
                 </div>
               </div>
             ))}
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** Editor: mark one external-source news as social-eligible with a media-rights basis (audited server-side). */
+function EligibilityQuickAction({ newsId, onDone }: { newsId: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [rights, setRights] = useState('')
+  const [busy, setBusy] = useState(false)
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-1 text-xs font-semibold text-blue-700 underline">
+        Sosyal yayına uygun işaretle…
+      </button>
+    )
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+      <select value={rights} onChange={(e) => setRights(e.target.value)} className="rounded border px-2 py-1">
+        <option value="">Görsel kullanım hakkı seçin</option>
+        <option value="own">Görsel NaHaber’e ait</option>
+        <option value="licensed">Lisanslı / ajans aboneliği</option>
+        <option value="official">Resmî kurum bülteni</option>
+        <option value="source_permitted">Kaynak izin verdi</option>
+      </select>
+      <button
+        type="button"
+        disabled={!rights || busy}
+        onClick={async () => {
+          setBusy(true)
+          const r = await api('/api/social/eligibility', { method: 'POST', body: JSON.stringify({ newsId, decision: 'allowed', mediaRights: rights }) })
+          setBusy(false)
+          if (!r.ok) return toast.error(r.error)
+          toast.success('Sosyal yayına uygun işaretlendi (kaynak bilgisi korundu)')
+          setOpen(false)
+          onDone()
+        }}
+        className="rounded bg-blue-600 px-2 py-1 font-semibold text-white disabled:opacity-50"
+      >
+        Kaydet
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="underline">
+        Vazgeç
+      </button>
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
   Info,
   Moon,
   Search,
+  Share2,
   Shield,
   Sparkles,
   Trash2,
@@ -82,6 +83,15 @@ export default function SettingsPage() {
         label: 'Kaydedilenler',
         href: ROUTES.SAVED,
         keywords: ['kaydet', 'bookmark', 'saved'],
+      },
+      {
+        id: 'social-accounts',
+        section: 'Nasıl kullanıyorsun?',
+        icon: Share2,
+        label: 'Sosyal hesaplarım',
+        description: 'Instagram, Facebook, Threads bağlantıları, paylaşım ve otomasyon',
+        href: '/settings/social',
+        keywords: ['sosyal', 'instagram', 'facebook', 'threads', 'paylaş', 'hesap', 'otomasyon'],
       },
       {
         id: 'notifications',

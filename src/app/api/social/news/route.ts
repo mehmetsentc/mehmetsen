@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         url: buildPublicArticleUrl(d.id, data),
         live: data.status === 'published' && (publishedAt === null || publishedAt <= now) && data.visibility !== 'private',
         eligible: elig.ok,
+        code: elig.ok ? null : elig.code,
         reason: elig.ok ? null : elig.text,
         action: elig.ok ? null : elig.action,
       }

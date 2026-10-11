@@ -417,7 +417,7 @@ describe('callback güvenliği', () => {
     )
     expect(res.status).toBe(303)
     const loc = res.headers.get('location')!
-    expect(loc.startsWith('https://www.nahaber.com/admin/social?')).toBe(true)
+    expect(loc.startsWith('https://www.nahaber.com/admin/social/accounts?')).toBe(true)
     expect(new URL(loc).searchParams.get('social')).toBe('permission_missing')
     expect(loc).not.toContain('AUTHCODE')
     expect(res.headers.get('referrer-policy')).toBe('no-referrer')

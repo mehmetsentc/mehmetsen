@@ -71,10 +71,13 @@ import { accountIdFor, requiredPermissionsFor, type SocialAccount, type SocialAc
 import { runAutomationTick } from './automation/worker'
 
 let calls: RecordedCall[] = []
+let dropPublishResponse = false
 async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = String(input)
   const method = (init?.method ?? 'GET').toUpperCase()
   calls.push({ url, method, body: init?.body ? String(init.body) : '' })
+  // Platform accepted the post but the response was lost on the way back.
+  if (dropPublishResponse && method === 'POST' && url.includes('/media_publish')) throw new TypeError('fetch failed')
   return cannedMetaResponse(url, method)
 }
 const publishes = () => calls.filter((c) => c.method === 'POST' && /\/(media_publish|threads_publish|photos|photo_stories)$/.test(new URL(c.url).pathname))
@@ -148,6 +151,7 @@ beforeEach(async () => {
   delete process.env.VERCEL_ENV
   for (const [a, t] of [[U1_IG, 'TOK_U1'], [U2_IG, 'TOK_U2'], [ANTALYA_IG, 'TOK_ANT'], [ISTANBUL_IG, 'TOK_IST'], [CENTRAL_IG, 'TOK_CEN'], [PUB_IG, 'TOK_PUB']] as const) await seed(a, t)
   calls = []
+  dropPublishResponse = false
   vi.stubGlobal('fetch', fakeFetch)
   vi.stubGlobal('setTimeout', ((fn: () => void) => { fn(); return 0 }) as unknown as typeof setTimeout)
   for (const lvl of ['log', 'warn', 'error', 'info'] as const) vi.spyOn(console, lvl).mockImplementation(() => {})
@@ -315,5 +319,39 @@ describe('Hesabımda yayımla (manuel, açık hedef)', () => {
     await seedNews('f1', { publishedAt: Date.now() + 3600_000 })
     expect((await share('u1', { newsId: 'd1', accountId: U1_IG.id, format: 'post' })).status).toBe(409)
     expect((await share('u1', { newsId: 'f1', accountId: U1_IG.id, format: 'post' })).status).toBe(409)
+  })
+
+  it('otomasyonu durdurmak manuel yayını kapatmaz', async () => {
+    const { POST: create } = await import('@/app/api/social/rules/route')
+    const { PATCH } = await import('@/app/api/social/rules/[id]/route')
+    const c = (await (await create(req('/api/social/rules', 'u1', { method: 'POST', body: ruleBody(U1_IG.id, ['antalya']) }))).json()) as { rule: { id: string; enabled: boolean } }
+    expect(c.rule.enabled).toBe(false)
+    const patch = (action: string) => PATCH(req(`/api/social/rules/${c.rule.id}`, 'u1', { method: 'PATCH', body: { action, confirm: true } }), { params: Promise.resolve({ id: c.rule.id }) })
+    expect((await patch('enable')).status).toBe(200)
+    expect((await patch('disable')).status).toBe(200)
+    await seedNews('m1')
+    expect((await share('u1', { newsId: 'm1', accountId: U1_IG.id, format: 'post' })).status).toBe(200)
+  })
+
+  it('platform yanıtı kaybolursa sonuç belirsiz; ikinci istek körlemesine yeniden yayımlamaz', async () => {
+    await seedNews('u1n')
+    dropPublishResponse = true
+    const r = await share('u1', { newsId: 'u1n', accountId: U1_IG.id, format: 'post' })
+    expect(r.status).toBe(202)
+    expect(((await r.json()) as { ledgerStatus: string }).ledgerStatus).toBe('uncertain')
+    dropPublishResponse = false
+    const again = await share('u1', { newsId: 'u1n', accountId: U1_IG.id, format: 'post' })
+    expect(again.status).not.toBe(200)
+    expect(publishes()).toHaveLength(1)
+  })
+
+  it('haber listesi uygunluk kodunu döndürür; normal kullanıcı personel sayılmaz', async () => {
+    await seedNews('e1', { sourceUrl: 'https://baska.com/e1' })
+    const { GET: news } = await import('@/app/api/social/news/route')
+    const items = ((await (await news(req('/api/social/news', 'u1'))).json()) as { items: Array<{ newsId: string; eligible: boolean; code: string | null }> }).items
+    expect(items.find((i) => i.newsId === 'e1')).toMatchObject({ eligible: false, code: 'needs_social_review' })
+    const { GET: me } = await import('@/app/api/social/me/route')
+    expect(((await (await me(req('/api/social/me', 'u1'))).json()) as { staff: boolean }).staff).toBe(false)
+    expect(((await (await me(req('/api/social/me', 'ed'))).json()) as { staff: boolean }).staff).toBe(true)
   })
 })

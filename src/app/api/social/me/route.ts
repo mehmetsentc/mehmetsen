@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   return json({
     central: a.central,
     provinces: a.provinces,
+    staff: a.isStaff,
     publishers: [...new Set([...a.publisherManage, ...a.publisherPublish])].map((id) => ({
       id,
       name: a.publisherNames?.[id] ?? id,
