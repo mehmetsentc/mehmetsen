@@ -94,6 +94,16 @@ function cmp(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b))
 }
 
+/** Dotted field paths (`ownership.ownerUid`) like the real SDK. */
+function fieldOf(data: Data, path: string): unknown {
+  let cur: unknown = data
+  for (const k of path.split('.')) {
+    if (!cur || typeof cur !== 'object') return undefined
+    cur = (cur as Data)[k]
+  }
+  return cur
+}
+
 function passes(v: unknown, op: FilterOp, want: unknown): boolean {
   switch (op) {
     case '==':
@@ -135,7 +145,7 @@ class FakeQuery {
   }
   async get() {
     this.db.reads += 1
-    let docs = this.db.docs(this.name).filter((d) => this.filters.every(([f, op, v]) => passes(d.data[f], op, v)))
+    let docs = this.db.docs(this.name).filter((d) => this.filters.every(([f, op, v]) => passes(fieldOf(d.data, f), op, v)))
     if (this.order) {
       const [f, dir] = this.order
       docs = docs.filter((d) => d.data[f] !== undefined).sort((a, b) => (dir === 'asc' ? 1 : -1) * cmp(a.data[f], b.data[f]))

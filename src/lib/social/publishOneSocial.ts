@@ -338,6 +338,11 @@ export interface PublishOneSocialOptions {
    * Onyeditivi yoluna asla düşülmez, `force` kullanılmaz.
    */
   automation?: { jobId: string; attemptId: string }
+  /**
+   * AI metin üretimi ve Meta AI yeniden yazımı kapalı; haberin kendi başlık /
+   * özeti kullanılır (kişisel / yayıncı hesabından manuel paylaşım).
+   */
+  noAi?: boolean
 }
 
 /** Actor id the automation worker publishes as (ledger / audit). */
@@ -442,6 +447,8 @@ export async function publishOneSocial(
     threads: !targets.threads || targets.threads === (await legacyAccountId('threads')),
   }
   const automation = !!options.automation
+  // Otomasyon ve kullanıcı/yayıncı paylaşımı: AI üretimi/yeniden yazımı yok, il varsayımı yok.
+  const neutral = automation || options.noAi === true
   if (automation) {
     const problem = automationCallProblem(options)
     if (problem) return skipped(newsId, `Geçersiz otomasyon çağrısı (${problem})`)
@@ -702,7 +709,7 @@ export async function publishOneSocial(
     // Otomasyon Çanakkale varsaymaz: haberin il adı, yoksa il slug'ından ad, yoksa "Türkiye".
     const cityName   = typeof data.cityName === 'string' && data.cityName.trim()
       ? data.cityName
-      : automation
+      : neutral
         ? automationCityName(typeof data.citySlug === 'string' ? data.citySlug : '')
         : 'Çanakkale'
 
@@ -719,7 +726,7 @@ export async function publishOneSocial(
       !!(overrides?.caption?.trim() || overrides?.storySummary?.trim())
 
     // Otomasyon sürekli AI çağırmaz: CMS sosyal metni ya da başlık/spot kullanılır.
-    let socialContent = hasFullOverride || cmsSocialReady || automation
+    let socialContent = hasFullOverride || cmsSocialReady || neutral
       ? null
       : await generateSocialContent(title, bodyText.length > 100 ? bodyText : spot, cityName)
 
@@ -742,7 +749,7 @@ export async function publishOneSocial(
         })(),
         // caption: buildFeedCaption zaten "📰 {başlık}" ekler — gövde sadece özet olsun
         caption: (cmsSocialReady && storedCaption ? storedCaption : spot.trim()) || '',
-        hashtags: automation
+        hashtags: neutral
           ? automationHashtags(cityName === 'Türkiye' ? '' : cityName)
           : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye'],
         altText: (typeof data.imageAlt === 'string' && data.imageAlt.trim()) || title,
@@ -806,7 +813,7 @@ export async function publishOneSocial(
     // OG görseli Firestore'dan socialHeadline/socialStorySummary okur —
     // paylaşmadan önce kaydet ki taze OG doğru metni kullansın.
     // Otomasyon, editörün hazır sosyal metnini yeniden yazmaz.
-    if (!(automation && cmsSocialReady)) try {
+    if (!(neutral && cmsSocialReady)) try {
       await db.collection(Collections.NEWS).doc(newsId).update({
         socialHeadline: socialContent.headline,
         socialStorySummary: socialContent.storySummary,
@@ -924,7 +931,7 @@ export async function publishOneSocial(
         cityName,
         citySlug: typeof data.citySlug === 'string' ? data.citySlug : undefined,
         // Otomasyon: Meta AI yeniden yazımı kapalı (manuel yayın global ayarı izler).
-        ...(automation ? { aiRewrite: false } : {}),
+        ...(neutral ? { aiRewrite: false } : {}),
       }
 
       console.log(
@@ -1030,7 +1037,7 @@ export async function publishOneSocial(
       const storyPayload: SocialPublishPayload = {
         newsId, title: socialContent.headline || title,
         description: undefined, imageUrl: storyImageUrl, articleUrl,
-        ...(automation ? { aiRewrite: false } : {}),
+        ...(neutral ? { aiRewrite: false } : {}),
       }
 
       if (!articleUrl?.trim()) {

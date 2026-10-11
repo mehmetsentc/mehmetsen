@@ -13,7 +13,7 @@ import type { SocialActor } from './access'
 
 export type { SocialActor } from './access'
 
-export function actorFromCms(uid: string, cms: CmsAuthContext | null, publishers: Array<{ id: string; role: PublisherMemberRole }> = []): SocialActor {
+export function actorFromCms(uid: string, cms: CmsAuthContext | null, publishers: Array<{ id: string; role: PublisherMemberRole; name?: string }> = []): SocialActor {
   const provinces =
     cms && cms.scope.kind === 'scoped' && staffTierOf(cms.scope) === 'province_general' ? [...cms.scope.scope.provinceSlugs] : []
   return {
@@ -23,14 +23,15 @@ export function actorFromCms(uid: string, cms: CmsAuthContext | null, publishers
     publisherManage: publishers.filter((p) => roleHasPermission(p.role, 'team:manage')).map((p) => p.id),
     publisherPublish: publishers.filter((p) => roleHasPermission(p.role, 'content:publish')).map((p) => p.id),
     isStaff: !!cms,
+    publisherNames: Object.fromEntries(publishers.map((p) => [p.id, p.name ?? p.id])),
   }
 }
 
-async function publishersFor(uid: string): Promise<Array<{ id: string; role: PublisherMemberRole }>> {
+async function publishersFor(uid: string): Promise<Array<{ id: string; role: PublisherMemberRole; name?: string }>> {
   try {
     const { publisherRepository } = await import('@/services/publisher/publisherRepository')
     const rows = await publisherRepository.listPublishersForUser(uid)
-    return rows.map((r) => ({ id: r.id, role: r.role }))
+    return rows.map((r) => ({ id: r.id, role: r.role, name: (r as { name?: string }).name }))
   } catch {
     // No publisher database / not a member → no publisher rights (fail closed).
     return []

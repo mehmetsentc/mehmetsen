@@ -32,6 +32,8 @@ export interface SocialActor {
   publisherPublish: string[]
   /** CMS staff (any role) — editors may still use the newsroom share flows. */
   isStaff: boolean
+  /** Display names of the actor's publishers (UI only, never used for decisions). */
+  publisherNames?: Record<string, string>
 }
 
 export function canManageAccount(actor: SocialActor, ownership: SocialAccountOwnership): boolean {
