@@ -36,6 +36,8 @@ const STATE_DOC = 'reconcile'
 
 export interface ReconcileState {
   cursor: number | null
+  /** createdAt cursor: news created already `published` WITHOUT publishedAt (queue / AFAD / submissions paths). */
+  createdCursor: number | null
   lastFeaturedCheckAt: number | null
   updatedAt: number
 }
@@ -58,10 +60,10 @@ function stateRef() {
 export async function readReconcileState(): Promise<ReconcileState> {
   const s = await stateRef().get()
   const d = s.exists ? (s.data() as Partial<ReconcileState>) : {}
-  return { cursor: d.cursor ?? null, lastFeaturedCheckAt: d.lastFeaturedCheckAt ?? null, updatedAt: d.updatedAt ?? 0 }
+  return { cursor: d.cursor ?? null, createdCursor: d.createdCursor ?? null, lastFeaturedCheckAt: d.lastFeaturedCheckAt ?? null, updatedAt: d.updatedAt ?? 0 }
 }
 
-type NewsDoc = { id: string; data: Record<string, unknown> }
+type NewsDoc = { id: string; data: Record<string, unknown>; eligibleAt?: number }
 
 /** Group rule matches by (account, format) → one job each, with every matching rule id. */
 export function plannedJobs(
@@ -73,6 +75,7 @@ export function plannedJobs(
   for (const doc of docs) {
     if (contentProblem(doc.data)) continue
     const facts = newsFactsFrom(doc.id, doc.data)
+    if (facts.eligibleAt === null && typeof doc.eligibleAt === 'number') facts.eligibleAt = doc.eligibleAt
     for (const rule of rules) {
       if (!evaluateRule(rule, facts).match) continue
       for (const format of rule.formats) {
@@ -148,6 +151,30 @@ export async function reconcile(input: {
     const last = snap.docs[snap.docs.length - 1].data() as { publishedAt?: number }
     from = typeof last.publishedAt === 'number' ? last.publishedAt : upper
   }
+  // createdAt cursor: published news that carry no publishedAt (other paths set it).
+  const seenIds = new Set(docs.map((d) => d.id))
+  let createdFrom = Math.max(state.createdCursor ?? 0, minEnabledAt - 1)
+  for (let page = 0; page < RECONCILE_MAX_PAGES && createdFrom < upper; page++) {
+    const snap = await db
+      .collection(Collections.NEWS)
+      .where('createdAt', '>', createdFrom)
+      .where('createdAt', '<=', upper)
+      .orderBy('createdAt', 'asc')
+      .limit(RECONCILE_PAGE)
+      .get()
+    for (const d of snap.docs) {
+      const data = d.data() as Record<string, unknown>
+      if (seenIds.has(d.id) || typeof data.publishedAt === 'number') continue
+      seenIds.add(d.id)
+      docs.push({ id: d.id, data, eligibleAt: typeof data.createdAt === 'number' ? data.createdAt : undefined })
+    }
+    if (snap.docs.length < RECONCILE_PAGE) {
+      createdFrom = upper
+      break
+    }
+    const last = snap.docs[snap.docs.length - 1].data() as { createdAt?: number }
+    createdFrom = typeof last.createdAt === 'number' ? last.createdAt : upper
+  }
   report.scanned = docs.length
 
   // Featured re-check (pins added after publish).
@@ -185,6 +212,6 @@ export async function reconcile(input: {
   report.candidates = plan.length
   report.enqueued = await enqueuePlanned(plan, input.now)
   report.cursorTo = from
-  await stateRef().set({ cursor: from, lastFeaturedCheckAt, updatedAt: input.now })
+  await stateRef().set({ cursor: from, createdCursor: createdFrom, lastFeaturedCheckAt, updatedAt: input.now })
   return report
 }

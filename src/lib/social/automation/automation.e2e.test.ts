@@ -723,4 +723,12 @@ describe('Görev 15 — yayın kancası, zamanlanmış haber, yeniden değerlend
     expect(story.success).toBe(true)
     expect(ran).toBe(1)
   })
+
+  it('publishedAt alanı olmadan yayımlanan haber (kuyruk / AFAD yolu) createdAt imleciyle yakalanır', async () => {
+    await enabledRule()
+    await seedNews('q1', { publishedAt: undefined, createdAt: T0 + 90_000 })
+    await fs.collection('news').doc('q1').set({ ...(fs.store.get('news/q1') as object), publishedAt: null })
+    await tick()
+    expect(job('q1')?.status).toBe('published')
+  })
 })
