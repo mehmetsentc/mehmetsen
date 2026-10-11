@@ -105,7 +105,7 @@ describe('OAuth state', () => {
   it('geçerli tüketim: başlatan kullanıcı, platform ve sahiplik geri döner', async () => {
     const a = await start()
     const r = await consumeSocialOAuthState({ state: a.state, bindingCookie: a.cookie.value, expectedPlatform: 'instagram', now: NOW + 1000 })
-    expect(r).toEqual({ ok: true, uid: 'admin-1', platform: 'instagram', connectionMethod: 'instagram_login', ownership: { citySlug: 'antalya', publisherId: null }, reconnectAccountId: null })
+    expect(r).toEqual({ ok: true, uid: 'admin-1', platform: 'instagram', connectionMethod: 'instagram_login', ownership: { citySlug: 'antalya', publisherId: null }, reconnectAccountId: null, returnTo: 'admin' })
   })
 
   it('tek kullanım: ikinci tüketim reddedilir', async () => {

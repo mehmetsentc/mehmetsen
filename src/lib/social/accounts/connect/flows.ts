@@ -15,11 +15,11 @@
  */
 import 'server-only'
 import { isTurkishProvinceSlug, normalizeCitySlug } from '@/constants/cities'
-import type { CmsAuthContext } from '@/lib/cmsAuthServer'
 import { verifyCmsSessionToken } from '@/lib/cmsSession'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
-import { canManageSocialAccountOwnership, canManageSocialAccounts, recheckSocialAccountManager } from '../authz'
+import { canManageAccount, canViewAccount, ownershipFor, parseOwnershipRequest, type SocialActor } from '../access'
+import { resolveSocialActorForUid } from '../actor'
 import { writeSocialAudit } from '../audit'
 import { getSocialAccount, isWellFormedAccountId, loadSocialAccount } from '../accountStore'
 import {
@@ -30,11 +30,13 @@ import {
   OAUTH_BINDING_COOKIE_SECURE,
   type OAuthBindingCookie,
   type OAuthConnectionMethod,
+  type OAuthReturnTo,
 } from '../oauthState'
 import { decryptAccessToken, readSecretRecord } from '../secretStore'
 import { expectedTokenType, resolveLegacyCredentials } from '../resolvePublishTarget'
 import {
   isSocialAccountPlatform,
+  ownershipKind,
   parseSocialAccount,
   publishPermissionState,
   requiredPermissionsFor,
@@ -112,14 +114,14 @@ export type StartResult =
   | { ok: false; status: number; code: string; missing?: string[] }
 
 export async function startConnection(input: {
-  ctx: CmsAuthContext
+  actor: SocialActor
   platform: unknown
   ownership?: unknown
   reconnectAccountId?: string | null
+  returnTo?: OAuthReturnTo
   now?: number
 }): Promise<StartResult> {
   const now = input.now ?? Date.now()
-  if (!canManageSocialAccounts(input.ctx)) return { ok: false, status: 403, code: 'forbidden' }
 
   let platform: SocialAccountPlatform
   let ownership: SocialAccountOwnership
@@ -141,23 +143,30 @@ export async function startConnection(input: {
     reconnectAccountId = id
   } else {
     if (!isSocialAccountPlatform(input.platform)) return { ok: false, status: 400, code: 'invalid_platform' }
-    const own = parseOwnershipInput(input.ownership)
-    if (!own) return { ok: false, status: 400, code: 'invalid_ownership' }
+    const req = parseOwnershipRequest(input.ownership)
+    if (!req) return { ok: false, status: 400, code: 'invalid_ownership' }
+    if (req.kind === 'province' && (!isTurkishProvinceSlug(req.citySlug) || normalizeCitySlug(req.citySlug) !== req.citySlug)) {
+      return { ok: false, status: 400, code: 'invalid_ownership' }
+    }
+    // Ownership is built from the actor's own rights — the client only names the kind.
+    const own = ownershipFor(input.actor, req)
+    if (!own) return { ok: false, status: 403, code: 'forbidden' }
     platform = input.platform
     ownership = own
   }
-  if (!canManageSocialAccountOwnership(input.ctx, ownership)) return { ok: false, status: 403, code: 'forbidden' }
+  if (!canManageAccount(input.actor, ownership)) return { ok: false, status: 403, code: 'forbidden' }
 
   const status = getPlatformConfigStatus(platform)
   if (!status.ready) return { ok: false, status: 409, code: 'not_configured', missing: status.missing }
   const cfg = getPlatformOAuthConfig(platform)
 
   const { state, cookie } = await createSocialOAuthState({
-    uid: input.ctx.uid,
+    uid: input.actor.uid,
     platform,
     connectionMethod: METHOD_FOR_PLATFORM[platform],
     ownership,
     reconnectAccountId,
+    returnTo: input.returnTo ?? (ownershipKind(ownership) === 'user' ? 'profile' : ownershipKind(ownership) === 'publisher' ? 'publisher' : 'admin'),
     now,
   })
   const authorizeUrl =
@@ -168,11 +177,11 @@ export async function startConnection(input: {
         : buildThreadsAuthorizeUrl(cfg, state)
 
   await writeSocialAudit({
-    actorId: input.ctx.uid,
+    actorId: input.actor.uid,
     action: 'social.oauth.start',
     entityType: 'socialOAuth',
     entityId: reconnectAccountId ?? platform,
-    meta: { platform, citySlug: ownership.citySlug, reconnect: !!reconnectAccountId },
+    meta: { platform, ownerKind: ownershipKind(ownership), citySlug: ownership.citySlug, publisherId: ownership.publisherId ?? null, reconnect: !!reconnectAccountId },
   })
   return { ok: true, authorizeUrl, cookie }
 }
@@ -209,10 +218,10 @@ export function readSelectCookie(cookieHeader: string | null): string | null {
   return readCookieValue(cookieHeader, SELECT_COOKIE_SECURE) ?? readCookieValue(cookieHeader, SELECT_COOKIE_DEV)
 }
 
-function outcome(result: string, extra: Record<string, string> = {}, cookies: CookieToSet[] = []): CallbackOutcome {
+function outcome(result: string, extra: Record<string, string> = {}, cookies: CookieToSet[] = [], returnTo: OAuthReturnTo = 'admin'): CallbackOutcome {
   return {
     result,
-    redirect: panelReturnUrl({ social: result, ...extra }),
+    redirect: panelReturnUrl({ social: result, ...extra }, returnTo),
     cookies: [clearCookie(OAUTH_BINDING_COOKIE_SECURE), clearCookie(OAUTH_BINDING_COOKIE_DEV), ...cookies],
   }
 }
@@ -243,28 +252,36 @@ export async function handleOAuthCallback(input: {
     state: input.params.get('state'),
     bindingCookie: readBindingCookie(input.cookieHeader),
     expectedPlatform: platform,
-    expectedUid: session?.uid ?? '',
+    // A signed-in CMS session must belong to the initiator. Corporate
+    // (central / province) connections REQUIRE that session (checked below);
+    // personal / publisher connections rely on the HttpOnly binding cookie set
+    // by the authenticated start request + the state's uid.
+    expectedUid: session?.uid ?? null,
     now,
   })
   const userCancelled = input.params.get('error') === 'access_denied' || !!input.params.get('error')
   if (!consumed.ok) {
-    if (consumed.code === 'user_mismatch') return outcome(session ? 'session_mismatch' : 'session_required')
+    if (consumed.code === 'user_mismatch') return outcome('session_mismatch')
     if (consumed.code === 'expired') return outcome('state_expired')
     return outcome(userCancelled ? 'cancelled' : 'state_invalid')
   }
+  const back = consumed.returnTo
+  const corporate = ownershipKind(consumed.ownership) === 'central' || ownershipKind(consumed.ownership) === 'province'
+  if (corporate && session?.uid !== consumed.uid) return outcome('session_required', {}, [], back)
   if (userCancelled) {
     await writeSocialAudit({ actorId: consumed.uid, action: 'social.oauth.callback', entityType: 'socialOAuth', entityId: platform, meta: { result: 'cancelled' } })
-    return outcome('cancelled')
+    return outcome('cancelled', {}, [], back)
   }
 
-  const ctx = await recheckSocialAccountManager(consumed.uid, consumed.ownership)
-  if (!ctx) return outcome('forbidden')
+  // CURRENT rights of the initiator (role / scope / membership may have changed).
+  const actor = await resolveSocialActorForUid(consumed.uid)
+  if (!actor || !canManageAccount(actor, consumed.ownership)) return outcome('forbidden', {}, [], back)
 
   const status = getPlatformConfigStatus(platform)
-  if (!status.ready) return outcome('not_configured')
+  if (!status.ready) return outcome('not_configured', {}, [], back)
   const cfg = getPlatformOAuthConfig(platform)
   const code = cleanAuthCode(input.params.get('code'))
-  if (!code) return outcome('missing_code')
+  if (!code) return outcome('missing_code', {}, [], back)
 
   let result: CallbackOutcome
   try {
@@ -274,14 +291,14 @@ export async function handleOAuthCallback(input: {
   } catch (err) {
     const step = err instanceof MetaCallError ? err.step : 'internal'
     console.warn(`[social-connect] callback platform=${platform} step=${step} failed`)
-    result = outcome('platform_error')
+    result = outcome('platform_error', {}, [], back)
   }
   await writeSocialAudit({
     actorId: consumed.uid,
     action: 'social.oauth.callback',
     entityType: 'socialOAuth',
     entityId: consumed.reconnectAccountId ?? platform,
-    meta: { platform, result: result.result, citySlug: consumed.ownership.citySlug },
+    meta: { platform, result: result.result, ownerKind: ownershipKind(consumed.ownership), citySlug: consumed.ownership.citySlug },
   })
   return result
 }
@@ -292,7 +309,7 @@ async function finishSave(
   save: SaveConnectionResult,
   consumed: Consumed,
 ): Promise<CallbackOutcome> {
-  if (!save.ok) return outcome(SAVE_RESULT_CODE[save.code])
+  if (!save.ok) return outcome(SAVE_RESULT_CODE[save.code], {}, [], consumed.returnTo)
   await writeSocialAudit({
     actorId: consumed.uid,
     action: consumed.reconnectAccountId ? 'social.account.connect' : 'social.account.create',
@@ -300,7 +317,7 @@ async function finishSave(
     entityId: save.accountId,
     after: { status: save.status, citySlug: save.ownership.citySlug, created: save.created, migratedFromLegacy: save.migratedFromLegacy === true },
   })
-  return outcome(save.status === 'active' ? 'connected' : 'connected_needs_attention', { account: save.accountId })
+  return outcome(save.status === 'active' ? 'connected' : 'connected_needs_attention', { account: save.accountId }, [], consumed.returnTo)
 }
 
 async function facebookCallback(
@@ -312,12 +329,12 @@ async function facebookCallback(
   const { userToken, expiresAt } = await exchangeFacebookCode(cfg, code, now)
   const perms = await fetchFacebookPermissions(userToken)
   const required = requiredPermissionsFor('facebook', 'facebook_login')
-  if (required.some((p) => perms.declined.includes(p))) return outcome('permission_declined')
-  if (!required.every((p) => perms.granted.includes(p))) return outcome('permission_missing')
+  if (required.some((p) => perms.declined.includes(p))) return outcome('permission_declined', {}, [], consumed.returnTo)
+  if (!required.every((p) => perms.granted.includes(p))) return outcome('permission_missing', {}, [], consumed.returnTo)
 
   const { pages, truncated } = await listFacebookPages(userToken)
-  if (pages.length === 0) return outcome('no_pages')
-  if (!pages.some((p) => p.eligible)) return outcome('no_eligible_pages')
+  if (pages.length === 0) return outcome('no_pages', {}, [], consumed.returnTo)
+  if (!pages.some((p) => p.eligible)) return outcome('no_eligible_pages', {}, [], consumed.returnTo)
 
   const sess = await createFacebookSelectSession({
     uid: consumed.uid,
@@ -337,7 +354,7 @@ async function facebookCallback(
       value: sess.binding,
       options: { httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: Math.floor(SELECT_SESSION_TTL_MS / 1000) },
     },
-  ])
+  ], consumed.returnTo)
 }
 
 async function instagramCallback(
@@ -348,11 +365,11 @@ async function instagramCallback(
 ): Promise<CallbackOutcome> {
   const { shortToken, permissions } = await exchangeInstagramCode(cfg, code)
   const required = requiredPermissionsFor('instagram', 'instagram_login')
-  if (permissions && !required.every((p) => permissions.includes(p))) return outcome('permission_missing')
-  if (!permissions && consumed.reconnectAccountId) return outcome('permission_unverified')
+  if (permissions && !required.every((p) => permissions.includes(p))) return outcome('permission_missing', {}, [], consumed.returnTo)
+  if (!permissions && consumed.reconnectAccountId) return outcome('permission_unverified', {}, [], consumed.returnTo)
   const long = await exchangeInstagramLongLived(cfg, shortToken, now)
   const profile = await fetchInstagramProfile(long.token)
-  if (!isInstagramProfessional(profile.accountType)) return outcome('not_professional')
+  if (!isInstagramProfessional(profile.accountType)) return outcome('not_professional', {}, [], consumed.returnTo)
   const save = await saveConnectedAccount({
     platform: 'instagram',
     connectionMethod: 'instagram_login',
@@ -385,8 +402,8 @@ async function threadsCallback(
   const profile = await fetchThreadsProfile(long.token, userId)
   const scopes = await verifyThreadsScopes(long.token, userId)
   const required = requiredPermissionsFor('threads', 'threads_oauth')
-  if (scopes && !required.every((p) => scopes.includes(p))) return outcome('permission_missing')
-  if (!scopes && consumed.reconnectAccountId) return outcome('permission_unverified')
+  if (scopes && !required.every((p) => scopes.includes(p))) return outcome('permission_missing', {}, [], consumed.returnTo)
+  if (!scopes && consumed.reconnectAccountId) return outcome('permission_unverified', {}, [], consumed.returnTo)
   const save = await saveConnectedAccount({
     platform: 'threads',
     connectionMethod: 'threads_oauth',
@@ -411,17 +428,16 @@ async function threadsCallback(
 // ── Facebook page selection ─────────────────────────────────────────────────
 
 export async function listSelectablePages(input: {
-  ctx: CmsAuthContext
+  actor: SocialActor
   sessionId: string | null
   cookieHeader: string | null
   offset: number
   now?: number
 }) {
-  if (!canManageSocialAccounts(input.ctx)) return { ok: false as const, status: 403, code: 'forbidden' }
   const r = await readFacebookSelectSession({
     sessionId: input.sessionId,
     binding: readSelectCookie(input.cookieHeader),
-    uid: input.ctx.uid,
+    uid: input.actor.uid,
     now: input.now ?? Date.now(),
     offset: input.offset,
     limit: 25,
@@ -431,19 +447,18 @@ export async function listSelectablePages(input: {
 }
 
 export async function selectFacebookPage(input: {
-  ctx: CmsAuthContext
+  actor: SocialActor
   sessionId: unknown
   pageId: unknown
   cookieHeader: string | null
   now?: number
 }): Promise<{ ok: true; accountId: string; status: string } | { ok: false; status: number; code: string }> {
   const now = input.now ?? Date.now()
-  if (!canManageSocialAccounts(input.ctx)) return { ok: false, status: 403, code: 'forbidden' }
   const pageId = typeof input.pageId === 'string' ? input.pageId.trim() : ''
   const consumed = await consumeFacebookSelectSession({
     sessionId: typeof input.sessionId === 'string' ? input.sessionId : null,
     binding: readSelectCookie(input.cookieHeader),
-    uid: input.ctx.uid,
+    uid: input.actor.uid,
     pageId,
     now,
   })
@@ -452,7 +467,7 @@ export async function selectFacebookPage(input: {
     return { ok: false, status, code: consumed.code }
   }
   // Re-check the selecting user's CURRENT authority for the session's ownership.
-  if (!canManageSocialAccountOwnership(input.ctx, consumed.ownership)) return { ok: false, status: 403, code: 'forbidden' }
+  if (!canManageAccount(input.actor, consumed.ownership)) return { ok: false, status: 403, code: 'forbidden' }
   const cfgStatus = getPlatformConfigStatus('facebook')
   if (!cfgStatus.ready) return { ok: false, status: 409, code: 'not_configured' }
   const cfg = getPlatformOAuthConfig('facebook')
@@ -482,12 +497,12 @@ export async function selectFacebookPage(input: {
     permissionsVerifiedAt: now,
     ownership: consumed.ownership,
     reconnectAccountId: consumed.reconnectAccountId,
-    actorUid: input.ctx.uid,
+    actorUid: input.actor.uid,
     now,
   })
   if (!save.ok) return { ok: false, status: 409, code: SAVE_RESULT_CODE[save.code] }
   await writeSocialAudit({
-    actorId: input.ctx.uid,
+    actorId: input.actor.uid,
     action: consumed.reconnectAccountId ? 'social.account.connect' : 'social.account.create',
     entityType: 'socialAccount',
     entityId: save.accountId,
@@ -520,13 +535,12 @@ export async function activationBlocker(accountId: string, now: number): Promise
 }
 
 export async function changeAccountStatus(input: {
-  ctx: CmsAuthContext
+  actor: SocialActor
   accountId: string
   action: unknown
   now?: number
 }): Promise<{ ok: true; status: string } | { ok: false; status: number; code: string }> {
   const now = input.now ?? Date.now()
-  if (!canManageSocialAccounts(input.ctx)) return { ok: false, status: 403, code: 'forbidden' }
   if (!isWellFormedAccountId(input.accountId)) return { ok: false, status: 400, code: 'invalid_account_id' }
   if (input.action !== 'pause' && input.action !== 'activate') return { ok: false, status: 400, code: 'invalid_action' }
   const action = input.action
@@ -540,21 +554,21 @@ export async function changeAccountStatus(input: {
     const snap = await tx.get(ref)
     const a = snap.exists ? parseSocialAccount(input.accountId, snap.data()) : null
     if (!a) return { ok: false as const, status: 404, code: 'not_found' }
-    if (!canManageSocialAccountOwnership(input.ctx, a.ownership)) return { ok: false as const, status: 403, code: 'forbidden' }
+    if (!canManageAccount(input.actor, a.ownership)) return { ok: false as const, status: 403, code: 'forbidden' }
     if (action === 'pause') {
       if (a.status !== 'active') return { ok: false as const, status: 409, code: `cannot_pause_${a.status}` }
-      tx.update(ref, { status: 'paused', statusReason: 'Yönetici tarafından duraklatıldı', updatedAt: now, updatedBy: input.ctx.uid })
+      tx.update(ref, { status: 'paused', statusReason: 'Hesap sahibi / yönetici tarafından duraklatıldı', updatedAt: now, updatedBy: input.actor.uid })
       return { ok: true as const, before: a.status, after: 'paused' }
     }
     if (a.status === 'needs_reauth') return { ok: false as const, status: 409, code: 'reconnect_required' }
     if (a.status !== 'paused') return { ok: false as const, status: 409, code: `cannot_activate_${a.status}` }
     if (blocker) return { ok: false as const, status: 409, code: blocker }
-    tx.update(ref, { status: 'active', statusReason: null, updatedAt: now, updatedBy: input.ctx.uid })
+    tx.update(ref, { status: 'active', statusReason: null, updatedAt: now, updatedBy: input.actor.uid })
     return { ok: true as const, before: a.status, after: 'active' }
   })
   if (!r.ok) return r
   await writeSocialAudit({
-    actorId: input.ctx.uid,
+    actorId: input.actor.uid,
     action: 'social.account.status',
     entityType: 'socialAccount',
     entityId: input.accountId,
@@ -564,11 +578,33 @@ export async function changeAccountStatus(input: {
   return { ok: true, status: r.after }
 }
 
-/** Accounts visible to this manager (central admins: all). Metadata only. */
-export async function listManagedAccounts(ctx: CmsAuthContext) {
-  if (!canManageSocialAccounts(ctx)) return null
-  const snap = await getAdminFirestore().collection(Collections.SOCIAL_ACCOUNTS).get()
-  return snap.docs
-    .map((d) => parseSocialAccount(d.id, d.data()))
-    .filter((a): a is NonNullable<typeof a> => !!a && canManageSocialAccountOwnership(ctx, a.ownership))
+/**
+ * Accounts this actor may see (metadata only). Bounded, owner-scoped queries:
+ * personal → ownerUid, publisher → publisherId in [...], province → citySlug
+ * in [...], central admins → corporate + publisher accounts (≤ 500). A
+ * personal account is never listed to anyone but its owner.
+ */
+export async function listAccountsForActor(actor: SocialActor) {
+  const col = getAdminFirestore().collection(Collections.SOCIAL_ACCOUNTS)
+  const queries: Array<Promise<FirebaseFirestore.QuerySnapshot>> = [
+    col.where('ownership.ownerUid', '==', actor.uid).limit(50).get() as Promise<FirebaseFirestore.QuerySnapshot>,
+  ]
+  const pubIds = [...new Set([...actor.publisherManage, ...actor.publisherPublish])].slice(0, 30)
+  if (pubIds.length > 0) queries.push(col.where('ownership.publisherId', 'in', pubIds).limit(200).get() as Promise<FirebaseFirestore.QuerySnapshot>)
+  if (actor.central) queries.push(col.limit(500).get() as Promise<FirebaseFirestore.QuerySnapshot>)
+  else if (actor.provinces.length > 0) queries.push(col.where('ownership.citySlug', 'in', actor.provinces.slice(0, 30)).limit(200).get() as Promise<FirebaseFirestore.QuerySnapshot>)
+  const snaps = await Promise.all(queries)
+  const seen = new Map<string, NonNullable<ReturnType<typeof parseSocialAccount>>>()
+  for (const snap of snaps) {
+    for (const d of snap.docs) {
+      const a = parseSocialAccount(d.id, d.data())
+      if (a && canViewAccount(actor, a.ownership)) seen.set(a.id, a)
+    }
+  }
+  return [...seen.values()]
+}
+
+/** Back-compat for central admin routes. */
+export async function listManagedAccounts(actor: SocialActor) {
+  return listAccountsForActor(actor)
 }

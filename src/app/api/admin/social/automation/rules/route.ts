@@ -7,6 +7,7 @@
  * unscoped) — the same guard as account management. Ownership, platform and
  * enabled state are never taken from the client.
  */
+import { actorFromCms } from '@/lib/social/accounts/actor'
 import { json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { listManagedAccounts } from '@/lib/social/accounts/connect/flows'
 import { legacyAccountId } from '@/lib/social/accounts/legacyLock'
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const now = Date.now()
   const [rules, accounts, handoffs, reconcileState, legacyFb, legacyIg, legacyTh] = await Promise.all([
     listRules(),
-    listManagedAccounts(auth.ctx).then((a) => a ?? []),
+    listManagedAccounts(actorFromCms(auth.ctx.uid, auth.ctx)).then((a) => a ?? []),
     readLegacyHandoffs(),
     readReconcileState(),
     legacyAccountId('facebook'),

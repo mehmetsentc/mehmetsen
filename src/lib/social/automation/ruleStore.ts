@@ -18,7 +18,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { loadSocialAccount } from '../accounts/accountStore'
 import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
-import { toPublicSocialAccount, type SocialAccount, type SocialAccountPlatform } from '../accounts/types'
+import { normalizeOwnership, ownershipKind, toPublicSocialAccount, type SocialAccount, type SocialAccountPlatform } from '../accounts/types'
 import { writeSocialAudit } from '../accounts/audit'
 import { cancelQueuedForAccount } from './jobs'
 import type { AutomationRule, AutomationRuleInput } from './types'
@@ -95,7 +95,8 @@ export async function createRule(input: AutomationRuleInput, actorUid: string, n
     ...input,
     id,
     platform: account.platform,
-    ownership: { citySlug: account.ownership.citySlug ?? null, publisherId: account.ownership.publisherId ?? null },
+    ownership: normalizeOwnership(account.ownership),
+    publisherId: ownershipKind(account.ownership) === 'publisher' ? account.ownership.publisherId : null,
     enabled: false,
     enabledAt: null,
     createdAt: now,

@@ -16,6 +16,8 @@ import { Collections } from '@/lib/firebase/collections'
 import { buildEncryptedSecretRecord, SecretEncryptionUnavailableError, type SocialTokenType } from '../secretStore'
 import {
   accountIdFor,
+  normalizeOwnership,
+  ownershipKind,
   parseSocialAccount,
   publishPermissionState,
   type SocialAccount,
@@ -60,8 +62,15 @@ export type SaveConnectionResult =
         | 'test_account_not_allowed'
     }
 
-function sameOwnership(a: SocialAccountOwnership, b: SocialAccountOwnership): boolean {
-  return (a.citySlug ?? null) === (b.citySlug ?? null) && (a.publisherId ?? null) === (b.publisherId ?? null)
+export function sameOwnership(a: SocialAccountOwnership, b: SocialAccountOwnership): boolean {
+  const x = normalizeOwnership(a)
+  const y = normalizeOwnership(b)
+  return (
+    ownershipKind(x) === ownershipKind(y) &&
+    (x.citySlug ?? null) === (y.citySlug ?? null) &&
+    (x.publisherId ?? null) === (y.publisherId ?? null) &&
+    (x.ownerUid ?? null) === (y.ownerUid ?? null)
+  )
 }
 
 /** Status after (re)connection: only a verified, unexpired connection is `active`. */
@@ -129,7 +138,7 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
         externalId: input.externalId,
         displayName: input.displayName.slice(0, 200) || input.externalId,
         username: input.username,
-        ownership: { citySlug: ownership.citySlug, publisherId: ownership.publisherId },
+        ownership: normalizeOwnership(ownership),
         status,
         statusReason: reason,
         connectedBy: input.actorUid,

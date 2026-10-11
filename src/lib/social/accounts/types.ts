@@ -33,12 +33,44 @@ export const ALLOWED_CONNECTION_METHODS: Record<SocialAccountPlatform, readonly 
 export const SOCIAL_ACCOUNT_STATUSES = ['active', 'paused', 'needs_reauth', 'disabled'] as const
 export type SocialAccountStatus = (typeof SOCIAL_ACCOUNT_STATUSES)[number]
 
-/** Province and/or publisher that owns the account. At least one must be set. */
+/**
+ * Who owns the account. Exactly one owner kind (see ownershipKind):
+ *   - user       → `ownerUid` (a NaHaber user's personal account)
+ *   - publisher  → `publisherId`
+ *   - central    → `central: true` (NaHaber corporate, national)
+ *   - province   → `citySlug` only (il masası)
+ * Ownership is set by the server from the connecting actor and never changes
+ * on reconnect.
+ */
 export interface SocialAccountOwnership {
   /** Canonical province slug (e.g. `antalya`). */
   citySlug: string | null
   /** Publisher platform id, when a publisher (not a province desk) owns it. */
   publisherId: string | null
+  /** Personal owner (Firebase uid). */
+  ownerUid?: string | null
+  /** NaHaber central / national corporate account. */
+  central?: boolean
+}
+
+export type OwnershipKind = 'user' | 'publisher' | 'central' | 'province'
+
+export function ownershipKind(o: SocialAccountOwnership | null | undefined): OwnershipKind | null {
+  if (!o) return null
+  if (o.ownerUid) return 'user'
+  if (o.publisherId) return 'publisher'
+  if (o.central === true) return 'central'
+  if (o.citySlug) return 'province'
+  return null
+}
+
+/** Normalised copy (only the fields of the owner kind). */
+export function normalizeOwnership(o: SocialAccountOwnership): SocialAccountOwnership {
+  const kind = ownershipKind(o)
+  if (kind === 'user') return { citySlug: null, publisherId: null, ownerUid: o.ownerUid ?? null }
+  if (kind === 'publisher') return { citySlug: null, publisherId: o.publisherId }
+  if (kind === 'central') return { citySlug: null, publisherId: null, central: true }
+  return { citySlug: o.citySlug, publisherId: null }
 }
 
 interface SocialAccountCommon {
@@ -111,6 +143,7 @@ export interface SocialAccountPublic {
   displayName: string
   username: string | null
   ownership: SocialAccountOwnership
+  ownerKind: OwnershipKind
   connectionMethod: SocialConnectionMethod
   status: SocialAccountStatus
   statusReason: string | null
@@ -207,8 +240,13 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
   if (!isSocialAccountStatus(r.status)) return null
 
   const own = (r.ownership && typeof r.ownership === 'object' ? r.ownership : {}) as Record<string, unknown>
-  const ownership: SocialAccountOwnership = { citySlug: str(own.citySlug), publisherId: str(own.publisherId) }
-  if (!ownership.citySlug && !ownership.publisherId) return null
+  const ownership: SocialAccountOwnership = {
+    citySlug: str(own.citySlug),
+    publisherId: str(own.publisherId),
+    ...(str(own.ownerUid) ? { ownerUid: str(own.ownerUid) } : {}),
+    ...(own.central === true ? { central: true } : {}),
+  }
+  if (!ownershipKind(ownership)) return null
 
   const common: SocialAccountCommon = {
     id,
@@ -260,7 +298,8 @@ export function toPublicSocialAccount(a: SocialAccount): SocialAccountPublic {
     externalId: a.externalId,
     displayName: a.displayName,
     username: a.username,
-    ownership: { citySlug: a.ownership.citySlug, publisherId: a.ownership.publisherId },
+    ownership: normalizeOwnership(a.ownership),
+    ownerKind: ownershipKind(a.ownership) ?? 'province',
     connectionMethod: a.connectionMethod,
     status: a.status,
     statusReason: a.statusReason,

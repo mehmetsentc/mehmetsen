@@ -33,6 +33,7 @@ import { signCmsSessionToken } from '@/lib/cmsSession'
 import { handleOAuthCallback, startConnection, selectFacebookPage, listSelectablePages, changeAccountStatus } from './flows'
 import { saveConnectedAccount } from './connectionStore'
 import { resolvePublishTarget } from '../resolvePublishTarget'
+import { actorFromCms } from '../actor'
 import { resolveCmsAuthForUid } from '@/lib/cmsAuthServer'
 import { INSTAGRAM_LOGIN_GRAPH_BASE } from '../../graphConfig'
 
@@ -192,7 +193,7 @@ const ORIGIN = 'https://www.nahaber.com'
 async function ctxFor(uid: string) {
   const c = await resolveCmsAuthForUid(uid)
   if (!c) throw new Error(`no ctx for ${uid}`)
-  return c
+  return actorFromCms(uid, c)
 }
 
 async function cmsSession(uid: string) {
@@ -206,7 +207,7 @@ async function begin(
   reconnectAccountId?: string,
 ) {
   const r = await startConnection({
-    ctx: await ctxFor(uid),
+    actor: await ctxFor(uid),
     platform,
     ownership: { citySlug },
     reconnectAccountId: reconnectAccountId ?? null,
@@ -331,7 +332,7 @@ describe('bağlantı başlatma', () => {
       expect(q.get('response_type')).toBe('code')
       expect(q.get('override_default_response_type')).toBe('true')
       process.env.SOCIAL_FB_LOGIN_CONFIG_ID = 'not-a-number'
-      const bad = await startConnection({ ctx: await ctxFor('admin1'), platform: 'facebook', ownership: { citySlug: 'antalya' }, now: NOW })
+      const bad = await startConnection({ actor: await ctxFor('admin1'), platform: 'facebook', ownership: { citySlug: 'antalya' }, now: NOW })
       expect(bad).toMatchObject({ ok: false, code: 'not_configured', missing: ['SOCIAL_FB_LOGIN_CONFIG_ID'] })
     } finally {
       delete process.env.SOCIAL_FB_LOGIN_CONFIG_ID
@@ -351,7 +352,7 @@ describe('bağlantı başlatma', () => {
 
   it('eksik yapılandırma: değer değil yalnızca değişken adı döner', async () => {
     delete process.env.SOCIAL_THREADS_APP_SECRET
-    const r = await startConnection({ ctx: await ctxFor('admin1'), platform: 'threads', ownership: { citySlug: 'antalya' }, now: NOW })
+    const r = await startConnection({ actor: await ctxFor('admin1'), platform: 'threads', ownership: { citySlug: 'antalya' }, now: NOW })
     expect(r).toMatchObject({ ok: false, status: 409, code: 'not_configured', missing: ['SOCIAL_THREADS_APP_SECRET'] })
   })
 })
@@ -581,7 +582,7 @@ describe('Facebook sayfa seçimi', () => {
     const cookieHeader = `${sel.name}=${sel.value}`
     const admin = await ctxFor('admin1')
 
-    const list = await listSelectablePages({ ctx: admin, sessionId, cookieHeader, offset: 0, now: NOW + 2000 })
+    const list = await listSelectablePages({ actor: admin, sessionId, cookieHeader, offset: 0, now: NOW + 2000 })
     expect(list).toMatchObject({
       ok: true,
       total: 3,
@@ -593,14 +594,14 @@ describe('Facebook sayfa seçimi', () => {
     })
     expect(JSON.stringify(list)).not.toMatch(/EAAG|access_token|tasks/)
 
-    expect(await selectFacebookPage({ ctx: await ctxFor('admin2'), sessionId, pageId: '5001', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'user_mismatch' })
-    expect(await selectFacebookPage({ ctx: admin, sessionId, pageId: '5001', cookieHeader: 'nh_social_select=baska', now: NOW + 2000 })).toMatchObject({ ok: false, code: 'binding_mismatch' })
-    expect(await selectFacebookPage({ ctx: admin, sessionId, pageId: '9999', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'page_not_in_session' })
-    expect(await selectFacebookPage({ ctx: admin, sessionId, pageId: '5002', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'page_not_eligible' })
+    expect(await selectFacebookPage({ actor: await ctxFor('admin2'), sessionId, pageId: '5001', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'user_mismatch' })
+    expect(await selectFacebookPage({ actor: admin, sessionId, pageId: '5001', cookieHeader: 'nh_social_select=baska', now: NOW + 2000 })).toMatchObject({ ok: false, code: 'binding_mismatch' })
+    expect(await selectFacebookPage({ actor: admin, sessionId, pageId: '9999', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'page_not_in_session' })
+    expect(await selectFacebookPage({ actor: admin, sessionId, pageId: '5002', cookieHeader, now: NOW + 2000 })).toMatchObject({ ok: false, code: 'page_not_eligible' })
     expect(fs.docs('socialAccounts')).toHaveLength(0)
 
     const before = calls.length
-    const r = await selectFacebookPage({ ctx: admin, sessionId, pageId: '5003', cookieHeader, now: NOW + 2000 })
+    const r = await selectFacebookPage({ actor: admin, sessionId, pageId: '5003', cookieHeader, now: NOW + 2000 })
     expect(r).toMatchObject({ ok: true, accountId: 'facebook_5003', status: 'active' })
     // Sayfa token'ı /me/accounts kenarından (2. sayfadaki 5003 için sayfalama ile) alınır;
     // Page düğümüne `tasks` alanıyla istek gitmez (Meta: code 100).
@@ -616,7 +617,7 @@ describe('Facebook sayfa seçimi', () => {
       tokenExpiryVerified: true,
       ownership: { citySlug: 'antalya' },
     })
-    expect(await selectFacebookPage({ ctx: admin, sessionId, pageId: '5001', cookieHeader, now: NOW + 3000 })).toMatchObject({ ok: false, code: 'already_used' })
+    expect(await selectFacebookPage({ actor: admin, sessionId, pageId: '5001', cookieHeader, now: NOW + 3000 })).toMatchObject({ ok: false, code: 'already_used' })
     expect(fs.docs('socialConnectSessions')[0].data.userTokenEncrypted).toBeNull()
     expect(fs.store.get('socialAccountSecrets/facebook_5003')).toMatchObject({ kind: 'encrypted', tokenType: 'facebook_page' })
     const t = await resolvePublishTarget('facebook_5003', { now: NOW + 4000 })
@@ -631,10 +632,10 @@ describe('Facebook sayfa seçimi', () => {
     const sidB = new URL(outB.redirect).searchParams.get('fbSelect')!
     const selA = outA.cookies.find((c) => c.name.endsWith('nh_social_select'))!
     // admin1 with its own cookie cannot use admin2's session id
-    const cross = await selectFacebookPage({ ctx: await ctxFor('admin1'), sessionId: sidB, pageId: '5001', cookieHeader: `${selA.name}=${selA.value}`, now: NOW + 2000 })
+    const cross = await selectFacebookPage({ actor: await ctxFor('admin1'), sessionId: sidB, pageId: '5001', cookieHeader: `${selA.name}=${selA.value}`, now: NOW + 2000 })
     expect(cross.ok).toBe(false)
     const sidA = new URL(outA.redirect).searchParams.get('fbSelect')!
-    expect(await selectFacebookPage({ ctx: await ctxFor('admin1'), sessionId: sidA, pageId: '5001', cookieHeader: `${selA.name}=${selA.value}`, now: NOW + 11 * 60 * 1000 })).toMatchObject({ ok: false, code: 'expired' })
+    expect(await selectFacebookPage({ actor: await ctxFor('admin1'), sessionId: sidA, pageId: '5001', cookieHeader: `${selA.name}=${selA.value}`, now: NOW + 11 * 60 * 1000 })).toMatchObject({ ok: false, code: 'expired' })
   })
 
   it('rota: seçim yanıtı ve sayfa listesi token içermez', async () => {
@@ -675,7 +676,7 @@ describe('yeniden bağlantı, sahiplik ve atomik kayıt', () => {
   it('yeniden bağlama platformu ve sahipliği kayıttan alır; başka ilden yeni bağlantı sessizce atanmaz', async () => {
     await connectInstagram('antalya')
     const re = await startConnection({
-      ctx: await ctxFor('admin1'),
+      actor: await ctxFor('admin1'),
       platform: 'threads',
       ownership: { citySlug: 'ankara' },
       reconnectAccountId: 'instagram_17840000000000001',
@@ -813,13 +814,13 @@ describe('durum geçişleri ve yönetim API’si', () => {
     await callback('instagram', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader)
     const id = 'instagram_17840000000000001'
     const admin = await ctxFor('admin1')
-    expect(await changeAccountStatus({ ctx: admin, accountId: id, action: 'pause', now: NOW + 5 })).toEqual({ ok: true, status: 'paused' })
-    expect(await changeAccountStatus({ ctx: admin, accountId: id, action: 'activate', now: NOW + 6 })).toEqual({ ok: true, status: 'active' })
-    await changeAccountStatus({ ctx: admin, accountId: id, action: 'pause', now: NOW + 7 })
-    expect(await changeAccountStatus({ ctx: admin, accountId: id, action: 'activate', now: NOW + 1000 + 5183944 * 1000 + 1 })).toMatchObject({ ok: false, code: 'token_expired' })
+    expect(await changeAccountStatus({ actor: admin, accountId: id, action: 'pause', now: NOW + 5 })).toEqual({ ok: true, status: 'paused' })
+    expect(await changeAccountStatus({ actor: admin, accountId: id, action: 'activate', now: NOW + 6 })).toEqual({ ok: true, status: 'active' })
+    await changeAccountStatus({ actor: admin, accountId: id, action: 'pause', now: NOW + 7 })
+    expect(await changeAccountStatus({ actor: admin, accountId: id, action: 'activate', now: NOW + 1000 + 5183944 * 1000 + 1 })).toMatchObject({ ok: false, code: 'token_expired' })
     await fs.collection('socialAccounts').doc(id).update({ status: 'needs_reauth' })
-    expect(await changeAccountStatus({ ctx: admin, accountId: id, action: 'activate', now: NOW + 8 })).toMatchObject({ ok: false, code: 'reconnect_required' })
-    expect(await changeAccountStatus({ ctx: admin, accountId: id, action: 'delete', now: NOW + 8 })).toMatchObject({ ok: false, code: 'invalid_action' })
+    expect(await changeAccountStatus({ actor: admin, accountId: id, action: 'activate', now: NOW + 8 })).toMatchObject({ ok: false, code: 'reconnect_required' })
+    expect(await changeAccountStatus({ actor: admin, accountId: id, action: 'delete', now: NOW + 8 })).toMatchObject({ ok: false, code: 'invalid_action' })
     const audits = fs.docs('cmsAuditLogs').map((d) => d.data.action)
     expect(audits).toEqual(expect.arrayContaining(['social.oauth.start', 'social.oauth.callback', 'social.account.create', 'social.account.status']))
   })
@@ -829,7 +830,7 @@ describe('durum geçişleri ve yönetim API’si', () => {
     const a = await begin('threads')
     await callback('threads', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader)
     await fs.collection('socialAccounts').doc('threads_4440001').update({ status: 'paused' })
-    expect(await changeAccountStatus({ ctx: await ctxFor('admin1'), accountId: 'threads_4440001', action: 'activate', now: NOW + 5 })).toMatchObject({ ok: false, code: 'publish_permission_unverified' })
+    expect(await changeAccountStatus({ actor: await ctxFor('admin1'), accountId: 'threads_4440001', action: 'activate', now: NOW + 5 })).toMatchObject({ ok: false, code: 'publish_permission_unverified' })
   })
 
   it('liste/ayrıntı yalnızca public model döner; sır içermez; editör ve yabancı origin reddedilir', async () => {

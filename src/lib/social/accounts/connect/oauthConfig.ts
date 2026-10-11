@@ -124,9 +124,13 @@ export function getPlatformOAuthConfig(
 }
 
 /** Fixed panel return URL — no caller-provided return URLs are accepted. */
-export function panelReturnUrl(params: Record<string, string>): string {
+export function panelReturnUrl(params: Record<string, string>, returnTo: 'admin' | 'profile' | 'publisher' = 'admin'): string {
   // Test ortamında güvenilir kök yoksa production sitesine değil, göreli panele dönülür.
   const base = oauthBaseUrl() ?? (isSocialTestMode() ? '' : getSiteUrl())
+  if (returnTo !== 'admin') {
+    // Kişisel / yayıncı hesapları: kullanıcı ayarlarındaki «Sosyal hesaplarım».
+    return `${base}/settings/social?${new URLSearchParams(params).toString()}`
+  }
   const q = new URLSearchParams({ panel: 'accounts', ...params })
   return `${base}/admin/social?${q.toString()}`
 }

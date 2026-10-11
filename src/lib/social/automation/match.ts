@@ -24,6 +24,8 @@ export interface NewsFacts {
   originalCategoryId: string
   featured: boolean
   localFeatured: boolean
+  /** Publisher that published the news (publisher studio), if any. */
+  publisherId: string | null
   /**
    * When the news became publicly published for automation purposes: the
    * later of `publishedAt` and the moment a CMS hook saw it go live (a draft
@@ -52,6 +54,7 @@ export function newsFactsFrom(id: string, d: Record<string, unknown>): NewsFacts
     originalCategoryId: str(d.originalCategoryId),
     featured: d.featured === true || d.isFeatured === true,
     localFeatured: d.localFeatured === true,
+    publisherId: typeof d.publisherId === 'string' && d.publisherId.trim() ? d.publisherId.trim() : null,
     eligibleAt: publishedAt,
   }
 }
@@ -178,6 +181,7 @@ export function evaluateRule(rule: AutomationRule, n: NewsFacts): RuleEvaluation
   const at = n.eligibleAt ?? n.publishedAt
   if (at === null) return { match: false, reasons: ['Yayın zamanı yok'] }
   if (at < rule.enabledAt) return { match: false, reasons: ['Kural açılmadan önce yayımlanmış (geriye dönük paylaşım yok)'] }
+  if (rule.publisherId && n.publisherId !== rule.publisherId) return { match: false, reasons: ['Bu yayıncının haberi değil'] }
   return evaluateRuleConditions(rule, n)
 }
 

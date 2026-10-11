@@ -21,6 +21,8 @@ import { Collections } from '@/lib/firebase/collections'
 import {
   ALLOWED_CONNECTION_METHODS,
   isSocialAccountPlatform,
+  normalizeOwnership,
+  ownershipKind,
   type SocialAccountOwnership,
   type SocialAccountPlatform,
   type SocialConnectionMethod,
@@ -44,6 +46,9 @@ export interface OAuthBindingCookie {
   }
 }
 
+export const OAUTH_RETURN_TARGETS = ['admin', 'profile', 'publisher'] as const
+export type OAuthReturnTo = (typeof OAUTH_RETURN_TARGETS)[number]
+
 export interface CreatedOAuthState {
   state: string
   cookie: OAuthBindingCookie
@@ -59,6 +64,8 @@ export type ConsumeOAuthStateResult =
       ownership: SocialAccountOwnership
       /** Set when the flow re-connects an existing account (its id). */
       reconnectAccountId: string | null
+      /** Where the browser returns after the callback (admin / profile / publisher panel). */
+      returnTo: OAuthReturnTo
     }
   | {
       ok: false
@@ -104,6 +111,7 @@ export async function createSocialOAuthState(input: {
   connectionMethod: OAuthConnectionMethod
   ownership: SocialAccountOwnership
   reconnectAccountId?: string | null
+  returnTo?: OAuthReturnTo
   now?: number
   secure?: boolean
 }): Promise<CreatedOAuthState> {
@@ -113,11 +121,15 @@ export async function createSocialOAuthState(input: {
   if (!ALLOWED_CONNECTION_METHODS[input.platform].includes(input.connectionMethod) || input.connectionMethod === ('legacy' as SocialConnectionMethod)) {
     throw new Error('OAuth state: bağlantı yöntemi platforma uygun değil')
   }
-  const ownership: SocialAccountOwnership = {
+  const ownership: SocialAccountOwnership = normalizeOwnership({
     citySlug: input.ownership.citySlug?.trim() || null,
     publisherId: input.ownership.publisherId?.trim() || null,
-  }
-  if (!ownership.citySlug && !ownership.publisherId) throw new Error('OAuth state: sahiplik kapsamı gerekli')
+    ownerUid: input.ownership.ownerUid?.trim() || null,
+    central: input.ownership.central === true,
+  })
+  if (!ownershipKind(ownership)) throw new Error('OAuth state: sahiplik kapsamı gerekli')
+  if (ownership.ownerUid && ownership.ownerUid !== uid) throw new Error('OAuth state: kişisel hesap yalnızca kendi kullanıcısına bağlanır')
+  const returnTo: OAuthReturnTo = (OAUTH_RETURN_TARGETS as readonly string[]).includes(input.returnTo ?? '') ? (input.returnTo as OAuthReturnTo) : 'admin'
 
   const now = input.now ?? Date.now()
   const state = random()
@@ -130,6 +142,7 @@ export async function createSocialOAuthState(input: {
     connectionMethod: input.connectionMethod,
     ownership,
     reconnectAccountId: input.reconnectAccountId ?? null,
+    returnTo,
     bindingHash: sha256(binding),
     createdAt: now,
     expiresAt,
@@ -197,11 +210,14 @@ export async function consumeSocialOAuthState(input: {
       uid,
       platform: input.expectedPlatform,
       connectionMethod: method,
-      ownership: {
+      ownership: normalizeOwnership({
         citySlug: typeof own.citySlug === 'string' ? own.citySlug : null,
         publisherId: typeof own.publisherId === 'string' ? own.publisherId : null,
-      },
+        ownerUid: typeof own.ownerUid === 'string' ? own.ownerUid : null,
+        central: own.central === true,
+      }),
       reconnectAccountId: typeof d.reconnectAccountId === 'string' ? d.reconnectAccountId : null,
+      returnTo: (OAUTH_RETURN_TARGETS as readonly string[]).includes(d.returnTo as string) ? (d.returnTo as OAuthReturnTo) : 'admin',
     } as const
   })
 }

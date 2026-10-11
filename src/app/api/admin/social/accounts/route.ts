@@ -3,6 +3,7 @@
  * per-platform configuration readiness (env var NAMES only, never values).
  * Auth: central social-account manager (system:settings, unscoped).
  */
+import { actorFromCms } from '@/lib/social/accounts/actor'
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { allConfigStatuses, listManagedAccounts } from '@/lib/social/accounts/connect/flows'
 import { toPublicSocialAccount } from '@/lib/social/accounts/types'
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const auth = await requireAccountManager(request, { mutation: false })
   if ('response' in auth) return auth.response
-  const accounts = (await listManagedAccounts(auth.ctx)) ?? []
+  const accounts = (await listManagedAccounts(actorFromCms(auth.ctx.uid, auth.ctx))) ?? []
   const config = allConfigStatuses()
   return json({
     accounts: accounts.map(toPublicSocialAccount),

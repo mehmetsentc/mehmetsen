@@ -63,6 +63,11 @@ export interface AutomationRule extends AutomationRuleInput {
   platform: SocialAccountPlatform
   /** Copied from the account at create time — never from the client. */
   ownership: SocialAccountOwnership
+  /**
+   * Publisher accounts: rules only ever match that publisher's own news.
+   * Set by the server from the account; null for every other owner kind.
+   */
+  publisherId?: string | null
   enabled: boolean
   /** Only news published at/after this moment can match (no backfill). null while disabled. */
   enabledAt: number | null

@@ -5,6 +5,7 @@
  * Page tokens never reach the browser. Requires the same NaHaber user and the
  * HttpOnly selection cookie set by the Facebook callback.
  */
+import { actorFromCms } from '@/lib/social/accounts/actor'
 import { applyCookies, json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { clearCookie, listSelectablePages, selectFacebookPage } from '@/lib/social/accounts/connect/flows'
 import { SELECT_COOKIE_DEV, SELECT_COOKIE_SECURE } from '@/lib/social/accounts/connect/connectSessions'
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   if ('response' in auth) return auth.response
   const url = new URL(request.url)
   const r = await listSelectablePages({
-    ctx: auth.ctx,
+    actor: actorFromCms(auth.ctx.uid, auth.ctx),
     sessionId: url.searchParams.get('session'),
     cookieHeader: request.headers.get('cookie'),
     offset: Number(url.searchParams.get('offset') ?? 0),
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   if ('response' in auth) return auth.response
   const body = await readJsonBody(request)
   const r = await selectFacebookPage({
-    ctx: auth.ctx,
+    actor: actorFromCms(auth.ctx.uid, auth.ctx),
     sessionId: body.session,
     pageId: body.pageId,
     cookieHeader: request.headers.get('cookie'),

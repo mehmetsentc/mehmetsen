@@ -4,6 +4,7 @@
  * browser navigates there) and sets an HttpOnly binding cookie.
  * The authorize URL carries only app id, redirect URI, scopes and state.
  */
+import { actorFromCms } from '@/lib/social/accounts/actor'
 import { applyCookies, json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { startConnection } from '@/lib/social/accounts/connect/flows'
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   const auth = await requireAccountManager(request, { mutation: true })
   if ('response' in auth) return auth.response
   const body = await readJsonBody(request)
-  const r = await startConnection({ ctx: auth.ctx, platform: body.platform, ownership: body.ownership })
+  const r = await startConnection({ actor: actorFromCms(auth.ctx.uid, auth.ctx), platform: body.platform, ownership: body.ownership })
   if (!r.ok) return json({ error: r.code, code: r.code, ...(r.missing ? { missing: r.missing } : {}) }, r.status)
   return applyCookies(json({ authorizeUrl: r.authorizeUrl }), [r.cookie])
 }
