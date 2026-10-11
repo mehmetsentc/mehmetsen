@@ -23,7 +23,7 @@ import { RULE_LIMITS, type AutomationGeo, type AutomationRule, type AutomationRu
 import type { AutomationJobPublic, AutomationJobStatus } from '@/lib/social/automation/jobs'
 
 type RuleRow = AutomationRule & { summary: string }
-type LegacyHandoff = { accountId: string; platform: SocialAccountPlatform; at: number; by: string }
+type LegacyHandoff = { accountId: string; platform: SocialAccountPlatform; formats?: PublishFormat[]; at: number; by: string }
 type RulesResponse = {
   rules: RuleRow[]
   accounts: SocialAccountPublic[]
@@ -184,9 +184,9 @@ export function AutomationRulesPanel() {
     void load()
   }
 
-  async function handoff(accountId: string, on: boolean) {
+  async function handoff(accountId: string, on: boolean, formats: PublishFormat[]) {
     setBusy(accountId)
-    const r = await api('/api/admin/social/automation/handoff', { method: 'POST', body: JSON.stringify({ accountId, on, confirm: true }) })
+    const r = await api('/api/admin/social/automation/handoff', { method: 'POST', body: JSON.stringify({ accountId, on, formats, confirm: true }) })
     setBusy(null)
     if (!r.ok) return toast.error(r.error)
     toast.success(on ? 'Eski otomatik yol bu hesap için durduruldu' : 'Eski otomatik yol bu hesap için yeniden etkin')
@@ -389,7 +389,7 @@ function LegacyHandoffSection({
 }: {
   data: RulesResponse | null
   busy: string | null
-  onHandoff: (accountId: string, on: boolean) => void
+  onHandoff: (accountId: string, on: boolean, formats: PublishFormat[]) => void
   accountsById: Map<string, SocialAccountPublic>
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -407,22 +407,32 @@ function LegacyHandoffSection({
       </p>
       {rows.map((r) => {
         const acc = accountsById.get(r.accountId)
-        const handed = !!data.handoffs[r.accountId]
-        const rulesOn = data.rules.filter((x) => x.accountId === r.accountId && x.enabled).length
+        const h = data.handoffs[r.accountId]
+        const handed = !!h
+        const handedFormats: PublishFormat[] = h ? (h.formats?.length ? h.formats : ['post', 'story']) : []
+        const accountRules = data.rules.filter((x) => x.accountId === r.accountId)
+        const rulesOn = accountRules.filter((x) => x.enabled).length
+        // Devir yalnızca bu hesabın kurallarındaki biçimleri kapsar (ör. yalnız gönderi → eski otomatik hikâye sürer).
+        const ruleFormats = [...new Set(accountRules.flatMap((x) => x.formats))] as PublishFormat[]
+        const handoffFormats: PublishFormat[] = ruleFormats.length ? ruleFormats : ['post', 'story']
         const connected = !!acc && acc.connectionMethod !== 'legacy'
         return (
           <div key={r.platform} className="flex flex-wrap items-center gap-3 rounded-xl bg-[rgb(var(--color-card))] p-3 text-sm">
             <span className="font-semibold">{PLATFORM_SHORT[r.platform]}</span>
             <span className="text-[rgb(var(--color-muted))]">{connected ? accountLabel(acc, r.accountId) : 'resmî bağlantı yok'}</span>
             <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', handed ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700')}>
-              {handed ? 'Devredildi — eski otomatik yol durdu' : 'Eski otomatik yol çalışıyor'}
+              {handed ? `Devredildi (${handedFormats.map((f) => FORMAT_TEXT[f]).join(' + ')}) — eski otomatik yol bu biçimde durdu` : 'Eski otomatik yol çalışıyor'}
             </span>
             <span className="text-xs text-[rgb(var(--color-muted))]">açık kural: {rulesOn}</span>
             <div className="ml-auto flex gap-2">
               {confirmId === r.accountId ? (
                 <>
-                  <span className="text-xs text-[rgb(var(--color-text))]">{handed ? 'Eski yolu yeniden etkinleştir?' : rulesOn === 0 ? 'Açık kural yok — bu hesaba otomatik paylaşım tamamen durur. Emin misiniz?' : 'Eski otomatik yolu bu hesap için durdur?'}</span>
-                  <button type="button" disabled={busy === r.accountId} onClick={() => { setConfirmId(null); onHandoff(r.accountId, !handed) }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
+                  <span className="text-xs text-[rgb(var(--color-text))]">
+                    {handed
+                      ? 'Eski yolu yeniden etkinleştir?'
+                      : `${rulesOn === 0 ? 'Açık kural yok — ' : ''}Eski otomatik yol bu hesapta ${handoffFormats.map((f) => FORMAT_TEXT[f].toLocaleLowerCase('tr')).join(' ve ')} için durdurulsun mu?`}
+                  </span>
+                  <button type="button" disabled={busy === r.accountId} onClick={() => { setConfirmId(null); onHandoff(r.accountId, !handed, handoffFormats) }} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">
                     Onayla
                   </button>
                   <button type="button" onClick={() => setConfirmId(null)} className="rounded-lg border px-3 py-1.5 text-xs">

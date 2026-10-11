@@ -18,7 +18,8 @@ export async function POST(request: Request) {
   if (!isWellFormedAccountId(body.accountId)) return json({ error: 'Geçersiz hesap', code: 'invalid_account_id' }, 400)
   if (typeof body.on !== 'boolean') return json({ error: 'Geçersiz istek', code: 'invalid' }, 400)
   if (body.confirm !== true) return json({ error: 'Devir için onay gerekli', code: 'confirm_required' }, 400)
-  const r = await setLegacyHandoff(body.accountId, body.on, auth.ctx.uid, Date.now())
+  const formats = Array.isArray(body.formats) ? body.formats.filter((f): f is 'post' | 'story' => f === 'post' || f === 'story') : ['post', 'story'] as Array<'post' | 'story'>
+  const r = await setLegacyHandoff(body.accountId, body.on, auth.ctx.uid, Date.now(), formats)
   if (!r.ok) return json({ error: r.message, code: r.code }, r.status)
   return json({ handoffs: r.handoffs })
 }

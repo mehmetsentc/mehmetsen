@@ -12,6 +12,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { loadSocialAccount } from '../accounts/accountStore'
 import { writeSocialAudit } from '../accounts/audit'
 import type { SocialAccountPlatform } from '../accounts/types'
+import type { PublishFormat } from '../accounts/capabilities'
 
 function stateCol() {
   return getAdminFirestore().collection(Collections.SOCIAL_AUTOMATION_STATE)
@@ -25,8 +26,19 @@ export const LEGACY_AUTO_TRIGGERS: ReadonlySet<string> = new Set(['cron', 'after
 export interface LegacyHandoff {
   accountId: string
   platform: SocialAccountPlatform
+  /**
+   * Formats the legacy automatic path stops for (e.g. only `post`, so the old
+   * automatic IG story keeps working). Missing on old records = every format.
+   */
+  formats?: PublishFormat[]
   at: number
   by: string
+}
+
+/** Does a handoff record cover this format? */
+export function handoffCovers(h: LegacyHandoff | undefined, format: PublishFormat): boolean {
+  if (!h) return false
+  return !Array.isArray(h.formats) || h.formats.length === 0 || h.formats.includes(format)
 }
 
 const HANDOFF_DOC = 'legacyHandoff'
@@ -37,9 +49,9 @@ export async function readLegacyHandoffs(): Promise<Record<string, LegacyHandoff
   return d?.accounts ?? {}
 }
 
-export async function isLegacyHandedOff(accountId: string): Promise<boolean> {
+export async function isLegacyHandedOff(accountId: string, format?: PublishFormat): Promise<boolean> {
   const all = await readLegacyHandoffs()
-  return !!all[accountId]
+  return format ? handoffCovers(all[accountId], format) : !!all[accountId]
 }
 
 /**
@@ -52,7 +64,10 @@ export async function setLegacyHandoff(
   on: boolean,
   actorUid: string,
   now: number,
+  formats: PublishFormat[] = ['post', 'story'],
 ): Promise<{ ok: true; handoffs: Record<string, LegacyHandoff> } | StoreError> {
+  const fmts = [...new Set(formats.filter((f) => f === 'post' || f === 'story'))]
+  if (on && fmts.length === 0) return { ok: false, code: 'invalid_formats', message: 'Devredilecek biçim seçilmeli', status: 400 }
   if (on) {
     const loaded = await loadSocialAccount(accountId)
     if (loaded.state !== 'ok') return { ok: false, code: 'account_not_found', message: 'Hedef hesap bulunamadı', status: 404 }
@@ -68,7 +83,7 @@ export async function setLegacyHandoff(
     const accounts = { ...((s.exists ? (s.data() as { accounts?: Record<string, LegacyHandoff> }).accounts : null) ?? {}) }
     if (on) {
       const platform = accountId.split('_')[0] as SocialAccountPlatform
-      accounts[accountId] = accounts[accountId] ?? { accountId, platform, at: now, by: actorUid }
+      accounts[accountId] = { accountId, platform, formats: fmts, at: accounts[accountId]?.at ?? now, by: actorUid }
     } else {
       delete accounts[accountId]
     }
@@ -80,6 +95,7 @@ export async function setLegacyHandoff(
     action: on ? 'social.automation.legacy_handoff' : 'social.automation.legacy_handback',
     entityType: 'socialAccount',
     entityId: accountId,
+    meta: on ? { formats: fmts } : null,
   })
   return { ok: true, handoffs }
 }

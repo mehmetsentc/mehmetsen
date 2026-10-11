@@ -565,3 +565,162 @@ describe('yönetim API’leri (merkez yönetici)', () => {
     expect(ok.status).toBe(200)
   })
 })
+
+describe('Görev 15 — yayın kancası, zamanlanmış haber, yeniden değerlendirme', () => {
+  const sync = async (newsId: string, becamePublished: boolean, wasPublished: boolean) => {
+    const { onNewsWritten } = await import('./events')
+    const data = (fs.store.get(`news/${newsId}`) ?? null) as Record<string, unknown> | null
+    return onNewsWritten({ newsId, data, becamePublished, wasPublished, now: clock })
+  }
+
+  it('açık kural yokken taslak kaydı hiç okuma yapmaz; yayın kancası da iş açmaz', async () => {
+    await seedNews('d1', { status: 'draft', publishedAt: null })
+    const before = fs.reads
+    expect(await sync('d1', false, false)).toEqual([])
+    expect(fs.reads).toBe(before)
+    await seedNews('n1')
+    expect(await sync('n1', true, false)).toEqual([])
+    expect(fs.docs('smmQueue')).toHaveLength(0)
+  })
+
+  it('CMS yayını işi yanıt dönmeden kalıcı yazar ve hemen başlatılabilir; çalışan aynı işi tekrar göndermez', async () => {
+    const { startAutomationJobs } = await import('./events')
+    await enabledRule()
+    await seedNews('n1')
+    const due = await sync('n1', true, false)
+    expect(due).toEqual([`auto__n1__${IG_ANTALYA.id}__post`])
+    expect(job('n1')).toMatchObject({ status: 'queued' })
+    await startAutomationJobs(due, () => clock)
+    expect(job('n1')).toMatchObject({ status: 'published' })
+    expect(publishes()).toHaveLength(1)
+    clock += 6 * 60_000
+    await tick()
+    await sync('n1', false, true)
+    expect(publishes()).toHaveLength(1)
+  })
+
+  it('after() kaybolsa da iş kuyrukta kalır ve 5 dk’lık çalışan gönderir', async () => {
+    await enabledRule()
+    await seedNews('n1')
+    await sync('n1', true, false)
+    await tick()
+    expect(job('n1')?.status).toBe('published')
+    expect(publishes()).toHaveLength(1)
+  })
+
+  it('ileri tarihli haber yayın saatini bekler, imleç tarafından kaybedilmez', async () => {
+    await enabledRule()
+    const at = clock + 30 * 60_000
+    await seedNews('f1', { publishedAt: at })
+    const due = await sync('f1', true, false)
+    expect(due).toEqual([])
+    expect(job('f1')).toMatchObject({ status: 'queued', autoDueAt: at })
+    await tick()
+    expect(publishes()).toHaveLength(0)
+    clock = at + 60_000
+    await tick()
+    expect(job('f1')?.status).toBe('published')
+    expect(publishes()).toHaveLength(1)
+  })
+
+  it('kancasız yol: ileri tarihli haber imleç geçtikten sonra yayın saati gelince yakalanır', async () => {
+    await enabledRule()
+    const at = clock + 20 * 60_000
+    await seedNews('f2', { publishedAt: at })
+    await tick()
+    expect(job('f2')).toBeUndefined()
+    clock = at + 3 * 60_000
+    await tick()
+    expect(job('f2')?.status).toBe('published')
+  })
+
+  it('il / kategori değişince bekleyen iş iptal edilir, koşul dönerse yeniden kuyruğa girer', async () => {
+    await enabledRule({ minIntervalMinutes: 60 })
+    await seedNews('n1', { publishedAt: clock - 60_000 })
+    await sync('n1', true, false)
+    await fs.collection('socialAutomationCounters').doc(IG_ANTALYA.id).set({ accountId: IG_ANTALYA.id, day: 'x', count: 0, lastSentAt: null, updatedAt: clock })
+    await fs.collection('news').doc('n1').update({ citySlug: 'ankara', cityName: 'Ankara' })
+    await sync('n1', false, true)
+    expect(job('n1')).toMatchObject({ status: 'cancelled', errorCode: 'conditions_changed' })
+    await fs.collection('news').doc('n1').update({ citySlug: 'antalya', cityName: 'Antalya', categoryId: 'ekonomi' })
+    await sync('n1', false, true)
+    expect(job('n1')?.status).toBe('cancelled')
+    await fs.collection('news').doc('n1').update({ categoryId: 'yerel-asayis' })
+    await sync('n1', false, true)
+    expect(job('n1')).toMatchObject({ status: 'queued', errorCode: 'reevaluated' })
+    expect(publishes()).toHaveLength(0)
+  })
+
+  it('yayından kalkan haberin bekleyen işi iptal edilir', async () => {
+    await enabledRule()
+    await seedNews('n1', { publishedAt: clock + 60 * 60_000 })
+    await sync('n1', true, false)
+    await fs.collection('news').doc('n1').update({ status: 'archived', publishedAt: null })
+    await sync('n1', false, true)
+    expect(job('n1')).toMatchObject({ status: 'cancelled', errorCode: 'news_unpublished' })
+  })
+
+  it('sonradan öne çıkarılan haber (VEYA kuralı) iş açar; yayımlanmış gönderi tekrar gönderilmez', async () => {
+    await enabledRule({ featuredMode: 'categories_or_featured', categoryIds: ['asayis'], featuredKind: 'local' })
+    await seedNews('n1', { categoryId: 'yerel-gundem' })
+    await sync('n1', true, false)
+    expect(job('n1')).toBeUndefined()
+    await fs.collection('news').doc('n1').update({ localFeatured: true })
+    const due = await sync('n1', false, true)
+    expect(due).toHaveLength(1)
+    await tick()
+    expect(publishes()).toHaveLength(1)
+    await fs.collection('news').doc('n1').update({ localFeatured: false })
+    await sync('n1', false, true)
+    await fs.collection('news').doc('n1').update({ localFeatured: true })
+    await sync('n1', false, true)
+    clock += 30 * 60_000
+    await tick()
+    expect(publishes()).toHaveLength(1)
+    expect(job('n1')?.status).toBe('published')
+  })
+
+  it('kural açılmadan önce yayımlanmış haber düzenlense de gönderilmez; eski tarihli taslak şimdi yayına geçerse gönderilir', async () => {
+    await enabledRule({}, clock - 60_000)
+    await seedNews('old', { publishedAt: clock - 2 * 60 * 60_000 })
+    await sync('old', false, true)
+    expect(job('old')).toBeUndefined()
+    await seedNews('draftOld', { publishedAt: clock - 2 * 60 * 60_000 })
+    await sync('draftOld', true, false)
+    expect(job('draftOld')?.status).toBe('queued')
+    await tick()
+    expect(job('draftOld')?.status).toBe('published')
+  })
+
+  it('otomasyonda Meta AI yeniden yazımı ve kaydırmalı görsel kullanılmaz; manuel yayın global ayarı izler', async () => {
+    const rewrite = await import('@/services/metaAiRewriteService')
+    const images = await import('@/lib/social/carouselImages')
+    vi.mocked(rewrite.rewriteForPlatform).mockClear()
+    vi.mocked(images.buildSocialImagePayload).mockClear()
+    await enabledRule()
+    await seedNews('n1', { additionalImages: ['https://img.example/2.jpg', 'https://img.example/3.jpg'] })
+    await tick()
+    expect(publishes()).toHaveLength(1)
+    expect(rewrite.rewriteForPlatform).not.toHaveBeenCalled()
+    expect(images.buildSocialImagePayload).not.toHaveBeenCalled()
+    const body = publishes()[0]
+    const create = calls.find((c) => c.url.includes('/7771/media') && !c.url.includes('media_publish'))
+    expect(create?.url + (create?.body ?? '')).not.toContain('CAROUSEL')
+    expect(body).toBeDefined()
+    await seedNews('m1')
+    await publishOneSocial('m1', { mode: 'post', manual: true, actorUid: 'admin1', targets: { instagram: IG_ANTALYA.id }, overrides: { platforms: { facebook: false, instagram: true, threads: false, twitter: false } } })
+    expect(rewrite.rewriteForPlatform).toHaveBeenCalled()
+  })
+
+  it('biçim bazlı devir: yalnız gönderi devredilince eski otomatik hikâye sürer', async () => {
+    await setLegacyHandoff(FB_ONY.id, true, 'admin1', clock, ['post'])
+    await seedNews('n1')
+    let ran = 0
+    const run = async () => { ran++; return { success: true, platformId: 'x' } }
+    const post = await withLegacyPublishLock({ platform: 'facebook', format: 'post', newsId: 'n1', options: { trigger: 'cron' } }, run)
+    const story = await withLegacyPublishLock({ platform: 'facebook', format: 'story', newsId: 'n1', options: { trigger: 'after' } }, run)
+    expect(post.code).toBe('legacy_handed_off')
+    expect(story.success).toBe(true)
+    expect(ran).toBe(1)
+  })
+})

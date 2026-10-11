@@ -94,7 +94,7 @@ export async function withLegacyPublishLock(
   // Hesap bazlı otomasyona devredilmiş hesap: eski OTOMATİK yol (cron / after) yayın yapmaz.
   // Manuel legacy paylaşım etkilenmez. Devir kaydı okunamazsa güvenli tarafta kalınır.
   if (opts.trigger && LEGACY_AUTO_TRIGGERS.has(opts.trigger)) {
-    const handedOff = await isLegacyHandedOff(accountId).catch(() => null)
+    const handedOff = await isLegacyHandedOff(accountId, input.format).catch(() => null)
     if (handedOff !== false) {
       socialLog('log', 'publish', 'legacy_blocked', { platform: input.platform, format: input.format, newsId: input.newsId, account: accountId, code: handedOff ? 'legacy_handed_off' : 'handoff_unreadable' })
       return handedOff
