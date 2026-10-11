@@ -16,6 +16,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isSocialTestMode } from '../testEnvironment'
 import { safeErrorText, socialLog } from '../safeLog'
+import { socialEligibility } from '../eligibility'
 import { loadSocialAccount, setSocialAccountStatus } from '../accounts/accountStore'
 import { targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
 import { readLedger } from '../accounts/publishLedger'
@@ -49,21 +50,24 @@ export interface WorkerDeps {
   publish?: Publisher
 }
 
-/** Content-level reasons a news item is never auto-published (same rules as the legacy auto path). */
+/**
+ * Content-level reason a news item is not auto-published (null = eligible).
+ * Delegates to the explicit eligibility model (eligibility.ts): own content,
+ * or an editor's «sosyal yayına uygun» decision with a media-rights basis.
+ */
 export function automationContentProblemWith(
   d: Record<string, unknown>,
   m: Pick<typeof import('../publishOneSocial'), 'isOwnContent' | 'isSkippableForSocial' | 'extractImageUrl'>,
 ): string | null {
-  if (d.hasVideo || d.isVideo) return 'video_not_supported'
-  if (!m.isOwnContent(d)) return 'external_source'
-  if (m.isSkippableForSocial(d)) return 'not_suitable'
-  if (!m.extractImageUrl(d)) return 'no_image'
-  return null
+  const v = socialEligibility(d, m)
+  return v.ok ? null : v.code
 }
 
 export const CONTENT_PROBLEM_TEXT: Record<string, string> = {
   video_not_supported: 'Video haber — otomatik video/Reels paylaşımı yok',
-  external_source: 'Harici kaynak haberi — otomatik paylaşım yalnızca NaHaber içerikleri için',
+  needs_social_review: 'Harici kaynak: sosyal yayın ve görsel kullanım onayı yok — editör onayı gerekli',
+  social_blocked: 'Editör sosyal yayını kapattı',
+  rights_blocked: 'Hak kararı: yayınlanmamalı / yeniden yazılmalı',
   not_suitable: 'Canlı yayın / tanıtım / boş içerik',
   no_image: 'Kapak görseli yok',
 }

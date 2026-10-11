@@ -29,12 +29,15 @@ export type SocialAuditAction =
   | 'social.automation.legacy_handoff'
   | 'social.automation.legacy_handback'
   | 'social.automation.publish'
+  | 'social.eligibility.set'
+  | 'social.publish.share'
+  | 'social.token.refresh'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null
