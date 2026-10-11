@@ -1,5 +1,5 @@
-import { NextResponse, after } from 'next/server'
-import { onNewsWritten, startAutomationJobs } from '@/lib/social/automation/events'
+import { NextResponse } from 'next/server'
+import { onNewsWritten, startAfterResponse, startAutomationJobs } from '@/lib/social/automation/events'
 import { revalidatePath } from 'next/cache'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { contentScopeOf, isScopeRestricted } from '@/lib/cms/rbacScope'
@@ -344,7 +344,7 @@ export async function POST(request: Request) {
     await newsRef.set(payload)
     if (status === 'published') {
       const dueAutomation = await onNewsWritten({ newsId: newsRef.id, data: payload as Record<string, unknown>, becamePublished: true, wasPublished: false, now: Date.now() })
-      if (dueAutomation.length > 0) after(() => startAutomationJobs(dueAutomation))
+      if (dueAutomation.length > 0) startAfterResponse(() => startAutomationJobs(dueAutomation))
     }
 
     const rssGuid = String(payload.rssGuid || '').trim()

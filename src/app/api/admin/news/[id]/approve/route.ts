@@ -1,5 +1,5 @@
-import { NextResponse, after } from 'next/server'
-import { startAutomationJobsForNews } from '@/lib/social/automation/events'
+import { NextResponse } from 'next/server'
+import { startAfterResponse, startAutomationJobsForNews } from '@/lib/social/automation/events'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
 import { denyIfDocOutsideStaffScope } from '@/lib/cms/staffScopeHttp'
 import { newsDraftService } from '@/services/newsDraftService'
@@ -24,7 +24,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const result = await newsDraftService.approveLegacyPending(id, { uid: admin.uid })
     // Otomasyon işleri servis içinde kalıcı yazıldı; burada yalnızca hemen başlatılır.
-    after(() => startAutomationJobsForNews(result.newsId))
+    startAfterResponse(() => startAutomationJobsForNews(result.newsId))
     return NextResponse.json({ ok: true, ...result })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Approve failed'

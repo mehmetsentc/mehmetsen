@@ -18,6 +18,7 @@
  * Cost: one cached rules query (30 s) per write; no news scan. With no enabled
  * rule and no prior job nothing else is read.
  */
+import { after } from 'next/server'
 import { safeErrorText, socialLog } from '../safeLog'
 import { enqueueJob, jobIdFor, listJobsForNews, reviseJob, claimJobById, type AutomationJob } from './jobs'
 import { evaluateRule, newsFactsFrom } from './match'
@@ -178,5 +179,18 @@ export async function startAutomationJobsForNews(newsId: string, now: () => numb
     await startAutomationJobs(due, now)
   } catch (err) {
     socialLog('error', 'cron', 'automation_start_error', { newsId, error: safeErrorText(err).slice(0, 200) })
+  }
+}
+
+/**
+ * Start work after the response when a request scope exists. Outside one
+ * (tests, scripts) nothing is started — the job is already durable and the
+ * worker tick sends it. Never throws into the caller.
+ */
+export function startAfterResponse(fn: () => Promise<void>): void {
+  try {
+    after(fn)
+  } catch {
+    /* no request scope — the 5-minute worker picks the job up */
   }
 }

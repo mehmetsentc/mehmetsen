@@ -84,7 +84,14 @@ describe('P2 cron does not fan out to a deployment host', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
-    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '0 * * * *' }])
+    // Görev 15 dar istisna: yalnızca hesap bazlı sosyal otomasyon çalışanı eklendi.
+    expect(vercel.crons).toEqual([
+      { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
+      { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
+    ])
+    const social = readFileSync(join(process.cwd(), 'src/app/api/cron/social-automation/route.ts'), 'utf8')
+    expect(social).not.toContain('vercel.app')
+    expect(social).not.toContain('VERCEL_URL')
     const tick = readFileSync(join(process.cwd(), 'src/app/api/cron/crawler/tick/route.ts'), 'utf8')
     const worker = readFileSync(join(process.cwd(), 'src/services/crawler/workers/tick.ts'), 'utf8')
     expect(tick).toContain('runCrawlerTick()')

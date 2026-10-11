@@ -6,8 +6,8 @@
  *
  * P18.1: HUMAN_EDITOR authority with authenticated admin actor + provenance.
  */
-import { NextResponse, after } from 'next/server'
-import { onNewsWritten, startAutomationJobs } from '@/lib/social/automation/events'
+import { NextResponse } from 'next/server'
+import { onNewsWritten, startAfterResponse, startAutomationJobs } from '@/lib/social/automation/events'
 import { revalidatePath } from 'next/cache'
 import { verifyAdminRequest } from '@/lib/adminAuth'
 import { Collections, getAdminFirestore } from '@/lib/firebase/admin'
@@ -130,7 +130,7 @@ export async function POST(request: Request, context: RouteContext) {
   await newsRef.set(newsDoc)
   {
     const dueAutomation = await onNewsWritten({ newsId: newsRef.id, data: newsDoc as Record<string, unknown>, becamePublished: true, wasPublished: false, now: Date.now() })
-    if (dueAutomation.length > 0) after(() => startAutomationJobs(dueAutomation))
+    if (dueAutomation.length > 0) startAfterResponse(() => startAutomationJobs(dueAutomation))
   }
 
   await queueRef.update({

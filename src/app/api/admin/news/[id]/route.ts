@@ -16,7 +16,7 @@ import { getScopedAdminDoc } from '@/lib/cms/scopedAdminDocs'
 import { buildEditorMediaItems, sanitizeAdditionalImages } from '@/lib/adminNewsMedia'
 import { notifyPublishedArticle } from '@/lib/indexNow'
 import { isCanakkaleArticle, isStoryEligible, publishOneSocial } from '@/lib/social/publishOneSocial'
-import { onNewsWritten, startAutomationJobs, startAutomationJobsForNews } from '@/lib/social/automation/events'
+import { onNewsWritten, startAfterResponse, startAutomationJobs, startAutomationJobsForNews } from '@/lib/social/automation/events'
 import { revalidateHomeFeedCaches, revalidatePublishedNews } from '@/lib/revalidateHome'
 import {
   authorizePublication,
@@ -616,7 +616,7 @@ export async function PUT(request: Request, context: RouteContext) {
           wasPublished: prevStatusForAuto === 'published',
           now: Date.now(),
         })
-        if (dueAutomation.length > 0) after(() => startAutomationJobs(dueAutomation))
+        if (dueAutomation.length > 0) startAfterResponse(() => startAutomationJobs(dueAutomation))
       }
       const rssGuid = String(prevData?.rssGuid || '').trim()
       if (rssGuid.startsWith('raw_')) {
@@ -748,7 +748,7 @@ export async function PUT(request: Request, context: RouteContext) {
           after(() => publishOneSocial(result.newsId))
         }
         // Otomasyon işleri approveDraft içinde kalıcı yazıldı; burada yalnızca hemen başlatılır.
-        if (result.newsId) after(() => startAutomationJobsForNews(result.newsId))
+        if (result.newsId) startAfterResponse(() => startAutomationJobsForNews(result.newsId))
         return NextResponse.json({ ok: true, collection: 'newsDrafts', ...result })
       }
 
