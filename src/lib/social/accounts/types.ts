@@ -98,6 +98,10 @@ interface SocialAccountCommon {
   permissionsVerifiedAt: number | null
   /** Platform-reported account type when available (e.g. IG `Business` / `Media_Creator`). */
   platformAccountType: string | null
+  /** Set when an automatic token refresh failed (reconnect before expiry). */
+  tokenWarning?: string | null
+  /** Last successful automatic token refresh (ms). */
+  tokenRefreshedAt?: number | null
 }
 
 export interface FacebookPageAccount extends SocialAccountCommon {
@@ -155,6 +159,8 @@ export interface SocialAccountPublic {
   grantedPermissions: string[] | null
   permissionsVerifiedAt: number | null
   platformAccountType: string | null
+  tokenWarning: string | null
+  tokenRefreshedAt: number | null
   /** Derived: publish permission state for the panel. */
   publishPermission: PublishPermissionState
   /** Permissions this connection needs to publish. */
@@ -266,6 +272,8 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
     grantedPermissions: strList(r.grantedPermissions),
     permissionsVerifiedAt: num(r.permissionsVerifiedAt),
     platformAccountType: str(r.platformAccountType),
+    tokenWarning: str(r.tokenWarning),
+    tokenRefreshedAt: num(r.tokenRefreshedAt),
   }
 
   if (platform === 'facebook') {
@@ -311,6 +319,8 @@ export function toPublicSocialAccount(a: SocialAccount): SocialAccountPublic {
     grantedPermissions: a.grantedPermissions ? [...a.grantedPermissions] : null,
     permissionsVerifiedAt: a.permissionsVerifiedAt,
     platformAccountType: a.platformAccountType,
+    tokenWarning: a.tokenWarning ?? null,
+    tokenRefreshedAt: a.tokenRefreshedAt ?? null,
     publishPermission: publishPermissionState(a),
     requiredPermissions: [...requiredPermissionsFor(a.platform, a.connectionMethod)],
   }

@@ -76,6 +76,7 @@ export interface TickReport {
   skipped?: string
   recovered: number
   reconcile: ReconcileReport | null
+  tokens?: { refreshed: number; failed: number; expired: number; skipped: number }
   processed: Array<{ jobId: string; status: string; code: string }>
   durationMs: number
 }
@@ -96,6 +97,13 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
     const rec = await readLedger(j.newsId, j.accountId, j.format)
     return rec ? { status: rec.status, externalPostId: rec.externalPostId } : null
   })
+
+  try {
+    const { refreshDueTokens } = await import('../accounts/tokenRefresh')
+    report.tokens = await refreshDueTokens(started)
+  } catch (err) {
+    socialLog('error', 'cron', 'token_refresh_error', { error: safeErrorText(err).slice(0, 200) })
+  }
 
   const rules = await listRules({ enabledOnly: true })
   try {

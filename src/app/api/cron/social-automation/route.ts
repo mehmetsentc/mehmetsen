@@ -34,7 +34,7 @@ async function handle(request: Request) {
   try {
     const report = await runAutomationTick()
     console.log(
-      `[cron/social-automation] recovered=${report.recovered} scanned=${report.reconcile?.scanned ?? 0} enqueued=${report.reconcile?.enqueued ?? 0} processed=${report.processed.map((p) => `${p.status}:${p.code}`).join(',') || '-'} ms=${report.durationMs}`,
+      `[cron/social-automation] recovered=${report.recovered} scanned=${report.reconcile?.scanned ?? 0} enqueued=${report.reconcile?.enqueued ?? 0} processed=${report.processed.map((p) => `${p.status}:${p.code}`).join(',') || '-'} tokens=${report.tokens ? `${report.tokens.refreshed}/${report.tokens.failed}/${report.tokens.expired}` : '-'} ms=${report.durationMs}`,
     )
     return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {

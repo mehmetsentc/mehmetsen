@@ -36,3 +36,7 @@ export const INSTAGRAM_LONG_LIVED_TOKEN_URL = 'https://graph.instagram.com/acces
 export const THREADS_OAUTH_AUTHORIZE_URL = 'https://threads.com/oauth/authorize'
 export const THREADS_OAUTH_TOKEN_URL = 'https://graph.threads.com/oauth/access_token'
 export const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_token'
+
+/** Long-lived token refresh (official; token ≥ 24 h old and unexpired → valid 60 days from refresh). */
+export const INSTAGRAM_REFRESH_TOKEN_URL = 'https://graph.instagram.com/refresh_access_token'
+export const THREADS_REFRESH_TOKEN_URL = 'https://graph.threads.net/refresh_access_token'

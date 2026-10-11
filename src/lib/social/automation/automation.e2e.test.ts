@@ -220,7 +220,7 @@ describe('kurallar kapalı teslim edilir', () => {
     expect(r.reconcile?.ran).toBe(false)
     expect(publishes()).toHaveLength(0)
     // boşta: kural sorgusu + vadesi gelen iş + süresi dolan kira (3 küçük sorgu), haber taraması yok
-    expect(fs.reads - readsBefore).toBeLessThanOrEqual(3)
+    expect(fs.reads - readsBefore).toBeLessThanOrEqual(5) // + 2 token-expiry sorgusu
     expect(job('n1')).toBeUndefined()
   })
 
