@@ -408,6 +408,9 @@ export function SocialAccountsManager({
                   Instagram API ile yalnız profesyonel (İşletme veya İçerik Üreticisi) hesaplara yayın yapılabilir. Kişisel Instagram hesapları bağlanamaz; önce Instagram uygulamasında hesabı profesyonele çevirin.
                 </p>
               )}
+              {me?.platforms?.[platform]?.appId && (
+                <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">OAuth uygulama kimliği (herkese açık): {me.platforms[platform].appId}</p>
+              )}
               {platform === 'facebook' && <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">Facebook’ta kişisel profil değil, yönettiğiniz bir Sayfa bağlanır; girişten sonra sayfayı seçersiniz.</p>}
               {me?.platforms?.[platform]?.publicAccess !== 'approved' && (
                 <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">

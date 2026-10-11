@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     // publicAccess: Meta genel erişim onayı (App Review / Advanced Access) — yalnız
     // onay doğrulandıktan sonra SOCIAL_PUBLIC_ACCESS="instagram,facebook,threads" ile açılır.
     platforms: Object.fromEntries(
-      Object.entries(cfg).map(([k, v]) => [k, { ready: v.ready, publicAccess: publicAccess.has(k) ? 'approved' : 'pending' }]),
+      Object.entries(cfg).map(([k, v]) => [k, { ready: v.ready, publicAccess: publicAccess.has(k) ? 'approved' : 'pending', ...(a.central ? { appId: v.appId ?? null } : {}) }]),
     ),
   })
 }

@@ -18,7 +18,7 @@ export type SocialMe = {
   provinces: string[]
   staff: boolean
   publishers: Array<{ id: string; name: string; canManage: boolean }>
-  platforms: Record<string, { ready: boolean; publicAccess?: 'approved' | 'pending' }>
+  platforms: Record<string, { ready: boolean; publicAccess?: 'approved' | 'pending'; appId?: string | null }>
 }
 
 /** Authenticated JSON call to /api/social/* — never sends secrets, never reads tokens. */

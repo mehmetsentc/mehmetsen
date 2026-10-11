@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     accounts: accounts.map(toPublicSocialAccount),
     legacyAccountIds: { facebook: fb, instagram: ig, threads: th },
     config: Object.fromEntries(
-      Object.entries(config).map(([k, v]) => [k, { ready: v.ready, missing: v.missing, redirectUri: v.redirectUri }]),
+      Object.entries(config).map(([k, v]) => [k, { ready: v.ready, missing: v.missing, redirectUri: v.redirectUri, appId: v.appId ?? null }]),
     ),
     autoShareEnabledByConnection: false,
     // Test (preview) ortamı durumu — yalnızca değişken ADLARI, değer yok.

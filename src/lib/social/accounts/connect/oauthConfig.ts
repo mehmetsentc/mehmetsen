@@ -59,6 +59,8 @@ export interface PlatformConfigStatus {
   /** Missing / invalid env var names (never values). */
   missing: string[]
   redirectUri: string | null
+  /** Public OAuth client id (visible in every authorize URL) — never the secret. */
+  appId?: string | null
 }
 
 const APP_ID_RE = /^[0-9]{5,25}$/
@@ -103,7 +105,8 @@ export function getPlatformConfigStatus(
   if (!hasSecretEncryptionKey()) missing.push('SECRET_ENCRYPTION_KEY')
   if (!env.CMS_SESSION_SECRET?.trim()) missing.push('CMS_SESSION_SECRET')
   for (const name of socialTestEnvStatus(env).problems) if (!missing.includes(name)) missing.push(name)
-  return { ready: missing.length === 0, missing, redirectUri: base ? `${base}${CALLBACK_PATHS[platform]}` : null }
+  // appId is the PUBLIC OAuth client id (it is part of every authorize URL); never the secret.
+  return { ready: missing.length === 0, missing, redirectUri: base ? `${base}${CALLBACK_PATHS[platform]}` : null, appId: APP_ID_RE.test(id) ? id : null }
 }
 
 /** Full config for server-side use. Throws when not ready (callers check status first). */
