@@ -356,6 +356,7 @@ export function automationCallProblem(options: PublishOneSocialOptions): string 
   if (!plat || plat.twitter) return 'automation_platforms'
   const on = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
   if (on.length !== 1 || on[0] !== t[0][0]) return 'automation_platforms'
+  if (options.mode === 'post' && options.overrides?.imageMode !== 'single') return 'automation_image_mode'
   return null
 }
 
@@ -922,6 +923,8 @@ export async function publishOneSocial(
         hashtags: socialContent.hashtags,
         cityName,
         citySlug: typeof data.citySlug === 'string' ? data.citySlug : undefined,
+        // Otomasyon: Meta AI yeniden yazımı kapalı (manuel yayın global ayarı izler).
+        ...(automation ? { aiRewrite: false } : {}),
       }
 
       console.log(
@@ -1027,6 +1030,7 @@ export async function publishOneSocial(
       const storyPayload: SocialPublishPayload = {
         newsId, title: socialContent.headline || title,
         description: undefined, imageUrl: storyImageUrl, articleUrl,
+        ...(automation ? { aiRewrite: false } : {}),
       }
 
       if (!articleUrl?.trim()) {

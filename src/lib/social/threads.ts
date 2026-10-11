@@ -330,10 +330,12 @@ async function publishToThreadsUnlocked(
   let captionPayload = payload
   const city = payload.cityName?.trim() || 'Çanakkale'
   const contentForAi = (payload.description ?? '').trim() || payload.title
-  const ai = await rewriteForPlatform(payload.title, contentForAi, city, 'threads', {
-    articleUrl: payload.articleUrl,
-    newsId: payload.newsId,
-  })
+  const ai = payload.aiRewrite === false
+    ? ({ enabled: false } as const)
+    : await rewriteForPlatform(payload.title, contentForAi, city, 'threads', {
+        articleUrl: payload.articleUrl,
+        newsId: payload.newsId,
+      })
   if (ai.enabled) {
     const tags =
       ai.hashtags.length > 0

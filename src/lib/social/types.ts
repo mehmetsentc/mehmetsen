@@ -98,4 +98,10 @@ export interface SocialPublishPayload {
   cityName?: string
   /** Şehir slug — cityName yoksa etiket için kullanılır. */
   citySlug?: string
+  /**
+   * `false` → adaptör Meta AI (Llama) yeniden yazımını çağırmaz; haberin mevcut
+   * başlık/özetiyle yerel caption kurulur. Hesap bazlı otomasyon bunu verir.
+   * Yoksa global `metaAiRewrite` ayarı geçerlidir (manuel yayın değişmez).
+   */
+  aiRewrite?: boolean
 }

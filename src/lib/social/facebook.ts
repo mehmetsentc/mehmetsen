@@ -601,10 +601,12 @@ async function publishToFacebookUnlocked(
   let aiHashtags: string[] = []
   let cacheKey: string | undefined
 
-  const ai = await rewriteForPlatform(payload.title, contentForAi, city, 'facebook', {
-    articleUrl,
-    newsId: payload.newsId,
-  })
+  const ai = payload.aiRewrite === false
+    ? ({ enabled: false } as const)
+    : await rewriteForPlatform(payload.title, contentForAi, city, 'facebook', {
+        articleUrl,
+        newsId: payload.newsId,
+      })
 
   if (ai.enabled) {
     aiSource = ai.source

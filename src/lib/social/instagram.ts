@@ -59,10 +59,12 @@ async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<s
   const city = payload.cityName?.trim() || 'Çanakkale'
   const deepseekBody = (payload.description ?? '').trim()
   const content = deepseekBody || payload.title
-  const ai = await rewriteForPlatform(payload.title, content, city, 'instagram', {
-    articleUrl: payload.articleUrl,
-    newsId: payload.newsId,
-  })
+  const ai = payload.aiRewrite === false
+    ? ({ enabled: false } as const)
+    : await rewriteForPlatform(payload.title, content, city, 'instagram', {
+        articleUrl: payload.articleUrl,
+        newsId: payload.newsId,
+      })
   if (!ai.enabled) return buildInstagramCaption(payload)
 
   const metaBody = (ai.caption || '').trim()
