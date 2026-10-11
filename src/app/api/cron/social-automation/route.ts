@@ -2,10 +2,9 @@
  * GET|POST /api/cron/social-automation — the single shared automation worker
  * tick (every account, every province).
  *
- * NOT scheduled in vercel.json: the FINOPS cost freeze keeps vercel.json at
- * the crawler tick only (src/lib/costFreeze.test.ts). It is triggered the same
- * way as the legacy /api/cron/social (external scheduler with the cron secret)
- * once an operator decides to schedule it — every 5 minutes is enough.
+ * Scheduled every 5 minutes in vercel.json (Görev 15 — narrow FINOPS
+ * exception, see src/lib/costFreeze.test.ts). CMS publish routes write the
+ * job synchronously and start it in after(); this tick is the guarantee.
  *
  * Auth: Vercel Cron (Bearer CRON_SECRET) or the newsroom cron secret / CMS
  * operator (isNewsroomAuthorized). Blocked in the social test (preview) env.

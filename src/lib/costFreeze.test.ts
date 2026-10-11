@@ -32,11 +32,19 @@ describe('FINOPS cost freeze', () => {
     expect(page).not.toContain('firestore')
   })
 
-  it('keeps only the crawler tick; AI and publisher schedules stay off', () => {
+  it('keeps only the crawler tick (+ the social automation worker); AI and publisher schedules stay off', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
-    expect(vercel.crons).toEqual([{ path: '/api/cron/crawler/tick', schedule: '0 * * * *' }])
+    // Görev 15 dar istisna: hesap bazlı sosyal otomasyon çalışanı (kullanıcı onaylı, 5 dk).
+    // Açık kural yokken haber taramaz; AI çağırmaz; tek ortak çalışan.
+    expect(vercel.crons).toEqual([
+      { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
+      { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
+    ])
+    const worker = readFileSync(join(process.cwd(), 'src/lib/social/automation/worker.ts'), 'utf8')
+    expect(worker).not.toContain('generateSocialContent')
+    expect(worker).not.toContain('rewriteForPlatform')
     const tick = readFileSync(join(process.cwd(), 'src/app/api/cron/crawler/tick/route.ts'), 'utf8')
     expect(tick).toContain('runCrawlerTick')
     expect(tick).toContain('isGlobalCrawlerEnabled')
