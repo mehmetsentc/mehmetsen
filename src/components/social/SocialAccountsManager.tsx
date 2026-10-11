@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, Link2, Loader2, PauseCircle, PlayCircle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Link2, Loader2, PauseCircle, PlayCircle, RefreshCw, Stethoscope } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import { cn } from '@/lib/utils'
@@ -196,6 +196,19 @@ export function SocialAccountsManager({
     void load()
   }
 
+  const checkConnection = async (a: SocialAccountRow) => {
+    setBusy(`ck:${a.id}`)
+    const r = await socialApi<{ state: string; message: string }>(`/api/social/accounts/${encodeURIComponent(a.id)}/check`, { method: 'POST', body: '{}' })
+    setBusy(null)
+    if (!r.ok) {
+      toast.error('Bağlantı kontrol edilemedi.')
+      return
+    }
+    if (r.data.state === 'ok') toast.success(r.data.message)
+    else toast.error(r.data.message, { duration: 10000 })
+    void load()
+  }
+
   const confirmPage = async () => {
     if (!fbSelect || !selectedPage) return
     setBusy('select')
@@ -358,8 +371,13 @@ export function SocialAccountsManager({
                   {a.canManage && (
                     <div className="flex flex-wrap gap-1.5">
                       {a.connectionMethod !== 'legacy' && (
-                        <button type="button" disabled={busy === `re:${a.id}`} onClick={() => void reconnect(a)} className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-xs">
-                          <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Yeniden bağla
+                        <button type="button" disabled={busy === `ck:${a.id}`} onClick={() => void checkConnection(a)} className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-xs" title="Platforma yalnızca okuma isteği gönderir; paylaşım yapmaz">
+                          <Stethoscope className="h-3.5 w-3.5" aria-hidden /> {busy === `ck:${a.id}` ? 'Kontrol ediliyor…' : 'Bağlantıyı kontrol et'}
+                        </button>
+                      )}
+                      {a.connectionMethod !== 'legacy' && (
+                        <button type="button" disabled={busy === `re:${a.id}`} onClick={() => void reconnect(a)} className={cn('inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs', a.status === 'needs_reauth' ? 'bg-blue-600 font-semibold text-white' : 'border border-[rgb(var(--color-border))]')}>
+                          <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Platform girişiyle yeniden bağla
                         </button>
                       )}
                       {a.status === 'active' ? (
@@ -384,6 +402,7 @@ export function SocialAccountsManager({
                   <Pill tone={autoCount > 0 ? 'ok' : 'muted'}>Otomasyon: {autoCount > 0 ? `${autoCount} kural açık` : 'kapalı'}</Pill>
                   {!a.canPublish && <Pill tone="muted">Yalnızca görüntüleme</Pill>}
                 </div>
+                {a.status === 'needs_reauth' && a.statusReason && <p className="text-xs font-semibold text-red-700 dark:text-red-300">{a.statusReason}</p>}
                 <p className={cn('text-xs', a.health.tokenWarning || a.tokenWarning ? 'text-amber-700 dark:text-amber-300' : 'text-[rgb(var(--color-muted))]')}>
                   {expiryText(a)}
                   {a.tokenWarning ? ` · ${a.tokenWarning}` : ''}

@@ -36,7 +36,7 @@ import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
 import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
-import { readJsonResponse, unreadableResponseText } from '@/lib/social/shareResultText'
+import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
 import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -920,27 +920,25 @@ export default function SocialPage() {
         return
       }
 
-      const parts: string[] = []
-      if (r0?.post) {
-        parts.push(
-          `Post FB:${resultMark(r0.post.facebook)} IG:${resultMark(r0.post.instagram)}` +
-          (r0.post.threads ? ` Th:${resultMark(r0.post.threads)}` : '') +
-          (r0.post.twitter ? ` X:${r0.post.twitter.success ? '✓' : '✗'} (kilitsiz)` : '')
-        )
+      // Platform bazında: hesap · durum · gönderi kimliği (her platform bağımsız).
+      const lines: string[] = []
+      const pushLines = (prefix: string, set?: Record<string, unknown>) => {
+        if (!set) return
+        for (const [key, label] of [['facebook', 'FB'], ['instagram', 'IG'], ['threads', 'Th'], ['twitter', 'X']] as const) {
+          const v = set[key] as ShareResultLike | undefined
+          if (!v || v.error === 'skipped') continue
+          const line = describeShareResult(`${prefix} ${label}`, v)
+          lines.push(key === 'twitter' ? `${line} (X ortak kilit dışında)` : line)
+        }
       }
-      if (r0?.story) {
-        parts.push(`Hikâye FB:${resultMark(r0.story.facebook)} IG:${resultMark(r0.story.instagram)}`)
-      }
-      const targetedNotes = [
-        ...Object.entries(r0?.post ?? {}),
-        ...Object.entries(r0?.story ?? {}),
-      ]
-        .filter(([, v]) => v && (v as PlatformShareResult).accountId && !(v as PlatformShareResult).success && (v as PlatformShareResult).error)
-        .map(([k, v]) => `${k}: ${(v as PlatformShareResult).error}`)
-      if (targetedNotes.length) parts.push(targetedNotes.join(' · '))
-      const msg = parts.join(' · ') || 'Paylaşıldı'
-      toast.success(msg, { id: toastId })
-      setLastResult({ ok: true, message: msg, post: r0?.post, story: r0?.story })
+      pushLines('Post', r0?.post as Record<string, unknown> | undefined)
+      pushLines('Hikâye', r0?.story as Record<string, unknown> | undefined)
+      const anyPublished = lines.some((l) => l.includes(': ✓') || l.includes(': ='))
+      const msg = lines.join('\n') || 'Paylaşım sonucu yok'
+      if (anyPublished) toast.success(msg, { id: toastId, duration: 10000 })
+      else toast.error(msg, { id: toastId, duration: 12000 })
+      setLastResult({ ok: anyPublished, message: msg, post: r0?.post, story: r0?.story })
+      if (!anyPublished) return
 
       setRows((prev) => prev.map((r) => {
         if (r.id !== selected.id) return r

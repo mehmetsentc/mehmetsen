@@ -39,6 +39,8 @@ import { parseTargetsInput, preflightTargets, type PublishTargets } from '@/lib/
 import { canManageSocialAccounts } from '@/lib/social/accounts/authz'
 import { isSameOriginRequest } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
+import { loadSocialAccount } from '@/lib/social/accounts/accountStore'
+import { attachAccountNames, shareOutcome } from '@/lib/social/shareResponse'
 import { imageModeProblem, parseImageMode } from '@/lib/social/accounts/capabilities'
 
 export const runtime = 'nodejs'
@@ -276,6 +278,7 @@ export async function POST(request: Request) {
     }
 
     const results: PublishOneSocialResult[] = []
+    try {
     for (const id of targetIds) {
       const r = await publishOneSocial(id, {
         mode: mode ?? 'post',
@@ -312,39 +315,40 @@ export async function POST(request: Request) {
       }
       if (targetIds.length > 1) await new Promise(res => setTimeout(res, 1500))
     }
+    } catch (err) {
+      // Gerçek altyapı hatası (platform reddi değil). Tamamlanan platform
+      // sonuçları ledger'da kalır; tekrar göndermeden önce kontrol edilmeli.
+      console.error('[force-reshare] targeted_exception', err instanceof Error ? err.name : 'error')
+      return NextResponse.json(
+        {
+          error: 'Sunucu hatası: paylaşım tamamlanamadı. Tamamlanan platformlar kayıtlıdır — tekrar göndermeden önce Paylaşımlar ve «Sonucu belirsiz paylaşımlar» listesini kontrol edin.',
+          code: 'server_error',
+          outcome: 'server_error',
+          results: await attachAccountNames(results, loadSocialAccount),
+        },
+        { status: 500 },
+      )
+    }
 
     const succeeded = results.filter(r => r.ok).length
     const failed = results.filter(r => !r.ok).length
+    const named = await attachAccountNames(results, loadSocialAccount)
 
-    // Tek haber paylaşımında daha net HTTP status
-    if (targetIds.length === 1) {
-      const r = results[0]
-      if (r.skipped) {
-        return NextResponse.json({
-          reshared: 0,
-          succeeded: 0,
-          failed: 1,
-          error: r.reason,
-          results,
-        }, { status: 422 })
-      }
-      if (!r.ok) {
-        return NextResponse.json({
-          reshared: 0,
-          succeeded: 0,
-          failed: 1,
-          error: r.reason ?? 'Paylaşım başarısız',
-          results,
-        }, { status: 502 })
-      }
+    // Tek haber: içerik nedeniyle hiç denenmediyse 422. Platform reddi bir
+    // altyapı hatası DEĞİL: platform bazında yapılandırılmış sonuç 200 ile döner
+    // (5xx gövdesi önündeki CDN tarafından HTML hata sayfasıyla değiştirilir ve
+    // panel doğrulanmış diğer platform sonuçlarını göremez).
+    if (targetIds.length === 1 && results[0].skipped) {
+      return NextResponse.json({ reshared: 0, succeeded: 0, failed: 1, outcome: 'skipped', error: results[0].reason, results: named }, { status: 422 })
     }
-
     return NextResponse.json({
       reshared: results.length,
       succeeded,
       failed,
       mode: mode ?? 'post',
-      results,
+      outcome: shareOutcome(results),
+      ...(targetIds.length === 1 && !results[0].ok ? { error: results[0].reason ?? 'Paylaşım başarısız' } : {}),
+      results: named,
     })
   }
 

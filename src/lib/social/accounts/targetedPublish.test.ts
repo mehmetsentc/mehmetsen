@@ -71,13 +71,14 @@ import { targetBlocker } from './capabilities'
 // ── fetch with failure injection ────────────────────────────────────────────
 let calls: RecordedCall[] = []
 let logs: string[] = []
-let failRule: ((url: string, method: string) => 'throw' | 'reject' | null) | null = null
+let failRule: ((url: string, method: string) => 'throw' | 'reject' | 'revoked' | null) | null = null
 async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = String(input)
   const method = (init?.method ?? 'GET').toUpperCase()
   calls.push({ url, method, body: init?.body ? String(init.body) : '' })
   const f = failRule?.(url, method)
   if (f === 'throw') throw new TypeError('fetch failed')
+  if (f === 'revoked') return new Response(JSON.stringify({ error: { message: 'Error validating access token: session invalidated EAAG_SHOULD_NOT_ECHO', type: 'OAuthException', code: 190, error_subcode: 460 } }), { status: 400 })
   if (f === 'reject') return new Response(JSON.stringify({ error: { message: 'Invalid parameter (#100) token EAAG_SHOULD_NOT_ECHO', code: 100 } }), { status: 400 })
   return cannedMetaResponse(url, method)
 }
@@ -390,6 +391,22 @@ describe('hesap bazlı geçmiş, mükerrer kontrol, belirsiz sonuç, kısmi baş
     expect(ledger(IG_A.id)).toMatchObject({ status: 'failed' })
   })
 
+  it('iptal edilmiş anahtar (190/460): hesap yeniden bağlantı bekler; diğer platformun başarısı korunur; başka anahtara düşülmez', async () => {
+    failRule = (url, method) => (method === 'POST' && url.startsWith(`${INSTAGRAM_LOGIN_GRAPH_BASE}/7771/media`) && !url.endsWith('media_publish') ? 'revoked' : null)
+    const r = await run({ mode: 'post', targets: { facebook: FB_A.id, instagram: IG_A.id }, overrides: { platforms: { facebook: true, instagram: true, threads: false, twitter: false } } })
+    expect(r.post?.facebook).toMatchObject({ success: true })
+    expect(r.post?.instagram).toMatchObject({ success: false, ledgerStatus: 'failed', code: 'token_invalid' })
+    expect(r.post?.instagram.error).not.toContain('EAAG_SHOULD_NOT_ECHO')
+    expect(fs.store.get(`socialAccounts/${IG_A.id}`)).toMatchObject({ status: 'needs_reauth' })
+    expect(fs.store.get(`socialAccounts/${FB_A.id}`)).toMatchObject({ status: 'active' })
+    // Sahiplik ve kayıt korunur; ikinci istek hesap yeniden bağlanana kadar platforma gitmez.
+    expect((fs.store.get(`socialAccounts/${IG_A.id}`) as { ownership: unknown }).ownership).toEqual(IG_A.ownership)
+    const before = meta(calls).length
+    const again = await run({ mode: 'post', targets: { instagram: IG_A.id }, overrides: { platforms: { facebook: false, instagram: true, threads: false, twitter: false } } })
+    expect(again.ok).toBe(false)
+    expect(meta(calls).length).toBe(before)
+  })
+
   it('sonuç sınıflandırma', () => {
     expect(classifyOutcome({ success: true, platformId: 'x' }, false).status).toBe('succeeded')
     expect(classifyOutcome({ success: true }, false).status).toBe('uncertain')
@@ -428,6 +445,19 @@ describe('force-reshare rotası', () => {
     expect(audits.map((a) => a.action)).toEqual(expect.arrayContaining(['social.publish', 'social.publish.manual']))
     expect(audits.find((a) => a.action === 'social.publish')).toMatchObject({ actorId: 'admin1', entityId: FB_A.id, meta: { newsId: 'n1', platform: 'facebook', result: 'succeeded' } })
     for (const s of SECRETS) expect(JSON.stringify(audits)).not.toContain(s)
+  })
+
+  it('platform reddi altyapı hatası değildir: 200 + platform bazında okunur sonuç (502 yok), hesap adı ve yeniden bağlantı durumu', async () => {
+    failRule = (url, method) => (method === 'POST' && url.startsWith(`${FACEBOOK_GRAPH_BASE}/`) && url.includes('/photos') ? 'revoked' : null)
+    const { POST } = await import('@/app/api/admin/social/force-reshare/route')
+    const res = await POST(req('admin1', body({ targets: { facebook: FB_A.id } })))
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    for (const s of SECRETS) expect(text).not.toContain(s)
+    const parsed = JSON.parse(text)
+    expect(parsed.outcome).toBe('failed')
+    expect(parsed.results[0].post.facebook).toMatchObject({ success: false, accountId: FB_A.id, code: 'token_invalid', ledgerStatus: 'failed', accountName: expect.any(String) })
+    expect(fs.store.get(`socialAccounts/${FB_A.id}`)).toMatchObject({ status: 'needs_reauth' })
   })
 
   it('editör (news:publish var) hedefle paylaşamaz; hedefsiz eski yol aynen açık', async () => {

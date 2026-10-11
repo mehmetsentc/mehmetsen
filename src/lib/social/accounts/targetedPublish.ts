@@ -22,6 +22,8 @@ import type { SocialAccountPlatform } from './types'
 import type { PublishTarget } from './targetTypes'
 import type { SocialPublishResult } from '../types'
 import { errorLogFields, socialLog } from '../safeLog'
+import { metaCodeFromSafeError } from '../shareResultText'
+import { markTokenRejected, TOKEN_REJECTED_CODES } from './connectionCheck'
 
 export const TARGETABLE_PLATFORMS = ['facebook', 'instagram', 'threads'] as const satisfies readonly SocialAccountPlatform[]
 export type TargetablePlatform = (typeof TARGETABLE_PLATFORMS)[number]
@@ -182,10 +184,19 @@ export async function publishToTarget(input: {
     // `uncertain` when the lease expires — never re-published automatically.
     socialLog('error', 'publish', 'target_finish_error', { platform: input.platform, newsId: input.newsId, account: input.accountId, ...errorLogFields(err) })
   }
+  // The platform rejected THIS account's token (190 / 102) → the account waits
+  // for «Platform girişiyle yeniden bağla». Never retried with another token.
+  const meta = outcome.status === 'failed' ? metaCodeFromSafeError(result?.error) : null
+  const tokenRejected = !!meta && TOKEN_REJECTED_CODES.has(meta.code)
+  if (tokenRejected) {
+    await markTokenRejected(input.accountId, { by: input.actorUid, now: now(), source: `publish:${input.platform}`, code: meta!.code, subcode: meta!.subcode }).catch((err) =>
+      socialLog('error', 'publish', 'mark_reauth_error', { platform: input.platform, account: input.accountId, ...errorLogFields(err) }),
+    )
+  }
   const res: TargetedPublishResult = {
     success: outcome.status === 'succeeded',
     accountId: input.accountId,
-    code: outcome.code,
+    code: tokenRejected ? 'token_invalid' : outcome.code,
     ledgerStatus: outcome.status,
     ...(externalPostId ? { platformId: externalPostId } : {}),
     ...(outcome.status === 'succeeded'

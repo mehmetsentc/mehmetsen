@@ -11,6 +11,8 @@ export interface ShareResultLike {
   accountId?: string
   code?: string
   ledgerStatus?: string
+  accountName?: string
+  platformId?: string
 }
 
 export type ShareState =
@@ -66,6 +68,7 @@ export function shareState(r?: ShareResultLike | null): ShareState {
   if (r.code === 'in_progress') return 'in_progress'
   if (r.code === 'uncertain_previous_attempt') return 'uncertain_previous_attempt'
   if (r.error === 'not attempted') return 'not_attempted'
+  if (r.code === 'token_invalid') return 'token_invalid'
   const meta = metaCodeFromSafeError(r.error)
   if (meta) {
     if (meta.code === 190 || meta.code === 102) return 'token_invalid'
@@ -78,9 +81,15 @@ export function shareState(r?: ShareResultLike | null): ShareState {
 /** One platform line, e.g. "IG (Onyeditivi eski bağlantı): ✗ erişim anahtarı geçersiz …". */
 export function describeShareResult(label: string, r?: ShareResultLike | null): string {
   const st = shareState(r)
-  const via = r?.accountId ? 'seçilen hesap' : 'Onyeditivi eski bağlantı'
-  const detail = st === 'failed' && r?.error ? `${STATE_TEXT.failed} (${r.error})` : STATE_TEXT[st]
-  return `${label} (${via}): ${MARK[st]} ${detail}`
+  const via = r?.accountId ? (r.accountName ?? 'seçilen hesap') : 'Onyeditivi eski bağlantı'
+  const detail =
+    st === 'failed' && r?.error
+      ? `${STATE_TEXT.failed} (${r.error})`
+      : st === 'token_invalid' && r?.accountId
+        ? 'platform erişim anahtarını reddetti — hesap «yeniden bağlantı gerekli» durumuna alındı; «Platform girişiyle yeniden bağla»'
+        : STATE_TEXT[st]
+  const postId = (st === 'published' || st === 'already_published') && r?.platformId ? ` · gönderi ${r.platformId}` : ''
+  return `${label} (${via}): ${MARK[st]} ${detail}${postId}`
 }
 
 /** Read a fetch Response as JSON without throwing on HTML / empty bodies. */

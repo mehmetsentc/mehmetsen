@@ -39,6 +39,8 @@ export interface SocialPublishResult {
   ledgerStatus?: string
   /** `socialPublishRecords` id — set when the result is ledger-tracked. */
   ledgerRecordId?: string
+  /** Display name of the explicit target account (panel only; added by the route). */
+  accountName?: string
 }
 
 /** Combined result from the cron runner for one news item. */
