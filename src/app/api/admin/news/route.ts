@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { onNewsWritten, startAfterResponse, startAutomationJobs } from '@/lib/social/automation/events'
 import { revalidatePath } from 'next/cache'
@@ -33,10 +34,29 @@ import {
 } from '@/lib/news/distributionMeta'
 
 export const runtime = 'nodejs'
+
+const CREATE_REQUEST_ID_RE = /^[A-Za-z0-9-]{16,64}$/
+
+function normalizeCreateRequestId(raw: unknown): string | null {
+  return typeof raw === 'string' && CREATE_REQUEST_ID_RE.test(raw.trim()) ? raw.trim() : null
+}
+
+/** Deterministic per (user, request): repeats map to the same id; other users / requests never collide. */
+function newsIdForCreateRequest(uid: string, requestId: string): string {
+  return `n${createHash('sha256').update(`${uid}:${requestId}`).digest('hex').slice(0, 24)}`
+}
+
+function isAlreadyExists(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown }
+  return e?.code === 6 || e?.code === 'already-exists' || /ALREADY_EXISTS|already exists/i.test(String(e?.message ?? ''))
+}
 export const dynamic = 'force-dynamic'
 
 interface CreatePayload {
+  /** Ignored for the document id (kept only so older clients still parse). */
   draftId?: string
+  /** Per-editor-session idempotency key (random, client-generated). */
+  createRequestId?: string
   title?: string
   slug?: string
   summary?: string
@@ -172,24 +192,14 @@ export async function POST(request: Request) {
     }
     const personaAuthors = aiEditor ? authorFieldsFromEditor(aiEditor) : null
 
-    const newsRef = body.draftId?.trim()
-      ? db.collection(Collections.NEWS).doc(body.draftId.trim())
+    // Kalıcı haber kimliği SUNUCUDA üretilir. İstemcinin draftId'si (eski
+    // `draft-${useId()}` değerleri sayfa açılışları arasında tekrarlanır)
+    // belge kimliği olarak KULLANILMAZ; yeni haber mevcut belgeyi ezemez.
+    // Aynı oluşturma isteğinin tekrarı (çift tıklama / ağ tekrarı) aynı haberi döndürür.
+    const createRequestId = normalizeCreateRequestId(body.createRequestId)
+    const newsRef = createRequestId
+      ? db.collection(Collections.NEWS).doc(newsIdForCreateRequest(auth.uid, createRequestId))
       : db.collection(Collections.NEWS).doc()
-
-    // Scoped staff cannot overwrite an existing document outside their scope via draftId.
-    if (scoped && body.draftId?.trim()) {
-      const existing = await newsRef.get()
-      if (existing.exists) {
-        const denied = denyIfOutsideStaffScope(auth, contentScopeOf(existing.data()))
-        if (denied) return denied
-        const noRight = denyIfMissingStaffRights(
-          auth,
-          requiredRightsForUpdate(body as unknown as Record<string, unknown>, existing.data()),
-          contentScopeOf(existing.data())
-        )
-        if (noRight) return noRight
-      }
-    }
 
     const payload: Record<string, unknown> = {
       title: body.title.trim(),
@@ -341,7 +351,19 @@ export async function POST(request: Request) {
       payload.mediaItems = editorMediaItems
     }
 
-    await newsRef.set(payload)
+    if (createRequestId) payload.createRequestId = createRequestId
+    try {
+      await newsRef.create(payload)
+    } catch (createErr) {
+      if (!isAlreadyExists(createErr)) throw createErr
+      const existing = await newsRef.get()
+      const ex = existing.data() ?? {}
+      if (createRequestId && ex.createRequestId === createRequestId && ex.manualEditedBy === auth.uid) {
+        // Aynı isteğin tekrarı: ikinci haber yok, yan etki yok.
+        return NextResponse.json({ ok: true, id: newsRef.id, slug: String(ex.slug ?? slug), duplicate: true })
+      }
+      return NextResponse.json({ error: 'Haber kimliği çakıştı; mevcut haber korunarak kayıt durduruldu. Tekrar deneyin.', code: 'id_conflict' }, { status: 409 })
+    }
     if (status === 'published') {
       const dueAutomation = await onNewsWritten({ newsId: newsRef.id, data: payload as Record<string, unknown>, becamePublished: true, wasPublished: false, now: Date.now() })
       if (dueAutomation.length > 0) startAfterResponse(() => startAutomationJobs(dueAutomation))

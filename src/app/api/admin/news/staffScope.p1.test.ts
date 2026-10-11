@@ -32,6 +32,10 @@ function docRef(name: string, id: string) {
       return { id, exists: Boolean(d), data: () => (d ? structuredClone(d) : undefined) }
     },
     async set(data: Doc) { colMap(name).set(id, applyPatch({}, data)) },
+    async create(data: Doc) {
+      if (colMap(name).has(id)) throw Object.assign(new Error(`6 ALREADY_EXISTS: ${name}/${id}`), { code: 6 })
+      colMap(name).set(id, applyPatch({}, data))
+    },
     async update(patch: Doc) {
       const prev = colMap(name).get(id)
       if (!prev) throw new Error(`NOT_FOUND ${name}/${id}`)
@@ -260,11 +264,13 @@ describe('Phase 1 — admin news routes enforce scope server-side', () => {
       expect(snapshot()).toBe(before)
     })
 
-    it('draftId cannot overwrite an out-of-scope existing article', async () => {
-      const before = snapshot()
+    it('draftId cannot overwrite an existing article (id is generated on the server)', async () => {
+      const prev = JSON.stringify(colMap('news').get('n-ant-spor'))
       const r = await create('t-sports', { title: 'x', draftId: 'n-ant-spor', citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })
-      expect(r.status).toBe(403)
-      expect(snapshot()).toBe(before)
+      expect(r.status).toBe(200)
+      const { id } = (await r.json()) as { id: string }
+      expect(id).not.toBe('n-ant-spor')
+      expect(JSON.stringify(colMap('news').get('n-ant-spor'))).toBe(prev)
     })
 
     it('draft collection is scope-checked before and after', async () => {
@@ -343,5 +349,49 @@ describe('Phase 1 — city settings (cityOpsSettings) province scope', () => {
 
   it('super admin manages any city', async () => {
     expect((await cityPut('t-super', { citySlug: 'antalya', patch: {} })).status).toBe(200)
+  })
+})
+
+describe('haber kimliği çakışması (draft-${useId()})', () => {
+  beforeEach(() => {
+    seed()
+    vi.stubEnv('SUPER_ADMIN_EMAIL', SUPER_EMAIL)
+    vi.stubEnv('ADMIN_BOOTSTRAP_UIDS', 'u-boot')
+    vi.stubEnv('NEXT_PUBLIC_ADMIN_UIDS', '')
+  })
+  afterEach(() => vi.unstubAllEnvs())
+
+  it('aynı eski draftId ile iki yeni haber iki ayrı belge olur; mevcut belge ezilmez', async () => {
+    colMap('news').set('draft-_r_8_', { title: 'Eski haber', citySlug: 'canakkale', categoryId: 'spor', status: 'published' })
+    const a = await create('t-super', { title: 'Yeni haber A', draftId: 'draft-_r_8_', citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })
+    const b = await create('t-super', { title: 'Yeni haber B', draftId: 'draft-_r_8_', citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })
+    const ida = ((await a.json()) as { id: string }).id
+    const idb = ((await b.json()) as { id: string }).id
+    expect(ida).not.toBe(idb)
+    expect([ida, idb]).not.toContain('draft-_r_8_')
+    expect(colMap('news').get('draft-_r_8_')?.title).toBe('Eski haber')
+  })
+
+  it('aynı oluşturma isteğinin tekrarı (çift tıklama / ağ tekrarı) tek haber üretir', async () => {
+    const reqId = 'a1b2c3d4-e5f6-4711-8899-aabbccddeeff'
+    const before = colMap('news').size
+    // create() atomiktir: ikinci yazım ALREADY_EXISTS alır ve aynı kimliği döndürür.
+    const r1 = await create('t-super', { title: 'Tek haber', createRequestId: reqId, citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })
+    const r2 = await create('t-super', { title: 'Tek haber', createRequestId: reqId, citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })
+    const j1 = (await r1.json()) as { id: string; duplicate?: boolean }
+    const j2 = (await r2.json()) as { id: string; duplicate?: boolean }
+    expect(r1.status).toBe(200)
+    expect(r2.status).toBe(200)
+    expect(j1.id).toBe(j2.id)
+    expect([j1.duplicate, j2.duplicate].filter(Boolean)).toHaveLength(1)
+    expect(colMap('news').size).toBe(before + 1)
+  })
+
+  it('farklı kullanıcının aynı istek anahtarı başka kimlik üretir; başkasının haberine dönmez', async () => {
+    const reqId = 'ffffffff-0000-4000-8000-000000000001'
+    const a = (await (await create('t-super', { title: 'A', createRequestId: reqId, citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })).json()) as { id: string }
+    const b = (await (await create('t-legacy', { title: 'B', createRequestId: reqId, citySlug: 'canakkale', categoryId: 'spor', status: 'pending' })).json()) as { id: string }
+    expect(a.id).not.toBe(b.id)
+    expect(colMap('news').get(a.id)?.title).toBe('A')
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
@@ -229,6 +229,15 @@ const fieldInputCls =
 const fieldCardInputCls =
   'w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none focus:ring-2 focus:ring-emerald-500'
 
+function newCreateRequestId(): string {
+  const c = typeof globalThis !== 'undefined' ? (globalThis.crypto as Crypto | undefined) : undefined
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  const bytes = new Uint8Array(16)
+  if (c && typeof c.getRandomValues === 'function') c.getRandomValues(bytes)
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function AdminNewsEditor({
   mode,
   variant,
@@ -240,8 +249,11 @@ export function AdminNewsEditor({
 }: AdminNewsEditorProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const reactId = useId()
-  const mediaPostId = post?.id ?? `draft-${reactId.replace(/:/g, '')}`
+  // Oturum başına rastgele anahtar: yükleme klasörü + oluşturma isteğinin
+  // tekrarını tanımak için. Kalıcı haber kimliği sunucuda üretilir
+  // (`useId()` değerleri sayfa açılışları arasında tekrarlandığından kullanılmaz).
+  const [createRequestId] = useState(newCreateRequestId)
+  const mediaPostId = post?.id ?? `draft-${createRequestId}`
 
   const [title, setTitle] = useState(post?.title ?? '')
   const [slug, setSlug] = useState((post as (Post & { slug?: string }) | undefined)?.slug ?? '')
@@ -858,7 +870,7 @@ export function AdminNewsEditor({
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(
-          mode === 'create' ? { ...payload, draftId: mediaPostId } : payload
+          mode === 'create' ? { ...payload, createRequestId } : payload
         ),
       })
       if (!saveRes.ok) {
@@ -915,7 +927,7 @@ export function AdminNewsEditor({
         const res = await fetch('/api/admin/news', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ...payload, draftId: mediaPostId }),
+          body: JSON.stringify({ ...payload, createRequestId }),
         })
         if (!res.ok) {
           const err = (await res.json().catch(() => ({}))) as { error?: string }
