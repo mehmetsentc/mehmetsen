@@ -7,7 +7,7 @@ describe('shareResultText — platform bazında güvenli sonuç metni', () => {
     expect(metaCodeFromSafeError(r.error)).toEqual({ code: 190, subcode: 460 })
     expect(shareState(r)).toBe('token_invalid')
     const line = describeShareResult('Hikâye IG', r)
-    expect(line).toBe('Hikâye IG (Onyeditivi eski bağlantı): ✗ erişim anahtarı geçersiz — hesabı yeniden bağlayın')
+    expect(line).toBe('Hikâye IG (Onyeditivi eski bağlantı): ✗ erişim anahtarı geçersiz — hesabı yeniden bağlayın (eski bağlantı: Hesaplar sayfasında aynı hesabı «Platform girişiyle yeniden bağla» ve hedef olarak seçin)')
   })
 
   it('seçilen OAuth hesabı ve kilit / kayıt durumları ayrı gösterilir', () => {

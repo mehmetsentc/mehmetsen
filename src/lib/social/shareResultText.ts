@@ -87,7 +87,9 @@ export function describeShareResult(label: string, r?: ShareResultLike | null): 
       ? `${STATE_TEXT.failed} (${r.error})`
       : st === 'token_invalid' && r?.accountId
         ? 'platform erişim anahtarını reddetti — hesap «yeniden bağlantı gerekli» durumuna alındı; «Platform girişiyle yeniden bağla»'
-        : STATE_TEXT[st]
+        : st === 'token_invalid'
+          ? `${STATE_TEXT.token_invalid} (eski bağlantı: Hesaplar sayfasında aynı hesabı «Platform girişiyle yeniden bağla» ve hedef olarak seçin)`
+          : STATE_TEXT[st]
   const postId = (st === 'published' || st === 'already_published') && r?.platformId ? ` · gönderi ${r.platformId}` : ''
   return `${label} (${via}): ${MARK[st]} ${detail}${postId}`
 }

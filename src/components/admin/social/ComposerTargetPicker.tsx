@@ -25,7 +25,11 @@ export const DEFAULT_TARGETS: TargetSelection = { facebook: LEGACY_TARGET, insta
 
 const LABEL: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
 
-type LoadState = { kind: 'loading' } | { kind: 'forbidden' } | { kind: 'error' } | { kind: 'ok'; accounts: SocialAccountPublic[] }
+type LoadState =
+  | { kind: 'loading' }
+  | { kind: 'forbidden' }
+  | { kind: 'error' }
+  | { kind: 'ok'; accounts: SocialAccountPublic[]; legacyIds: Partial<Record<TargetPlatform, string | null>> }
 
 function cityName(slug: string | null): string {
   if (!slug) return ''
@@ -55,8 +59,8 @@ export function ComposerTargetPicker({
         if (cancelled) return
         if (res.status === 401 || res.status === 403) return setState({ kind: 'forbidden' })
         if (!res.ok) return setState({ kind: 'error' })
-        const body = (await res.json()) as { accounts: SocialAccountPublic[] }
-        setState({ kind: 'ok', accounts: body.accounts ?? [] })
+        const body = (await res.json()) as { accounts: SocialAccountPublic[]; legacyAccountIds?: Partial<Record<TargetPlatform, string | null>> }
+        setState({ kind: 'ok', accounts: body.accounts ?? [], legacyIds: body.legacyAccountIds ?? {} })
       } catch {
         if (!cancelled) setState({ kind: 'error' })
       }
@@ -65,6 +69,25 @@ export function ComposerTargetPicker({
       cancelled = true
     }
   }, [])
+
+  // The old Onyeditivi credentials and a platform-login connection can be the
+  // SAME external account. When that connection is healthy it is preselected
+  // (explicit, visible choice); the operator can still pick the old path.
+  useEffect(() => {
+    if (state.kind !== 'ok') return
+    let changed = false
+    const next = { ...value }
+    for (const p of Object.keys(LABEL) as TargetPlatform[]) {
+      if (next[p] !== LEGACY_TARGET) continue
+      const same = state.accounts.find((a) => a.id === state.legacyIds[p] && a.connectionMethod !== 'legacy')
+      if (same && !targetBlocker(same, mode, Date.now())) {
+        next[p] = same.id
+        changed = true
+      }
+    }
+    if (changed) onChange(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.kind])
 
   const visible = (Object.keys(LABEL) as TargetPlatform[]).filter((p) => enabled[p] && !(p === 'threads' && mode === 'story'))
   if (visible.length === 0) return null
@@ -80,6 +103,8 @@ export function ComposerTargetPicker({
       {visible.map((p) => {
         const accounts = state.kind === 'ok' ? state.accounts.filter((a) => a.platform === p) : []
         const selectedAccount = accounts.find((a) => a.id === value[p])
+        const sameAsLegacy = state.kind === 'ok' ? accounts.find((a) => a.id === state.legacyIds[p] && a.connectionMethod !== 'legacy') : undefined
+        const sameBlocker = sameAsLegacy ? targetBlocker(sameAsLegacy, mode, Date.now()) : null
         return (
           <label key={p} className="block text-sm">
             <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">{LABEL[p]} hedefi</span>
@@ -103,6 +128,11 @@ export function ComposerTargetPicker({
                 )
               })}
             </select>
+            {value[p] === LEGACY_TARGET && sameAsLegacy && sameBlocker && (
+              <span role="alert" className="mt-1 block text-xs font-semibold text-amber-700 dark:text-amber-300">
+                Bu Onyeditivi hesabı platform girişiyle de bağlı ama {TARGET_BLOCKER_TEXT[sameBlocker]}. Meta erişimi iptal ettiyse eski bağlantı da reddedilebilir — önce Hesaplar sayfasında «Platform girişiyle yeniden bağla».
+              </span>
+            )}
             {state.kind === 'ok' && accounts.length === 0 && (
               <span className="mt-1 block text-xs text-[rgb(var(--color-muted))]">Bu platformda bağlı hesap yok.</span>
             )}
