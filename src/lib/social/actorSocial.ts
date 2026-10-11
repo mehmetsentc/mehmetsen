@@ -21,6 +21,8 @@ import { socialEligibility } from './eligibility'
 import { evaluateRuleConditions, newsFactsFrom, summarizeRule } from './automation/match'
 import { createRule, deleteRule, getRule, listRules, setRuleEnabled, updateRule } from './automation/ruleStore'
 import { listRecentJobs } from './automation/jobs'
+import { manualTargetCheck } from './accounts/manualTargets'
+import { parsePublishScope, readPublishScope } from './accounts/publishScope'
 import type { AutomationRuleInput } from './automation/types'
 import type { SocialPublishResult } from './types'
 
@@ -49,6 +51,7 @@ export async function accountsForActor(actor: SocialActor) {
       canManage: canManageAccount(actor, a.ownership),
       canPublish: canPublishToAccount(actor, a.ownership),
       formats: supportedFormats(a),
+      publishScope: readPublishScope(a, supportedFormats(a)),
       // Connection ≠ publish permission ≠ automation: separate states.
       health: {
         connected: a.connectionMethod !== 'legacy',
@@ -61,6 +64,34 @@ export async function accountsForActor(actor: SocialActor) {
       },
     }
   })
+}
+
+/**
+ * «Yayın kapsamı ve izinler» — NaHaber-side manual publish scope. Account
+ * managers only; an il yöneticisi can only choose their own il / ilçe.
+ * Platform API permissions are untouched (they come from the platform).
+ */
+export async function setPublishScopeForActor(actor: SocialActor, accountId: string, raw: unknown) {
+  const a = await accountForActor(actor, accountId, 'manage')
+  if ('ok' in a) return a
+  if (a.connectionMethod === 'legacy') return err(409, 'legacy', 'Eski bağlantının kapsamı düzenlenemez')
+  const parsed = parsePublishScope(raw, supportedFormats(a))
+  if (!parsed.ok) return err(400, 'invalid_scope', parsed.message)
+  const problem = ruleScopeProblem(actor, a.ownership, { geo: parsed.value.geo, dailyLimit: 0 })
+  if (problem) return err(403, 'scope_forbidden', problem)
+  const before = readPublishScope(a, supportedFormats(a))
+  const now = Date.now()
+  const value = { ...parsed.value, updatedAt: now, updatedBy: actor.uid }
+  await getAdminFirestore().collection(Collections.SOCIAL_ACCOUNTS).doc(a.id).update({ publishScope: value, updatedAt: now, updatedBy: actor.uid })
+  await writeSocialAudit({
+    actorId: actor.uid,
+    action: 'social.account.scope',
+    entityType: 'socialAccount',
+    entityId: a.id,
+    before: { geo: before.geo, allCategories: before.allCategories, categoryIds: before.categoryIds, formats: before.formats, manualAccess: before.manualAccess },
+    after: { geo: value.geo, allCategories: value.allCategories, categoryIds: value.categoryIds, formats: value.formats, manualAccess: value.manualAccess },
+  })
+  return { ok: true as const, publishScope: value }
 }
 
 // ── Rules ───────────────────────────────────────────────────────────────────
@@ -188,15 +219,18 @@ export async function shareForActor(
   const now = deps.now ?? Date.now
   if (!NEWS_ID_RE.test(input.newsId)) return err(400, 'invalid_news', 'Geçersiz haber')
   if (input.format !== 'post' && input.format !== 'story') return err(400, 'invalid_format', 'Geçersiz biçim')
-  const a = await accountForActor(actor, input.accountId, 'publish')
-  if ('ok' in a) return a
+  const loaded = await loadSocialAccount(input.accountId)
+  // Same answer for "missing" and "not yours": an account id reveals nothing.
+  if (loaded.state !== 'ok' || loaded.account.connectionMethod === 'legacy') return err(404, 'not_found', 'Hesap bulunamadı')
+  const a = loaded.account
   const pub = toPublicSocialAccount(a)
-  const blocker = targetBlocker(pub, input.format, now())
-  if (blocker) return err(409, blocker, `Hesap: ${TARGET_BLOCKER_TEXT[blocker]}`)
 
   const snap = await getAdminFirestore().collection(Collections.NEWS).doc(input.newsId).get()
   if (!snap.exists) return err(404, 'news_not_found', 'Haber bulunamadı')
   const data = snap.data() as Record<string, unknown>
+  // Yetki, bağlantı/izin, biçim ve hesabın yayın kapsamı (haberin kendi konumu) — sunucuda.
+  const check = manualTargetCheck(actor, a, { id: input.newsId, data }, [input.format], now())
+  if (!check.ok) return check.hidden ? err(404, 'not_found', 'Hesap bulunamadı') : err(409, check.code, check.reason)
   const facts = newsFactsFrom(input.newsId, data)
   if (facts.status !== 'published' || (facts.publishedAt !== null && facts.publishedAt > now()) || data.visibility === 'private') {
     return err(409, 'news_not_public', 'Haber yayında / herkese açık değil')
@@ -232,7 +266,7 @@ export async function shareForActor(
     meta: { newsId: input.newsId, format: input.format, result: res?.ledgerStatus ?? (r.skipped ? 'skipped' : 'unknown'), code: res?.code ?? null },
   })
   if (r.skipped) return err(409, 'skipped', r.reason ?? 'Paylaşım yapılmadı')
-  if (!res) return err(502, 'no_result', 'Platform sonucu alınamadı — platformda kontrol edin; otomatik tekrar yapılmadı')
+  if (!res) return { ok: false, status: 202, code: 'no_result', message: 'Platform sonucu alınamadı — platformda kontrol edin; otomatik tekrar yapılmadı', ledgerStatus: 'uncertain' }
   if (res.success && res.platformId) {
     return { ok: true, result: { status: 'published', platformId: res.platformId, account: label, platform, format: input.format } }
   }

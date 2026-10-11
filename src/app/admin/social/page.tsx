@@ -35,7 +35,7 @@ import {
 import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
-import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets as pickTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
 import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
 import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
 import { formatDistanceToNow } from 'date-fns'
@@ -282,16 +282,16 @@ export default function SocialPage() {
   const [caption, setCaption] = useState('')
   const [storySummary, setStorySummary] = useState('')
   const [hashtagsRaw, setHashtagsRaw] = useState('')
-  const [platforms, setPlatforms] = useState<PlatformToggles>({
-    facebook: true,
-    instagram: true,
-    twitter: false,
-    threads: true,
-  })
+  // Görev 17: platform = açıkça seçilen bağlı hesap; hiçbiri önceden seçili değil.
+  const [platforms, setPlatforms] = useState<PlatformToggles>({ facebook: false, instagram: false, twitter: false, threads: false })
   const [forceReshare, setForceReshare] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [lastResult, setLastResult] = useState<LastShareResult | null>(null)
-  const [targetSel, setTargetSel] = useState<TargetSelection>(DEFAULT_TARGETS)
+  const [targetSel, setTargetSel] = useState<TargetSelection>(EMPTY_TARGETS)
+  const [targetOptions, setTargetOptions] = useState<TargetOption[]>([])
+  useEffect(() => {
+    setPlatforms({ facebook: !!targetSel.facebook, instagram: !!targetSel.instagram, threads: !!targetSel.threads, twitter: false })
+  }, [targetSel])
   /** Post görsel biçimi — varsayılan açık tek görsel; kaydırmalı yalnızca destekleyen platformlarda. */
   const [imageMode, setImageMode] = useState<ImageMode>('single')
   const [previewTick, setPreviewTick] = useState(0)
@@ -600,13 +600,8 @@ export default function SocialPage() {
         : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
       ).join(' ')
     )
-    const plat = rule.platforms
-    setPlatforms({
-      facebook: plat?.facebook !== false,
-      instagram: plat?.instagram !== false,
-      twitter: plat?.twitter === true,
-      threads: plat?.threads !== false,
-    })
+    void rule
+    setTargetSel(EMPTY_TARGETS)
     const already = isShared(row, tab)
     setForceReshare(already)
     setLastResult(null)
@@ -806,29 +801,15 @@ export default function SocialPage() {
       return
     }
 
-    // Explicit targets (non-legacy) are checked per account on the server;
-    // Onyeditivi's "already shared" flags only apply when a legacy platform is involved.
-    const explicitTargets: Record<string, string> = {}
-    if (platforms.facebook && targetSel.facebook !== LEGACY_TARGET) explicitTargets.facebook = targetSel.facebook
-    if (platforms.instagram && targetSel.instagram !== LEGACY_TARGET) explicitTargets.instagram = targetSel.instagram
-    if (shareMode !== 'story' && platforms.threads && targetSel.threads !== LEGACY_TARGET) explicitTargets.threads = targetSel.threads
-    const legacyInvolved =
-      (platforms.facebook && !explicitTargets.facebook) ||
-      (platforms.instagram && !explicitTargets.instagram) ||
-      (shareMode !== 'story' && ((platforms.threads && !explicitTargets.threads) || platforms.twitter))
-
-    const alreadyPost = !!selected.socialPublished
-    const alreadyStory = !!selected.storyPublished
-    const needsForce =
-      legacyInvolved &&
-      ((shareMode === 'post' && alreadyPost) ||
-        (shareMode === 'story' && alreadyStory) ||
-        (shareMode === 'both' && (alreadyPost || alreadyStory)))
-
-    if (needsForce && !forceReshare) {
-      toast.error('Bu haber zaten paylaşılmış — «Yeniden paylaş»ı açın')
+    // Görev 17: yalnız açıkça seçilen bağlı hesaplar (eski Onyeditivi yolu yok).
+    const explicitTargets = pickTargets(targetSel) as Record<string, string>
+    if (shareMode === 'story') delete explicitTargets.threads
+    if (Object.keys(explicitTargets).length === 0) {
+      toast.error('Paylaşım için en az bir bağlı hesap seçin')
       return
     }
+    const legacyInvolved = false
+    const needsForce = false
 
     setSharing(true)
     const toastId = toast.loading(
@@ -849,9 +830,10 @@ export default function SocialPage() {
         platforms: {
           facebook: platforms.facebook,
           instagram: platforms.instagram,
-          twitter: shareMode !== 'story' && platforms.twitter,
+          twitter: false,
           threads: shareMode !== 'story' && platforms.threads,
         },
+        targets: explicitTargets,
       }
       if (shareMode === 'post' || shareMode === 'both') {
         body.caption = caption.trim()
@@ -864,9 +846,6 @@ export default function SocialPage() {
       }
       if (shareMode === 'story' && !body.caption) {
         body.caption = storySummary.trim()
-      }
-      if (Object.keys(explicitTargets).length > 0) {
-        body.targets = explicitTargets
       }
       if (shareMode !== 'story') body.imageMode = imageMode
 
@@ -2046,56 +2025,24 @@ export default function SocialPage() {
                     </div>
                   </div>
 
-                  {/* Platforms */}
+                  {/* Hedef hesaplar — Görev 17: yalnız bağlı hesaplar, açık seçim */}
                   <div>
-                    <FieldLabel>Platformlar</FieldLabel>
-                    <div className="flex flex-wrap gap-2">
-                      <PlatformToggle
-                        active={platforms.facebook}
-                        onChange={(v) => setPlatforms((p) => ({ ...p, facebook: v }))}
-                        label="Facebook"
-                      >
-                        <Facebook className="h-4 w-4" />
-                      </PlatformToggle>
-                      <PlatformToggle
-                        active={platforms.instagram}
-                        onChange={(v) => setPlatforms((p) => ({ ...p, instagram: v }))}
-                        label="Instagram"
-                      >
-                        <Instagram className="h-4 w-4" />
-                      </PlatformToggle>
-                      {shareMode !== 'story' && (
-                        <PlatformToggle
-                          active={platforms.threads}
-                          onChange={(v) => setPlatforms((p) => ({ ...p, threads: v }))}
-                          label="Threads"
-                        >
-                          <span className="text-sm font-black leading-none">@</span>
-                        </PlatformToggle>
-                      )}
-                      {shareMode !== 'story' && (
-                        <PlatformToggle
-                          active={platforms.twitter}
-                          onChange={(v) => setPlatforms((p) => ({ ...p, twitter: v }))}
-                          label="X"
-                        >
-                          <span className="text-sm font-black leading-none">𝕏</span>
-                        </PlatformToggle>
-                      )}
-                    </div>
-                    {shareMode !== 'story' && platforms.twitter && (
-                      <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                        X, mükerrer yayın kilidi ve belirsiz sonuç kaydı kapsamında değil — eşzamanlı veya tekrarlanan isteklerde X'e ikinci gönderi gidebilir.
+                    <FieldLabel>Hedef hesaplar</FieldLabel>
+                    <ComposerTargetPicker newsId={selected.id} mode={shareMode} value={targetSel} onChange={setTargetSel} onOptions={setTargetOptions} />
+                    {Object.keys(pickTargets(targetSel)).length > 0 && (
+                      <p className="mt-2 text-xs text-[rgb(var(--color-text))]">
+                        Paylaşılacak:{' '}
+                        <b>
+                          {Object.entries(pickTargets(targetSel))
+                            .filter(([p]) => shareMode !== 'story' || p !== 'threads')
+                            .map(([p, id]) => {
+                              const o = targetOptions.find((x) => x.accountId === id)
+                              return `${o ? accountLabel(o) : id} (${p === 'facebook' ? 'FB' : p === 'instagram' ? 'IG' : 'Threads'})`
+                            })
+                            .join(', ')}
+                        </b>
                       </p>
                     )}
-                    <div className="mt-3">
-                      <ComposerTargetPicker
-                        mode={shareMode}
-                        enabled={{ facebook: platforms.facebook, instagram: platforms.instagram, threads: platforms.threads }}
-                        value={targetSel}
-                        onChange={setTargetSel}
-                      />
-                    </div>
                   </div>
 
                   {/* Görsel biçimi (yalnızca post) — seçilebilir = platform ∩ NaHaber uygulaması */}

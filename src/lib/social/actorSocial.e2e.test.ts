@@ -355,3 +355,62 @@ describe('Hesabımda yayımla (manuel, açık hedef)', () => {
     expect(((await (await me(req('/api/social/me', 'ed'))).json()) as { staff: boolean }).staff).toBe(true)
   })
 })
+
+describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
+  const targets = async (uid: string, newsId: string, formats = 'post') => {
+    const { GET } = await import('@/app/api/social/targets/route')
+    const r = await GET(req(`/api/social/targets?newsId=${newsId}&formats=${formats}`, uid))
+    return { status: r.status, options: ((await r.json()) as { options?: Array<{ accountId: string; selectable: boolean; code: string | null }> }).options ?? [] }
+  }
+  const setScope = async (uid: string, id: string, scope: unknown) => {
+    const { PATCH } = await import('@/app/api/social/accounts/[id]/route')
+    return PATCH(req(`/api/social/accounts/${id}`, uid, { method: 'PATCH', body: { action: 'scope', scope } }), { params: Promise.resolve({ id }) })
+  }
+
+  it('Antalya haberi: Antalya hesabı seçilebilir, İstanbul hesabı kapsam dışı; liste filtresi değil haberin kendi konumu esas', async () => {
+    await seedNews('a1', { citySlug: 'antalya' })
+    const t = await targets('admin', 'a1')
+    expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: true })
+    expect(t.options.find((o) => o.accountId === ISTANBUL_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
+    // Kişisel hesaplar merkezde görünmez; kullanıcı yalnız kendi hesabını görür.
+    expect(t.options.some((o) => o.accountId === U1_IG.id)).toBe(false)
+    const u = await targets('u1', 'a1')
+    expect(u.options.map((o) => o.accountId)).toEqual([U1_IG.id])
+  })
+
+  it('konumu eksik yerel haber ulusal ya da il sayılmaz', async () => {
+    await seedNews('nocity', { citySlug: '', cityName: '', categoryId: 'yerel-asayis' })
+    expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'national' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    const t = await targets('admin', 'nocity')
+    expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
+    expect(t.options.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
+  })
+
+  it('manuel kapsam kategoriye göre sınırlanır ve sunucuda paylaşımda da reddedilir', async () => {
+    expect((await setScope('admin', ANTALYA_IG.id, { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: false, categoryIds: ['spor'], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    await seedNews('a2', { citySlug: 'antalya', categoryId: 'yerel-asayis' })
+    expect((await targets('admin', 'a2')).options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false })
+    const { POST } = await import('@/app/api/social/share/route')
+    const r = await POST(req('/api/social/share', 'admin', { method: 'POST', body: { newsId: 'a2', accountId: ANTALYA_IG.id, format: 'post' } }))
+    expect(r.status).toBe(409)
+    expect(publishes()).toHaveLength(0)
+  })
+
+  it('il yöneticisi kapsamı kendi iliyle sınırlı; başka ilin hesabının kapsamını değiştiremez', async () => {
+    expect((await setScope('ant', ANTALYA_IG.id, { geo: { kind: 'all_provinces' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(403)
+    expect((await setScope('ant', ISTANBUL_IG.id, { geo: { kind: 'provinces', citySlugs: ['istanbul'] }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(404)
+    expect((await setScope('u1', ANTALYA_IG.id, { geo: { kind: 'any' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(404)
+  })
+
+  it('«kapsamdaki editörler»: yetkisiz editör önce göremez; açılınca yalnız kendi kapsamındaki habere paylaşabilir', async () => {
+    await seedNews('a3', { citySlug: 'antalya' })
+    await seedNews('i3', { citySlug: 'istanbul', cityName: 'İstanbul' })
+    expect((await targets('ed', 'a3')).options.some((o) => o.accountId === ANTALYA_IG.id)).toBe(false)
+    expect((await setScope('admin', ANTALYA_IG.id, { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'scope_editors' })).status).toBe(200)
+    expect((await targets('ed', 'a3')).options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: true })
+    expect((await targets('ed', 'i3')).options.some((o) => o.accountId === ISTANBUL_IG.id)).toBe(false)
+    // Normal kullanıcı kurumsal hesabı hiçbir koşulda görmez.
+    expect((await targets('u2', 'a3')).options.some((o) => o.accountId === ANTALYA_IG.id)).toBe(false)
+  })
+})
+

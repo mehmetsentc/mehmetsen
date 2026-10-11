@@ -16,7 +16,9 @@
  *   featured_in_categories  → category ∈ seçilen  VE    öne çıkan
  *
  * "national" geo = editorially national news (not yerel / Kıbrıs scoped).
- * It is NOT "all provinces"; `any` must be chosen explicitly for that.
+ * It is NOT "all provinces": `all_provinces` = any news WITH a province;
+ * `any` = every news item (explicit). A news item without location data is
+ * never treated as national or as belonging to a province.
  */
 import { DISTRICT_TO_PROVINCE_SLUG, TURKISH_PROVINCES } from '@/constants/cities'
 import { PROVINCE_DISTRICTS } from '@/constants/turkishDistricts'
@@ -25,6 +27,7 @@ import type { SocialAccountOwnership, SocialAccountPlatform } from '../accounts/
 
 export type AutomationGeo =
   | { kind: 'national' }
+  | { kind: 'all_provinces' }
   | { kind: 'provinces'; citySlugs: string[] }
   | { kind: 'districts'; citySlug: string; districtSlugs: string[] }
   | { kind: 'any' }
@@ -134,7 +137,7 @@ function intIn(v: unknown, min: number, max: number, fallback: number): number |
   return n
 }
 
-function parseGeo(raw: unknown): AutomationGeo | string {
+export function parseGeo(raw: unknown): AutomationGeo | string {
   if (!raw || typeof raw !== 'object') return 'Konum koşulu seçilmeli'
   const g = raw as Record<string, unknown>
   switch (g.kind) {
@@ -142,6 +145,8 @@ function parseGeo(raw: unknown): AutomationGeo | string {
       return { kind: 'national' }
     case 'any':
       return { kind: 'any' }
+    case 'all_provinces':
+      return { kind: 'all_provinces' }
     case 'provinces': {
       const slugs = uniqStrings(g.citySlugs, RULE_LIMITS.provincesMax)
       if (!slugs || slugs.length === 0) return 'En az bir il seçilmeli'

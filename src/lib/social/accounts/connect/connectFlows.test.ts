@@ -807,6 +807,26 @@ describe('yeniden bağlantı, sahiplik ve atomik kayıt', () => {
   })
 })
 
+describe('Görev 17 — yeniden bağlantı NaHaber ayarlarını korur', () => {
+  it('aynı dış hesabın yeniden bağlanması yayın kapsamını korur; mükerrer kayıt / sahiplik değişikliği yok', async () => {
+    const a = await begin('instagram')
+    await callback('instagram', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader)
+    const id = 'instagram_17840000000000001'
+    const scope = { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: false, categoryIds: ['asayis'], formats: ['post'], manualAccess: 'managers', updatedAt: 1, updatedBy: 'admin1' }
+    await fs.collection('socialAccounts').doc(id).update({ publishScope: scope })
+    const owner = (fs.store.get(`socialAccounts/${id}`) as { ownership: unknown }).ownership
+    const before = [...fs.store.keys()].filter((k) => k.startsWith('socialAccounts/')).length
+    expect(await saveConnectedAccount({
+      platform: 'instagram', connectionMethod: 'instagram_login', externalId: '17840000000000001', displayName: 'x', username: null,
+      platformAccountType: 'BUSINESS', accessToken: 'IGAA_NEW', tokenType: 'instagram_user', tokenExpiresAt: null, tokenExpiryVerified: false,
+      grantedPermissions: null, permissionsVerifiedAt: null, ownership: { citySlug: 'istanbul', publisherId: null },
+      reconnectAccountId: id, actorUid: 'admin1', now: NOW + 10,
+    })).toMatchObject({ ok: true, created: false })
+    expect(fs.store.get(`socialAccounts/${id}`)).toMatchObject({ publishScope: scope, ownership: owner })
+    expect([...fs.store.keys()].filter((k) => k.startsWith('socialAccounts/')).length).toBe(before)
+  })
+})
+
 // ── Status + management API ─────────────────────────────────────────────────
 describe('durum geçişleri ve yönetim API’si', () => {
   it('duraklat / etkinleştir; süresi dolmuş veya yeniden bağlantı gereken hesap etkinleştirilemez', async () => {

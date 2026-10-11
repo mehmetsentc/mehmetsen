@@ -90,12 +90,14 @@ function isNationalNews(n: NewsFacts): boolean {
   return !isLocalScopedNews(scope) && !isKibrisScopedNews(scope)
 }
 
-function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): { ok: boolean; reason: string } {
+export function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): { ok: boolean; reason: string } {
   const g = rule.geo
   const prov = provinceOf(n.citySlug)
   switch (g.kind) {
     case 'any':
       return { ok: true, reason: 'Konum: tüm haberler' }
+    case 'all_provinces':
+      return prov ? { ok: true, reason: `Konum: ${provinceLabel(prov)} (tüm iller)` } : { ok: false, reason: 'Haberde il bilgisi yok — editör konum sınıflandırmalı' }
     case 'national':
       return isNationalNews(n)
         ? { ok: true, reason: 'Konum: ulusal haber' }
@@ -115,7 +117,7 @@ function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): { ok: b
   }
 }
 
-function categoryMatch(rule: Pick<AutomationRuleInput, 'categoryIds' | 'allCategories'>, n: NewsFacts): { ok: boolean; reason: string } {
+export function categoryMatch(rule: Pick<AutomationRuleInput, 'categoryIds' | 'allCategories'>, n: NewsFacts): { ok: boolean; reason: string } {
   if (rule.allCategories) return { ok: true, reason: 'Kategori: tümü' }
   const ids = new Set([...categoryLineage(n.categoryId), ...(n.originalCategoryId ? categoryLineage(n.originalCategoryId) : [])])
   const hit = rule.categoryIds.find((c) => ids.has(c))
@@ -201,6 +203,8 @@ export function summarizeRule(rule: AutomationRuleInput): string {
       ? 'Tüm haberler (il ayrımı yok)'
       : g.kind === 'national'
         ? 'Ulusal haberler'
+        : g.kind === 'all_provinces'
+          ? 'Tüm illerin haberleri (il bilgisi olanlar)'
         : g.kind === 'provinces'
           ? `İl: ${g.citySlugs.map(provinceLabel).join(', ')}`
           : `İlçe: ${provinceLabel(g.citySlug)} / ${g.districtSlugs.map((d) => DISTRICT_DISPLAY_NAMES[d] ?? d).join(', ')}`

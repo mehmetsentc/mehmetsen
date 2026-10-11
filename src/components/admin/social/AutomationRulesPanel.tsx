@@ -574,14 +574,15 @@ function RuleForm({
             ['provinces', 'İller'],
             ['districts', 'İlçeler'],
             ['national', 'Ulusal haberler'],
-            ['any', 'Tüm haberler (il ayrımı yok)'],
+            ['all_provinces', 'Tüm illerden haberler'],
+            ['any', 'Tüm haberler (ulusal + yerel)'],
           ] as const).map(([k, label]) => (
             <label key={k} className="inline-flex items-center gap-1.5">
               <input
                 type="radio"
                 checked={geo.kind === k}
                 onChange={() =>
-                  setGeo(k === 'provinces' ? { kind: 'provinces', citySlugs: [] } : k === 'districts' ? { kind: 'districts', citySlug: account?.ownership.citySlug ?? 'antalya', districtSlugs: [] } : { kind: k })
+                  setGeo(k === 'provinces' ? { kind: 'provinces', citySlugs: [] } : k === 'districts' ? { kind: 'districts', citySlug: account?.ownership.citySlug ?? '', districtSlugs: [] } : { kind: k })
                 }
               />
               {label}

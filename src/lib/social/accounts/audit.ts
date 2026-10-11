@@ -30,6 +30,7 @@ export type SocialAuditAction =
   | 'social.automation.legacy_handback'
   | 'social.automation.publish'
   | 'social.eligibility.set'
+  | 'social.account.scope'
   | 'social.publish.share'
   | 'social.token.refresh'
 

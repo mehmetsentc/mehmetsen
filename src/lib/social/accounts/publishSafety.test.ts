@@ -778,11 +778,12 @@ describe('Görev 6 — Instagram hikâye, Threads ve X', () => {
     expect(meta(calls).some((c) => c.body.includes('media_type=TEXT'))).toBe(true)
   })
 
-  it('X ledger kapsamında değil: kayıt oluşmaz; panel bunu açıkça söyler', async () => {
+  it('X ledger kapsamında değil: kayıt oluşmaz; Görev 17 sonrası manuel panelde X seçeneği yok', async () => {
     await publishOneSocial('n1', { mode: 'post', manual: true, overrides: { platforms: { facebook: false, instagram: false, threads: false, twitter: true } } })
     expect(fs.docs('socialPublishRecords')).toHaveLength(0)
     const page = readFileSync(join(process.cwd(), 'src/app/admin/social/page.tsx'), 'utf8')
-    expect(page).toMatch(/X, mükerrer yayın kilidi ve belirsiz sonuç kaydı kapsamında değil/)
+    expect(page).not.toMatch(/label="X"/)
+    expect(page).not.toMatch(/Onyeditivi \(mevcut bağlantı\)/)
   })
 })
 

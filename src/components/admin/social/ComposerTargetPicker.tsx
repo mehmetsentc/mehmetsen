@@ -1,152 +1,147 @@
 'use client'
 
 /**
- * Composer target account picker — one target per platform.
+ * Manual share target picker (Görev 17) — one connected account per platform,
+ * chosen explicitly for ONE news item.
  *
- * - Default is ALWAYS "Onyeditivi (mevcut bağlantı)" = the unchanged legacy
- *   path. A connected account is used only when explicitly chosen.
- * - Only the public account model is shown (no secrets reach the browser).
- * - Accounts that are paused / disabled / need reauth / expired / unverified
- *   or can't publish the chosen format are listed but not selectable. A
- *   previously chosen account that becomes unsuitable (e.g. mode change) is
- *   flagged — never silently swapped for Onyeditivi; the server also rejects it.
- * - Only central managers can list accounts; others keep the legacy path.
+ * - No «Onyeditivi (mevcut bağlantı)» / legacy option and nothing preselected.
+ * - The list comes from /api/social/targets?newsId=…: the user's permitted
+ *   accounts with this news item's own location, the account's NaHaber publish
+ *   scope, connection health and supported formats already evaluated. The
+ *   server re-checks everything at publish time.
+ * - Accounts that need a reconnect are shown disabled with the reason and a
+ *   «Yeniden bağla» link for their managers.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { auth } from '@/lib/firebase/auth'
-import { TURKISH_PROVINCES } from '@/constants/cities'
-import { TARGET_BLOCKER_TEXT, targetBlocker, type ComposerMode } from '@/lib/social/accounts/capabilities'
-import type { SocialAccountPublic } from '@/lib/social/accounts/types'
+import { cn } from '@/lib/utils'
 
 export type TargetPlatform = 'facebook' | 'instagram' | 'threads'
+/** platform → accountId ('' = not selected). */
 export type TargetSelection = Record<TargetPlatform, string>
-export const LEGACY_TARGET = 'legacy'
-export const DEFAULT_TARGETS: TargetSelection = { facebook: LEGACY_TARGET, instagram: LEGACY_TARGET, threads: LEGACY_TARGET }
+export const EMPTY_TARGETS: TargetSelection = { facebook: '', instagram: '', threads: '' }
+
+export type TargetOption = {
+  accountId: string
+  platform: TargetPlatform
+  displayName: string
+  username: string | null
+  ownerKind: string
+  citySlug: string | null
+  selectable: boolean
+  code: string | null
+  reason: string | null
+  reconnect: boolean
+  canManage: boolean
+}
 
 const LABEL: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
 
-type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'forbidden' }
-  | { kind: 'error' }
-  | { kind: 'ok'; accounts: SocialAccountPublic[]; legacyIds: Partial<Record<TargetPlatform, string | null>> }
-
-function cityName(slug: string | null): string {
-  if (!slug) return ''
-  return TURKISH_PROVINCES.find((p) => p.slug === slug)?.name ?? slug
+export function accountLabel(o: Pick<TargetOption, 'displayName' | 'username'>): string {
+  return o.username ? `${o.displayName} (@${o.username})` : o.displayName
 }
 
+/** Selected targets → `{ platform: accountId }` for the API (only chosen ones). */
+export function explicitTargets(sel: TargetSelection): Partial<Record<TargetPlatform, string>> {
+  return Object.fromEntries(Object.entries(sel).filter(([, v]) => !!v)) as Partial<Record<TargetPlatform, string>>
+}
+
+type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ok'; options: TargetOption[] }
+
 export function ComposerTargetPicker({
+  newsId,
   mode,
-  enabled,
   value,
   onChange,
+  onOptions,
 }: {
-  mode: ComposerMode
-  /** Platform toggles from the composer. */
-  enabled: Record<TargetPlatform, boolean>
+  newsId: string
+  mode: 'post' | 'story' | 'both'
   value: TargetSelection
   onChange: (next: TargetSelection) => void
+  /** Lets the caller show the chosen account names in its confirmation. */
+  onOptions?: (options: TargetOption[]) => void
 }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  const formats = mode === 'both' ? 'post,story' : mode
 
   useEffect(() => {
     let cancelled = false
+    setState({ kind: 'loading' })
     void (async () => {
       try {
         const token = (await auth.currentUser?.getIdToken()) ?? ''
-        const res = await fetch('/api/admin/social/accounts', { headers: { Authorization: `Bearer ${token}` }, credentials: 'same-origin' })
+        const res = await fetch(`/api/social/targets?newsId=${encodeURIComponent(newsId)}&formats=${formats}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'same-origin',
+        })
+        const body = (await res.json().catch(() => null)) as { options?: TargetOption[]; error?: string } | null
         if (cancelled) return
-        if (res.status === 401 || res.status === 403) return setState({ kind: 'forbidden' })
-        if (!res.ok) return setState({ kind: 'error' })
-        const body = (await res.json()) as { accounts: SocialAccountPublic[]; legacyAccountIds?: Partial<Record<TargetPlatform, string | null>> }
-        setState({ kind: 'ok', accounts: body.accounts ?? [], legacyIds: body.legacyAccountIds ?? {} })
+        if (!res.ok || !body?.options) return setState({ kind: 'error', message: res.status === 401 ? 'Oturum gerekli' : 'Hesaplar yüklenemedi' })
+        setState({ kind: 'ok', options: body.options })
+        onOptions?.(body.options)
       } catch {
-        if (!cancelled) setState({ kind: 'error' })
+        if (!cancelled) setState({ kind: 'error', message: 'Hesaplar yüklenemedi' })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [])
-
-  // The old Onyeditivi credentials and a platform-login connection can be the
-  // SAME external account. When that connection is healthy it is preselected
-  // (explicit, visible choice); the operator can still pick the old path.
-  useEffect(() => {
-    if (state.kind !== 'ok') return
-    let changed = false
-    const next = { ...value }
-    for (const p of Object.keys(LABEL) as TargetPlatform[]) {
-      if (next[p] !== LEGACY_TARGET) continue
-      const same = state.accounts.find((a) => a.id === state.legacyIds[p] && a.connectionMethod !== 'legacy')
-      if (same && !targetBlocker(same, mode, Date.now())) {
-        next[p] = same.id
-        changed = true
-      }
-    }
-    if (changed) onChange(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.kind])
+  }, [newsId, formats])
 
-  const visible = (Object.keys(LABEL) as TargetPlatform[]).filter((p) => enabled[p] && !(p === 'threads' && mode === 'story'))
-  if (visible.length === 0) return null
+  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'story' ? ['facebook', 'instagram'] : ['facebook', 'instagram', 'threads']), [mode])
 
+  if (state.kind === 'loading') return <p className="text-xs text-[rgb(var(--color-muted))]">Hesaplar yükleniyor…</p>
+  if (state.kind === 'error') return <p className="text-xs text-red-700 dark:text-red-300">{state.message}. Paylaşım yapılmaz.</p>
+
+  const any = state.options.length > 0
   return (
     <div className="space-y-2" aria-label="Hedef hesaplar">
-      {state.kind === 'forbidden' && (
+      {!any && (
         <p className="text-xs text-[rgb(var(--color-muted))]">
-          Hedef hesap seçimi yalnızca merkez yöneticiye açık. Paylaşım mevcut Onyeditivi bağlantısıyla yapılır.
+          Bu haber için kullanabileceğiniz bağlı hesap yok. Hesaplar bölümünden platform girişiyle hesap ekleyin ya da hesabın yayın kapsamını düzenleyin.
         </p>
       )}
-      {state.kind === 'error' && <p className="text-xs text-red-700 dark:text-red-300">Bağlı hesaplar yüklenemedi; paylaşım mevcut Onyeditivi bağlantısıyla yapılır.</p>}
-      {visible.map((p) => {
-        const accounts = state.kind === 'ok' ? state.accounts.filter((a) => a.platform === p) : []
-        const selectedAccount = accounts.find((a) => a.id === value[p])
-        const sameAsLegacy = state.kind === 'ok' ? accounts.find((a) => a.id === state.legacyIds[p] && a.connectionMethod !== 'legacy') : undefined
-        const sameBlocker = sameAsLegacy ? targetBlocker(sameAsLegacy, mode, Date.now()) : null
+      {platforms.map((p) => {
+        const opts = state.options.filter((o) => o.platform === p)
+        if (opts.length === 0) return null
         return (
-          <label key={p} className="block text-sm">
-            <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">{LABEL[p]} hedefi</span>
-            <select
-              value={value[p]}
-              disabled={state.kind !== 'ok'}
-              onChange={(e) => onChange({ ...value, [p]: e.target.value })}
-              className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm"
-            >
-              <option value={LEGACY_TARGET}>Onyeditivi (mevcut bağlantı)</option>
-              {accounts.map((a) => {
-                const blocker = targetBlocker(a, mode, Date.now())
-                const owner = [cityName(a.ownership.citySlug), a.ownership.publisherId ? `Yayıncı: ${a.ownership.publisherId}` : ''].filter(Boolean).join(' · ')
-                return (
-                  <option key={a.id} value={a.id} disabled={!!blocker}>
-                    {a.displayName}
-                    {a.username ? ` @${a.username}` : ''}
-                    {owner ? ` — ${owner}` : ''}
-                    {blocker ? ` (${TARGET_BLOCKER_TEXT[blocker]})` : ''}
-                  </option>
-                )
-              })}
-            </select>
-            {value[p] === LEGACY_TARGET && sameAsLegacy && sameBlocker && (
-              <span role="alert" className="mt-1 block text-xs font-semibold text-amber-700 dark:text-amber-300">
-                Bu Onyeditivi hesabı platform girişiyle de bağlı ama {TARGET_BLOCKER_TEXT[sameBlocker]}. Meta erişimi iptal ettiyse eski bağlantı da reddedilebilir — önce Hesaplar sayfasında «Platform girişiyle yeniden bağla».
-              </span>
-            )}
-            {state.kind === 'ok' && accounts.length === 0 && (
-              <span className="mt-1 block text-xs text-[rgb(var(--color-muted))]">Bu platformda bağlı hesap yok.</span>
-            )}
-            {selectedAccount && targetBlocker(selectedAccount, mode, Date.now()) && (
-              <span role="alert" className="mt-1 block text-xs font-semibold text-red-700 dark:text-red-300">
-                Seçili hesap bu paylaşım için uygun değil ({TARGET_BLOCKER_TEXT[targetBlocker(selectedAccount, mode, Date.now())!]}). Başka hedef seçin; Onyeditivi’ye otomatik geçilmez.
-              </span>
-            )}
-            {selectedAccount && !targetBlocker(selectedAccount, mode, Date.now()) && (
-              <span className="mt-1 block text-xs text-blue-700 dark:text-blue-300">
-                Seçilen hesaba yayın yapılır; hata olursa Onyeditivi’ye geçilmez.
-              </span>
-            )}
-          </label>
+          <fieldset key={p} className="space-y-0.5">
+            <legend className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">{LABEL[p]}</legend>
+            <label className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs">
+              <input type="radio" name={`target-${p}`} checked={!value[p]} onChange={() => onChange({ ...value, [p]: '' })} />
+              <span className="text-[rgb(var(--color-muted))]">Bu platformda paylaşma</span>
+            </label>
+            {opts.map((o) => (
+              <div key={o.accountId} className={cn('rounded-md px-1.5 py-1', value[p] === o.accountId && 'bg-blue-50 dark:bg-blue-950/30')}>
+                <label className={cn('flex items-center gap-2 text-xs', o.selectable ? 'cursor-pointer' : 'opacity-60')}>
+                  <input
+                    type="radio"
+                    name={`target-${p}`}
+                    disabled={!o.selectable}
+                    checked={value[p] === o.accountId}
+                    onChange={() => onChange({ ...value, [p]: o.accountId })}
+                  />
+                  <span className="font-semibold text-[rgb(var(--color-text))]">{accountLabel(o)}</span>
+                </label>
+                {!o.selectable && (
+                  <p className="ml-5 text-[11px] text-amber-700 dark:text-amber-300">
+                    {o.reason}
+                    {o.reconnect && o.canManage && (
+                      <>
+                        {' · '}
+                        <Link href={o.ownerKind === 'user' || o.ownerKind === 'publisher' ? '/settings/social' : '/admin/social/accounts'} className="font-semibold underline">
+                          Yeniden bağla
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            ))}
+          </fieldset>
         )
       })}
     </div>

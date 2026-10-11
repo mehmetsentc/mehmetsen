@@ -7,6 +7,7 @@ import 'server-only'
 import { resolveCmsAuthForUid, type CmsAuthContext } from '@/lib/cmsAuthServer'
 import { staffTierOf } from '@/lib/cms/rbacScope'
 import { roleHasPermission } from '@/lib/publisher/authorization'
+import { hasPermission } from '@/types/cms'
 import type { PublisherMemberRole } from '@/types/publisher'
 import { canManageSocialAccounts } from './authz'
 import type { SocialActor } from './access'
@@ -24,6 +25,11 @@ export function actorFromCms(uid: string, cms: CmsAuthContext | null, publishers
     publisherPublish: publishers.filter((p) => roleHasPermission(p.role, 'content:publish')).map((p) => p.id),
     isStaff: !!cms,
     publisherNames: Object.fromEntries(publishers.map((p) => [p.id, p.name ?? p.id])),
+    newsPublisher: !!cms && hasPermission(cms.role, 'news:publish'),
+    staffScope:
+      cms && cms.scope.kind === 'scoped'
+        ? { provinces: [...cms.scope.scope.provinceSlugs], districts: [...cms.scope.scope.districtSlugs], categories: [...cms.scope.scope.categoryIds] }
+        : null,
   }
 }
 

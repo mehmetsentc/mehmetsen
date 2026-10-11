@@ -89,6 +89,20 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
   }, [load])
 
   const item = news.find((x) => x.newsId === newsId) ?? null
+  // Haberin kendi konumu + hesabın yayın kapsamı + bağlantı: sunucudan (paylaşımda da yeniden kontrol edilir).
+  const [targetInfo, setTargetInfo] = useState<Record<string, { selectable: boolean; reason: string | null }> | null>(null)
+  useEffect(() => {
+    setTargetInfo(null)
+    if (!newsId) return
+    let cancelled = false
+    void socialApi<{ options: Array<{ accountId: string; selectable: boolean; reason: string | null }> }>(`/api/social/targets?newsId=${encodeURIComponent(newsId)}&formats=post`).then((r) => {
+      if (cancelled || !r.ok) return
+      setTargetInfo(Object.fromEntries(r.data.options.map((o) => [o.accountId, { selectable: o.selectable, reason: o.reason }])))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [newsId])
   const targets = useMemo(() => (accountFilter ? accounts.filter(accountFilter) : accounts), [accounts, accountFilter])
   const account = targets.find((a) => a.id === accountId) ?? null
   // Staff may still share external news they already judged manually (server re-checks scope).
@@ -170,17 +184,21 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
         ) : (
           <ul className="space-y-1">
             {targets.map((a) => {
+              const info = targetInfo?.[a.id]
+              const outOfScope = !!targetInfo && (!info || (!info.selectable && !a.health.publishBlocker))
               const blocker = a.health.publishBlocker
               return (
                 <li key={a.id}>
-                  <label className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm', blocker ? 'opacity-60' : 'cursor-pointer hover:bg-[rgb(var(--color-surface))]')}>
-                    <input type="radio" name="share-account" disabled={!!blocker} checked={accountId === a.id} onChange={() => setAccountId(a.id)} />
+                  <label className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm', blocker || outOfScope ? 'opacity-60' : 'cursor-pointer hover:bg-[rgb(var(--color-surface))]')}>
+                    <input type="radio" name="share-account" disabled={!!blocker || outOfScope || !item} checked={accountId === a.id} onChange={() => setAccountId(a.id)} />
                     <span className="font-semibold">{a.displayName}</span>
                     <span className="text-xs text-[rgb(var(--color-muted))]">
                       {PLATFORM_LABEL[a.platform]}
                       {a.username ? ` · @${a.username}` : ''}
                     </span>
-                    <span className={cn('ml-auto text-[11px]', blocker ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300')}>{blocker ? TARGET_BLOCKER_TEXT[blocker] : 'hazır'}</span>
+                    <span className={cn('ml-auto text-[11px]', blocker || outOfScope ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300')}>
+                      {blocker ? TARGET_BLOCKER_TEXT[blocker] : outOfScope ? (info?.reason ?? 'bu haber için uygun değil') : 'hazır'}
+                    </span>
                   </label>
                 </li>
               )

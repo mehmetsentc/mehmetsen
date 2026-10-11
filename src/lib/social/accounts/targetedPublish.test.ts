@@ -460,14 +460,20 @@ describe('force-reshare rotası', () => {
     expect(fs.store.get(`socialAccounts/${FB_A.id}`)).toMatchObject({ status: 'needs_reauth' })
   })
 
-  it('editör (news:publish var) hedefle paylaşamaz; hedefsiz eski yol aynen açık', async () => {
+  it('Görev 17: hedefsiz / X / eksik hedefli manuel istek reddedilir, eski (legacy) yola düşmez; yetkisiz editör hedefe paylaşamaz', async () => {
     const { POST } = await import('@/app/api/admin/social/force-reshare/route')
+    const noTarget = await POST(req('editor1', body({})))
+    expect(noTarget.status).toBe(400)
+    expect(((await noTarget.json()) as { code: string }).code).toBe('target_required')
+    const adminNoTarget = await POST(req('admin1', body({})))
+    expect(adminNoTarget.status).toBe(400)
+    const x = await POST(req('admin1', body({ platforms: { facebook: false, instagram: false, threads: false, twitter: true } })))
+    expect(x.status).toBe(400)
+    const partial = await POST(req('admin1', body({ platforms: { facebook: true, instagram: true, threads: false, twitter: false }, targets: { facebook: FB_A.id } })))
+    expect(partial.status).toBe(400)
     const denied = await POST(req('editor1', body({ targets: { facebook: FB_A.id } })))
     expect(denied.status).toBe(403)
     expect(meta(calls)).toEqual([])
-    const legacy = await POST(req('editor1', body({})))
-    expect(legacy.status).toBe(200)
-    expect(meta(calls).some((c) => c.url.startsWith(`${FACEBOOK_GRAPH_BASE}/1001/photos`))).toBe(true)
   })
 
   it('cron sırrı, yabancı origin, toplu haber ve uygun olmayan hesap reddedilir (hiç yayın yok)', async () => {

@@ -102,6 +102,8 @@ interface SocialAccountCommon {
   tokenWarning?: string | null
   /** Last successful automatic token refresh (ms). */
   tokenRefreshedAt?: number | null
+  /** NaHaber publish scope as stored (validated by publishScope.ts when read). */
+  publishScope?: unknown
 }
 
 export interface FacebookPageAccount extends SocialAccountCommon {
@@ -274,6 +276,7 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
     platformAccountType: str(r.platformAccountType),
     tokenWarning: str(r.tokenWarning),
     tokenRefreshedAt: num(r.tokenRefreshedAt),
+    ...(r.publishScope && typeof r.publishScope === 'object' ? { publishScope: r.publishScope } : {}),
   }
 
   if (platform === 'facebook') {

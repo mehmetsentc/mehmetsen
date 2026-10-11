@@ -51,7 +51,7 @@ import {
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { parseApiResponse } from '@/lib/parseApiResponse'
-import { ComposerTargetPicker, DEFAULT_TARGETS, LEGACY_TARGET, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
 import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -693,25 +693,20 @@ const POST_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<
 ]
 
 function SocialSharePopover({
+  newsId,
   mode,
   onShare,
   onClose,
-  isAlreadyPublished,
 }: {
+  newsId: string
   mode: SocialShareMode
   onShare: (platforms: PlatformFlags, targets: TargetSelection) => void
   onClose: () => void
-  isAlreadyPublished: boolean
 }) {
-  const platforms = mode === 'story' ? STORY_PLATFORMS : POST_PLATFORMS
-  const [flags, setFlags] = useState<PlatformFlags>({
-    facebook: true,
-    instagram: true,
-    twitter: mode === 'post',
-    threads: mode === 'post',
-  })
-  // Varsayılan her platformda "Onyeditivi (mevcut bağlantı)"; bağlı OAuth hesabı yalnızca açıkça seçilirse kullanılır.
-  const [targets, setTargets] = useState<TargetSelection>(DEFAULT_TARGETS)
+  // Görev 17: eski «Onyeditivi (mevcut bağlantı)» seçeneği yok; hiçbir hesap
+  // önceden seçili gelmez. Platform = seçilen bağlı hesap.
+  const [targets, setTargets] = useState<TargetSelection>(EMPTY_TARGETS)
+  const [options, setOptions] = useState<TargetOption[]>([])
   const popoverRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -722,7 +717,11 @@ function SocialSharePopover({
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const anySelected = platforms.some(p => flags[p.key])
+  const chosen = Object.entries(explicitTargets(targets)).map(([p, id]) => {
+    const o = options.find((x) => x.accountId === id)
+    return `${o ? accountLabel(o) : id} (${p === 'facebook' ? 'FB' : p === 'instagram' ? 'IG' : 'Threads'})`
+  })
+  const flags: PlatformFlags = { facebook: !!targets.facebook, instagram: !!targets.instagram, threads: mode === 'post' && !!targets.threads, twitter: false }
 
   return (
     <div
@@ -730,42 +729,25 @@ function SocialSharePopover({
       className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[90vw] rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
     >
       <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-        {mode === 'story' ? 'Hikâye Platformları' : 'Post Platformları'}
+        {mode === 'story' ? 'Hikâye — hedef hesap seçin' : 'Post — hedef hesap seçin'}
       </p>
-      <div className="space-y-0.5">
-        {platforms.map(({ key, label, Icon }) => (
-          <label
-            key={key}
-            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[rgb(var(--color-surface))] transition-colors"
-          >
-            <input
-              type="checkbox"
-              checked={flags[key]}
-              onChange={() => setFlags(prev => ({ ...prev, [key]: !prev[key] }))}
-              className="h-3.5 w-3.5 accent-blue-600"
-            />
-            <Icon className="h-3.5 w-3.5 text-[rgb(var(--color-muted))]" />
-            <span className="text-xs font-medium text-[rgb(var(--color-text))]">{label}</span>
-          </label>
-        ))}
+      <div className="max-h-80 overflow-auto px-1">
+        <ComposerTargetPicker newsId={newsId} mode={mode} value={targets} onChange={setTargets} onOptions={setOptions} />
       </div>
-      <div className="mt-2 px-1">
-        <ComposerTargetPicker
-          mode={mode}
-          enabled={{ facebook: flags.facebook, instagram: flags.instagram, threads: mode === 'post' && flags.threads }}
-          value={targets}
-          onChange={setTargets}
-        />
-      </div>
+      {chosen.length > 0 && (
+        <p className="mt-2 px-1 text-[11px] text-[rgb(var(--color-text))]">
+          Paylaşılacak: <b>{chosen.join(', ')}</b>
+        </p>
+      )}
       <div className="mt-2 flex gap-1.5">
         <button
           type="button"
           onClick={() => onShare(flags, targets)}
-          disabled={!anySelected}
+          disabled={chosen.length === 0}
           className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 disabled:opacity-40"
         >
           {mode === 'story' ? <Smartphone className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-          {isAlreadyPublished ? 'Yeniden Paylaş' : 'Paylaş'}
+          {chosen.length === 0 ? 'Hesap seçin' : 'Seçilen hesaplarda paylaş'}
         </button>
         <button
           type="button"
@@ -865,36 +847,25 @@ function NewsRow({
     ? formatDistanceToNow(new Date(publishedAtStr), { locale: tr, addSuffix: true })
     : '—'
 
-  const shareSocial = async (mode: SocialShareMode, platforms: PlatformFlags, targetSel: TargetSelection = DEFAULT_TARGETS) => {
+  const shareSocial = async (mode: SocialShareMode, platforms: PlatformFlags, targetSel: TargetSelection = EMPTY_TARGETS) => {
     if (!canShare || sharingMode) return
 
-    // Açıkça seçilen (legacy olmayan) hedefler sunucuda hesap bazında ön kontrol,
-    // ortak kilit ve kayıtla korunur. Onyeditivi "zaten paylaşıldı" bayrakları
-    // yalnızca legacy yol kullanılıyorsa anlamlıdır.
+    // Görev 17: yalnız açıkça seçilen bağlı hesaplar. Eski Onyeditivi yolu yok;
+    // tekrar paylaşım ortak kilit ve kayıt (ledger) tarafından engellenir.
     const explicitTargets: Record<string, string> = {}
-    if (platforms.facebook && targetSel.facebook !== LEGACY_TARGET) explicitTargets.facebook = targetSel.facebook
-    if (platforms.instagram && targetSel.instagram !== LEGACY_TARGET) explicitTargets.instagram = targetSel.instagram
-    if (mode === 'post' && platforms.threads && targetSel.threads !== LEGACY_TARGET) explicitTargets.threads = targetSel.threads
-    const legacyInvolved =
-      (platforms.facebook && !explicitTargets.facebook) ||
-      (platforms.instagram && !explicitTargets.instagram) ||
-      (mode === 'post' && ((platforms.threads && !explicitTargets.threads) || platforms.twitter))
-
-    const alreadyKnown = legacyInvolved && (mode === 'post' ? socialPublished : storyPublished)
-    let force = alreadyKnown
-    if (alreadyKnown) {
-      const ok = window.confirm(
-        mode === 'story'
-          ? 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaş?'
-          : 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaş?'
-      )
-      if (!ok) return
+    if (platforms.facebook && targetSel.facebook) explicitTargets.facebook = targetSel.facebook
+    if (platforms.instagram && targetSel.instagram) explicitTargets.instagram = targetSel.instagram
+    if (mode === 'post' && platforms.threads && targetSel.threads) explicitTargets.threads = targetSel.threads
+    if (Object.keys(explicitTargets).length === 0) {
+      toast.error('Paylaşım için en az bir bağlı hesap seçin')
+      return
     }
+    const legacyInvolved = false
+    const force = false
 
     const platformNames: string[] = []
     if (platforms.facebook) platformNames.push('FB')
     if (platforms.instagram) platformNames.push('IG')
-    if (mode === 'post' && platforms.twitter) platformNames.push('X')
     if (mode === 'post' && platforms.threads) platformNames.push('Th')
 
     const run = async (useForce: boolean) => {
@@ -924,10 +895,10 @@ function NewsRow({
               platforms: {
                 facebook: platforms.facebook,
                 instagram: platforms.instagram,
-                twitter: mode === 'post' ? platforms.twitter : false,
+                twitter: false,
                 threads: mode === 'post' ? platforms.threads : false,
               },
-              ...(Object.keys(explicitTargets).length > 0 ? { targets: explicitTargets } : {}),
+              targets: explicitTargets,
             }),
           })
         } catch {
@@ -1175,10 +1146,10 @@ function NewsRow({
               </button>
               {popoverMode === 'story' && (
                 <SocialSharePopover
+                  newsId={post.id}
                   mode="story"
                   onShare={handlePopoverShare('story')}
                   onClose={() => setPopoverMode(null)}
-                  isAlreadyPublished={storyPublished}
                 />
               )}
             </div>
@@ -1203,10 +1174,10 @@ function NewsRow({
               </button>
               {popoverMode === 'post' && (
                 <SocialSharePopover
+                  newsId={post.id}
                   mode="post"
                   onShare={handlePopoverShare('post')}
                   onClose={() => setPopoverMode(null)}
-                  isAlreadyPublished={socialPublished}
                 />
               )}
             </div>

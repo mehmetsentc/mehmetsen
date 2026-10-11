@@ -165,7 +165,13 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
       if (!parseSocialAccount(accountId, account)) return { ok: false as const, code: 'invalid_input' as const }
 
       tx.set(secretRef, { ...secret })
-      tx.set(accountRef, { ...account, ...(existing?.connectionMethod === 'legacy' ? { migratedFromLegacyAt: input.now } : {}) })
+      // Reconnect keeps NaHaber-side settings (publish scope, legacy migration
+      // stamp); rules, history and the ledger live in their own collections.
+      const prev = (snap.exists ? snap.data() : null) as Record<string, unknown> | null
+      const kept: Record<string, unknown> = {}
+      if (prev && prev.publishScope && typeof prev.publishScope === 'object') kept.publishScope = prev.publishScope
+      if (prev && typeof prev.migratedFromLegacyAt === 'number') kept.migratedFromLegacyAt = prev.migratedFromLegacyAt
+      tx.set(accountRef, { ...account, ...kept, ...(existing?.connectionMethod === 'legacy' ? { migratedFromLegacyAt: input.now } : {}) })
       return {
         ok: true as const,
         accountId,

@@ -3,11 +3,13 @@
 import { auth } from '@/lib/firebase/auth'
 import type { SocialAccountPublic } from '@/lib/social/accounts/types'
 import type { PublishFormat, TargetBlocker } from '@/lib/social/accounts/capabilities'
+import type { AccountPublishScope } from '@/lib/social/accounts/publishScope'
 
 export type SocialAccountRow = SocialAccountPublic & {
   canManage: boolean
   canPublish: boolean
   formats: PublishFormat[]
+  publishScope?: AccountPublishScope
   health: { connected: boolean; publishBlocker: TargetBlocker | null; tokenExpiresAt: number | null; tokenWarning: boolean }
 }
 
@@ -16,7 +18,7 @@ export type SocialMe = {
   provinces: string[]
   staff: boolean
   publishers: Array<{ id: string; name: string; canManage: boolean }>
-  platforms: Record<string, { ready: boolean }>
+  platforms: Record<string, { ready: boolean; publicAccess?: 'approved' | 'pending' }>
 }
 
 /** Authenticated JSON call to /api/social/* — never sends secrets, never reads tokens. */

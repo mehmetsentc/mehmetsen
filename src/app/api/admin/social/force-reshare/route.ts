@@ -36,7 +36,9 @@ import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/art
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
 import { parseTargetsInput, preflightTargets, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
-import { canManageSocialAccounts } from '@/lib/social/accounts/authz'
+import { actorFromCms } from '@/lib/social/accounts/actor'
+import { manualTargetCheck } from '@/lib/social/accounts/manualTargets'
+import { requiredFormats } from '@/lib/social/accounts/capabilities'
 import { isSameOriginRequest } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { loadSocialAccount } from '@/lib/social/accounts/accountStore'
@@ -233,12 +235,24 @@ export async function POST(request: Request) {
     }
   }
   const hasTargets = Object.keys(publishTargets).length > 0
+  // Görev 17: manuel paylaşım YALNIZ açık hedef hesapla. Eski Onyeditivi
+  // (legacy) manuel yolu kapalı; boş hedef / X / hedefsiz platform reddedilir.
+  // Hedefsiz yol yalnız CRON_SECRET ile çalışan eski otomasyon içindir (devir ayrı yönetilir).
+  if (!isCron) {
+    const pl = overrides?.platforms
+    const wanted = (['facebook', 'instagram', 'threads'] as const).filter((p) => (pl ? pl[p] === true : false) && !(p === 'threads' && mode === 'story'))
+    if (pl?.twitter === true) {
+      return NextResponse.json({ error: 'X (Twitter) için bağlı hesap yok; manuel paylaşım yalnız bağlı hesaplara yapılır', code: 'target_required', platform: 'twitter' }, { status: 400 })
+    }
+    if (!hasTargets || wanted.length === 0) {
+      return NextResponse.json({ error: 'Paylaşım için en az bir bağlı hesap seçin', code: 'target_required' }, { status: 400 })
+    }
+    const missing = wanted.find((p) => !publishTargets[p])
+    if (missing) return NextResponse.json({ error: 'Seçilen platform için hedef hesap seçilmedi', code: 'target_required', platform: missing }, { status: 400 })
+  }
   if (hasTargets) {
     if (isCron || !actor) return NextResponse.json({ error: 'targets_require_cms_user', code: 'targets_require_cms_user' }, { status: 403 })
     if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'bad_origin', code: 'bad_origin' }, { status: 403 })
-    if (!canManageSocialAccounts(actor)) {
-      return NextResponse.json({ error: 'Hedef hesaba paylaşım için merkez yönetici yetkisi gerekli', code: 'forbidden' }, { status: 403 })
-    }
     if (specificIds.length !== 1 || specificSlugs.length > 0) {
       return NextResponse.json({ error: 'Hedef hesapla yalnızca tek haber paylaşılabilir', code: 'single_news_required' }, { status: 400 })
     }
@@ -246,6 +260,21 @@ export async function POST(request: Request) {
     const pre = await preflightTargets(publishTargets, mode, Date.now())
     if (!pre.ok) {
       return NextResponse.json({ error: pre.code, code: pre.code, platform: pre.platform }, { status: 409 })
+    }
+    // Yetki + hesabın yayın kapsamı + haberin kendi konumu: arayüze güvenilmez.
+    const newsSnap = await getAdminFirestore().collection(Collections.NEWS).doc(specificIds[0]).get()
+    if (!newsSnap.exists) return NextResponse.json({ error: 'Haber bulunamadı', code: 'news_not_found' }, { status: 404 })
+    const socialActor = actorFromCms(actor.uid, actor)
+    for (const [platform, accountId] of Object.entries(publishTargets) as Array<[keyof PublishTargets, string]>) {
+      const loaded = await loadSocialAccount(accountId)
+      if (loaded.state !== 'ok') return NextResponse.json({ error: 'not_found', code: 'not_found', platform }, { status: 409 })
+      const check = manualTargetCheck(socialActor, loaded.account, { id: newsSnap.id, data: newsSnap.data() as Record<string, unknown> }, requiredFormats(platform, mode), Date.now())
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: check.hidden ? 'Bu hesapla paylaşım yetkiniz yok' : check.reason, code: check.hidden ? 'forbidden' : check.code, platform },
+          { status: check.hidden ? 403 : 409 },
+        )
+      }
     }
   }
 

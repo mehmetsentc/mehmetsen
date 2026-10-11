@@ -34,6 +34,29 @@ export interface SocialActor {
   isStaff: boolean
   /** Display names of the actor's publishers (UI only, never used for decisions). */
   publisherNames?: Record<string, string>
+  /** CMS role has news:publish (newsroom editor). */
+  newsPublisher?: boolean
+  /** CMS staff content scope; null/undefined = unscoped (global) staff. */
+  staffScope?: { provinces: string[]; districts: string[]; categories: string[] } | null
+}
+
+/**
+ * Manual publishing with the account's «Manuel paylaşım» setting:
+ *   managers       → account managers (+ publisher editors) — canPublishToAccount
+ *   scope_editors  → also newsroom editors (news:publish): unscoped editors on
+ *                    corporate accounts, scoped editors only on il accounts
+ *                    inside their own staff scope. Personal and publisher
+ *                    accounts never open to outside editors.
+ * The news item must additionally be inside the editor's content scope
+ * (checked where the news is known).
+ */
+export function canUseForManual(actor: SocialActor, ownership: SocialAccountOwnership, manualAccess: 'managers' | 'scope_editors'): boolean {
+  if (canPublishToAccount(actor, ownership)) return true
+  if (manualAccess !== 'scope_editors' || !actor.newsPublisher || !actor.isStaff) return false
+  const kind = ownershipKind(ownership)
+  if (kind === 'central') return !actor.staffScope
+  if (kind === 'province') return !actor.staffScope || (!!ownership.citySlug && actor.staffScope.provinces.includes(ownership.citySlug))
+  return false
 }
 
 export function canManageAccount(actor: SocialActor, ownership: SocialAccountOwnership): boolean {
