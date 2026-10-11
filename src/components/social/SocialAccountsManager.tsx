@@ -241,6 +241,19 @@ export function SocialAccountsManager({
     void load()
   }
 
+  const disconnect = async (a: SocialAccountRow) => {
+    if (!window.confirm(`«${a.displayName}» bağlantısı kaldırılsın mı?\n\nErişim anahtarı ve platform profil bilgileri silinir, otomasyon kuralları kapatılır. Paylaşım geçmişi korunur. Yeniden kullanmak için platform girişiyle tekrar bağlamanız gerekir.`)) return
+    setBusy(`dc:${a.id}`)
+    const r = await socialApi<{ disconnected: boolean }>(`/api/social/accounts/${encodeURIComponent(a.id)}`, { method: 'DELETE' })
+    setBusy(null)
+    if (!r.ok) {
+      toast.error(r.error)
+      return
+    }
+    toast.success('Bağlantı kaldırıldı; erişim anahtarı silindi.')
+    void load()
+  }
+
   const checkConnection = async (a: SocialAccountRow) => {
     setBusy(`ck:${a.id}`)
     const r = await socialApi<{ state: string; message: string }>(`/api/social/accounts/${encodeURIComponent(a.id)}/check`, { method: 'POST', body: '{}' })
@@ -539,6 +552,11 @@ export function SocialAccountsManager({
                       <Link href={mode === 'admin' ? `/admin/social/automation?account=${encodeURIComponent(a.id)}` : `/settings/social?tab=rules`} className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-xs">
                         <Zap className="h-3.5 w-3.5" aria-hidden /> Otomasyon kuralı
                       </Link>
+                      {a.connectionMethod !== 'legacy' && a.status !== 'disabled' && (
+                        <button type="button" disabled={busy === `dc:${a.id}`} onClick={() => void disconnect(a)} className="inline-flex items-center gap-1 rounded-lg border border-red-300 px-2 py-1 text-xs text-red-700 dark:border-red-800 dark:text-red-300">
+                          Bağlantıyı kaldır
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

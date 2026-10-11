@@ -412,5 +412,17 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
     // Normal kullanıcı kurumsal hesabı hiçbir koşulda görmez.
     expect((await targets('u2', 'a3')).options.some((o) => o.accountId === ANTALYA_IG.id)).toBe(false)
   })
+
+  it('«Bağlantıyı kaldır»: anahtar silinir, kurallar kapanır, geçmiş korunur; başkası kaldıramaz', async () => {
+    const { DELETE } = await import('@/app/api/social/accounts/[id]/route')
+    const del = (uid: string, id: string) => DELETE(req(`/api/social/accounts/${id}`, uid, { method: 'DELETE' }), { params: Promise.resolve({ id }) })
+    await fs.collection('socialPublishRecords').doc(`n9__${U1_IG.id}__post`).set({ newsId: 'n9', accountId: U1_IG.id, status: 'succeeded', externalPostId: 'p1' })
+    expect((await del('u2', U1_IG.id)).status).toBe(404)
+    expect((await del('u1', U1_IG.id)).status).toBe(200)
+    expect(fs.store.has(`socialAccountSecrets/${U1_IG.id}`)).toBe(false)
+    expect(fs.store.get(`socialAccounts/${U1_IG.id}`)).toMatchObject({ status: 'disabled', username: null, grantedPermissions: null, ownership: { ownerUid: 'u1' } })
+    expect(fs.store.get(`socialPublishRecords/n9__${U1_IG.id}__post`)).toMatchObject({ externalPostId: 'p1' })
+    expect(fs.docs('cmsAuditLogs').some((d) => d.data.action === 'social.account.disconnect')).toBe(true)
+  })
 })
 

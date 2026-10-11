@@ -31,6 +31,7 @@ export type SocialAuditAction =
   | 'social.automation.publish'
   | 'social.eligibility.set'
   | 'social.account.scope'
+  | 'social.account.disconnect'
   | 'social.publish.share'
   | 'social.token.refresh'
 

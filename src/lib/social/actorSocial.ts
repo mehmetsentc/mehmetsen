@@ -94,6 +94,57 @@ export async function setPublishScopeForActor(actor: SocialActor, accountId: str
   return { ok: true as const, publishScope: value }
 }
 
+/**
+ * «Bağlantıyı kaldır»: removes the platform access for this account.
+ *   - the encrypted access token is deleted;
+ *   - platform profile data (name, username, granted permissions, expiry) is
+ *     cleared and the account becomes `disabled`;
+ *   - its automation rules are switched off and queued jobs cancelled.
+ * The account id, ownership and the publish ledger / audit history are kept
+ * (they prevent duplicate posts and record what was published). Connecting
+ * the same account again later goes through the platform login.
+ */
+export async function disconnectAccountForActor(actor: SocialActor, accountId: string) {
+  const a = await accountForActor(actor, accountId, 'manage')
+  if ('ok' in a) return a
+  if (a.connectionMethod === 'legacy') return err(409, 'legacy', 'Eski bağlantı bu panelden kaldırılamaz')
+  const db = getAdminFirestore()
+  const now = Date.now()
+  const accRef = db.collection(Collections.SOCIAL_ACCOUNTS).doc(a.id)
+  const secRef = db.collection(Collections.SOCIAL_ACCOUNT_SECRETS).doc(a.id)
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(accRef)
+    if (!snap.exists) return
+    tx.delete(secRef)
+    tx.update(accRef, {
+      status: 'disabled',
+      statusReason: 'Bağlantı kaldırıldı — yeniden kullanmak için platform girişiyle bağlayın',
+      displayName: 'Bağlantısı kaldırılmış hesap',
+      username: null,
+      grantedPermissions: null,
+      permissionsVerifiedAt: null,
+      tokenExpiresAt: null,
+      tokenExpiryVerified: false,
+      tokenWarning: null,
+      disconnectedAt: now,
+      updatedAt: now,
+      updatedBy: actor.uid,
+    })
+  })
+  const rules = (await listRules()).filter((r) => r.accountId === a.id && r.enabled)
+  for (const r of rules) await setRuleEnabled(r.id, false, actor.uid, now).catch(() => undefined)
+  const { cancelQueuedForAccount } = await import('./automation/jobs')
+  const cancelled = await cancelQueuedForAccount(a.id, 'account_disconnected', now).catch(() => 0)
+  await writeSocialAudit({
+    actorId: actor.uid,
+    action: 'social.account.disconnect',
+    entityType: 'socialAccount',
+    entityId: a.id,
+    meta: { rulesDisabled: rules.length, jobsCancelled: cancelled },
+  })
+  return { ok: true as const, rulesDisabled: rules.length, jobsCancelled: cancelled }
+}
+
 // ── Rules ───────────────────────────────────────────────────────────────────
 
 export async function rulesForActor(actor: SocialActor) {

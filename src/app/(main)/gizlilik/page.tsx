@@ -17,7 +17,7 @@ export default function GizlilikPage() {
     <NewspaperEditorialPage
       title="Gizlilik Politikası"
       kicker="Yasal"
-      updated="Son güncelleme: Temmuz 2026"
+      updated="Son güncelleme: Ekim 2026"
     >
       <div className="space-y-6">
         <h2>1. Toplanan Veriler</h2>
@@ -94,7 +94,29 @@ export default function GizlilikPage() {
           </a>&apos;nı inceleyebilirsiniz.
         </p>
 
-        <h2>5. KVKK Hakları</h2>
+        <h2>5. Bağlanan Sosyal Medya Hesapları (Instagram, Facebook, Threads)</h2>
+        <p>
+          Bir Instagram profesyonel hesabını, Facebook Sayfasını veya Threads hesabını {siteName}&apos;e
+          bağladığınızda giriş ve izin onayı platformun (Meta) kendi ekranında yapılır; şifreniz
+          {' '}{siteName} tarafından görülmez ve saklanmaz. Hesap/sayfa kimliği, görünen ad, kullanıcı adı,
+          verdiğiniz izinlerin listesi, erişim anahtarının geçerlilik süresi ve şifrelenmiş erişim anahtarı
+          saklanır. Bu bilgiler yalnız sizin seçtiğiniz haberleri sizin onayınızla veya sizin açtığınız
+          otomatik paylaşım kurallarına göre bu hesapta yayımlamak ve bağlantı sağlığını kontrol etmek için
+          kullanılır; üçüncü taraflarla paylaşılmaz ve reklam amacıyla kullanılmaz. Her paylaşım için
+          haber, hesap, sonuç ve platform gönderi kimliği kaydedilir.
+        </p>
+        <p>
+          Bağlantıyı kaldırma ve verilerin silinmesi için{' '}
+          <a href="/sosyal-hesap-veri-silme" className="text-[rgb(var(--color-brand))] underline">
+            Sosyal hesap bağlantısı ve veri silme
+          </a>{' '}
+          sayfasına bakın. Meta&apos;nın veri işleme koşulları için{' '}
+          <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener noreferrer"
+            className="text-[rgb(var(--color-brand))] underline">Meta Gizlilik Politikası</a>
+          {' '}geçerlidir.
+        </p>
+
+        <h2>6. KVKK Hakları</h2>
         <p>
           6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında verilerinize erişim,
           düzeltme ve silme haklarına sahipsiniz. Talepleriniz için{' '}
@@ -104,7 +126,7 @@ export default function GizlilikPage() {
           adresine yazabilirsiniz.
         </p>
 
-        <h2>6. Üçüncü Taraf Gizlilik Politikaları</h2>
+        <h2>7. Üçüncü Taraf Gizlilik Politikaları</h2>
         <p>
           {siteName}&apos;nin gizlilik politikası yalnızca bu siteye uygulanmaktadır.
           Üçüncü taraf reklam ortakları, analiz sağlayıcıları veya bağlantılı siteler için
@@ -128,9 +150,14 @@ export default function GizlilikPage() {
           <li>
             <strong>Vercel Inc.</strong> — hosting ve performans izleme
           </li>
+          <li>
+            <strong>Meta Platforms (Instagram, Facebook, Threads)</strong> — yalnız hesabınızı bağlarsanız, seçtiğiniz içeriğin yayımlanması —{' '}
+            <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener noreferrer"
+              className="text-[rgb(var(--color-brand))] underline">gizlilik politikası</a>
+          </li>
         </ul>
 
-        <h2>7. İletişim</h2>
+        <h2>8. İletişim</h2>
         <p>
           Gizlilik politikamızla ilgili sorularınız için{' '}
           <a href="/iletisim" className="text-[rgb(var(--color-brand))] underline">

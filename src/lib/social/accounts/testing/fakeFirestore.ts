@@ -213,6 +213,13 @@ class FakeTransaction {
     })
     return this
   }
+  delete(ref: FakeDocRef) {
+    this.ops.push(() => {
+      this.db.store.delete(ref.path)
+      this.db.writes += 1
+    })
+    return this
+  }
   commit() {
     for (const op of this.ops) op()
   }
