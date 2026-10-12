@@ -52,7 +52,8 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { parseApiResponse } from '@/lib/parseApiResponse'
 import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
-import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { describeShareResult, overallShareState, readJsonResponse, resultsOf, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { showShareToast } from '@/lib/social/shareToast'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -981,10 +982,9 @@ function NewsRow({
           return
         }
 
-        const anyPublished = lines.some((l) => l.includes(': ✓'))
-        const text = lines.join('\n') || 'Paylaşım tamamlandı'
-        if (anyPublished) toast.success(text, { id: toastId, duration: 10000, style: SHARE_TOAST_STYLE })
-        else toast.error(text, { id: toastId, duration: 12000, style: SHARE_TOAST_STYLE })
+        const overall = overallShareState(resultsOf(r0 as Parameters<typeof resultsOf>[0]))
+        const anyPublished = overall === 'published' || overall === 'partial'
+        showShareToast(overall, lines, { id: toastId, style: SHARE_TOAST_STYLE })
 
         // Onyeditivi "paylaşıldı" rozeti yalnızca legacy yol kullanıldıysa güncellenir.
         if (legacyInvolved && anyPublished) {

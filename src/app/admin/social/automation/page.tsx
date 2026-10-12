@@ -1,9 +1,31 @@
 'use client'
 
+import { Suspense, useCallback } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { AutomationRulesPanel } from '@/components/admin/social/AutomationRulesPanel'
 import { SocialAdminNav } from '@/components/admin/social/SocialAdminNav'
+import type { SocialAccountPublic } from '@/lib/social/accounts/types'
+
+/** `?account=<id>` (from an account card) narrows the page to that account; «Yeni kural» then starts with it. */
+function RulesForAccount() {
+  const account = useSearchParams().get('account')
+  const only = useCallback((a: SocialAccountPublic) => a.id === account, [account])
+  return (
+    <>
+      {account ? (
+        <p className="text-xs text-[rgb(var(--color-muted))]">
+          Yalnız seçili hesabın kuralları gösteriliyor.{' '}
+          <Link href="/admin/social/automation" className="font-semibold underline">
+            Tüm hesapları göster
+          </Link>
+        </p>
+      ) : null}
+      <AutomationRulesPanel ownerFilter={account ? only : undefined} />
+    </>
+  )
+}
 
 export default function SocialAutomationRulesPage() {
   return (
@@ -19,7 +41,9 @@ export default function SocialAutomationRulesPage() {
       }
     >
       <SocialAdminNav />
-      <AutomationRulesPanel />
+      <Suspense fallback={null}>
+        <RulesForAccount />
+      </Suspense>
     </AdminOsPageShell>
   )
 }

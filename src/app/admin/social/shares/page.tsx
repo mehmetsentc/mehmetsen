@@ -1,10 +1,33 @@
 'use client'
 
+import { Suspense, useCallback } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { SocialAdminNav } from '@/components/admin/social/SocialAdminNav'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
 import { ShareComposer } from '@/components/social/ShareComposer'
 import { ShareHistory } from '@/components/social/ShareHistory'
+import type { SocialAccountRow } from '@/components/social/socialClient'
+
+/** `?account=<id>` (from an account card's «Paylaşım geçmişi») narrows the history to that account. */
+function HistoryForAccount() {
+  const account = useSearchParams().get('account')
+  const only = useCallback((a: SocialAccountRow) => a.id === account, [account])
+  return (
+    <>
+      {account ? (
+        <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+          Yalnız seçili hesabın kayıtları gösteriliyor.{' '}
+          <Link href="/admin/social/shares" className="font-semibold underline">
+            Tümünü göster
+          </Link>
+        </p>
+      ) : null}
+      <ShareHistory accountFilter={account ? only : undefined} />
+    </>
+  )
+}
 
 export default function SocialAdminSharesPage() {
   return (
@@ -17,7 +40,9 @@ export default function SocialAdminSharesPage() {
       <UncertainPublishPanel />
       <section className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-3 sm:p-4">
         <h2 className="mb-3 text-base font-bold">Paylaşım geçmişi</h2>
-        <ShareHistory />
+        <Suspense fallback={null}>
+          <HistoryForAccount />
+        </Suspense>
       </section>
     </AdminOsPageShell>
   )

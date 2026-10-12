@@ -101,7 +101,10 @@ export function ComposerTargetPicker({
     <div className="space-y-2" aria-label="Hedef hesaplar">
       {!any && (
         <p className="text-xs text-[rgb(var(--color-muted))]">
-          Bu haber için kullanabileceğiniz bağlı hesap yok. Hesaplar bölümünden platform girişiyle hesap ekleyin ya da hesabın yayın kapsamını düzenleyin.
+          Kullanabileceğiniz bağlı hesap yok — paylaşım yapılmaz.{' '}
+          <Link href="/admin/social/accounts" className="font-semibold text-[rgb(var(--color-text))] underline">
+            Önce hesap bağla
+          </Link>
         </p>
       )}
       {platforms.map((p) => {

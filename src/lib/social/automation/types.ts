@@ -208,6 +208,11 @@ export function validateRuleInput(raw: unknown): RuleValidation {
   if (!formats || formats.length === 0 || formats.some((f) => f !== 'post' && f !== 'story')) {
     return bad('formats', 'En az bir biçim seçilmeli (gönderi / hikâye)')
   }
+  // Otomatik hikâye yalnız açık bir öne çıkan / önem koşuluyla: «tüm konumlar»
+  // veya bir kategori tek başına her haberi hikâyeye göndermez.
+  if (formats.includes('story') && featuredMode !== 'featured_only' && featuredMode !== 'featured_in_categories') {
+    return bad('formats', 'Otomatik hikâye için öne çıkan koşulu gerekir: «Yalnızca öne çıkanlar» veya «Seçilen kategorilerde yalnızca öne çıkanlar»')
+  }
 
   const dailyLimit = intIn(r.dailyLimit, RULE_LIMITS.dailyLimitMin, RULE_LIMITS.dailyLimitMax, RULE_LIMITS.dailyLimitDefault)
   if (dailyLimit === null) return bad('dailyLimit', `Günlük sınır ${RULE_LIMITS.dailyLimitMin}–${RULE_LIMITS.dailyLimitMax} olmalı`)

@@ -17,8 +17,29 @@ import { RESULT_MESSAGES, accountFormatsLabel } from '@/components/admin/social/
 import { TARGET_BLOCKER_TEXT } from '@/lib/social/accounts/capabilities'
 import { PLATFORM_LABEL, ownerLabel, socialApi, type SocialAccountRow, type SocialMe } from './socialClient'
 import { PublishScopeEditor } from './PublishScopeEditor'
+import { CategoryPicker, categoriesText } from './CategoryPicker'
+import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
+import type { AutomationGeo } from '@/lib/social/automation/types'
 
 const PENDING_SCOPE_KEY = 'nahaber.social.pendingScope'
+
+type ContentKindChoice = 'general' | 'location' | 'category' | 'location_category'
+type ScopePrefill = { geo?: AutomationGeo; allCategories?: boolean; categoryIds?: string[] }
+const CONTENT_KIND_LABEL: Record<ContentKindChoice, string> = { general: 'Genel', location: 'Konum', category: 'Kategori', location_category: 'Konum + kategori' }
+
+/** Pending wizard data carried across the platform login (no secrets). */
+function readPending(): { district: string | null; prefill: ScopePrefill | null } {
+  try {
+    const raw = sessionStorage.getItem(PENDING_SCOPE_KEY)
+    sessionStorage.removeItem(PENDING_SCOPE_KEY)
+    if (!raw) return { district: null, prefill: null }
+    const v = JSON.parse(raw) as { district?: string | null; at?: number; prefill?: ScopePrefill | null }
+    if (typeof v.at !== 'number' || Date.now() - v.at > 30 * 60_000) return { district: null, prefill: null }
+    return { district: v.district ?? null, prefill: v.prefill ?? null }
+  } catch {
+    return { district: null, prefill: null }
+  }
+}
 
 type OwnerChoice = { key: string; label: string; ownership: Record<string, string> & { kind: string } }
 type RuleLite = { id: string; accountId: string; enabled: boolean }
@@ -26,23 +47,36 @@ type PageRow = { id: string; name: string; eligible: boolean }
 
 const provinceName = (slug: string | null | undefined) => TURKISH_PROVINCES.find((p) => p.slug === slug)?.name ?? slug ?? ''
 
+const fmtDate = (ms: number) => new Date(ms).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+/**
+ * Token lifetime as reported by the platform. «Otomatik yenileme» is only
+ * claimed for Instagram Login / Threads (official refresh endpoints, run in
+ * the shared 5-minute automation tick, ≤15 days before expiry) and the last
+ * successful renewal is shown when there was one.
+ */
 function expiryText(a: SocialAccountRow): string {
   if (a.connectionMethod === 'legacy') return 'Eski (legacy) bağlantı'
-  if (a.tokenExpiresAt === null) return a.tokenExpiryVerified ? 'Süresiz erişim' : 'Erişim süresi bilinmiyor'
+  const renewable = a.connectionMethod === 'instagram_login' || a.connectionMethod === 'threads_oauth'
+  const refreshed = a.tokenRefreshedAt ? ` · son yenileme ${fmtDate(a.tokenRefreshedAt)}` : renewable ? ' · henüz yenilenmedi' : ''
+  if (a.tokenExpiresAt === null) return a.tokenExpiryVerified ? 'Platform: süresiz erişim (Sayfa erişimi)' : 'Platform erişim süresini bildirmedi'
   const ms = a.tokenExpiresAt - Date.now()
-  if (ms <= 0) return 'Erişim süresi dolmuş'
+  if (ms <= 0) return 'Erişim süresi dolmuş — yeniden bağlayın'
   const days = Math.floor(ms / 86_400_000)
-  return days >= 1 ? `Erişim ${days} gün geçerli (otomatik yenilenir)` : 'Erişim bir günden az kaldı'
+  const left = days >= 1 ? `Platform erişimi ${days} gün daha geçerli (${fmtDate(a.tokenExpiresAt)})` : 'Erişimin bitmesine bir günden az kaldı'
+  return renewable ? `${left} · bitişe 15 gün kala otomatik yenileme denenir; başarısız olursa yeniden bağlantı istenir${refreshed}` : `${left} — süre dolunca yeniden bağlantı gerekir`
+}
+
+function geoText(g: NonNullable<SocialAccountRow['publishScope']>['geo']): string {
+  return g.kind === 'any' ? 'tüm konumlar' : g.kind === 'national' ? 'ulusal haberler' : g.kind === 'all_provinces' ? 'tüm illerden haberler'
+    : g.kind === 'provinces' ? g.citySlugs.map(provinceName).join(', ') : `${provinceName(g.citySlug)} / ${g.districtSlugs.length} ilçe`
 }
 
 function scopeText(sc: NonNullable<SocialAccountRow['publishScope']>): string {
-  const g = sc.geo
-  const geo =
-    g.kind === 'any' ? 'tüm haberler' : g.kind === 'national' ? 'ulusal haberler' : g.kind === 'all_provinces' ? 'tüm illerden haberler'
-      : g.kind === 'provinces' ? g.citySlugs.map(provinceName).join(', ') : `${provinceName(g.citySlug)} / ${g.districtSlugs.length} ilçe`
-  const cats = sc.allCategories ? 'tüm kategoriler' : `${sc.categoryIds.length} kategori`
-  const fm = sc.formats.map((f) => (f === 'post' ? 'gönderi' : 'hikâye')).join(' + ')
-  return `${geo} · ${cats} · ${fm} · ${sc.manualAccess === 'scope_editors' ? 'kapsamdaki editörler de' : 'yalnız yöneticiler'}`
+  const parts: string[] = [`içerik kapsamı: ${contentScopeLabel(sc.geo, sc.allCategories)}`]
+  if (sc.formats.includes('post')) parts.push(`gönderi: ${geoText(sc.geo)} · ${categoriesText(sc.allCategories, sc.categoryIds)}`)
+  if (sc.formats.includes('story')) parts.push(`hikâye: ${geoText(sc.storyGeo ?? sc.geo)} · ${categoriesText(sc.storyAllCategories ?? sc.allCategories, sc.storyCategoryIds ?? sc.categoryIds)}`)
+  return `${parts.join(' | ')} | ${sc.manualAccess === 'scope_editors' ? 'kapsamdaki editörler de' : 'yalnız yöneticiler'}`
 }
 
 function Pill({ tone, children }: { tone: 'ok' | 'warn' | 'bad' | 'muted'; children: React.ReactNode }) {
@@ -90,7 +124,10 @@ export function SocialAccountsManager({
   const [selectedPage, setSelectedPage] = useState('')
   const [wizardOpen, setWizardOpen] = useState(false)
   const [districtSlug, setDistrictSlug] = useState('')
-  const [scopeFor, setScopeFor] = useState<{ id: string; district: string | null } | null>(null)
+  const [scopeFor, setScopeFor] = useState<{ id: string; district: string | null; prefill?: ScopePrefill | null } | null>(null)
+  const [contentKind, setContentKind] = useState<ContentKindChoice>('general')
+  const [contentCity, setContentCity] = useState('')
+  const [contentCats, setContentCats] = useState<{ all: boolean; ids: string[] }>({ all: false, ids: [] })
   const [fPlatform, setFPlatform] = useState('')
   const [fCity, setFCity] = useState('')
   const [fOwner, setFOwner] = useState('')
@@ -119,30 +156,20 @@ export function SocialAccountsManager({
   const returnedAccount = searchParams.get('account')
   useEffect(() => {
     if (!returnedAccount || (resultCode !== 'connected' && resultCode !== 'connected_needs_attention')) return
-    let district: string | null = null
-    try {
-      const raw = sessionStorage.getItem(PENDING_SCOPE_KEY)
-      if (raw) {
-        const v = JSON.parse(raw) as { district?: string | null; at?: number }
-        if (typeof v.at === 'number' && Date.now() - v.at < 30 * 60_000) district = v.district ?? null
-        sessionStorage.removeItem(PENDING_SCOPE_KEY)
-      }
-    } catch {
-      /* optional */
-    }
-    setScopeFor({ id: returnedAccount, district })
+    const { district, prefill } = readPending()
+    setScopeFor({ id: returnedAccount, district, prefill })
   }, [returnedAccount, resultCode])
 
   const ownerChoices = useMemo<OwnerChoice[]>(() => {
     if (!me) return []
     const out: OwnerChoice[] = []
-    out.push({ key: 'user', label: 'Kişisel hesabım', ownership: { kind: 'user' } })
+    out.push({ key: 'user', label: 'Kişisel', ownership: { kind: 'user' } })
     for (const p of me.publishers.filter((x) => x.canManage)) {
       out.push({ key: `publisher:${p.id}`, label: `Yayıncı: ${p.name}`, ownership: { kind: 'publisher', publisherId: p.id } })
     }
     if (mode === 'admin') {
-      if (me.central) out.unshift({ key: 'central', label: 'Merkez (NaHaber kurumsal)', ownership: { kind: 'central' } })
-      if (me.central || me.provinces.length > 0) out.splice(me.central ? 1 : 0, 0, { key: 'province', label: 'İl hesabı', ownership: { kind: 'province' } })
+      if (me.central) out.unshift({ key: 'central', label: 'Merkez', ownership: { kind: 'central' } })
+      if (me.central || me.provinces.length > 0) out.splice(me.central ? 1 : 0, 0, { key: 'province', label: 'İl ekibi', ownership: { kind: 'province' } })
     }
     return out
   }, [me, mode])
@@ -195,16 +222,38 @@ export function SocialAccountsManager({
     window.location.assign(r.data.authorizeUrl)
   }
 
+  /** Content scope chosen in the wizard → publish-scope prefill (ownership stays a separate field). */
+  const wizardPrefill = (kind: string): ScopePrefill | null => {
+    const isProvince = kind === 'province'
+    const ck: ContentKindChoice = isProvince && (contentKind === 'general' || contentKind === 'category') ? (contentKind === 'general' ? 'location' : 'location_category') : contentKind
+    const locCity = isProvince ? citySlug : contentCity
+    const geo: AutomationGeo | undefined =
+      ck === 'location' || ck === 'location_category'
+        ? isProvince && districtSlug
+          ? { kind: 'districts', citySlug, districtSlugs: [districtSlug] }
+          : { kind: 'provinces', citySlugs: locCity ? [locCity] : [] }
+        : { kind: 'any' }
+    const cats = ck === 'category' || ck === 'location_category' ? { allCategories: contentCats.all, categoryIds: contentCats.all ? [] : contentCats.ids } : { allCategories: true, categoryIds: [] }
+    return { geo, ...cats }
+  }
+  const contentIncomplete = (kind: string) => {
+    const needsCity = kind !== 'province' && (contentKind === 'location' || contentKind === 'location_category') && !contentCity
+    const needsCats = (contentKind === 'category' || contentKind === 'location_category') && !contentCats.all && contentCats.ids.length === 0
+    return needsCity || needsCats
+  }
+
   const startConnect = async () => {
     const choice = ownerChoices.find((c) => c.key === ownerKey)
     if (!choice) return
+    // Merkez / Kişisel: no il needed — ownership is the explicit kind, never inferred from an empty location.
     const ownership = choice.ownership.kind === 'province' ? { kind: 'province', citySlug } : choice.ownership
     if (ownership.kind === 'province' && !citySlug) return
+    if (contentIncomplete(ownership.kind)) return
     setBusy('connect')
     try {
       try {
-        // Step 6 (yayın kapsamı) opens after the platform returns; the optional ilçe is carried here (no secrets).
-        sessionStorage.setItem(PENDING_SCOPE_KEY, JSON.stringify({ district: ownership.kind === 'province' && districtSlug ? districtSlug : null, at: Date.now() }))
+        // Yayın kapsamı opens after the platform returns, pre-filled with the wizard's content scope (no secrets).
+        sessionStorage.setItem(PENDING_SCOPE_KEY, JSON.stringify({ district: ownership.kind === 'province' && districtSlug ? districtSlug : null, prefill: wizardPrefill(ownership.kind), at: Date.now() }))
       } catch {
         /* optional */
       }
@@ -277,17 +326,10 @@ export function SocialAccountsManager({
       return
     }
     toast.success(r.data.status === 'active' ? 'Facebook sayfası bağlandı.' : RESULT_MESSAGES.connected_needs_attention.text)
-    let district: string | null = null
-    try {
-      const raw = sessionStorage.getItem(PENDING_SCOPE_KEY)
-      if (raw) district = (JSON.parse(raw) as { district?: string | null }).district ?? null
-      sessionStorage.removeItem(PENDING_SCOPE_KEY)
-    } catch {
-      /* optional */
-    }
+    const { district, prefill } = readPending()
     clearQuery()
     await load()
-    setScopeFor({ id: r.data.accountId, district })
+    setScopeFor({ id: r.data.accountId, district, prefill })
   }
 
   const shown = useMemo(
@@ -364,6 +406,13 @@ export function SocialAccountsManager({
               </div>
             </>
           )}
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Liste, Facebook’un bu giriş için döndürdüğü Sayfaların tamamıdır (sayfalı yanıt sonuna kadar okunur; NaHaber filtrelemez). Beklediğiniz Sayfa yoksa NaHaber’e o Sayfa için izin verilmemiştir:{' '}
+            <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+              İşletme entegrasyonları → NaHaber → Gör ve düzenle
+            </a>{' '}
+            bölümünde Sayfayı işaretleyip kaydedin ve Facebook bağlantısını yeniden başlatın.
+          </p>
           <button type="button" onClick={clearQuery} className="text-xs text-[rgb(var(--color-muted))] underline">
             Vazgeç
           </button>
@@ -411,7 +460,18 @@ export function SocialAccountsManager({
               {me?.platforms?.[platform]?.appId && (
                 <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">OAuth uygulama kimliği (herkese açık): {me.platforms[platform].appId}</p>
               )}
-              {platform === 'facebook' && <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">Facebook’ta kişisel profil değil, yönettiğiniz bir Sayfa bağlanır; girişten sonra sayfayı seçersiniz.</p>}
+              {platform === 'facebook' && (
+                <div className="mt-1 space-y-1 text-xs text-[rgb(var(--color-muted))]">
+                  <p>Facebook’ta kişisel profil değil, yönettiğiniz bir Sayfa bağlanır; girişten sonra Sayfayı seçersiniz. Her Sayfa ayrı hesap olarak kaydedilir.</p>
+                  <p className="rounded-lg bg-[rgb(var(--color-surface))] px-2 py-1.5">
+                    <b>Sayfa listede çıkmıyorsa:</b> Facebook, NaHaber’e daha önce izin verdiğiniz Sayfaları hatırlar ve yalnız onları döndürür. Giriş ekranında «Ayarları düzenle / Önceki ayarları düzenle» ile eklemek istediğiniz Sayfaları işaretleyin ya da{' '}
+                    <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                      Facebook → İşletme entegrasyonları → NaHaber → Gör ve düzenle
+                    </a>{' '}
+                    bölümünde Sayfaları işaretleyip kaydedin, sonra yeniden bağlanın. İzin onayını yalnız siz verebilirsiniz.
+                  </p>
+                </div>
+              )}
               {me?.platforms?.[platform]?.publicAccess !== 'approved' && (
                 <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
                   Uygulamanın genel hesap bağlantısı onayı bekleniyor (Meta incelemesi). Şimdilik yalnız NaHaber uygulamasında rolü olan hesaplar bağlanabilir; diğer hesaplar platformun giriş ekranında «Yetersiz geliştirici görevi» benzeri bir uyarı görür.
@@ -419,7 +479,7 @@ export function SocialAccountsManager({
               )}
             </li>
             <li>
-              <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">2. Hesap türü</span>
+              <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">2. Sahiplik</span>
               <div className="flex flex-wrap gap-2">
                 {ownerChoices.map((c) => (
                   <label key={c.key} className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5">
@@ -428,6 +488,13 @@ export function SocialAccountsManager({
                   </label>
                 ))}
               </div>
+              <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+                {ownerChoice?.ownership.kind === 'central'
+                  ? 'Merkez hesabı için il veya ilçe gerekmez; hangi haberlerin gideceğini aşağıdaki içerik kapsamı belirler.'
+                  : ownerChoice?.ownership.kind === 'province'
+                    ? 'İl ekibi hesabı için il zorunludur; il yöneticileri yalnız yetkili oldukları illeri seçebilir.'
+                    : 'Kişisel hesap yalnız sizin kullanıcınıza bağlanır.'}
+              </p>
             </li>
             {ownerChoice?.ownership.kind === 'province' && (
               <li>
@@ -455,10 +522,44 @@ export function SocialAccountsManager({
               </li>
             )}
             <li>
-              <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">{ownerChoice?.ownership.kind === 'province' ? '4' : '3'}. Platformda giriş ve izin</span>
+              <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">{ownerChoice?.ownership.kind === 'province' ? '4' : '3'}. İçerik kapsamı</span>
+              <div className="flex flex-wrap gap-2">
+                {(ownerChoice?.ownership.kind === 'province' ? (['location', 'location_category'] as const) : (['general', 'location', 'category', 'location_category'] as const)).map((k) => (
+                  <label key={k} className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5">
+                    <input
+                      type="radio"
+                      name="wiz-content"
+                      checked={contentKind === k || (ownerChoice?.ownership.kind === 'province' && k === 'location' && (contentKind === 'general' || contentKind === 'location'))}
+                      onChange={() => setContentKind(k)}
+                    />
+                    {CONTENT_KIND_LABEL[k]}
+                  </label>
+                ))}
+              </div>
+              {ownerChoice?.ownership.kind !== 'province' && (contentKind === 'location' || contentKind === 'location_category') && (
+                <select value={contentCity} onChange={(e) => setContentCity(e.target.value)} className="mt-2 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5">
+                  <option value="">Konum (il) seçin</option>
+                  {TURKISH_PROVINCES.map((p) => (
+                    <option key={p.slug} value={p.slug}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {(contentKind === 'category' || contentKind === 'location_category') && (
+                <div className="mt-2">
+                  <CategoryPicker legend="Kategoriler" all={contentCats.all} ids={contentCats.ids} onChange={setContentCats} />
+                </div>
+              )}
+              <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
+                Genel = tüm konumlar ve tüm kategoriler. Konum + kategori VE ile eşleşir. Bu manuel gönderi kapsamıdır; manuel hikâye kapsamı ve otomasyon kuralları ayrıca düzenlenir. Bağlantıdan sonra kaydetmeden önce gözden geçirirsiniz.
+              </p>
+            </li>
+            <li>
+              <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">{ownerChoice?.ownership.kind === 'province' ? '5' : '4'}. Platformda giriş ve izin</span>
               <button
                 type="submit"
-                disabled={busy === 'connect' || !readyPlatforms.includes(platform) || (ownerChoice?.ownership.kind === 'province' && !citySlug)}
+                disabled={busy === 'connect' || !readyPlatforms.includes(platform) || (ownerChoice?.ownership.kind === 'province' && !citySlug) || contentIncomplete(ownerChoice?.ownership.kind ?? '')}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white disabled:opacity-50"
               >
                 <Link2 className="h-4 w-4" aria-hidden /> {PLATFORM_LABEL[platform]}’da giriş yap ve izin ver
@@ -523,7 +624,7 @@ export function SocialAccountsManager({
                       {a.username && <span className="ml-1 font-normal text-[rgb(var(--color-muted))]">@{a.username}</span>}
                     </p>
                     <p className="text-xs text-[rgb(var(--color-muted))]">
-                      {PLATFORM_LABEL[a.platform]} · {a.ownerKind === 'province' ? `İl: ${provinceName(a.ownership.citySlug)}` : ownerLabel(a, me?.publishers ? Object.fromEntries(me.publishers.map((p) => [p.id, p.name])) : {})} · {accountFormatsLabel(a)}
+                      {PLATFORM_LABEL[a.platform]} · {a.ownerKind === 'province' ? `Sahiplik: İl ekibi · ${provinceName(a.ownership.citySlug)}` : ownerLabel(a, me?.publishers ? Object.fromEntries(me.publishers.map((p) => [p.id, p.name])) : {})} · {accountFormatsLabel(a)}
                     </p>
                   </div>
                   {a.canManage && (
@@ -564,13 +665,17 @@ export function SocialAccountsManager({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5" aria-label="Durumlar">
-                  <Pill tone={a.status === 'active' ? 'ok' : a.status === 'needs_reauth' ? 'bad' : 'warn'}>
-                    Bağlantı: {a.status === 'active' ? 'etkin' : a.status === 'paused' ? 'duraklatıldı' : a.status === 'needs_reauth' ? 'yeniden bağlanmalı' : 'devre dışı'}
+                  <Pill tone={a.status === 'disabled' ? 'muted' : a.status === 'paused' ? 'warn' : 'ok'}>
+                    {a.status === 'disabled' ? 'Bağlı değil' : a.status === 'paused' ? 'Bağlı · duraklatıldı' : 'Bağlı'}
                   </Pill>
-                  <Pill tone={blocker ? (blocker === 'publish_permission_unverified' ? 'warn' : 'bad') : 'ok'}>
-                    Yayın izni: {blocker ? TARGET_BLOCKER_TEXT[blocker] : 'hazır'}
-                  </Pill>
-                  <Pill tone={autoCount > 0 ? 'ok' : 'muted'}>Otomasyon: {autoCount > 0 ? `${autoCount} kural açık` : 'kapalı'}</Pill>
+                  {a.status === 'needs_reauth' || blocker === 'token_expired' || blocker === 'status_needs_reauth' || blocker === 'publish_permission_missing' ? (
+                    <Pill tone="bad">Yeniden bağlantı gerekli</Pill>
+                  ) : blocker ? (
+                    <Pill tone="warn">Yayınlanamaz: {TARGET_BLOCKER_TEXT[blocker]}</Pill>
+                  ) : (
+                    <Pill tone="ok">Yayınlanabilir</Pill>
+                  )}
+                  <Pill tone={autoCount > 0 ? 'ok' : 'muted'}>{autoCount > 0 ? `Otomasyon açık (${autoCount} kural)` : 'Otomasyon kapalı'}</Pill>
                   <span className="text-[11px] text-[rgb(var(--color-muted))]" title="«Otomasyonu durdur» yalnız otomatik paylaşımı keser (kurallar sayfasında). «Hesabı duraklat» bu hesaptan manuel ve otomatik bütün yayını durdurur.">ⓘ</span>
                   {!a.canPublish && <Pill tone="muted">Yalnızca görüntüleme</Pill>}
                 </div>
@@ -580,12 +685,19 @@ export function SocialAccountsManager({
                     <History className="h-3.5 w-3.5" aria-hidden /> Paylaşım geçmişini aç
                   </Link>
                 )}
-                {a.publishScope && <p className="text-xs text-[rgb(var(--color-muted))]">Manuel yayın kapsamı: {scopeText(a.publishScope)}</p>}
+                {a.publishScope && <p className="text-xs text-[rgb(var(--color-muted))]">Manuel kapsam — {scopeText(a.publishScope)}</p>}
+                {a.connectionMethod !== 'legacy' && (
+                  <p className="text-xs text-[rgb(var(--color-muted))]">
+                    Son bağlantı kontrolü: {a.connectionCheckedAt ? fmtDate(a.connectionCheckedAt) : 'yapılmadı'}
+                    {a.grantedPermissions?.length ? ` · platform izinleri: ${a.grantedPermissions.join(', ')}` : ''}
+                  </p>
+                )}
                 {scopeFor?.id === a.id && a.canManage && a.publishScope && (
                   <PublishScopeEditor
                     account={a as SocialAccountRow & { publishScope: NonNullable<SocialAccountRow['publishScope']> }}
                     provinceChoices={provinceChoices.map((p) => ({ slug: p.slug, name: p.name }))}
                     initialDistrict={scopeFor.district}
+                    prefill={scopeFor.prefill ?? null}
                     automationHref={mode === 'admin' ? `/admin/social/automation?account=${encodeURIComponent(a.id)}` : '/settings/social?tab=rules'}
                     onClose={() => setScopeFor(null)}
                     onSaved={() => {

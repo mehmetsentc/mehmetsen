@@ -5,7 +5,8 @@ import { Loader2, Share2, Smartphone, X } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets as pickTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
-import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { describeShareResult, OVERALL_HEADLINE, overallShareState, resultsOf, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { showShareToast } from '@/lib/social/shareToast'
 
 export type SocialShareMode = 'story' | 'post'
 
@@ -103,15 +104,20 @@ export function MobileSocialShareSheet({
           if (flags[key] && key in set) lines.push(describeShareResult(`${prefix} ${label}`, set[key]))
         }
       }
-      if (res.ok && !lines.some((l) => l.includes(': ✓'))) {
-        throw new Error(lines.join('\n') || 'Paylaşım yapılmadı')
-      }
       if (!res.ok) {
         const msg = [data.error ?? r0?.reason ?? 'Paylaşım başarısız', ...lines].join('\n')
         throw new Error(msg)
       }
-      onDone?.(mode)
-      onClose()
+      const overall = overallShareState(resultsOf(r0))
+      showShareToast(overall, lines)
+      if (overall === 'published') {
+        onDone?.(mode)
+        onClose()
+        return
+      }
+      // Kısmi / belirsiz / başarısız: sayfa açık kalır, her hedefin sonucu görünür.
+      if (overall === 'partial') onDone?.(mode)
+      setError([OVERALL_HEADLINE[overall], ...lines].join('\n'))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Paylaşım başarısız')
     } finally {

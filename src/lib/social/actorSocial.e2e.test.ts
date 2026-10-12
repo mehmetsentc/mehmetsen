@@ -371,7 +371,7 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
     await seedNews('a1', { citySlug: 'antalya' })
     const t = await targets('admin', 'a1')
     expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: true })
-    expect(t.options.find((o) => o.accountId === ISTANBUL_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
+    expect(t.options.find((o) => o.accountId === ISTANBUL_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
     // Kişisel hesaplar merkezde görünmez; kullanıcı yalnız kendi hesabını görür.
     expect(t.options.some((o) => o.accountId === U1_IG.id)).toBe(false)
     const u = await targets('u1', 'a1')
@@ -382,8 +382,11 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
     await seedNews('nocity', { citySlug: '', cityName: '', categoryId: 'yerel-asayis' })
     expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'national' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
     const t = await targets('admin', 'nocity')
-    expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
-    expect(t.options.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_scope' })
+    expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    expect(t.options.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    // Görev 18: «tüm konumlar» hikâye kapsamı da konumu eksik haberi kabul etmez.
+    const st = await targets('admin', 'nocity', 'story')
+    expect(st.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
   })
 
   it('manuel kapsam kategoriye göre sınırlanır ve sunucuda paylaşımda da reddedilir', async () => {
@@ -426,3 +429,183 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
   })
 })
 
+
+describe('Görev 18 — gönderi yerel, manuel hikâye genel', () => {
+  const targets = async (uid: string, newsId: string, formats = 'post') => {
+    const { GET } = await import('@/app/api/social/targets/route')
+    const r = await GET(req(`/api/social/targets?newsId=${newsId}&formats=${formats}`, uid))
+    return ((await r.json()) as { options?: Array<{ accountId: string; selectable: boolean; code: string | null; reason: string | null; reconnect: boolean }> }).options ?? []
+  }
+  const pick = (opts: Awaited<ReturnType<typeof targets>>, id: string) => opts.find((o) => o.accountId === id)
+  const share = async (uid: string, body: Record<string, unknown>) => {
+    const { POST } = await import('@/app/api/social/share/route')
+    return POST(req('/api/social/share', uid, { method: 'POST', body }))
+  }
+
+  it('1-2) il hesabı: ulusal ve başka il haberi manuel hikâyede seçilebilir, gönderide seçilemez', async () => {
+    await seedNews('ist', { citySlug: 'istanbul', cityName: 'İstanbul', categoryId: 'yerel-asayis' })
+    await seedNews('nat', { citySlug: '', cityName: '', categoryId: 'gundem' })
+    await seedNews('dunya', { citySlug: '', cityName: '', categoryId: 'dunya' })
+    for (const id of ['ist', 'nat', 'dunya']) {
+      expect(pick(await targets('admin', id, 'story'), ANTALYA_IG.id)).toMatchObject({ selectable: true })
+      expect(pick(await targets('admin', id, 'post'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    }
+    // Sunucu da aynı kararı verir: başka ilin haberi Antalya hesabına gönderi olamaz.
+    const r = await share('admin', { newsId: 'ist', accountId: ANTALYA_IG.id, format: 'post' })
+    expect(r.status).toBe(409)
+    expect(((await r.json()) as { code?: string }).code).toBe('outside_location')
+    expect(publishes()).toHaveLength(0)
+  })
+
+  it('il yetkisi hikâye kapsamından ayrıdır: il editörü başka ilin hesabını hikâyede de görmez / yönetemez', async () => {
+    await seedNews('nat2', { citySlug: '', cityName: '', categoryId: 'gundem' })
+    expect((await targets('ant', 'nat2', 'story')).some((o) => o.accountId === ISTANBUL_IG.id)).toBe(false)
+    const { PATCH } = await import('@/app/api/social/accounts/[id]/route')
+    const r = await PATCH(req(`/api/social/accounts/${ISTANBUL_IG.id}`, 'ant', { method: 'PATCH', body: { action: 'scope', scope: { geo: { kind: 'provinces', citySlugs: ['istanbul'] }, storyGeo: { kind: 'any' }, allCategories: true, categoryIds: [], formats: ['post', 'story'], manualAccess: 'managers' } } }), { params: Promise.resolve({ id: ISTANBUL_IG.id }) })
+    expect(r.status).toBe(404)
+  })
+
+  it('kapsam kaydı hikâye konumunu korur; il yöneticisi gönderiyi kendi iliyle sınırlar ama hikâyeyi genel bırakabilir', async () => {
+    const { PATCH } = await import('@/app/api/social/accounts/[id]/route')
+    const patch = (uid: string, scope: unknown) => PATCH(req(`/api/social/accounts/${ANTALYA_IG.id}`, uid, { method: 'PATCH', body: { action: 'scope', scope } }), { params: Promise.resolve({ id: ANTALYA_IG.id }) })
+    expect((await patch('ant', { geo: { kind: 'provinces', citySlugs: ['antalya'] }, storyGeo: { kind: 'any' }, allCategories: true, categoryIds: [], formats: ['post', 'story'], manualAccess: 'managers' })).status).toBe(200)
+    // storyGeo gönderilmezse mevcut hikâye kapsamı daralmaz.
+    expect((await patch('admin', { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: true, categoryIds: [], formats: ['post', 'story'], manualAccess: 'managers' })).status).toBe(200)
+    expect((fs.store.get(`socialAccounts/${ANTALYA_IG.id}`) as { publishScope: { storyGeo: unknown } }).publishScope.storyGeo).toEqual({ kind: 'any' })
+  })
+
+  it('3) manuel kapsam otomasyon kuralından bağımsız: kurala uymayan haber manuel hikâyede engellenmez', async () => {
+    const { POST } = await import('@/app/api/social/rules/route')
+    const c = await POST(req('/api/social/rules', 'admin', { method: 'POST', body: ruleBody(ANTALYA_IG.id, ['antalya'], { categoryIds: ['yerel-asayis'] }) }))
+    expect(c.status).toBe(201)
+    await seedNews('spor', { citySlug: 'izmir', cityName: 'İzmir', categoryId: 'yerel-spor' })
+    expect(pick(await targets('admin', 'spor', 'story'), ANTALYA_IG.id)).toMatchObject({ selectable: true })
+  })
+
+  it('6) bozuk hesap başka hesaba / legacy anahtara düşmez; «yeniden bağlantı gerekli» ayrı nedenle gösterilir', async () => {
+    await fs.collection('socialAccounts').doc(ANTALYA_IG.id).update({ status: 'needs_reauth', statusReason: 'Platform erişimi reddetti' })
+    await seedNews('a9', { citySlug: 'antalya' })
+    expect(pick(await targets('admin', 'a9', 'post'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'reconnect_required', reconnect: true })
+    const r = await share('admin', { newsId: 'a9', accountId: ANTALYA_IG.id, format: 'post' })
+    expect(r.status).toBe(409)
+    expect(publishes()).toHaveLength(0)
+    expect(calls.some((c) => accessTokenOf(c) !== null)).toBe(false)
+  })
+
+  it('biçim nedeni ayrı: kapsamda kapalı biçim «format_not_allowed», desteklenmeyen biçim «format_unsupported»', async () => {
+    const { PATCH } = await import('@/app/api/social/accounts/[id]/route')
+    await PATCH(req(`/api/social/accounts/${ANTALYA_IG.id}`, 'admin', { method: 'PATCH', body: { action: 'scope', scope: { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' } } }), { params: Promise.resolve({ id: ANTALYA_IG.id }) })
+    await seedNews('a10', { citySlug: 'antalya' })
+    expect(pick(await targets('admin', 'a10', 'story'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'format_not_allowed' })
+    const { manualTargetCheck } = await import('./accounts/manualTargets')
+    const TH = account('threads', '9501', { citySlug: 'antalya', publisherId: null })
+    const actor = { uid: 'admin', isStaff: true, central: true, provinces: [], publisherIds: [] } as unknown as Parameters<typeof manualTargetCheck>[0]
+    const c = manualTargetCheck(actor, TH, { id: 'a10', data: { citySlug: 'antalya', categoryId: 'yerel-asayis' } }, ['story'], Date.now())
+    expect(c).toMatchObject({ ok: false, code: 'format_unsupported' })
+  })
+
+  it('7) manuel hikâye kapsamı otomatik hikâyeyi açmaz: öne çıkan koşulu olmadan hikâye kuralı reddedilir; taslaklar kapalı ve yalnız gönderi', async () => {
+    const { POST } = await import('@/app/api/social/rules/route')
+    const bad = await POST(req('/api/social/rules', 'admin', { method: 'POST', body: ruleBody(ANTALYA_IG.id, ['antalya'], { formats: ['story'] }) }))
+    expect(bad.status).toBe(400)
+    const { draftRuleFor } = await import('./automation/drafts')
+    const draft = draftRuleFor({ id: ANTALYA_IG.id, displayName: 'x', username: null, ownerKind: 'province', ownership: { citySlug: 'antalya' } }, (s) => s)!
+    expect(draft).toMatchObject({ formats: ['post'], geo: { kind: 'provinces', citySlugs: ['antalya'] }, featuredMode: 'categories_or_featured', featuredKind: 'local', dailyLimit: 5, minIntervalMinutes: 15 })
+    const central = draftRuleFor({ id: CENTRAL_IG.id, displayName: 'x', username: null, ownerKind: 'central', ownership: { citySlug: null } }, (s) => s)!
+    expect(central).toMatchObject({ geo: { kind: 'national' }, featuredKind: 'national' })
+    const ok = await POST(req('/api/social/rules', 'admin', { method: 'POST', body: draft }))
+    expect(ok.status).toBe(201)
+    expect(((await ok.json()) as { rule: { enabled: boolean; enabledAt: number | null } }).rule).toMatchObject({ enabled: false, enabledAt: null })
+  })
+
+  it('12) yeni kural kapalı: worker çalışsa da geçmiş ve yeni haber gönderilmez', async () => {
+    const { POST } = await import('@/app/api/social/rules/route')
+    await POST(req('/api/social/rules', 'admin', { method: 'POST', body: ruleBody(ANTALYA_IG.id, ['antalya']) }))
+    await seedNews('old', { citySlug: 'antalya', publishedAt: T0 - 86_400_000 })
+    await seedNews('new', { citySlug: 'antalya', publishedAt: Date.now() })
+    await runAutomationTick({ now: () => Date.now() })
+    expect(publishes()).toHaveLength(0)
+    expect(fs.docs('smmQueue').filter((d) => d.data.kind === 'account_automation')).toHaveLength(0)
+  })
+
+  it('10) bağlantıyı kaldırma bekleyen işleri iptal eder; kaldırılan hesap seçilemez ve eski anahtara düşmez', async () => {
+    await fs.collection('smmQueue').doc('job1').set({ kind: 'account_automation', accountId: ANTALYA_IG.id, newsId: 'n1', format: 'post', status: 'queued', history: [] })
+    const { DELETE } = await import('@/app/api/social/accounts/[id]/route')
+    const r = await DELETE(req(`/api/social/accounts/${ANTALYA_IG.id}`, 'admin', { method: 'DELETE' }), { params: Promise.resolve({ id: ANTALYA_IG.id }) })
+    expect(r.status).toBe(200)
+    expect(fs.store.get('smmQueue/job1')).toMatchObject({ status: 'cancelled', errorCode: 'account_disconnected' })
+    await seedNews('a11', { citySlug: 'antalya' })
+    expect(pick(await targets('admin', 'a11', 'post'), ANTALYA_IG.id)).toMatchObject({ selectable: false })
+    expect((await share('admin', { newsId: 'a11', accountId: ANTALYA_IG.id, format: 'post' })).status).toBe(409)
+    expect(publishes()).toHaveLength(0)
+  })
+
+  it('11) hesap listesi son kontrol ve yenileme zamanını döndürür; süresi dolan anahtar «yeniden bağlantı gerekli» olur', async () => {
+    await fs.collection('socialAccounts').doc(ANTALYA_IG.id).update({ connectionCheckedAt: T0 + 5, tokenRefreshedAt: T0 + 6 })
+    const list = (await accountsOf('admin')) as Array<{ id: string; connectionCheckedAt?: number; tokenRefreshedAt?: number }>
+    expect(list.find((a) => a.id === ANTALYA_IG.id)).toMatchObject({ connectionCheckedAt: T0 + 5, tokenRefreshedAt: T0 + 6 })
+    await fs.collection('socialAccounts').doc(ISTANBUL_IG.id).update({ tokenExpiresAt: Date.now() - 1000 })
+    await seedNews('i11', { citySlug: 'istanbul', cityName: 'İstanbul' })
+    expect(pick(await targets('admin', 'i11', 'post'), ISTANBUL_IG.id)).toMatchObject({ selectable: false, code: 'reconnect_required' })
+  })
+})
+
+describe('Görev 18 EK — kategori ve konum bazlı hesaplar', () => {
+  const targets = async (uid: string, newsId: string, formats = 'post') => {
+    const { GET } = await import('@/app/api/social/targets/route')
+    const r = await GET(req(`/api/social/targets?newsId=${newsId}&formats=${formats}`, uid))
+    return ((await r.json()) as { options?: Array<{ accountId: string; selectable: boolean; code: string | null }> }).options ?? []
+  }
+  const pick = (opts: Awaited<ReturnType<typeof targets>>, id: string) => opts.find((o) => o.accountId === id)
+  const setScope = async (uid: string, id: string, scope: unknown) => {
+    const { PATCH } = await import('@/app/api/social/accounts/[id]/route')
+    return PATCH(req(`/api/social/accounts/${id}`, uid, { method: 'PATCH', body: { action: 'scope', scope } }), { params: Promise.resolve({ id }) })
+  }
+
+  it('merkez kategori hesabı (Magazin): il gerekmeden tüm konumlar VE Magazin; başka kategori seçilemez', async () => {
+    expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'any' }, allCategories: false, categoryIds: ['magazin'], formats: ['post', 'story'], manualAccess: 'managers' })).status).toBe(200)
+    await seedNews('mag', { citySlug: '', cityName: '', categoryId: 'magazin' })
+    await seedNews('magIl', { citySlug: 'izmir', cityName: 'İzmir', categoryId: 'yerel-magazin' })
+    await seedNews('spr', { citySlug: '', cityName: '', categoryId: 'spor' })
+    expect(pick(await targets('admin', 'mag'), CENTRAL_IG.id)).toMatchObject({ selectable: true })
+    expect(pick(await targets('admin', 'magIl'), CENTRAL_IG.id)).toMatchObject({ selectable: true }) // Yerel Magazin ≙ Magazin
+    expect(pick(await targets('admin', 'spr'), CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_category' })
+    // Hikâye kategorisi ayrı: gönderi Magazin'e daraltıldı diye hikâye kısıtlanmaz (merkez varsayılanı tüm kategoriler).
+    expect(pick(await targets('admin', 'spr', 'story'), CENTRAL_IG.id)).toMatchObject({ selectable: true })
+  })
+
+  it('konum + kategori (Antalya Spor) VE ile eşleşir; alt kategori sessizce kapsanmaz; çoklu kategori VEYA', async () => {
+    expect((await setScope('admin', ANTALYA_IG.id, { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: false, categoryIds: ['spor'], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    await seedNews('as', { citySlug: 'antalya', categoryId: 'yerel-spor' })
+    await seedNews('af', { citySlug: 'antalya', categoryId: 'futbol' })
+    await seedNews('is', { citySlug: 'istanbul', cityName: 'İstanbul', categoryId: 'yerel-spor' })
+    await seedNews('aa', { citySlug: 'antalya', categoryId: 'yerel-asayis' })
+    expect(pick(await targets('admin', 'as'), ANTALYA_IG.id)).toMatchObject({ selectable: true })
+    expect(pick(await targets('admin', 'af'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_category' })
+    expect(pick(await targets('admin', 'is'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    expect(pick(await targets('admin', 'aa'), ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_category' })
+    expect((await setScope('admin', ANTALYA_IG.id, { geo: { kind: 'provinces', citySlugs: ['antalya'] }, allCategories: false, categoryIds: ['spor', 'futbol'], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    expect(pick(await targets('admin', 'af'), ANTALYA_IG.id)).toMatchObject({ selectable: true })
+  })
+
+  it('hikâye kategori kapsamı ayrıca düzenlenir ve sunucuda uygulanır; yetkisiz kullanıcı kapsam değiştiremez', async () => {
+    expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'any' }, allCategories: true, categoryIds: [], storyGeo: { kind: 'any' }, storyAllCategories: false, storyCategoryIds: ['magazin'], formats: ['post', 'story'], manualAccess: 'managers' })).status).toBe(200)
+    await seedNews('g1', { citySlug: '', cityName: '', categoryId: 'gundem' })
+    expect(pick(await targets('admin', 'g1', 'post'), CENTRAL_IG.id)).toMatchObject({ selectable: true })
+    expect(pick(await targets('admin', 'g1', 'story'), CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_category' })
+    expect((await setScope('ant', CENTRAL_IG.id, { geo: { kind: 'any' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(404)
+    expect((await setScope('u1', CENTRAL_IG.id, { geo: { kind: 'any' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(404)
+  })
+
+  it('kapsam seçmek otomasyonu açmaz: kategori hesabının kuralı kapalı oluşur, kural yokken iş üretilmez', async () => {
+    await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'any' }, allCategories: false, categoryIds: ['magazin'], formats: ['post'], manualAccess: 'managers' })
+    await seedNews('m2', { citySlug: '', cityName: '', categoryId: 'magazin', publishedAt: Date.now() })
+    await runAutomationTick({ now: () => Date.now() })
+    expect(fs.docs('smmQueue').filter((d) => d.data.kind === 'account_automation')).toHaveLength(0)
+    const { POST } = await import('@/app/api/social/rules/route')
+    const r = await POST(req('/api/social/rules', 'admin', { method: 'POST', body: { name: 'Magazin öne çıkan', accountId: CENTRAL_IG.id, geo: { kind: 'any' }, categoryIds: ['magazin'], allCategories: false, featuredMode: 'featured_in_categories', featuredKind: 'either', formats: ['post'], dailyLimit: 5, minIntervalMinutes: 15, quietHours: null } }))
+    expect(r.status).toBe(201)
+    expect(((await r.json()) as { rule: { enabled: boolean } }).rule.enabled).toBe(false)
+    expect(publishes()).toHaveLength(0)
+  })
+})

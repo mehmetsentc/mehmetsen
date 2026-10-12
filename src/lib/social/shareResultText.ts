@@ -110,3 +110,36 @@ export function unreadableResponseText(status: number): string {
     ? `Sunucu yanıtı okunamadı (HTTP ${status}). Paylaşımın sonucu için platformu ve “Sonucu belirsiz paylaşımlar” listesini kontrol edin; tekrar göndermeden önce doğrulayın.`
     : 'İstek sunucuya ulaşmadı (ağ hatası). Paylaşım başlamamış olabilir; sayfayı yenileyip durumu kontrol edin.'
 }
+
+export type ShareOverall = 'published' | 'partial' | 'failed' | 'uncertain' | 'none'
+
+/**
+ * Overall result from per-target states (one target's failure never hides
+ * another's success):
+ *   published — every attempted target ✓ / =
+ *   partial   — at least one ✓ / = and at least one failure or uncertain
+ *   uncertain — no success, at least one uncertain (no automatic retry)
+ *   failed    — nothing published
+ */
+export function overallShareState(results: Array<ShareResultLike | null | undefined>): ShareOverall {
+  const states = results.filter((r): r is ShareResultLike => !!r && r.error !== 'skipped').map((r) => shareState(r)).filter((s) => s !== 'not_attempted')
+  if (states.length === 0) return 'none'
+  const ok = states.filter((s) => s === 'published' || s === 'already_published').length
+  const unsure = states.some((s) => s === 'uncertain' || s === 'uncertain_previous_attempt')
+  if (ok === states.length) return 'published'
+  if (ok > 0) return 'partial'
+  return unsure ? 'uncertain' : 'failed'
+}
+
+export const OVERALL_HEADLINE: Record<ShareOverall, string> = {
+  published: 'Paylaşım tamamlandı',
+  partial: '⚠ Kısmi sonuç — bazı hedefler başarısız',
+  failed: 'Paylaşım başarısız',
+  uncertain: '⚠ Sonuç belirsiz — otomatik tekrar yapılmadı; platformda kontrol edin',
+  none: 'Paylaşım yapılmadı',
+}
+
+/** All per-target results of a force-reshare response row (post + story). */
+export function resultsOf(row?: { post?: Record<string, ShareResultLike | undefined>; story?: Record<string, ShareResultLike | undefined> } | null): ShareResultLike[] {
+  return [...Object.values(row?.post ?? {}), ...Object.values(row?.story ?? {})].filter((r): r is ShareResultLike => !!r)
+}

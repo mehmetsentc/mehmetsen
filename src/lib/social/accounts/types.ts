@@ -102,6 +102,8 @@ interface SocialAccountCommon {
   tokenWarning?: string | null
   /** Last successful automatic token refresh (ms). */
   tokenRefreshedAt?: number | null
+  /** Last read-only «Bağlantıyı kontrol et» success. */
+  connectionCheckedAt?: number | null
   /** NaHaber publish scope as stored (validated by publishScope.ts when read). */
   publishScope?: unknown
 }
@@ -163,6 +165,7 @@ export interface SocialAccountPublic {
   platformAccountType: string | null
   tokenWarning: string | null
   tokenRefreshedAt: number | null
+  connectionCheckedAt: number | null
   /** Derived: publish permission state for the panel. */
   publishPermission: PublishPermissionState
   /** Permissions this connection needs to publish. */
@@ -276,6 +279,7 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
     platformAccountType: str(r.platformAccountType),
     tokenWarning: str(r.tokenWarning),
     tokenRefreshedAt: num(r.tokenRefreshedAt),
+    connectionCheckedAt: num(r.connectionCheckedAt),
     ...(r.publishScope && typeof r.publishScope === 'object' ? { publishScope: r.publishScope } : {}),
   }
 
@@ -324,6 +328,7 @@ export function toPublicSocialAccount(a: SocialAccount): SocialAccountPublic {
     platformAccountType: a.platformAccountType,
     tokenWarning: a.tokenWarning ?? null,
     tokenRefreshedAt: a.tokenRefreshedAt ?? null,
+    connectionCheckedAt: a.connectionCheckedAt ?? null,
     publishPermission: publishPermissionState(a),
     requiredPermissions: [...requiredPermissionsFor(a.platform, a.connectionMethod)],
   }

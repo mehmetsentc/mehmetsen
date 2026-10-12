@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishFormat } from '@/lib/social/accounts/capabilities'
 import type { SocialAccountPublic, SocialAccountPlatform } from '@/lib/social/accounts/types'
 import { summarizeRule } from '@/lib/social/automation/match'
+import { draftRuleFor } from '@/lib/social/automation/drafts'
 import { RULE_LIMITS, type AutomationGeo, type AutomationRule, type AutomationRuleInput, type FeaturedKind, type FeaturedMode } from '@/lib/social/automation/types'
 import type { AutomationJobPublic, AutomationJobStatus } from '@/lib/social/automation/jobs'
 
@@ -215,6 +216,21 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
   }
 
   const activeAccounts = (data?.accounts ?? []).filter((a) => a.connectionMethod !== 'legacy' && (a as AccountRow).canManage !== false)
+  const provName = (slug: string) => TURKISH_PROVINCES.find((p) => p.slug === slug)?.name ?? slug
+  const ruleAccountIds = new Set((data?.rules ?? []).map((r) => r.accountId))
+  const draftable = activeAccounts
+    .filter((a) => !ruleAccountIds.has(a.id) && a.status !== 'disabled')
+    .map((a) => ({ a, draft: draftRuleFor(a, provName) }))
+    .filter((x): x is { a: SocialAccountPublic; draft: AutomationRuleInput } => x.draft !== null)
+
+  async function createDraft(draft: AutomationRuleInput) {
+    setBusy(`draft:${draft.accountId}`)
+    const r = await api('/api/social/rules', { method: 'POST', body: JSON.stringify(draft) })
+    setBusy(null)
+    if (!r.ok) return toast.error(r.error)
+    toast.success('Kapalı taslak kural oluşturuldu — açmadan önce önizleyin')
+    void load()
+  }
 
   return (
     <div className="space-y-5">
@@ -241,10 +257,14 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
 
       {loadError ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadError}</p> : null}
 
-      {mode !== 'admin' ? null : data && data.reconcile.updatedAt === null ? (
+      {mode !== 'admin' ? null : data && data.reconcile.updatedAt === null && !data.rules.some((r) => r.enabled) ? (
+        <p className="text-xs text-[rgb(var(--color-muted))]">
+          Açık kural yok: ortak 5 dakikalık çalışan haber taraması yapmaz (gereksiz okuma yok). İlk değerlendirme bir kural açıldıktan sonra burada görünür.
+        </p>
+      ) : mode !== 'admin' ? null : data && data.reconcile.updatedAt === null ? (
         <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Otomasyon çalışanı henüz hiç çalışmadı. Açık kural olsa bile paylaşım için <code>/api/cron/social-automation</code> ucunun zamanlanmış olması gerekir.
+          Açık kural var ama çalışanın değerlendirme kaydı henüz yok. <code>/api/cron/social-automation</code> (5 dk) çalıştıktan sonra burada görünür.
         </p>
       ) : data ? (
         <p className="text-xs text-[rgb(var(--color-muted))]">Çalışanın son değerlendirmesi: {fmtTime(data.reconcile.updatedAt)}</p>
@@ -263,6 +283,31 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
             void load()
           }}
         />
+      ) : null}
+
+      {draftable.length > 0 ? (
+        <section className="space-y-2 rounded-xl border border-dashed border-[rgb(var(--color-border))] p-3" aria-label="Önerilen taslaklar">
+          <h3 className="text-sm font-bold text-[rgb(var(--color-text))]">Kuralı olmayan hesaplar — önerilen kapalı taslak</h3>
+          <p className="text-xs text-[rgb(var(--color-muted))]">
+            Taslak <b>kapalı</b> oluşturulur; paylaşım yapmaz. Açmadan önce önizleyip düzenleyebilirsiniz. Açıldığında yalnız sonra yayımlanan haberler değerlendirilir.
+          </p>
+          {draftable.map(({ a, draft }) => (
+            <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[rgb(var(--color-surface))] p-2 text-xs">
+              <div className="min-w-0">
+                <p className="font-semibold text-[rgb(var(--color-text))]">{accountLabel(a, a.id)}</p>
+                <p className="text-[rgb(var(--color-muted))]">{summarizeRule(draft)}</p>
+              </div>
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => setEditing({ id: null, input: draft })} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1">
+                  Düzenleyerek oluştur
+                </button>
+                <button type="button" disabled={busy === `draft:${a.id}`} onClick={() => void createDraft(draft)} className="rounded-lg bg-[rgb(var(--color-brand))] px-2 py-1 font-semibold text-white disabled:opacity-50">
+                  Kapalı taslak oluştur
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
       ) : null}
 
       <section className="space-y-3">
@@ -666,7 +711,7 @@ function RuleForm({
             </label>
             {!input.allCategories ? (
               <>
-                <input value={catQuery} onChange={(e) => setCatQuery(e.target.value)} placeholder="Kategori ara (üst kategori alt kategorileri kapsar)" className={cn(input_, 'w-full')} />
+                <input value={catQuery} onChange={(e) => setCatQuery(e.target.value)} placeholder="Kategori ara — alt kategoriler ayrıca seçilir (üst kategori onları kapsamaz)" className={cn(input_, 'w-full')} />
                 <div className="flex max-h-40 flex-wrap gap-1.5 overflow-auto">
                   {cats.map((c) => {
                     const on = input.categoryIds.includes(c.id)

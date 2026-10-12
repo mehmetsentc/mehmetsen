@@ -19,10 +19,11 @@ import { AutomationRulesPanel } from '@/components/admin/social/AutomationRulesP
 import type { SocialAccountPublic } from '@/lib/social/accounts/types'
 
 const TABS = [
-  { id: 'accounts', label: 'Hesaplarım' },
-  { id: 'publish', label: 'Hesabımda yayımla' },
-  { id: 'rules', label: 'Kurallarım' },
-  { id: 'history', label: 'Paylaşım geçmişim' },
+  { id: 'accounts', label: 'Sosyal Hesaplarım' },
+  { id: 'publish', label: 'Hesabımda Yayımla' },
+  { id: 'history', label: 'Paylaşım Geçmişim' },
+  // Reached from an account card («Otomasyon kuralı»); not a top-level menu item.
+  { id: 'rules', label: 'Otomasyon kuralı' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
 
@@ -74,7 +75,7 @@ function SocialSettingsInner() {
         description="Instagram, Facebook ve Threads hesaplarınızı platformun kendi giriş ekranıyla bağlayın; NaHaber haberlerini hesabınızda yayımlayın ve kendi otomasyon kurallarınızı yönetin."
       />
       <nav className="flex gap-1 overflow-x-auto border-b border-[rgb(var(--color-border))]" aria-label="Sosyal hesap bölümleri">
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.id !== 'rules' || tab === 'rules').map((t) => (
           <button
             key={t.id}
             type="button"

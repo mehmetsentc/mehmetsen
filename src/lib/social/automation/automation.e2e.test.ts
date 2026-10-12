@@ -147,7 +147,7 @@ function ruleInput(over: Partial<AutomationRuleInput> = {}): AutomationRuleInput
     name: 'Antalya yerel',
     accountId: IG_ANTALYA.id,
     geo: { kind: 'provinces', citySlugs: ['antalya'] },
-    categoryIds: ['yerel-haber'],
+    categoryIds: ['yerel-gundem', 'yerel-asayis'],
     allCategories: false,
     featuredMode: 'categories_only',
     featuredKind: 'either',

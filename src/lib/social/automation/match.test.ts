@@ -26,7 +26,7 @@ function input(over: Partial<AutomationRuleInput> = {}): AutomationRuleInput {
     name: 'Antalya yerel',
     accountId: 'instagram_1',
     geo: { kind: 'provinces', citySlugs: ['antalya'] },
-    categoryIds: ['yerel-haber'],
+    categoryIds: ['yerel-asayis', 'yerel-spor'],
     allCategories: false,
     featuredMode: 'categories_only',
     featuredKind: 'either',
@@ -61,9 +61,13 @@ describe('automation rule matching', () => {
     expect(ankara.reasons[0]).toContain('İl eşleşmedi')
   })
 
-  it('üst kategori seçimi alt kategorileri kapsar; seçilmeyen kategori eşleşmez', () => {
+  it('alt kategori sessizce kapsanmaz: yalnız açıkça seçilen kategori (ve yerel karşılığı) eşleşir', () => {
     expect(evaluateRule(rule(), news({ categoryId: 'yerel-spor' })).match).toBe(true)
     expect(evaluateRule(rule(), news({ categoryId: 'gundem' })).match).toBe(false)
+    const spor = rule({ categoryIds: ['spor'] })
+    expect(evaluateRule(spor, news({ categoryId: 'futbol' })).match).toBe(false)
+    expect(evaluateRule(spor, news({ categoryId: 'yerel-spor' })).match).toBe(true) // Yerel Spor ≙ Spor
+    expect(evaluateRule(rule({ categoryIds: ['spor', 'futbol'] }), news({ categoryId: 'futbol' })).match).toBe(true)
   })
 
   it('son-dakikaya taşınan haber önceki kategorisiyle eşleşir', () => {
@@ -98,7 +102,7 @@ describe('automation rule matching', () => {
 
   it('«seçilen kategoriler veya öne çıkanlar» ile «seçilen kategorilerde yalnızca öne çıkanlar» ayrımı', () => {
     const orRule = rule({ featuredMode: 'categories_or_featured', categoryIds: ['spor'] })
-    const andRule = rule({ featuredMode: 'featured_in_categories', categoryIds: ['yerel-haber'] })
+    const andRule = rule({ featuredMode: 'featured_in_categories', categoryIds: ['yerel-asayis'] })
     const plain = news({ categoryId: 'yerel-asayis' })
     const pinned = news({ categoryId: 'yerel-asayis', localFeatured: true })
     expect(evaluateRule(orRule, plain).match).toBe(false)
@@ -155,5 +159,28 @@ describe('validateRuleInput', () => {
     expect(validateRuleInput({ ...ok, formats: ['reel'] }).ok).toBe(false)
     expect(validateRuleInput({ ...ok, quietHours: { startHour: 3, endHour: 3 } }).ok).toBe(false)
     expect(validateRuleInput({ ...ok, accountId: 'legacy' }).ok).toBe(false)
+  })
+})
+
+describe('Görev 18 — konum sınıflandırması', () => {
+  it('kategorisi ve ili olmayan haber ulusal sayılmaz; «tüm konumlar» konumu eksik haberi almaz', async () => {
+    const { geoMatch, locationMissing } = await import('./match')
+    const bare = newsFactsFrom('x', { status: 'published' })
+    expect(locationMissing(bare)).toBe(true)
+    expect(geoMatch({ geo: { kind: 'national' } }, bare).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'any' } }, bare).ok).toBe(false)
+    const yerelNoCity = newsFactsFrom('y', { categoryId: 'yerel-asayis' })
+    expect(geoMatch({ geo: { kind: 'any' } }, yerelNoCity).ok).toBe(false)
+    const national = newsFactsFrom('z', { categoryId: 'gundem' })
+    expect(geoMatch({ geo: { kind: 'national' } }, national).ok).toBe(true)
+    expect(geoMatch({ geo: { kind: 'any' } }, national).ok).toBe(true)
+    expect(geoMatch({ geo: { kind: 'any' } }, newsFactsFrom('w', { categoryId: 'yerel-asayis', citySlug: 'izmir' })).ok).toBe(true)
+  })
+
+  it('otomatik hikâye öne çıkan koşulu ister', () => {
+    const base = { name: 'k', accountId: 'instagram_1', geo: { kind: 'any' }, categoryIds: ['asayis'], allCategories: false, featuredKind: 'either', dailyLimit: 5, minIntervalMinutes: 15, quietHours: null }
+    expect(validateRuleInput({ ...base, featuredMode: 'categories_or_featured', formats: ['story'] }).ok).toBe(false)
+    expect(validateRuleInput({ ...base, featuredMode: 'featured_in_categories', formats: ['story'] }).ok).toBe(true)
+    expect(validateRuleInput({ ...base, categoryIds: [], featuredMode: 'featured_only', formats: ['post', 'story'] }).ok).toBe(true)
   })
 })

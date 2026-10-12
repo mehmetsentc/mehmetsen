@@ -203,13 +203,13 @@ async function cmsSession(uid: string) {
 async function begin(
   platform: 'facebook' | 'instagram' | 'threads',
   uid = 'admin1',
-  citySlug = 'antalya',
+  citySlug: string | Record<string, unknown> = 'antalya',
   reconnectAccountId?: string,
 ) {
   const r = await startConnection({
     actor: await ctxFor(uid),
     platform,
-    ownership: { citySlug },
+    ownership: typeof citySlug === 'string' ? { citySlug } : citySlug,
     reconnectAccountId: reconnectAccountId ?? null,
     now: NOW,
   })
@@ -460,6 +460,21 @@ describe('Instagram Login', () => {
     const t = await resolvePublishTarget('instagram_17840000000000001', { now: NOW + 2000 })
     expect(t.ok && t.target.apiBase).toBe(INSTAGRAM_LOGIN_GRAPH_BASE)
     expect(t.ok && t.target.accessToken).toBe('IGAA_LONG')
+  })
+
+  it('Görev 18: merkez hesabı il/ilçe olmadan başlar ve merkez sahipliğiyle kaydedilir; il ekibinde il zorunlu', async () => {
+    const a = await begin('instagram', 'admin1', { kind: 'central' })
+    const st = fs.docs('socialOAuthStates').at(-1)!.data as { ownership: Record<string, unknown>; returnTo: string }
+    expect(st.ownership).toMatchObject({ citySlug: null, central: true })
+    expect(st.returnTo).toBe('admin')
+    expect(result(await callback('instagram', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('connected')
+    expect(fs.store.get('socialAccounts/instagram_17840000000000001')).toMatchObject({ ownership: { citySlug: null, central: true } })
+    // İl ekibi: il yoksa / geçersizse başlatılmaz; il yöneticisi merkez başlatamaz.
+    for (const ownership of [{ kind: 'province' }, { kind: 'province', citySlug: '' }, { kind: 'province', citySlug: 'olmayan-il' }]) {
+      const r = await startConnection({ actor: await ctxFor('admin1'), platform: 'instagram', ownership, now: NOW })
+      expect(r).toMatchObject({ ok: false, code: 'invalid_ownership' })
+    }
+    expect(await startConnection({ actor: await ctxFor('editor1'), platform: 'instagram', ownership: { kind: 'central' }, now: NOW })).toMatchObject({ ok: false, status: 403 })
   })
 
   it('yayın izni eksik / kişisel hesap → kayıt yok', async () => {

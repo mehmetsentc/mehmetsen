@@ -57,11 +57,11 @@ export const PLATFORM_LABEL: Record<string, string> = { facebook: 'Facebook', in
 export function ownerLabel(a: Pick<SocialAccountPublic, 'ownerKind' | 'ownership'>, publisherNames: Record<string, string> = {}): string {
   switch (a.ownerKind) {
     case 'user':
-      return 'Kişisel hesap'
+      return 'Sahiplik: Kişisel'
     case 'publisher':
       return `Yayıncı: ${publisherNames[a.ownership.publisherId ?? ''] ?? a.ownership.publisherId}`
     case 'central':
-      return 'NaHaber merkez'
+      return 'Sahiplik: Merkez'
     default:
       return `İl: ${a.ownership.citySlug}`
   }

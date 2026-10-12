@@ -3,7 +3,7 @@
  * No Firestore, no clock — the caller passes everything in, so preview,
  * reconcile and the pre-send recheck all use exactly this function.
  */
-import { DEFAULT_CATEGORIES } from '@/constants/config'
+import { DEFAULT_CATEGORIES, YEREL_TO_NATIONAL_CATEGORY_MAP } from '@/constants/config'
 import { getCityCategoryName, DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
 import {
   isAdminLocalFeatured,
@@ -59,18 +59,24 @@ export function newsFactsFrom(id: string, d: Record<string, unknown>): NewsFacts
   }
 }
 
-const CATEGORY_PARENT = new Map(DEFAULT_CATEGORIES.filter((c) => c.parentId).map((c) => [c.id, c.parentId as string]))
 const CATEGORY_NAME = new Map(DEFAULT_CATEGORIES.map((c) => [c.id, c.name]))
 
-/** Category + its ancestors (a selected parent matches its subcategories). */
-function categoryLineage(id: string): string[] {
-  const out: string[] = []
-  let cur: string | undefined = id
-  for (let i = 0; cur && i < 6 && !out.includes(cur); i++) {
-    out.push(cur)
-    cur = CATEGORY_PARENT.get(cur)
+/**
+ * Category keys of a news item — EXACT, no silent parent/child expansion
+ * (Görev 18 EK): its own category, its original category, and the national
+ * counterpart of a yerel subcategory (Yerel Spor ≙ Spor, Yerel Futbol ≙ Futbol,
+ * Yerel Asayiş ≙ Asayiş). Selecting «Spor» does NOT include «Futbol»; the
+ * editor shows subcategories as separate, explicit choices.
+ */
+export function newsCategoryKeys(n: Pick<NewsFacts, 'categoryId' | 'originalCategoryId'>): string[] {
+  const out = new Set<string>()
+  for (const id of [n.categoryId, n.originalCategoryId]) {
+    if (!id) continue
+    out.add(id)
+    const nat = YEREL_TO_NATIONAL_CATEGORY_MAP[id]
+    if (nat) out.add(nat)
   }
-  return out
+  return [...out]
 }
 
 export function categoryLabel(id: string): string {
@@ -85,9 +91,21 @@ function provinceLabel(slug: string): string {
   }
 }
 
+/**
+ * National = classified (has a category) and not in the yerel / Kıbrıs trees.
+ * A news item with neither category nor il is UNCLASSIFIED — never national.
+ */
 function isNationalNews(n: NewsFacts): boolean {
+  if (!n.categoryId && !n.originalCategoryId) return false
   const scope = { citySlug: n.citySlug, categoryId: n.categoryId, originalCategoryId: n.originalCategoryId }
   return !isLocalScopedNews(scope) && !isKibrisScopedNews(scope)
+}
+
+/** Location data missing: no il AND (local category or no category at all). Such news needs editor classification. */
+export function locationMissing(n: NewsFacts): boolean {
+  if (provinceOf(n.citySlug)) return false
+  if (!n.categoryId && !n.originalCategoryId) return true
+  return isLocalScopedNews({ citySlug: n.citySlug, categoryId: n.categoryId, originalCategoryId: n.originalCategoryId })
 }
 
 export function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): { ok: boolean; reason: string } {
@@ -95,7 +113,9 @@ export function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): 
   const prov = provinceOf(n.citySlug)
   switch (g.kind) {
     case 'any':
-      return { ok: true, reason: 'Konum: tüm haberler' }
+      return locationMissing(n)
+        ? { ok: false, reason: 'Haberde konum bilgisi eksik — editör konum sınıflandırmalı' }
+        : { ok: true, reason: 'Konum: tüm konumlar' }
     case 'all_provinces':
       return prov ? { ok: true, reason: `Konum: ${provinceLabel(prov)} (tüm iller)` } : { ok: false, reason: 'Haberde il bilgisi yok — editör konum sınıflandırmalı' }
     case 'national':
@@ -119,7 +139,7 @@ export function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): 
 
 export function categoryMatch(rule: Pick<AutomationRuleInput, 'categoryIds' | 'allCategories'>, n: NewsFacts): { ok: boolean; reason: string } {
   if (rule.allCategories) return { ok: true, reason: 'Kategori: tümü' }
-  const ids = new Set([...categoryLineage(n.categoryId), ...(n.originalCategoryId ? categoryLineage(n.originalCategoryId) : [])])
+  const ids = new Set(newsCategoryKeys(n))
   const hit = rule.categoryIds.find((c) => ids.has(c))
   return hit
     ? { ok: true, reason: `Kategori: ${categoryLabel(hit)}` }
@@ -200,7 +220,7 @@ export function summarizeRule(rule: AutomationRuleInput): string {
   const g = rule.geo
   const geo =
     g.kind === 'any'
-      ? 'Tüm haberler (il ayrımı yok)'
+      ? 'Tüm konumlar (konumu eksik haberler hariç)'
       : g.kind === 'national'
         ? 'Ulusal haberler'
         : g.kind === 'all_provinces'

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 const TABS = [
   { href: '/admin/social/overview', label: 'Genel Bakış' },
   { href: '/admin/social/accounts', label: 'Hesaplar' },
-  { href: '/admin/social/automation', label: 'Otomasyon Kuralları' },
+  { href: '/admin/social/automation', label: 'Otomasyon' },
   { href: '/admin/social/shares', label: 'Paylaşımlar' },
   { href: '/admin/social/network', label: 'İl Ağı' },
 ] as const

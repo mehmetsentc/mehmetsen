@@ -36,7 +36,8 @@ import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
 import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets as pickTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
-import { describeShareResult, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { describeShareResult, overallShareState, resultsOf, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
+import { showShareToast } from '@/lib/social/shareToast'
 import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -912,10 +913,10 @@ export default function SocialPage() {
       }
       pushLines('Post', r0?.post as Record<string, unknown> | undefined)
       pushLines('Hikâye', r0?.story as Record<string, unknown> | undefined)
-      const anyPublished = lines.some((l) => l.includes(': ✓') || l.includes(': ='))
+      const overall = overallShareState(resultsOf(r0 as Parameters<typeof resultsOf>[0]))
+      const anyPublished = overall === 'published' || overall === 'partial'
       const msg = lines.join('\n') || 'Paylaşım sonucu yok'
-      if (anyPublished) toast.success(msg, { id: toastId, duration: 10000 })
-      else toast.error(msg, { id: toastId, duration: 12000 })
+      showShareToast(overall, lines, { id: toastId })
       setLastResult({ ok: anyPublished, message: msg, post: r0?.post, story: r0?.story })
       if (!anyPublished) return
 
@@ -1035,7 +1036,9 @@ export default function SocialPage() {
         error?: string
       }
       if (!res.ok) {
-        toast.error(data.error ?? 'BYO app yüklenemedi')
+        // 401/403: not a central admin (system:settings) — the technical
+        // section is simply not shown; no error toast for il yöneticileri.
+        if (res.status !== 401 && res.status !== 403) toast.error(data.error ?? 'BYO app yüklenemedi')
         return
       }
       setByoAppId(data.site?.fbAppId ?? '')
@@ -1547,7 +1550,8 @@ export default function SocialPage() {
           </div>
         )}
 
-        {/* BYO Facebook App — collapsed by default */}
+        {/* BYO Facebook App — central admins only (server: system:settings), collapsed by default */}
+        {byoStatus && (
         <details className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-sm">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-bold text-[rgb(var(--color-text))] [&::-webkit-details-marker]:hidden">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
@@ -1710,6 +1714,7 @@ export default function SocialPage() {
           </p>
           </div>
         </details>
+        )}
 
         {showTokenPanel && (
           <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5 shadow-sm">

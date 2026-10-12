@@ -10,27 +10,108 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import type { AccountPublishScope } from '@/lib/social/accounts/publishScope'
 import type { AutomationGeo } from '@/lib/social/automation/types'
 import type { PublishFormat } from '@/lib/social/accounts/capabilities'
 import { socialApi, type SocialAccountRow } from './socialClient'
+import { CategoryPicker } from './CategoryPicker'
+import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
 
-const CATEGORY_OPTIONS = DEFAULT_CATEGORIES.filter((c) => !['trend', 'tekrarlayan'].includes(c.id)).map((c) => ({ id: c.id, name: c.name, child: !!c.parentId }))
 const GEO_KINDS: Array<[AutomationGeo['kind'], string]> = [
   ['provinces', 'Belirli il(ler)'],
   ['districts', 'Belirli ilçe(ler)'],
   ['national', 'Ulusal haberler'],
   ['all_provinces', 'Tüm illerden haberler'],
-  ['any', 'Tüm haberler (ulusal + yerel)'],
+  ['any', 'Tüm konumlar (il + ulusal + dünya)'],
 ]
+export const ALL_PROVINCES = TURKISH_PROVINCES.map((p) => ({ slug: p.slug, name: p.name }))
+
+const toggleIn = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
+
+function GeoFieldset({
+  legend,
+  hint,
+  geo,
+  setGeo,
+  kinds,
+  provinceChoices,
+  accountCity,
+}: {
+  legend: string
+  hint: string
+  geo: AutomationGeo
+  setGeo: (g: AutomationGeo) => void
+  kinds: Array<[AutomationGeo['kind'], string]>
+  provinceChoices: Array<{ slug: string; name: string }>
+  accountCity: string | null
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="font-semibold">{legend}</legend>
+      <p className="text-[11px] text-[rgb(var(--color-muted))]">{hint}</p>
+      <div className="flex flex-wrap gap-3">
+        {kinds.map(([k, label]) => (
+          <label key={k} className="inline-flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={geo.kind === k}
+              onChange={() =>
+                setGeo(
+                  k === 'provinces'
+                    ? { kind: 'provinces', citySlugs: accountCity ? [accountCity] : [] }
+                    : k === 'districts'
+                      ? { kind: 'districts', citySlug: accountCity ?? provinceChoices[0]?.slug ?? '', districtSlugs: [] }
+                      : { kind: k },
+                )
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      {geo.kind === 'provinces' && (
+        <div className="max-h-40 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2">
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+            {provinceChoices.map((p) => (
+              <label key={p.slug} className="inline-flex items-center gap-1 text-xs">
+                <input type="checkbox" checked={geo.citySlugs.includes(p.slug)} onChange={() => setGeo({ kind: 'provinces', citySlugs: toggleIn(geo.citySlugs, p.slug) })} />
+                {p.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {geo.kind === 'districts' && (
+        <div className="space-y-1">
+          <select value={geo.citySlug} onChange={(e) => setGeo({ kind: 'districts', citySlug: e.target.value, districtSlugs: [] })} className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1 text-xs">
+            {provinceChoices.map((p) => (
+              <option key={p.slug} value={p.slug}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <div className="grid max-h-40 grid-cols-2 gap-1 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2 sm:grid-cols-4">
+            {getDistrictsForProvince(geo.citySlug).map((d) => (
+              <label key={d.slug} className="inline-flex items-center gap-1 text-xs">
+                <input type="checkbox" checked={geo.districtSlugs.includes(d.slug)} onChange={() => setGeo({ ...geo, districtSlugs: toggleIn(geo.districtSlugs, d.slug) })} />
+                {d.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </fieldset>
+  )
+}
+
 const FORMAT_TEXT: Record<PublishFormat, string> = { post: 'Görselli gönderi', story: 'Hikâye' }
 
 export function PublishScopeEditor({
   account,
   provinceChoices,
   initialDistrict,
+  prefill,
   onSaved,
   onClose,
   automationHref,
@@ -39,17 +120,23 @@ export function PublishScopeEditor({
   /** Provinces the user may choose (il yöneticisi: own il only). */
   provinceChoices: Array<{ slug: string; name: string }>
   initialDistrict?: string | null
+  /** Content scope chosen in the add-account wizard (applied only after «Kaydet»). */
+  prefill?: { geo?: AutomationGeo; allCategories?: boolean; categoryIds?: string[] } | null
   onSaved: () => void
   onClose: () => void
   automationHref: string
 }) {
   const init = account.publishScope
   const [geo, setGeo] = useState<AutomationGeo>(() => {
+    if (prefill?.geo) return prefill.geo
     if (initialDistrict && account.ownership.citySlug) return { kind: 'districts', citySlug: account.ownership.citySlug, districtSlugs: [initialDistrict] }
     return init.geo
   })
-  const [allCategories, setAllCategories] = useState(init.allCategories)
-  const [categoryIds, setCategoryIds] = useState<string[]>(init.categoryIds)
+  const [storyGeo, setStoryGeo] = useState<AutomationGeo>(init.storyGeo)
+  const [allCategories, setAllCategories] = useState(prefill?.allCategories ?? init.allCategories)
+  const [categoryIds, setCategoryIds] = useState<string[]>(prefill?.categoryIds ?? init.categoryIds)
+  const [storyAllCategories, setStoryAllCategories] = useState(init.storyAllCategories ?? true)
+  const [storyCategoryIds, setStoryCategoryIds] = useState<string[]>(init.storyCategoryIds ?? [])
   const [formats, setFormats] = useState<PublishFormat[]>(init.formats)
   const [manualAccess, setManualAccess] = useState(init.manualAccess)
   const [saving, setSaving] = useState(false)
@@ -63,7 +150,7 @@ export function PublishScopeEditor({
     setSaving(true)
     const r = await socialApi<{ publishScope: AccountPublishScope }>(`/api/social/accounts/${encodeURIComponent(account.id)}`, {
       method: 'PATCH',
-      body: JSON.stringify({ action: 'scope', scope: { geo, allCategories, categoryIds, formats, manualAccess } }),
+      body: JSON.stringify({ action: 'scope', scope: { geo, storyGeo, allCategories, categoryIds, storyAllCategories, storyCategoryIds, formats, manualAccess } }),
     })
     setSaving(false)
     if (!r.ok) {
@@ -90,82 +177,52 @@ export function PublishScopeEditor({
         </button>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="font-semibold">Konum</legend>
-        <div className="flex flex-wrap gap-3">
-          {allowedKinds.map(([k, label]) => (
-            <label key={k} className="inline-flex items-center gap-1.5">
-              <input
-                type="radio"
-                checked={geo.kind === k}
-                onChange={() =>
-                  setGeo(
-                    k === 'provinces'
-                      ? { kind: 'provinces', citySlugs: account.ownership.citySlug ? [account.ownership.citySlug] : [] }
-                      : k === 'districts'
-                        ? { kind: 'districts', citySlug: account.ownership.citySlug ?? provinceChoices[0]?.slug ?? '', districtSlugs: [] }
-                        : { kind: k },
-                  )
-                }
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-        {geo.kind === 'provinces' && (
-          <div className="max-h-40 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2">
-            <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-              {provinceChoices.map((p) => (
-                <label key={p.slug} className="inline-flex items-center gap-1 text-xs">
-                  <input type="checkbox" checked={geo.citySlugs.includes(p.slug)} onChange={() => setGeo({ kind: 'provinces', citySlugs: toggle(geo.citySlugs, p.slug) })} />
-                  {p.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        {geo.kind === 'districts' && (
-          <div className="space-y-1">
-            <select value={geo.citySlug} onChange={(e) => setGeo({ kind: 'districts', citySlug: e.target.value, districtSlugs: [] })} className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1 text-xs">
-              {provinceChoices.map((p) => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <div className="grid max-h-40 grid-cols-2 gap-1 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2 sm:grid-cols-4">
-              {getDistrictsForProvince(geo.citySlug).map((d) => (
-                <label key={d.slug} className="inline-flex items-center gap-1 text-xs">
-                  <input type="checkbox" checked={geo.districtSlugs.includes(d.slug)} onChange={() => setGeo({ ...geo, districtSlugs: toggle(geo.districtSlugs, d.slug) })} />
-                  {d.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        <p className="text-[11px] text-[rgb(var(--color-muted))]">Konumu kayıtlı olmayan haber ulusal ya da bir il sayılmaz; editörün konum sınıflandırması gerekir.</p>
-      </fieldset>
+      <GeoFieldset
+        legend="Manuel gönderi konumu"
+        hint={account.ownerKind === 'province' ? 'İl hesabında gönderiler yerel kalır: kendi ili ve yetkili ilçeleri.' : 'Bu hesaba manuel gönderi olarak hangi konumların haberleri gidebilir.'}
+        geo={geo}
+        setGeo={setGeo}
+        kinds={allowedKinds}
+        provinceChoices={provinceChoices}
+        accountCity={account.ownership.citySlug}
+      />
 
-      <fieldset className="space-y-2">
-        <legend className="font-semibold">İçerik</legend>
-        <label className="inline-flex items-center gap-1.5">
-          <input type="checkbox" checked={allCategories} onChange={(e) => setAllCategories(e.target.checked)} />
-          Tüm kategoriler
-        </label>
-        {!allCategories && (
-          <div className="grid max-h-40 grid-cols-2 gap-1 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2 sm:grid-cols-3">
-            {CATEGORY_OPTIONS.map((c) => (
-              <label key={c.id} className={`inline-flex items-center gap-1 text-xs ${c.child ? 'pl-3' : 'font-semibold'}`}>
-                <input type="checkbox" checked={categoryIds.includes(c.id)} onChange={() => setCategoryIds(toggle(categoryIds, c.id))} />
-                {c.name}
-              </label>
-            ))}
-          </div>
-        )}
-        <p className="text-[11px] text-[rgb(var(--color-muted))]">
-          Öne çıkan türü ve VE/VEYA koşulları otomatik paylaşım kuralında tanımlanır. Manuel kapsam yalnız konum ve kategoriye bakar.
-        </p>
-      </fieldset>
+      <GeoFieldset
+        legend="Manuel hikâye konumu"
+        hint={isCorporate ? 'İl ve merkez hesaplarında manuel hikâye varsayılan olarak tüm konumlardan (kendi ili, diğer iller, Türkiye, dünya) paylaşılabilir. Bu, başka ilin hesabını yönetme yetkisi vermez.' : 'Kişisel / yayıncı hesabında hikâye kapsamını siz belirlersiniz.'}
+        geo={storyGeo}
+        setGeo={setStoryGeo}
+        kinds={GEO_KINDS}
+        provinceChoices={ALL_PROVINCES}
+        accountCity={account.ownership.citySlug}
+      />
+      <p className="text-[11px] text-[rgb(var(--color-muted))]">
+        Konumu kayıtlı olmayan haber ulusal ya da bir il sayılmaz; editörün konum sınıflandırması gerekir. Manuel hikâyenin geniş olması otomatik hikâyeyi açmaz.
+      </p>
+
+      <CategoryPicker
+        legend="Manuel gönderi kategorileri"
+        hint="Konum ve kategori birlikte seçilirse VE ile eşleşir (ör. Antalya VE Spor)."
+        all={allCategories}
+        ids={categoryIds}
+        onChange={(v) => {
+          setAllCategories(v.all)
+          setCategoryIds(v.ids)
+        }}
+      />
+      <CategoryPicker
+        legend="Manuel hikâye kategorileri"
+        hint="Gönderi kategorisinden bağımsızdır; gönderi kapsamını daraltmak hikâyeyi kendiliğinden kısıtlamaz."
+        all={storyAllCategories}
+        ids={storyCategoryIds}
+        onChange={(v) => {
+          setStoryAllCategories(v.all)
+          setStoryCategoryIds(v.ids)
+        }}
+      />
+      <p className="text-[11px] text-[rgb(var(--color-muted))]">
+        İçerik kapsamı (gönderi): <b>{contentScopeLabel(geo, allCategories)}</b>. Öne çıkan türü ve VE/VEYA koşulları otomatik paylaşım kuralında ayrıca tanımlanır.
+      </p>
 
       <fieldset className="space-y-1">
         <legend className="font-semibold">İzinli biçimler</legend>
@@ -227,4 +284,3 @@ export function PublishScopeEditor({
   )
 }
 
-export const ALL_PROVINCES = TURKISH_PROVINCES.map((p) => ({ slug: p.slug, name: p.name }))

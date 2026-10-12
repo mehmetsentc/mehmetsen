@@ -77,8 +77,19 @@ export async function setPublishScopeForActor(actor: SocialActor, accountId: str
   if (a.connectionMethod === 'legacy') return err(409, 'legacy', 'Eski bağlantının kapsamı düzenlenemez')
   const parsed = parsePublishScope(raw, supportedFormats(a))
   if (!parsed.ok) return err(400, 'invalid_scope', parsed.message)
+  // Post scope: an il yöneticisi may only choose own il / ilçe. Story scope is
+  // intentionally free (Görev 18: manual stories from all locations) — it does
+  // not grant management of any other account.
   const problem = ruleScopeProblem(actor, a.ownership, { geo: parsed.value.geo, dailyLimit: 0 })
   if (problem) return err(403, 'scope_forbidden', problem)
+  const rawStory = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).storyGeo : undefined
+  const current = readPublishScope(a, supportedFormats(a))
+  if (rawStory === undefined) parsed.value.storyGeo = current.storyGeo
+  const rawObj = raw as Record<string, unknown>
+  if (rawObj.storyAllCategories === undefined && rawObj.storyCategoryIds === undefined) {
+    parsed.value.storyAllCategories = current.storyAllCategories
+    parsed.value.storyCategoryIds = current.storyCategoryIds
+  }
   const before = readPublishScope(a, supportedFormats(a))
   const now = Date.now()
   const value = { ...parsed.value, updatedAt: now, updatedBy: actor.uid }
@@ -88,8 +99,8 @@ export async function setPublishScopeForActor(actor: SocialActor, accountId: str
     action: 'social.account.scope',
     entityType: 'socialAccount',
     entityId: a.id,
-    before: { geo: before.geo, allCategories: before.allCategories, categoryIds: before.categoryIds, formats: before.formats, manualAccess: before.manualAccess },
-    after: { geo: value.geo, allCategories: value.allCategories, categoryIds: value.categoryIds, formats: value.formats, manualAccess: value.manualAccess },
+    before: { geo: before.geo, storyGeo: before.storyGeo, allCategories: before.allCategories, categoryIds: before.categoryIds, storyAllCategories: before.storyAllCategories, storyCategoryIds: before.storyCategoryIds, formats: before.formats, manualAccess: before.manualAccess },
+    after: { geo: value.geo, storyGeo: value.storyGeo, allCategories: value.allCategories, categoryIds: value.categoryIds, storyAllCategories: value.storyAllCategories, storyCategoryIds: value.storyCategoryIds, formats: value.formats, manualAccess: value.manualAccess },
   })
   return { ok: true as const, publishScope: value }
 }
