@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_THEME, isForcedDarkPathname } from '@/lib/theme'
 
 describe('theme', () => {
-  it('defaults to system so day/night follows the device', () => {
-    expect(DEFAULT_THEME).toBe('system')
+  it('defaults to dark on first visit; a stored choice still wins', () => {
+    expect(DEFAULT_THEME).toBe('dark')
   })
 
   it('does not force Feed 2 dark — light, dark, and system all apply', () => {
@@ -26,5 +26,7 @@ describe('theme', () => {
     expect(src).toContain("path === '/reels'")
     expect(src).toContain("pref = localStorage.getItem")
     expect(src).toContain("'system'")
+    // No stored preference → DEFAULT_THEME (dark), not the device setting.
+    expect(src).toContain("|| '${DEFAULT_THEME}'")
   })
 })

@@ -31,7 +31,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [theme, setThemeState] = useState<ThemePreference>(DEFAULT_THEME)
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark')
 
   const syncTheme = useCallback((preference: ThemePreference) => {
     const resolved = resolveTheme(preference)

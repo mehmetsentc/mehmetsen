@@ -16,7 +16,12 @@ export type ThemePreference = 'light' | 'dark' | 'oled' | 'system'
 export type ResolvedTheme = 'light' | 'dark' | 'oled'
 
 export const THEME_STORAGE_KEY = 'nahaber-theme'
-export const DEFAULT_THEME: ThemePreference = 'system'
+/**
+ * First visit on every NaHaber surface (nahaber.com and city hosts such as
+ * canakkale./antalya.nahaber.com) opens dark. A choice the user makes
+ * (light / dark / oled / system) is stored and always wins.
+ */
+export const DEFAULT_THEME: ThemePreference = 'dark'
 
 const VALID: ThemePreference[] = ['light', 'dark', 'oled', 'system']
 
