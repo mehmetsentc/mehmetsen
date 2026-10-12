@@ -1,12 +1,13 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Home, Search, User, Zap } from 'lucide-react'
+import { Home, Plus, Search, User, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/Avatar'
+import { SubmitNewsModal } from '@/components/profile/SubmitNewsModal'
 import { logNavClick } from '@/lib/navDiagnostics'
 import { clearFeedRestoreForFeedV2Nav } from '@/lib/feed/feedRestoration'
 import { rememberFeedV2EntryOrigin } from '@/lib/feed/reader/feedV2Exit'
@@ -71,23 +72,40 @@ const MobileNavLink = memo(function MobileNavLink({
   item,
   active,
   pathname,
+  pending,
+  onPending,
 }: {
   item: MobileNavItem
   active: boolean
   pathname: string
+  pending: boolean
+  onPending: (kind: NavKind) => void
 }) {
   const { icon: Icon, label, href, testId, kind } = item
 
-  const handleClick = useCallback(() => {
-    if (kind === 'akis') {
-      rememberFeedV2EntryOrigin(pathname)
-      clearFeedRestoreForFeedV2Nav({ pathname })
-    }
-    logNavClick(href, pathname)
-  }, [href, kind, pathname])
+  const handleClick = useCallback(
+    (e: MouseEvent<HTMLAnchorElement>) => {
+      // A second tap while the first navigation is still loading restarted it
+      // (and felt like "tap several times"). Keep the first one going.
+      if (pending) {
+        e.preventDefault()
+        return
+      }
+      onPending(kind)
+      if (kind === 'akis') {
+        rememberFeedV2EntryOrigin(pathname)
+        clearFeedRestoreForFeedV2Nav({ pathname })
+      }
+      logNavClick(href, pathname)
+    },
+    [href, kind, pathname, pending, onPending]
+  )
 
+  // Default (auto) prefetch: for dynamic routes such as /feed-v2 Next prefetches
+  // only the loading.tsx shell, so a tap paints the Feed loader immediately
+  // instead of waiting ~2 s for the server with no visible response.
   return (
-    <Link prefetch={false}
+    <Link
       href={href}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
@@ -124,6 +142,13 @@ function MobileNavInner() {
     kind: 'profil',
   }
   const profileActive = isItemActive(pathname, profileItem, username)
+  const [pendingKind, setPendingKind] = useState<NavKind | null>(null)
+  const [submitOpen, setSubmitOpen] = useState(false)
+
+  // Navigation finished (or went elsewhere): drop the optimistic state.
+  useEffect(() => {
+    setPendingKind(null)
+  }, [pathname])
 
   const items = useMemo<MobileNavItem[]>(
     () => [
@@ -153,32 +178,64 @@ function MobileNavInner() {
   )
 
   return (
+    <>
     <nav
       className="mobile-bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-[105] flex justify-center px-[var(--mobile-nav-inset-x)] pb-[calc(var(--safe-bottom,0px)+var(--mobile-nav-float-gap))] lg:hidden"
       aria-label="Ana menü"
       data-testid="mobile-bottom-nav"
     >
-      <div className="mobile-bottom-nav-pill pointer-events-auto">
-        {items.map((item) => (
-          <MobileNavLink
-            key={item.kind}
-            item={item}
-            active={isItemActive(pathname, item, username)}
-            pathname={pathname}
-          />
-        ))}
-        <Link prefetch={false}
+      <div className="mobile-bottom-nav-pill pointer-events-auto" data-nav-member={signedIn ? '1' : '0'}>
+        {items.map((item, index) => {
+          const link = (
+            <MobileNavLink
+              key={item.kind}
+              item={item}
+              active={pendingKind ? pendingKind === item.kind : isItemActive(pathname, item, username)}
+              pathname={pathname}
+              pending={pendingKind === item.kind}
+              onPending={setPendingKind}
+            />
+          )
+          // Members: Ana Sayfa · Akış · [Haber Ekle] · Ara · Profil
+          if (signedIn && index === 2) {
+            return [
+              <button
+                key="add"
+                type="button"
+                aria-label="Haber Ekle"
+                data-testid="mobile-nav-add-news"
+                onClick={() => {
+                  logNavClick('submit-news', pathname)
+                  setSubmitOpen(true)
+                }}
+                className="flex flex-1 items-center justify-center touch-manipulation"
+              >
+                <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-white shadow-[0_4px_14px_rgb(0_0_0_/_0.25)] transition-transform active:scale-95">
+                  <Plus className="h-[22px] w-[22px]" strokeWidth={2.25} />
+                </span>
+              </button>,
+              link,
+            ]
+          }
+          return link
+        })}
+        {/* Guests see only Ana Sayfa · Akış · Ara. */}
+        {signedIn && user ? (
+        <Link
           href={profileHref}
           aria-label="Profilim"
           aria-current={profileActive ? 'page' : undefined}
           data-testid="header-nav-profil"
-          onClick={() => logNavClick(profileHref, pathname)}
+          onClick={() => {
+            setPendingKind('profil')
+            logNavClick(profileHref, pathname)
+          }}
           className="flex flex-1 items-center justify-center touch-manipulation"
         >
           <span
             className={cn(
               'mobile-nav-profile',
-              profileActive && 'is-active',
+              (pendingKind ? pendingKind === 'profil' : profileActive) && 'is-active',
               !signedIn && 'mobile-nav-profile-guest'
             )}
           >
@@ -194,8 +251,12 @@ function MobileNavInner() {
             )}
           </span>
         </Link>
+        ) : null}
       </div>
     </nav>
+    {/* Outside <nav>: it is pointer-events:none and its own stacking context. */}
+    {submitOpen ? <SubmitNewsModal onClose={() => setSubmitOpen(false)} /> : null}
+    </>
   )
 }
 
