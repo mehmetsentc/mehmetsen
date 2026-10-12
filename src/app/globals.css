@@ -6272,7 +6272,8 @@ html.dark [data-testid='smart-feed-read-cta'] {
  * field renders below 16px, and the zoom survives keyboard dismissal.
  * `text-sm` resolves to --fs-sm (13px), which most forms use. Lift every
  * text-entry control to 16px on phones and touch tablets instead of
- * blocking user zoom. Larger designer sizes (text-lg and up) are left alone.
+ * blocking user zoom. Larger designer sizes (an unprefixed text-lg and up,
+ * matched as a whole class token) are left alone.
  * Unlayered + 0,2,1 specificity so it beats single-class Tailwind utilities.
  */
 @media (max-width: 1023px), (hover: none) and (pointer: coarse) {
@@ -6282,7 +6283,7 @@ html.dark [data-testid='smart-feed-read-cta'] {
       select,
       [contenteditable='true'],
       [contenteditable='']
-    ):not([class*='text-lg'], [class*='text-xl'], [class*='text-2xl'], [class*='text-3xl'], [class*='text-4xl'], [class*='text-5xl'], [class*='text-6xl']) {
+    ):not([class~='text-lg'], [class~='text-xl'], [class~='text-2xl'], [class~='text-3xl'], [class~='text-4xl'], [class~='text-5xl'], [class~='text-6xl']) {
     font-size: max(16px, var(--fs-md, 1rem));
   }
 }
