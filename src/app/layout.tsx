@@ -36,6 +36,7 @@ import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { ReaderNavTraceSurvivor } from '@/components/feed/smart/ReaderNavTraceSurvivor'
 import { PWAInstallPromptLazy } from '@/components/pwa/PWAInstallPromptLazy'
 import { PreviewViewportProbe } from '@/components/debug/PreviewViewportProbe'
+import { IosFocusZoomGuard } from '@/components/layout/IosFocusZoomGuard'
 
 // PREVIEW-ONLY on-device viewport probe. VERCEL_ENV is baked at build time, so
 // Production builds never render it. Remove before merging to production.
@@ -315,6 +316,7 @@ gtag('consent','default',{
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
         />
         <ThemeScript />
+        <IosFocusZoomGuard />
         <CityPreviewScript />
         <PlatformScript />
         <NativeShellMark />
