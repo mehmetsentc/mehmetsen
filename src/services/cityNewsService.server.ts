@@ -66,6 +66,13 @@ interface NewsDocument {
   galleryImages?: string[]
 }
 
+/**
+ * FinOps 12 Oct: city list reads returned full article docs (body HTML) — the
+ * largest egress source. docToNewsItem / newsDocMatchesDistrict only need these.
+ */
+const CITY_NEWS_CARD_FIELDS: string[] = ['title', 'slug', 'description', 'summary', 'coverImageUrl', 'thumbnail', 'categoryId', 'category', 'originalCategoryId', 'status', 'publishedAt', 'citySlug', 'city', 'district', 'districtSlug', 'location', 'tags', 'views', 'likesCount', 'commentsCount', 'isBreaking', 'featured', 'featuredAt', 'localFeatured', 'localFeaturedAt', 'source', 'author', 'authorPhotoURL', 'articleFormat', 'seoTitle', 'videoUrl', 'readingMinutes', 'additionalImages', 'galleryImages']
+
+
 /** District slug/name tag variants for Firestore array-contains (biga, Biga, #Biga, …). */
 function districtTagVariants(districtSlug: string): string[] {
   const slug = districtSlug.trim().toLowerCase()
@@ -260,7 +267,7 @@ const getCityNewsCached = unstable_cache(
         .where('status', '==', 'published')
         .where('citySlug', '==', citySlug)
         .orderBy('publishedAt', 'desc')
-        .limit(Math.min(limitCount * 3, 120))
+        .select(...CITY_NEWS_CARD_FIELDS).limit(Math.min(limitCount * 3, 120))
         .get()
 
       const items: NewsItem[] = []
@@ -333,7 +340,7 @@ const getCityNewsByCategoryCached = unstable_cache(
               ? q.where('categoryId', 'in', chunk)
               : q.where('categoryId', '==', chunk[0])
 
-          const snap = await q.orderBy('publishedAt', 'desc').limit(limitCount).get()
+          const snap = await q.orderBy('publishedAt', 'desc').select(...CITY_NEWS_CARD_FIELDS).limit(limitCount).get()
           for (const doc of snap.docs) {
             if (byId.has(doc.id)) continue
             const item = docToNewsItem(doc.id, doc.data() as NewsDocument)
@@ -393,7 +400,7 @@ const getCityNewsByDistrictCached = unstable_cache(
             .collection(NEWS_COLLECTION)
             .where('status', '==', 'published')
             .where('tags', 'array-contains', variant)
-            .limit(limitCount * 3)
+            .select(...CITY_NEWS_CARD_FIELDS).limit(limitCount * 3)
             .get()
 
           for (const doc of snap.docs) {
@@ -409,7 +416,7 @@ const getCityNewsByDistrictCached = unstable_cache(
           .where('status', '==', 'published')
           .where('citySlug', '==', citySlug)
           .orderBy('publishedAt', 'desc')
-          .limit(Math.max(limitCount * 5, 100))
+          .select(...CITY_NEWS_CARD_FIELDS).limit(Math.max(limitCount * 5, 100))
           .get()
 
         for (const doc of citySnap.docs) {
@@ -704,7 +711,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
       .where('status', '==', 'published')
       .where('localFeatured', '==', true)
       .orderBy('localFeaturedAt', 'desc')
-      .limit(scan)
+      .select(...CITY_NEWS_CARD_FIELDS).limit(scan)
       .get()
     mergeDocs(snap.docs)
   } catch (error) {
@@ -717,7 +724,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
       .where('status', '==', 'published')
       .where('localFeatured', '==', true)
       .orderBy('publishedAt', 'desc')
-      .limit(scan)
+      .select(...CITY_NEWS_CARD_FIELDS).limit(scan)
       .get()
     mergeDocs(snap.docs)
   } catch (error) {
@@ -730,7 +737,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .orderBy('featuredAt', 'desc')
-      .limit(scan)
+      .select(...CITY_NEWS_CARD_FIELDS).limit(scan)
       .get()
     mergeDocs(snap.docs)
   } catch (error) {
@@ -743,7 +750,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .orderBy('publishedAt', 'desc')
-      .limit(scan)
+      .select(...CITY_NEWS_CARD_FIELDS).limit(scan)
       .get()
     mergeDocs(snap.docs)
   } catch (error) {
@@ -758,7 +765,7 @@ async function fetchCityFeaturedNews(citySlug: string, limit: number): Promise<N
         .where('status', '==', 'published')
         .where('citySlug', '==', normalized)
         .orderBy('publishedAt', 'desc')
-        .limit(Math.max(limit * 10, 100))
+        .select(...CITY_NEWS_CARD_FIELDS).limit(Math.max(limit * 10, 100))
         .get()
       for (const doc of snap.docs) {
         const item = docToNewsItem(doc.id, doc.data() as NewsDocument)

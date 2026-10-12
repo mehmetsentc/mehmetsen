@@ -24,6 +24,29 @@ export const runtime = 'nodejs'
 export const revalidate = 21600
 
 const BATCH_SIZE = 500
+/**
+ * FinOps 12 Oct: this scan read full article docs (body HTML) — ~46k docs/day in
+ * Query Insights. Only the sitemap fields and the public-read classifier inputs
+ * are needed.
+ */
+const IMAGE_SITEMAP_FIELDS = [
+  'title',
+  'slug',
+  'coverImageUrl',
+  'imageCaption',
+  'publishedAt',
+  'status',
+  'visibility',
+  'publicationAuthority',
+  'publishedBy',
+  'approvedBy',
+  'authorId',
+  'aiAutoPublished',
+  'needsReview',
+  'needsAdminReview',
+  'seoNoindex',
+  'publisherType',
+]
 const MAX_IMAGES = 2000
 
 function escapeXml(s: string): string {
@@ -45,6 +68,7 @@ async function fetchImageSitemapXml(): Promise<string> {
         .collection(Collections.NEWS)
         .where('status', '==', 'published')
         .orderBy('publishedAt', 'desc')
+        .select(...IMAGE_SITEMAP_FIELDS)
         .limit(BATCH_SIZE)
 
       if (lastDoc) {

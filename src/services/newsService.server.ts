@@ -527,37 +527,37 @@ async function fetchFeaturedNews(limit: number): Promise<NewsItem[]> {
   // Prefer pin time when indexed (status + featured + featuredAt).
   // Docs missing featuredAt are omitted by this query — merge a second scan.
   try {
-    const snap = await db
-      .collection(NEWS_COLLECTION)
+    const snap = await selectNewsCardFields(
+      db.collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .orderBy('featuredAt', 'desc')
       .limit(scan)
-      .get()
+      ).get()
     mergeDocs(snap.docs)
   } catch (error) {
     console.warn('[newsService.server] featuredAt order failed, using publishedAt scan:', error)
   }
 
   try {
-    const snap = await db
-      .collection(NEWS_COLLECTION)
+    const snap = await selectNewsCardFields(
+      db.collection(NEWS_COLLECTION)
       .where('status', '==', 'published')
       .where('featured', '==', true)
       .orderBy('publishedAt', 'desc')
       .limit(scan)
-      .get()
+      ).get()
     mergeDocs(snap.docs)
   } catch (error) {
     console.warn('[newsService.server] featured query failed, trying isEditorPick:', error)
     try {
-      const snap = await db
-        .collection(NEWS_COLLECTION)
+      const snap = await selectNewsCardFields(
+        db.collection(NEWS_COLLECTION)
         .where('status', '==', 'published')
         .where('isEditorPick', '==', true)
         .orderBy('publishedAt', 'desc')
         .limit(scan)
-        .get()
+        ).get()
       mergeDocs(snap.docs)
     } catch (err2) {
       console.warn('[newsService.server] isEditorPick featured query failed:', err2)

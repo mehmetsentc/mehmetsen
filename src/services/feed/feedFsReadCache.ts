@@ -18,11 +18,19 @@ const als = new AsyncLocalStorage<Map<string, CachedSnap>>()
 /** Public windows only. Keys are query shape, never user/seen/like state. */
 /** FinOps 2 Oct: 45s cost ~600k category reads/day; 2 min keeps feeds fresh enough. */
 export const FEED_PUBLIC_POOL_TTL_MS = 120_000
-const PUBLIC_POOL_MAX = 48
+/**
+ * FinOps 12 Oct: 48 slots were shared by first-page windows and every paged
+ * cursor key, so category first pages were evicted between requests (Query
+ * Insights: category LIMIT 49 ≈ 1.5k runs/day). Projected card docs are small.
+ */
+const PUBLIC_POOL_MAX = 160
 const publicPools = new Map<string, { at: number; snap: CachedSnap }>()
+/** Concurrent identical public windows share one Firestore read. */
+const inflightPools = new Map<string, Promise<CachedSnap>>()
 
 export function resetPublicFeedPoolForTests(): void {
   publicPools.clear()
+  inflightPools.clear()
 }
 
 function rememberPublicPool(key: string, snap: CachedSnap): void {
@@ -80,13 +88,27 @@ export async function readFeedQuery<T extends CachedSnap>(
     return shared.snap as T
   }
 
+  const pending = inflightPools.get(key)
+  if (pending) {
+    stats.cacheHits += 1
+    const snap = (await pending) as T
+    cache?.set(key, snap)
+    return snap
+  }
+
   stats.attempts += 1
-  const snap = await q.get()
-  stats.documentsRead += snap.docs.length
-  notePublicFirestoreReads('feed-public-pool', snap.docs.length)
-  cache?.set(key, snap)
-  rememberPublicPool(key, snap)
-  return snap
+  const request = q.get()
+  inflightPools.set(key, request)
+  try {
+    const snap = await request
+    stats.documentsRead += snap.docs.length
+    notePublicFirestoreReads('feed-public-pool', snap.docs.length)
+    cache?.set(key, snap)
+    rememberPublicPool(key, snap)
+    return snap
+  } finally {
+    if (inflightPools.get(key) === request) inflightPools.delete(key)
+  }
 }
 
 /** Stdout only. No database write. */

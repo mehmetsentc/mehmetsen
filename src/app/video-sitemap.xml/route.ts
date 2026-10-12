@@ -50,6 +50,29 @@ function toISODateString(value: unknown): string {
   }
 }
 
+/** FinOps 12 Oct: sitemap fields + public-read classifier inputs only (no body HTML). */
+const VIDEO_SITEMAP_FIELDS = [
+  'title',
+  'slug',
+  'description',
+  'summary',
+  'coverImageUrl',
+  'videoUrl',
+  'publishedAt',
+  'readingTimeMinutes',
+  'status',
+  'visibility',
+  'publicationAuthority',
+  'publishedBy',
+  'approvedBy',
+  'authorId',
+  'aiAutoPublished',
+  'needsReview',
+  'needsAdminReview',
+  'seoNoindex',
+  'publisherType',
+]
+
 export async function GET() {
   const base = getSiteUrl()
   const siteName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -61,6 +84,7 @@ export async function GET() {
       .where('status', '==', 'published')
       .where('hasVideo', '==', true)
       .orderBy('publishedAt', 'desc')
+      .select(...VIDEO_SITEMAP_FIELDS)
       .limit(500)
       .get()
 
