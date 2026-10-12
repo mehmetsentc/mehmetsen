@@ -732,3 +732,22 @@ describe('Görev 15 — yayın kancası, zamanlanmış haber, yeniden değerlend
     expect(job('q1')?.status).toBe('published')
   })
 })
+
+describe('Görev 18 — çalışan ve token gözlemlenebilirliği', () => {
+  it('açık kural yokken token kontrolü atlanmaz; haber taranmaz; kalp atışı tek belgeye yazılır (token değeri yok)', async () => {
+    // Bir hesabın erişimi 10 gün içinde bitiyor (yenileme penceresi) — süre DEĞİŞTİRİLMEZ, yalnız sayılır.
+    await fs.collection('socialAccounts').doc(IG_ANTALYA.id).update({ tokenExpiresAt: clock + 10 * 86_400_000, connectedAt: clock - 1000 })
+    expect(fs.docs('socialAutomationRules').filter((d) => d.data.enabled)).toHaveLength(0)
+    const before = fs.docs('news').length
+    const r = await tick()
+    expect(r.reconcile?.ran).toBe(false)
+    expect(r.tokens).toMatchObject({ dueFound: 1, refreshed: 0 })
+    const hb = fs.store.get('socialAutomationState/workerHeartbeat') as Record<string, unknown>
+    expect(hb).toMatchObject({ lastRunAt: clock, enabledRules: 0, reconcileRan: false, tokenCheckedAt: expect.any(Number), tokenError: null })
+    expect((hb.tokens as Record<string, number>).dueFound).toBe(1)
+    expect(JSON.stringify(hb)).not.toMatch(/IGAA|EAAG|access_token/)
+    // Süre değişmedi (yeni bağlanmış anahtar 24 saatten genç → yenileme denenmez, zorlanmaz).
+    expect((fs.store.get(`socialAccounts/${IG_ANTALYA.id}`) as { tokenExpiresAt: number }).tokenExpiresAt).toBe(clock + 10 * 86_400_000)
+    expect(fs.docs('news').length).toBe(before)
+  })
+})

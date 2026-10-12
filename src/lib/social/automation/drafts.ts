@@ -37,7 +37,8 @@ export function draftRuleFor(a: DraftAccount, provinceName: (slug: string) => st
     return { ...base, name: `${provinceName(a.ownership.citySlug)} — Asayiş veya il öne çıkan`, geo: { kind: 'provinces', citySlugs: [a.ownership.citySlug] }, featuredKind: 'local' }
   }
   if (a.ownerKind === 'central') {
-    return { ...base, name: 'Ulusal — Asayiş veya ulusal öne çıkan', geo: { kind: 'national' }, featuredKind: 'national' }
+    // Yerel Asayiş never counts as national (yerel tree) → only the national «Asayiş».
+    return { ...base, name: 'Ulusal — Asayiş veya ulusal öne çıkan', geo: { kind: 'national' }, categoryIds: ['asayis'], featuredKind: 'national' }
   }
   return null
 }

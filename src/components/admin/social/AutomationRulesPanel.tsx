@@ -32,6 +32,16 @@ type RulesResponse = {
   handoffs: Record<string, LegacyHandoff>
   counters: Record<string, { today: number; lastSentAt: number | null }>
   reconcile: { cursor: number | null; updatedAt: number | null }
+  worker?: WorkerBeat | null
+}
+type WorkerBeat = {
+  lastRunAt: number | null
+  durationMs: number | null
+  enabledRules: number | null
+  reconcileRan: boolean
+  tokenCheckedAt: number | null
+  tokenError: string | null
+  tokens: { refreshed: number; failed: number; expired: number; skipped: number; expiredFound?: number; dueFound?: number } | null
 }
 type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
@@ -96,6 +106,36 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<{ ok: true;
   }
   if (!res.ok) return { ok: false, error: (body as { error?: string })?.error ?? `HTTP ${res.status}` }
   return { ok: true, data: body as T }
+}
+
+/**
+ * Ortak 5 dk çalışanının son kalp atışı (socialAutomationState/workerHeartbeat):
+ * son çalışma, son token kontrolü ve sayılar. Token değeri içermez.
+ */
+function WorkerStatus({ beat }: { beat: WorkerBeat | null }) {
+  if (!beat || !beat.lastRunAt) {
+    return (
+      <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        Çalışan henüz kalp atışı yazmadı. Bu sürüm yayına alındıktan sonra 5 dakikalık ilk çalışmada burada görünür; görünmezse /api/cron/social-automation zamanlamasını kontrol edin.
+      </p>
+    )
+  }
+  const ageMin = Math.round((Date.now() - beat.lastRunAt) / 60000)
+  const stale = ageMin > 15
+  const t = beat.tokens
+  return (
+    <div className={cn('rounded-xl border p-3 text-xs', stale ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]')} aria-label="Çalışan durumu">
+      <p>
+        <b className="text-[rgb(var(--color-text))]">Son çalışan çalışması:</b> {fmtTime(beat.lastRunAt)} ({ageMin} dk önce{stale ? ' — beklenenden eski' : ''}) · {beat.durationMs ?? '—'} ms · açık kural: {beat.enabledRules ?? 0}
+        {beat.enabledRules ? ` · haber değerlendirmesi ${beat.reconcileRan ? 'çalıştı' : 'çalışmadı'}` : ' · açık kural olmadığı için haber taranmadı'}
+      </p>
+      <p>
+        <b className="text-[rgb(var(--color-text))]">Son token kontrolü:</b>{' '}
+        {beat.tokenError ? `hata (${beat.tokenError})` : beat.tokenCheckedAt ? fmtTime(beat.tokenCheckedAt) : '—'}
+        {t ? ` · süresi dolmuş bulunan: ${t.expiredFound ?? '—'} · yenileme penceresinde (≤15 gün): ${t.dueFound ?? '—'} · yenilenen: ${t.refreshed} · başarısız: ${t.failed} · yeniden bağlantıya alınan: ${t.expired}` : ''}
+      </p>
+    </div>
+  )
 }
 
 function emptyInput(accountId = ''): AutomationRuleInput {
@@ -171,6 +211,7 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
         handoffs: extra && extra.ok ? extra.data.handoffs : {},
         counters: extra && extra.ok ? extra.data.counters : {},
         reconcile: extra && extra.ok ? extra.data.reconcile : { cursor: null, updatedAt: -1 },
+        worker: extra && extra.ok ? (extra.data.worker ?? null) : undefined,
       })
       setLoadError(null)
     } else setLoadError(!rules.ok ? rules.error : !accounts.ok ? accounts.error : 'Yüklenemedi')
@@ -256,6 +297,8 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
       </div>
 
       {loadError ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadError}</p> : null}
+
+      {mode === 'admin' && data && data.worker !== undefined ? <WorkerStatus beat={data.worker ?? null} /> : null}
 
       {mode !== 'admin' ? null : data && data.reconcile.updatedAt === null && !data.rules.some((r) => r.enabled) ? (
         <p className="text-xs text-[rgb(var(--color-muted))]">

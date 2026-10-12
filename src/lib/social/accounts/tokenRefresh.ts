@@ -36,6 +36,9 @@ export interface RefreshReport {
   failed: number
   expired: number
   skipped: number
+  /** Accounts the bounded queries found (observability; no token values). */
+  expiredFound?: number
+  dueFound?: number
 }
 
 type RefreshDoc = SocialAccount & {
@@ -55,11 +58,12 @@ function col() {
 }
 
 export async function refreshDueTokens(now: number): Promise<RefreshReport> {
-  const report: RefreshReport = { refreshed: 0, failed: 0, expired: 0, skipped: 0 }
+  const report: RefreshReport = { refreshed: 0, failed: 0, expired: 0, skipped: 0, expiredFound: 0, dueFound: 0 }
   const db = getAdminFirestore()
 
   // 1) Already expired but still marked active → needs_reauth (bounded).
   const expired = await col().where('tokenExpiresAt', '<=', now).limit(10).get()
+  report.expiredFound = expired.docs.length
   for (const d of expired.docs) {
     const a = parseSocialAccount(d.id, d.data())
     if (!a || a.status !== 'active') continue
@@ -69,6 +73,7 @@ export async function refreshDueTokens(now: number): Promise<RefreshReport> {
 
   // 2) Expiring within the window → refresh (≤ MAX_PER_TICK per tick).
   const due = await col().where('tokenExpiresAt', '>', now).where('tokenExpiresAt', '<=', now + REFRESH_WINDOW_MS).limit(20).get()
+  report.dueFound = due.docs.length
   let done = 0
   for (const d of due.docs) {
     if (done >= MAX_PER_TICK) break

@@ -76,6 +76,7 @@ export function ComposerTargetPicker({
   value,
   onChange,
   onOptions,
+  include,
 }: {
   newsId: string
   mode: 'post' | 'story' | 'both'
@@ -83,6 +84,8 @@ export function ComposerTargetPicker({
   onChange: (next: TargetSelection) => void
   /** Lets the caller show the chosen account names in its confirmation. */
   onOptions?: (options: TargetOption[]) => void
+  /** Optional narrowing (e.g. a publisher's own accounts on the publisher page). */
+  include?: (o: TargetOption) => boolean
 }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
   const [dropped, setDropped] = useState<string[]>([])
@@ -103,7 +106,7 @@ export function ComposerTargetPicker({
         const body = (await res.json().catch(() => null)) as { options?: TargetOption[]; error?: string } | null
         if (cancelled) return
         if (!res.ok || !body?.options) return setState({ kind: 'error', message: res.status === 401 ? 'Oturum gerekli' : 'Hesaplar yüklenemedi' })
-        const options = body.options
+        const options = include ? body.options.filter(include) : body.options
         setState({ kind: 'ok', options })
         onOptions?.(options)
         // Re-validate the current selection against the fresh evaluation.

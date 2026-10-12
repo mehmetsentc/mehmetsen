@@ -15,6 +15,7 @@ import { toPublicSocialAccount } from '@/lib/social/accounts/types'
 import { readCounters, istanbulParts } from '@/lib/social/automation/limits'
 import { summarizeRule } from '@/lib/social/automation/match'
 import { readReconcileState } from '@/lib/social/automation/reconcile'
+import { readWorkerHeartbeat } from '@/lib/social/automation/worker'
 import { createRule, listRules, readLegacyHandoffs } from '@/lib/social/automation/ruleStore'
 import { validateRuleInput } from '@/lib/social/automation/types'
 
@@ -25,11 +26,12 @@ export async function GET(request: Request) {
   const auth = await requireAccountManager(request, { mutation: false })
   if ('response' in auth) return auth.response
   const now = Date.now()
-  const [rules, accounts, handoffs, reconcileState, legacyFb, legacyIg, legacyTh] = await Promise.all([
+  const [rules, accounts, handoffs, reconcileState, heartbeat, legacyFb, legacyIg, legacyTh] = await Promise.all([
     listRules(),
     listManagedAccounts(actorFromCms(auth.ctx.uid, auth.ctx)).then((a) => a ?? []),
     readLegacyHandoffs(),
     readReconcileState(),
+    readWorkerHeartbeat(),
     legacyAccountId('facebook'),
     legacyAccountId('instagram'),
     legacyAccountId('threads'),
@@ -47,6 +49,7 @@ export async function GET(request: Request) {
       Object.entries(counters).map(([id, c]) => [id, { today: c.day === today ? c.count : 0, lastSentAt: c.lastSentAt }]),
     ),
     reconcile: { cursor: reconcileState.cursor, updatedAt: reconcileState.updatedAt || null },
+    worker: heartbeat,
   })
 }
 

@@ -98,12 +98,17 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
     return rec ? { status: rec.status, externalPostId: rec.externalPostId } : null
   })
 
+  // Token renewal runs on EVERY tick — before (and independent of) rules, so
+  // it is never skipped when no automation rule is enabled.
+  let tokenError: string | null = null
   try {
     const { refreshDueTokens } = await import('../accounts/tokenRefresh')
     report.tokens = await refreshDueTokens(started)
   } catch (err) {
+    tokenError = safeErrorText(err).slice(0, 120)
     socialLog('error', 'cron', 'token_refresh_error', { error: safeErrorText(err).slice(0, 200) })
   }
+  const tokenCheckedAt = now()
 
   const rules = await listRules({ enabledOnly: true })
   try {
@@ -124,7 +129,31 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
     report.processed.push({ jobId: job.id, status: outcome.status, code: outcome.code })
   }
   report.durationMs = now() - started
+  await writeWorkerHeartbeat({
+    lastRunAt: started,
+    durationMs: report.durationMs,
+    enabledRules: rules.length,
+    reconcileRan: report.reconcile?.ran === true,
+    jobsProcessed: report.processed.length,
+    recovered: report.recovered,
+    tokenCheckedAt: tokenError ? null : tokenCheckedAt,
+    tokenError,
+    tokens: report.tokens ?? null,
+  })
   return report
+}
+
+/**
+ * Low-cost observability: ONE small document write per tick
+ * (`socialAutomationState/workerHeartbeat`, ~288 writes/day, no reads).
+ * Contains counts and timestamps only — never token values or account data.
+ */
+export async function writeWorkerHeartbeat(h: Record<string, unknown>): Promise<void> {
+  try {
+    await getAdminFirestore().collection(Collections.SOCIAL_AUTOMATION_STATE).doc('workerHeartbeat').set(h)
+  } catch (err) {
+    socialLog('error', 'cron', 'heartbeat_error', { error: safeErrorText(err).slice(0, 120) })
+  }
 }
 
 /** Process one claimed job and record the outcome (exceptions → uncertain, never retried). */
@@ -262,4 +291,37 @@ export function mapPublishResult(job: AutomationJob, r: PublishOneSocialResult, 
       : { status: 'failed', code: 'rate_limited', message: msg }
   }
   return { status: 'failed', code: code || 'failed', message: msg }
+}
+
+export interface WorkerHeartbeat {
+  lastRunAt: number | null
+  durationMs: number | null
+  enabledRules: number | null
+  reconcileRan: boolean
+  jobsProcessed: number | null
+  tokenCheckedAt: number | null
+  tokenError: string | null
+  tokens: { refreshed: number; failed: number; expired: number; skipped: number; expiredFound?: number; dueFound?: number } | null
+}
+
+/** One read for the automation panel (null = the worker has never written a heartbeat). */
+export async function readWorkerHeartbeat(): Promise<WorkerHeartbeat | null> {
+  try {
+    const s = await getAdminFirestore().collection(Collections.SOCIAL_AUTOMATION_STATE).doc('workerHeartbeat').get()
+    if (!s.exists) return null
+    const d = s.data() as Record<string, unknown>
+    const num = (v: unknown) => (typeof v === 'number' ? v : null)
+    return {
+      lastRunAt: num(d.lastRunAt),
+      durationMs: num(d.durationMs),
+      enabledRules: num(d.enabledRules),
+      reconcileRan: d.reconcileRan === true,
+      jobsProcessed: num(d.jobsProcessed),
+      tokenCheckedAt: num(d.tokenCheckedAt),
+      tokenError: typeof d.tokenError === 'string' ? d.tokenError : null,
+      tokens: d.tokens && typeof d.tokens === 'object' ? (d.tokens as WorkerHeartbeat['tokens']) : null,
+    }
+  } catch {
+    return null
+  }
 }

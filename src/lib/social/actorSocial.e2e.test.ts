@@ -512,7 +512,7 @@ describe('Görev 18 — gönderi yerel, manuel hikâye genel', () => {
     const draft = draftRuleFor({ id: ANTALYA_IG.id, displayName: 'x', username: null, ownerKind: 'province', ownership: { citySlug: 'antalya' } }, (s) => s)!
     expect(draft).toMatchObject({ formats: ['post'], geo: { kind: 'provinces', citySlugs: ['antalya'] }, featuredMode: 'categories_or_featured', featuredKind: 'local', dailyLimit: 5, minIntervalMinutes: 15 })
     const central = draftRuleFor({ id: CENTRAL_IG.id, displayName: 'x', username: null, ownerKind: 'central', ownership: { citySlug: null } }, (s) => s)!
-    expect(central).toMatchObject({ geo: { kind: 'national' }, featuredKind: 'national' })
+    expect(central).toMatchObject({ geo: { kind: 'national' }, featuredKind: 'national', categoryIds: ['asayis'] })
     const ok = await POST(req('/api/social/rules', 'admin', { method: 'POST', body: draft }))
     expect(ok.status).toBe(201)
     expect(((await ok.json()) as { rule: { enabled: boolean; enabledAt: number | null } }).rule).toMatchObject({ enabled: false, enabledAt: null })

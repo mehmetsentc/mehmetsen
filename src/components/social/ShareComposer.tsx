@@ -1,18 +1,25 @@
 'use client'
 
 /**
- * «Hesabımda yayımla»: İçerik → hesap → desteklenen biçim → önizleme → onay.
- * Always an explicit target account (never a silent fallback to the legacy
- * connection). Success is shown only with the platform's post id.
+ * «Hesabımda yayımla»: İçerik → biçim → hesaplar (ortak çoklu seçici) → onay →
+ * hesap bazlı sonuç. Always explicit target accounts (never a silent fallback
+ * to the legacy connection). Each account is published through /api/social/share
+ * one after another (bounded), with its own server checks and ledger lock;
+ * success is shown only with the platform's post id.
  * «Bağlantıyı paylaş» is a separate action: it only shares the news link from
  * the user's own device and never calls a platform API.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Copy, Loader2, Send, Share2 } from 'lucide-react'
+import { Copy, Loader2, RotateCcw, Send, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { TARGET_BLOCKER_TEXT, type PublishFormat } from '@/lib/social/accounts/capabilities'
-import { PLATFORM_LABEL, socialApi, type SocialAccountRow, type SocialMe } from './socialClient'
+import type { PublishFormat } from '@/lib/social/accounts/capabilities'
+import { ComposerTargetPicker, EMPTY_TARGETS, selectedLabels, targetCount, type TargetOption, type TargetPlatform, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { TargetResultList } from '@/components/admin/social/ManualShareFlow'
+import { describeTargetRow, isSafelyRetryable, OVERALL_HEADLINE, overallShareState, rowAsResult, type TargetRowLike } from '@/lib/social/shareResultText'
+import { showShareToast } from '@/lib/social/shareToast'
+import { socialApi, type SocialAccountRow, type SocialMe } from './socialClient'
 
 type NewsItem = {
   newsId: string
@@ -63,11 +70,13 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newsId, setNewsId] = useState('')
-  const [accountId, setAccountId] = useState('')
-  const [format, setFormat] = useState<PublishFormat | ''>('')
+  const [format, setFormat] = useState<PublishFormat>('post')
+  const [targets, setTargets] = useState<TargetSelection>(EMPTY_TARGETS)
+  const [options, setOptions] = useState<TargetOption[]>([])
   const [confirmed, setConfirmed] = useState(false)
   const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<{ ok: true; r: ShareResult } | { ok: false; text: string; action?: string; uncertain: boolean } | null>(null)
+  const [rows, setRows] = useState<TargetRowLike[]>([])
+  const [retry, setRetry] = useState<string[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,51 +98,54 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
   }, [load])
 
   const item = news.find((x) => x.newsId === newsId) ?? null
-  // Haberin kendi konumu + hesabın yayın kapsamı + bağlantı: sunucudan (paylaşımda da yeniden kontrol edilir).
-  const [targetInfo, setTargetInfo] = useState<Record<string, { selectable: boolean; reason: string | null }> | null>(null)
-  useEffect(() => {
-    setTargetInfo(null)
-    if (!newsId) return
-    let cancelled = false
-    void socialApi<{ options: Array<{ accountId: string; selectable: boolean; reason: string | null }> }>(`/api/social/targets?newsId=${encodeURIComponent(newsId)}&formats=post`).then((r) => {
-      if (cancelled || !r.ok) return
-      setTargetInfo(Object.fromEntries(r.data.options.map((o) => [o.accountId, { selectable: o.selectable, reason: o.reason }])))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [newsId])
-  const targets = useMemo(() => (accountFilter ? accounts.filter(accountFilter) : accounts), [accounts, accountFilter])
-  const account = targets.find((a) => a.id === accountId) ?? null
+  const allowed = useMemo(() => new Set((accountFilter ? accounts.filter(accountFilter) : accounts).map((a) => a.id)), [accounts, accountFilter])
+  const include = useCallback((o: TargetOption) => allowed.has(o.accountId), [allowed])
   // Staff may still share external news they already judged manually (server re-checks scope).
   const itemSelectable = (x: NewsItem) => x.eligible || (x.code === 'needs_social_review' && !!me?.staff)
+  const effective: TargetSelection = format === 'story' ? { ...targets, threads: [] } : targets
+  const count = targetCount(effective)
 
   useEffect(() => {
     setConfirmed(false)
-    setResult(null)
-  }, [newsId, accountId, format])
+  }, [newsId, format, targets])
   useEffect(() => {
-    if (account && format && !account.formats.includes(format)) setFormat('')
-    if (account && !format && account.formats.length === 1) setFormat(account.formats[0])
-  }, [account, format])
+    setTargets(EMPTY_TARGETS)
+    setRows([])
+  }, [newsId])
 
-  const publish = async () => {
-    if (!item || !account || !format || !confirmed) return
+  /** One account at a time (bounded); each call is fully checked server-side and has its own ledger lock. */
+  const publish = async (sel: TargetSelection) => {
+    if (!item || targetCount(sel) === 0) return
     setSending(true)
-    const r = await socialApi<{ result: ShareResult }>('/api/social/share', { method: 'POST', body: JSON.stringify({ newsId: item.newsId, accountId: account.id, format }) })
-    setSending(false)
-    if (r.ok) {
-      setResult({ ok: true, r: r.data.result })
-      toast.success(r.data.result.status === 'published' ? 'Platform gönderiyi kabul etti.' : 'Bu haber bu hesapta zaten yayımlanmış.')
-      return
+    const out: TargetRowLike[] = []
+    const byId = new Map(options.map((o) => [o.accountId, o]))
+    for (const p of ['facebook', 'instagram', 'threads'] as TargetPlatform[]) {
+      for (const accountId of sel[p]) {
+        const r = await socialApi<{ result: ShareResult }>('/api/social/share', { method: 'POST', body: JSON.stringify({ newsId: item.newsId, accountId, format }) })
+        const name = byId.get(accountId) ? `${byId.get(accountId)!.displayName}${byId.get(accountId)!.username ? ` (@${byId.get(accountId)!.username})` : ''}` : accountId
+        // 202 = belirsiz (gövdede sonuç yok): yayımlanmış olabilir, otomatik tekrar yok.
+        if (r.ok && !r.data?.result) {
+          out.push({ platform: p, accountId, accountName: name, format, success: false, code: 'uncertain', error: 'Platformdan kesin yanıt alınamadı; otomatik tekrar yok', ledgerStatus: 'uncertain', externalPostId: null })
+        } else if (r.ok) {
+          const already = r.data.result.status === 'already_published'
+          out.push({ platform: p, accountId, accountName: name, format, success: !already, code: already ? 'already_published' : null, error: null, ledgerStatus: 'succeeded', externalPostId: r.data.result.platformId })
+        } else {
+          const uncertain = r.status === 202
+          out.push({ platform: p, accountId, accountName: name, format, success: false, code: uncertain ? 'uncertain' : (r.code ?? 'failed'), error: uncertain ? 'Platformdan kesin yanıt alınamadı; otomatik tekrar yok' : r.error, ledgerStatus: uncertain ? 'uncertain' : 'failed', externalPostId: null })
+        }
+        setRows([...out])
+      }
     }
-    const uncertain = r.status === 202
-    setResult({
-      ok: false,
-      uncertain,
-      text: uncertain ? 'Platformdan kesin yanıt alınamadı. Gönderi yayımlanmış olabilir; tekrar denemeyin — sonuç Paylaşım geçmişinde doğrulanacak.' : r.error,
-      action: r.action,
-    })
+    setSending(false)
+    setRetry([])
+    setConfirmed(false)
+    showShareToast(overallShareState(out.map(rowAsResult)), out.map(describeTargetRow))
+  }
+
+  const retrySelection = (): TargetSelection => {
+    const sel: TargetSelection = { facebook: [], instagram: [], threads: [] }
+    for (const r of rows) if (retry.includes(`${r.accountId}__${r.format}`) && isSafelyRetryable(r)) sel[r.platform as TargetPlatform].push(r.accountId)
+    return sel
   }
 
   if (loading) {
@@ -145,6 +157,7 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
   }
   if (error) return <p className="rounded-lg bg-red-50 px-3 py-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>
 
+  const overall = rows.length ? overallShareState(rows.map(rowAsResult)) : null
   return (
     <div className="space-y-3">
       <Step n={1} title="İçerik" done={!!item}>
@@ -178,58 +191,36 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
         )}
       </Step>
 
-      <Step n={2} title="Hesap" done={!!account}>
-        {targets.length === 0 ? (
-          <p className="text-sm text-[rgb(var(--color-muted))]">Yayın yapabileceğiniz bağlı hesap yok. Önce «Hesaplarım» bölümünden platform girişiyle bir hesap bağlayın.</p>
+      <Step n={2} title="Biçim" done={!!item}>
+        <div className="flex flex-wrap gap-2">
+          {(['post', 'story'] as PublishFormat[]).map((f) => (
+            <label key={f} className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm">
+              <input type="radio" name="share-format" checked={format === f} onChange={() => setFormat(f)} />
+              {FORMAT_LABEL[f]}
+            </label>
+          ))}
+          <span className="w-full text-[11px] text-[rgb(var(--color-muted))]">Biçim değişince hesaplar yeniden değerlendirilir. Reels/video ve kaydırmalı gönderi bu akışta henüz yok.</span>
+        </div>
+      </Step>
+
+      <Step n={3} title="Hesaplar" done={count > 0}>
+        {!item ? (
+          <p className="text-sm text-[rgb(var(--color-muted))]">Önce içerik seçin.</p>
+        ) : allowed.size === 0 ? (
+          <p className="text-sm text-[rgb(var(--color-muted))]">
+            Yayın yapabileceğiniz bağlı hesap yok.{' '}
+            <Link href="/settings/social?tab=accounts" className="font-semibold underline">
+              Önce hesap bağla
+            </Link>
+          </p>
         ) : (
-          <ul className="space-y-1">
-            {targets.map((a) => {
-              const info = targetInfo?.[a.id]
-              const outOfScope = !!targetInfo && (!info || (!info.selectable && !a.health.publishBlocker))
-              const blocker = a.health.publishBlocker
-              return (
-                <li key={a.id}>
-                  <label className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm', blocker || outOfScope ? 'opacity-60' : 'cursor-pointer hover:bg-[rgb(var(--color-surface))]')}>
-                    <input type="radio" name="share-account" disabled={!!blocker || outOfScope || !item} checked={accountId === a.id} onChange={() => setAccountId(a.id)} />
-                    <span className="font-semibold">{a.displayName}</span>
-                    <span className="text-xs text-[rgb(var(--color-muted))]">
-                      {PLATFORM_LABEL[a.platform]}
-                      {a.username ? ` · @${a.username}` : ''}
-                    </span>
-                    <span className={cn('ml-auto text-[11px]', blocker || outOfScope ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300')}>
-                      {blocker ? TARGET_BLOCKER_TEXT[blocker] : outOfScope ? (info?.reason ?? 'bu haber için uygun değil') : 'hazır'}
-                    </span>
-                  </label>
-                </li>
-              )
-            })}
-          </ul>
+          <ComposerTargetPicker newsId={item.newsId} mode={format} value={targets} onChange={setTargets} onOptions={setOptions} include={include} />
         )}
       </Step>
 
-      <Step n={3} title="Biçim" done={!!format}>
-        {!account ? (
-          <p className="text-sm text-[rgb(var(--color-muted))]">Önce hesap seçin.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {(['post', 'story'] as PublishFormat[]).map((f) => {
-              const supported = account.formats.includes(f)
-              return (
-                <label key={f} className={cn('flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm', !supported && 'opacity-50')}>
-                  <input type="radio" name="share-format" disabled={!supported} checked={format === f} onChange={() => setFormat(f)} />
-                  {FORMAT_LABEL[f]}
-                  {!supported && <span className="text-[11px]">(bu hesapta desteklenmiyor)</span>}
-                </label>
-              )
-            })}
-            <span className="w-full text-[11px] text-[rgb(var(--color-muted))]">Reels/video ve kaydırmalı gönderi bu akışta henüz yok; doğrulanmış bir yayın bağdaştırıcısı olmadan gösterilmez.</span>
-          </div>
-        )}
-      </Step>
-
-      <Step n={4} title="Önizleme ve onay" done={!!result?.ok}>
-        {!item || !account || !format ? (
-          <p className="text-sm text-[rgb(var(--color-muted))]">İçerik, hesap ve biçim seçildiğinde önizleme burada görünür.</p>
+      <Step n={4} title="Onay ve sonuç" done={overall === 'published'}>
+        {!item || count === 0 ? (
+          <p className="text-sm text-[rgb(var(--color-muted))]">İçerik, biçim ve en az bir hesap seçildiğinde onay burada görünür.</p>
         ) : (
           <div className="space-y-3">
             <div className="flex gap-3">
@@ -239,21 +230,24 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
               ) : null}
               <div className="min-w-0 text-sm">
                 <p className="font-semibold">{item.title}</p>
-                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
-                  Hedef: <b>{account.displayName}</b> · {PLATFORM_LABEL[account.platform]} · {FORMAT_LABEL[format]}
-                </p>
-                <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">Metin NaHaber şablonuyla haber başlığından oluşturulur; yapay zekâ yeniden yazımı kapalıdır. Aynı haber bu hesapta ikinci kez yayımlanmaz.</p>
+                <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">Biçim: <b>{FORMAT_LABEL[format]}</b> · {count} hedef</p>
+                <ul className="mt-1 list-disc pl-4 text-xs font-semibold">
+                  {selectedLabels(effective, options).map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">Metin NaHaber şablonuyla haber başlığından oluşturulur; yapay zekâ yeniden yazımı kapalıdır. Her hesap ayrı yayımlanır; aynı haber bir hesapta ikinci kez yayımlanmaz.</p>
               </div>
             </div>
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5" />
               <span>
-                Bu haberi <b>{account.displayName}</b> ({PLATFORM_LABEL[account.platform]}) hesabında {FORMAT_LABEL[format].toLocaleLowerCase('tr-TR')} olarak yayımlamayı onaylıyorum.
+                Bu haberi yukarıdaki <b>{count} hesapta</b> {FORMAT_LABEL[format].toLocaleLowerCase('tr-TR')} olarak yayımlamayı onaylıyorum.
               </span>
             </label>
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={!confirmed || sending || !!result?.ok} onClick={() => void publish()} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />} Hesabımda yayımla
+              <button type="button" disabled={!confirmed || sending} onClick={() => void publish(effective)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />} {count} hesapta yayımla
               </button>
               <button type="button" onClick={() => void shareLink(item.url, item.title)} className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm">
                 <Copy className="h-4 w-4" aria-hidden /> Bağlantıyı paylaş
@@ -261,26 +255,15 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
             </div>
           </div>
         )}
-        {result && (
-          <div role="status" className={cn('mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-sm', result.ok ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100')}>
-            {result.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
-            <div>
-              {result.ok ? (
-                <>
-                  <p className="font-semibold">{result.r.status === 'published' ? 'Yayımlandı — platform gönderiyi kabul etti' : 'Zaten yayımlanmış — tekrar gönderilmedi'}</p>
-                  <p className="text-xs">
-                    {result.r.account} · {PLATFORM_LABEL[result.r.platform] ?? result.r.platform} · {FORMAT_LABEL[result.r.format]}
-                    {result.r.platformId ? ` · gönderi kimliği ${result.r.platformId}` : ''}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-semibold">{result.uncertain ? 'Sonuç belirsiz' : 'Yayımlanmadı'}</p>
-                  <p className="text-xs">{result.text}</p>
-                  {result.action && <p className="text-xs">Gerekli işlem: {result.action}</p>}
-                </>
-              )}
-            </div>
+        {rows.length > 0 && (
+          <div role="status" className="mt-3 space-y-2">
+            {overall && <p className={cn('text-sm font-bold', overall === 'published' ? 'text-emerald-700 dark:text-emerald-300' : overall === 'failed' ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300')}>{OVERALL_HEADLINE[overall]}</p>}
+            <TargetResultList rows={rows} retry={retry} onToggleRetry={(k) => setRetry((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))} />
+            {rows.some(isSafelyRetryable) && (
+              <button type="button" disabled={retry.length === 0 || sending} onClick={() => void publish(retrySelection())} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-600 px-3 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-40 dark:text-blue-300">
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Seçilen başarısız hedefleri yeniden dene ({retry.length})
+              </button>
+            )}
           </div>
         )}
       </Step>
