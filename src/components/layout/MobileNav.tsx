@@ -57,7 +57,9 @@ function NavSlotChrome({ active, children }: { active: boolean; children: ReactN
     <span
       className={cn(
         'relative flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-150',
-        active ? 'bg-white/[0.16] text-white' : 'text-white/90'
+        active
+          ? 'bg-[rgb(var(--color-text)/0.1)] text-[rgb(var(--color-text))] dark:bg-white/[0.16] dark:text-white'
+          : 'text-[rgb(var(--color-text-secondary))] dark:text-white/90'
       )}
     >
       {children}

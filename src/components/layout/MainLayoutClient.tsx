@@ -283,11 +283,12 @@ export function MainLayoutClient({ children }: { children: React.ReactNode }) {
         <AppStateProvider>
           <NetworkProvider>
             <ScrollHeaderProvider>
-              {/* Feed V2 stays dark-first; true /reels unchanged. */}
+              {/* Video surfaces only. Feed V2 follows the stored light / dark /
+                  system theme (same rule as ThemeScript + lib/theme). Forcing
+                  dark here raced ThemeProvider on every Feed visit. */}
               <ReelsRouteTheme
                 active={
                   isReelsPathname(pathname) ||
-                  isFeedV2Pathname(pathname) ||
                   (isPublicVideoPathname(pathname) && !isDesktop)
                 }
               />

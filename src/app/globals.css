@@ -908,7 +908,10 @@
     font-weight: 700;
   }
 
-  /* Dark floating capsule: Ana Sayfa, Akış, Ara, Profilim */
+  /* Floating capsule: Ana Sayfa, Akış, Ara, Profilim.
+     Follows the site theme: paper card in light, the original dark capsule
+     under html.dark (dark / oled / forced-dark video surfaces). Geometry,
+     safe-area and behaviour unchanged. */
   .mobile-bottom-nav-pill {
     display: flex;
     width: min(100%, 22rem);
@@ -918,12 +921,18 @@
     justify-content: space-between;
     gap: 0.15rem;
     border-radius: 9999px;
-    border: 1px solid rgb(255 255 255 / 0.08);
-    background: rgb(18 18 20 / 0.92);
-    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+    border: 1px solid rgb(var(--color-border));
+    background: rgb(var(--color-card) / 0.94);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
     backdrop-filter: blur(18px) saturate(1.2);
     -webkit-backdrop-filter: blur(18px) saturate(1.2);
     padding-inline: 0.35rem;
+  }
+
+  html.dark .mobile-bottom-nav-pill {
+    border-color: rgb(255 255 255 / 0.08);
+    background: rgb(18 18 20 / 0.92);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
   }
 
   .mobile-nav-profile {
@@ -934,15 +943,28 @@
     justify-content: center;
     overflow: hidden;
     border-radius: 9999px;
-    background: rgb(255 255 255 / 0.1);
+    background: rgb(var(--color-text) / 0.06);
     box-shadow: 0 0 0 2px rgb(147 197 253);
   }
 
   .mobile-nav-profile.is-active {
-    box-shadow: 0 0 0 2px white;
+    box-shadow: 0 0 0 2px rgb(var(--color-text));
   }
 
   .mobile-nav-profile-guest {
+    color: rgb(var(--color-text));
+    background: rgb(var(--color-text) / 0.06);
+  }
+
+  html.dark .mobile-nav-profile {
+    background: rgb(255 255 255 / 0.1);
+  }
+
+  html.dark .mobile-nav-profile.is-active {
+    box-shadow: 0 0 0 2px white;
+  }
+
+  html.dark .mobile-nav-profile-guest {
     color: white;
     background: rgb(255 255 255 / 0.08);
   }
@@ -5670,7 +5692,8 @@ iframe.reels-yt-frame {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #070b16;
+  /* Follows the site theme so Feed 2 cold start does not flash navy in light mode. */
+  background: rgb(var(--color-surface));
 }
 
 .feed-v2-brand-loader__glow {
@@ -6236,4 +6259,24 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header 
 /* Reader footer is absolute; keep the scrollport above it so the last lines stay visible. */
 [data-testid='feed-reader-scroll'] {
   margin-bottom: var(--reader-footer-clearance, calc(5.75rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/*
+ * Mobile text-entry floor — iOS Safari/PWA zooms the page when a focused
+ * field renders below 16px, and the zoom survives keyboard dismissal.
+ * `text-sm` resolves to --fs-sm (13px), which most forms use. Lift every
+ * text-entry control to 16px on phones and touch tablets instead of
+ * blocking user zoom. Larger designer sizes (text-lg and up) are left alone.
+ * Unlayered + 0,2,1 specificity so it beats single-class Tailwind utilities.
+ */
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+  :is(
+      input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='hidden'], [type='button'], [type='submit'], [type='reset'], [type='image']),
+      textarea,
+      select,
+      [contenteditable='true'],
+      [contenteditable='']
+    ):not([class*='text-lg'], [class*='text-xl'], [class*='text-2xl'], [class*='text-3xl'], [class*='text-4xl'], [class*='text-5xl'], [class*='text-6xl']) {
+    font-size: max(16px, var(--fs-md, 1rem));
+  }
 }

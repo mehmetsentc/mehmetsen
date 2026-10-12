@@ -136,6 +136,15 @@ const HERO_FRAME =
 const CITY_HERO_FRAME =
   'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden bg-neutral-950'
 
+/**
+ * Copy / action zone sits BELOW the hero frame, not on the photo, so it follows
+ * the site theme. `dark:` keeps the approved P17 cinematic values unchanged.
+ */
+const COPY_TEXT = 'text-[rgb(var(--color-text))] dark:text-white'
+const COPY_SUBTLE = 'text-[rgb(var(--color-muted))] dark:text-white/70'
+const COPY_PILL =
+  'bg-[rgb(var(--color-card))] ring-1 ring-[rgb(var(--color-border))] dark:bg-black/75 dark:ring-white/10'
+
 export function FullscreenNewsCard({
   item,
   isActive,
@@ -407,12 +416,12 @@ export function FullscreenNewsCard({
       )}
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="min-w-0 truncate text-[0.88rem] font-bold leading-tight text-white underline-offset-2 group-hover:underline">
+          <span className={cn("min-w-0 truncate text-[0.88rem] font-bold leading-tight underline-offset-2 group-hover:underline", COPY_TEXT)}>
             {item.publisher.name}
           </span>
           {publisherHref ? (
             <span
-              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
+              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-text))] text-[rgb(var(--color-surface))] dark:bg-white dark:text-black"
               title="Doğrulanmış"
               aria-label="Doğrulanmış yayıncı"
             >
@@ -421,7 +430,7 @@ export function FullscreenNewsCard({
           ) : null}
         </span>
         {timeLabel ? (
-          <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+          <span className={cn("block truncate text-[11px] font-medium leading-tight", COPY_SUBTLE)}>
             {timeLabel}
           </span>
         ) : null}
@@ -465,9 +474,9 @@ export function FullscreenNewsCard({
         L2 — dark readability gradients
         L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
       */}
-      <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
+      <div className="pointer-events-none absolute inset-0 bg-[rgb(var(--color-surface))] dark:bg-black" data-testid="smart-feed-media">
         {hasValidImage && isActive ? (
-          <div className="absolute inset-0" data-testid="smart-feed-bg-blur" aria-hidden>
+          <div className="absolute inset-0 hidden dark:block" data-testid="smart-feed-bg-blur" aria-hidden>
             <SafeNewsImage
               src={item.image!}
               alt=""
@@ -479,13 +488,13 @@ export function FullscreenNewsCard({
         ) : hasValidImage ? (
           <span data-testid="smart-feed-bg-blur" className="sr-only" />
         ) : (
-          <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-black to-neutral-950 select-none">
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
+          <div className="relative flex h-full w-full flex-col items-center justify-center bg-[rgb(var(--color-surface))] select-none dark:bg-gradient-to-br dark:from-neutral-900 dark:via-black dark:to-neutral-950">
+            <div className="absolute inset-0 hidden opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] dark:block" />
             <div className="flex flex-col items-center gap-2 opacity-25">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm">
-                <Newspaper className="h-8 w-8 text-white" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-text)/0.06)] backdrop-blur-sm dark:border-white/10 dark:bg-white/10">
+                <Newspaper className="h-8 w-8 text-[rgb(var(--color-text))] dark:text-white" />
               </div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-white">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--color-text))] dark:text-white">
                 {item.publisher?.name || 'NaHaber'}
               </span>
             </div>
@@ -495,19 +504,19 @@ export function FullscreenNewsCard({
         {/* Readability veil — cinematic, not a hard black box */}
         <div
           className={cn(
-            'pointer-events-none absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/55 via-black/20 to-transparent',
+            'pointer-events-none absolute inset-x-0 top-0 hidden h-[28%] bg-gradient-to-b from-black/55 via-black/20 to-transparent dark:block',
             isCenter && 'from-black/45'
           )}
           aria-hidden
           data-testid="smart-feed-readability-top"
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent dark:block"
           aria-hidden
           data-testid="smart-feed-readability-bottom"
         />
         <div
-          className="pointer-events-none absolute inset-0 bg-black/25"
+          className="pointer-events-none absolute inset-0 hidden bg-black/25 dark:block"
           aria-hidden
           data-testid="smart-feed-readability-veil"
         />
@@ -701,7 +710,7 @@ export function FullscreenNewsCard({
             />
             {progressLabel ? (
               <div
-                className="flex items-center gap-0.5 text-xs font-semibold text-white/90 drop-shadow"
+                className="flex items-center gap-0.5 rounded-full bg-black/45 px-1.5 py-0.5 text-xs font-semibold text-white/90 drop-shadow"
                 data-testid="smart-feed-card-progress"
                 aria-label={`Kart ${progressLabel}`}
               >
@@ -718,7 +727,7 @@ export function FullscreenNewsCard({
         */}
         <div
           className={cn(
-            'relative z-[2] mt-auto flex w-full shrink-0 flex-col bg-gradient-to-t from-black via-black/95 to-transparent pt-2.5 sm:pt-3',
+            'relative z-[2] mt-auto flex w-full shrink-0 flex-col pt-2.5 sm:pt-3 dark:bg-gradient-to-t dark:from-black dark:via-black/95 dark:to-transparent',
             /* Keep right pad after full-bleed pl — px-* would wipe the social-rail gutter. */
             fullBleed ? 'pl-3 pr-[4.75rem] sm:pl-4' : 'pr-[4.75rem]'
           )}
@@ -744,8 +753,10 @@ export function FullscreenNewsCard({
                     className={cn(
                       'text-[11px] font-extrabold tracking-[0.06em]',
                       skin.badge === 'ghost'
-                        ? 'rounded-md bg-white/20 px-2 py-0.5 text-white'
-                        : 'rounded-md px-2 py-0.5 text-white',
+                        ? 'rounded-md bg-[rgb(var(--color-text)/0.08)] px-2 py-0.5 text-[rgb(var(--color-text))] dark:bg-white/20 dark:text-white'
+                        : skin.badge === 'solid'
+                          ? 'rounded-md px-2 py-0.5 text-white'
+                          : cn('rounded-md px-2 py-0.5', COPY_TEXT),
                       skin.badge === 'solid' && 'bg-[color:var(--feed-skin-accent)]',
                       skin.id === 'spor' && 'rounded-full'
                     )}
@@ -759,7 +770,7 @@ export function FullscreenNewsCard({
                     onClick={onCategoryClick}
                     data-testid="smart-feed-category-goto"
                     data-no-reader-gesture="1"
-                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/35 backdrop-blur-sm transition active:scale-[0.98]"
+                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[rgb(var(--color-text)/0.06)] px-2.5 py-0.5 text-[11px] font-bold text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition active:scale-[0.98] dark:bg-white/20 dark:text-white dark:ring-white/35"
                     aria-label={`${cat} kategorisine git`}
                   >
                     <span className="hidden min-[360px]:inline">Kategoriye Git</span>
@@ -780,7 +791,9 @@ export function FullscreenNewsCard({
               </div>
               <h2
                 className={cn(
-                  'wrap-words text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
+                  'wrap-words',
+                  COPY_TEXT,
+                  'dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
                   'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]',
                   'transition-opacity duration-200',
                   headlineReveal ? 'opacity-100' : 'opacity-0'
@@ -804,8 +817,8 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
-                    'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-white',
+                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
+                    'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-[rgb(var(--color-body))] dark:text-white',
                     // With highlights: keep rail discoverable — presentation clamp only.
                     showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
                     headlineDone ? 'opacity-100' : 'opacity-0'
@@ -891,8 +904,12 @@ export function FullscreenNewsCard({
                 e.stopPropagation()
                 onReadClick()
               }}
-              className="relative z-10 inline-flex h-14 w-full shrink-0 touch-manipulation appearance-none items-center justify-center rounded-full bg-white px-5 text-sm font-extrabold text-black transition active:scale-[0.99] [-webkit-appearance:none] [-webkit-tap-highlight-color:transparent]"
-              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="relative z-10 inline-flex h-14 w-full shrink-0 touch-manipulation appearance-none items-center justify-center rounded-full px-5 text-sm font-extrabold transition active:scale-[0.99] [-webkit-appearance:none] [-webkit-tap-highlight-color:transparent]"
+              /* Inline so Safari cannot paint system gray; tokens so it inverts with the theme. */
+              style={{
+                backgroundColor: 'rgb(var(--color-text))',
+                color: 'rgb(var(--color-surface))',
+              }}
             >
               Haberi Oku
             </button>
@@ -905,34 +922,34 @@ export function FullscreenNewsCard({
                 {item.authorSlug ? (
                   <Link prefetch={false}
                     href={ROUTES.AUTHOR(item.authorSlug)}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
+                    className={cn("flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full py-1 pl-1 pr-2.5", COPY_PILL)}
                     data-testid="smart-feed-editor-link"
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.88rem] font-bold leading-tight text-white">
+                      <span className={cn("block truncate text-[0.88rem] font-bold leading-tight", COPY_TEXT)}>
                         {item.authorName}
                       </span>
                       {timeLabel ? (
-                        <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+                        <span className={cn("block truncate text-[11px] font-medium leading-tight", COPY_SUBTLE)}>
                           {timeLabel}
                         </span>
                       ) : null}
                     </span>
                   </Link>
                 ) : (
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10">
+                  <div className={cn("flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full py-1 pl-1 pr-2.5", COPY_PILL)}>
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-xs font-bold uppercase text-white">
                       {item.authorName.slice(0, 1)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.88rem] font-bold leading-tight text-white">
+                      <span className={cn("block truncate text-[0.88rem] font-bold leading-tight", COPY_TEXT)}>
                         {item.authorName}
                       </span>
                       {timeLabel ? (
-                        <span className="block truncate text-[11px] font-medium leading-tight text-white/70">
+                        <span className={cn("block truncate text-[11px] font-medium leading-tight", COPY_SUBTLE)}>
                           {timeLabel}
                         </span>
                       ) : null}
@@ -949,7 +966,7 @@ export function FullscreenNewsCard({
                 {publisherHref ? (
                   <Link prefetch={false}
                     href={publisherHref}
-                    className="group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5 ring-1 ring-white/10"
+                    className={cn("group flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full py-1 pl-1 pr-2.5", COPY_PILL)}
                     style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
                     data-testid="smart-feed-publisher-link"
                   >
@@ -957,7 +974,7 @@ export function FullscreenNewsCard({
                   </Link>
                 ) : (
                   <div
-                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/75 py-1 pl-1 pr-2.5"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-card))] py-1 pl-1 pr-2.5 dark:bg-black/75"
                     style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
                   >
                     {publisherBlock}

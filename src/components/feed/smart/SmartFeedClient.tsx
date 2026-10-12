@@ -2606,28 +2606,28 @@ export function SmartFeedClient({
         ) : errorState ? (
           /* Error / Auth Required / Pilot Preview State */
           <div
-            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-[rgb(var(--color-text-secondary))]"
             data-testid="smart-feed-error-view"
           >
-            <div className="mb-4 rounded-full bg-white/10 p-4">
+            <div className="mb-4 rounded-full bg-[rgb(var(--color-text)/0.08)] p-4">
               {errorState.type === 'AUTH_REQUIRED' || errorState.type === 'DISABLED' ? (
                 <ShieldAlert className="h-8 w-8 text-amber-400" />
               ) : (
                 <AlertCircle className="h-8 w-8 text-red-400" />
               )}
             </div>
-            <h2 className="mb-1 text-lg font-bold text-white">
+            <h2 className="mb-1 text-lg font-bold text-[rgb(var(--color-text))]">
               {errorState.type === 'AUTH_REQUIRED'
                 ? 'Giriş Yapılması Gerekiyor'
                 : errorState.type === 'DISABLED'
                   ? 'Akıllı Akış'
                   : 'Yükleme Hatası'}
             </h2>
-            <p className="max-w-xs text-sm text-white/60 mb-6">{errorState.message}</p>
+            <p className="max-w-xs text-sm text-[rgb(var(--color-muted))] mb-6">{errorState.message}</p>
             {errorState.type === 'AUTH_REQUIRED' ? (
               <Link prefetch={false}
                 href={`/login?next=${encodeURIComponent('/feed-v2')}`}
-                className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+                className="flex items-center gap-2 rounded-full bg-[rgb(var(--color-text))] px-6 py-2.5 text-sm font-semibold text-[rgb(var(--color-surface))] transition hover:opacity-90"
               >
                 Giriş Yap
               </Link>
@@ -2635,14 +2635,14 @@ export function SmartFeedClient({
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Link prefetch={false}
                   href={`/login?next=${encodeURIComponent('/feed-v2')}`}
-                  className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
+                  className="flex items-center gap-2 rounded-full bg-[rgb(var(--color-text))] px-6 py-2.5 text-sm font-semibold text-[rgb(var(--color-surface))] transition hover:opacity-90"
                 >
                   Giriş Yap
                 </Link>
                 <button
                   type="button"
                   onClick={() => void loadPage(false, null, undefined, true)}
-                  className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                  className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold bg-[rgb(var(--color-text)/0.08)] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition hover:bg-[rgb(var(--color-text)/0.14)]"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Tekrar Dene
@@ -2652,7 +2652,7 @@ export function SmartFeedClient({
               <button
                 type="button"
                 onClick={() => void loadPage(false, null, undefined, true)}
-                className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold bg-[rgb(var(--color-text)/0.08)] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition hover:bg-[rgb(var(--color-text)/0.14)]"
               >
                 <RefreshCw className="h-4 w-4" />
                 Tekrar Dene
@@ -2667,23 +2667,23 @@ export function SmartFeedClient({
         ) : !items.length ? (
           /* Empty Feed State */
           <div
-            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-white/80"
+            className="flex h-full min-h-0 w-full flex-col items-center justify-center px-6 text-center text-[rgb(var(--color-text-secondary))]"
             data-testid="smart-feed-empty-view"
           >
-            <div className="mb-4 rounded-full bg-white/10 p-4">
+            <div className="mb-4 rounded-full bg-[rgb(var(--color-text)/0.08)] p-4">
               {mode === 'local' ? (
-                <MapPin className="h-8 w-8 text-white/70" />
+                <MapPin className="h-8 w-8 text-[rgb(var(--color-muted))]" />
               ) : (
-                <Inbox className="h-8 w-8 text-white/70" />
+                <Inbox className="h-8 w-8 text-[rgb(var(--color-muted))]" />
               )}
             </div>
-            <h2 className="mb-1 text-lg font-bold text-white">{emptyState?.title}</h2>
-            <p className="max-w-xs text-sm text-white/60 mb-4">{emptyState?.description}</p>
+            <h2 className="mb-1 text-lg font-bold text-[rgb(var(--color-text))]">{emptyState?.title}</h2>
+            <p className="max-w-xs text-sm text-[rgb(var(--color-muted))] mb-4">{emptyState?.description}</p>
             {mode === 'local' && (locationSetupOpen || !localCitySlug) ? (
               <button
                 type="button"
                 onClick={() => setLocationSetupOpen(true)}
-                className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-xs font-bold text-black transition hover:bg-white/90"
+                className="flex items-center gap-2 rounded-full bg-[rgb(var(--color-text))] px-4 py-2.5 text-xs font-bold text-[rgb(var(--color-surface))] transition hover:opacity-90"
                 data-testid="smart-feed-local-setup-cta"
               >
                 <MapPin className="h-3.5 w-3.5" />
@@ -2693,7 +2693,7 @@ export function SmartFeedClient({
               <button
                 type="button"
                 onClick={() => void loadPage(false)}
-                className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                className="flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold bg-[rgb(var(--color-text)/0.08)] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition hover:bg-[rgb(var(--color-text)/0.14)]"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Yenile
@@ -2703,7 +2703,7 @@ export function SmartFeedClient({
               <button
                 type="button"
                 onClick={() => clearLocalCity()}
-                className="mt-3 text-xs font-medium text-white/55 underline-offset-2 hover:underline"
+                className="mt-3 text-xs font-medium text-[rgb(var(--color-muted))] underline-offset-2 hover:underline"
               >
                 Konumu değiştir ({localCityName || localCitySlug})
               </button>
@@ -3097,7 +3097,7 @@ export function SmartFeedClient({
             ) : null}
             {!hasMore && items.length > 0 ? (
               <div className="flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col items-center justify-center bg-[rgb(var(--color-surface))] px-6 text-center text-[rgb(var(--color-text))]">
-                <div className="mb-4 rounded-full bg-white/10 p-4">
+                <div className="mb-4 rounded-full bg-[rgb(var(--color-text)/0.08)] p-4">
                   <CheckCircle2 className="h-8 w-8 text-emerald-400" />
                 </div>
                 <h3 className="mb-2 text-xl font-bold">Tüm haberleri gördün</h3>
@@ -3110,7 +3110,7 @@ export function SmartFeedClient({
                     scrollToIndex(0)
                     void loadPage(false)
                   }}
-                  className="flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
+                  className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold bg-[rgb(var(--color-text)/0.08)] text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition hover:bg-[rgb(var(--color-text)/0.14)]"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Başa Dön ve Yenile
@@ -4046,7 +4046,8 @@ function FeedCardWithImpression(props: {
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 rounded-none"
           style={{
-            background: 'linear-gradient(90deg, #0c0c0e 0%, #141417 100%)',
+            background:
+              'linear-gradient(90deg, var(--reader-page-bg, #0c0c0e) 0%, var(--reader-page-elevated, #141417) 100%)',
             opacity: Math.min(1, pageProgress * 1.4),
           }}
         />

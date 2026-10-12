@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Source_Serif_4 } from 'next/font/google'
 import { ToastViewport } from '@/components/ui/Toast'
 
@@ -233,6 +233,22 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Single viewport source. A hand-written <meta name="viewport"> in <head> sat
+ * next to Next's default one (no viewport-fit). On every client navigation
+ * Next re-inserts its own tag *after* ours, so the last tag silently dropped
+ * viewport-fit=cover and env(safe-area-inset-*) changed between cold start and
+ * a return trip (header / rail / bottom nav moved). Declaring it here makes
+ * Next emit exactly one tag, identical on every route.
+ * Zoom stays allowed: no user-scalable=no and no maximum-scale=1.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // CRITICAL: do NOT call `cookies()` / `headers()` from this layout.
   // Any dynamic API call here opts the entire app out of static rendering,
@@ -275,8 +291,6 @@ gtag('consent','default',{
         {/* Microsoft tile (Windows Start menüsüne pin'leme) */}
         <meta name="msapplication-TileColor" content="#dc2626" />
         <meta name="msapplication-tap-highlight" content="no" />
-        {/* iOS Safari kaydırma bounce'unu PWA modunda kapatır */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
       </head>
       <body className={`${inter.variable} ${sourceSerif.variable} ${inter.className} font-sans antialiased`}>
         <DismissAppSplash />

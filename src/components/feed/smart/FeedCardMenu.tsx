@@ -74,11 +74,11 @@ export function FeedCardMenu({ item, className, onFeedback }: FeedCardMenuProps)
       {open ? (
         <>
           <button type="button" className="fixed inset-0 z-40" aria-label="Menüyü kapat" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 min-w-[220px] overflow-hidden rounded-xl border border-white/10 bg-gray-950/95 py-1 shadow-xl backdrop-blur-md">
+          <div className="absolute right-0 top-11 z-50 min-w-[220px] overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card)/0.97)] py-1 shadow-xl backdrop-blur-md">
             <button
               type="button"
               disabled={busy}
-              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-white hover:bg-white/10"
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-text)/0.06)]"
               onClick={() => run('hide_article', 'Gizlendi')}
             >
               <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
@@ -88,7 +88,7 @@ export function FeedCardMenu({ item, className, onFeedback }: FeedCardMenuProps)
               <button
                 type="button"
                 disabled={busy}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-white hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-text)/0.06)]"
                 onClick={() => run('less_publisher', 'Kaynak azaltıldı')}
               >
                 <MinusCircle className="h-4 w-4 shrink-0" aria-hidden />
@@ -99,7 +99,7 @@ export function FeedCardMenu({ item, className, onFeedback }: FeedCardMenuProps)
               <button
                 type="button"
                 disabled={busy}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-white hover:bg-white/10"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-text)/0.06)]"
                 onClick={() => run('less_topic', 'Konu azaltıldı')}
               >
                 <Tag className="h-4 w-4 shrink-0" aria-hidden />

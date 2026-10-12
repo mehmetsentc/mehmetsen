@@ -48,7 +48,7 @@ describe('iOS touch-action ownership for Feed→Reader open', () => {
 
   it('media layer cannot own default touch-action:auto under the hero', () => {
     expect(card).toMatch(
-      /pointer-events-none absolute inset-0 bg-black[\s\S]{0,40}smart-feed-media|smart-feed-media[\s\S]{0,80}pointer-events-none/
+      /pointer-events-none absolute inset-0 [^"]*" data-testid="smart-feed-media"|smart-feed-media[\s\S]{0,80}pointer-events-none/
     )
   })
 

@@ -218,7 +218,7 @@ export function FeedDiscoveryRail({
           data-testid="smart-feed-discovery-heading-row"
         >
           <h3
-            className="min-w-0 flex-1 truncate text-[12px] font-extrabold tracking-wide text-white/90"
+            className="min-w-0 flex-1 truncate text-[12px] font-extrabold tracking-wide text-[rgb(var(--color-text))] dark:text-white/90"
             data-testid="smart-feed-discovery-heading"
           >
             {heading}
@@ -233,7 +233,7 @@ export function FeedDiscoveryRail({
                 e.stopPropagation()
                 onSeeAll()
               }}
-              className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-white/55 transition active:scale-[0.98]"
+              className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[rgb(var(--color-muted))] transition active:scale-[0.98] dark:text-white/55"
             >
               Tümünü Gör
               <ChevronRight className="h-3.5 w-3.5 opacity-80" aria-hidden />
