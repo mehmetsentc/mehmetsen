@@ -22,7 +22,7 @@ import { usePathname } from 'next/navigation'
 type Row = string
 
 const MAX_ROWS = 200
-const SHOWN_ROWS = 12
+const SHOWN_ROWS = 6
 
 function r(n: number): number {
   return Math.round(n)
@@ -52,6 +52,14 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
   const [open, setOpen] = useState(true)
   const [head, setHead] = useState('')
   const insetRef = useRef<HTMLDivElement | null>(null)
+  const lastBeforeRef = useRef<string>('')
+  const [cycle, setCycle] = useState<{ before: string; focus: string; blur: string }>({
+    before: '-',
+    focus: '-',
+    blur: '-',
+  })
+  const vvSigRef = useRef('')
+  const vpSigRef = useRef('')
 
   const measure = useCallback(
     (tag: string) => {
@@ -104,6 +112,13 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
       ].join(' ') + culprit
       rowsRef.current = [...rowsRef.current, row].slice(-MAX_ROWS)
       setRows(rowsRef.current.slice(-SHOWN_ROWS))
+      if (tag === 'route' || tag === 'start') lastBeforeRef.current = row
+      if (tag === 'focus') setCycle({ before: lastBeforeRef.current || '-', focus: row, blur: '-' })
+      if (tag === 'focus+700') setCycle((c) => ({ ...c, focus: row }))
+      if (tag === 'blur+800') {
+        setCycle((c) => ({ ...c, blur: row }))
+        lastBeforeRef.current = row
+      }
     },
     []
   )
@@ -123,7 +138,15 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
       )
     }
     readHead()
+    const vpSig = () =>
+      Array.from(document.querySelectorAll('meta[name="viewport"]'))
+        .map((m) => m.getAttribute('content'))
+        .join('||')
+    vpSigRef.current = vpSig()
     const mo = new MutationObserver(() => {
+      const next = vpSig()
+      if (next === vpSigRef.current) return
+      vpSigRef.current = next
       readHead()
       measure('vp-change')
     })
@@ -150,7 +173,14 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
     let vvTimer = 0
     const onVv = () => {
       window.clearTimeout(vvTimer)
-      vvTimer = window.setTimeout(() => measure('vv'), 250)
+      vvTimer = window.setTimeout(() => {
+        const vv = window.visualViewport
+        if (!vv) return
+        const sig = [vv.scale.toFixed(3), Math.round(vv.width), Math.round(vv.height), Math.round(vv.offsetLeft)].join('/')
+        if (sig === vvSigRef.current) return
+        vvSigRef.current = sig
+        measure('vv')
+      }, 250)
     }
     document.addEventListener('focusin', onFocusIn, true)
     document.addEventListener('focusout', onFocusOut, true)
@@ -167,7 +197,7 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
   }, [measure])
 
   useEffect(() => {
-    const t = window.setTimeout(() => measure('route'), 600)
+    const t = window.setTimeout(() => measure(rowsRef.current.length ? 'route' : 'start'), 600)
     return () => window.clearTimeout(t)
   }, [pathname, measure])
 
@@ -233,6 +263,9 @@ export function PreviewViewportProbe({ sha }: { sha: string }) {
           }}
         >
           <div style={{ color: '#fde68a' }}>{head}</div>
+          <div style={{ color: '#93c5fd', borderTop: '1px solid rgba(255,255,255,0.3)', marginTop: 2 }}>
+            {'SON DÖNGÜ\nÖNCE  ' + cycle.before + '\nFOCUS ' + cycle.focus + '\nBLUR  ' + cycle.blur}
+          </div>
           {rows.map((row, i) => (
             <div key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
               {row}
