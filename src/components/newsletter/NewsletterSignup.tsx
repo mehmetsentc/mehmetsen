@@ -111,7 +111,7 @@ export function NewsletterSignup({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="E-posta adresiniz"
-            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2.5 pl-10 pr-3 text-sm text-[rgb(var(--color-text))] outline-none focus:border-[rgb(var(--color-brand))]"
+            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-2.5 pl-10 pr-3 text-base lg:text-sm text-[rgb(var(--color-text))] outline-none focus:border-[rgb(var(--color-brand))]"
             disabled={submitting}
             required
             autoComplete="email"

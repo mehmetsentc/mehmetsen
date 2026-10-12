@@ -267,7 +267,7 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Örn. Çanakkale’de orman yangını kontrol altına alındı"
                   maxLength={120}
-                  className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
+                  className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
                 />
                 <p className="mt-1 text-right text-[10px] text-[rgb(var(--color-muted))]">{title.length}/120</p>
               </div>
@@ -292,7 +292,7 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
                   onChange={e => setContent(e.target.value)}
                   placeholder="Ne oldu, nerede, kimleri etkiledi? Kendi cümlelerinle yaz — en az birkaç cümle yeterli."
                   rows={8}
-                  className="w-full resize-none rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
+                  className="w-full resize-none rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
                 />
                 <p className="mt-1 flex justify-between text-[10px] text-[rgb(var(--color-muted))]">
                   <span>{canProceed2 ? 'Devam etmeye hazırsın' : 'En az ~20 karakter yaz'}</span>
@@ -308,7 +308,7 @@ export function SubmitNewsModal({ onClose }: SubmitNewsModalProps) {
                   value={location}
                   onChange={e => setLocation(e.target.value)}
                   placeholder="ör. İstanbul, Kadıköy"
-                  className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
+                  className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-3 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20"
                 />
               </div>
             </div>

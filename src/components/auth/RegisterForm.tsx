@@ -122,7 +122,7 @@ export function RegisterForm() {
                         <input
                             {...register('displayName')}
                             placeholder="Ahmet Yılmaz"
-                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                         />
                         {errors.displayName && (
                             <p className="mt-1 text-xs text-red-500">{errors.displayName.message}</p>
@@ -135,7 +135,7 @@ export function RegisterForm() {
                         <input
                             {...register('username')}
                             placeholder="ahmet_yilmaz"
-                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                            className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                         />
                         {errors.username && (
                             <p className="mt-1 text-xs text-red-500">{errors.username.message}</p>
@@ -149,7 +149,7 @@ export function RegisterForm() {
                         {...register('email')}
                         type="email"
                         placeholder="ornek@email.com"
-                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
                 </div>
@@ -160,7 +160,7 @@ export function RegisterForm() {
                         {...register('password')}
                         type="password"
                         placeholder="••••••••"
-                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.password && (
                         <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
@@ -173,7 +173,7 @@ export function RegisterForm() {
                         {...register('confirmPassword')}
                         type="password"
                         placeholder="••••••••"
-                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
+                        className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] px-4 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:border-brand-600 focus:outline-none focus:ring-1 focus:ring-brand-600"
                     />
                     {errors.confirmPassword && (
                         <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>

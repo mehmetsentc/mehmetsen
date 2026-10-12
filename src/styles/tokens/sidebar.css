@@ -202,8 +202,15 @@
   border: 0;
   background: transparent;
   outline: none;
-  font-size: 0.875rem;
+  /* 16px on phones/touch: below 16px iOS zooms the page on focus. */
+  font-size: 1rem;
   color: rgb(var(--color-text));
+}
+
+@media (min-width: 1024px) and (hover: hover) {
+  .app-sidebar__search input {
+    font-size: 0.875rem;
+  }
 }
 
 .app-sidebar__search button {

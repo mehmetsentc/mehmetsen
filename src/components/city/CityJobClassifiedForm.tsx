@@ -20,7 +20,7 @@ import {
 
 const fieldClass = cn(
   'w-full rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))]',
-  'px-3 py-2.5 text-sm text-[rgb(var(--color-text))]',
+  'px-3 py-2.5 text-base lg:text-sm text-[rgb(var(--color-text))]',
   'placeholder:text-[rgb(var(--color-muted))]',
   'focus:border-[rgb(var(--color-brand))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-brand))]/20'
 )

@@ -61,7 +61,7 @@ export function TagInput({
           onKeyDown={onKeyDown}
           onBlur={commitInput}
           placeholder={tags.length === 0 ? placeholder : ''}
-          className="min-w-[120px] flex-1 bg-transparent py-1 text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none"
+          className="min-w-[120px] flex-1 bg-transparent py-1 text-base lg:text-sm text-[rgb(var(--color-text))] placeholder:text-[rgb(var(--color-muted))] focus:outline-none"
         />
       </div>
       <p className="mt-1 text-xs text-[rgb(var(--color-muted))]">
