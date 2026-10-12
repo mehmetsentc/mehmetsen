@@ -29,6 +29,7 @@ import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishForma
 import { readPublishScope, newsScopeProblemFor, type AccountPublishScope } from './publishScope'
 import { ownershipKind, parseSocialAccount, toPublicSocialAccount, type SocialAccount } from './types'
 import { newsFactsFrom } from '../automation/match'
+import { ledgerRecordId } from './publishLedger'
 
 export type ManualTargetCheck =
   | { ok: true; scope: AccountPublishScope }
@@ -127,6 +128,8 @@ export interface TargetOption {
   reason: string | null
   reconnect: boolean
   canManage: boolean
+  /** Ledger state of THIS news on this account for the requested formats (shared lock). */
+  ledger: Array<{ format: PublishFormat; status: string; externalPostId: string | null }>
 }
 
 export async function manualTargetsForNews(actor: SocialActor, newsId: string, formats: PublishFormat[], now: number): Promise<{ ok: true; options: TargetOption[] } | { ok: false; status: number; code: string }> {
@@ -134,10 +137,30 @@ export async function manualTargetsForNews(actor: SocialActor, newsId: string, f
   if (!snap.exists) return { ok: false, status: 404, code: 'news_not_found' }
   const data = snap.data() as Record<string, unknown>
   const accounts = await listManualTargetAccounts(actor)
+  // Ledger (ortak kilit): bu haber bu hesapta zaten yayımlandı / sonucu belirsiz mi?
+  const db = getAdminFirestore()
+  const refs = accounts.flatMap((a) => formats.map((f) => ({ a: a.id, f, ref: db.collection(Collections.SOCIAL_PUBLISH_RECORDS).doc(ledgerRecordId(newsId, a.id, f)) })))
+  const snaps = refs.length ? await db.getAll(...refs.map((r) => r.ref)) : []
+  const ledgerBy = new Map<string, TargetOption['ledger']>()
+  snaps.forEach((sn, i) => {
+    if (!sn.exists) return
+    const d = sn.data() as { status?: string; externalPostId?: string | null }
+    const list = ledgerBy.get(refs[i].a) ?? []
+    list.push({ format: refs[i].f, status: String(d.status ?? ''), externalPostId: d.externalPostId ?? null })
+    ledgerBy.set(refs[i].a, list)
+  })
   const options: TargetOption[] = []
   for (const a of accounts) {
-    const c = manualTargetCheck(actor, a, { id: newsId, data }, formats.filter((f) => f !== 'story' || a.platform !== 'threads'), now)
+    const fmts = formats.filter((f) => f !== 'story' || a.platform !== 'threads')
+    let c: ManualTargetCheck = manualTargetCheck(actor, a, { id: newsId, data }, fmts, now)
     if (!c.ok && c.hidden) continue
+    const ledger = (ledgerBy.get(a.id) ?? []).filter((l) => fmts.includes(l.format))
+    if (c.ok) {
+      const done = ledger.find((l) => l.status === 'succeeded')
+      const unsure = ledger.find((l) => l.status === 'uncertain' || l.status === 'publishing')
+      if (unsure) c = { ok: false, code: 'uncertain_previous_attempt', reason: `Önceki deneme ${unsure.status === 'publishing' ? 'sürüyor' : 'belirsiz'} (${unsure.format === 'post' ? 'gönderi' : 'hikâye'}) — Paylaşımlar → «Sonucu belirsiz paylaşımlar»dan kontrol edin`, reconnect: false, hidden: false }
+      else if (done) c = { ok: false, code: 'already_published', reason: `Bu haber bu hesapta zaten yayımlandı (${done.format === 'post' ? 'gönderi' : 'hikâye'}); tekrar gönderilmez`, reconnect: false, hidden: false }
+    }
     options.push({
       accountId: a.id,
       platform: a.platform,
@@ -150,6 +173,7 @@ export async function manualTargetsForNews(actor: SocialActor, newsId: string, f
       reason: c.ok ? null : c.reason,
       reconnect: c.ok ? false : c.reconnect,
       canManage: canManageAccount(actor, a.ownership),
+      ledger,
     })
   }
   options.sort((x, y) => Number(y.selectable) - Number(x.selectable) || x.displayName.localeCompare(y.displayName, 'tr'))

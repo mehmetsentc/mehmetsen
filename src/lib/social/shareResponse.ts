@@ -56,3 +56,45 @@ export async function attachAccountNames(results: PublishOneSocialResult[], load
     ...(r.story ? { story: { ...r.story, facebook: name(r.story.facebook)!, instagram: name(r.story.instagram)! } } : {}),
   }))
 }
+
+/** One row per target account and format (Görev 18 EK) — never collapsed per platform. */
+export interface TargetResultRow {
+  platform: 'facebook' | 'instagram' | 'threads'
+  accountId: string
+  accountName: string | null
+  format: 'post' | 'story'
+  success: boolean
+  code: string | null
+  error: string | null
+  ledgerStatus: string | null
+  externalPostId: string | null
+}
+
+export function targetResultRows(results: PublishOneSocialResult[]): TargetResultRow[] {
+  const rows: TargetResultRow[] = []
+  const seen = new Set<string>()
+  for (const r of results) {
+    for (const [format, set] of [['post', r.post], ['story', r.story]] as const) {
+      if (!set) continue
+      for (const platform of ['facebook', 'instagram', 'threads'] as const) {
+        const v = (set as unknown as Record<string, (SocialPublishResult & { code?: string; ledgerStatus?: string }) | undefined>)[platform]
+        if (!v || !v.accountId || v.error === 'skipped') continue
+        const key = `${v.accountId}__${format}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        rows.push({
+          platform,
+          accountId: v.accountId,
+          accountName: v.accountName ?? null,
+          format,
+          success: v.success,
+          code: v.code ?? null,
+          error: v.success ? null : (v.error ?? null),
+          ledgerStatus: v.ledgerStatus ?? null,
+          externalPostId: v.platformId ?? null,
+        })
+      }
+    }
+  }
+  return rows
+}

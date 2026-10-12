@@ -400,6 +400,7 @@ export function MobileContent() {
           open
           mode={shareTarget.mode}
           postId={shareTarget.post.id}
+          newsTitle={shareTarget.post.title ?? ""}
           isAlreadyPublished={
             shareTarget.mode === 'story'
               ? !!shareTarget.post.storyPublished

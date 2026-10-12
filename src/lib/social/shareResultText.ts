@@ -143,3 +143,49 @@ export const OVERALL_HEADLINE: Record<ShareOverall, string> = {
 export function resultsOf(row?: { post?: Record<string, ShareResultLike | undefined>; story?: Record<string, ShareResultLike | undefined> } | null): ShareResultLike[] {
   return [...Object.values(row?.post ?? {}), ...Object.values(row?.story ?? {})].filter((r): r is ShareResultLike => !!r)
 }
+
+/** Per-target row from the force-reshare response (Görev 18 EK). */
+export interface TargetRowLike {
+  platform: string
+  accountId: string
+  accountName: string | null
+  format: 'post' | 'story'
+  success: boolean
+  code: string | null
+  error: string | null
+  ledgerStatus: string | null
+  externalPostId: string | null
+}
+
+const PLATFORM_TR: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
+
+export function rowAsResult(r: TargetRowLike): ShareResultLike {
+  return {
+    success: r.success,
+    accountId: r.accountId,
+    accountName: r.accountName ?? undefined,
+    code: r.code ?? undefined,
+    error: r.error ?? undefined,
+    ledgerStatus: r.ledgerStatus ?? undefined,
+    platformId: r.externalPostId ?? undefined,
+  } as ShareResultLike
+}
+
+/** «Instagram · NaHaber Antalya · hikâye: ✓ yayımlandı · gönderi 123». */
+export function describeTargetRow(r: TargetRowLike): string {
+  const label = `${PLATFORM_TR[r.platform] ?? r.platform} · ${r.accountName ?? r.accountId} · ${r.format === 'story' ? 'hikâye' : 'gönderi'}`
+  const line = describeShareResult(label, rowAsResult(r))
+  // describeShareResult adds «(hesap)»; the account is already in the label.
+  return line.replace(` (${r.accountName ?? 'seçilen hesap'})`, '')
+}
+
+/**
+ * A failed target the operator may explicitly retry: a definite platform /
+ * validation failure only. Published, already published, in progress and
+ * uncertain targets are never retried from here (uncertain → its own flow).
+ */
+export function isSafelyRetryable(r: TargetRowLike): boolean {
+  if (r.success) return false
+  if (r.ledgerStatus === 'uncertain' || r.ledgerStatus === 'publishing' || r.ledgerStatus === 'succeeded') return false
+  return !['already_published', 'in_progress', 'uncertain_previous_attempt', 'uncertain', 'token_invalid', 'needs_reauth', 'disabled', 'paused'].includes(r.code ?? '')
+}

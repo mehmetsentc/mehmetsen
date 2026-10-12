@@ -51,9 +51,7 @@ import {
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { isAdminLocalFeatured, isNationalFeaturedEligible } from '@/lib/featuredScope'
 import { parseApiResponse } from '@/lib/parseApiResponse'
-import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
-import { describeShareResult, overallShareState, readJsonResponse, resultsOf, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
-import { showShareToast } from '@/lib/social/shareToast'
+import { ManualShareFlow } from '@/components/admin/social/ManualShareFlow'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type AiMode = 'rewrite' | 'seo' | 'tags' | 'headline'
@@ -695,21 +693,18 @@ const POST_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<
 
 function SocialSharePopover({
   newsId,
+  newsTitle,
   mode,
-  onShare,
   onClose,
 }: {
   newsId: string
+  newsTitle: string
   mode: SocialShareMode
-  onShare: (platforms: PlatformFlags, targets: TargetSelection) => void
   onClose: () => void
 }) {
-  // Görev 17: eski «Onyeditivi (mevcut bağlantı)» seçeneği yok; hiçbir hesap
-  // önceden seçili gelmez. Platform = seçilen bağlı hesap.
-  const [targets, setTargets] = useState<TargetSelection>(EMPTY_TARGETS)
-  const [options, setOptions] = useState<TargetOption[]>([])
+  // Görev 18 EK: ortak çoklu hesap akışı (seç → onayla → gönder → hedef bazlı sonuç).
+  // Eski «Onyeditivi (mevcut bağlantı)» seçeneği yok; hiçbir hesap önceden seçili gelmez.
   const popoverRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose()
@@ -718,45 +713,16 @@ function SocialSharePopover({
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const chosen = Object.entries(explicitTargets(targets)).map(([p, id]) => {
-    const o = options.find((x) => x.accountId === id)
-    return `${o ? accountLabel(o) : id} (${p === 'facebook' ? 'FB' : p === 'instagram' ? 'IG' : 'Threads'})`
-  })
-  const flags: PlatformFlags = { facebook: !!targets.facebook, instagram: !!targets.instagram, threads: mode === 'post' && !!targets.threads, twitter: false }
-
   return (
     <div
       ref={popoverRef}
-      className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[90vw] rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
+      className="absolute right-0 top-full z-50 mt-1 w-96 max-w-[92vw] rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
     >
       <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-        {mode === 'story' ? 'Hikâye — hedef hesap seçin' : 'Post — hedef hesap seçin'}
+        {mode === 'story' ? 'Hikâye — hedef hesapları seçin' : 'Post — hedef hesapları seçin'}
       </p>
-      <div className="max-h-80 overflow-auto px-1">
-        <ComposerTargetPicker newsId={newsId} mode={mode} value={targets} onChange={setTargets} onOptions={setOptions} />
-      </div>
-      {chosen.length > 0 && (
-        <p className="mt-2 px-1 text-[11px] text-[rgb(var(--color-text))]">
-          Paylaşılacak: <b>{chosen.join(', ')}</b>
-        </p>
-      )}
-      <div className="mt-2 flex gap-1.5">
-        <button
-          type="button"
-          onClick={() => onShare(flags, targets)}
-          disabled={chosen.length === 0}
-          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 disabled:opacity-40"
-        >
-          {mode === 'story' ? <Smartphone className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-          {chosen.length === 0 ? 'Hesap seçin' : 'Seçilen hesaplarda paylaş'}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1.5 text-[11px] font-bold text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))]"
-        >
-          <X className="h-3 w-3" />
-        </button>
+      <div className="px-1">
+        <ManualShareFlow newsId={newsId} newsTitle={newsTitle} mode={mode} onClose={onClose} compact />
       </div>
     </div>
   )
@@ -847,165 +813,6 @@ function NewsRow({
   const publishedAt = publishedAtStr
     ? formatDistanceToNow(new Date(publishedAtStr), { locale: tr, addSuffix: true })
     : '—'
-
-  const shareSocial = async (mode: SocialShareMode, platforms: PlatformFlags, targetSel: TargetSelection = EMPTY_TARGETS) => {
-    if (!canShare || sharingMode) return
-
-    // Görev 17: yalnız açıkça seçilen bağlı hesaplar. Eski Onyeditivi yolu yok;
-    // tekrar paylaşım ortak kilit ve kayıt (ledger) tarafından engellenir.
-    const explicitTargets: Record<string, string> = {}
-    if (platforms.facebook && targetSel.facebook) explicitTargets.facebook = targetSel.facebook
-    if (platforms.instagram && targetSel.instagram) explicitTargets.instagram = targetSel.instagram
-    if (mode === 'post' && platforms.threads && targetSel.threads) explicitTargets.threads = targetSel.threads
-    if (Object.keys(explicitTargets).length === 0) {
-      toast.error('Paylaşım için en az bir bağlı hesap seçin')
-      return
-    }
-    const legacyInvolved = false
-    const force = false
-
-    const platformNames: string[] = []
-    if (platforms.facebook) platformNames.push('FB')
-    if (platforms.instagram) platformNames.push('IG')
-    if (mode === 'post' && platforms.threads) platformNames.push('Th')
-
-    const run = async (useForce: boolean) => {
-      setSharingMode(mode)
-      const toastId = toast.loading(
-        mode === 'story'
-          ? `Hikâye paylaşılıyor (${platformNames.join(', ')})…`
-          : `Post paylaşılıyor (${platformNames.join(', ')})…`
-      )
-
-      try {
-        const token = (await auth.currentUser?.getIdToken()) ?? ''
-        let res: Response
-        try {
-          res = await fetch('/api/admin/social/force-reshare', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              ids: [post.id],
-              mode,
-              manual: true,
-              force: useForce,
-              platforms: {
-                facebook: platforms.facebook,
-                instagram: platforms.instagram,
-                twitter: false,
-                threads: mode === 'post' ? platforms.threads : false,
-              },
-              targets: explicitTargets,
-            }),
-          })
-        } catch {
-          toast.error(unreadableResponseText(0), { id: toastId, duration: 10000, style: SHARE_TOAST_STYLE })
-          return
-        }
-        const parsed = await readJsonResponse<{
-          error?: string
-          code?: string
-          platform?: string
-          results?: Array<{
-            ok: boolean
-            reason?: string
-            post?: {
-              facebook?: ShareResultLike
-              instagram?: ShareResultLike
-              twitter?: ShareResultLike
-              threads?: ShareResultLike
-            }
-            story?: {
-              facebook?: ShareResultLike
-              instagram?: ShareResultLike
-            }
-          }>
-        }>(res)
-        if (!parsed.ok) {
-          toast.error(unreadableResponseText(parsed.status), { id: toastId, duration: 12000, style: SHARE_TOAST_STYLE })
-          return
-        }
-        const data = parsed.data
-
-        const r0 = data.results?.[0]
-        // Platform bazında güvenli satırlar (token / ham platform metni yok).
-        const lines: string[] = []
-        const pushLines = (prefix: string, set?: Record<string, ShareResultLike | undefined>) => {
-          if (!set) return
-          const entries: Array<[keyof PlatformFlags, string]> = [['facebook', 'FB'], ['instagram', 'IG'], ['threads', 'Th'], ['twitter', 'X']]
-          for (const [key, label] of entries) {
-            if (!platforms[key] || !(key in set)) continue
-            const line = describeShareResult(`${prefix} ${label}`, set[key])
-            lines.push(key === 'twitter' ? `${line} (X ortak kilit dışında)` : line)
-          }
-        }
-        pushLines('Post', r0?.post as Record<string, ShareResultLike | undefined> | undefined)
-        pushLines('Hikâye', r0?.story as Record<string, ShareResultLike | undefined> | undefined)
-
-        if (!res.ok) {
-          const targetCodeText: Record<string, string> = {
-            paused: 'Hedef hesap duraklatılmış',
-            needs_reauth: 'Hedef hesabın yeniden bağlanması gerekiyor',
-            disabled: 'Hedef hesap devre dışı',
-            token_expired: 'Hedef hesabın erişim süresi dolmuş',
-            publish_permission_missing: 'Hedef hesabın yayın izni eksik',
-            publish_permission_unverified: 'Hedef hesabın yayın izni doğrulanmadı',
-            format_unsupported: 'Hedef hesap bu biçimi desteklemiyor',
-            forbidden: 'Hedef hesaba paylaşım için merkez yönetici yetkisi gerekli',
-            platform_mismatch: 'Hedef hesap bu platforma ait değil',
-            not_found: 'Hedef hesap bulunamadı',
-            bad_origin: 'İstek kaynağı doğrulanamadı; sayfayı yenileyin',
-          }
-          const msg =
-            (data.code && targetCodeText[data.code] ? `${data.platform ? `${data.platform}: ` : ''}${targetCodeText[data.code]}` : null) ??
-            data.error ?? r0?.reason ?? 'Paylaşım başarısız'
-          if (!useForce && legacyInvolved && /zaten|force/i.test(msg)) {
-            toast.dismiss(toastId)
-            if (mode === 'post') setSocialPublished(true)
-            if (mode === 'story') setStoryPublished(true)
-            const ok = window.confirm(
-              mode === 'story'
-                ? 'Bu haber zaten hikâye olarak paylaşılmış. Yeniden paylaş?'
-                : 'Bu haber zaten feed post olarak paylaşılmış. Yeniden paylaş?'
-            )
-            if (ok) {
-              setSharingMode(null)
-              return run(true)
-            }
-            return
-          }
-          toast.error([msg, ...lines].join('\n'), { id: toastId, duration: 12000, style: SHARE_TOAST_STYLE })
-          return
-        }
-
-        const overall = overallShareState(resultsOf(r0 as Parameters<typeof resultsOf>[0]))
-        const anyPublished = overall === 'published' || overall === 'partial'
-        showShareToast(overall, lines, { id: toastId, style: SHARE_TOAST_STYLE })
-
-        // Onyeditivi "paylaşıldı" rozeti yalnızca legacy yol kullanıldıysa güncellenir.
-        if (legacyInvolved && anyPublished) {
-          if (mode === 'post') setSocialPublished(true)
-          if (mode === 'story') setStoryPublished(true)
-        }
-      } catch (err) {
-        console.error('[admin/news] social share error:', err instanceof Error ? err.name : 'unknown')
-        toast.error('Paylaşım sonucu işlenemedi. Tekrar göndermeden önce platformu ve “Sonucu belirsiz paylaşımlar” listesini kontrol edin.', { id: toastId })
-      } finally {
-        setSharingMode(null)
-      }
-    }
-
-    await run(force)
-  }
-
-  const handlePopoverShare = (mode: SocialShareMode) => (platforms: PlatformFlags, targets: TargetSelection) => {
-    setPopoverMode(null)
-    void shareSocial(mode, platforms, targets)
-  }
 
   return (
     <div className={cn('border-b border-[rgb(var(--color-border))] transition-colors', selected && 'bg-blue-50/50 dark:bg-blue-950/10')}>
@@ -1147,8 +954,8 @@ function NewsRow({
               {popoverMode === 'story' && (
                 <SocialSharePopover
                   newsId={post.id}
+                  newsTitle={post.title ?? ''}
                   mode="story"
-                  onShare={handlePopoverShare('story')}
                   onClose={() => setPopoverMode(null)}
                 />
               )}
@@ -1175,8 +982,8 @@ function NewsRow({
               {popoverMode === 'post' && (
                 <SocialSharePopover
                   newsId={post.id}
+                  newsTitle={post.title ?? ''}
                   mode="post"
-                  onShare={handlePopoverShare('post')}
                   onClose={() => setPopoverMode(null)}
                 />
               )}

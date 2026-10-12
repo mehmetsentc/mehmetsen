@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeShareResult, metaCodeFromSafeError, readJsonResponse, shareState, unreadableResponseText } from './shareResultText'
+import { describeShareResult, describeTargetRow, isSafelyRetryable, metaCodeFromSafeError, readJsonResponse, shareState, unreadableResponseText } from './shareResultText'
 
 describe('shareResultText — platform bazında güvenli sonuç metni', () => {
   it('production olayı: legacy token oturumu geçersiz (190/460) → yeniden bağlantı mesajı, legacy olarak etiketlenir', () => {
@@ -37,5 +37,19 @@ describe('shareResultText — platform bazında güvenli sonuç metni', () => {
     expect(unreadableResponseText(502)).toContain('HTTP 502')
     expect(unreadableResponseText(0)).toContain('ağ hatası')
     expect(unreadableResponseText(502)).not.toContain('Bağlantı hatası')
+  })
+})
+
+describe('Görev 18 EK — hedef satırları ve güvenli tekrar', () => {
+  const row = (over: Record<string, unknown>) => ({ platform: 'instagram', accountId: 'instagram_1', accountName: 'NaHaber Antalya (@antalya_nahaber_com)', format: 'story' as const, success: true, code: null, error: null, ledgerStatus: 'succeeded', externalPostId: '99', ...over })
+  it('satır: platform · hesap · biçim · sonuç · dış gönderi kimliği', () => {
+    expect(describeTargetRow(row({}))).toBe('Instagram · NaHaber Antalya (@antalya_nahaber_com) · hikâye: ✓ yayımlandı · gönderi 99')
+  })
+  it('yalnız kesin başarısız hedef yeniden denenebilir; başarılı / zaten yayımlanmış / belirsiz / yeniden bağlantı gereken denenmez', () => {
+    expect(isSafelyRetryable(row({ success: false, code: 'failed', ledgerStatus: 'failed' }))).toBe(true)
+    expect(isSafelyRetryable(row({}))).toBe(false)
+    expect(isSafelyRetryable(row({ success: false, code: 'already_published', ledgerStatus: null }))).toBe(false)
+    expect(isSafelyRetryable(row({ success: false, code: 'failed', ledgerStatus: 'uncertain' }))).toBe(false)
+    expect(isSafelyRetryable(row({ success: false, code: 'token_invalid', ledgerStatus: 'failed' }))).toBe(false)
   })
 })

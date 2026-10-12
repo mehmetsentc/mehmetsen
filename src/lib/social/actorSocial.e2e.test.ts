@@ -609,3 +609,17 @@ describe('Görev 18 EK — kategori ve konum bazlı hesaplar', () => {
     expect(publishes()).toHaveLength(0)
   })
 })
+
+describe('Görev 18 EK — hedef seçici ortak kilit durumunu gösterir', () => {
+  it('zaten yayımlanmış / belirsiz hesap görünür ama seçilemez; diğer hesap seçilebilir', async () => {
+    await seedNews('L1', { citySlug: '', cityName: '', categoryId: 'gundem' })
+    await fs.collection('socialPublishRecords').doc(`L1__${ANTALYA_IG.id}__story`).set({ newsId: 'L1', accountId: ANTALYA_IG.id, format: 'story', status: 'succeeded', externalPostId: 'p9' })
+    await fs.collection('socialPublishRecords').doc(`L1__${ISTANBUL_IG.id}__story`).set({ newsId: 'L1', accountId: ISTANBUL_IG.id, format: 'story', status: 'uncertain', externalPostId: null })
+    const { GET } = await import('@/app/api/social/targets/route')
+    const r = await GET(req('/api/social/targets?newsId=L1&formats=story', 'admin'))
+    const opts = ((await r.json()) as { options: Array<{ accountId: string; selectable: boolean; code: string | null }> }).options
+    expect(opts.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'already_published' })
+    expect(opts.find((o) => o.accountId === ISTANBUL_IG.id)).toMatchObject({ selectable: false, code: 'uncertain_previous_attempt' })
+    expect(opts.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: true })
+  })
+})

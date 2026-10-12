@@ -1,26 +1,31 @@
 'use client'
 
 /**
- * Manual share target picker (Görev 17) — one connected account per platform,
- * chosen explicitly for ONE news item.
+ * Manual share target picker (Görev 17 / 18 EK) — shared by the news list
+ * popover (desktop), the mobile share sheet and the social composer.
  *
- * - No «Onyeditivi (mevcut bağlantı)» / legacy option and nothing preselected.
- * - The list comes from /api/social/targets?newsId=…: the user's permitted
- *   accounts with this news item's own location, the account's NaHaber publish
- *   scope, connection health and supported formats already evaluated. The
- *   server re-checks everything at publish time.
- * - Accounts that need a reconnect are shown disabled with the reason and a
- *   «Yeniden bağla» link for their managers.
+ * - One checkbox per connected account; several accounts per platform may be
+ *   chosen. Nothing is preselected; a platform with no ticked account is simply
+ *   not published to.
+ * - No «Onyeditivi (mevcut bağlantı)» / legacy option.
+ * - The list comes from /api/social/targets?newsId=…&formats=…: the user's
+ *   permitted accounts with this news item's own location, the account's
+ *   post/story scope, connection health, supported formats and the shared
+ *   ledger (already published / uncertain) evaluated per account. The server
+ *   re-checks everything at publish time.
+ * - Accounts that cannot be chosen stay visible with their reason.
+ * - When the news item or format changes, selections are re-validated; any
+ *   target that is no longer eligible is removed and reported.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 
 export type TargetPlatform = 'facebook' | 'instagram' | 'threads'
-/** platform → accountId ('' = not selected). */
-export type TargetSelection = Record<TargetPlatform, string>
-export const EMPTY_TARGETS: TargetSelection = { facebook: '', instagram: '', threads: '' }
+/** platform → selected account ids (empty = not published on that platform). */
+export type TargetSelection = Record<TargetPlatform, string[]>
+export const EMPTY_TARGETS: TargetSelection = { facebook: [], instagram: [], threads: [] }
 
 export type TargetOption = {
   accountId: string
@@ -34,17 +39,33 @@ export type TargetOption = {
   reason: string | null
   reconnect: boolean
   canManage: boolean
+  ledger?: Array<{ format: string; status: string; externalPostId: string | null }>
 }
 
-const LABEL: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
+export const PLATFORM_NAME: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
 
 export function accountLabel(o: Pick<TargetOption, 'displayName' | 'username'>): string {
   return o.username ? `${o.displayName} (@${o.username})` : o.displayName
 }
 
-/** Selected targets → `{ platform: accountId }` for the API (only chosen ones). */
-export function explicitTargets(sel: TargetSelection): Partial<Record<TargetPlatform, string>> {
-  return Object.fromEntries(Object.entries(sel).filter(([, v]) => !!v)) as Partial<Record<TargetPlatform, string>>
+/** Selected targets → `{ platform: accountId[] }` for the API (only chosen ones). */
+export function explicitTargets(sel: TargetSelection): Partial<Record<TargetPlatform, string[]>> {
+  return Object.fromEntries(Object.entries(sel).filter(([, v]) => v.length > 0)) as Partial<Record<TargetPlatform, string[]>>
+}
+
+export function targetCount(sel: TargetSelection): number {
+  return sel.facebook.length + sel.instagram.length + sel.threads.length
+}
+
+/** Platform flags derived from the selection (a platform is on only if it has targets). */
+export function platformsOf(sel: TargetSelection) {
+  return { facebook: sel.facebook.length > 0, instagram: sel.instagram.length > 0, threads: sel.threads.length > 0, twitter: false }
+}
+
+/** «Instagram · NaHaber Antalya (@antalya_nahaber_com)» lines for confirmations. */
+export function selectedLabels(sel: TargetSelection, options: TargetOption[]): string[] {
+  const byId = new Map(options.map((o) => [o.accountId, o]))
+  return (Object.keys(sel) as TargetPlatform[]).flatMap((p) => sel[p].map((id) => `${PLATFORM_NAME[p]} · ${byId.has(id) ? accountLabel(byId.get(id)!) : id}`))
 }
 
 type LoadState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ok'; options: TargetOption[] }
@@ -64,7 +85,10 @@ export function ComposerTargetPicker({
   onOptions?: (options: TargetOption[]) => void
 }) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
+  const [dropped, setDropped] = useState<string[]>([])
   const formats = mode === 'both' ? 'post,story' : mode
+  const valueRef = useRef(value)
+  valueRef.current = value
 
   useEffect(() => {
     let cancelled = false
@@ -79,8 +103,23 @@ export function ComposerTargetPicker({
         const body = (await res.json().catch(() => null)) as { options?: TargetOption[]; error?: string } | null
         if (cancelled) return
         if (!res.ok || !body?.options) return setState({ kind: 'error', message: res.status === 401 ? 'Oturum gerekli' : 'Hesaplar yüklenemedi' })
-        setState({ kind: 'ok', options: body.options })
-        onOptions?.(body.options)
+        const options = body.options
+        setState({ kind: 'ok', options })
+        onOptions?.(options)
+        // Re-validate the current selection against the fresh evaluation.
+        const ok = new Set(options.filter((o) => o.selectable).map((o) => o.accountId))
+        const byId = new Map(options.map((o) => [o.accountId, o]))
+        const cur = valueRef.current
+        const gone: string[] = []
+        const next: TargetSelection = { facebook: [], instagram: [], threads: [] }
+        for (const p of Object.keys(next) as TargetPlatform[]) {
+          for (const id of cur[p] ?? []) {
+            if (ok.has(id)) next[p].push(id)
+            else gone.push(`${PLATFORM_NAME[p]} · ${byId.has(id) ? accountLabel(byId.get(id)!) : id}${byId.get(id)?.reason ? ` — ${byId.get(id)!.reason}` : ''}`)
+          }
+        }
+        setDropped(gone)
+        if (gone.length) onChange(next)
       } catch {
         if (!cancelled) setState({ kind: 'error', message: 'Hesaplar yüklenemedi' })
       }
@@ -96,7 +135,13 @@ export function ComposerTargetPicker({
   if (state.kind === 'loading') return <p className="text-xs text-[rgb(var(--color-muted))]">Hesaplar yükleniyor…</p>
   if (state.kind === 'error') return <p className="text-xs text-red-700 dark:text-red-300">{state.message}. Paylaşım yapılmaz.</p>
 
+  const toggle = (p: TargetPlatform, id: string) => {
+    const has = value[p].includes(id)
+    onChange({ ...value, [p]: has ? value[p].filter((x) => x !== id) : [...value[p], id] })
+  }
   const any = state.options.length > 0
+  const count = targetCount(value)
+  const chosen = selectedLabels(value, state.options)
   return (
     <div className="space-y-2" aria-label="Hedef hesaplar">
       {!any && (
@@ -107,46 +152,65 @@ export function ComposerTargetPicker({
           </Link>
         </p>
       )}
+      {dropped.length > 0 && (
+        <div role="status" className="rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="font-semibold">Artık uygun olmayan hedefler seçimden çıkarıldı:</p>
+          <ul className="list-disc pl-4">
+            {dropped.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {platforms.map((p) => {
         const opts = state.options.filter((o) => o.platform === p)
         if (opts.length === 0) return null
         return (
           <fieldset key={p} className="space-y-0.5">
-            <legend className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">{LABEL[p]}</legend>
-            <label className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs">
-              <input type="radio" name={`target-${p}`} checked={!value[p]} onChange={() => onChange({ ...value, [p]: '' })} />
-              <span className="text-[rgb(var(--color-muted))]">Bu platformda paylaşma</span>
-            </label>
-            {opts.map((o) => (
-              <div key={o.accountId} className={cn('rounded-md px-1.5 py-1', value[p] === o.accountId && 'bg-blue-50 dark:bg-blue-950/30')}>
-                <label className={cn('flex items-center gap-2 text-xs', o.selectable ? 'cursor-pointer' : 'opacity-60')}>
-                  <input
-                    type="radio"
-                    name={`target-${p}`}
-                    disabled={!o.selectable}
-                    checked={value[p] === o.accountId}
-                    onChange={() => onChange({ ...value, [p]: o.accountId })}
-                  />
-                  <span className="font-semibold text-[rgb(var(--color-text))]">{accountLabel(o)}</span>
-                </label>
-                {!o.selectable && (
-                  <p className="ml-5 text-[11px] text-amber-700 dark:text-amber-300">
-                    {o.reason}
-                    {o.reconnect && o.canManage && (
-                      <>
-                        {' · '}
-                        <Link href={o.ownerKind === 'user' || o.ownerKind === 'publisher' ? '/settings/social' : '/admin/social/accounts'} className="font-semibold underline">
-                          Yeniden bağla
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
-            ))}
+            <legend className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              {PLATFORM_NAME[p]} {value[p].length > 0 ? `· ${value[p].length} seçili` : '· seçilmezse bu platformda paylaşılmaz'}
+            </legend>
+            {opts.map((o) => {
+              const on = value[p].includes(o.accountId)
+              return (
+                <div key={o.accountId} className={cn('rounded-md px-1.5 py-1', on && 'bg-blue-50 dark:bg-blue-950/30')}>
+                  <label className={cn('flex items-center gap-2 text-xs', o.selectable ? 'cursor-pointer' : 'opacity-60')}>
+                    <input type="checkbox" disabled={!o.selectable} checked={on} onChange={() => toggle(p, o.accountId)} />
+                    <span className="font-semibold text-[rgb(var(--color-text))]">{accountLabel(o)}</span>
+                  </label>
+                  {!o.selectable && (
+                    <p className="ml-5 text-[11px] text-amber-700 dark:text-amber-300">
+                      {o.reason}
+                      {o.reconnect && o.canManage && (
+                        <>
+                          {' · '}
+                          <Link href={o.ownerKind === 'user' || o.ownerKind === 'publisher' ? '/settings/social' : '/admin/social/accounts'} className="font-semibold underline">
+                            Yeniden bağla
+                          </Link>
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
           </fieldset>
         )
       })}
+      {any && (
+        <div className="rounded-md bg-[rgb(var(--color-surface))] px-2 py-1.5 text-[11px]">
+          <p className="font-semibold text-[rgb(var(--color-text))]">Seçilen uygun hesaplar: {count} hedef</p>
+          {chosen.length > 0 ? (
+            <ul className="list-disc pl-4 text-[rgb(var(--color-muted))]">
+              {chosen.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[rgb(var(--color-muted))]">Henüz hesap seçilmedi; paylaşım yapılmaz.</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

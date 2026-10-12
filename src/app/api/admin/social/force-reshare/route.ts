@@ -35,7 +35,8 @@ import { buildOgSocialUrl } from '@/lib/social/ogCacheVersion'
 import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
-import { parseTargetsInput, preflightTargets, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
+import { parseTargetListsInput, preflightTargets, targetRounds, type PublishTargetLists, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
+import { targetResultRows, type TargetResultRow } from '@/lib/social/shareResponse'
 import { actorFromCms } from '@/lib/social/accounts/actor'
 import { manualTargetCheck } from '@/lib/social/accounts/manualTargets'
 import { requiredFormats } from '@/lib/social/accounts/capabilities'
@@ -223,18 +224,20 @@ export async function POST(request: Request) {
   // ── Açık hedef hesaplar (çoklu hesap) ─────────────────────────────────────
   // Yalnızca merkez yönetici, tek haber, açık mod, aynı origin. Hedefi olmayan
   // platformlar eski Onyeditivi yolunu kullanır; hedef hatası legacy'ye düşmez.
-  const parsedTargets = parseTargetsInput(targetsRaw)
+  // Görev 18 EK: platform başına birden fazla hesap — { platform: accountId[] }.
+  const parsedTargets = parseTargetListsInput(targetsRaw)
   if (!parsedTargets.ok) {
     return NextResponse.json({ error: parsedTargets.code, code: parsedTargets.code, platform: parsedTargets.platform }, { status: 400 })
   }
-  const publishTargets: PublishTargets = { ...parsedTargets.targets }
-  // Platform anahtarı kapalıysa o platformun hedefi yok sayılır (yayın zaten denenmez).
+  const targetLists: PublishTargetLists = { ...parsedTargets.lists }
+  // Platform anahtarı kapalıysa o platformun hedefleri yok sayılır (yayın zaten denenmez).
   if (overrides?.platforms) {
-    for (const k of Object.keys(publishTargets) as Array<keyof PublishTargets>) {
-      if (overrides.platforms[k] === false) delete publishTargets[k]
+    for (const k of Object.keys(targetLists) as Array<keyof PublishTargetLists>) {
+      if (overrides.platforms[k] === false) delete targetLists[k]
     }
   }
-  const hasTargets = Object.keys(publishTargets).length > 0
+  const allTargets = (Object.entries(targetLists) as Array<[keyof PublishTargets, string[]]>).flatMap(([p, ids]) => ids.map((id) => [p, id] as const))
+  const hasTargets = allTargets.length > 0
   // Görev 17: manuel paylaşım YALNIZ açık hedef hesapla. Eski Onyeditivi
   // (legacy) manuel yolu kapalı; boş hedef / X / hedefsiz platform reddedilir.
   // Hedefsiz yol yalnız CRON_SECRET ile çalışan eski otomasyon içindir (devir ayrı yönetilir).
@@ -247,7 +250,7 @@ export async function POST(request: Request) {
     if (!hasTargets || wanted.length === 0) {
       return NextResponse.json({ error: 'Paylaşım için en az bir bağlı hesap seçin', code: 'target_required' }, { status: 400 })
     }
-    const missing = wanted.find((p) => !publishTargets[p])
+    const missing = wanted.find((p) => !targetLists[p]?.length)
     if (missing) return NextResponse.json({ error: 'Seçilen platform için hedef hesap seçilmedi', code: 'target_required', platform: missing }, { status: 400 })
   }
   if (hasTargets) {
@@ -257,21 +260,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Hedef hesapla yalnızca tek haber paylaşılabilir', code: 'single_news_required' }, { status: 400 })
     }
     if (!mode) return NextResponse.json({ error: 'Paylaşım biçimi gerekli', code: 'mode_required' }, { status: 400 })
-    const pre = await preflightTargets(publishTargets, mode, Date.now())
-    if (!pre.ok) {
-      return NextResponse.json({ error: pre.code, code: pre.code, platform: pre.platform }, { status: 409 })
+    // Her hedef ayrı ayrı: bağlantı, izin, süre, biçim. Bir hedef geçersizse istek
+    // hiç başlamaz (hiçbir hesap başka hesaba / legacy anahtara düşmez).
+    for (const [platform, accountId] of allTargets) {
+      const pre = await preflightTargets({ [platform]: accountId } as PublishTargets, mode, Date.now())
+      if (!pre.ok) return NextResponse.json({ error: pre.code, code: pre.code, platform: pre.platform, accountId }, { status: 409 })
     }
     // Yetki + hesabın yayın kapsamı + haberin kendi konumu: arayüze güvenilmez.
     const newsSnap = await getAdminFirestore().collection(Collections.NEWS).doc(specificIds[0]).get()
     if (!newsSnap.exists) return NextResponse.json({ error: 'Haber bulunamadı', code: 'news_not_found' }, { status: 404 })
     const socialActor = actorFromCms(actor.uid, actor)
-    for (const [platform, accountId] of Object.entries(publishTargets) as Array<[keyof PublishTargets, string]>) {
+    for (const [platform, accountId] of allTargets) {
       const loaded = await loadSocialAccount(accountId)
-      if (loaded.state !== 'ok') return NextResponse.json({ error: 'not_found', code: 'not_found', platform }, { status: 409 })
+      if (loaded.state !== 'ok') return NextResponse.json({ error: 'not_found', code: 'not_found', platform, accountId }, { status: 409 })
       const check = manualTargetCheck(socialActor, loaded.account, { id: newsSnap.id, data: newsSnap.data() as Record<string, unknown> }, requiredFormats(platform, mode), Date.now())
       if (!check.ok) {
         return NextResponse.json(
-          { error: check.hidden ? 'Bu hesapla paylaşım yetkiniz yok' : check.reason, code: check.hidden ? 'forbidden' : check.code, platform },
+          { error: check.hidden ? 'Bu hesapla paylaşım yetkiniz yok' : check.reason, code: check.hidden ? 'forbidden' : check.code, platform, ...(check.hidden ? {} : { accountId }) },
           { status: check.hidden ? 403 : 409 },
         )
       }
@@ -308,19 +313,28 @@ export async function POST(request: Request) {
 
     const results: PublishOneSocialResult[] = []
     try {
+    // Açık hedeflerde: sıralı turlar (her turda platform başına en çok bir hesap).
+    // Her hesap ortak ledger'da kendi haber + hesap + biçim kilidini alır; bir
+    // hesabın hatası diğerlerinin sonucunu etkilemez.
+    const rounds: Array<PublishTargets | null> = hasTargets ? targetRounds(targetLists) : [null]
     for (const id of targetIds) {
+      for (const round of rounds) {
+      const roundOverrides = round
+        ? { ...(overrides ?? {}), platforms: { facebook: !!round.facebook, instagram: !!round.instagram, threads: !!round.threads, twitter: false } }
+        : overrides
       const r = await publishOneSocial(id, {
         mode: mode ?? 'post',
         force,
         manual: true,
-        overrides,
+        overrides: roundOverrides,
         trigger: 'composer',
         ...(actor ? { actorUid: actor.uid } : {}),
         // Belirsiz kayıt onayı burada YOK: yalnızca kayıt-bazlı
         // /api/admin/social/publish-records/[id]/republish uç noktası verir.
-        ...(hasTargets ? { targets: publishTargets } : {}),
+        ...(round ? { targets: round } : {}),
       })
       results.push(r)
+      const publishTargets = round ?? {}
       if (actor) {
         const summarize = (x?: { success: boolean; accountId?: string; code?: string; ledgerStatus?: string; platformId?: string }) =>
           x ? { ok: x.success, account: x.accountId ?? 'legacy', code: x.code ?? null, status: x.ledgerStatus ?? null, externalPostId: x.platformId ?? null } : null
@@ -342,6 +356,9 @@ export async function POST(request: Request) {
           },
         })
       }
+      // İçerik nedeniyle hiç denenmediyse (aynı haber) sonraki turlar da denenmez.
+      if (r.skipped) break
+      }
       if (targetIds.length > 1) await new Promise(res => setTimeout(res, 1500))
     }
     } catch (err) {
@@ -354,6 +371,7 @@ export async function POST(request: Request) {
           code: 'server_error',
           outcome: 'server_error',
           results: await attachAccountNames(results, loadSocialAccount),
+          targetResults: targetResultRows(await attachAccountNames(results, loadSocialAccount)),
         },
         { status: 500 },
       )
@@ -367,8 +385,9 @@ export async function POST(request: Request) {
     // altyapı hatası DEĞİL: platform bazında yapılandırılmış sonuç 200 ile döner
     // (5xx gövdesi önündeki CDN tarafından HTML hata sayfasıyla değiştirilir ve
     // panel doğrulanmış diğer platform sonuçlarını göremez).
+    const rows: TargetResultRow[] = targetResultRows(named)
     if (targetIds.length === 1 && results[0].skipped) {
-      return NextResponse.json({ reshared: 0, succeeded: 0, failed: 1, outcome: 'skipped', error: results[0].reason, results: named }, { status: 422 })
+      return NextResponse.json({ reshared: 0, succeeded: 0, failed: 1, outcome: 'skipped', error: results[0].reason, results: named, targetResults: rows }, { status: 422 })
     }
     return NextResponse.json({
       reshared: results.length,
@@ -376,8 +395,9 @@ export async function POST(request: Request) {
       failed,
       mode: mode ?? 'post',
       outcome: shareOutcome(results),
-      ...(targetIds.length === 1 && !results[0].ok ? { error: results[0].reason ?? 'Paylaşım başarısız' } : {}),
+      ...(targetIds.length === 1 && !results.some((r) => r.ok) ? { error: results[0].reason ?? 'Paylaşım başarısız' } : {}),
       results: named,
+      targetResults: rows,
     })
   }
 

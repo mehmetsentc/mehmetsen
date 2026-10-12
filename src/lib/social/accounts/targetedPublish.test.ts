@@ -510,3 +510,97 @@ describe('force-reshare rotası', () => {
     function fbOnly() { return { facebook: true, instagram: false, threads: false, twitter: false } }
   })
 })
+
+describe('Görev 18 EK — aynı platformda birden fazla hesap', () => {
+  const IG_B = account({ platform: 'instagram', externalId: '7773', connectionMethod: 'instagram_login', displayName: 'IG B' })
+  const FB_C = account({ platform: 'facebook', externalId: '5553', connectionMethod: 'facebook_login', displayName: 'FB C' })
+  const body = (extra: Record<string, unknown>) => ({ ids: ['n1'], manual: true, force: false, headline: 'Antalya’da tramvay hattı açıldı', ...extra })
+  const req = (uid: string, b: unknown) =>
+    new Request(`${ORIGIN}/api/admin/social/force-reshare`, {
+      method: 'POST',
+      headers: { authorization: `Bearer tok-${uid}`, origin: ORIGIN, 'content-type': 'application/json' },
+      body: JSON.stringify(b),
+    })
+  type Row = { platform: string; accountId: string; format: string; success: boolean; code: string | null; externalPostId: string | null }
+  const post = async (b: unknown) => {
+    const { POST } = await import('@/app/api/admin/social/force-reshare/route')
+    const res = await POST(req('admin1', b))
+    return { status: res.status, json: (await res.json()) as { targetResults?: Row[]; outcome?: string; code?: string; accountId?: string } }
+  }
+  const publishCallsFor = (token: string) => meta(calls).filter((c) => c.method === 'POST' && accessTokenOf(c) === token && /(media_publish|photos|photo_stories|threads_publish)$/.test(new URL(c.url).pathname))
+
+  beforeEach(async () => {
+    await seed(IG_B, 'IGAA_TOKEN_B2', 'instagram_user')
+    await seed(FB_C, 'EAAG_PAGE_C', 'facebook_page')
+  })
+
+  it('aynı hikâye iki Instagram hesabına: her hesap ayrı satır, ayrı kilit, kendi anahtarıyla', async () => {
+    const r = await post(body({ mode: 'story', platforms: { facebook: false, instagram: true, threads: false, twitter: false }, targets: { instagram: [IG_A.id, IG_B.id] } }))
+    expect(r.status).toBe(200)
+    expect(r.json.targetResults).toEqual([
+      expect.objectContaining({ platform: 'instagram', accountId: IG_A.id, format: 'story', success: true }),
+      expect.objectContaining({ platform: 'instagram', accountId: IG_B.id, format: 'story', success: true }),
+    ])
+    expect(publishCallsFor('IGAA_TOKEN_A')).toHaveLength(1)
+    expect(publishCallsFor('IGAA_TOKEN_B2')).toHaveLength(1)
+    expect(ledger(IG_A.id, 'story')).toMatchObject({ status: 'succeeded' })
+    expect(ledger(IG_B.id, 'story')).toMatchObject({ status: 'succeeded' })
+  })
+
+  it('aynı haber iki Facebook Sayfasına + karma Instagram + Threads hedefleri', async () => {
+    const r = await post(body({ mode: 'post', platforms: { facebook: true, instagram: true, threads: true, twitter: false }, targets: { facebook: [FB_A.id, FB_C.id], instagram: [IG_A.id], threads: TH_A.id } }))
+    expect(r.status).toBe(200)
+    expect(r.json.outcome).toBe('published')
+    expect(r.json.targetResults?.map((x) => x.accountId).sort()).toEqual([FB_A.id, FB_C.id, IG_A.id, TH_A.id].sort())
+    expect(r.json.targetResults?.every((x) => x.success && x.externalPostId)).toBe(true)
+    expect(publishCallsFor('EAAG_PAGE_A')).toHaveLength(1)
+    expect(publishCallsFor('EAAG_PAGE_C')).toHaveLength(1)
+  })
+
+  it('bir hedefin hatası diğerinin başarısını etkilemez; kısmi sonuç açık', async () => {
+    failRule = (url, method) => (method === 'POST' && url.includes('/5553/') ? 'reject' : null)
+    const r = await post(body({ mode: 'post', platforms: { facebook: true, instagram: false, threads: false, twitter: false }, targets: { facebook: [FB_A.id, FB_C.id] } }))
+    expect(r.status).toBe(200)
+    expect(r.json.outcome).toBe('partial')
+    expect(r.json.targetResults?.find((x) => x.accountId === FB_A.id)).toMatchObject({ success: true })
+    expect(r.json.targetResults?.find((x) => x.accountId === FB_C.id)).toMatchObject({ success: false })
+    expect(ledger(FB_A.id)).toMatchObject({ status: 'succeeded' })
+    expect(ledger(FB_C.id)).toMatchObject({ status: 'failed' })
+  })
+
+  it('mükerrer hedef tek yayın üretir; tekrarlanan istek başarılı hesaplara yeniden yayın yapmaz', async () => {
+    const b = body({ mode: 'post', platforms: { facebook: false, instagram: true, threads: false, twitter: false }, targets: { instagram: [IG_A.id, IG_A.id, IG_B.id] } })
+    const first = await post(b)
+    expect(first.json.targetResults).toHaveLength(2)
+    expect(publishCallsFor('IGAA_TOKEN_A')).toHaveLength(1)
+    const second = await post(b)
+    expect(second.status).toBe(200)
+    expect(second.json.targetResults?.every((x) => !x.success && x.code === 'already_published')).toBe(true)
+    expect(publishCallsFor('IGAA_TOKEN_A')).toHaveLength(1)
+    expect(publishCallsFor('IGAA_TOKEN_B2')).toHaveLength(1)
+  })
+
+  it('yetkisiz / kapsam dışı / bozuk hedef sunucuda reddedilir; istek hiç başlamaz, başka hesaba düşmez', async () => {
+    // FB_B Ankara hesabı, haber Antalya: gönderi kapsamı dışında.
+    const out = await post(body({ mode: 'post', platforms: { facebook: true, instagram: false, threads: false, twitter: false }, targets: { facebook: [FB_A.id, FB_B.id] } }))
+    expect(out.status).toBe(409)
+    expect(out.json).toMatchObject({ code: 'outside_location', accountId: FB_B.id })
+    await fs.collection('socialAccounts').doc(IG_B.id).update({ status: 'needs_reauth' })
+    const broken = await post(body({ mode: 'post', platforms: { facebook: false, instagram: true, threads: false, twitter: false }, targets: { instagram: [IG_A.id, IG_B.id] } }))
+    expect(broken.status).toBe(409)
+    expect(broken.json.accountId).toBe(IG_B.id)
+    const { POST } = await import('@/app/api/admin/social/force-reshare/route')
+    expect((await POST(req('editor1', body({ mode: 'post', platforms: { facebook: true, instagram: false, threads: false, twitter: false }, targets: { facebook: [FB_A.id] } })))).status).toBe(403)
+    expect((await post(body({ mode: 'post', platforms: { facebook: true, instagram: false, threads: false, twitter: false }, targets: { facebook: [IG_A.id] } }))).status).toBe(400)
+    expect(meta(calls).filter((c) => c.method === 'POST')).toEqual([])
+    expect(fs.docs('socialPublishRecords')).toHaveLength(0)
+  })
+
+  it('hedef listesi ayrıştırma: tekilleştirir, sınır uygular, eski tek-değer biçimini kabul eder', async () => {
+    const { parseTargetListsInput, targetRounds } = await import('./targetedPublish')
+    expect(parseTargetListsInput({ instagram: [IG_A.id, IG_A.id, IG_B.id], facebook: FB_A.id })).toEqual({ ok: true, lists: { instagram: [IG_A.id, IG_B.id], facebook: [FB_A.id] }, total: 3 })
+    expect(parseTargetListsInput({ instagram: Array.from({ length: 11 }, (_, i) => `instagram_${i + 1}`) })).toMatchObject({ ok: false, code: 'too_many_targets' })
+    expect(parseTargetListsInput({ facebook: [IG_A.id] })).toMatchObject({ ok: false, code: 'platform_mismatch' })
+    expect(targetRounds({ instagram: ['instagram_1', 'instagram_2'], facebook: ['facebook_1'] })).toEqual([{ facebook: 'facebook_1', instagram: 'instagram_1' }, { instagram: 'instagram_2' }])
+  })
+})

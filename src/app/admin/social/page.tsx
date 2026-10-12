@@ -35,7 +35,9 @@ import {
 import { SocialAutomationDesk } from '@/components/admin/SocialAutomationDesk'
 import { SocialAccountsPanel } from '@/components/admin/social/SocialAccountsPanel'
 import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublishPanel'
-import { ComposerTargetPicker, EMPTY_TARGETS, accountLabel, explicitTargets as pickTargets, type TargetOption, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { ComposerTargetPicker, EMPTY_TARGETS, explicitTargets as pickTargets, selectedLabels, targetCount, type TargetOption, type TargetPlatform, type TargetSelection } from '@/components/admin/social/ComposerTargetPicker'
+import { TargetResultList } from '@/components/admin/social/ManualShareFlow'
+import { describeTargetRow, isSafelyRetryable, rowAsResult, type TargetRowLike } from '@/lib/social/shareResultText'
 import { describeShareResult, overallShareState, resultsOf, readJsonResponse, unreadableResponseText, type ShareResultLike } from '@/lib/social/shareResultText'
 import { showShareToast } from '@/lib/social/shareToast'
 import { imageModeProblem, type ImageMode } from '@/lib/social/accounts/capabilities'
@@ -290,8 +292,10 @@ export default function SocialPage() {
   const [lastResult, setLastResult] = useState<LastShareResult | null>(null)
   const [targetSel, setTargetSel] = useState<TargetSelection>(EMPTY_TARGETS)
   const [targetOptions, setTargetOptions] = useState<TargetOption[]>([])
+  const [targetRows, setTargetRows] = useState<TargetRowLike[]>([])
+  const [retryKeys, setRetryKeys] = useState<string[]>([])
   useEffect(() => {
-    setPlatforms({ facebook: !!targetSel.facebook, instagram: !!targetSel.instagram, threads: !!targetSel.threads, twitter: false })
+    setPlatforms({ facebook: targetSel.facebook.length > 0, instagram: targetSel.instagram.length > 0, threads: targetSel.threads.length > 0, twitter: false })
   }, [targetSel])
   /** Post görsel biçimi — varsayılan açık tek görsel; kaydırmalı yalnızca destekleyen platformlarda. */
   const [imageMode, setImageMode] = useState<ImageMode>('single')
@@ -802,13 +806,23 @@ export default function SocialPage() {
       return
     }
 
-    // Görev 17: yalnız açıkça seçilen bağlı hesaplar (eski Onyeditivi yolu yok).
-    const explicitTargets = pickTargets(targetSel) as Record<string, string>
-    if (shareMode === 'story') delete explicitTargets.threads
-    if (Object.keys(explicitTargets).length === 0) {
+    // Görev 18 EK: platform başına birden fazla açıkça seçilen bağlı hesap (legacy yok).
+    const effectiveSel: TargetSelection = shareMode === 'story' ? { ...targetSel, threads: [] } : targetSel
+    const explicitTargets = pickTargets(effectiveSel)
+    if (targetCount(effectiveSel) === 0) {
       toast.error('Paylaşım için en az bir bağlı hesap seçin')
       return
     }
+    const confirmText = [
+      'Yayın onayı',
+      `Haber: ${selected.title ?? selected.id}`,
+      `Biçim: ${shareMode === 'story' ? 'Hikâye' : shareMode === 'both' ? 'Görselli gönderi + hikâye' : 'Görselli gönderi'}`,
+      `Hedef hesaplar (${targetCount(effectiveSel)}):`,
+      ...selectedLabels(effectiveSel, targetOptions).map((l) => `• ${l}`),
+      '',
+      'Her hesap ayrı yayımlanır; zaten yayımlanmış hesaba tekrar gönderilmez.',
+    ].join('\n')
+    if (!window.confirm(confirmText)) return
     const legacyInvolved = false
     const needsForce = false
 
@@ -863,6 +877,8 @@ export default function SocialPage() {
         error?: string
         code?: string
         platform?: string
+        accountId?: string
+        targetResults?: TargetRowLike[]
         results?: Array<{
           ok: boolean
           reason?: string
@@ -879,7 +895,9 @@ export default function SocialPage() {
       const data = parsed.data
 
       const r0 = data.results?.[0]
-      if (!res.ok) {
+      setTargetRows(data.targetResults ?? [])
+      setRetryKeys([])
+      if (!res.ok && !(data.targetResults ?? []).length) {
         const targetCodeText: Record<string, string> = {
           paused: 'Hedef hesap duraklatılmış',
           needs_reauth: 'Hedef hesabın yeniden bağlanması gerekiyor',
@@ -900,20 +918,10 @@ export default function SocialPage() {
         return
       }
 
-      // Platform bazında: hesap · durum · gönderi kimliği (her platform bağımsız).
-      const lines: string[] = []
-      const pushLines = (prefix: string, set?: Record<string, unknown>) => {
-        if (!set) return
-        for (const [key, label] of [['facebook', 'FB'], ['instagram', 'IG'], ['threads', 'Th'], ['twitter', 'X']] as const) {
-          const v = set[key] as ShareResultLike | undefined
-          if (!v || v.error === 'skipped') continue
-          const line = describeShareResult(`${prefix} ${label}`, v)
-          lines.push(key === 'twitter' ? `${line} (X ortak kilit dışında)` : line)
-        }
-      }
-      pushLines('Post', r0?.post as Record<string, unknown> | undefined)
-      pushLines('Hikâye', r0?.story as Record<string, unknown> | undefined)
-      const overall = overallShareState(resultsOf(r0 as Parameters<typeof resultsOf>[0]))
+      // Hedef hesap başına satır: platform · hesap · biçim · sonuç · güvenli neden · dış gönderi kimliği.
+      const rows = data.targetResults ?? []
+      const lines = rows.map(describeTargetRow)
+      const overall = overallShareState(rows.map(rowAsResult))
       const anyPublished = overall === 'published' || overall === 'partial'
       const msg = lines.join('\n') || 'Paylaşım sonucu yok'
       showShareToast(overall, lines, { id: toastId })
@@ -2034,20 +2042,7 @@ export default function SocialPage() {
                   <div>
                     <FieldLabel>Hedef hesaplar</FieldLabel>
                     <ComposerTargetPicker newsId={selected.id} mode={shareMode} value={targetSel} onChange={setTargetSel} onOptions={setTargetOptions} />
-                    {Object.keys(pickTargets(targetSel)).length > 0 && (
-                      <p className="mt-2 text-xs text-[rgb(var(--color-text))]">
-                        Paylaşılacak:{' '}
-                        <b>
-                          {Object.entries(pickTargets(targetSel))
-                            .filter(([p]) => shareMode !== 'story' || p !== 'threads')
-                            .map(([p, id]) => {
-                              const o = targetOptions.find((x) => x.accountId === id)
-                              return `${o ? accountLabel(o) : id} (${p === 'facebook' ? 'FB' : p === 'instagram' ? 'IG' : 'Threads'})`
-                            })
-                            .join(', ')}
-                        </b>
-                      </p>
-                    )}
+
                   </div>
 
                   {/* Görsel biçimi (yalnızca post) — seçilebilir = platform ∩ NaHaber uygulaması */}
@@ -2229,6 +2224,27 @@ export default function SocialPage() {
                           : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
                       )}>
                         {lastResult.message}
+                      </div>
+                    )}
+                    {targetRows.length > 0 && (
+                      <div className="space-y-1.5">
+                        <TargetResultList rows={targetRows} retry={retryKeys} onToggleRetry={(k) => setRetryKeys((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))} />
+                        {targetRows.some(isSafelyRetryable) && (
+                          <button
+                            type="button"
+                            disabled={retryKeys.length === 0}
+                            onClick={() => {
+                              const sel: TargetSelection = { facebook: [], instagram: [], threads: [] }
+                              for (const r of targetRows) if (retryKeys.includes(`${r.accountId}__${r.format}`) && isSafelyRetryable(r)) sel[r.platform as TargetPlatform].push(r.accountId)
+                              setTargetSel(sel)
+                              setTargetRows([])
+                              toast('Yalnız seçilen başarısız hedefler hedefe alındı — kontrol edip «Paylaş»a basın')
+                            }}
+                            className="rounded-lg border border-blue-600 px-2.5 py-1.5 text-xs font-bold text-blue-700 disabled:opacity-40 dark:text-blue-300"
+                          >
+                            Seçilen başarısız hedefleri yeniden denemek için hedefe al ({retryKeys.length})
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

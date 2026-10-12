@@ -46,6 +46,64 @@ export function parseTargetsInput(raw: unknown): TargetsParse {
   return { ok: true, targets: out }
 }
 
+/** Görev 18 EK: several accounts per platform → `{ platform: accountId[] }` (deduplicated). */
+export type PublishTargetLists = Partial<Record<TargetablePlatform, string[]>>
+export const MAX_TARGETS_PER_PLATFORM = 10
+export const MAX_TARGETS_TOTAL = 20
+
+export type TargetListsParse = { ok: true; lists: PublishTargetLists; total: number } | { ok: false; code: string; platform?: string }
+
+/**
+ * `{ instagram: ['instagram_1', 'instagram_2'], facebook: 'facebook_9' }` → explicit
+ * account ids per platform. A single string is still accepted (old clients).
+ * Duplicates (same real account — the id encodes platform + external id) are
+ * dropped, so one account + format can never be published twice by one request.
+ */
+export function parseTargetListsInput(raw: unknown): TargetListsParse {
+  if (raw === undefined || raw === null) return { ok: true, lists: {}, total: 0 }
+  if (typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, code: 'invalid_targets' }
+  const lists: PublishTargetLists = {}
+  let total = 0
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!(TARGETABLE_PLATFORMS as readonly string[]).includes(key)) return { ok: false, code: 'target_platform_unsupported', platform: key }
+    const values = value === undefined || value === null ? [] : Array.isArray(value) ? value : [value]
+    const ids: string[] = []
+    for (const v of values) {
+      if (v === 'legacy' || v === null || v === undefined || v === '') continue
+      if (typeof v !== 'string' || !isWellFormedAccountId(v)) return { ok: false, code: 'invalid_account_id', platform: key }
+      if (!v.startsWith(`${key}_`)) return { ok: false, code: 'platform_mismatch', platform: key }
+      if (!ids.includes(v)) ids.push(v)
+    }
+    if (ids.length > MAX_TARGETS_PER_PLATFORM) return { ok: false, code: 'too_many_targets', platform: key }
+    if (ids.length) {
+      lists[key as TargetablePlatform] = ids
+      total += ids.length
+    }
+  }
+  if (total > MAX_TARGETS_TOTAL) return { ok: false, code: 'too_many_targets' }
+  return { ok: true, lists, total }
+}
+
+/**
+ * Split per-platform lists into sequential rounds of at most one account per
+ * platform (round i = i-th account of each platform). Rounds run one after
+ * another and platforms inside a round run sequentially, so platform requests
+ * stay bounded (one at a time) — no unbounded parallel fan-out.
+ */
+export function targetRounds(lists: PublishTargetLists): PublishTargets[] {
+  const max = Math.max(0, ...Object.values(lists).map((l) => l?.length ?? 0))
+  const rounds: PublishTargets[] = []
+  for (let i = 0; i < max; i++) {
+    const r: PublishTargets = {}
+    for (const p of TARGETABLE_PLATFORMS) {
+      const id = lists[p]?.[i]
+      if (id) r[p] = id
+    }
+    rounds.push(r)
+  }
+  return rounds
+}
+
 export type PreflightResult = { ok: true } | { ok: false; platform: TargetablePlatform; code: string }
 
 /** Validate every explicit target before any media work or publishing starts. */
