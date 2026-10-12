@@ -15,10 +15,20 @@
  *   categories_or_featured  → category ∈ seçilen  VEYA  öne çıkan
  *   featured_in_categories  → category ∈ seçilen  VE    öne çıkan
  *
- * "national" geo = editorially national news (not yerel / Kıbrıs scoped).
- * It is NOT "all provinces": `all_provinces` = any news WITH a province;
- * `any` = every news item (explicit). A news item without location data is
- * never treated as national or as belonging to a province.
+ * Geo kinds, defined ONLY by real news fields (no guessing):
+ *   national      = has a category outside the yerel / Kıbrıs / Dünya trees and
+ *                   is not marked abroad. This is "ulusal kategori", NOT a
+ *                   verified «Türkiye haberi»: the news model has no reliable
+ *                   country field for national news (CMS writes country only
+ *                   with a domestic il; the AI pipeline falls back to
+ *                   'Türkiye'), so the category is what defines it.
+ *   world         = category «Dünya» (categoryId / originalCategoryId 'dunya')
+ *                   or abroad geo (countrySlug, or a non-Türkiye country,
+ *                   without a domestic il).
+ *   all_provinces = any news WITH a province (citySlug).
+ *   any           = every news item, INCLUDING ones whose location is unknown.
+ * A news item without location data is never treated as national, world or
+ * belonging to a province.
  */
 import { DISTRICT_TO_PROVINCE_SLUG, TURKISH_PROVINCES } from '@/constants/cities'
 import { PROVINCE_DISTRICTS } from '@/constants/turkishDistricts'
@@ -27,10 +37,19 @@ import type { SocialAccountOwnership, SocialAccountPlatform } from '../accounts/
 
 export type AutomationGeo =
   | { kind: 'national' }
+  | { kind: 'world' }
   | { kind: 'all_provinces' }
   | { kind: 'provinces'; citySlugs: string[] }
   | { kind: 'districts'; citySlug: string; districtSlugs: string[] }
   | { kind: 'any' }
+
+/** What each location option is based on — shown under the selector (real fields only). */
+export const GEO_KIND_BASIS: Partial<Record<AutomationGeo['kind'], string>> = {
+  national: 'Ulusal = haberin kategorisi yerel, Kıbrıs veya Dünya ağacında değil ve yurt dışı konumu yok. Haberde güvenilir bir «Türkiye» alanı olmadığından bu bir konum doğrulaması değil, kategori sınıflandırmasıdır. İli ve kategorisi olmayan haber ulusal sayılmaz.',
+  world: 'Dünya = kategori «Dünya» ya da haberde yurt dışı konum (ülke) var ve yurt içi il yok.',
+  all_provinces: 'Yalnız il bilgisi olan haberler. Konumu belirsiz haber il hedefine gönderilmez.',
+  any: 'Konumu belirsiz (ili ve ulusal/dünya kategorisi olmayan) haberler de dahildir. Bu seçenek il hedefi değildir.',
+}
 
 export const FEATURED_MODES = ['categories_only', 'featured_only', 'categories_or_featured', 'featured_in_categories'] as const
 export type FeaturedMode = (typeof FEATURED_MODES)[number]
@@ -143,6 +162,8 @@ export function parseGeo(raw: unknown): AutomationGeo | string {
   switch (g.kind) {
     case 'national':
       return { kind: 'national' }
+    case 'world':
+      return { kind: 'world' }
     case 'any':
       return { kind: 'any' }
     case 'all_provinces':

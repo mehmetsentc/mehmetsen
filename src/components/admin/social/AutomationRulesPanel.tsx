@@ -20,7 +20,7 @@ import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishForma
 import type { SocialAccountPublic, SocialAccountPlatform } from '@/lib/social/accounts/types'
 import { summarizeRule } from '@/lib/social/automation/match'
 import { draftRuleFor } from '@/lib/social/automation/drafts'
-import { RULE_LIMITS, type AutomationGeo, type AutomationRule, type AutomationRuleInput, type FeaturedKind, type FeaturedMode } from '@/lib/social/automation/types'
+import { GEO_KIND_BASIS, RULE_LIMITS, type AutomationGeo, type AutomationRule, type AutomationRuleInput, type FeaturedKind, type FeaturedMode } from '@/lib/social/automation/types'
 import type { AutomationJobPublic, AutomationJobStatus } from '@/lib/social/automation/jobs'
 
 type RuleRow = AutomationRule & { summary: string }
@@ -509,6 +509,16 @@ function LegacyHandoffSection({
   accountsById: Map<string, SocialAccountPublic>
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [identity, setIdentity] = useState<{ loading: boolean; text: string | null; detail: string | null }>({ loading: false, text: null, detail: null })
+  const checkThreadsIdentity = async () => {
+    setIdentity({ loading: true, text: null, detail: null })
+    const r = await api<{ text: string; envConsistencyText: string | null; legacy: { tokenUserId: string | null; username: string | null; envUserId: string | null }; oauth: Array<{ externalId: string; username: string | null }> }>('/api/admin/social/threads-identity')
+    if (!r.ok) return setIdentity({ loading: false, text: r.error, detail: null })
+    const d = r.data
+    const legacyPart = `Eski yapılandırma: ${d.legacy.username ? `@${d.legacy.username}` : 'kullanıcı adı yok'} · kimlik ${d.legacy.tokenUserId ?? '—'} (env ${d.legacy.envUserId ?? '—'})`
+    const oauthPart = d.oauth.length ? `Resmî bağlantı: ${d.oauth.map((o) => `${o.username ? `@${o.username}` : '—'} · kimlik ${o.externalId}`).join('; ')}` : 'Resmî bağlantı: yok'
+    setIdentity({ loading: false, text: [d.text, d.envConsistencyText].filter(Boolean).join(' '), detail: `${legacyPart} — ${oauthPart}` })
+  }
   if (!data) return null
   const rows = (['facebook', 'instagram', 'threads'] as const)
     .map((p) => ({ platform: p, accountId: data.legacyAccountIds[p] }))
@@ -536,6 +546,16 @@ function LegacyHandoffSection({
           <div key={r.platform} className="flex flex-wrap items-center gap-3 rounded-xl bg-[rgb(var(--color-card))] p-3 text-sm">
             <span className="font-semibold">{PLATFORM_SHORT[r.platform]}</span>
             <span className="text-[rgb(var(--color-muted))]">{connected ? accountLabel(acc, r.accountId) : 'resmî bağlantı yok'}</span>
+            {r.platform === 'threads' && !connected ? (
+              <span className="w-full space-y-1 text-xs">
+                <button type="button" disabled={identity.loading} onClick={() => void checkThreadsIdentity()} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 font-semibold">
+                  {identity.loading ? 'Kontrol ediliyor…' : 'Kimliği kontrol et (salt okunur)'}
+                </button>
+                {identity.text ? <span className="block text-[rgb(var(--color-text))]">{identity.text}</span> : null}
+                {identity.detail ? <span className="block text-[rgb(var(--color-muted))]">{identity.detail}</span> : null}
+                <span className="block text-[rgb(var(--color-muted))]">Kimlikler eşitlenmez; ledger geçmişi ve devir değişmez.</span>
+              </span>
+            ) : null}
             <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', handed ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700')}>
               {handed ? `Devredildi (${handedFormats.map((f) => FORMAT_TEXT[f]).join(' + ')}) — eski otomatik yol bu biçimde durdu` : 'Eski otomatik yol çalışıyor'}
             </span>
@@ -661,9 +681,10 @@ function RuleForm({
           {([
             ['provinces', 'İller'],
             ['districts', 'İlçeler'],
-            ['national', 'Ulusal haberler'],
-            ['all_provinces', 'Tüm illerden haberler'],
-            ['any', 'Tüm haberler (ulusal + yerel)'],
+            ['national', 'Ulusal kategoriler'],
+            ['world', 'Dünya haberleri'],
+            ['all_provinces', 'İl bilgisi olan tüm haberler'],
+            ['any', 'Tüm haberler (konumu belirsiz dahil)'],
           ] as const).map(([k, label]) => (
             <label key={k} className="inline-flex items-center gap-1.5">
               <input
@@ -677,7 +698,7 @@ function RuleForm({
             </label>
           ))}
         </div>
-        {geo.kind === 'national' ? <p className="text-xs text-[rgb(var(--color-muted))]">Ulusal = yerel ya da Kıbrıs kapsamlı olmayan haberler. «Tüm iller» anlamına gelmez.</p> : null}
+        <GeoKindHint kind={geo.kind} />
         {geo.kind === 'provinces' ? (
           <div className="space-y-2">
             <input value={provQuery} onChange={(e) => setProvQuery(e.target.value)} placeholder="İl ara" className={input_} />
@@ -903,4 +924,9 @@ function EligibilityQuickAction({ newsId, onDone }: { newsId: string; onDone: ()
       </button>
     </div>
   )
+}
+
+function GeoKindHint({ kind }: { kind: AutomationGeo['kind'] }) {
+  const text = GEO_KIND_BASIS[kind]
+  return text ? <p className="text-xs text-[rgb(var(--color-muted))]">{text}</p> : null
 }

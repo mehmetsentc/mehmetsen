@@ -603,4 +603,49 @@ describe('Görev 18 EK — aynı platformda birden fazla hesap', () => {
     expect(parseTargetListsInput({ facebook: [IG_A.id] })).toMatchObject({ ok: false, code: 'platform_mismatch' })
     expect(targetRounds({ instagram: ['instagram_1', 'instagram_2'], facebook: ['facebook_1'] })).toEqual([{ facebook: 'facebook_1', instagram: 'instagram_1' }, { instagram: 'instagram_2' }])
   })
+
+  it('süre bütçesi: ilk tur her zaman başlar, bütçe dolunca yeni tur başlamaz; başlamayan hedefler biçim bazında listelenir', async () => {
+    const { canStartRound, notAttemptedTargets, ROUND_START_BUDGET_MS } = await import('./targetedPublish')
+    expect(canStartRound(0, 0, 10 * ROUND_START_BUDGET_MS)).toBe(true)
+    expect(canStartRound(1, 0, ROUND_START_BUDGET_MS - 1)).toBe(true)
+    expect(canStartRound(1, 0, ROUND_START_BUDGET_MS)).toBe(false)
+    const rounds = [{ facebook: 'facebook_1', instagram: 'instagram_1' }, { instagram: 'instagram_2', threads: 'threads_1' }]
+    expect(notAttemptedTargets(rounds, 1, 'both')).toEqual([
+      { platform: 'instagram', accountId: 'instagram_2', format: 'post' },
+      { platform: 'instagram', accountId: 'instagram_2', format: 'story' },
+      { platform: 'threads', accountId: 'threads_1', format: 'post' },
+    ])
+  })
+
+  it('süre bütçesi aşılırsa tamamlanan hedef korunur, kalan hedef «süre sınırı» ile kilitsiz ve platforma gitmeden döner', async () => {
+    const { ROUND_START_BUDGET_MS } = await import('./targetedPublish')
+    const realNow = Date.now.bind(Date)
+    let skew = 0
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + skew)
+    // İlk hesabın yayını tamamlanınca saat bütçenin ötesine atlar.
+    failRule = (url, method) => {
+      if (method === 'POST' && /media_publish$/.test(new URL(url).pathname)) skew = ROUND_START_BUDGET_MS + 1000
+      return null
+    }
+    try {
+      const r = await post(body({ mode: 'post', platforms: { facebook: false, instagram: true, threads: false, twitter: false }, targets: { instagram: [IG_A.id, IG_B.id] } }))
+      expect(r.status).toBe(200)
+      expect(r.json.outcome).toBe('partial')
+      expect(r.json.targetResults).toEqual([
+        expect.objectContaining({ accountId: IG_A.id, format: 'post', success: true }),
+        expect.objectContaining({ accountId: IG_B.id, format: 'post', success: false, code: 'time_budget', externalPostId: null }),
+      ])
+      expect(publishCallsFor('IGAA_TOKEN_A')).toHaveLength(1)
+      expect(publishCallsFor('IGAA_TOKEN_B2')).toHaveLength(0)
+      expect(ledger(IG_A.id)).toMatchObject({ status: 'succeeded' })
+      expect(ledger(IG_B.id)).toBeUndefined()
+      const { isSafelyRetryable, describeTargetRow, overallShareState, rowAsResult } = await import('../shareResultText')
+      const row = r.json.targetResults!.find((x) => x.accountId === IG_B.id)! as unknown as Parameters<typeof isSafelyRetryable>[0]
+      expect(isSafelyRetryable(row)).toBe(true)
+      expect(describeTargetRow(row)).toContain('süre sınırı')
+      expect(overallShareState(r.json.targetResults!.map((x) => rowAsResult(x as unknown as Parameters<typeof rowAsResult>[0])))).toBe('partial')
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })

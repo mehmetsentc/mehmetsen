@@ -17,6 +17,8 @@ function news(over: Partial<NewsFacts> = {}): NewsFacts {
     localFeatured: false,
     eligibleAt: null,
     publisherId: null,
+    countrySlug: '',
+    country: '',
     ...over,
   }
 }
@@ -163,18 +165,48 @@ describe('validateRuleInput', () => {
 })
 
 describe('Görev 18 — konum sınıflandırması', () => {
-  it('kategorisi ve ili olmayan haber ulusal sayılmaz; «tüm konumlar» konumu eksik haberi almaz', async () => {
+  it('kategorisi ve ili olmayan haber ulusal / il / dünya sayılmaz; «tüm haberler» konumu belirsiz haberi kapsar', async () => {
     const { geoMatch, locationMissing } = await import('./match')
     const bare = newsFactsFrom('x', { status: 'published' })
     expect(locationMissing(bare)).toBe(true)
     expect(geoMatch({ geo: { kind: 'national' } }, bare).ok).toBe(false)
-    expect(geoMatch({ geo: { kind: 'any' } }, bare).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'world' } }, bare).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'all_provinces' } }, bare).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'provinces', citySlugs: ['antalya'] } }, bare).ok).toBe(false)
+    const anyBare = geoMatch({ geo: { kind: 'any' } }, bare)
+    expect(anyBare.ok).toBe(true)
+    expect(anyBare.reason).toContain('belirsiz')
     const yerelNoCity = newsFactsFrom('y', { categoryId: 'yerel-asayis' })
-    expect(geoMatch({ geo: { kind: 'any' } }, yerelNoCity).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'any' } }, yerelNoCity).ok).toBe(true)
+    expect(geoMatch({ geo: { kind: 'all_provinces' } }, yerelNoCity).ok).toBe(false)
+    expect(geoMatch({ geo: { kind: 'national' } }, yerelNoCity).ok).toBe(false)
     const national = newsFactsFrom('z', { categoryId: 'gundem' })
     expect(geoMatch({ geo: { kind: 'national' } }, national).ok).toBe(true)
+    expect(geoMatch({ geo: { kind: 'world' } }, national).ok).toBe(false)
     expect(geoMatch({ geo: { kind: 'any' } }, national).ok).toBe(true)
     expect(geoMatch({ geo: { kind: 'any' } }, newsFactsFrom('w', { categoryId: 'yerel-asayis', citySlug: 'izmir' })).ok).toBe(true)
+  })
+
+  it('Dünya ulusal sayılmaz; dünya yalnız gerçek alanlardan (Dünya kategorisi / yurt dışı konum) belirlenir', async () => {
+    const { geoMatch, isWorldNews, isNationalNews, locationMissing } = await import('./match')
+    const dunya = newsFactsFrom('d', { categoryId: 'dunya', countrySlug: 'almanya', country: 'Almanya' })
+    expect(isWorldNews(dunya)).toBe(true)
+    expect(isNationalNews(dunya)).toBe(false)
+    expect(geoMatch({ geo: { kind: 'world' } }, dunya).ok).toBe(true)
+    expect(geoMatch({ geo: { kind: 'national' } }, dunya).ok).toBe(false)
+    expect(locationMissing(dunya)).toBe(false)
+    // Yurt dışı konumlu ama başka kategoride (ör. Spor) → dünya, ulusal değil.
+    const abroadSport = newsFactsFrom('a', { categoryId: 'spor', countrySlug: 'ingiltere' })
+    expect(isWorldNews(abroadSport)).toBe(true)
+    expect(geoMatch({ geo: { kind: 'national' } }, abroadSport).ok).toBe(false)
+    // CMS 'Türkiye' yalnız yurt içi il ile yazar; AI 'Türkiye' yedeği dünya sayılmaz.
+    const trCountry = newsFactsFrom('t', { categoryId: 'ekonomi', country: 'Türkiye' })
+    expect(isWorldNews(trCountry)).toBe(false)
+    expect(isNationalNews(trCountry)).toBe(true)
+    // Yurt içi il varsa ülke alanı dünya yapmaz.
+    expect(isWorldNews(newsFactsFrom('i', { categoryId: 'yerel-gundem', citySlug: 'izmir', country: 'Almanya' }))).toBe(false)
+    // Ulusal olmayan kategori kendiliğinden «Türkiye haberi» sayılmaz: Kıbrıs ulusal değil.
+    expect(isNationalNews(newsFactsFrom('k', { categoryId: 'kibris-haberleri' }))).toBe(false)
   })
 
   it('otomatik hikâye öne çıkan koşulu ister', () => {

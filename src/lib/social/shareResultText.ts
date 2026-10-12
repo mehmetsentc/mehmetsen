@@ -26,6 +26,8 @@ export type ShareState =
   | 'rate_limited'
   | 'failed'
   | 'not_attempted'
+  | 'time_budget'
+  | 'not_attempted_after_error'
 
 const STATE_TEXT: Record<ShareState, string> = {
   published: 'yayımlandı',
@@ -38,6 +40,8 @@ const STATE_TEXT: Record<ShareState, string> = {
   rate_limited: 'platform hız sınırı — daha sonra deneyin',
   failed: 'başarısız',
   not_attempted: 'denenmedi',
+  time_budget: 'süre sınırı doldu — gönderilmedi (kilit alınmadı, platforma gidilmedi); yeniden seçip güvenle gönderebilirsiniz',
+  not_attempted_after_error: 'sunucu hatası nedeniyle denenmedi (platforma gidilmedi); önce diğer sonuçları kontrol edin',
 }
 
 const MARK: Record<ShareState, string> = {
@@ -51,6 +55,8 @@ const MARK: Record<ShareState, string> = {
   rate_limited: '✗',
   failed: '✗',
   not_attempted: '—',
+  time_budget: '⏸',
+  not_attempted_after_error: '—',
 }
 
 /** Meta error code parsed from the safe error text ("kod 190/460"). */
@@ -67,6 +73,8 @@ export function shareState(r?: ShareResultLike | null): ShareState {
   if (r.code === 'already_published') return 'already_published'
   if (r.code === 'in_progress') return 'in_progress'
   if (r.code === 'uncertain_previous_attempt') return 'uncertain_previous_attempt'
+  if (r.code === 'time_budget') return 'time_budget'
+  if (r.code === 'not_attempted_after_error') return 'not_attempted_after_error'
   if (r.error === 'not attempted') return 'not_attempted'
   if (r.code === 'token_invalid') return 'token_invalid'
   const meta = metaCodeFromSafeError(r.error)

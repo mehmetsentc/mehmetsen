@@ -104,6 +104,41 @@ export function targetRounds(lists: PublishTargetLists): PublishTargets[] {
   return rounds
 }
 
+/**
+ * Request time budget for sequential multi-target publishing (Görev 18).
+ * The route's `maxDuration` is 300 s; a single round (FB → IG → Threads,
+ * post and/or story, sequential, each with its own container polling) can
+ * take tens of seconds. A NEW round is not started once this much time has
+ * passed, so the last started round still has room to finish. Targets of the
+ * rounds that were not started took no ledger lock and made no platform call:
+ * they are reported as «süre sınırı — gönderilmedi» and may be safely
+ * re-selected. Completed targets keep their ledger results.
+ */
+export const ROUND_START_BUDGET_MS = 150_000
+
+export function canStartRound(roundIndex: number, startedAt: number, now: number): boolean {
+  return roundIndex === 0 || now - startedAt < ROUND_START_BUDGET_MS
+}
+
+export interface NotAttemptedTarget {
+  platform: TargetablePlatform
+  accountId: string
+  format: PublishFormat
+}
+
+/** Targets (account × format) of the rounds from `fromRound` on — never attempted. */
+export function notAttemptedTargets(rounds: PublishTargets[], fromRound: number, mode: ComposerMode): NotAttemptedTarget[] {
+  const out: NotAttemptedTarget[] = []
+  for (const round of rounds.slice(fromRound)) {
+    for (const platform of TARGETABLE_PLATFORMS) {
+      const accountId = round[platform]
+      if (!accountId) continue
+      for (const format of requiredFormats(platform, mode)) out.push({ platform, accountId, format })
+    }
+  }
+  return out
+}
+
 export type PreflightResult = { ok: true } | { ok: false; platform: TargetablePlatform; code: string }
 
 /** Validate every explicit target before any media work or publishing starts. */

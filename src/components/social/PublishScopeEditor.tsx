@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import type { AccountPublishScope } from '@/lib/social/accounts/publishScope'
-import type { AutomationGeo } from '@/lib/social/automation/types'
+import { GEO_KIND_BASIS, type AutomationGeo } from '@/lib/social/automation/types'
 import type { PublishFormat } from '@/lib/social/accounts/capabilities'
 import { socialApi, type SocialAccountRow } from './socialClient'
 import { CategoryPicker } from './CategoryPicker'
@@ -21,9 +21,10 @@ import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
 const GEO_KINDS: Array<[AutomationGeo['kind'], string]> = [
   ['provinces', 'Belirli il(ler)'],
   ['districts', 'Belirli ilçe(ler)'],
-  ['national', 'Ulusal haberler'],
-  ['all_provinces', 'Tüm illerden haberler'],
-  ['any', 'Tüm konumlar (il + ulusal + dünya)'],
+  ['national', 'Ulusal kategoriler (yerel, Kıbrıs, Dünya hariç)'],
+  ['world', 'Dünya haberleri'],
+  ['all_provinces', 'İl bilgisi olan tüm haberler'],
+  ['any', 'Tüm haberler (konumu belirsiz olanlar dahil)'],
 ]
 export const ALL_PROVINCES = TURKISH_PROVINCES.map((p) => ({ slug: p.slug, name: p.name }))
 
@@ -70,6 +71,7 @@ function GeoFieldset({
           </label>
         ))}
       </div>
+      {GEO_KIND_BASIS[geo.kind] ? <p className="text-[11px] text-[rgb(var(--color-muted))]">{GEO_KIND_BASIS[geo.kind]}</p> : null}
       {geo.kind === 'provinces' && (
         <div className="max-h-40 overflow-auto rounded-lg border border-[rgb(var(--color-border))] p-2">
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">

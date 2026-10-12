@@ -26,6 +26,10 @@ export interface NewsFacts {
   localFeatured: boolean
   /** Publisher that published the news (publisher studio), if any. */
   publisherId: string | null
+  /** Abroad markers written by the CMS geo writer (empty for domestic news). */
+  countrySlug: string
+  /** Raw `country` text (CMS: only with a domestic il → 'Türkiye'; abroad → country name). */
+  country: string
   /**
    * When the news became publicly published for automation purposes: the
    * later of `publishedAt` and the moment a CMS hook saw it go live (a draft
@@ -55,6 +59,8 @@ export function newsFactsFrom(id: string, d: Record<string, unknown>): NewsFacts
     featured: d.featured === true || d.isFeatured === true,
     localFeatured: d.localFeatured === true,
     publisherId: typeof d.publisherId === 'string' && d.publisherId.trim() ? d.publisherId.trim() : null,
+    countrySlug: str(d.countrySlug),
+    country: str(d.country),
     eligibleAt: publishedAt,
   }
 }
@@ -91,19 +97,40 @@ function provinceLabel(slug: string): string {
   }
 }
 
+const TURKIYE = new Set(['turkiye', 'türkiye', 'turkey', 'tr'])
+
 /**
- * National = classified (has a category) and not in the yerel / Kıbrıs trees.
+ * World = «Dünya» category, or abroad geo exactly as the CMS geo writer marks
+ * it (countrySlug, or a non-Türkiye country, with NO domestic il). Nothing is
+ * inferred from the title or text.
+ */
+export function isWorldNews(n: Pick<NewsFacts, 'categoryId' | 'originalCategoryId' | 'citySlug' | 'countrySlug' | 'country'>): boolean {
+  if (n.categoryId === 'dunya' || n.originalCategoryId === 'dunya') return true
+  if (provinceOf(n.citySlug)) return false
+  if (n.countrySlug && !TURKIYE.has(n.countrySlug)) return true
+  return !!n.country && !TURKIYE.has(n.country)
+}
+
+/**
+ * National = classified (has a category), not in the yerel / Kıbrıs trees and
+ * not world. It means «ulusal kategoride», not a verified Türkiye location.
  * A news item with neither category nor il is UNCLASSIFIED — never national.
  */
-function isNationalNews(n: NewsFacts): boolean {
+export function isNationalNews(n: NewsFacts): boolean {
   if (!n.categoryId && !n.originalCategoryId) return false
+  if (isWorldNews(n)) return false
   const scope = { citySlug: n.citySlug, categoryId: n.categoryId, originalCategoryId: n.originalCategoryId }
   return !isLocalScopedNews(scope) && !isKibrisScopedNews(scope)
 }
 
-/** Location data missing: no il AND (local category or no category at all). Such news needs editor classification. */
+/**
+ * Location data missing: no il, not world, AND (local category or no category
+ * at all). Such news needs editor classification before any il / ulusal /
+ * dünya target can match; only «Tüm haberler» includes it.
+ */
 export function locationMissing(n: NewsFacts): boolean {
   if (provinceOf(n.citySlug)) return false
+  if (isWorldNews(n)) return false
   if (!n.categoryId && !n.originalCategoryId) return true
   return isLocalScopedNews({ citySlug: n.citySlug, categoryId: n.categoryId, originalCategoryId: n.originalCategoryId })
 }
@@ -113,15 +140,16 @@ export function geoMatch(rule: Pick<AutomationRuleInput, 'geo'>, n: NewsFacts): 
   const prov = provinceOf(n.citySlug)
   switch (g.kind) {
     case 'any':
-      return locationMissing(n)
-        ? { ok: false, reason: 'Haberde konum bilgisi eksik — editör konum sınıflandırmalı' }
-        : { ok: true, reason: 'Konum: tüm konumlar' }
+      // «Tüm haberler»: konumu bilinmeyenler DAHİL (il / ulusal / dünya hedefi değildir).
+      return { ok: true, reason: locationMissing(n) ? 'Konum: belirsiz — «Tüm haberler» kapsamında' : 'Konum: tüm haberler' }
+    case 'world':
+      return isWorldNews(n) ? { ok: true, reason: 'Konum: dünya haberi' } : { ok: false, reason: 'Dünya haberi değil (Dünya kategorisi / yurt dışı konum yok)' }
     case 'all_provinces':
       return prov ? { ok: true, reason: `Konum: ${provinceLabel(prov)} (tüm iller)` } : { ok: false, reason: 'Haberde il bilgisi yok — editör konum sınıflandırmalı' }
     case 'national':
       return isNationalNews(n)
-        ? { ok: true, reason: 'Konum: ulusal haber' }
-        : { ok: false, reason: 'Ulusal haber değil (yerel / Kıbrıs kapsamlı)' }
+        ? { ok: true, reason: 'Konum: ulusal kategori' }
+        : { ok: false, reason: locationMissing(n) ? 'Haberde konum / kategori bilgisi eksik — editör sınıflandırmalı' : isWorldNews(n) ? 'Ulusal değil (Dünya haberi)' : 'Ulusal değil (yerel / Kıbrıs kapsamlı)' }
     case 'provinces':
       return g.citySlugs.includes(prov)
         ? { ok: true, reason: `Konum: ${provinceLabel(prov)}` }
@@ -220,9 +248,11 @@ export function summarizeRule(rule: AutomationRuleInput): string {
   const g = rule.geo
   const geo =
     g.kind === 'any'
-      ? 'Tüm konumlar (konumu eksik haberler hariç)'
+      ? 'Tüm haberler (konumu belirsiz olanlar dahil)'
       : g.kind === 'national'
-        ? 'Ulusal haberler'
+        ? 'Ulusal kategorideki haberler (yerel, Kıbrıs, Dünya hariç)'
+        : g.kind === 'world'
+          ? 'Dünya haberleri'
         : g.kind === 'all_provinces'
           ? 'Tüm illerin haberleri (il bilgisi olanlar)'
         : g.kind === 'provinces'

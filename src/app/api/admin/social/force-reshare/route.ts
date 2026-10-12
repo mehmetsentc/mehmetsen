@@ -35,7 +35,7 @@ import { buildOgSocialUrl } from '@/lib/social/ogCacheVersion'
 import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/articleUrl'
 import { isPlaceholderDraftSlug } from '@/lib/newsSlug'
 import { ensurePublicNewsSlug } from '@/services/newsDraftService'
-import { parseTargetListsInput, preflightTargets, targetRounds, type PublishTargetLists, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
+import { canStartRound, notAttemptedTargets, parseTargetListsInput, preflightTargets, targetRounds, type NotAttemptedTarget, type PublishTargetLists, type PublishTargets } from '@/lib/social/accounts/targetedPublish'
 import { targetResultRows, type TargetResultRow } from '@/lib/social/shareResponse'
 import { actorFromCms } from '@/lib/social/accounts/actor'
 import { manualTargetCheck } from '@/lib/social/accounts/manualTargets'
@@ -312,13 +312,24 @@ export async function POST(request: Request) {
     }
 
     const results: PublishOneSocialResult[] = []
+    let notAttempted: NotAttemptedTarget[] = []
+    let roundAt = 0
+    const rounds: Array<PublishTargets | null> = hasTargets ? targetRounds(targetLists) : [null]
     try {
     // Açık hedeflerde: sıralı turlar (her turda platform başına en çok bir hesap).
     // Her hesap ortak ledger'da kendi haber + hesap + biçim kilidini alır; bir
     // hesabın hatası diğerlerinin sonucunu etkilemez.
-    const rounds: Array<PublishTargets | null> = hasTargets ? targetRounds(targetLists) : [null]
+    // Süre bütçesi: yeni tur yalnız bütçe içinde başlar; başlamayan turların
+    // hedefleri kilit almaz, platforma gitmez ve «süre sınırı» olarak döner.
+    const startedAt = Date.now()
     for (const id of targetIds) {
-      for (const round of rounds) {
+      for (const [roundIndex, round] of rounds.entries()) {
+      if (round && !canStartRound(roundIndex, startedAt, Date.now())) {
+        notAttempted = notAttemptedTargets(rounds.filter((r): r is PublishTargets => !!r), roundIndex, mode ?? 'post')
+        console.warn('[force-reshare] time_budget', { started: roundIndex, total: rounds.length, notAttempted: notAttempted.length })
+        break
+      }
+      roundAt = roundIndex
       const roundOverrides = round
         ? { ...(overrides ?? {}), platforms: { facebook: !!round.facebook, instagram: !!round.instagram, threads: !!round.threads, twitter: false } }
         : overrides
@@ -371,7 +382,10 @@ export async function POST(request: Request) {
           code: 'server_error',
           outcome: 'server_error',
           results: await attachAccountNames(results, loadSocialAccount),
-          targetResults: targetResultRows(await attachAccountNames(results, loadSocialAccount)),
+          targetResults: [
+            ...targetResultRows(await attachAccountNames(results, loadSocialAccount)),
+            ...(await notAttemptedRows(hasTargets ? notAttemptedTargets(rounds.filter((r): r is PublishTargets => !!r), roundAt + 1, mode ?? 'post') : [], 'not_attempted_after_error')),
+          ],
         },
         { status: 500 },
       )
@@ -385,7 +399,7 @@ export async function POST(request: Request) {
     // altyapı hatası DEĞİL: platform bazında yapılandırılmış sonuç 200 ile döner
     // (5xx gövdesi önündeki CDN tarafından HTML hata sayfasıyla değiştirilir ve
     // panel doğrulanmış diğer platform sonuçlarını göremez).
-    const rows: TargetResultRow[] = targetResultRows(named)
+    const rows: TargetResultRow[] = [...targetResultRows(named), ...(await notAttemptedRows(notAttempted))]
     if (targetIds.length === 1 && results[0].skipped) {
       return NextResponse.json({ reshared: 0, succeeded: 0, failed: 1, outcome: 'skipped', error: results[0].reason, results: named, targetResults: rows }, { status: 422 })
     }
@@ -394,7 +408,8 @@ export async function POST(request: Request) {
       succeeded,
       failed,
       mode: mode ?? 'post',
-      outcome: shareOutcome(results),
+      outcome: notAttempted.length && shareOutcome(results) === 'published' ? 'partial' : shareOutcome(results),
+      ...(notAttempted.length ? { notAttempted: notAttempted.length, timeBudget: true } : {}),
       ...(targetIds.length === 1 && !results.some((r) => r.ok) ? { error: results[0].reason ?? 'Paylaşım başarısız' } : {}),
       results: named,
       targetResults: rows,
@@ -620,4 +635,29 @@ export async function POST(request: Request) {
     reshared: results.length,
     results,
   })
+}
+
+/** «Süre sınırı — gönderilmedi» rows (no ledger lock, no platform call). */
+async function notAttemptedRows(list: NotAttemptedTarget[], code: 'time_budget' | 'not_attempted_after_error' = 'time_budget'): Promise<TargetResultRow[]> {
+  const names = new Map<string, string | null>()
+  for (const t of list) {
+    if (names.has(t.accountId)) continue
+    try {
+      const l = await loadSocialAccount(t.accountId)
+      names.set(t.accountId, l.state === 'ok' && l.account ? (l.account.username ? `${l.account.displayName} (@${l.account.username})` : l.account.displayName) : null)
+    } catch {
+      names.set(t.accountId, null)
+    }
+  }
+  return list.map((t) => ({
+    platform: t.platform,
+    accountId: t.accountId,
+    accountName: names.get(t.accountId) ?? null,
+    format: t.format,
+    success: false,
+    code,
+    error: 'not attempted',
+    ledgerStatus: null,
+    externalPostId: null,
+  }))
 }

@@ -104,7 +104,7 @@ export function TargetResultList({ rows, retry, onToggleRetry }: { rows: TargetR
             className={cn(
               'rounded-md px-2 py-1',
               r.success || r.code === 'already_published' ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100'
-                : r.ledgerStatus === 'uncertain' || r.code === 'uncertain_previous_attempt' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
+                : r.ledgerStatus === 'uncertain' || r.code === 'uncertain_previous_attempt' || r.code === 'time_budget' || r.code === 'not_attempted_after_error' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100'
                   : 'bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-100',
             )}
           >

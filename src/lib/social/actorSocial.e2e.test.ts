@@ -384,9 +384,20 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
     const t = await targets('admin', 'nocity')
     expect(t.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
     expect(t.options.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
-    // Görev 18: «tüm konumlar» hikâye kapsamı da konumu eksik haberi kabul etmez.
+    // «Tüm haberler» hikâye kapsamı konumu belirsiz haberi KAPSAR (genel manuel hikâye
+    // gereksiz engellenmez); il gönderisi ise belirsiz konumla seçilemez (yukarıda).
     const st = await targets('admin', 'nocity', 'story')
-    expect(st.options.find((o) => o.accountId === ANTALYA_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    expect(st.options.find((o) => o.accountId === ANTALYA_IG.id)?.code).not.toBe('outside_location')
+  })
+
+  it('Dünya haberi ulusal kapsamda değildir; dünya kapsamı yalnız Dünya / yurt dışı haberi alır', async () => {
+    await seedNews('w1', { citySlug: '', cityName: '', categoryId: 'dunya', countrySlug: 'almanya', country: 'Almanya' })
+    expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'national' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    expect((await targets('admin', 'w1')).options.find((o) => o.accountId === CENTRAL_IG.id)).toMatchObject({ selectable: false, code: 'outside_location' })
+    expect((await setScope('admin', CENTRAL_IG.id, { geo: { kind: 'world' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).toBe(200)
+    expect((await targets('admin', 'w1')).options.find((o) => o.accountId === CENTRAL_IG.id)?.code).not.toBe('outside_location')
+    // İl yöneticisi «dünya» kapsamı yazamaz.
+    expect((await setScope('ant', ANTALYA_IG.id, { geo: { kind: 'world' }, allCategories: true, categoryIds: [], formats: ['post'], manualAccess: 'managers' })).status).not.toBe(200)
   })
 
   it('manuel kapsam kategoriye göre sınırlanır ve sunucuda paylaşımda da reddedilir', async () => {

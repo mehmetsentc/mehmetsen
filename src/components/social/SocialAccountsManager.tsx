@@ -68,7 +68,7 @@ function expiryText(a: SocialAccountRow): string {
 }
 
 function geoText(g: NonNullable<SocialAccountRow['publishScope']>['geo']): string {
-  return g.kind === 'any' ? 'tüm konumlar' : g.kind === 'national' ? 'ulusal haberler' : g.kind === 'all_provinces' ? 'tüm illerden haberler'
+  return g.kind === 'any' ? 'tüm haberler (konumu belirsiz dahil)' : g.kind === 'national' ? 'ulusal kategoriler (yerel, Kıbrıs, Dünya hariç)' : g.kind === 'world' ? 'dünya haberleri' : g.kind === 'all_provinces' ? 'il bilgisi olan tüm haberler'
     : g.kind === 'provinces' ? g.citySlugs.map(provinceName).join(', ') : `${provinceName(g.citySlug)} / ${g.districtSlugs.length} ilçe`
 }
 
