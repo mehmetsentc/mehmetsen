@@ -35,15 +35,7 @@ import { DismissAppSplash } from '@/components/pwa/DismissAppSplash'
 import { ConsentStrip } from '@/components/consent/ConsentStrip'
 import { ReaderNavTraceSurvivor } from '@/components/feed/smart/ReaderNavTraceSurvivor'
 import { PWAInstallPromptLazy } from '@/components/pwa/PWAInstallPromptLazy'
-import { PreviewViewportProbe } from '@/components/debug/PreviewViewportProbe'
 import { IosFocusZoomGuard } from '@/components/layout/IosFocusZoomGuard'
-
-// PREVIEW-ONLY on-device viewport probe. VERCEL_ENV is baked at build time, so
-// Production builds never render it. Remove before merging to production.
-const previewProbeSha =
-  process.env.VERCEL_ENV === 'preview'
-    ? (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
-    : null
 
 const appUrl = getSiteUrl()
 const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'NaHaber'
@@ -337,7 +329,6 @@ gtag('consent','default',{
               <ToastViewport />
               <AnalyticsTracker />
               <DeferredThirdParty />
-              {previewProbeSha ? <PreviewViewportProbe sha={previewProbeSha} /> : null}
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
