@@ -6252,6 +6252,12 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header 
 [data-testid='smart-feed-read-cta'] {
   -webkit-appearance: none;
   appearance: none;
+  /* !important keeps Safari's system gray off; colors invert with the theme. */
+  background-color: rgb(var(--color-text)) !important;
+  color: rgb(var(--color-surface)) !important;
+}
+
+html.dark [data-testid='smart-feed-read-cta'] {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
