@@ -63,7 +63,10 @@ export interface WriterInput {
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
 const HARD_RULES = `MUTLAK KURALLAR:
 - Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
-- Kaynak ajans/gazete adını (AA, DHA vb.) metne yazma
+- Ajans/gazete adını imza gibi kullanma; ama bilginin SAHİBİNİ metinde belirt (kurum, yetkili, açıklama, belge: "… Valiliği açıkladı", "… yaptığı açıklamada")
+- Kaynağın cümlelerini aynen kopyalama; kendi cümlelerinle yaz. Doğrudan alıntıyı yalnızca kaynakta tırnak içindeyse kullan
+- DOLDURMA YASAK: kaynakta yeterli olgu yoksa KISA yaz. Genel ansiklopedik bilgi, tekrar, "vatandaşlar dikkatli olmalı" türü nutukla uzatma
+- Tarih ve yer açık olsun: "dün/bugün" yerine gün ve ay; yerel haberde il ve ilçe adı ilk paragrafta
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
 - Manşet SES KARTINA uyar. En çarpıcı doğrulanmış olgu başlıkta: sayı, isim, karar. "Büyük kaza" gibi jenerik başlık yasak.
 - ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
@@ -83,26 +86,27 @@ ${NAHABER_HEADLINE_STYLE}
 HABER BİÇİMİ (zorunlu):
 - Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — manşette çarpıcı olgu, spotta ayrıntı
 - spot: 2-4 cümle lider; content spot'u tekrarlama
-- content: 250-450 kelime hedef (asgari ~220); gereksiz nutuk/doldurma YASAK
+- content: kaynakta yeterli olgu varsa 400-650 kelime; kaynak kısaysa asgari ~220 kelime ve o kadar. Uzunluk için uydurma/doldurma YASAK
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Ceza Tutarı", "Resmi Açıklama", "Vatandaşlar Ne Diyor"); jenerik ders kitabı / ansiklopedi başlığı YASAK: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
-- Kaynak inceyse bile olgusal bağlam ve arka planla anlamlı gövde yaz; uydurma yok
+- Kaynak inceyse kısa yaz; arka plan yalnızca doğrulanabilir ve olayla doğrudan ilgiliyse (önceki karar, resmi veri, aynı konudaki önceki gelişme)
+- Okurun arama niyetine cevap ver: ne oldu, nerede, ne zaman, kimi etkiliyor, sırada ne var — yalnızca kaynakta olanla
 
 ALANLAR:
-- title: gazete manşeti, 6-12 kelime, max 85 karakter; çarpıcı olgu başlıkta; jenerik başlık yasak
+- title: gazete manşeti, 6-12 kelime, ideal 50-75 karakter (en fazla 85); ana kişi/kurum/yer adı başa yakın; çarpıcı olgu başlıkta; jenerik veya tıklama tuzağı başlık yasak
 - spot: lider paragraf
 - summary: feed teaser max 120 karakter, title'dan farklı
 - content: gövde (markdown ## ZORUNLU — en az 2 alt başlık; # H1 kullanma)
-- seoTitle: 55-65 karakter
-- seoDescription: 145-160 karakter`
+- seoTitle: 50-60 karakter; insanların arayacağı ana ifade + (yerel haberde) il/ilçe adı; marka adı ekleme
+- seoDescription: 140-155 karakter; olayın özü + okura etkisi; soru veya ünlemle bitirme`
 
 export const STAGE1_PROMPT_PACKINGS = ['source_inline', 'source_once'] as const
 export type Stage1PromptPacking = (typeof STAGE1_PROMPT_PACKINGS)[number]
 
-export const STAGE1_WRITER_PROMPT_VERSION = 'stage1-writer:v2'
-export const STAGE1_WRITER_PACKED_PROMPT_VERSION = 'stage1-writer:source_once_v1'
+export const STAGE1_WRITER_PROMPT_VERSION = 'stage1-writer:v3-seo11'
+export const STAGE1_WRITER_PACKED_PROMPT_VERSION = 'stage1-writer:source_once_v2-seo11'
 
 export function normalizeStage1PromptPacking(raw: unknown): Stage1PromptPacking | undefined {
   if (typeof raw === 'string' && (STAGE1_PROMPT_PACKINGS as readonly string[]).includes(raw)) {
@@ -118,7 +122,8 @@ function clampWriterTemperature(value: number | undefined): number {
 
 const JSON_OUTPUT_CONTRACT = `GAZETE HABERİ yaz (ters piramit). Ansiklopedi / "Sonuç" bölümü yazma.
 title 6-12 kelime; en çarpıcı olgu başlıkta, jenerik manşet yasak. seoTitle de olayı söylesin, ŞOK yok.
-content gövdesi ZORUNLU en az 220 kelime (hedef 250-450); spot'u tekrarlama; olgu+bağlam+arka plan.
+content gövdesi ZORUNLU en az 220 kelime; kaynakta yeterli olgu varsa 400-650 kelime. Uzatmak için uydurma/doldurma YASAK; spot'u tekrarlama; olgu + bilginin sahibi + doğrudan ilgili bağlam.
+Yerel haberde il/ilçe adı title veya spot'ta geçsin. seoTitle 50-60 karakter: aranacak ana ifade + yer.
 content içinde EN AZ 2 olay-özgü ## markdown alt başlık ZORUNLU (jenerik "Sonuç/Giriş/Genel Değerlendirme" başlığı YASAK); başlıksız düz paragraf yığını KABUL EDİLMEZ.
 JSON:
 {
@@ -139,7 +144,7 @@ YENİDEN DÜZENLEME GÖREVİ:
 Önceki taslak kalite kapısından geçmedi. Aynı olay için DAHA İYİ bir gazete haberi yaz.
 ${hints ? `Düzeltilecek noktalar:\n${hints}` : ''}
 ${prev ? `Önceki başlık: ${prev.title}\nÖnceki spot: ${prev.spot.slice(0, 400)}\nÖnceki gövde (özet):\n${prev.content.slice(0, 2500)}` : ''}
-- Gövdeyi en az 220 kelime yap (hedef 280-450); yarım cümle bırakma
+- Gövdeyi en az 220 kelime yap; kaynakta yeterli olgu varsa 400-650; doldurma yok; yarım cümle bırakma
 - Kaynakta olmayan bilgi uydurma
 - Önceki taslağın hatalarını tekrarlama
 `

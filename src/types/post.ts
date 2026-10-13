@@ -115,6 +115,9 @@ export interface Post {
   /** Persistent AI editor persona */
   aiEditorId?: string
   authorIsAI?: boolean
+  /** SEO-11: stored AI body word count / research source count (index gate). */
+  seoWordCount?: number
+  seoResearchSourceCount?: number
   /** Estimated reading time in minutes */
   readingTimeMinutes?: number
   /** Original source article URL */

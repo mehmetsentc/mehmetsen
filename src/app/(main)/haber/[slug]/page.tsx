@@ -142,7 +142,8 @@ export default async function NewsDetailPage({ params }: PageProps) {
   try {
     latestLinks = pickArticleLatestLinks(await getNewsSitemapEntries(), {
       categoryId: post.categoryId,
-      excludeSlugs: [post.slug ?? ''],
+      // Skip stories already shown under "Benzer haberler" so the block adds new URLs.
+      excludeSlugs: [post.slug ?? '', ...relatedPosts.map((p) => p.slug ?? '')],
     })
   } catch {
     latestLinks = []

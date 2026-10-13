@@ -332,6 +332,12 @@ gtag('consent','default',{
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
+        {/* SEO-10: Cloudflare Web Analytics — cookieless real-reader counts (bots excluded). Free; CSP allows it. */}
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "8e11e8ef5de64181bf9c674fde5663c6"}'
+        />
       </body>
     </html>
   )

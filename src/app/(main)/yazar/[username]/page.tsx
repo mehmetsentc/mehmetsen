@@ -52,7 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    robots: { index: true, follow: true },
+    // SEO-11: AI desk profiles are thin persona pages → noindex, keep links followed.
+    robots: author.isAI === true ? { index: false, follow: true } : { index: true, follow: true },
     alternates: { canonical },
     openGraph: {
       title: `${title} | ${siteName}`,
@@ -91,15 +92,19 @@ export default async function AuthorPage({ params }: Props) {
     '@type': 'ProfilePage',
     name: `${publicName} — ${editorIdentityLabel(author)}`,
     url: profileUrl,
-    mainEntity: {
-      '@type': 'Person',
-      name: publicName,
-      url: profileUrl,
-      ...(author.photoURL ? { image: author.photoURL } : {}),
-      ...(publicBio ? { description: publicBio } : {}),
-      ...(author.website ? { sameAs: [author.website] } : {}),
-      worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
-    },
+    // SEO-11: an AI desk is not a Person; its work is the organization's.
+    mainEntity:
+      author.isAI === true
+        ? { '@type': 'NewsMediaOrganization', name: siteName, url: siteUrl }
+        : {
+            '@type': 'Person',
+            name: publicName,
+            url: profileUrl,
+            ...(author.photoURL ? { image: author.photoURL } : {}),
+            ...(publicBio ? { description: publicBio } : {}),
+            ...(author.website ? { sameAs: [author.website] } : {}),
+            worksFor: { '@type': 'NewsMediaOrganization', name: siteName },
+          },
   }
 
   return (
@@ -152,6 +157,16 @@ export default async function AuthorPage({ params }: Props) {
               ) : null}
               {author.department ? <span>{author.department}</span> : null}
             </div>
+            {author.isAI === true ? (
+              <p className="mt-2 max-w-xl text-xs text-[rgb(var(--color-muted))]" data-ai-disclosure>
+                Bu profil NaHaber&apos;in yapay zeka destekli haber masasıdır. Haberler belirtilen
+                kaynaklara dayanır ve{' '}
+                <a href="/editoryal-ilkeler" className="underline">
+                  editoryal ilkelerimize
+                </a>{' '}
+                tabidir.
+              </p>
+            ) : null}
           </div>
         </header>
 

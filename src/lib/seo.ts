@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { failsAiQualityGate } from '@/lib/seo/aiQualityGate'
 import type { Post } from '@/types/post'
 import type { NewsItem } from '@/types/newsItem'
 import {
@@ -415,9 +416,11 @@ export function buildPostMetadata(
   ].filter(Boolean)
 
   const legacyForceNoindex = hasForcedNoindexSignals(post)
-  const index = opts?.robotsOverride
+  // SEO-11: weak AI rewrites → noindex but keep follow (links still pass).
+  const qualityNoindex = failsAiQualityGate(post)
+  const index = (opts?.robotsOverride
     ? opts.robotsOverride.index && !legacyForceNoindex
-    : !legacyForceNoindex
+    : !legacyForceNoindex) && !qualityNoindex
   const follow = opts?.robotsOverride
     ? legacyForceNoindex
       ? false

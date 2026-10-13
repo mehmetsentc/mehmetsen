@@ -2068,6 +2068,9 @@ export async function processNewsroomArticle(
       sourceUrl: workingInput.sourceUrl ?? '',
       researchSources: workingInput.researchSources ?? [],
       readingTimeMinutes,
+      // SEO-11: stored for the AI index gate (no extra writes; same document).
+      seoWordCount: readingWords,
+      seoResearchSourceCount: (workingInput.researchSources ?? []).length,
       draftStatus: 'pending_review' as const,
       editorAiApproved: editorApproved,
       moderationReasons: [

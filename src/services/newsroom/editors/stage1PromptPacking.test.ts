@@ -196,7 +196,7 @@ describe('Stage1 packing telemetry', () => {
       generationReason: 'initial',
     })
     expect(doc.stage1PromptPacking).toBe('source_once')
-    expect(doc.promptVersion).toBe('stage1-writer:source_once_v1')
+    expect(doc.promptVersion).toBe('stage1-writer:source_once_v2-seo11')
     expect(JSON.stringify(doc)).not.toMatch(/SOURCE_SENTINEL/)
     expect(JSON.stringify(doc)).not.toMatch(/KAYNAK VERİSİ/)
   })

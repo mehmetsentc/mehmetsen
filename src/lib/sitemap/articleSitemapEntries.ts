@@ -14,6 +14,7 @@
  * (publicReadMetaFromFirestoreDoc, same as the image sitemap) and must be
  * indexable under both views.
  */
+import { failsAiQualityGate } from '@/lib/seo/aiQualityGate'
 import type { Post } from '@/types/post'
 import { ROUTES } from '@/constants/routes'
 import { buildPostSharePath, hasForcedNoindexSignals } from '@/lib/seo'
@@ -92,6 +93,8 @@ export function evaluateSitemapCandidate(input: {
   if (hasForcedNoindexSignals(post as Post & { seoNoindex?: boolean; publisherType?: string })) {
     return null
   }
+  // SEO-11: AI rewrites below the index bar stay out of every article/news sitemap.
+  if (failsAiQualityGate(post)) return null
 
   const slug = (post.slug ?? '').trim()
   if (!isSafeSlugSegment(slug)) return null

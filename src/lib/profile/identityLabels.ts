@@ -37,6 +37,8 @@ export function publisherStatusLabel(status: PublisherVerificationStatus): strin
 
 /** Editorial kicker from stored author fields. isVerified is the Firestore flag, not a UI guess. */
 export function editorIdentityLabel(author: { isAI?: boolean; isVerified: boolean }): string {
+  // SEO-11: AI desks are disclosed as AI (Google authorship guidance); never 'verified editor'.
+  if (author.isAI === true) return 'NaHaber AI Editörü'
   if (author.isVerified) return 'Doğrulanmış editör'
   return 'Yazar'
 }

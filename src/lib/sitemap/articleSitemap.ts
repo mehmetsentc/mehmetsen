@@ -77,6 +77,15 @@ export const ARTICLE_SITEMAP_FIRESTORE_FIELDS = [
   'publisherType',
   // SEO-10: lets cached news-sitemap entries feed per-category article links (no extra reads).
   'categoryId',
+  // SEO-11: AI index gate inputs (same document reads).
+  'seoWordCount',
+  'seoResearchSourceCount',
+  'citySlug',
+  'aiEditorId',
+  'isAI',
+  'featured',
+  'isEditorPick',
+  'articleFormat',
 ] as const
 
 export async function loadFirestoreMonthDocs(

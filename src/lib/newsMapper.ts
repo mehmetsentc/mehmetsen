@@ -121,6 +121,9 @@ export interface NewsDocument {
   /** Denormalized AI flag (optional; prefer aiEditorId / authorId prefix) */
   isAI?: boolean
   readingTimeMinutes?: number
+  /** SEO-11: AI body word count stored by the newsroom pipeline. */
+  seoWordCount?: number
+  seoResearchSourceCount?: number
   isBreaking?: boolean
   featured?: boolean
   isEditorPick?: boolean
@@ -520,6 +523,10 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
       authorId.startsWith('ai_editor_') ||
       data.isAI === true,
     readingTimeMinutes: data.readingTimeMinutes,
+    ...(typeof data.seoWordCount === 'number' ? { seoWordCount: data.seoWordCount } : {}),
+    ...(typeof data.seoResearchSourceCount === 'number'
+      ? { seoResearchSourceCount: data.seoResearchSourceCount }
+      : {}),
     sourceUrl: data.sourceUrl?.trim() || undefined,
     rssGuid: data.rssGuid?.trim() || undefined,
     sourceLabel: data.sourceLabel?.trim() || undefined,
