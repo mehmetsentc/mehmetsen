@@ -22,7 +22,7 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { SocialAccountPlatform } from './types'
-import type { PublishFormat } from './capabilities'
+import type { AutomationFormat } from './capabilities'
 import type { SocialPublishResult } from '../types'
 
 export const PUBLISH_LEASE_MS = 10 * 60 * 1000
@@ -35,7 +35,7 @@ export interface LedgerRecord {
   newsId: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   status: LedgerStatus
   attemptId: string | null
   attempts: number
@@ -50,7 +50,7 @@ export interface LedgerRecord {
   history: Array<{ attemptId: string; status: LedgerStatus; at: number; by: string; externalPostId: string | null; errorCode: string | null }>
 }
 
-export function ledgerRecordId(newsId: string, accountId: string, format: PublishFormat): string {
+export function ledgerRecordId(newsId: string, accountId: string, format: AutomationFormat): string {
   if (!NEWS_ID_RE.test(newsId)) throw new Error('invalid news id')
   return `${newsId}__${accountId}__${format}`
 }
@@ -71,7 +71,7 @@ export async function claimPublish(input: {
   newsId: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   /** Re-publish over a `succeeded` record. Never overrides a live lease or an uncertain record. */
   force: boolean
   /** Exact record id the operator acknowledged as uncertain; any other value acknowledges nothing. */
@@ -201,7 +201,7 @@ export async function finishPublish(input: {
   })
 }
 
-export async function readLedger(newsId: string, accountId: string, format: PublishFormat): Promise<LedgerRecord | null> {
+export async function readLedger(newsId: string, accountId: string, format: AutomationFormat): Promise<LedgerRecord | null> {
   const snap = await col().doc(ledgerRecordId(newsId, accountId, format)).get()
   return snap.exists ? (snap.data() as LedgerRecord) : null
 }
@@ -246,7 +246,7 @@ export interface OpenUncertainRecord {
   newsId: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   /** `uncertain`, or `publishing` whose lease expired (worker died mid-publish). */
   state: 'uncertain' | 'lease_expired'
   /** Attempt the operator decision is bound to. */

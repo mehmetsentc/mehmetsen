@@ -72,7 +72,7 @@ export async function syncNewsAutomation(input: NewsSyncInput, contentProblem: C
   else if (facts.eligibleAt === null) facts.eligibleAt = earliestEligible(existing)
 
   const problem = contentProblem(data)
-  const planned = new Map<string, { accountId: string; platform: AutomationRule['platform']; format: 'post' | 'story'; ruleIds: string[] }>()
+  const planned = new Map<string, { accountId: string; platform: AutomationRule['platform']; format: AutomationRule['formats'][number]; ruleIds: string[] }>()
   if (!problem) {
     for (const rule of rules) {
       if (!evaluateRule(rule, facts).match) continue

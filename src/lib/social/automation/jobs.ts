@@ -19,7 +19,7 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isAlreadyExists } from '../accounts/accountStore'
-import type { PublishFormat } from '../accounts/capabilities'
+import type { AutomationFormat } from '../accounts/capabilities'
 import type { SocialAccountPlatform } from '../accounts/types'
 
 export const AUTOMATION_JOB_KIND = 'account_automation' as const
@@ -36,7 +36,7 @@ export interface AutomationJob {
   newsId: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   ruleIds: string[]
   status: AutomationJobStatus
   autoDueAt: number | null
@@ -60,7 +60,7 @@ export interface AutomationJob {
   payload: Record<string, unknown>
 }
 
-export function jobIdFor(newsId: string, accountId: string, format: PublishFormat): string {
+export function jobIdFor(newsId: string, accountId: string, format: AutomationFormat): string {
   if (!NEWS_ID_RE.test(newsId)) throw new Error('invalid news id')
   return `auto__${newsId}__${accountId}__${format}`
 }
@@ -77,7 +77,7 @@ export async function enqueueJob(input: {
   newsId: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   ruleIds: string[]
   citySlug: string | null
   newsTitle: string
@@ -356,7 +356,7 @@ export interface AutomationJobPublic {
   newsTitle: string
   accountId: string
   platform: SocialAccountPlatform
-  format: PublishFormat
+  format: AutomationFormat
   ruleIds: string[]
   status: AutomationJobStatus
   dueAt: number | null

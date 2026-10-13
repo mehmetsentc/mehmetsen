@@ -488,7 +488,7 @@ describe('belirsiz sonuç — "Platformda kontrol ettim, yeniden yayımla"', () 
 
 // ── 3. Biçim ve görsel politikası ───────────────────────────────────────────
 describe('yayın biçimleri = platform yeteneği ∩ adaptör', () => {
-  it('Reels / video hiçbir hesapta yayımlanabilir değil; IG hikâye yalnızca doğrulanmış profesyonel türde', () => {
+  it('Düz video hiçbir hesapta yok; Reels yalnızca IG profesyonel / FB (REELS-1 haber videosu); IG hikâye yalnızca doğrulanmış profesyonel türde', () => {
     const all = [
       { platform: 'facebook', connectionMethod: 'facebook_login', platformAccountType: null },
       { platform: 'instagram', connectionMethod: 'facebook_login', platformAccountType: null },
@@ -500,10 +500,16 @@ describe('yayın biçimleri = platform yeteneği ∩ adaptör', () => {
     ] as const
     for (const a of all) {
       const k = publishableKinds(a)
-      expect(k).not.toContain('reel')
       expect(k).not.toContain('video')
     }
-    expect(publishableKinds(all[0])).toEqual(['image_post', 'story'])
+    // REELS-1: only the rendered news reel; never personal IG or Threads.
+    expect(all.filter((a) => publishableKinds(a).includes('reel')).map((a) => `${a.platform}:${a.platformAccountType}`)).toEqual([
+      'facebook:null',
+      'instagram:null',
+      'instagram:BUSINESS',
+      'instagram:MEDIA_CREATOR',
+    ])
+    expect(publishableKinds(all[0])).toEqual(['image_post', 'story', 'reel'])
     expect(publishableKinds(all[2])).toContain('story')
     expect(publishableKinds(all[3])).toContain('story')
     expect(publishableKinds(all[4])).not.toContain('story')

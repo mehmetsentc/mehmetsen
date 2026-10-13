@@ -23,7 +23,7 @@ import 'server-only'
 import { isSocialTestMode, TEST_ENV_TEXT } from '../testEnvironment'
 import { resolveLegacyCredentials } from './resolvePublishTarget'
 import { accountIdFor, isValidExternalId, type SocialAccountPlatform } from './types'
-import type { PublishFormat } from './capabilities'
+import type { AutomationFormat } from './capabilities'
 import { CLAIM_TEXT, claimPublish, classifyOutcome, finishPublish, UNCERTAIN_TEXT } from './publishLedger'
 import type { SocialPublishResult } from '../types'
 import { errorLogFields, socialLog } from '../safeLog'
@@ -46,7 +46,7 @@ export interface LegacyPublishOptions {
 /** `code` / `ledgerStatus` / `ledgerRecordId` live on SocialPublishResult. */
 export type LockedPublishResult = SocialPublishResult
 
-const LEGACY_NEWS_FIELD: Record<SocialAccountPlatform, Partial<Record<PublishFormat, string>>> = {
+const LEGACY_NEWS_FIELD: Record<SocialAccountPlatform, Partial<Record<AutomationFormat, string>>> = {
   facebook: { post: 'facebookPostId', story: 'facebookStoryId' },
   instagram: { post: 'instagramMediaId', story: 'instagramStoryId' },
   threads: { post: 'threadsPostId' },
@@ -62,7 +62,7 @@ export function isVerifiedPublish(r: SocialPublishResult | null | undefined): bo
   return r.code === 'already_published' && typeof r.platformId === 'string' && r.platformId.trim().length > 0
 }
 
-export function legacyNewsFieldFor(platform: SocialAccountPlatform, format: PublishFormat): string | undefined {
+export function legacyNewsFieldFor(platform: SocialAccountPlatform, format: AutomationFormat): string | undefined {
   return LEGACY_NEWS_FIELD[platform]?.[format]
 }
 
@@ -74,7 +74,7 @@ export async function legacyAccountId(platform: SocialAccountPlatform): Promise<
 }
 
 export async function withLegacyPublishLock(
-  input: { platform: SocialAccountPlatform; format: PublishFormat; newsId: string; options?: LegacyPublishOptions },
+  input: { platform: SocialAccountPlatform; format: AutomationFormat; newsId: string; options?: LegacyPublishOptions },
   run: () => Promise<SocialPublishResult>,
   now: () => number = Date.now,
 ): Promise<LockedPublishResult> {

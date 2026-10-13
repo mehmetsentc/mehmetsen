@@ -24,7 +24,7 @@ import { safeErrorText } from '../safeLog'
 import { enqueueJob, existingJobIds, jobIdFor } from './jobs'
 import { evaluateRule, newsFactsFrom } from './match'
 import type { AutomationRule } from './types'
-import type { PublishFormat } from '../accounts/capabilities'
+import type { AutomationFormat } from '../accounts/capabilities'
 import type { SocialAccountPlatform } from '../accounts/types'
 
 export const RECONCILE_LAG_MS = 2 * 60 * 1000
@@ -70,8 +70,8 @@ export function plannedJobs(
   docs: NewsDoc[],
   rules: AutomationRule[],
   contentProblem: (d: Record<string, unknown>) => string | null,
-): Array<{ newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }> {
-  const out = new Map<string, { newsId: string; accountId: string; platform: SocialAccountPlatform; format: PublishFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }>()
+): Array<{ newsId: string; accountId: string; platform: SocialAccountPlatform; format: AutomationFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }> {
+  const out = new Map<string, { newsId: string; accountId: string; platform: SocialAccountPlatform; format: AutomationFormat; ruleIds: string[]; citySlug: string | null; title: string; eligibleAt: number | null }>()
   for (const doc of docs) {
     if (contentProblem(doc.data)) continue
     const facts = newsFactsFrom(doc.id, doc.data)

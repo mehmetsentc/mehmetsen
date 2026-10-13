@@ -16,6 +16,7 @@ export const STUDIO_NAV = [
   { href: '/admin/media-studio/jobs', label: 'İndirmeler', exact: false, primary: false },
   { href: '/admin/media-studio/library', label: 'Kütüphane', exact: false, primary: false },
   { href: '/admin/media-studio/failed', label: 'Başarısız', exact: false, primary: false },
+  { href: '/admin/media-studio/reels', label: 'Seslendirme & Reels', exact: false, primary: false },
   { href: '/admin/media-studio/settings', label: 'Ayarlar', exact: false, primary: false },
 ] as const
 

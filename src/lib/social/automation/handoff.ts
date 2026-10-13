@@ -12,7 +12,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { loadSocialAccount } from '../accounts/accountStore'
 import { writeSocialAudit } from '../accounts/audit'
 import type { SocialAccountPlatform } from '../accounts/types'
-import type { PublishFormat } from '../accounts/capabilities'
+import type { AutomationFormat, PublishFormat } from '../accounts/capabilities'
 
 function stateCol() {
   return getAdminFirestore().collection(Collections.SOCIAL_AUTOMATION_STATE)
@@ -36,9 +36,9 @@ export interface LegacyHandoff {
 }
 
 /** Does a handoff record cover this format? */
-export function handoffCovers(h: LegacyHandoff | undefined, format: PublishFormat): boolean {
+export function handoffCovers(h: LegacyHandoff | undefined, format: AutomationFormat): boolean {
   if (!h) return false
-  return !Array.isArray(h.formats) || h.formats.length === 0 || h.formats.includes(format)
+  return !Array.isArray(h.formats) || h.formats.length === 0 || (h.formats as string[]).includes(format)
 }
 
 const HANDOFF_DOC = 'legacyHandoff'
@@ -49,7 +49,7 @@ export async function readLegacyHandoffs(): Promise<Record<string, LegacyHandoff
   return d?.accounts ?? {}
 }
 
-export async function isLegacyHandedOff(accountId: string, format?: PublishFormat): Promise<boolean> {
+export async function isLegacyHandedOff(accountId: string, format?: AutomationFormat): Promise<boolean> {
   const all = await readLegacyHandoffs()
   return format ? handoffCovers(all[accountId], format) : !!all[accountId]
 }

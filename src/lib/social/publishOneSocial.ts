@@ -268,7 +268,8 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
 
 // ── Options / Result ──────────────────────────────────────────────────────────
 
-export type PublishSocialMode = 'post' | 'story' | 'both'
+/** 'reel' (REELS-1): one explicit target, rendered news reel — see reelPublish.ts. */
+export type PublishSocialMode = 'post' | 'story' | 'both' | 'reel'
 
 /** Admin composer overrides — paylaşım öncesi düzenlenen alanlar. */
 export interface SocialPublishOverrides {
@@ -354,7 +355,7 @@ export function automationCallProblem(options: PublishOneSocialOptions): string 
   if (options.manual) return 'automation_manual_conflict'
   if (options.actorUid !== AUTOMATION_ACTOR_UID) return 'automation_actor'
   if (options.force || options.ledgerForce || options.acknowledgeUncertainRecordId) return 'automation_force'
-  if (options.mode !== 'post' && options.mode !== 'story') return 'automation_mode'
+  if (options.mode !== 'post' && options.mode !== 'story' && options.mode !== 'reel') return 'automation_mode'
   const t = Object.entries(options.targets ?? {}).filter(([, v]) => !!v)
   if (t.length !== 1) return 'automation_target'
   const plat = options.overrides?.platforms
@@ -382,6 +383,13 @@ export interface PublishOneSocialResult {
     attempted: boolean
     facebook: SocialPublishResult
     instagram: SocialPublishResult
+  }
+  /** REELS-1: rendered news reel (one explicit target). */
+  reel?: {
+    attempted: boolean
+    facebook?: SocialPublishResult
+    instagram?: SocialPublishResult
+    videoUrl?: string
   }
 }
 
@@ -467,6 +475,11 @@ export async function publishOneSocial(
     if (!plat || plat.twitter) return skipped(newsId, plat?.twitter ? TEST_ENV_TEXT.twitterDisabled : TEST_ENV_TEXT.legacyDisabled)
     const wanted = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
     if (wanted.length === 0 || wanted.some((p) => !targets[p])) return skipped(newsId, TEST_ENV_TEXT.legacyDisabled)
+  }
+  // REELS-1: reels never take the post/story path (no legacy credentials, one target).
+  if (mode === 'reel') {
+    const { publishReelOne } = await import('./reelPublish')
+    return publishReelOne(newsId, options)
   }
 
   try {

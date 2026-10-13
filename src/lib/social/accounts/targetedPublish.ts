@@ -14,7 +14,7 @@ import 'server-only'
 import { testModeAccountProblem, TEST_ENV_TEXT } from '../testEnvironment'
 import { isWellFormedAccountId, loadSocialAccount } from './accountStore'
 import { resolvePublishTarget, type ResolveTargetErrorCode } from './resolvePublishTarget'
-import { requiredFormats, supportedFormats, type ComposerMode, type PublishFormat } from './capabilities'
+import { formatsForMode, requiredFormats, type ComposerMode, type AutomationFormat } from './capabilities'
 import { CLAIM_TEXT, claimPublish, classifyOutcome, finishPublish, UNCERTAIN_TEXT, type LedgerStatus } from './publishLedger'
 import { redactSecrets, writeSocialAudit } from './audit'
 import { legacyAccountId, legacyNewsFieldFor } from './legacyLock'
@@ -123,7 +123,7 @@ export function canStartRound(roundIndex: number, startedAt: number, now: number
 export interface NotAttemptedTarget {
   platform: TargetablePlatform
   accountId: string
-  format: PublishFormat
+  format: AutomationFormat
 }
 
 /** Targets (account × format) of the rounds from `fromRound` on — never attempted. */
@@ -159,7 +159,7 @@ export async function preflightTargets(targets: PublishTargets, mode: ComposerMo
 async function formatProblem(accountId: string, platform: TargetablePlatform, mode: ComposerMode): Promise<string | null> {
   const loaded = await loadSocialAccount(accountId)
   if (loaded.state !== 'ok') return 'not_found'
-  const supported = supportedFormats(loaded.account)
+  const supported = formatsForMode(loaded.account, mode)
   return requiredFormats(platform, mode).every((f) => supported.includes(f)) ? null : 'format_unsupported'
 }
 
@@ -179,7 +179,7 @@ function safeError(text: string | undefined): string | undefined {
 export async function publishToTarget(input: {
   newsId: string
   platform: TargetablePlatform
-  format: PublishFormat
+  format: AutomationFormat
   mode: ComposerMode
   accountId: string
   force: boolean

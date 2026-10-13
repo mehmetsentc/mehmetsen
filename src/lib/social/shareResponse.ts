@@ -62,7 +62,7 @@ export interface TargetResultRow {
   platform: 'facebook' | 'instagram' | 'threads'
   accountId: string
   accountName: string | null
-  format: 'post' | 'story'
+  format: 'post' | 'story' | 'reel'
   success: boolean
   code: string | null
   error: string | null

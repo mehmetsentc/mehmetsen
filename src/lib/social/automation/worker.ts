@@ -178,7 +178,7 @@ export async function runClaimedJob(
 }
 
 function resultFor(job: AutomationJob, r: PublishOneSocialResult): SocialPublishResult | null {
-  const set = job.format === 'post' ? r.post : r.story
+  const set = job.format === 'post' ? r.post : job.format === 'reel' ? r.reel : r.story
   if (!set) return null
   return ((set as unknown as Record<string, SocialPublishResult | undefined>)[job.platform]) ?? null
 }

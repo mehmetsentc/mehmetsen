@@ -26,6 +26,12 @@ const HTML_LIMITED_BOTS =
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.resolve(__dirname),
+  // REELS-1: native canvas + ffmpeg binary stay external; the render route ships
+  // its fonts/brand audio and the ffmpeg binary with the function.
+  serverExternalPackages: ['@napi-rs/canvas', 'ffmpeg-static'],
+  outputFileTracingIncludes: {
+    '/api/admin/social/reels/render': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+  },
   htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,
   poweredByHeader: false,

@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Clapperboard, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { ArticleInsightsPanel } from '@/components/admin/ArticleInsightsPanel'
@@ -41,6 +42,16 @@ function AdminNewsEditInner() {
   return (
     <div className="p-0 md:p-6 lg:p-8">
       <ArticleInsightsPanel articleId={post.id} />
+      {post.status === 'published' ? (
+        <div className="mb-3 flex justify-end px-4 md:px-0">
+          <Link
+            href={`/admin/media-studio/reels?newsId=${encodeURIComponent(post.id)}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm font-semibold"
+          >
+            <Clapperboard className="h-4 w-4" /> Reels oluştur
+          </Link>
+        </div>
+      ) : null}
       <AdminNewsEditor
         mode="edit"
         variant="page"

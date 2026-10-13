@@ -273,7 +273,7 @@ export async function POST(request: Request) {
     for (const [platform, accountId] of allTargets) {
       const loaded = await loadSocialAccount(accountId)
       if (loaded.state !== 'ok') return NextResponse.json({ error: 'not_found', code: 'not_found', platform, accountId }, { status: 409 })
-      const check = manualTargetCheck(socialActor, loaded.account, { id: newsSnap.id, data: newsSnap.data() as Record<string, unknown> }, requiredFormats(platform, mode), Date.now())
+      const check = manualTargetCheck(socialActor, loaded.account, { id: newsSnap.id, data: newsSnap.data() as Record<string, unknown> }, requiredFormats(platform, mode).filter((f): f is 'post' | 'story' => f !== 'reel'), Date.now())
       if (!check.ok) {
         return NextResponse.json(
           { error: check.hidden ? 'Bu hesapla paylaşım yetkiniz yok' : check.reason, code: check.hidden ? 'forbidden' : check.code, platform, ...(check.hidden ? {} : { accountId }) },

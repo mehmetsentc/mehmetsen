@@ -11,6 +11,7 @@
  */
 
 import { getAdminStorage } from '@/lib/firebase/admin'
+import { refundTtsChars, reserveTtsChars, TtsQuotaError, type TtsReservation } from '@/lib/reels/ttsQuota'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 
@@ -41,6 +42,18 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
   // Trim to 4800 chars to stay safely under API limits
   const text = voiceText.slice(0, 4800)
 
+  // Free-tier guard shared with reels (monthly character counter, no overage without approval).
+  let reservation: TtsReservation
+  try {
+    reservation = await reserveTtsChars(text, VOICE_NAME)
+  } catch (err) {
+    if (err instanceof TtsQuotaError) {
+      console.warn('[ttsGenerator] skipped:', err.message)
+      return null
+    }
+    throw err
+  }
+
   try {
     // 1. Call Google TTS API
     const ttsRes = await fetch(`${TTS_ENDPOINT}?key=${apiKey}`, {
@@ -64,6 +77,7 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
     if (!ttsRes.ok) {
       const errText = await ttsRes.text()
       console.error('[ttsGenerator] API error:', ttsRes.status, errText.slice(0, 200))
+      await refundTtsChars(reservation)
       return null
     }
 
@@ -71,6 +85,7 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
     const audioBase64 = ttsJson.audioContent
     if (!audioBase64) {
       console.error('[ttsGenerator] empty audioContent')
+      await refundTtsChars(reservation)
       return null
     }
 

@@ -9,6 +9,7 @@ const TABS = [
   { href: '/admin/social/accounts', label: 'Hesaplar' },
   { href: '/admin/social/automation', label: 'Otomasyon' },
   { href: '/admin/social/shares', label: 'Paylaşımlar' },
+  { href: '/admin/social/reels', label: 'Reels' },
   { href: '/admin/social/network', label: 'İl Ağı' },
 ] as const
 

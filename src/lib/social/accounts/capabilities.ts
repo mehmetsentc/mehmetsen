@@ -13,14 +13,19 @@
  *   Threads: image, carousel, video, text. No story.
  *
  * Adapter implementation (what NaHaber's code actually publishes today):
- *   Facebook: single photo post, photo story. NO multi-photo / reel / video.
- *   Instagram: single image, carousel, story. NO reel / video.
+ *   Facebook: single photo post, photo story, reel (REELS-1 rendered MP4). NO multi-photo / video.
+ *   Instagram: single image, carousel, story, reel (REELS-1 rendered MP4). NO plain video.
  *   Threads: single image (+ text fallback). NO carousel / video.
+ *
+ * Reels are an AUTOMATION / studio format only: supportedFormats() (manual composer,
+ * account publish scopes) stays post/story; reel support is read via supportsReel().
  */
 import type { SocialAccountPlatform, SocialConnectionMethod, SocialAccountStatus, PublishPermissionState } from './types'
 
 export type PublishFormat = 'post' | 'story'
-export type ComposerMode = 'post' | 'story' | 'both'
+/** Ledger / automation formats: post, story and the REELS-1 news reel. */
+export type AutomationFormat = PublishFormat | 'reel'
+export type ComposerMode = 'post' | 'story' | 'both' | 'reel'
 
 export type ContentKind = 'image_post' | 'carousel_post' | 'story' | 'reel' | 'video'
 /** Composer image choice for a post. `carousel` never silently degrades to one image. */
@@ -47,10 +52,10 @@ export function platformCapabilities(a: CapabilityInput): ContentKind[] {
   return ['image_post', 'carousel_post', 'story', 'reel']
 }
 
-/** What NaHaber's adapters implement today. Reels / video: nowhere. */
+/** What NaHaber's adapters implement today. Reels: rendered news reel (REELS-1); plain video: nowhere. */
 export const ADAPTER_IMPLEMENTED: Record<SocialAccountPlatform, readonly ContentKind[]> = {
-  facebook: ['image_post', 'story'],
-  instagram: ['image_post', 'carousel_post', 'story'],
+  facebook: ['image_post', 'story', 'reel'],
+  instagram: ['image_post', 'carousel_post', 'story', 'reel'],
   threads: ['image_post'],
 }
 
@@ -66,6 +71,16 @@ export function supportedFormats(a: CapabilityInput): PublishFormat[] {
   if (kinds.includes('image_post')) out.push('post')
   if (kinds.includes('story')) out.push('story')
   return out
+}
+
+/** REELS-1: news reel publishing (automation rules + Reels studio). */
+export function supportsReel(a: CapabilityInput): boolean {
+  return publishableKinds(a).includes('reel')
+}
+
+/** Formats an account can take for a composer mode (reel handled separately from post/story). */
+export function formatsForMode(a: CapabilityInput, mode: ComposerMode): AutomationFormat[] {
+  return mode === 'reel' ? (supportsReel(a) ? ['reel'] : []) : supportedFormats(a)
 }
 
 /**
@@ -92,7 +107,8 @@ export function parseImageMode(v: unknown): ImageMode | undefined | 'invalid' {
 }
 
 /** Formats a composer mode requires from one platform's target. Threads never posts stories. */
-export function requiredFormats(platform: SocialAccountPlatform, mode: ComposerMode): PublishFormat[] {
+export function requiredFormats(platform: SocialAccountPlatform, mode: ComposerMode): AutomationFormat[] {
+  if (mode === 'reel') return ['reel']
   if (platform === 'threads') return mode === 'story' ? ['story'] : ['post']
   if (mode === 'both') return ['post', 'story']
   return [mode]
@@ -124,7 +140,7 @@ export function targetBlocker(
   if (a.tokenExpiresAt !== null && a.tokenExpiresAt <= now) return 'token_expired'
   if (a.publishPermission === 'missing') return 'publish_permission_missing'
   if (a.publishPermission === 'unverified') return 'publish_permission_unverified'
-  const supported = supportedFormats(a)
+  const supported = formatsForMode(a, mode)
   if (!requiredFormats(a.platform, mode).every((f) => supported.includes(f))) return 'format_unsupported'
   return null
 }

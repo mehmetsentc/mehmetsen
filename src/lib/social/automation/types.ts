@@ -32,7 +32,7 @@
  */
 import { DISTRICT_TO_PROVINCE_SLUG, TURKISH_PROVINCES } from '@/constants/cities'
 import { PROVINCE_DISTRICTS } from '@/constants/turkishDistricts'
-import type { PublishFormat } from '../accounts/capabilities'
+import type { AutomationFormat } from '../accounts/capabilities'
 import type { SocialAccountOwnership, SocialAccountPlatform } from '../accounts/types'
 
 export type AutomationGeo =
@@ -74,7 +74,7 @@ export interface AutomationRuleInput {
   allCategories: boolean
   featuredMode: FeaturedMode
   featuredKind: FeaturedKind
-  formats: PublishFormat[]
+  formats: AutomationFormat[]
   dailyLimit: number
   minIntervalMinutes: number
   quietHours: QuietHours | null
@@ -225,9 +225,9 @@ export function validateRuleInput(raw: unknown): RuleValidation {
     return bad('featuredMode', '«Tüm kategoriler VEYA öne çıkan» zaten tüm haberler demektir — «Yalnızca kategoriler» + «Tüm kategoriler» seçin')
   }
 
-  const formats = uniqStrings(r.formats, 2) as PublishFormat[] | null
-  if (!formats || formats.length === 0 || formats.some((f) => f !== 'post' && f !== 'story')) {
-    return bad('formats', 'En az bir biçim seçilmeli (gönderi / hikâye)')
+  const formats = uniqStrings(r.formats, 3) as AutomationFormat[] | null
+  if (!formats || formats.length === 0 || formats.some((f) => f !== 'post' && f !== 'story' && f !== 'reel')) {
+    return bad('formats', 'En az bir biçim seçilmeli (gönderi / hikâye / reels)')
   }
   // Otomatik hikâye yalnız açık bir öne çıkan / önem koşuluyla: «tüm konumlar»
   // veya bir kategori tek başına her haberi hikâyeye göndermez.
