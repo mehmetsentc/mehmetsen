@@ -50,6 +50,7 @@ export async function POST(request: Request) {
   const result = await publishOneSocial(newsId, {
     mode: format,
     targets: { [target.platform]: target.accountId },
+    manual: true,
     actorUid: auth.actor.uid,
     force: body.force === true,
     trigger: 'studio',
