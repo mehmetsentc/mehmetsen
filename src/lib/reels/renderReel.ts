@@ -8,13 +8,13 @@ import 'server-only'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createCanvas, loadImage, type Image } from '@napi-rs/canvas'
+import { createCanvas, loadImage, type Canvas, type Image } from '@napi-rs/canvas'
 import { REEL_FPS, REEL_H, REEL_W, TYPE_CPS, buildTimeline, clickTimes, wrapLines, type ReelTimeline } from './timeline'
 import { audioFilterGraph, buildFxTrack, readWav, wavSeconds, writeWav } from './audio'
 import {
   FONT_MD, FONT_XB, INTRO_SECONDS, MUTED, OUTRO_SECONDS, RED, STYLE_ACCENT, TICKER_Y, WHITE,
   audioDir, bedPath, brandBackground, categoryTag, clamp01, drawCover, endCard, ensureFonts, header, introOverlay,
-  legibility, loadBrand, newCanvas, presenterCard, progressBar, resolveFfmpegPath, resolveMusic, span, spawnEncoder,
+  legibility, loadBrand, newCanvas, presenterCard, roundRectPath, progressBar, resolveFfmpegPath, resolveMusic, span, spawnEncoder,
   ticker, videoFrames, voiceEnvelope,
   type ReelIntro, type ReelMedia, type ReelMusic, type ReelOutro, type ReelPresenter, type ReelStyle,
 } from './reelTheme'
@@ -105,17 +105,42 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
     if (input.media.kind === 'image') image = await loadImage(input.media.data)
     const presenterPhoto = input.presenter?.photo ? await loadImage(input.presenter.photo).catch(() => null) : null
     const level = input.presenter ? voiceEnvelope(readWav(input.voiceWav), tl.voiceStart, tl.frames, REEL_FPS) : null
-    const vid = input.media.kind === 'video' ? videoFrames(ffmpeg, input.media.path, tl.frames) : null
+    // Media card: the story's image / video plays up front (not cropped to 9:16, not under the text);
+    // a blurred, darkened copy fills the frame behind it.
+    const card = { x: 40, y: 172, w: 1000, h: Math.round(Math.max(560, Math.min(980, tagY - 40 - 172)) / 2) * 2 }
+    const vid = input.media.kind === 'video' ? videoFrames(ffmpeg, input.media.path, tl.frames, card.w, card.h) : null
     const enc = spawnEncoder(ffmpeg, {
       voice: voicePath, bed: bedPath(root, music), fx: fxPath,
       filter: audioFilterGraph(tl.voiceStart, music ? 0.9 : 0), total: tl.total, out: outPath,
     })
 
     const { canvas, ctx } = newCanvas()
-    const vidCanvas = createCanvas(REEL_W, REEL_H)
+    const vidCanvas = createCanvas(card.w, card.h)
     const vctx = vidCanvas.getContext('2d')
-    const vidData = vctx.createImageData(REEL_W, REEL_H)
+    const vidData = vctx.createImageData(card.w, card.h)
     let haveVid = false
+    const tiny = createCanvas(27, 48)
+    const tctx = tiny.getContext('2d')
+    // Backdrop (blurred media + navy veil + card shadow) is composed once (image) or every 10 frames (video).
+    const bg = createCanvas(REEL_W, REEL_H)
+    const bgx = bg.getContext('2d')
+    const refreshBackdrop = (src: Image | Canvas) => {
+      drawCover(tctx, src, 0, 0, 27, 48)
+      bgx.imageSmoothingEnabled = true
+      bgx.imageSmoothingQuality = 'high'
+      bgx.drawImage(tiny, 0, 0, REEL_W, REEL_H)
+      bgx.fillStyle = 'rgba(7,21,48,0.62)'
+      bgx.fillRect(0, 0, REEL_W, REEL_H)
+      bgx.save()
+      bgx.shadowColor = 'rgba(0,0,0,0.45)'
+      bgx.shadowBlur = 40
+      bgx.shadowOffsetY = 12
+      roundRectPath(bgx, card.x, card.y, card.w, card.h, 34)
+      bgx.fillStyle = '#000'
+      bgx.fill()
+      bgx.restore()
+    }
+    if (image) refreshBackdrop(image)
     const cat = (input.breaking ? 'SON DAKİKA' : input.category).toLocaleUpperCase('tr-TR')
     const placeLabel = input.place ? input.place.toLocaleUpperCase('tr-TR') : null
     const tickerText =
@@ -131,13 +156,40 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
         if (!nx.done) {
           vidData.data.set(nx.value)
           vctx.putImageData(vidData, 0, 0)
+          if (!haveVid || i % 10 === 0) refreshBackdrop(vidCanvas)
           haveVid = true
         }
       }
-      if (image) drawCover(ctx, image, 0, 0, REEL_W, REEL_H, 1.06 + 0.1 * mainP, 0.46 + 0.08 * mainP, 0.45)
-      else if (haveVid) ctx.drawImage(vidCanvas, 0, 0)
-      else brandBackground(ctx, brand, t, mainP, accent, input.category)
-      legibility(ctx, tagY)
+      if (image || haveVid) {
+        ctx.drawImage(bg, 0, 0)
+        ctx.save()
+        roundRectPath(ctx, card.x, card.y, card.w, card.h, 34)
+        ctx.clip()
+        if (image) drawCover(ctx, image, card.x, card.y, card.w, card.h, 1.02 + 0.08 * mainP, 0.48 + 0.04 * mainP, 0.45)
+        else ctx.drawImage(vidCanvas, card.x, card.y)
+        ctx.restore()
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)'
+        ctx.lineWidth = 2
+        roundRectPath(ctx, card.x, card.y, card.w, card.h, 34)
+        ctx.stroke()
+        // top fade for the header, bottom fade into the text block
+        const gt = ctx.createLinearGradient(0, 0, 0, 200)
+        gt.addColorStop(0, 'rgba(7,21,48,0.85)')
+        gt.addColorStop(1, 'rgba(7,21,48,0)')
+        ctx.fillStyle = gt
+        ctx.fillRect(0, 0, REEL_W, 200)
+        const gTop = Math.min(card.y + card.h - 40, tagY - 40)
+        const gb = ctx.createLinearGradient(0, gTop, 0, tagY + 30)
+        gb.addColorStop(0, 'rgba(7,21,48,0)')
+        gb.addColorStop(1, 'rgba(7,21,48,0.96)')
+        ctx.fillStyle = gb
+        ctx.fillRect(0, gTop, REEL_W, tagY + 30 - gTop)
+        ctx.fillStyle = 'rgba(7,21,48,0.96)'
+        ctx.fillRect(0, tagY + 30, REEL_W, REEL_H - tagY - 30)
+      } else {
+        brandBackground(ctx, brand, t, mainP, accent, input.category)
+        legibility(ctx, tagY)
+      }
       progressBar(ctx, mainP)
       header(ctx, brand, -140 + 196 * span(t, Math.max(0, introS - 0.1), introS + 0.4), placeLabel)
 
@@ -173,7 +225,7 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
       }
 
       if (input.presenter && level) {
-        presenterCard(ctx, input.presenter, presenterPhoto, accent, 48, 176, level[i] ?? 0, span(t, introS + 0.1, introS + 0.5) * (1 - span(t, tl.endStart - 0.4, tl.endStart)))
+        presenterCard(ctx, input.presenter, presenterPhoto, accent, 64, 196, level[i] ?? 0, span(t, introS + 0.1, introS + 0.5) * (1 - span(t, tl.endStart - 0.4, tl.endStart)))
       }
       ticker(ctx, brand, tickerText, t, span(t, introS, introS + 0.45))
       introOverlay(ctx, brand, intro, t)
