@@ -31,6 +31,9 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@napi-rs/canvas', 'ffmpeg-static'],
   outputFileTracingIncludes: {
     '/api/admin/social/reels/render': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+    // Reels share (studio) and the automation worker render the reel too.
+    '/api/admin/social/reels/share': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/cron/social-automation': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
   },
   htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,
