@@ -42,7 +42,7 @@ export type ReelCoverInput = {
 const GRID_TOP = 240
 const GRID_BOTTOM = 1680
 
-function logoRow(ctx: SKRSContext2D, brand: Brand, y: number, size = 92, pill = false): void {
+export function logoRow(ctx: SKRSContext2D, brand: Brand, y: number, size = 92, pill = false): void {
   const ws = Math.round(size * 0.6)
   const ww = wordmarkWidth(ctx, ws)
   const w = size + 20 + ww
@@ -148,7 +148,6 @@ export async function renderReelCover(input: ReelCoverInput, opts: { root?: stri
     g.addColorStop(1, NAVY)
     ctx.fillStyle = g
     ctx.fillRect(0, 0, REEL_W, REEL_H)
-    logoRow(ctx, brand, GRID_TOP + 40, 84)
     const fit = fitHeadline(ctx, input.headline, REEL_W - LEFT * 2, 4, [84, 76, 68])
     const blockH = 70 + 34 + fit.lines.length * fit.lh + (placeLabel ? 24 + 44 : 0)
     const tagY = GRID_BOTTOM - 120 - blockH
@@ -191,7 +190,6 @@ export async function renderReelCover(input: ReelCoverInput, opts: { root?: stri
     ctx.fillRect(0, tagY + 120, REEL_W, REEL_H - tagY - 120)
     ctx.fillStyle = RED
     ctx.fillRect(0, 0, REEL_W, 10)
-    logoRow(ctx, brand, GRID_TOP + 40, 88, true)
     tag(ctx, cat, cx, tagY, accent)
     headline(ctx, fit.lines, tagY + 70 + 36, fit.size, fit.lh)
     if (placeLabel) place(ctx, placeLabel, cx, tagY + 70 + 36 + fit.lines.length * fit.lh + 26)

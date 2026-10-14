@@ -19,7 +19,7 @@ async function view() {
   const u = await getAdminFirestore().collection('ttsUsage').doc(month).get().catch(() => null)
   return {
     personas: parsePersonas(s.personas),
-    defaults: { intro: s.intro ?? 'soft', outro: s.outro ?? 'logo', music: s.music ?? 'auto', cover: s.cover ?? 'bulten', layout: s.layout ?? 'bulten', postTheme: s.postTheme ?? 'nahaber', alwaysUseMedia: s.alwaysUseMedia !== false },
+    defaults: { intro: s.intro ?? 'soft', outro: s.outro ?? 'logo', music: s.music ?? 'auto', cover: s.cover ?? 'bulten', layout: s.layout ?? 'dinamik', postTheme: s.postTheme ?? 'nahaber', alwaysUseMedia: s.alwaysUseMedia !== false },
     gemini: { enabled: !!s.geminiEnabled, monthlyUsd: s.geminiMonthlyUsd ?? 10, usedUsd: Number(u?.data()?.geminiUsd ?? 0), month },
     options: { intros: REEL_INTROS, outros: REEL_OUTROS, music: REEL_MUSIC, transitions: DIGEST_TRANSITIONS, covers: [{ id: 'bulten', label: 'Bülten' }, { id: 'manset', label: 'Manşet' }, { id: 'panel', label: 'Panel' }] },
   }

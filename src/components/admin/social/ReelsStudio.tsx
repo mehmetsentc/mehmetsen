@@ -108,6 +108,7 @@ const COVER_TEXT: Record<string, [string, string]> = {
   bulten: ['Bülten', 'foto + beyaz panel'],
 }
 const LAYOUT_TEXT: Record<string, [string, string]> = {
+  dinamik: ['Dinamik', 'tam ekran, ortada yazı'],
   bulten: ['Bülten', 'foto üstte, beyaz panel'],
   kart: ['Kart', 'foto kartı, lacivert'],
 }
@@ -222,7 +223,7 @@ export function ReelsStudio() {
   const [outro, setOutro] = useState('logo')
   const [music, setMusic] = useState('auto')
   const [cover, setCover] = useState('bulten')
-  const [layout, setLayout] = useState('bulten')
+  const [layout, setLayout] = useState('dinamik')
   const [result, setResult] = useState<ReelResult | null>(null)
   const [busy, setBusy] = useState<null | 'plan' | 'render' | 'approve' | 'digest'>(null)
   const [error, setError] = useState<string | null>(null)
@@ -252,7 +253,7 @@ export function ReelsStudio() {
       setOutro((v) => (v === 'logo' ? r.data.defaults.outro : v))
       setMusic((v) => (v === 'auto' ? r.data.defaults.music : v))
       setCover((v) => (v === 'bulten' ? r.data.defaults.cover ?? 'bulten' : v))
-      setLayout((v) => (v === 'bulten' ? r.data.defaults.layout ?? 'bulten' : v))
+      setLayout((v) => (v === 'dinamik' ? r.data.defaults.layout ?? 'dinamik' : v))
     }
   }, [])
   const loadUsage = useCallback(async () => {
@@ -710,7 +711,8 @@ export function ReelsStudio() {
                     </p>
                   </Section>
                   <Section title="Video düzeni">
-                    <OptionGrid items={['bulten', 'kart']} value={layout} onChange={setLayout} labels={LAYOUT_TEXT} cols={2} />
+                    <OptionGrid items={['dinamik', 'bulten', 'kart']} value={layout} onChange={setLayout} labels={LAYOUT_TEXT} cols={3} />
+                    <p className="text-[10px] text-[rgb(var(--color-muted))]">Dinamik: haberde ses içeren video varsa seslendirmeden sonra videonun kendi sesi çalar (en fazla 25 sn).</p>
                   </Section>
                   <Section title="Giriş efekti">
                     <OptionGrid items={pv?.options.intros ?? ['soft', 'slide', 'perde', 'zoom', 'minimal']} value={intro} onChange={setIntro} labels={INTRO_TEXT} />

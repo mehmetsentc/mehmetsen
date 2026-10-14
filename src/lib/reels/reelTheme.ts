@@ -268,8 +268,8 @@ export function categoryTag(ctx: SKRSContext2D, label: string, x0: number, y: nu
 }
 
 /** Bottom ticker band (k = entrance 0..1). */
-export function ticker(ctx: SKRSContext2D, brand: Brand, text: string, t: number, k: number, variant: 'navy' | 'red' = 'navy'): void {
-  const y = TICKER_Y + (TICKER_H + 20) * (1 - k)
+export function ticker(ctx: SKRSContext2D, brand: Brand, text: string, t: number, k: number, variant: 'navy' | 'red' = 'navy', y0: number = TICKER_Y): void {
+  const y = y0 + (TICKER_H + 20) * (1 - k)
   ctx.fillStyle = NAVY
   ctx.fillRect(0, y, REEL_W, REEL_H - y)
   ctx.fillStyle = variant === 'red' ? RED : NAVY2

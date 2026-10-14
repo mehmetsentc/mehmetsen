@@ -32,7 +32,7 @@ const GEO: Record<BulletinFormat, Geo> = {
   story: { W: 1080, H: 1920, x: 84, right: 84, logoY: 270, bottom: 1680, head: [72, 66, 60], sum: 34, band: 80 },
 }
 
-function logoPill(ctx: SKRSContext2D, brand: Brand, x: number, y: number): void {
+export function logoPill(ctx: SKRSContext2D, brand: Brand, x: number, y: number): void {
   const size = 72
   const ws = 44
   const w = size + 16 + wordmarkWidth(ctx, ws) + 30
@@ -43,7 +43,7 @@ function logoPill(ctx: SKRSContext2D, brand: Brand, x: number, y: number): void 
   wordmark(ctx, x + size + 16, y + (size - ws) / 2 - 2, ws)
 }
 
-function placePill(ctx: SKRSContext2D, label: string, right: number, y: number): void {
+export function placePill(ctx: SKRSContext2D, label: string, right: number, y: number): void {
   ctx.font = `30px ${FONT_XB}`
   const tw = ctx.measureText(label).width
   const w = tw + 80
@@ -121,10 +121,13 @@ export async function renderBulletinCard(input: BulletinCardInput, format: Bulle
   ctx.font = `${g.sum}px ${FONT_MD}`
   const sumLines = input.summary ? wrapLines((s) => ctx.measureText(s).width, input.summary, textW, 2) : []
   const sumLh = Math.round(g.sum * 1.36)
+  // Red footer is always the last row (no empty band under it). On the 9:16 story/cover the
+  // text still sits inside the profile grid's 3:4 crop (y ≤ g.bottom); the white panel
+  // simply runs down to the footer.
   const footH = format === 'post' ? 88 : 96
-  const footY = g.bottom - footH
-  const panelH = 40 + head.lines.length * head.lh + (sumLines.length ? 16 + sumLines.length * sumLh : 0) + 34
-  const panelTop = footY - panelH
+  const footY = g.H - footH
+  const textH = 40 + head.lines.length * head.lh + (sumLines.length ? 16 + sumLines.length * sumLh : 0) + 34
+  const panelTop = Math.min(footY, g.bottom) - textH
   const bandY = panelTop - g.band
 
   // photo
@@ -136,14 +139,8 @@ export async function renderBulletinCard(input: BulletinCardInput, format: Bulle
   ctx.clip()
   if (img) drawCover(ctx, img, 0, 0, g.W, panelTop, 1.0, 0.5, 0.42)
   else brandBackground(ctx, brand, 0, 0, accent, input.category)
-  const gt = ctx.createLinearGradient(0, 0, 0, g.logoY + 220)
-  gt.addColorStop(0, 'rgba(7,21,48,0.7)')
-  gt.addColorStop(1, 'rgba(7,21,48,0)')
-  ctx.fillStyle = gt
-  ctx.fillRect(0, 0, g.W, g.logoY + 220)
   ctx.restore()
-  logoPill(ctx, brand, g.x, g.logoY)
-  if (input.place) placePill(ctx, input.place.toLocaleUpperCase('tr-TR'), g.W - g.right, g.logoY + 6)
+  // clean top: no logo / city pills (brand lives in the footer)
 
   // panel + text
   ctx.fillStyle = WHITE
@@ -174,9 +171,5 @@ export async function renderBulletinCard(input: BulletinCardInput, format: Bulle
   ctx.font = `30px ${FONT_MD}`
   const right = `nahaber.com${input.dateLabel ? `  •  ${input.dateLabel}` : ''}`
   ctx.fillText(right, g.W - g.right - ctx.measureText(right).width, footY + footH / 2 + 1)
-  if (format === 'story' && g.bottom < g.H) {
-    ctx.fillStyle = NAVY
-    ctx.fillRect(0, g.bottom, g.W, g.H - g.bottom)
-  }
   return canvas.encode('jpeg', 90)
 }

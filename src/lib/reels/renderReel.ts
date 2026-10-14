@@ -12,7 +12,7 @@ import { createCanvas, loadImage, type Canvas, type Image } from '@napi-rs/canva
 import { REEL_FPS, REEL_H, REEL_W, TYPE_CPS, buildTimeline, clickTimes, wrapLines, type ReelTimeline } from './timeline'
 import { audioFilterGraph, buildFxTrack, readWav, wavSeconds, writeWav } from './audio'
 import {
-  FONT_MD, FONT_XB, INTRO_SECONDS, MUTED, NAVY, OUTRO_SECONDS, RED, SAFE, STYLE_ACCENT, TICKER_Y, WHITE,
+  FONT_MD, FONT_XB, INTRO_SECONDS, MUTED, NAVY, OUTRO_SECONDS, RED, SAFE, STYLE_ACCENT, TICKER_H, TICKER_Y, WHITE,
   audioDir, bedPath, brandBackground, bulletinBand, categoryTag, clamp01, drawCover, endCard, ensureFonts, header, introOverlay,
   legibility, loadBrand, newCanvas, presenterCard, roundRectPath, progressBar, resolveFfmpegPath, resolveMusic, span, spawnEncoder,
   ticker, videoFrames, voiceEnvelope,
@@ -20,7 +20,7 @@ import {
 } from './reelTheme'
 
 export type { ReelIntro, ReelMedia, ReelMusic, ReelOutro, ReelPresenter, ReelStyle } from './reelTheme'
-export type ReelLayout = 'kart' | 'bulten'
+export type ReelLayout = 'kart' | 'bulten' | 'dinamik'
 export { resolveFfmpegPath, STYLE_ACCENT } from './reelTheme'
 
 export type ReelInput = {
@@ -39,7 +39,7 @@ export type ReelInput = {
   presenter?: ReelPresenter | null
   breaking?: boolean
   dateLabel?: string | null
-  /** REELS-6: 'kart' = media card on navy; 'bulten' = photo on top, red band, white text panel. */
+  /** 'kart' = media card on navy; 'bulten' = photo on top + white panel; 'dinamik' = full-screen media, centred text (REELS-7). */
   layout?: ReelLayout
 }
 
@@ -55,6 +55,10 @@ const TEXT_W = REEL_W - TEXT_X - SAFE.right
 const BAR_X = SAFE.x - 12
 
 export async function renderReel(input: ReelInput, opts: { root?: string } = {}): Promise<ReelResult> {
+  if (input.layout === 'dinamik') {
+    const { renderDynamic } = await import('./renderDynamic')
+    return renderDynamic(input, opts)
+  }
   const root = opts.root ?? process.cwd()
   ensureFonts(root)
   const ffmpeg = await resolveFfmpegPath()
@@ -84,10 +88,12 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
     const tl = buildTimeline(voiceSec, headText.length, introS, OUTRO_SECONDS[outro])
     const tagH = bulten ? 58 : 62
     let tagY: number, headY: number, sumY: number, panelTop: number
+    // Bülten: the ticker is the last thing on screen (no empty band below it).
+    const tickerY = bulten ? REEL_H - TICKER_H : TICKER_Y
     if (bulten) {
       // white panel grows up from the ticker; the red band sits on the photo right above it
       const panelH = 26 + headLines.length * HL + (sumLines.length ? 10 + sumLines.length * SL : 0) + 24
-      panelTop = TICKER_Y - panelH
+      panelTop = tickerY - panelH
       tagY = panelTop - tagH
       headY = panelTop + 26
       sumY = headY + headLines.length * HL + 10
@@ -207,10 +213,10 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
         progressBar(ctx, mainP)
         // white panel slides up, red band slides in
         const pk = span(t, tagIn - 0.2, tagIn + 0.35)
-        const py = panelTop + (TICKER_Y - panelTop) * (1 - pk)
+        const py = panelTop + (tickerY - panelTop) * (1 - pk)
         ctx.fillStyle = WHITE
-        ctx.fillRect(0, py, REEL_W, TICKER_Y - py)
-        bulletinBand(ctx, cat, tagY + (TICKER_Y - panelTop) * (1 - pk), tagH, accent, span(t, tagIn, tagIn + 0.45), t, input.breaking)
+        ctx.fillRect(0, py, REEL_W, tickerY - py)
+        bulletinBand(ctx, cat, tagY + (tickerY - panelTop) * (1 - pk), tagH, accent, span(t, tagIn, tagIn + 0.45), t, input.breaking)
         const shown = Math.max(0, Math.min(headText.length, Math.floor((t - tl.typeStart) * TYPE_CPS)))
         const typed = headText.slice(0, shown).split('\n')
         ctx.font = `${HS}px ${FONT_XB}`
@@ -301,7 +307,7 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
       if (input.presenter && level) {
         presenterCard(ctx, input.presenter, presenterPhoto, accent, bulten ? SAFE.x : card.x + 28, bulten ? SAFE.top : card.y + 28, level[i] ?? 0, span(t, introS + 0.1, introS + 0.5) * (1 - span(t, tl.endStart - 0.4, tl.endStart)))
       }
-      ticker(ctx, brand, tickerText, t, span(t, introS, introS + 0.45), bulten ? 'red' : 'navy')
+      ticker(ctx, brand, tickerText, t, span(t, introS, introS + 0.45), bulten ? 'red' : 'navy', tickerY)
       introOverlay(ctx, brand, intro, t)
       endCard(ctx, brand, intro, t - tl.endStart, t, 'Haberin tamamı', outro)
       await enc.frame(canvas)

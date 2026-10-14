@@ -132,7 +132,7 @@ export type ReelBuildOptions = {
   dryRun?: boolean
   /** REELS-5: cover look (manset | panel | bulten); default from studio settings. */
   cover?: string | null
-  /** REELS-6: reel layout (kart | bulten); default from studio settings. */
+  /** REELS-6/7: reel layout (dinamik | bulten | kart); default from studio settings. */
   layout?: string | null
   /** CMS user who built it (saved in the reel library). */
   by?: string | null
@@ -311,8 +311,8 @@ async function coverFor(newsId: string, src: ReelSource, style: ReelStyle, varia
 
 type CoverVariant = 'manset' | 'panel' | 'bulten'
 const isCoverVariant = (v: unknown): v is CoverVariant => v === 'manset' || v === 'panel' || v === 'bulten'
-type Layout = 'kart' | 'bulten'
-const isLayout = (v: unknown): v is Layout => v === 'kart' || v === 'bulten'
+type Layout = 'kart' | 'bulten' | 'dinamik'
+const isLayout = (v: unknown): v is Layout => v === 'kart' || v === 'bulten' || v === 'dinamik'
 
 function styleOf(v: unknown): ReelStyle {
   return v === 'magazin' || v === 'spor' || v === 'analiz' ? v : 'haber'
@@ -328,7 +328,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   const src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')
   const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'bulten'
-  const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'bulten'
+  const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'dinamik'
   const slug = str(d.slug) || null
   const record = (url: string, coverUrl: string | null, m: { seconds?: number | null; persona?: string | null; style?: string | null; media?: string | null }) =>
     recordReel({ newsId, slug, headline: src.headline, url, coverUrl, seconds: m.seconds ?? null, persona: m.persona ?? null, style: m.style ?? null, media: m.media ?? null, by: opts.by ?? null })
@@ -367,7 +367,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   }
   if (opts.dryRun) return { ...base, url: '', reused: false, media: src.mediaAllowed ? (src.videoUrl ? 'video' : src.imageUrl ? 'image' : 'none') : 'none' }
 
-  const hash = `${optionsHash(plan)}${layout === 'kart' ? '' : '-b'}`
+  const hash = `${optionsHash(plan)}${layout === 'kart' ? '' : layout === 'bulten' ? '-b' : '-d'}`
   if (!opts.force) {
     const [exists] = await file.exists()
     if (exists) {

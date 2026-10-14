@@ -121,3 +121,27 @@ export function audioFilterGraph(voiceStartSec: number, bedVolume = 0.9): string
     `[3:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono[fx];[v][bd][fx]amix=inputs=3:normalize=0:weights=1 0.6 0.75,loudnorm=I=-15:TP=-1.5:LRA=8[a]`
   )
 }
+
+/**
+ * REELS-7 «Dinamik» graph: like audioFilterGraph plus, when the story video has sound,
+ * [4]=that video's audio from voiceEnd on (music fades out there).
+ */
+export function dynamicAudioGraph(o: { voiceStart: number; voiceEnd: number; bedVolume: number; videoAudio: boolean }): string {
+  const d = Math.round(o.voiceStart * 1000)
+  const ve = o.voiceEnd.toFixed(3)
+  const vd = Math.round(o.voiceEnd * 1000)
+  return (
+    `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,highpass=f=90,equalizer=f=250:t=q:w=1:g=-2,` +
+    `equalizer=f=3200:t=q:w=1.2:g=3,acompressor=threshold=-22dB:ratio=3:attack=5:release=90:makeup=4,` +
+    `adelay=${d}|${d},apad,asplit=2[v][vsc];` +
+    `[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,volume=${o.bedVolume}` +
+    (o.videoAudio ? `,afade=t=out:st=${ve}:d=0.9` : '') +
+    `[b];[b][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=250[bd];` +
+    `[3:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono[fx];` +
+    (o.videoAudio
+      ? `[4:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,atrim=start=${ve},asetpts=PTS-STARTPTS,` +
+        `afade=t=in:d=0.5,adelay=${vd}|${vd},apad[va];[v][bd][fx][va]amix=inputs=4:normalize=0:weights=1 0.6 0.75 1`
+      : `[v][bd][fx]amix=inputs=3:normalize=0:weights=1 0.6 0.75`) +
+    `,loudnorm=I=-15:TP=-1.5:LRA=11[a]`
+  )
+}

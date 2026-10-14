@@ -18,7 +18,7 @@ export type ReelVoiceSettings = {
   music?: string | null
   /** REELS-5/6 Instagram cover look: manset | panel | bulten */
   cover?: string | null
-  /** REELS-6 reel layout: kart | bulten */
+  /** REELS-6/7 reel layout: dinamik | bulten | kart */
   layout?: string | null
   /** REELS-6 post / image-story card theme: nahaber (default) | onyeditivi */
   postTheme?: string | null
@@ -65,7 +65,7 @@ export function parseVoiceSettings(raw: unknown): ReelVoiceSettings {
     outro: typeof r.outro === 'string' ? r.outro.slice(0, 16) : null,
     music: typeof r.music === 'string' ? r.music.slice(0, 16) : null,
     cover: r.cover === 'manset' || r.cover === 'panel' || r.cover === 'bulten' ? r.cover : null,
-    layout: r.layout === 'kart' || r.layout === 'bulten' ? r.layout : null,
+    layout: r.layout === 'kart' || r.layout === 'bulten' || r.layout === 'dinamik' ? r.layout : null,
     postTheme: r.postTheme === 'nahaber' || r.postTheme === 'onyeditivi' ? r.postTheme : null,
     geminiEnabled: r.geminiEnabled === true,
     alwaysUseMedia: r.alwaysUseMedia !== false,
