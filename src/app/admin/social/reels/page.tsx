@@ -1,14 +1,14 @@
 'use client'
 
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
-import { ReelsStudioPanel } from '@/components/admin/social/ReelsStudioPanel'
+import { ReelsStudio } from '@/components/admin/social/ReelsStudio'
 import { SocialAdminNav } from '@/components/admin/social/SocialAdminNav'
 
 export default function SocialReelsPage() {
   return (
-    <AdminOsPageShell title="Reels" subtitle="Haberden otomatik dikey video (önizleme)">
+    <AdminOsPageShell title="Reels" subtitle="Haberden dikey video — stüdyo">
       <SocialAdminNav />
-      <ReelsStudioPanel />
+      <ReelsStudio />
     </AdminOsPageShell>
   )
 }

@@ -86,6 +86,7 @@ export function buildFxTrack(
   assets: FxAssets,
   t: { total: number; summaryStart: number; endStart: number },
   clicks: number[],
+  extra: Array<{ clip: keyof FxAssets; at: number; gain: number }> = [],
 ): Pcm {
   const sr = assets.intro.sampleRate
   const data = new Float32Array(Math.ceil(t.total * sr))
@@ -93,11 +94,12 @@ export function buildFxTrack(
   let seed = 17
   for (const c of clicks) {
     seed = (seed * 1103515245 + 12345) % 2147483648
-    mixAt(data, sr, assets.click, c, 0.1 * (0.8 + 0.4 * (seed / 2147483648)))
+    mixAt(data, sr, assets.click, c, 0.07 * (0.8 + 0.4 * (seed / 2147483648)))
   }
-  mixAt(data, sr, assets.whooshUp, t.summaryStart - 0.1, 0.1)
-  mixAt(data, sr, assets.whooshDown, t.endStart - 0.2, 0.14)
+  mixAt(data, sr, assets.whooshUp, t.summaryStart - 0.1, 0.04)
+  mixAt(data, sr, assets.whooshDown, t.endStart - 0.2, 0.05)
   mixAt(data, sr, assets.outro, t.endStart + 0.05, 0.85)
+  for (const e of extra) mixAt(data, sr, assets[e.clip], e.at, e.gain)
   let peak = 0
   for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]!))
   if (peak > 0) for (let i = 0; i < data.length; i++) data[i] = (data[i]! / peak) * 0.9
@@ -109,13 +111,13 @@ export function buildFxTrack(
  * Voice: highpass + EQ + compression, delayed to voiceStart; bed ducks under voice;
  * final loudness −15 LUFS (Instagram/TikTok level).
  */
-export function audioFilterGraph(voiceStartSec: number): string {
+export function audioFilterGraph(voiceStartSec: number, bedVolume = 0.9): string {
   const d = Math.round(voiceStartSec * 1000)
   return (
     `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,highpass=f=90,equalizer=f=250:t=q:w=1:g=-2,` +
     `equalizer=f=3200:t=q:w=1.2:g=3,acompressor=threshold=-22dB:ratio=3:attack=5:release=90:makeup=4,` +
     `adelay=${d}|${d},apad,asplit=2[v][vsc];` +
-    `[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,volume=0.9[b];[b][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=250[bd];` +
+    `[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,volume=${bedVolume}[b];[b][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=250[bd];` +
     `[3:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono[fx];[v][bd][fx]amix=inputs=3:normalize=0:weights=1 0.6 0.75,loudnorm=I=-15:TP=-1.5:LRA=8[a]`
   )
 }

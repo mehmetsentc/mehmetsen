@@ -115,3 +115,35 @@ export async function setTtsOverageApproval(approved: boolean, uid: string): Pro
       { merge: true },
     )
 }
+
+/** REELS-4 — Gemini-TTS (paid, no free tier): monthly USD budget in the same doc. */
+export class GeminiBudgetError extends Error {
+  constructor(public readonly used: number, public readonly budget: number) {
+    super(`Gemini sunucu sesi aylık bütçesi doldu (${used.toFixed(2)} / ${budget.toFixed(2)} $). Standart Google sesi kullanılır.`)
+    this.name = 'GeminiBudgetError'
+  }
+}
+
+/** Audio ≈ 14 characters per second, 25 tokens per second, output $10 / 1M tokens (2.5 Flash TTS). */
+export function estimateGeminiUsd(text: string, outPerMillion = 10, inPerMillion = 0.5): number {
+  const sec = Math.max(1, [...text].length / 14)
+  return (sec * 25 * outPerMillion) / 1e6 + ((text.length / 4 + 60) * inPerMillion) / 1e6
+}
+
+export async function reserveGeminiUsd(estUsd: number, budgetUsd: number): Promise<{ month: string; usd: number }> {
+  const month = usageMonth()
+  const ref = getAdminFirestore().collection(COLLECTION).doc(month)
+  await getAdminFirestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const used = Number((snap.data() ?? {}).geminiUsd ?? 0)
+    if (used + estUsd > budgetUsd) throw new GeminiBudgetError(used, budgetUsd)
+    tx.set(ref, { geminiUsd: FieldValue.increment(estUsd), geminiRequests: FieldValue.increment(1), updatedAt: Date.now() }, { merge: true })
+  })
+  return { month, usd: estUsd }
+}
+
+export async function adjustGeminiUsd(r: { month: string; usd: number }, actualUsd: number | null): Promise<void> {
+  const delta = (actualUsd ?? 0) - r.usd
+  if (Math.abs(delta) < 1e-7) return
+  await getAdminFirestore().collection(COLLECTION).doc(r.month).set({ geminiUsd: FieldValue.increment(delta) }, { merge: true }).catch(() => {})
+}

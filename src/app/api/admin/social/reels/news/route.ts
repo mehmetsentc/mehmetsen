@@ -8,6 +8,8 @@ import { requireActor } from '@/lib/social/accounts/connect/actorRoute'
 import { json } from '@/lib/social/accounts/connect/routeHelpers'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { extractImageUrl } from '@/lib/social/publishOneSocial'
+import { reelSourceFromDoc } from '@/lib/reels/reelService'
+import { getReelVoiceSettings } from '@/lib/reels/voiceSettings'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,6 +20,7 @@ export async function GET(request: Request) {
   const auth = await requireActor(request, { mutation: false })
   if ('response' in auth) return auth.response
   const q = fold((new URL(request.url).searchParams.get('q') ?? '').trim()).slice(0, 80)
+  const policy = { alwaysUseMedia: (await getReelVoiceSettings()).alwaysUseMedia !== false }
   const snap = await getAdminFirestore().collection(Collections.NEWS).where('status', '==', 'published').orderBy('publishedAt', 'desc').limit(80).get()
   const items = snap.docs
     .map((d) => {
@@ -32,6 +35,11 @@ export async function GET(request: Request) {
         publishedAt: typeof x.publishedAt === 'number' ? x.publishedAt : null,
         imageUrl: extractImageUrl(x) ?? null,
         hasVideo: Boolean(str(x.videoUrl) || media.some((m) => m.type === 'video' && m.url)),
+        mediaOk: reelSourceFromDoc(x, policy).mediaAllowed,
+        rightsOk: reelSourceFromDoc(x).mediaAllowed,
+        approved: !!(x.reelMediaApproval && typeof x.reelMediaApproval === 'object'),
+        featured: x.isFeatured === true || x.featured === true,
+        citySlug: str(x.citySlug) || null,
       }
     })
     .filter((i) => i.title && (!q || fold(i.title).includes(q)))

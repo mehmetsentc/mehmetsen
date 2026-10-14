@@ -27,10 +27,17 @@ export async function POST(request: Request) {
   const newsId = typeof body.newsId === 'string' ? body.newsId.trim() : ''
   if (!newsId || !/^[A-Za-z0-9_-]{4,64}$/.test(newsId)) return json({ error: 'newsId gerekli' }, 400)
   try {
+    const s = (v: unknown) => (typeof v === 'string' ? v : null)
     const result = await buildReelForNews(newsId, {
       force: body.force === true,
+      dryRun: body.dryRun === true,
       voice: isValidVoiceName(body.voice) ? body.voice : null,
       rate: body.rate == null ? null : clampRate(body.rate),
+      personaId: s(body.personaId),
+      intro: s(body.intro),
+      outro: s(body.outro),
+      music: s(body.music),
+      voiceText: s(body.voiceText)?.slice(0, 320) ?? null,
     })
     return json({ result })
   } catch (err) {

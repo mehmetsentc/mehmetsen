@@ -12,6 +12,15 @@ export type ReelVoiceSettings = {
   rate: number | null
   /** categoryId → voice name */
   categoryVoices: Record<string, string>
+  /** REELS-4 studio defaults */
+  intro?: string | null
+  outro?: string | null
+  music?: string | null
+  geminiEnabled?: boolean
+  geminiMonthlyUsd?: number
+  /** Always use the story's own image / video (default true). */
+  alwaysUseMedia?: boolean
+  personas?: unknown[]
   updatedAt?: number | null
   updatedBy?: string | null
 }
@@ -46,6 +55,13 @@ export function parseVoiceSettings(raw: unknown): ReelVoiceSettings {
     defaultVoice: isValidVoiceName(r.defaultVoice) ? r.defaultVoice : null,
     rate: r.rate == null ? null : clampRate(r.rate),
     categoryVoices: cv,
+    intro: typeof r.intro === 'string' ? r.intro.slice(0, 16) : null,
+    outro: typeof r.outro === 'string' ? r.outro.slice(0, 16) : null,
+    music: typeof r.music === 'string' ? r.music.slice(0, 16) : null,
+    geminiEnabled: r.geminiEnabled === true,
+    alwaysUseMedia: r.alwaysUseMedia !== false,
+    geminiMonthlyUsd: Math.min(200, Math.max(0, Number.isFinite(Number(r.geminiMonthlyUsd)) ? Number(r.geminiMonthlyUsd) : 10)),
+    personas: Array.isArray(r.personas) ? r.personas.slice(0, 12) : undefined,
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : null,
     updatedBy: typeof r.updatedBy === 'string' ? r.updatedBy : null,
   }

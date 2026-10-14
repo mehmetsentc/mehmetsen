@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     // Reels share (studio) and the automation worker render the reel too.
     '/api/admin/social/reels/share': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/cron/social-automation': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/social/reels/digest': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/reels/music/[name]': ['./src/lib/reels/assets/audio/broadcast/bed-*.m4a'],
   },
   htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,

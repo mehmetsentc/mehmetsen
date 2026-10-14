@@ -27,9 +27,12 @@ export async function getReelVoiceSettings(): Promise<ReelVoiceSettings> {
 }
 
 export async function saveReelVoiceSettings(raw: unknown, uid: string): Promise<ReelVoiceSettings> {
-  const parsed = parseVoiceSettings(raw)
+  // Only the keys the caller sent change; everything else (personas, defaults) is kept.
+  const cur = await doc().get().then((x) => (x.exists ? (x.data() as Record<string, unknown>) : {})).catch(() => ({}) as Record<string, unknown>)
+  const patch = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const parsed = parseVoiceSettings({ ...cur, ...patch })
   const next = { ...parsed, updatedAt: Date.now(), updatedBy: uid }
-  await doc().set(next)
+  await doc().set(JSON.parse(JSON.stringify(next)))
   return next
 }
 

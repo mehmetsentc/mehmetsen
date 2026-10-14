@@ -7,10 +7,10 @@ export const REEL_W = 1080
 export const REEL_H = 1920
 export const REEL_FPS = 30
 /** Brand sting plays before the voice starts. */
-export const INTRO_S = 0.75
+export const INTRO_S = 1.05
 /** Breath after the voice before the end card. */
-export const TAIL_S = 0.35
-export const END_CARD_S = 1.8
+export const TAIL_S = 0.45
+export const END_CARD_S = 2.1
 /** Typewriter speed for the headline (chars per second), as on the site. */
 export const TYPE_CPS = 24
 export const VOICE_MAX_CHARS = 220
@@ -25,19 +25,19 @@ export type ReelTimeline = {
   endStart: number
 }
 
-export function buildTimeline(voiceSeconds: number, headlineChars: number): ReelTimeline {
+export function buildTimeline(voiceSeconds: number, headlineChars: number, introS = INTRO_S, endS = END_CARD_S): ReelTimeline {
   const voice = Math.max(0, Number.isFinite(voiceSeconds) ? voiceSeconds : 0)
-  const typeStart = INTRO_S
+  const typeStart = Math.max(0.35, introS)
   const typeEnd = typeStart + Math.max(0, headlineChars) / TYPE_CPS
-  const total = INTRO_S + voice + TAIL_S + END_CARD_S
+  const total = Math.max(introS, 0.35) + voice + TAIL_S + endS
   return {
     total,
     frames: Math.ceil(total * REEL_FPS),
-    voiceStart: INTRO_S,
+    voiceStart: Math.max(introS, 0.35),
     typeStart,
     typeEnd,
     summaryStart: typeEnd + 0.15,
-    endStart: total - END_CARD_S,
+    endStart: total - endS,
   }
 }
 
