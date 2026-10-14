@@ -1,1 +1,1 @@
-export { default } from '@/components/layout/RootRouteLoading'
+export { default } from '@/components/city/CityRouteLoading'
