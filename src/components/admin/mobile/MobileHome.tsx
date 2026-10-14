@@ -50,13 +50,14 @@ export function MobileHome() {
   const refreshCounts = useCallback(async () => {
     const start = new Date()
     start.setHours(0, 0, 0, 0)
+    // orderBy desc so the count uses the existing (status ↑, createdAt ↓) index.
     const [pending, breakingSnap, todaySnap] = await Promise.all([
       countVisiblePendingApprovals().catch(() => null),
       getCountFromServer(
         query(collection(db, Collections.NEWS), where('isBreaking', '==', true), where('status', '==', 'published'))
       ).catch(() => null),
       getCountFromServer(
-        query(collection(db, Collections.NEWS), where('status', '==', 'published'), where('createdAt', '>=', Timestamp.fromDate(start)))
+        query(collection(db, Collections.NEWS), where('status', '==', 'published'), where('createdAt', '>=', Timestamp.fromDate(start)), orderBy('createdAt', 'desc'))
       ).catch(() => null),
     ])
     if (pending != null) {
