@@ -12,14 +12,15 @@ import { createCanvas, loadImage, type Canvas, type Image } from '@napi-rs/canva
 import { REEL_FPS, REEL_H, REEL_W, TYPE_CPS, buildTimeline, clickTimes, wrapLines, type ReelTimeline } from './timeline'
 import { audioFilterGraph, buildFxTrack, readWav, wavSeconds, writeWav } from './audio'
 import {
-  FONT_MD, FONT_XB, INTRO_SECONDS, MUTED, OUTRO_SECONDS, RED, STYLE_ACCENT, TICKER_Y, WHITE,
-  audioDir, bedPath, brandBackground, categoryTag, clamp01, drawCover, endCard, ensureFonts, header, introOverlay,
+  FONT_MD, FONT_XB, INTRO_SECONDS, MUTED, NAVY, OUTRO_SECONDS, RED, SAFE, STYLE_ACCENT, TICKER_Y, WHITE,
+  audioDir, bedPath, brandBackground, bulletinBand, categoryTag, clamp01, drawCover, endCard, ensureFonts, header, introOverlay,
   legibility, loadBrand, newCanvas, presenterCard, roundRectPath, progressBar, resolveFfmpegPath, resolveMusic, span, spawnEncoder,
   ticker, videoFrames, voiceEnvelope,
   type ReelIntro, type ReelMedia, type ReelMusic, type ReelOutro, type ReelPresenter, type ReelStyle,
 } from './reelTheme'
 
 export type { ReelIntro, ReelMedia, ReelMusic, ReelOutro, ReelPresenter, ReelStyle } from './reelTheme'
+export type ReelLayout = 'kart' | 'bulten'
 export { resolveFfmpegPath, STYLE_ACCENT } from './reelTheme'
 
 export type ReelInput = {
@@ -38,6 +39,8 @@ export type ReelInput = {
   presenter?: ReelPresenter | null
   breaking?: boolean
   dateLabel?: string | null
+  /** REELS-6: 'kart' = media card on navy; 'bulten' = photo on top, red band, white text panel. */
+  layout?: ReelLayout
 }
 
 export type ReelResult = { mp4: Buffer; seconds: number; timeline: ReelTimeline }
@@ -46,8 +49,10 @@ const HEAD_SIZE = 76
 const HEAD_LH = 90
 const SUM_SIZE = 40
 const SUM_LH = 54
-const TEXT_X = 84
-const TEXT_W = REEL_W - TEXT_X - 64
+const TEXT_X = SAFE.x + 20
+/** Text stays left of the Instagram like / comment / share column. */
+const TEXT_W = REEL_W - TEXT_X - SAFE.right
+const BAR_X = SAFE.x - 12
 
 export async function renderReel(input: ReelInput, opts: { root?: string } = {}): Promise<ReelResult> {
   const root = opts.root ?? process.cwd()
@@ -64,18 +69,35 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
     const voiceSec = wavSeconds(input.voiceWav)
 
     // ---- text layout, anchored above the ticker
+    const bulten = input.layout === 'bulten'
+    // Bülten keeps the text panel compact (like a lower third), the photo gets the rest.
+    const HS = bulten ? 50 : HEAD_SIZE
+    const HL = bulten ? 60 : HEAD_LH
+    const SS = bulten ? 29 : SUM_SIZE
+    const SL = bulten ? 39 : SUM_LH
     const m = createCanvas(10, 10).getContext('2d')
-    m.font = `${HEAD_SIZE}px ${FONT_XB}`
-    const headLines = wrapLines((s) => m.measureText(s).width, input.headline, TEXT_W, 4)
-    m.font = `${SUM_SIZE}px ${FONT_MD}`
-    const sumLines = wrapLines((s) => m.measureText(s).width, input.summary, TEXT_W, 3)
+    m.font = `${HS}px ${FONT_XB}`
+    const headLines = wrapLines((s) => m.measureText(s).width, input.headline, TEXT_W, bulten ? 3 : 4)
+    m.font = `${SS}px ${FONT_MD}`
+    const sumLines = wrapLines((s) => m.measureText(s).width, input.summary, TEXT_W, bulten ? 3 : 2)
     const headText = headLines.join('\n')
     const tl = buildTimeline(voiceSec, headText.length, introS, OUTRO_SECONDS[outro])
-    const tagH = 62
-    const blockH = tagH + 30 + headLines.length * HEAD_LH + (sumLines.length ? 22 + sumLines.length * SUM_LH : 0)
-    const tagY = Math.min(1180, TICKER_Y - 48 - blockH)
-    const headY = tagY + tagH + 30
-    const sumY = headY + headLines.length * HEAD_LH + 22
+    const tagH = bulten ? 58 : 62
+    let tagY: number, headY: number, sumY: number, panelTop: number
+    if (bulten) {
+      // white panel grows up from the ticker; the red band sits on the photo right above it
+      const panelH = 26 + headLines.length * HL + (sumLines.length ? 10 + sumLines.length * SL : 0) + 24
+      panelTop = TICKER_Y - panelH
+      tagY = panelTop - tagH
+      headY = panelTop + 26
+      sumY = headY + headLines.length * HL + 10
+    } else {
+      const blockH = tagH + 30 + headLines.length * HL + (sumLines.length ? 22 + sumLines.length * SL : 0)
+      tagY = Math.min(1180, TICKER_Y - 40 - blockH)
+      headY = tagY + tagH + 30
+      sumY = headY + headLines.length * HL + 22
+      panelTop = tagY
+    }
     const tagIn = Math.max(0.1, tl.typeStart - 0.3)
 
     // ---- audio
@@ -107,7 +129,10 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
     const level = input.presenter ? voiceEnvelope(readWav(input.voiceWav), tl.voiceStart, tl.frames, REEL_FPS) : null
     // Media card: the story's image / video plays up front (not cropped to 9:16, not under the text);
     // a blurred, darkened copy fills the frame behind it.
-    const card = { x: 40, y: 172, w: 1000, h: Math.round(Math.max(560, Math.min(980, tagY - 40 - 172)) / 2) * 2 }
+    const cardY = SAFE.top + 116
+    const card = bulten
+      ? { x: 0, y: 0, w: REEL_W, h: Math.round(panelTop / 2) * 2 }
+      : { x: 64, y: cardY, w: 952, h: Math.round(Math.max(380, Math.min(900, tagY - 36 - cardY)) / 2) * 2 }
     const vid = input.media.kind === 'video' ? videoFrames(ffmpeg, input.media.path, tl.frames, card.w, card.h) : null
     const enc = spawnEncoder(ffmpeg, {
       voice: voicePath, bed: bedPath(root, music), fx: fxPath,
@@ -160,6 +185,54 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
           haveVid = true
         }
       }
+      if (bulten) {
+        // photo / video full width down to the panel (gentle Ken Burns)
+        ctx.fillStyle = NAVY
+        ctx.fillRect(0, 0, REEL_W, REEL_H)
+        if (image) drawCover(ctx, image, 0, 0, REEL_W, card.h, 1.04 + 0.08 * mainP, 0.5, 0.42)
+        else if (haveVid) ctx.drawImage(vidCanvas, 0, 0)
+        else {
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(0, 0, REEL_W, card.h)
+          ctx.clip()
+          brandBackground(ctx, brand, t, mainP, accent, input.category)
+          ctx.restore()
+        }
+        const gt = ctx.createLinearGradient(0, 0, 0, SAFE.top + 200)
+        gt.addColorStop(0, 'rgba(7,21,48,0.5)')
+        gt.addColorStop(1, 'rgba(7,21,48,0)')
+        ctx.fillStyle = gt
+        ctx.fillRect(0, 0, REEL_W, SAFE.top + 200)
+        progressBar(ctx, mainP)
+        // white panel slides up, red band slides in
+        const pk = span(t, tagIn - 0.2, tagIn + 0.35)
+        const py = panelTop + (TICKER_Y - panelTop) * (1 - pk)
+        ctx.fillStyle = WHITE
+        ctx.fillRect(0, py, REEL_W, TICKER_Y - py)
+        bulletinBand(ctx, cat, tagY + (TICKER_Y - panelTop) * (1 - pk), tagH, accent, span(t, tagIn, tagIn + 0.45), t, input.breaking)
+        const shown = Math.max(0, Math.min(headText.length, Math.floor((t - tl.typeStart) * TYPE_CPS)))
+        const typed = headText.slice(0, shown).split('\n')
+        ctx.font = `${HS}px ${FONT_XB}`
+        ctx.fillStyle = NAVY
+        ctx.textBaseline = 'top'
+        if (pk > 0.98) typed.forEach((line, k) => ctx.fillText(line, TEXT_X, headY + k * HL))
+        const caretOn = shown < headText.length || (Math.floor(t * 2) % 2 === 0 && t < tl.summaryStart + 1)
+        if (pk > 0.98 && caretOn && t >= tl.typeStart - 0.2 && t < tl.endStart) {
+          const cx = TEXT_X + ctx.measureText(typed[typed.length - 1] ?? '').width + 6
+          ctx.fillStyle = RED
+          ctx.fillRect(cx, headY + HL * (typed.length - 1) + 6, 8, HS - 4)
+        }
+        if (t >= tl.summaryStart && sumLines.length) {
+          const k = span(t, tl.summaryStart, tl.summaryStart + 0.5)
+          ctx.save()
+          ctx.globalAlpha = k
+          ctx.font = `${SS}px ${FONT_MD}`
+          ctx.fillStyle = '#4a5468'
+          sumLines.forEach((line, n) => ctx.fillText(line, TEXT_X, sumY + n * SL + Math.round(18 * (1 - k))))
+          ctx.restore()
+        }
+      } else {
       if (image || haveVid) {
         ctx.drawImage(bg, 0, 0)
         ctx.save()
@@ -173,11 +246,11 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
         roundRectPath(ctx, card.x, card.y, card.w, card.h, 34)
         ctx.stroke()
         // top fade for the header, bottom fade into the text block
-        const gt = ctx.createLinearGradient(0, 0, 0, 200)
+        const gt = ctx.createLinearGradient(0, 0, 0, SAFE.top + 110)
         gt.addColorStop(0, 'rgba(7,21,48,0.85)')
         gt.addColorStop(1, 'rgba(7,21,48,0)')
         ctx.fillStyle = gt
-        ctx.fillRect(0, 0, REEL_W, 200)
+        ctx.fillRect(0, 0, REEL_W, SAFE.top + 110)
         const gTop = Math.min(card.y + card.h - 40, tagY - 40)
         const gb = ctx.createLinearGradient(0, gTop, 0, tagY + 30)
         gb.addColorStop(0, 'rgba(7,21,48,0)')
@@ -191,43 +264,44 @@ export async function renderReel(input: ReelInput, opts: { root?: string } = {})
         legibility(ctx, tagY)
       }
       progressBar(ctx, mainP)
-      header(ctx, brand, -140 + 196 * span(t, Math.max(0, introS - 0.1), introS + 0.4), placeLabel)
+      header(ctx, brand, -140 + (SAFE.top + 140) * span(t, Math.max(0, introS - 0.1), introS + 0.4), placeLabel)
 
-      categoryTag(ctx, cat, 48, tagY, tagH, accent, span(t, tagIn, tagIn + 0.45), t, input.breaking)
+      categoryTag(ctx, cat, BAR_X, tagY, tagH, accent, span(t, tagIn, tagIn + 0.45), t, input.breaking)
 
       // typewriter headline + red side bar
       const shown = Math.max(0, Math.min(headText.length, Math.floor((t - tl.typeStart) * TYPE_CPS)))
       const typed = headText.slice(0, shown).split('\n')
       ctx.fillStyle = RED
-      ctx.fillRect(48, headY + 6, 12, (Math.max(typed.length, 1) * HEAD_LH - 14) * span(t, tagIn + 0.15, tagIn + 0.55))
-      ctx.font = `${HEAD_SIZE}px ${FONT_XB}`
+      ctx.fillRect(BAR_X, headY + 6, 12, (Math.max(typed.length, 1) * HL - 14) * span(t, tagIn + 0.15, tagIn + 0.55))
+      ctx.font = `${HS}px ${FONT_XB}`
       ctx.fillStyle = WHITE
       ctx.textBaseline = 'top'
       ctx.shadowColor = 'rgba(0,0,0,0.35)'
       ctx.shadowBlur = 12
-      typed.forEach((line, k) => ctx.fillText(line, TEXT_X, headY + k * HEAD_LH))
+      typed.forEach((line, k) => ctx.fillText(line, TEXT_X, headY + k * HL))
       ctx.shadowBlur = 0
       const caretOn = shown < headText.length || (Math.floor(t * 2) % 2 === 0 && t < tl.summaryStart + 1)
       if (caretOn && t >= tl.typeStart - 0.2 && t < tl.endStart) {
         const cx = TEXT_X + ctx.measureText(typed[typed.length - 1] ?? '').width + 8
         ctx.fillStyle = RED
-        ctx.fillRect(cx, headY + HEAD_LH * (typed.length - 1) + 8, 9, 70)
+        ctx.fillRect(cx, headY + HL * (typed.length - 1) + 8, 9, 70)
       }
 
       if (t >= tl.summaryStart && sumLines.length) {
         const k = span(t, tl.summaryStart, tl.summaryStart + 0.5)
         ctx.save()
         ctx.globalAlpha = k
-        ctx.font = `${SUM_SIZE}px ${FONT_MD}`
+        ctx.font = `${SS}px ${FONT_MD}`
         ctx.fillStyle = MUTED
-        sumLines.forEach((line, n) => ctx.fillText(line, TEXT_X, sumY + n * SUM_LH + Math.round(24 * (1 - k))))
+        sumLines.forEach((line, n) => ctx.fillText(line, TEXT_X, sumY + n * SL + Math.round(24 * (1 - k))))
         ctx.restore()
       }
 
-      if (input.presenter && level) {
-        presenterCard(ctx, input.presenter, presenterPhoto, accent, 64, 196, level[i] ?? 0, span(t, introS + 0.1, introS + 0.5) * (1 - span(t, tl.endStart - 0.4, tl.endStart)))
       }
-      ticker(ctx, brand, tickerText, t, span(t, introS, introS + 0.45))
+      if (input.presenter && level) {
+        presenterCard(ctx, input.presenter, presenterPhoto, accent, bulten ? SAFE.x : card.x + 28, bulten ? SAFE.top : card.y + 28, level[i] ?? 0, span(t, introS + 0.1, introS + 0.5) * (1 - span(t, tl.endStart - 0.4, tl.endStart)))
+      }
+      ticker(ctx, brand, tickerText, t, span(t, introS, introS + 0.45), bulten ? 'red' : 'navy')
       introOverlay(ctx, brand, intro, t)
       endCard(ctx, brand, intro, t - tl.endStart, t, 'Haberin tamamı', outro)
       await enc.frame(canvas)

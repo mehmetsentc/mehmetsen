@@ -33,8 +33,15 @@ export const STYLE_ACCENT: Record<ReelStyle, string> = {
 }
 export const FONT_XB = 'NaHaberInterXB'
 export const FONT_MD = 'NaHaberInterMD'
-export const TICKER_Y = 1808
-export const TICKER_H = 92
+/**
+ * Instagram / Facebook safe zones (1080×1920). Tall phones fill the screen, cropping
+ * ~55px per side; the status bar + back/camera icons cover the top ~240px; the
+ * username, caption and audio row cover the bottom ~400px; the like/comment/share
+ * column covers x > ~920 from y ≈ 1250 down. Everything that must be read sits inside.
+ */
+export const SAFE = { x: 84, top: 244, bottom: 1500, right: 176 } as const
+export const TICKER_Y = 1520
+export const TICKER_H = 88
 
 let fontsReady = false
 export function ensureFonts(root: string): void {
@@ -171,11 +178,12 @@ export function brandBackground(ctx: SKRSContext2D, brand: Brand, t: number, p: 
 
 /** Navy fades for text legibility over media. */
 export function legibility(ctx: SKRSContext2D, textTop: number): void {
-  const gt = ctx.createLinearGradient(0, 0, 0, 380)
-  gt.addColorStop(0, 'rgba(7,21,48,0.82)')
+  const gt = ctx.createLinearGradient(0, 0, 0, SAFE.top + 330)
+  gt.addColorStop(0, 'rgba(7,21,48,0.86)')
+  gt.addColorStop(0.55, 'rgba(7,21,48,0.55)')
   gt.addColorStop(1, 'rgba(7,21,48,0)')
   ctx.fillStyle = gt
-  ctx.fillRect(0, 0, REEL_W, 380)
+  ctx.fillRect(0, 0, REEL_W, SAFE.top + 330)
   const top = Math.max(560, textTop - 380)
   const gb = ctx.createLinearGradient(0, top, 0, textTop + 120)
   gb.addColorStop(0, 'rgba(7,21,48,0)')
@@ -188,13 +196,13 @@ export function legibility(ctx: SKRSContext2D, textTop: number): void {
 
 /** Header: logo tile + wordmark (+ optional right pill). y offset animates it in. */
 export function header(ctx: SKRSContext2D, brand: Brand, y: number, rightLabel: string | null, pin = true): void {
-  ctx.drawImage(brand.tile, 48, y, 92, 92)
-  wordmark(ctx, 158, y + 20, 50)
+  ctx.drawImage(brand.tile, SAFE.x, y, 92, 92)
+  wordmark(ctx, SAFE.x + 110, y + 20, 50)
   if (!rightLabel) return
   ctx.font = `30px ${FONT_XB}`
   const pw = ctx.measureText(rightLabel).width
   const extra = pin ? 84 : 52
-  const bx = REEL_W - 48 - pw - extra
+  const bx = REEL_W - SAFE.x - pw - extra
   ctx.fillStyle = 'rgba(7,21,48,0.55)'
   roundRectPath(ctx, bx, y + 18, pw + extra, 56, 28)
   ctx.fill()
@@ -260,34 +268,72 @@ export function categoryTag(ctx: SKRSContext2D, label: string, x0: number, y: nu
 }
 
 /** Bottom ticker band (k = entrance 0..1). */
-export function ticker(ctx: SKRSContext2D, brand: Brand, text: string, t: number, k: number): void {
+export function ticker(ctx: SKRSContext2D, brand: Brand, text: string, t: number, k: number, variant: 'navy' | 'red' = 'navy'): void {
   const y = TICKER_Y + (TICKER_H + 20) * (1 - k)
-  ctx.fillStyle = NAVY2
-  ctx.fillRect(0, y, REEL_W, TICKER_H + 40)
-  ctx.fillStyle = RED
-  ctx.fillRect(0, y, REEL_W, 5)
+  ctx.fillStyle = NAVY
+  ctx.fillRect(0, y, REEL_W, REEL_H - y)
+  ctx.fillStyle = variant === 'red' ? RED : NAVY2
+  ctx.fillRect(0, y, REEL_W, variant === 'red' ? TICKER_H + 5 : REEL_H - y)
+  ctx.fillStyle = variant === 'red' ? WHITE : RED
+  ctx.fillRect(0, y, REEL_W, variant === 'red' ? 0 : 5)
   ctx.save()
   ctx.beginPath()
-  ctx.rect(250, y + 5, REEL_W - 250, TICKER_H)
+  ctx.rect(300, y + 5, REEL_W - 300, TICKER_H)
   ctx.clip()
   ctx.font = `34px ${FONT_MD}`
   ctx.fillStyle = WHITE
   ctx.textBaseline = 'middle'
   const tw = ctx.measureText(text).width
-  let x = 270 - ((t * 120) % tw)
+  let x = 320 - ((t * 120) % tw)
   while (x < REEL_W) {
     ctx.fillText(text, x, y + 5 + TICKER_H / 2)
     x += tw
   }
   ctx.restore()
-  ctx.fillStyle = RED
-  slantPath(ctx, -30, y + 5, 262, TICKER_H, 26)
+  ctx.fillStyle = variant === 'red' ? NAVY : RED
+  slantPath(ctx, -30, y + 5, 312, TICKER_H, 26)
   ctx.fill()
-  ctx.drawImage(brand.mark, 22, y + 17, 66, 66)
+  ctx.drawImage(brand.mark, SAFE.x - 8, y + 16, 62, 62)
   ctx.font = `30px ${FONT_XB}`
   ctx.fillStyle = WHITE
   ctx.textBaseline = 'middle'
-  ctx.fillText('HABER', 96, y + 5 + TICKER_H / 2 + 1)
+  ctx.fillText('HABER', SAFE.x + 64, y + 5 + TICKER_H / 2 + 1)
+}
+
+/**
+ * «Bülten» band: red slanted bar with the category + navy/white slashes, sitting on
+ * the photo right above the white text panel (k = entrance 0..1).
+ */
+export function bulletinBand(ctx: SKRSContext2D, label: string, y: number, h: number, accent: string, k: number, t: number, breaking = false): void {
+  ctx.font = `${Math.round(h * 0.6)}px ${FONT_XB}`
+  const tw = ctx.measureText(label).width
+  const w = SAFE.x + tw + 70 + (breaking ? 40 : 0)
+  const x = -40 - (w + 200) * (1 - k)
+  ctx.fillStyle = accent
+  slantPath(ctx, x, y, w + 40, h, 24)
+  ctx.fill()
+  let tx = SAFE.x + (x + 40)
+  if (breaking) {
+    ctx.fillStyle = Math.floor(t * 2) % 2 === 0 ? WHITE : 'rgba(255,255,255,0.4)'
+    ctx.beginPath()
+    ctx.arc(tx + 12, y + h / 2, 12, 0, Math.PI * 2)
+    ctx.fill()
+    tx += 40
+  }
+  ctx.fillStyle = WHITE
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, tx, y + h / 2 + 2)
+  // slashes
+  const sx = x + w + 70
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = i % 2 ? WHITE : NAVY
+    ctx.globalAlpha *= 1
+    slantPath(ctx, sx + i * 34, y + 10, 18, h - 20, 16)
+    ctx.fill()
+  }
+  // thin navy rule along the panel top
+  ctx.fillStyle = NAVY
+  ctx.fillRect(0, y + h - 4, REEL_W * k, 4)
 }
 
 /** Thin top progress bar; segments > 1 draws story-style segments. */
@@ -300,16 +346,16 @@ export function progressBar(ctx: SKRSContext2D, p: number, segments = 1, active 
     return
   }
   const gap = 10
-  const w = (REEL_W - 48 * 2 - gap * (segments - 1)) / segments
+  const w = (REEL_W - SAFE.x * 2 - gap * (segments - 1)) / segments
   for (let s = 0; s < segments; s++) {
-    const x = 48 + s * (w + gap)
+    const x = SAFE.x + s * (w + gap)
     ctx.fillStyle = 'rgba(255,255,255,0.25)'
-    roundRectPath(ctx, x, 22, w, 8, 4)
+    roundRectPath(ctx, x, SAFE.top - 34, w, 8, 4)
     ctx.fill()
     const f = s < active ? 1 : s === active ? clamp01(segP) : 0
     if (f > 0) {
       ctx.fillStyle = s === active ? RED : WHITE
-      roundRectPath(ctx, x, 22, Math.max(8, w * f), 8, 4)
+      roundRectPath(ctx, x, SAFE.top - 34, Math.max(8, w * f), 8, 4)
       ctx.fill()
     }
   }

@@ -1,6 +1,6 @@
 /**
  * GET  /api/admin/social/reels/personas → presenters + studio defaults + Gemini budget state.
- * POST /api/admin/social/reels/personas { personas?, geminiEnabled?, geminiMonthlyUsd?, intro?, outro?, music? }
+ * POST /api/admin/social/reels/personas { personas?, geminiEnabled?, geminiMonthlyUsd?, intro?, outro?, music?, cover?, layout?, postTheme? }
  */
 import { json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -19,9 +19,9 @@ async function view() {
   const u = await getAdminFirestore().collection('ttsUsage').doc(month).get().catch(() => null)
   return {
     personas: parsePersonas(s.personas),
-    defaults: { intro: s.intro ?? 'soft', outro: s.outro ?? 'logo', music: s.music ?? 'auto', alwaysUseMedia: s.alwaysUseMedia !== false },
+    defaults: { intro: s.intro ?? 'soft', outro: s.outro ?? 'logo', music: s.music ?? 'auto', cover: s.cover ?? 'bulten', layout: s.layout ?? 'bulten', postTheme: s.postTheme ?? 'nahaber', alwaysUseMedia: s.alwaysUseMedia !== false },
     gemini: { enabled: !!s.geminiEnabled, monthlyUsd: s.geminiMonthlyUsd ?? 10, usedUsd: Number(u?.data()?.geminiUsd ?? 0), month },
-    options: { intros: REEL_INTROS, outros: REEL_OUTROS, music: REEL_MUSIC, transitions: DIGEST_TRANSITIONS },
+    options: { intros: REEL_INTROS, outros: REEL_OUTROS, music: REEL_MUSIC, transitions: DIGEST_TRANSITIONS, covers: [{ id: 'bulten', label: 'Bülten' }, { id: 'manset', label: 'Manşet' }, { id: 'panel', label: 'Panel' }] },
   }
 }
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   const b = await readJsonBody(request)
   const patch: Record<string, unknown> = {}
   if (Array.isArray(b.personas)) patch.personas = parsePersonas(b.personas)
-  for (const k of ['geminiEnabled', 'geminiMonthlyUsd', 'intro', 'outro', 'music', 'alwaysUseMedia'] as const) if (k in b) patch[k] = b[k]
+  for (const k of ['geminiEnabled', 'geminiMonthlyUsd', 'intro', 'outro', 'music', 'cover', 'layout', 'postTheme', 'alwaysUseMedia'] as const) if (k in b) patch[k] = b[k]
   await saveReelVoiceSettings(patch, auth.ctx.uid)
   return json(await view())
 }

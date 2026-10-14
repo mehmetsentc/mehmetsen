@@ -13,7 +13,8 @@ import { INVALID_TARGET_ERROR, isUsableFacebookTarget, isUsableInstagramTarget }
 import { META_GRAPH_API_VERSION } from './graphConfig'
 import { platformError, safeErrorText, socialLog } from './safeLog'
 
-export type ReelPublishInput = { newsId: string; videoUrl: string; caption: string }
+/** coverUrl (REELS-5): NaHaber cover JPEG for the Instagram grid / Reels tab. */
+export type ReelPublishInput = { newsId: string; videoUrl: string; caption: string; coverUrl?: string | null }
 
 const IG_POLL_MS = 4000
 const IG_POLL_MAX = 30 // ~2 minutes of video processing
@@ -48,6 +49,7 @@ async function publishInstagramVideo(input: ReelPublishInput, target: InstagramP
       media_type: kind,
       video_url: input.videoUrl,
       ...(kind === 'REELS' ? { caption: input.caption.slice(0, 2200), share_to_feed: 'true' } : {}),
+      ...(kind === 'REELS' && input.coverUrl?.startsWith('https://') ? { cover_url: input.coverUrl } : {}),
       access_token: token,
     })
     const containerId = typeof c.json.id === 'string' ? c.json.id : ''

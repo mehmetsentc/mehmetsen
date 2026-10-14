@@ -8,6 +8,7 @@ import 'server-only'
  * passes the social media-rights check or an editor approved it in the studio.
  * Idempotent: an existing reel with the same options is reused unless force.
  */
+import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
@@ -21,6 +22,7 @@ import { directReel, scriptProblem } from './director'
 import { reelsEditorLlm } from './directorLlm'
 import { parsePersonas, personaFor, type ReelPersona } from './personas'
 import { isReelIntro, isReelMusic, isReelOutro, type ReelIntro, type ReelMusic, type ReelOutro, type ReelStyle } from './reelOptions'
+import { recordReel } from './reelLibrary'
 import { renderReel, type ReelMedia } from './renderReel'
 import { synthesizeReelVoiceEx } from './voice'
 import { clampRate, isValidVoiceName } from './voiceRules'
@@ -37,6 +39,10 @@ export function reelsEnabled(): boolean {
 
 export function reelStoragePath(newsId: string): string {
   return `videos/reels/${newsId.replace(/[^A-Za-z0-9_-]/g, '_')}.mp4`
+}
+
+export function reelCoverStoragePath(newsId: string): string {
+  return `videos/reels/${newsId.replace(/[^A-Za-z0-9_-]/g, '_')}-cover.jpg`
 }
 
 /** `v` (Storage generation) busts edge caches after a re-render. */
@@ -124,6 +130,12 @@ export type ReelBuildOptions = {
   voiceText?: string | null
   /** Preview the editor's decision without rendering. */
   dryRun?: boolean
+  /** REELS-5: cover look (manset | panel | bulten); default from studio settings. */
+  cover?: string | null
+  /** REELS-6: reel layout (kart | bulten); default from studio settings. */
+  layout?: string | null
+  /** CMS user who built it (saved in the reel library). */
+  by?: string | null
 }
 
 export type ReelBuildResult = {
@@ -144,6 +156,8 @@ export type ReelBuildResult = {
   outro?: ReelOutro
   music?: ReelMusic
   note?: string
+  /** REELS-5: Instagram cover (JPEG, public). */
+  coverUrl?: string | null
 }
 
 export type ReelPlan = {
@@ -232,16 +246,95 @@ function optionsHash(p: ReelPlan): string {
     .slice(0, 16)
 }
 
+/** One JPEG frame (~1s in) of a video file / URL, for the cover. */
+async function videoFrameJpeg(src: string): Promise<Buffer | null> {
+  try {
+    const { resolveFfmpegPath } = await import('./reelTheme')
+    const ffmpeg = await resolveFfmpegPath()
+    return await new Promise<Buffer | null>((resolve) => {
+      const p = spawn(ffmpeg, ['-v', 'error', '-ss', '1', '-i', src, '-frames:v', '1', '-f', 'image2', '-vcodec', 'mjpeg', '-'], { stdio: ['ignore', 'pipe', 'ignore'] })
+      const chunks: Buffer[] = []
+      const timer = setTimeout(() => p.kill('SIGKILL'), 20_000)
+      p.stdout.on('data', (c: Buffer) => chunks.push(c))
+      p.on('close', () => { clearTimeout(timer); const b = Buffer.concat(chunks); resolve(b.length ? b : null) })
+      p.on('error', () => { clearTimeout(timer); resolve(null) })
+    })
+  } catch {
+    return null
+  }
+}
+
+/** Render + store the cover; returns its public URL (null on failure — the reel still ships). */
+async function saveReelCover(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant, media?: ReelMedia | null): Promise<string | null> {
+  try {
+    let image: Buffer | null = null
+    if (media?.kind === 'image') image = media.data
+    else if (media?.kind === 'video') image = await videoFrameJpeg(media.path)
+    else if (src.mediaAllowed) {
+      if (src.imageUrl) image = await fetchBytes(src.imageUrl).catch(() => null)
+      else if (src.videoUrl) image = await videoFrameJpeg(src.videoUrl)
+    }
+    const { renderReelCover } = await import('./reelCover')
+    const jpg = await renderReelCover({ headline: src.headline, summary: src.summary, category: src.category, place: src.place, style, breaking: src.breaking, image, variant })
+    const file = getAdminStorage().bucket(BUCKET).file(reelCoverStoragePath(newsId))
+    await file.save(jpg, { resumable: false, metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=86400', metadata: { variant } } })
+    await file.makePublic()
+    let gen: string | number = Date.now()
+    try {
+      const [m] = await file.getMetadata()
+      if (m.generation) gen = m.generation
+    } catch {
+      // keep the timestamp
+    }
+    return `https://storage.googleapis.com/${BUCKET}/${reelCoverStoragePath(newsId)}?v=${encodeURIComponent(String(gen))}`
+  } catch (err) {
+    console.warn('[reels] cover failed:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+/** Existing cover URL, or a fresh one (older reels had none). */
+async function coverFor(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant): Promise<{ url: string | null; created: boolean }> {
+  const file = getAdminStorage().bucket(BUCKET).file(reelCoverStoragePath(newsId))
+  try {
+    const [exists] = await file.exists()
+    if (exists) {
+      const [m] = await file.getMetadata()
+      const v = ((m.metadata ?? {}) as Record<string, string>).variant
+      if (!v || v === variant) return { url: `https://storage.googleapis.com/${BUCKET}/${reelCoverStoragePath(newsId)}?v=${encodeURIComponent(String(m.generation ?? ''))}`, created: false }
+    }
+  } catch {
+    // fall through and render
+  }
+  return { url: await saveReelCover(newsId, src, style, variant), created: true }
+}
+
+type CoverVariant = 'manset' | 'panel' | 'bulten'
+const isCoverVariant = (v: unknown): v is CoverVariant => v === 'manset' || v === 'panel' || v === 'bulten'
+type Layout = 'kart' | 'bulten'
+const isLayout = (v: unknown): v is Layout => v === 'kart' || v === 'bulten'
+
+function styleOf(v: unknown): ReelStyle {
+  return v === 'magazin' || v === 'spor' || v === 'analiz' ? v : 'haber'
+}
+
 export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = {}): Promise<ReelBuildResult> {
   if (!reelsEnabled()) throw new Error('reels: SOCIAL_REELS_ENABLED=false')
   const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
   if (!snap.exists) throw new Error('reels: news not found')
   const d = snap.data() as Record<string, unknown>
   if (str(d.status) !== 'published') throw new Error('reels: news is not published')
-  const src = reelSourceFromDoc(d, { alwaysUseMedia: (await getReelVoiceSettings()).alwaysUseMedia !== false })
+  const settings = await getReelVoiceSettings()
+  const src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')
+  const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'bulten'
+  const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'bulten'
+  const slug = str(d.slug) || null
+  const record = (url: string, coverUrl: string | null, m: { seconds?: number | null; persona?: string | null; style?: string | null; media?: string | null }) =>
+    recordReel({ newsId, slug, headline: src.headline, url, coverUrl, seconds: m.seconds ?? null, persona: m.persona ?? null, style: m.style ?? null, media: m.media ?? null, by: opts.by ?? null })
+      .catch((err) => console.warn('[reels] library record failed:', err instanceof Error ? err.message : err))
 
-  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText)
+  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText || opts.layout)
   const bucket = getAdminStorage().bucket(BUCKET)
   const file = bucket.file(reelStoragePath(newsId))
   // Plain «build» (automation / share) reuses whatever reel exists.
@@ -250,7 +343,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     if (exists) {
       const [meta] = await file.getMetadata()
       const m = (meta.metadata ?? {}) as Record<string, string>
-      return { newsId, url: reelPublicUrl(newsId, meta.generation ?? null), reused: true, media: (m.media as 'image') ?? 'image', mediaBasis: m.mediaBasis ?? '', ...(m.seconds ? { seconds: Number(m.seconds) } : {}), ...(m.voice ? { voice: m.voice } : {}) }
+      const url = reelPublicUrl(newsId, meta.generation ?? null)
+      const cover = await coverFor(newsId, src, styleOf(m.style), coverVariant)
+      if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: m.persona, style: m.style, media: m.media })
+      return { newsId, url, coverUrl: cover.url, reused: true, media: (m.media as 'image') ?? 'image', mediaBasis: m.mediaBasis ?? '', ...(m.seconds ? { seconds: Number(m.seconds) } : {}), ...(m.voice ? { voice: m.voice } : {}) }
     }
   }
 
@@ -271,13 +367,18 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   }
   if (opts.dryRun) return { ...base, url: '', reused: false, media: src.mediaAllowed ? (src.videoUrl ? 'video' : src.imageUrl ? 'image' : 'none') : 'none' }
 
-  const hash = optionsHash(plan)
+  const hash = `${optionsHash(plan)}${layout === 'kart' ? '' : '-b'}`
   if (!opts.force) {
     const [exists] = await file.exists()
     if (exists) {
       const [meta] = await file.getMetadata()
       const m = (meta.metadata ?? {}) as Record<string, string>
-      if (m.optionsHash === hash) return { ...base, url: reelPublicUrl(newsId, meta.generation ?? null), reused: true, media: (m.media as 'image') ?? 'image', ...(m.seconds ? { seconds: Number(m.seconds) } : {}) }
+      if (m.optionsHash === hash) {
+        const url = reelPublicUrl(newsId, meta.generation ?? null)
+        const cover = await coverFor(newsId, src, plan.style, coverVariant)
+        if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: plan.persona.id, style: plan.style, media: m.media })
+        return { ...base, url, coverUrl: cover.url, reused: true, media: (m.media as 'image') ?? 'image', ...(m.seconds ? { seconds: Number(m.seconds) } : {}) }
+      }
     }
   }
 
@@ -298,6 +399,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       music: plan.music,
       presenter: plan.persona.showCard ? { name: plan.persona.name, title: plan.persona.title, photo: await loadPresenterPhoto(plan.persona.photoUrl) } : null,
       dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }),
+      layout,
     })
     await file.save(r.mp4, {
       resumable: false,
@@ -311,6 +413,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
           voice: plan.voice,
           rate: String(plan.rate),
           persona: plan.persona.id,
+          style: plan.style,
           engine: spoken.engine,
           optionsHash: hash,
         },
@@ -324,7 +427,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     } catch {
       // keep the timestamp
     }
-    return { ...base, url: reelPublicUrl(newsId, gen), reused: false, seconds: r.seconds, media: media.kind, engine: spoken.engine, ...(spoken.note ? { note: spoken.note } : {}) }
+    const url = reelPublicUrl(newsId, gen)
+    const coverUrl = await saveReelCover(newsId, src, plan.style, coverVariant, media)
+    await record(url, coverUrl, { seconds: r.seconds, persona: plan.persona.id, style: plan.style, media: media.kind })
+    return { ...base, url, coverUrl, reused: false, seconds: r.seconds, media: media.kind, engine: spoken.engine, ...(spoken.note ? { note: spoken.note } : {}) }
   } finally {
     if (tmp) await fs.rm(tmp, { force: true }).catch(() => {})
   }

@@ -77,11 +77,16 @@ export function parseDailymotionVideoId(url: string): string | null {
   return match?.[1] ?? null
 }
 
+/** NaHaber reels: public objects of our Firebase bucket served from storage.googleapis.com. */
+const OWNED_GCS_PATH_RE = /^\/[a-z0-9-]+\.(?:firebasestorage\.app|appspot\.com)\/videos\//i
+
 export function isOwnedNativeVideoUrl(url: string): boolean {
   const backend = detectStorageBackend(url)
   if (backend === 'r2' || backend === 'firebase') return true
   try {
-    const host = new URL(url).hostname.toLowerCase()
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+    if (host === 'storage.googleapis.com' && OWNED_GCS_PATH_RE.test(u.pathname)) return true
     return OWNED_HOST_RE.test(host)
   } catch {
     return false

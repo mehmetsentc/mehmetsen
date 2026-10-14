@@ -36,6 +36,12 @@ const nextConfig: NextConfig = {
     '/api/cron/social-automation': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/social/reels/digest': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/reels/music/[name]': ['./src/lib/reels/assets/audio/broadcast/bed-*.m4a'],
+    // REELS-6: post / image-story cards in the NaHaber theme (fonts + logo only).
+    '/api/admin/social/force-reshare': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
+    '/api/admin/social/publish-records/[id]/republish': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
+    '/api/social/share': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
+    '/api/cron/social': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
+    '/api/admin/news/[id]': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
   },
   htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,

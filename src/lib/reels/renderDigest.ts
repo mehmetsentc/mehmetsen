@@ -13,7 +13,7 @@ import { createCanvas, loadImage, type Image, type SKRSContext2D } from '@napi-r
 import { REEL_FPS, REEL_W, wrapLines } from './timeline'
 import { audioFilterGraph, readWav, writeWav, type Pcm } from './audio'
 import {
-  FONT_MD, FONT_XB, MUTED, NAVY, NAVY2, RED, STYLE_ACCENT, TICKER_Y, WHITE,
+  FONT_MD, FONT_XB, MUTED, NAVY, NAVY2, RED, SAFE, STYLE_ACCENT, TICKER_Y, WHITE,
   INTRO_SECONDS, OUTRO_SECONDS, audioDir, bands, bedPath, brandBackground, categoryTag, clamp01, drawCover, endCard,
   ensureFonts, header, introOverlay, legibility, loadBrand, newCanvas, presenterCard, progressBar, resolveFfmpegPath,
   roundRectPath, slantPath, span, spawnEncoder, ticker, voiceEnvelope, wordmark, wordmarkWidth,
@@ -143,9 +143,9 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
     // ---- layout per item (measured once)
     const m = createCanvas(10, 10).getContext('2d')
     m.font = `${HEAD_SIZE}px ${FONT_XB}`
-    const itemLines = input.items.map((it) => wrapLines((s) => m.measureText(s).width, it.headline, REEL_W - 84 - 64, 4))
+    const itemLines = input.items.map((it) => wrapLines((s) => m.measureText(s).width, it.headline, REEL_W - (SAFE.x + 20) - SAFE.right, 4))
     m.font = `36px ${FONT_MD}`
-    const listLines = input.items.map((it) => wrapLines((s) => m.measureText(s).width, it.headline, REEL_W - 210, 1)[0] ?? '')
+    const listLines = input.items.map((it) => wrapLines((s) => m.measureText(s).width, it.headline, REEL_W - 210 - SAFE.x, 1)[0] ?? '')
 
     const enc = spawnEncoder(ffmpeg, {
       voice: voicePath, bed: bedPath(root, music), fx: fxPath,
@@ -165,10 +165,10 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
       const k = span(lt, 0.0, 0.5)
       c.save()
       c.globalAlpha *= k
-      c.drawImage(brand.tile, (REEL_W - 170) / 2, 210, 170, 170)
+      c.drawImage(brand.tile, (REEL_W - 140) / 2, SAFE.top + 10, 140, 140)
       c.restore()
       const ww = wordmarkWidth(c, 64)
-      wordmark(c, (REEL_W - ww) / 2, 405, 64, span(lt, 0.15, 0.55))
+      wordmark(c, (REEL_W - ww) / 2, SAFE.top + 170, 64, span(lt, 0.15, 0.55))
       // title tag
       const tk = span(lt, 0.3, 0.75)
       c.font = `54px ${FONT_XB}`
@@ -176,39 +176,41 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
       c.save()
       c.globalAlpha *= tk
       c.fillStyle = RED
-      slantPath(c, (REEL_W - tw) / 2 - 40, 540, tw + 60, 92, 20)
+      slantPath(c, (REEL_W - tw) / 2 - 40, 560, tw + 60, 92, 20)
       c.fill()
       c.fillStyle = WHITE
       c.textBaseline = 'middle'
-      c.fillText(title, (REEL_W - tw) / 2, 588)
+      c.fillText(title, (REEL_W - tw) / 2, 608)
       c.font = `36px ${FONT_MD}`
       c.fillStyle = MUTED
       const dl = input.dateLabel
-      c.fillText(dl, (REEL_W - c.measureText(dl).width) / 2, 690)
+      c.fillText(dl, (REEL_W - c.measureText(dl).width) / 2, 700)
       c.restore()
       // numbered list
       listLines.forEach((line, i) => {
         const a = span(lt, 0.7 + i * 0.18, 1.0 + i * 0.18)
-        const y = 800 + i * 150
+        // list stays above the Instagram caption area (SAFE.bottom)
+        const step = Math.min(150, Math.floor((SAFE.bottom - 790) / Math.max(1, listLines.length)))
+        const y = 790 + i * step
         c.save()
         c.globalAlpha *= a
         c.translate(60 * (1 - a), 0)
         const acc = STYLE_ACCENT[input.items[i]!.style ?? 'haber']
         c.fillStyle = acc
-        roundRectPath(c, 70, y, 84, 84, 18)
+        roundRectPath(c, SAFE.x, y, 84, 84, 18)
         c.fill()
         c.font = `48px ${FONT_XB}`
         c.fillStyle = WHITE
         c.textBaseline = 'middle'
         const ns = String(i + 1)
-        c.fillText(ns, 112 - c.measureText(ns).width / 2, y + 44)
+        c.fillText(ns, SAFE.x + 42 - c.measureText(ns).width / 2, y + 44)
         c.font = `26px ${FONT_XB}`
         c.fillStyle = MUTED
         c.textBaseline = 'top'
-        c.fillText(input.items[i]!.category.toLocaleUpperCase('tr-TR'), 180, y + 2)
+        c.fillText(input.items[i]!.category.toLocaleUpperCase('tr-TR'), SAFE.x + 110, y + 2)
         c.font = `36px ${FONT_MD}`
         c.fillStyle = WHITE
-        c.fillText(line, 180, y + 38)
+        c.fillText(line, SAFE.x + 110, y + 38)
         c.restore()
       })
     }
@@ -227,24 +229,24 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
       const numY = tagY - 170
       legibility(c, numY + 40)
       progressBar(c, 0, n, idx, (lt - XFADE) / (dur - XFADE))
-      header(c, brand, 56, `${n} HABER • ${input.dateLabel.toLocaleUpperCase('tr-TR')}`, false)
+      header(c, brand, SAFE.top, `${n} HABER • ${input.dateLabel.toLocaleUpperCase('tr-TR')}`, false)
       // number badge
       const bk = span(lt, XFADE * 0.6, XFADE + 0.4)
       c.save()
       c.globalAlpha *= bk
       c.fillStyle = WHITE
-      roundRectPath(c, 48, numY + 20 * (1 - bk), 132, 132, 26)
+      roundRectPath(c, SAFE.x - 12, numY + 20 * (1 - bk), 132, 132, 26)
       c.fill()
       c.font = `92px ${FONT_XB}`
       c.fillStyle = NAVY
       c.textBaseline = 'middle'
       const ns = String(idx + 1)
-      c.fillText(ns, 114 - c.measureText(ns).width / 2, numY + 70 + 20 * (1 - bk))
+      c.fillText(ns, SAFE.x + 54 - c.measureText(ns).width / 2, numY + 70 + 20 * (1 - bk))
       c.font = `44px ${FONT_XB}`
       c.fillStyle = MUTED
-      c.fillText(`/ ${n}`, 200, numY + 72)
+      c.fillText(`/ ${n}`, SAFE.x + 140, numY + 72)
       c.restore()
-      categoryTag(c, it.category.toLocaleUpperCase('tr-TR'), 48, tagY, 62, accent, span(lt, XFADE * 0.8, XFADE + 0.45), t)
+      categoryTag(c, it.category.toLocaleUpperCase('tr-TR'), SAFE.x - 12, tagY, 62, accent, span(lt, XFADE * 0.8, XFADE + 0.45), t)
       if (it.place) {
         c.font = `30px ${FONT_XB}`
         c.fillStyle = MUTED
@@ -252,12 +254,12 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
         const pl = it.place.toLocaleUpperCase('tr-TR')
         c.save()
         c.globalAlpha *= span(lt, XFADE + 0.2, XFADE + 0.6)
-        c.fillText(pl, REEL_W - 64 - c.measureText(pl).width, tagY + 33)
+        c.fillText(pl, REEL_W - SAFE.right - c.measureText(pl).width, tagY + 33)
         c.restore()
       }
       // headline: lines rise in one by one
       c.fillStyle = RED
-      c.fillRect(48, headY + 6, 12, (lines.length * HEAD_LH - 14) * span(lt, XFADE + 0.1, XFADE + 0.5))
+      c.fillRect(SAFE.x - 12, headY + 6, 12, (lines.length * HEAD_LH - 14) * span(lt, XFADE + 0.1, XFADE + 0.5))
       c.font = `${HEAD_SIZE}px ${FONT_XB}`
       c.textBaseline = 'top'
       lines.forEach((line, k) => {
@@ -267,7 +269,7 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
         c.fillStyle = WHITE
         c.shadowColor = 'rgba(0,0,0,0.35)'
         c.shadowBlur = 12
-        c.fillText(line, 84, headY + k * HEAD_LH + 30 * (1 - a))
+        c.fillText(line, SAFE.x + 20, headY + k * HEAD_LH + 30 * (1 - a))
         c.restore()
       })
       ticker(c, brand, tickerText, t, 1)
@@ -314,7 +316,7 @@ export async function renderDigest(input: DigestInput, opts: { root?: string } =
       const cur0 = active[active.length - 1]
       if (input.presenter && level && cur0 && cur0.kind === 'item') {
         const it = input.items[cur0.index]!
-        presenterCard(ctx, input.presenter, presenterPhoto, STYLE_ACCENT[it.style ?? 'haber'], 48, 176, level[f] ?? 0, span(t - cur0.start, XFADE, XFADE + 0.4))
+        presenterCard(ctx, input.presenter, presenterPhoto, STYLE_ACCENT[it.style ?? 'haber'], SAFE.x, SAFE.top + 130, level[f] ?? 0, span(t - cur0.start, XFADE, XFADE + 0.4))
       }
       await enc.frame(canvas)
     }

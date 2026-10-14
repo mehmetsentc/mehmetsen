@@ -17,6 +17,7 @@ import {
   resolveLockedCityCategoryFilterIds,
 } from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
+import { attachReelVideoRows, loadReelVideoIndex } from '@/lib/reels/reelLibrary'
 import { publicFeedAuthor } from '@/lib/seo/publicAuthorIdentity'
 import { publicArticleSocialCounts } from '@/lib/feed/articleEngagement'
 import type {
@@ -256,6 +257,16 @@ async function enrichPublisherSlugs<T extends FeedCandidateRow | ScoredFeedCandi
   }
 }
 
+/** REELS-5: stories with a NaHaber reel play it in the card when they have no video of their own. */
+async function attachReelVideos<T extends FeedCandidateRow | ScoredFeedCandidate>(rows: T[]): Promise<T[]> {
+  if (!rows.length) return rows
+  try {
+    return attachReelVideoRows(rows, await loadReelVideoIndex())
+  } catch {
+    return rows
+  }
+}
+
 export class FeedService {
   async getFeed(ctx: FeedRequestContext, opts?: { debug?: boolean }): Promise<FeedPageDto> {
     if (!feedFsCacheActive()) {
@@ -478,7 +489,7 @@ export class FeedService {
         const articleIds = ordered.map((r) => r.articleId)
         const [socialMap, enriched] = await Promise.all([
           loadSocialState(ctx.userId, articleIds),
-          enrichPublisherSlugs(ordered),
+          enrichPublisherSlugs(ordered).then(attachReelVideos),
         ])
         const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 
@@ -569,7 +580,7 @@ export class FeedService {
         const articleIds = ranked.map((r) => r.articleId)
         const [socialMap, enriched] = await Promise.all([
           loadSocialState(ctx.userId, articleIds),
-          enrichPublisherSlugs(ranked),
+          enrichPublisherSlugs(ranked).then(attachReelVideos),
         ])
         const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 
@@ -636,7 +647,7 @@ export class FeedService {
       const articleIds = ranked.map((r) => r.articleId)
       const [socialMap, enriched] = await Promise.all([
         loadSocialState(ctx.userId, articleIds),
-        enrichPublisherSlugs(ranked),
+        enrichPublisherSlugs(ranked).then(attachReelVideos),
       ])
       const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
 

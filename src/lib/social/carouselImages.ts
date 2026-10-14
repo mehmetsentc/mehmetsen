@@ -206,6 +206,15 @@ export async function materializeBrandedOgForPublish(
   kind: 'post' | 'story' = 'post',
   context?: MaterializeBrandedOgContext,
 ): Promise<string> {
+  // REELS-6: NaHaber «Bülten» card (same theme as the reels) unless the legacy theme is chosen.
+  try {
+    const { nahaberThemeCard } = await import('./nahaberCard')
+    const themed = await nahaberThemeCard(newsId, normalizeAbsoluteImageUrl(fallbackImageUrl) || fallbackImageUrl, kind, context)
+    if (themed) return themed
+  } catch (err) {
+    console.warn(`[carouselImages] nahaber card skipped — ${newsId}:`, safeErrorText(err))
+  }
+
   let sawDefinitiveOgFailure = false
   const candidates = ogFetchCandidates(brandedOgUrl)
 

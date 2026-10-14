@@ -47,9 +47,12 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
   if (str(d.status) !== 'published') return skip('Haber yayında değil')
 
   let videoUrl: string
+  let coverUrl: string | null = null
   try {
     const { buildReelForNews } = await import('@/lib/reels/reelService')
-    videoUrl = (await buildReelForNews(newsId)).url
+    const built = await buildReelForNews(newsId, { by: options.actorUid })
+    videoUrl = built.url
+    coverUrl = built.coverUrl ?? null
   } catch (err) {
     // Includes the TTS free-tier guard: no reel, nothing published, no ledger claim.
     return skip(`Reels videosu üretilemedi: ${safeErrorText(err).slice(0, 200)}`)
@@ -73,7 +76,7 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
           ? publishInstagramVideoStory({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
           : publishFacebookVideoStory({ newsId, videoUrl, caption }, t as FacebookPublishTarget)
         : platform === 'instagram'
-          ? publishInstagramReel({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
+          ? publishInstagramReel({ newsId, videoUrl, caption, coverUrl }, t as InstagramPublishTarget)
           : publishFacebookReel({ newsId, videoUrl, caption }, t as FacebookPublishTarget),
   })
   return {

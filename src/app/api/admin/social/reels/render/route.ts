@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/social/reels/render { newsId, force? }
+ * POST /api/admin/social/reels/render { newsId, force?, personaId?, intro?, outro?, music?, voiceText?, cover?, layout?, dryRun? }
  * Builds (or reuses) the NaHaber news reel MP4 for one published article and
  * returns its public Storage URL. Auth: central social-account manager.
  * Kill switch: SOCIAL_REELS_ENABLED=false.
@@ -38,6 +38,9 @@ export async function POST(request: Request) {
       outro: s(body.outro),
       music: s(body.music),
       voiceText: s(body.voiceText)?.slice(0, 320) ?? null,
+      cover: s(body.cover),
+      layout: s(body.layout),
+      by: auth.ctx.uid,
     })
     return json({ result })
   } catch (err) {

@@ -5,6 +5,8 @@
  *      reuse) the news video and publish it to ONE account through the shared ledger
  *      (publishOneSocial mode 'reel' | 'video_story', trigger 'studio'). The client calls
  *      this once per selected account, so each account has its own time budget.
+ * POST { newsId, prepare: true } → only build (or reuse) the video + cover first, so the
+ *      per-account requests stay well inside the 100 s edge timeout (REELS-5).
  */
 import { requireActor } from '@/lib/social/accounts/connect/actorRoute'
 import { json, readJsonBody } from '@/lib/social/accounts/connect/routeHelpers'
@@ -44,6 +46,16 @@ export async function POST(request: Request) {
   if (!NEWS_RE.test(newsId)) return json({ error: 'newsId gerekli' }, 400)
   const r = await manualTargetsForNews(auth.actor, newsId, [format], Date.now())
   if (!r.ok) return json({ error: r.code, code: r.code }, r.status)
+  if (body.prepare === true) {
+    if (!r.options.some((o) => o.selectable && (o.platform === 'instagram' || o.platform === 'facebook'))) return json({ error: 'Bu haber için kullanılabilir hesap yok', code: 'not_found' }, 404)
+    try {
+      const { buildReelForNews } = await import('@/lib/reels/reelService')
+      const b = await buildReelForNews(newsId, { by: auth.actor.uid })
+      return json({ prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused })
+    } catch (err) {
+      return json({ error: err instanceof Error ? err.message : String(err), code: 'render_failed' }, 500)
+    }
+  }
   const target = r.options.find((o) => o.accountId === accountId)
   if (!target || (target.platform !== 'instagram' && target.platform !== 'facebook')) return json({ error: 'Bu hesap bu haber için kullanılamaz', code: 'not_found' }, 404)
   if (!target.selectable) return json({ error: target.reason ?? 'Hesap seçilemez', code: target.code }, 409)

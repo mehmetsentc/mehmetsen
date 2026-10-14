@@ -48,9 +48,9 @@ type Persona = {
 }
 type PersonasView = {
   personas: Persona[]
-  defaults: { intro: string; outro: string; music: string; alwaysUseMedia?: boolean }
+  defaults: { intro: string; outro: string; music: string; cover?: string; layout?: string; postTheme?: string; alwaysUseMedia?: boolean }
   gemini: { enabled: boolean; monthlyUsd: number; usedUsd: number; month: string }
-  options: { intros: string[]; outros: string[]; music: string[]; transitions: string[] }
+  options: { intros: string[]; outros: string[]; music: string[]; transitions: string[]; covers?: Array<{ id: string; label: string }> }
 }
 type ReelResult = {
   newsId: string
@@ -70,10 +70,12 @@ type ReelResult = {
   outro?: string
   music?: string
   note?: string
+  coverUrl?: string | null
 }
+type LibraryItem = { newsId: string; slug: string | null; headline: string; url: string; coverUrl: string | null; seconds: number | null; persona: string | null; style: string | null; media: string | null; updatedAt: string | null; renders: number }
 type Digest = { id: string; newsIds: string[]; title: string; url: string; caption: string; seconds: number; createdAt: number; lines: string[] }
 type Usage = { month: string; overageApproved: boolean; tiers: Array<{ tier: string; used: number; cap: number }> }
-type Mode = 'single' | 'digest' | 'upload'
+type Mode = 'single' | 'digest' | 'library' | 'upload'
 type Tab = 'settings' | 'share' | 'voices'
 
 const INTRO_TEXT: Record<string, [string, string]> = {
@@ -99,6 +101,15 @@ const MUSIC_TEXT: Record<string, [string, string]> = {
   sondakika: ['Son dakika', 'gergin'],
   lofi: ['Lo-fi', 'akşam'],
   none: ['Müziksiz', ''],
+}
+const COVER_TEXT: Record<string, [string, string]> = {
+  manset: ['Manşet', 'foto + büyük başlık'],
+  panel: ['Panel', 'foto kartı + lacivert'],
+  bulten: ['Bülten', 'foto + beyaz panel'],
+}
+const LAYOUT_TEXT: Record<string, [string, string]> = {
+  bulten: ['Bülten', 'foto üstte, beyaz panel'],
+  kart: ['Kart', 'foto kartı, lacivert'],
 }
 const TRANSITION_TEXT: Record<string, string> = { fade: 'Yumuşak geçiş', slide: 'Kaydır', number: 'Numara kartı' }
 const STYLE_COLOR: Record<string, string> = { haber: '#e31b23', spor: '#13a058', magazin: '#d81b72', analiz: '#e0a100' }
@@ -210,6 +221,8 @@ export function ReelsStudio() {
   const [intro, setIntro] = useState('soft')
   const [outro, setOutro] = useState('logo')
   const [music, setMusic] = useState('auto')
+  const [cover, setCover] = useState('bulten')
+  const [layout, setLayout] = useState('bulten')
   const [result, setResult] = useState<ReelResult | null>(null)
   const [busy, setBusy] = useState<null | 'plan' | 'render' | 'approve' | 'digest'>(null)
   const [error, setError] = useState<string | null>(null)
@@ -238,6 +251,8 @@ export function ReelsStudio() {
       setIntro((v) => (v === 'soft' ? r.data.defaults.intro : v))
       setOutro((v) => (v === 'logo' ? r.data.defaults.outro : v))
       setMusic((v) => (v === 'auto' ? r.data.defaults.music : v))
+      setCover((v) => (v === 'bulten' ? r.data.defaults.cover ?? 'bulten' : v))
+      setLayout((v) => (v === 'bulten' ? r.data.defaults.layout ?? 'bulten' : v))
     }
   }, [])
   const loadUsage = useCallback(async () => {
@@ -311,6 +326,8 @@ export function ReelsStudio() {
     intro,
     outro,
     music,
+    cover,
+    layout,
     voiceText: scriptSource === 'studio' && script.trim() ? script.trim() : null,
   })
 
@@ -389,6 +406,7 @@ export function ReelsStudio() {
           {([
             ['single', 'Tek haber'],
             ['digest', 'Günün Öne Çıkanları'],
+            ['library', 'Kaydedilenler'],
             ['upload', 'Video yükle'],
           ] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={cn('rounded-lg px-3 py-1.5', mode === k ? 'bg-[rgb(var(--color-card))] shadow' : 'text-[rgb(var(--color-muted))]')}>
@@ -414,7 +432,9 @@ export function ReelsStudio() {
         </div>
       </div>
 
-      {mode === 'upload' ? (
+      {mode === 'library' ? (
+        <ReelLibrary />
+      ) : mode === 'upload' ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-[rgb(var(--color-muted))]">
           <div className="max-w-md space-y-2">
             <Film className="mx-auto h-10 w-10" />
@@ -593,6 +613,11 @@ export function ReelsStudio() {
                   <Download className="h-4 w-4" /> MP4
                 </a>
               ) : null}
+              {mode === 'single' && result?.coverUrl ? (
+                <a href={result.coverUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-bold">
+                  <ImageIcon className="h-4 w-4" /> Kapak
+                </a>
+              ) : null}
               {videoUrl ? (
                 <button type="button" onClick={() => setTab('share')} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-extrabold text-white">
                   <Send className="h-4 w-4" /> Paylaş
@@ -684,6 +709,9 @@ export function ReelsStudio() {
                       {script.length}/320 · {scriptSource === 'ai' ? 'AI editör yazdı' : scriptSource === 'studio' ? 'sizin metniniz' : scriptSource === 'rules' ? 'kural metni (AI yanıt vermedi)' : '—'} · haberde olmayan rakam kabul edilmez
                     </p>
                   </Section>
+                  <Section title="Video düzeni">
+                    <OptionGrid items={['bulten', 'kart']} value={layout} onChange={setLayout} labels={LAYOUT_TEXT} cols={2} />
+                  </Section>
                   <Section title="Giriş efekti">
                     <OptionGrid items={pv?.options.intros ?? ['soft', 'slide', 'perde', 'zoom', 'minimal']} value={intro} onChange={setIntro} labels={INTRO_TEXT} />
                   </Section>
@@ -692,6 +720,24 @@ export function ReelsStudio() {
                   </Section>
                   <Section title="Müzik" hint={<MusicPreview name={music} />}>
                     <OptionGrid items={pv?.options.music ?? Object.keys(MUSIC_TEXT)} value={music} onChange={setMusic} labels={MUSIC_TEXT} />
+                  </Section>
+                  <Section title="Instagram kapağı" hint={<span className="text-[10px] text-[rgb(var(--color-muted))]">profil ızgarası + Reels sekmesi</span>}>
+                    <OptionGrid items={(pv?.options.covers ?? [{ id: 'bulten', label: '' }, { id: 'manset', label: '' }, { id: 'panel', label: '' }]).map((c) => c.id)} value={cover} onChange={setCover} labels={COVER_TEXT} cols={3} />
+                    {result?.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={result.coverUrl} alt="Reels kapağı" className="mt-2 h-40 rounded-lg border border-[rgb(var(--color-border))] object-cover" />
+                    ) : null}
+                  </Section>
+                  <Section title="Post ve hikâye görselleri">
+                    <Toggle
+                      on={pv?.defaults.postTheme !== 'onyeditivi'}
+                      onChange={async (v) => {
+                        const r = await reelsCall<PersonasView>('POST', '/api/admin/social/reels/personas', { postTheme: v ? 'nahaber' : 'onyeditivi' })
+                        if (r.ok) setPv(r.data)
+                      }}
+                      label="Post / hikâye paylaşımları da NaHaber Bülten temasıyla"
+                    />
+                    <p className="text-[10px] text-[rgb(var(--color-muted))]">Kapalıysa eski (onyeditivi) post kartı kullanılır.</p>
                   </Section>
                   <Section title="Medya">
                     <Toggle
@@ -791,7 +837,7 @@ export function ReelsStudio() {
                 <button
                   type="button"
                   onClick={async () => {
-                    const r = await reelsCall<PersonasView>('POST', '/api/admin/social/reels/personas', mode === 'single' ? { intro, outro, music } : { music: dMusic })
+                    const r = await reelsCall<PersonasView>('POST', '/api/admin/social/reels/personas', mode === 'single' ? { intro, outro, music, cover, layout } : { music: dMusic })
                     if (r.ok) setPv(r.data)
                   }}
                   className="rounded-xl border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-bold"
@@ -801,6 +847,75 @@ export function ReelsStudio() {
               </div>
             ) : null}
           </section>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── saved reels (REELS-5) ────────────────────────────────────────────────────
+function ReelLibrary() {
+  const [items, setItems] = useState<LibraryItem[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [playing, setPlaying] = useState<string | null>(null)
+  const load = useCallback(async () => {
+    const r = await reelsCall<{ items: LibraryItem[] }>('GET', '/api/admin/social/reels/library?limit=90')
+    if (r.ok) setItems(r.data.items)
+    else setError(r.error)
+  }, [])
+  useEffect(() => {
+    void load()
+  }, [load])
+  return (
+    <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <p className="text-sm font-extrabold">Kaydedilen videolar</p>
+        <span className="text-xs text-[rgb(var(--color-muted))]">Üretilen her haber videosu kapağıyla burada saklanır ve Akış 2’de haber kartında oynar.</span>
+        <button type="button" onClick={() => void load()} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold">
+          <RefreshCw className="h-3.5 w-3.5" /> Yenile
+        </button>
+      </div>
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {!items ? (
+        <Loader2 className="h-5 w-5 animate-spin" />
+      ) : items.length === 0 ? (
+        <p className="text-sm text-[rgb(var(--color-muted))]">Henüz kayıtlı video yok — «Tek haber» sekmesinden üretin.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+          {items.map((it) => (
+            <div key={it.newsId} className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+              <div className="relative aspect-[9/16] bg-black">
+                {playing === it.newsId ? (
+                  <video src={it.url} controls autoPlay playsInline className="h-full w-full object-contain" />
+                ) : (
+                  <button type="button" onClick={() => setPlaying(it.newsId)} className="group h-full w-full" aria-label="Videoyu oynat">
+                    {it.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={it.coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <Film className="mx-auto h-8 w-8 text-white/60" />
+                    )}
+                    <span className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
+                      <Play className="h-10 w-10 rounded-full bg-black/50 p-2 text-white" />
+                    </span>
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1 p-2">
+                <p className="line-clamp-2 text-xs font-bold">{it.headline}</p>
+                <p className="text-[10px] text-[rgb(var(--color-muted))]">
+                  {it.updatedAt ? new Date(it.updatedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  {it.seconds ? ` · ${it.seconds.toFixed(0)} sn` : ''}
+                  {it.renders > 1 ? ` · ${it.renders}. sürüm` : ''}
+                </p>
+                <div className="flex gap-1 text-[10px] font-bold">
+                  <a href={it.url} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">MP4</a>
+                  {it.coverUrl ? <a href={it.coverUrl} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Kapak</a> : null}
+                  <a href={`/admin/news/${it.newsId}/edit`} className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Haber</a>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

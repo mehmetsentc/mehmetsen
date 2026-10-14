@@ -74,9 +74,24 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   const list = (['instagram', 'facebook'] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
   if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   const rows: TargetRowLike[] = []
-  let i = 0
+  // REELS-5: build (or reuse) the video + cover once, in its own request.
+  onProgress?.(0, list.length + 1)
+  try {
+    const token = (await auth.currentUser?.getIdToken()) ?? ''
+    const res = await fetch('/api/admin/social/reels/share', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ newsId: input.newsId, format: input.mode, prepare: true }),
+    })
+    const d = (await res.json().catch(() => null)) as { error?: string } | null
+    if (!res.ok && res.status < 520) return { ok: false, status: res.status, overall: 'error', rows: [], message: `Video hazırlanamadı: ${d?.error ?? `HTTP ${res.status}`}` }
+  } catch {
+    // a slow first render: the per-account requests build / reuse it anyway
+  }
+  let i = 1
   for (const t of list) {
-    onProgress?.(i++, list.length)
+    onProgress?.(i++, list.length + 1)
     const token = (await auth.currentUser?.getIdToken()) ?? ''
     let row: TargetRowLike = { platform: t.platform, accountId: t.accountId, accountName: input.names.get(t.accountId) ?? null, format: input.mode, success: false, code: null, error: null, ledgerStatus: null, externalPostId: null }
     try {
@@ -99,13 +114,39 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   return { ok: overall === 'published' || overall === 'partial', status: 200, overall, rows, message: null }
 }
 
-/** POST /api/admin/social/force-reshare with explicit multi-account targets. */
+/**
+ * POST /api/admin/social/force-reshare with explicit targets.
+ * REELS-5: several accounts are sent one request each — a single request for many
+ * accounts outlived the 100 s edge timeout (HTTP 524) while the server kept publishing.
+ */
 export async function sendManualShare(input: { newsId: string; mode: ShareMode; targets: TargetSelection; extra?: Record<string, unknown>; names?: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
   if (input.mode === 'reel' || input.mode === 'video_story') {
     return sendVideoShare({ newsId: input.newsId, mode: input.mode, targets: { ...input.targets, threads: [] }, names: input.names ?? new Map() }, onProgress)
   }
   const sel: TargetSelection = input.mode === 'story' ? { ...input.targets, threads: [] } : input.targets
-  if (targetCount(sel) === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
+  const count = targetCount(sel)
+  if (count === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
+  if (count === 1) return sendManualShareBatch(input, sel)
+  const singles = (['facebook', 'instagram', 'threads'] as const).flatMap((p) => sel[p].map((id) => ({ platform: p, accountId: id })))
+  const rows: TargetRowLike[] = []
+  const messages: string[] = []
+  let i = 0
+  for (const t of singles) {
+    onProgress?.(i++, singles.length)
+    const one: TargetSelection = { facebook: [], instagram: [], threads: [], [t.platform]: [t.accountId] }
+    const r = await sendManualShareBatch(input, one)
+    if (r.rows.length) rows.push(...r.rows)
+    else {
+      rows.push({ platform: t.platform, accountId: t.accountId, accountName: input.names?.get(t.accountId) ?? null, format: input.mode, success: false, code: null, error: r.message ?? `HTTP ${r.status}`, ledgerStatus: r.status === 0 || r.status >= 520 ? 'uncertain' : null, externalPostId: null })
+      if (r.message) messages.push(r.message)
+    }
+  }
+  onProgress?.(singles.length, singles.length)
+  const overall = overallShareState(rows.map(rowAsResult))
+  return { ok: overall === 'published' || overall === 'partial', status: 200, overall, rows, message: overall === 'failed' ? (messages[0] ?? null) : null }
+}
+
+async function sendManualShareBatch(input: { newsId: string; mode: ShareMode; extra?: Record<string, unknown> }, sel: TargetSelection): Promise<ManualShareResult> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
   let res: Response
   try {
