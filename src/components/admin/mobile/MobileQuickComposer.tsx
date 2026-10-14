@@ -82,7 +82,7 @@ export function MobileQuickComposer() {
       })
       const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string }
       if (!res.ok) throw new Error(data.error || 'Kayıt başarısız')
-      if (status === 'pending') router.replace('/admin/approvals')
+      if (status === 'pending') router.replace('/admin/news?filter=pending')
       else if (data.id) router.replace(`/admin/news/${data.id}/edit`)
       else router.replace('/admin/news')
     } catch (e) {

@@ -87,7 +87,7 @@ export function MobileCategorySheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] md:hidden">
+    <div className="fixed inset-0 z-[70] lg:hidden">
       <button type="button" className="absolute inset-0 bg-black/45" aria-label="Kapat" onClick={onClose} />
       <div
         className="absolute inset-x-0 bottom-0 flex max-h-[75vh] flex-col rounded-t-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-2xl"

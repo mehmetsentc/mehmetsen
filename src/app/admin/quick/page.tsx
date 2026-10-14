@@ -1,36 +1,22 @@
 'use client'
 
-import { Suspense } from 'react'
-import { MobileQuickComposer } from '@/components/admin/mobile/MobileQuickComposer'
-import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
+import { Suspense, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-function QuickInner() {
-  const isMobile = useIsMobileAdminViewport()
-
-  if (isMobile === null) {
-    return <div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>
-  }
-
-  if (!isMobile) {
-    return (
-      <div className="p-8">
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          Hızlı haber bestesi mobil içindir.{' '}
-          <a href="/admin/news/create" className="font-semibold text-[rgb(var(--color-brand))]">
-            Masaüstü editöre git
-          </a>
-        </p>
-      </div>
-    )
-  }
-
-  return <MobileQuickComposer />
+/** MOBILE-ADMIN-1: «Hızlı haber / Son dakika» = the mobile editor (one create flow). */
+function QuickRedirect() {
+  const router = useRouter()
+  const params = useSearchParams()
+  useEffect(() => {
+    router.replace(params.get('mode') === 'breaking' ? '/admin/news/create?mode=breaking' : '/admin/news/create')
+  }, [router, params])
+  return <div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>
 }
 
 export default function AdminQuickPage() {
   return (
     <Suspense fallback={<div className="p-4 text-sm">Yükleniyor…</div>}>
-      <QuickInner />
+      <QuickRedirect />
     </Suspense>
   )
 }

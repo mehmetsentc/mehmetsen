@@ -2,16 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, CheckSquare, Newspaper, Menu, Plus } from 'lucide-react'
+import { Home, Newspaper, Menu, Plus, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMobileAdmin } from './MobileAdminContext'
+import { isTabActive } from '@/lib/mobileAdminRules'
 
+/**
+ * MOBILE-ADMIN-1 — one layout, five fixed entries on every screen (hidden only in the
+ * editor): Bugün · Haberler (approvals + content in one list) · + · Paylaşım · Menü.
+ */
 const TABS = [
-  { id: 'home', href: '/admin', label: 'Ana Sayfa', icon: Home, exact: true },
-  { id: 'approvals', href: '/admin/approvals', label: 'Onaylar', icon: CheckSquare },
-  { id: 'create', href: '#create', label: 'Haber', icon: Plus, center: true },
-  { id: 'content', href: '/admin/news', label: 'İçerik', icon: Newspaper },
-  { id: 'menu', href: '/admin/menu', label: 'Menü', icon: Menu },
+  { id: 'home', href: '/admin', label: 'Bugün', icon: Home, exact: true, also: [] as string[] },
+  { id: 'news', href: '/admin/news', label: 'Haberler', icon: Newspaper, also: ['/admin/approvals'] },
+  { id: 'create', href: '#create', label: 'Haber', icon: Plus, center: true, also: [] as string[] },
+  { id: 'shares', href: '/admin/social/shares', label: 'Paylaşım', icon: Share2, also: [] as string[] },
+  { id: 'menu', href: '/admin/menu', label: 'Menü', icon: Menu, also: [] as string[] },
 ] as const
 
 export function MobileAdminBottomNav() {
@@ -22,7 +27,7 @@ export function MobileAdminBottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 backdrop-blur-md lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Mobil haber odası"
     >
@@ -44,17 +49,14 @@ export function MobileAdminBottomNav() {
             )
           }
 
-          const active =
-            'exact' in tab && tab.exact
-              ? pathname === tab.href
-              : pathname === tab.href || pathname.startsWith(`${tab.href}/`)
+          const active = isTabActive(pathname, tab)
           const Icon = tab.icon
-          const showBadge = tab.id === 'approvals' && pendingBadge > 0
+          const showBadge = tab.id === 'news' && pendingBadge > 0
 
           return (
             <Link
               key={tab.id}
-              href={tab.href}
+              href={showBadge ? '/admin/news?filter=pending' : tab.href}
               className={cn(
                 'relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 pb-1 pt-1.5 text-[10px] font-semibold',
                 active ? 'text-[rgb(var(--color-brand))]' : 'text-[rgb(var(--color-muted))]'

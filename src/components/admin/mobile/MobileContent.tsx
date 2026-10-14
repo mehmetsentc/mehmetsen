@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
   Check,
+  Clapperboard,
   ExternalLink,
+  Film,
   MoreHorizontal,
   Newspaper,
   Pencil,
@@ -15,7 +17,10 @@ import {
   Tag,
   Trash2,
   X,
+  Zap,
 } from 'lucide-react'
+import { auth } from '@/lib/firebase/auth'
+import { useMobileAdmin } from './MobileAdminContext'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem } from '@/services/adminNewsService'
 import { getMobileCategoryLabel, updateNewsCategory } from '@/lib/mobileAdminCategory'
 import { formatDistanceToNow } from 'date-fns'
@@ -26,12 +31,15 @@ import type { QueryDocumentSnapshot } from 'firebase/firestore'
 import { MobileCategorySheet } from './MobileCategorySheet'
 import { MobileSocialShareSheet, type SocialShareMode } from './MobileSocialShareSheet'
 
-const CHIPS: { id: AdminNewsFilter; label: string }[] = [
-  { id: 'all', label: 'Tümü' },
+/** MOBILE-ADMIN-1: approvals + content in one list; «breaking» = published son dakika. */
+type MobileNewsFilter = AdminNewsFilter | 'breaking'
+const CHIPS: { id: MobileNewsFilter; label: string }[] = [
+  { id: 'pending', label: 'Onay bekleyen' },
   { id: 'published', label: 'Yayında' },
-  { id: 'pending', label: 'Onay' },
-  { id: 'review', label: 'İnceleme' },
+  { id: 'breaking', label: 'Son dakika' },
   { id: 'draft', label: 'Taslak' },
+  { id: 'review', label: 'İnceleme' },
+  { id: 'all', label: 'Tümü' },
 ]
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -54,8 +62,10 @@ export function MobileContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { can } = useCmsAuth()
-  const filterParam = (searchParams.get('filter') as AdminNewsFilter | null) ?? 'all'
-  const filter: AdminNewsFilter = CHIPS.some((c) => c.id === filterParam) ? filterParam : 'all'
+  const { pendingBadge } = useMobileAdmin()
+  const filterParam = (searchParams.get('filter') as MobileNewsFilter | null) ?? 'all'
+  const filter: MobileNewsFilter = CHIPS.some((c) => c.id === filterParam) ? filterParam : 'all'
+  const categoryParam = searchParams.get('category') ?? undefined
 
   const [posts, setPosts] = useState<AdminNewsItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,9 +91,9 @@ export function MobileContent() {
       }
       try {
         const result = await adminNewsService.list(
-          filter,
+          filter === 'breaking' ? 'published' : filter,
           reset ? undefined : cursorRef.current ?? undefined,
-          undefined,
+          filter === 'breaking' ? 'son-dakika' : categoryParam,
           25
         )
         cursorRef.current = result.lastDoc
@@ -96,7 +106,7 @@ export function MobileContent() {
         setLoadingMore(false)
       }
     },
-    [filter]
+    [filter, categoryParam]
   )
 
   useEffect(() => {
@@ -113,8 +123,9 @@ export function MobileContent() {
       .includes(term)
   })
 
-  function setFilter(id: AdminNewsFilter) {
+  function setFilter(id: MobileNewsFilter) {
     const params = new URLSearchParams(searchParams.toString())
+    params.delete('category')
     if (id === 'all') params.delete('filter')
     else params.set('filter', id)
     router.replace(`/admin/news${params.toString() ? `?${params}` : ''}`)
@@ -203,6 +214,10 @@ export function MobileContent() {
 
   function handleShareDone(mode: SocialShareMode) {
     if (!shareTarget) return
+    if (mode === 'reel' || mode === 'video_story') {
+      flash(mode === 'reel' ? 'Reels paylaşıldı' : 'Video hikâye paylaşıldı')
+      return
+    }
     const { post, mode: shareMode } = shareTarget
     setPosts((items) =>
       items.map((p) =>
@@ -216,6 +231,30 @@ export function MobileContent() {
       )
     )
     flash(mode === 'story' ? 'Hikâye paylaşıldı' : 'Post paylaşıldı')
+  }
+
+  async function handleToggleBreaking(post: AdminNewsItem) {
+    setActionsPost(null)
+    const next = !post.isBreaking
+    setActionId(post.id)
+    try {
+      const token = (await auth.currentUser?.getIdToken()) ?? ''
+      const res = await fetch(`/api/admin/news/${encodeURIComponent(post.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isBreaking: next }),
+      })
+      if (!res.ok) {
+        const d = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(d?.error || `HTTP ${res.status}`)
+      }
+      setPosts((items) => items.map((p) => (p.id === post.id ? { ...p, isBreaking: next } : p)))
+      flash(next ? 'Son dakika açıldı' : 'Son dakika kapatıldı')
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Güncellenemedi')
+    } finally {
+      setActionId(null)
+    }
   }
 
   function openShare(post: AdminNewsItem, mode: SocialShareMode) {
@@ -234,10 +273,20 @@ export function MobileContent() {
   }
 
   return (
-    <div className="min-w-0 overflow-x-hidden px-4 py-4">
-      <div className="mb-3">
-        <h1 className="text-xl font-bold tracking-tight text-[rgb(var(--color-text))]">İçerik</h1>
-        <p className="text-sm text-[rgb(var(--color-muted))]">Haber odası arşivi</p>
+    <div className="mx-auto w-full min-w-0 max-w-2xl overflow-x-hidden px-4 py-4">
+      <div className="mb-3 flex items-end justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[rgb(var(--color-text))]">Haberler</h1>
+          <p className="text-sm text-[rgb(var(--color-muted))]">Onay, yayın ve taslaklar tek listede</p>
+        </div>
+        {filter === 'pending' && filtered.length > 0 ? (
+          <Link
+            href={`/admin/approvals/${filtered[0].id}?source=${filtered[0].adminSource}&mode=rapid`}
+            className="flex min-h-11 shrink-0 items-center rounded-xl bg-[rgb(var(--color-brand))] px-4 text-xs font-bold text-white"
+          >
+            Hızlı onay
+          </Link>
+        ) : null}
       </div>
 
       <div className="relative mb-3">
@@ -266,6 +315,16 @@ export function MobileContent() {
             )}
           >
             {c.label}
+            {c.id === 'pending' && pendingBadge > 0 ? (
+              <span
+                className={cn(
+                  'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                  filter === c.id ? 'bg-white/25 text-white' : 'bg-[rgb(var(--color-brand))] text-white'
+                )}
+              >
+                {pendingBadge > 99 ? '99+' : pendingBadge}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -383,6 +442,9 @@ export function MobileContent() {
           onReject={() => openReject(actionsPost)}
           onShareStory={() => openShare(actionsPost, 'story')}
           onSharePost={() => openShare(actionsPost, 'post')}
+          onShareReel={() => openShare(actionsPost, 'reel')}
+          onShareVideoStory={() => openShare(actionsPost, 'video_story')}
+          onToggleBreaking={() => void handleToggleBreaking(actionsPost)}
           onRemove={() => void handleRemove(actionsPost)}
         />
       ) : null}
@@ -412,7 +474,7 @@ export function MobileContent() {
       ) : null}
 
       {rejectPost ? (
-        <div className="fixed inset-0 z-[70] md:hidden">
+        <div className="fixed inset-0 z-[70] lg:hidden">
           <button type="button" className="absolute inset-0 bg-black/45" onClick={() => setRejectPost(null)} />
           <div
             className="absolute inset-x-0 bottom-0 space-y-2 rounded-t-2xl bg-[rgb(var(--color-card))] p-4"
@@ -457,6 +519,9 @@ function ContentActionsSheet({
   onReject,
   onShareStory,
   onSharePost,
+  onShareReel,
+  onShareVideoStory,
+  onToggleBreaking,
   onRemove,
 }: {
   post: AdminNewsItem
@@ -468,6 +533,9 @@ function ContentActionsSheet({
   onReject: () => void
   onShareStory: () => void
   onSharePost: () => void
+  onShareReel: () => void
+  onShareVideoStory: () => void
+  onToggleBreaking: () => void
   onRemove: () => void
 }) {
   const isPending = post.status === 'pending'
@@ -476,7 +544,7 @@ function ContentActionsSheet({
   const reviewHref = `/admin/approvals/${post.id}?source=${post.adminSource === 'newsDrafts' ? 'newsDrafts' : 'news'}`
 
   return (
-    <div className="fixed inset-0 z-[70] md:hidden">
+    <div className="fixed inset-0 z-[70] lg:hidden">
       <button type="button" className="absolute inset-0 bg-black/45" aria-label="Kapat" onClick={onClose} />
       <div
         className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[rgb(var(--color-card))] p-2"
@@ -554,6 +622,35 @@ function ContentActionsSheet({
               <Share2 className="h-4 w-4" />
               Post paylaş
             </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onShareReel}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-40"
+            >
+              <Clapperboard className="h-4 w-4" />
+              Reels paylaş
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onShareVideoStory}
+              className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-40"
+            >
+              <Film className="h-4 w-4" />
+              Video hikâye paylaş
+            </button>
+            {post.adminSource === 'news' ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onToggleBreaking}
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-[rgb(var(--color-text))] disabled:opacity-40"
+              >
+                <Zap className="h-4 w-4" />
+                {post.isBreaking ? 'Son dakikayı kapat' : 'Son dakika yap'}
+              </button>
+            ) : null}
             {post.slug ? (
               <a
                 href={`/haber/${post.slug}`}

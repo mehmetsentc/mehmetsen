@@ -58,7 +58,7 @@ export function MobileNotificationsSheet() {
   if (!notifOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-[rgb(var(--color-bg))] md:hidden">
+    <div className="fixed inset-0 z-[70] flex flex-col bg-[rgb(var(--color-bg))] lg:hidden">
       <div
         className="flex items-center gap-2 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2"
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}

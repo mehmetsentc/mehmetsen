@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Clapperboard, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -9,10 +9,14 @@ import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { ArticleInsightsPanel } from '@/components/admin/ArticleInsightsPanel'
 import { adminNewsService } from '@/services/adminNewsService'
 import type { Post } from '@/types/post'
+import { MobileEditor } from '@/components/admin/mobile/MobileEditor'
+import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 
 function AdminNewsEditInner() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
+  const params = useSearchParams()
+  const isMobile = useIsMobileAdminViewport()
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -25,7 +29,7 @@ function AdminNewsEditInner() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) {
+  if (loading || isMobile === null) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-8 w-8 animate-spin text-brand-600" />
@@ -37,6 +41,11 @@ function AdminNewsEditInner() {
     return (
       <div className="p-8 text-center text-[rgb(var(--color-muted))]">Haber bulunamadı</div>
     )
+  }
+
+  // MOBILE-ADMIN-1: phones / tablets edit in the 3-step editor; «Tam editör» (?full=1) = desktop editor.
+  if (isMobile && params.get('full') !== '1') {
+    return <MobileEditor mode="edit" post={post} />
   }
 
   return (

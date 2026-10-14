@@ -9,7 +9,7 @@ import { useMobileAdmin } from './MobileAdminContext'
 import { cn } from '@/lib/utils'
 
 /** Primary bottom-nav roots — brand chrome, no back. */
-const PRIMARY_EXACT = new Set(['/admin', '/admin/approvals', '/admin/news', '/admin/menu'])
+const PRIMARY_EXACT = new Set(['/admin', '/admin/approvals', '/admin/news', '/admin/menu', '/admin/social/shares'])
 
 const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/inbox', title: 'Mail Kutusu', backHref: '/admin/menu' },
@@ -23,7 +23,7 @@ const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
   { prefix: '/admin/ai-usage', title: 'AI Maliyet', backHref: '/admin/menu' },
   { prefix: '/admin/ai', title: 'AI Asistan', backHref: '/admin/menu' },
   { prefix: '/admin/seo', title: 'SEO', backHref: '/admin/menu' },
-  { prefix: '/admin/social', title: 'Sosyal Medya', backHref: '/admin/menu' },
+  { prefix: '/admin/social', title: 'Sosyal Medya', backHref: '/admin/social/shares' },
   { prefix: '/admin/newsletter', title: 'E-posta Bülteni', backHref: '/admin/menu' },
   { prefix: '/admin/ads', title: 'Reklamlar', backHref: '/admin/menu' },
   { prefix: '/admin/analytics', title: 'Analitik', backHref: '/admin/menu' },
@@ -72,7 +72,7 @@ export function MobileAdminHeader() {
 
   return (
     <header
-      className="sticky top-0 z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 backdrop-blur-md md:hidden"
+      className="sticky top-0 z-30 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]/95 backdrop-blur-md lg:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="flex h-14 items-center gap-1 px-2">

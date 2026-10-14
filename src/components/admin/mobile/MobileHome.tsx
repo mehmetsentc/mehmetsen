@@ -3,14 +3,15 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
-  Clock, Zap, Plus, Bot, Image as ImageIcon, ChevronRight,
-  CheckCircle2, Radio,
+  AlertTriangle, Clock, Zap, Plus, Bot, ChevronRight,
+  CheckCircle2, Clapperboard,
 } from 'lucide-react'
+import { auth } from '@/lib/firebase/auth'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useMobileAdmin } from './MobileAdminContext'
 import { db, Collections } from '@/lib/firebase/firestore'
 import {
-  collection, query, where, orderBy, limit, onSnapshot, getCountFromServer,
+  collection, query, where, orderBy, limit, onSnapshot, getCountFromServer, Timestamp,
 } from 'firebase/firestore'
 import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
@@ -38,26 +39,32 @@ interface FeedItem {
 
 export function MobileHome() {
   const { user, roleLabel, can } = useCmsAuth()
-  const { openCreate, setPendingBadge } = useMobileAdmin()
-  const [pendingCount, setPendingCount] = useState(0)
-  const [breakingCount, setBreakingCount] = useState(0)
+  const { setPendingBadge } = useMobileAdmin()
+  const [pendingCount, setPendingCount] = useState<number | null>(null)
+  const [breakingCount, setBreakingCount] = useState<number | null>(null)
+  const [todayCount, setTodayCount] = useState<number | null>(null)
+  const [uncertainCount, setUncertainCount] = useState<number | null>(null)
   const [incoming, setIncoming] = useState<FeedItem[]>([])
   const [published, setPublished] = useState<FeedItem[]>([])
 
   const refreshCounts = useCallback(async () => {
-    try {
-      const [pending, breakingSnap] = await Promise.all([
-        countVisiblePendingApprovals().catch(() => 0),
-        getCountFromServer(
-          query(collection(db, Collections.NEWS), where('isBreaking', '==', true), where('status', '==', 'published'))
-        ).catch(() => null),
-      ])
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const [pending, breakingSnap, todaySnap] = await Promise.all([
+      countVisiblePendingApprovals().catch(() => null),
+      getCountFromServer(
+        query(collection(db, Collections.NEWS), where('isBreaking', '==', true), where('status', '==', 'published'))
+      ).catch(() => null),
+      getCountFromServer(
+        query(collection(db, Collections.NEWS), where('status', '==', 'published'), where('createdAt', '>=', Timestamp.fromDate(start)))
+      ).catch(() => null),
+    ])
+    if (pending != null) {
       setPendingCount(pending)
       setPendingBadge(pending)
-      setBreakingCount(breakingSnap?.data().count ?? 0)
-    } catch {
-      /* ignore */
     }
+    setBreakingCount(breakingSnap ? breakingSnap.data().count : null)
+    setTodayCount(todaySnap ? todaySnap.data().count : null)
   }, [setPendingBadge])
 
   useEffect(() => {
@@ -66,12 +73,34 @@ export function MobileHome() {
     return () => window.clearInterval(id)
   }, [refreshCounts])
 
+  // Shares whose platform result is unknown (central managers only; read once, never polled).
+  const isManager = can('system:settings')
+  useEffect(() => {
+    if (!isManager) return
+    let alive = true
+    void (async () => {
+      try {
+        const token = (await auth.currentUser?.getIdToken()) ?? ''
+        if (!token) return
+        const res = await fetch('/api/admin/social/publish-records', { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) return
+        const data = (await res.json().catch(() => null)) as { records?: unknown[] } | null
+        if (alive && Array.isArray(data?.records)) setUncertainCount(data!.records!.length)
+      } catch {
+        // not a manager / offline
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [isManager])
+
   useEffect(() => {
     const q = query(
       collection(db, 'newsDrafts'),
       where('draftStatus', '==', 'pending_review'),
       orderBy('createdAt', 'desc'),
-      limit(5)
+      limit(3)
     )
     return onSnapshot(
       q,
@@ -80,24 +109,23 @@ export function MobileHome() {
           snap.docs
             .filter((d) => !isDuplicateNewsData(d.data()))
             .map((d) => {
-            const data = d.data()
-            return {
-              id: d.id,
-              title: (data.title as string) ?? '',
-              source: (data.source as string) ?? '',
-              categoryId: (data.categoryId as string) ?? '',
-              createdAt: tsToMs(data.createdAt),
-              image: (data.imageUrl as string) || (data.thumbnail as string) || '',
-              href: `/admin/approvals/${d.id}?source=newsDrafts`,
-              kind: 'pending' as const,
-            }
-          })
+              const data = d.data()
+              return {
+                id: d.id,
+                title: (data.title as string) ?? '',
+                source: (data.source as string) ?? '',
+                categoryId: (data.categoryId as string) ?? '',
+                createdAt: tsToMs(data.createdAt),
+                image: (data.imageUrl as string) || (data.thumbnail as string) || '',
+                href: `/admin/approvals/${d.id}?source=newsDrafts`,
+                kind: 'pending' as const,
+              }
+            })
         )
       },
       () => setIncoming([])
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setPendingBadge])
+  }, [])
 
   useEffect(() => {
     const q = query(
@@ -133,9 +161,13 @@ export function MobileHome() {
   const greeting = hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar'
   const firstName = user?.displayName?.split(' ')[0] ?? 'Editör'
   const today = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const pending = pendingCount ?? 0
+  const uncertain = uncertainCount ?? 0
+  const breaking = breakingCount ?? 0
+  const allClear = pendingCount != null && pending === 0 && uncertain === 0
 
   return (
-    <div className="space-y-5 px-4 py-4">
+    <div className="mx-auto w-full max-w-2xl space-y-5 px-4 py-4">
       <section>
         <p className="text-xl font-bold tracking-tight text-[rgb(var(--color-text))]">
           {greeting}, {firstName}
@@ -143,65 +175,70 @@ export function MobileHome() {
         <p className="mt-0.5 text-sm capitalize text-[rgb(var(--color-muted))]">
           {roleLabel} · {today}
         </p>
-        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-          <Radio className="h-3 w-3" />
-          Canlı yayın aktif
-        </div>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
         <div className="border-b border-[rgb(var(--color-border))] px-4 py-3">
-          <h2 className="text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-            Dikkatinizi bekleyenler
-          </h2>
+          <h2 className="text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Dikkat</h2>
         </div>
         <div className="divide-y divide-[rgb(var(--color-border))]">
-          <AttentionRow
-            href="/admin/approvals"
-            icon={<Clock className="h-4 w-4" />}
-            tone="warning"
-            title={`${pendingCount} onay bekliyor`}
-          />
-          {breakingCount > 0 ? (
-            <AttentionRow
-              href="/admin/news?category=son-dakika"
-              icon={<Zap className="h-4 w-4" />}
-              tone="danger"
-              title={`${breakingCount} aktif son dakika`}
-            />
+          {pending > 0 ? (
+            <AttentionRow href="/admin/news?filter=pending" icon={<Clock className="h-4 w-4" />} tone="warning" title={`${pending} haber onay bekliyor`} />
           ) : null}
-          {pendingCount === 0 && breakingCount === 0 ? (
-            <div className="flex items-center gap-2 px-4 py-5 text-sm text-[rgb(var(--color-muted))]">
+          {uncertain > 0 ? (
+            <AttentionRow href="/admin/social/shares" icon={<AlertTriangle className="h-4 w-4" />} tone="danger" title={`${uncertain} paylaşımın sonucu belirsiz`} />
+          ) : null}
+          {allClear ? (
+            <div className="flex items-center gap-2 px-4 py-4 text-sm text-[rgb(var(--color-muted))]">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              Şu an kritik bekleyen yok.
+              Bekleyen iş yok.
             </div>
           ) : null}
+          {pendingCount == null ? <div className="h-12 animate-pulse bg-[rgb(var(--color-surface))]" /> : null}
         </div>
+      </section>
+
+      <section className="grid grid-cols-3 gap-2">
+        <StatTile href="/admin/news?filter=published" label="Bugün yayınlanan" value={todayCount} />
+        <StatTile href="/admin/news?filter=breaking" label="Son dakika" value={breakingCount} accent={breaking > 0} />
+        <StatTile href="/admin/news?filter=pending" label="Onay bekleyen" value={pendingCount} />
       </section>
 
       <section>
-        <h2 className="mb-2 px-0.5 text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-          Hızlı işlemler
-        </h2>
+        <h2 className="mb-2 px-0.5 text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Kısayollar</h2>
         <div className="grid grid-cols-2 gap-2">
           {can('news:create') ? (
-            <QuickBtn onClick={openCreate} icon={<Plus className="h-4 w-4" />} label="Yeni Haber" />
+            <QuickBtn href="/admin/news/create" icon={<Plus className="h-4 w-4" />} label="Hızlı haber" />
           ) : null}
           {can('news:create') ? (
-            <QuickBtn href="/admin/quick?mode=breaking" icon={<Zap className="h-4 w-4" />} label="Son Dakika" accent />
+            <QuickBtn href="/admin/news/create?mode=breaking" icon={<Zap className="h-4 w-4" />} label="Son dakika" accent />
           ) : null}
-          {can('ai:use') ? (
-            <QuickBtn href="/admin/ai/news" icon={<Bot className="h-4 w-4" />} label="AI Taslak" />
-          ) : null}
-          {can('news:edit') ? (
-            <QuickBtn href="/admin/news/create" icon={<ImageIcon className="h-4 w-4" />} label="Fotoğraflı Haber" />
+          {can('ai:use') ? <QuickBtn href="/admin/ai/news" icon={<Bot className="h-4 w-4" />} label="AI ile taslak" /> : null}
+          {can('video:read') ? (
+            <QuickBtn href="/admin/media-studio/reels" icon={<Clapperboard className="h-4 w-4" />} label="Reels" />
           ) : null}
         </div>
       </section>
 
-      <FeedSection title="Son gelenler" items={incoming} empty="Onay bekleyen haber yok." />
-      <FeedSection title="Son yayınlananlar" items={published} empty="Yayınlanmış haber yok." />
+      {pending > 0 && incoming.length > 0 ? (
+        <FeedSection title="Onay bekleyenler" items={incoming} more={{ href: '/admin/news?filter=pending', label: 'Tümü' }} />
+      ) : null}
+      <FeedSection title="Son yayınlananlar" items={published} empty="Yayınlanmış haber yok." more={{ href: '/admin/news?filter=published', label: 'Tümü' }} />
     </div>
+  )
+}
+
+function StatTile({ href, label, value, accent }: { href: string; label: string; value: number | null; accent?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-3 active:bg-[rgb(var(--color-surface))]"
+    >
+      <p className={cn('text-2xl font-extrabold tabular-nums', accent ? 'text-[rgb(var(--color-brand))]' : 'text-[rgb(var(--color-text))]')}>
+        {value == null ? '—' : value}
+      </p>
+      <p className="mt-0.5 text-[11px] font-semibold leading-tight text-[rgb(var(--color-muted))]">{label}</p>
+    </Link>
   )
 }
 
@@ -267,15 +304,20 @@ function QuickBtn({
   )
 }
 
-function FeedSection({ title, items, empty }: { title: string; items: FeedItem[]; empty: string }) {
+function FeedSection({ title, items, empty, more }: { title: string; items: FeedItem[]; empty?: string; more?: { href: string; label: string } }) {
   return (
     <section>
-      <h2 className="mb-2 px-0.5 text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-        {title}
-      </h2>
+      <div className="mb-2 flex items-center justify-between px-0.5">
+        <h2 className="text-[13px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">{title}</h2>
+        {more ? (
+          <Link href={more.href} className="text-xs font-semibold text-[rgb(var(--color-brand))]">
+            {more.label}
+          </Link>
+        ) : null}
+      </div>
       <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
         {items.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-[rgb(var(--color-muted))]">{empty}</p>
+          <p className="px-4 py-8 text-center text-sm text-[rgb(var(--color-muted))]">{empty ?? 'Kayıt yok.'}</p>
         ) : (
           <div className="divide-y divide-[rgb(var(--color-border))]">
             {items.map((item) => (

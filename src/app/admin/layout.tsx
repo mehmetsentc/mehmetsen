@@ -23,7 +23,7 @@ function AdminMain({ children }: { children: React.ReactNode }) {
   const { hideChrome } = useMobileAdmin()
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-      <div className={hideChrome ? 'min-w-0' : 'min-w-0 max-md:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]'}>
+      <div className={hideChrome ? 'min-w-0' : 'min-w-0 max-lg:pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))]'}>
         {children}
       </div>
     </main>
@@ -37,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminGuard>
         <MobileAdminProvider>
           <div className="admin-shell flex h-screen min-w-0 overflow-hidden bg-[rgb(var(--color-bg))]">
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <Suspense fallback={<div className="h-screen w-[248px] bg-[rgb(var(--admin-sidebar))]" />}>
                 <CMSSidebar />
               </Suspense>

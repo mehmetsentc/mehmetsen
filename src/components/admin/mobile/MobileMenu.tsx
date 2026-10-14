@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   Newspaper, Clock, Archive, Video, Images, BrainCircuit, Bot, Search, Share2,
   BarChart3, Users, UserCog, UserCheck, Settings, Mail, Inbox, ArrowLeft,
-  Megaphone, Tag, LogOut, Flame, Briefcase, Timer, Coins, Radar,
+  Megaphone, Tag, LogOut, Flame, Briefcase, Timer, Coins, Radar, Clapperboard, Plus, Monitor,
 } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,6 +25,19 @@ interface MenuGroup {
   label: string
   items: MenuItem[]
 }
+
+/**
+ * MOBILE-ADMIN-1 Faz 4 — screens built for phones first; everything else sits under
+ * «Masaüstü araçları» (works, but is easier on a big screen).
+ */
+const MOBILE_READY: MenuItem[] = [
+  { href: '/admin/news', label: 'Haberler', icon: Newspaper, perm: 'news:read' },
+  { href: '/admin/news?filter=pending', label: 'Onay bekleyenler', icon: Clock, perm: 'news:read' },
+  { href: '/admin/news/create', label: 'Hızlı haber', icon: Plus, perm: 'news:create' },
+  { href: '/admin/social/shares', label: 'Paylaşım', icon: Share2, perm: 'news:read' },
+  { href: '/admin/media-studio/reels', label: 'Reels stüdyosu', icon: Clapperboard, perm: 'video:read' },
+]
+const COVERED_BY_MOBILE = new Set(['/admin/approvals', '/admin/news'])
 
 const GROUPS: MenuGroup[] = [
   {
@@ -78,7 +91,7 @@ export function MobileMenu() {
   const { logout } = useAuth()
 
   return (
-    <div className="px-4 py-4">
+    <div className="mx-auto w-full max-w-2xl px-4 py-4">
       <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgb(var(--color-brand))] text-base font-bold text-white">
           {user?.displayName?.[0]?.toUpperCase() ?? 'N'}
@@ -93,8 +106,38 @@ export function MobileMenu() {
         </div>
       </div>
 
+      <section className="mb-5">
+        <h2 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Telefonda</h2>
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
+          {MOBILE_READY.filter((i) => !i.perm || can(i.perm)).map((item, idx) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn('flex min-h-12 items-center gap-3 px-4 py-3 active:bg-[rgb(var(--color-surface))]', idx > 0 && 'border-t border-[rgb(var(--color-border))]')}
+              >
+                <Icon className="h-4 w-4 text-[rgb(var(--color-brand))]" />
+                <span className="flex-1 text-sm font-semibold text-[rgb(var(--color-text))]">{item.label}</span>
+                <span className="text-[rgb(var(--color-muted))]">›</span>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      <details className="group mb-5">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-3">
+          <Monitor className="h-4 w-4 text-[rgb(var(--color-muted))]" />
+          <span className="flex-1">
+            <span className="block text-sm font-semibold text-[rgb(var(--color-text))]">Masaüstü araçları</span>
+            <span className="block text-[11px] text-[rgb(var(--color-muted))]">Çalışır, ama büyük ekranda daha rahat</span>
+          </span>
+          <span className="text-[rgb(var(--color-muted))] transition-transform group-open:rotate-90">›</span>
+        </summary>
+        <div className="mt-4">
       {GROUPS.map((group) => {
-        const permitted = group.items.filter((i) => !i.perm || can(i.perm))
+        const permitted = group.items.filter((i) => (!i.perm || can(i.perm)) && !COVERED_BY_MOBILE.has(i.href))
         const items = insertMediaStudioNav(
           permitted,
           group.label === 'Haber Merkezi' && isMediaStudioEnabled() && can('video:read')
@@ -129,6 +172,8 @@ export function MobileMenu() {
           </section>
         )
       })}
+        </div>
+      </details>
 
       <div className="space-y-2 pb-4">
         <Link

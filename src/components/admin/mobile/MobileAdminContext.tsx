@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { shouldHideChrome } from '@/lib/mobileAdminRules'
 
 interface MobileAdminContextValue {
   createOpen: boolean
@@ -20,11 +21,27 @@ interface MobileAdminContextValue {
 
 const MobileAdminContext = createContext<MobileAdminContextValue | null>(null)
 
-const HIDE_CHROME_PREFIXES = ['/admin/news/create', '/admin/quick', '/admin/approvals/']
-
-function shouldHideChrome(pathname: string): boolean {
-  if (pathname.includes('/edit')) return true
-  return HIDE_CHROME_PREFIXES.some((p) => pathname.startsWith(p) || pathname === p.replace(/\/$/, ''))
+/** Pending approvals for the «Haberler» badge — one count query every 2 min while the admin is open on a phone. */
+function usePendingBadge(setPendingBadge: (n: number) => void) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 1023px)').matches) return
+    let alive = true
+    const tick = async () => {
+      try {
+        const { countVisiblePendingApprovals } = await import('@/services/adminNewsService')
+        const n = await countVisiblePendingApprovals()
+        if (alive) setPendingBadge(n)
+      } catch {
+        // keep the last value
+      }
+    }
+    void tick()
+    const id = window.setInterval(() => void tick(), 120_000)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [setPendingBadge])
 }
 
 export function MobileAdminProvider({ children }: { children: React.ReactNode }) {
@@ -33,6 +50,8 @@ export function MobileAdminProvider({ children }: { children: React.ReactNode })
   const [searchOpen, setSearchOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [pendingBadge, setPendingBadge] = useState(0)
+
+  usePendingBadge(setPendingBadge)
 
   const openCreate = useCallback(() => setCreateOpen(true), [])
   const closeCreate = useCallback(() => setCreateOpen(false), [])

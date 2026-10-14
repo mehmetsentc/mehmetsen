@@ -142,7 +142,7 @@ export function MobileApprovalReview({ id }: { id: string }) {
       router.replace(`/admin/approvals/${progress.nextId}?source=newsDrafts${rapid ? '&mode=rapid' : ''}`)
       return
     }
-    router.replace('/admin/approvals')
+    router.replace('/admin/news?filter=pending')
   }
 
   async function onApprove() {
@@ -223,7 +223,7 @@ export function MobileApprovalReview({ id }: { id: string }) {
       >
         <button
           type="button"
-          onClick={() => router.push('/admin/approvals')}
+          onClick={() => router.push('/admin/news?filter=pending')}
           className="flex h-11 w-11 items-center justify-center rounded-xl"
           aria-label="Geri"
         >

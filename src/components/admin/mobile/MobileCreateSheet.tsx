@@ -5,35 +5,36 @@ import { FileText, Zap, Bot, X, Sparkles } from 'lucide-react'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { useMobileAdmin } from './MobileAdminContext'
 
-const OPTIONS = [
+/** MOBILE-ADMIN-1: one create entry, same names everywhere (home shortcuts use these too). */
+export const CREATE_OPTIONS = [
   {
     href: '/admin/news/create',
-    label: 'Boş Haber',
-    desc: 'Tam editör ile yeni haber',
-    icon: FileText,
+    label: 'Hızlı haber',
+    desc: 'Fotoğraf, başlık, metin — 3 adımda',
+    icon: Sparkles,
     perm: 'news:create' as const,
   },
   {
-    href: '/admin/quick?mode=breaking',
-    label: 'Son Dakika',
-    desc: 'Hızlı kırılma haberi',
+    href: '/admin/news/create?mode=breaking',
+    label: 'Son dakika',
+    desc: 'Son dakika bandında yayınlanır',
     icon: Zap,
     perm: 'news:create' as const,
     accent: true,
   },
   {
-    href: '/admin/quick',
-    label: 'Hızlı Haber',
-    desc: 'Minimal alanlarla taslak',
-    icon: Sparkles,
-    perm: 'news:create' as const,
-  },
-  {
     href: '/admin/ai/news',
-    label: 'AI ile Taslak',
-    desc: 'AI Haber Asistanı',
+    label: 'AI ile taslak',
+    desc: 'AI Haber Asistanı taslağı hazırlar',
     icon: Bot,
     perm: 'ai:use' as const,
+  },
+  {
+    href: '/admin/news/create?full=1',
+    label: 'Tam editör',
+    desc: 'Tüm alanlar (SEO, galeri, video) — büyük ekranda rahat',
+    icon: FileText,
+    perm: 'news:create' as const,
   },
 ]
 
@@ -43,10 +44,10 @@ export function MobileCreateSheet() {
 
   if (!createOpen) return null
 
-  const visible = OPTIONS.filter((o) => can(o.perm))
+  const visible = CREATE_OPTIONS.filter((o) => can(o.perm))
 
   return (
-    <div className="fixed inset-0 z-[60] md:hidden">
+    <div className="fixed inset-0 z-[60] lg:hidden">
       <button type="button" className="absolute inset-0 bg-black/45" aria-label="Kapat" onClick={closeCreate} />
       <div
         className="absolute inset-x-0 bottom-0 rounded-t-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-2xl"

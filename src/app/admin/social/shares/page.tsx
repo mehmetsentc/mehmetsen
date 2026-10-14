@@ -9,6 +9,8 @@ import { UncertainPublishPanel } from '@/components/admin/social/UncertainPublis
 import { ShareComposer } from '@/components/social/ShareComposer'
 import { ShareHistory } from '@/components/social/ShareHistory'
 import type { SocialAccountRow } from '@/components/social/socialClient'
+import { MobileShares } from '@/components/admin/mobile/MobileShares'
+import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 
 /** `?account=<id>` (from an account card's «Paylaşım geçmişi») narrows the history to that account. */
 function HistoryForAccount() {
@@ -30,6 +32,10 @@ function HistoryForAccount() {
 }
 
 export default function SocialAdminSharesPage() {
+  // MOBILE-ADMIN-1: the «Paylaşım» tab on phones / tablets.
+  const isMobile = useIsMobileAdminViewport()
+  if (isMobile === null) return null
+  if (isMobile) return <MobileShares />
   return (
     <AdminOsPageShell title="Paylaşımlar" subtitle="Hedef hesabı açıkça seçilen manuel yayın, yayın kayıtları ve belirsiz sonuçlar">
       <SocialAdminNav />
