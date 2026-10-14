@@ -269,7 +269,7 @@ function extractImageUrl(data: Record<string, unknown>): string | undefined {
 // ── Options / Result ──────────────────────────────────────────────────────────
 
 /** 'reel' (REELS-1): one explicit target, rendered news reel — see reelPublish.ts. */
-export type PublishSocialMode = 'post' | 'story' | 'both' | 'reel'
+export type PublishSocialMode = 'post' | 'story' | 'both' | 'reel' | 'video_story'
 
 /** Admin composer overrides — paylaşım öncesi düzenlenen alanlar. */
 export interface SocialPublishOverrides {
@@ -355,7 +355,7 @@ export function automationCallProblem(options: PublishOneSocialOptions): string 
   if (options.manual) return 'automation_manual_conflict'
   if (options.actorUid !== AUTOMATION_ACTOR_UID) return 'automation_actor'
   if (options.force || options.ledgerForce || options.acknowledgeUncertainRecordId) return 'automation_force'
-  if (options.mode !== 'post' && options.mode !== 'story' && options.mode !== 'reel') return 'automation_mode'
+  if (options.mode !== 'post' && options.mode !== 'story' && options.mode !== 'reel' && options.mode !== 'video_story') return 'automation_mode'
   const t = Object.entries(options.targets ?? {}).filter(([, v]) => !!v)
   if (t.length !== 1) return 'automation_target'
   const plat = options.overrides?.platforms
@@ -477,7 +477,7 @@ export async function publishOneSocial(
     if (wanted.length === 0 || wanted.some((p) => !targets[p])) return skipped(newsId, TEST_ENV_TEXT.legacyDisabled)
   }
   // REELS-1: reels never take the post/story path (no legacy credentials, one target).
-  if (mode === 'reel') {
+  if (mode === 'reel' || mode === 'video_story') {
     const { publishReelOne } = await import('./reelPublish')
     return publishReelOne(newsId, options)
   }

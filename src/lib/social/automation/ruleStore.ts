@@ -17,7 +17,7 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { loadSocialAccount } from '../accounts/accountStore'
-import { supportedFormats, supportsReel, targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
+import { supportedFormats, supportsReel, supportsVideoStory, targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
 import { normalizeOwnership, ownershipKind, toPublicSocialAccount, type SocialAccount, type SocialAccountPlatform } from '../accounts/types'
 import { writeSocialAudit } from '../accounts/audit'
 import { cancelQueuedForAccount } from './jobs'
@@ -74,13 +74,13 @@ async function accountFor(accountId: string): Promise<SocialAccount | RuleStoreE
 }
 
 function formatProblem(account: SocialAccount, formats: AutomationRuleInput['formats']): RuleStoreError | null {
-  const supported = [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : [])]
+  const supported = [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : []), ...(supportsVideoStory(account) ? (['video_story'] as const) : [])]
   const missing = formats.filter((f) => !supported.includes(f))
   if (missing.length === 0) return null
   return {
     ok: false,
     code: 'format_unsupported',
-    message: `Bu hesap şu biçimi desteklemiyor: ${missing.map((f) => (f === 'post' ? 'gönderi' : f === 'story' ? 'hikâye' : 'reels')).join(', ')}`,
+    message: `Bu hesap şu biçimi desteklemiyor: ${missing.map((f) => (f === 'post' ? 'gönderi' : f === 'story' ? 'hikâye' : f === 'reel' ? 'reels' : 'video hikâye')).join(', ')}`,
     status: 400,
   }
 }

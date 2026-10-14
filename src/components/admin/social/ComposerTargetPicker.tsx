@@ -79,7 +79,7 @@ export function ComposerTargetPicker({
   include,
 }: {
   newsId: string
-  mode: 'post' | 'story' | 'both'
+  mode: 'post' | 'story' | 'both' | 'reel' | 'video_story'
   value: TargetSelection
   onChange: (next: TargetSelection) => void
   /** Lets the caller show the chosen account names in its confirmation. */
@@ -133,7 +133,7 @@ export function ComposerTargetPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newsId, formats])
 
-  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'story' ? ['facebook', 'instagram'] : ['facebook', 'instagram', 'threads']), [mode])
+  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'post' || mode === 'both' ? ['facebook', 'instagram', 'threads'] : ['facebook', 'instagram']), [mode])
 
   if (state.kind === 'loading') return <p className="text-xs text-[rgb(var(--color-muted))]">Hesaplar yükleniyor…</p>
   if (state.kind === 'error') return <p className="text-xs text-red-700 dark:text-red-300">{state.message}. Paylaşım yapılmaz.</p>
@@ -144,6 +144,13 @@ export function ComposerTargetPicker({
   }
   const any = state.options.length > 0
   const count = targetCount(value)
+  const selectableIn = (p: TargetPlatform) => state.options.filter((o) => o.platform === p && o.selectable).map((o) => o.accountId)
+  const selectAll = () => {
+    const next: TargetSelection = { facebook: [], instagram: [], threads: [] }
+    for (const p of platforms) next[p] = selectableIn(p)
+    onChange(next)
+  }
+  const allSelectable = platforms.reduce((n, p) => n + selectableIn(p).length, 0)
   const chosen = selectedLabels(value, state.options)
   return (
     <div className="space-y-2" aria-label="Hedef hesaplar">
@@ -165,13 +172,32 @@ export function ComposerTargetPicker({
           </ul>
         </div>
       )}
+      {allSelectable > 1 && (
+        <div className="flex items-center gap-2 text-[11px]">
+          <button type="button" onClick={selectAll} className="rounded-md bg-blue-600 px-2 py-1 font-bold text-white">
+            Uygun hepsini seç ({allSelectable})
+          </button>
+          {count > 0 && (
+            <button type="button" onClick={() => onChange({ facebook: [], instagram: [], threads: [] })} className="font-semibold text-[rgb(var(--color-muted))] underline">
+              Temizle
+            </button>
+          )}
+        </div>
+      )}
       {platforms.map((p) => {
         const opts = state.options.filter((o) => o.platform === p)
         if (opts.length === 0) return null
+        const sel = selectableIn(p)
+        const allOn = sel.length > 0 && sel.every((id) => value[p].includes(id))
         return (
           <fieldset key={p} className="space-y-0.5">
-            <legend className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-              {PLATFORM_NAME[p]} {value[p].length > 0 ? `· ${value[p].length} seçili` : '· seçilmezse bu platformda paylaşılmaz'}
+            <legend className="flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+              <span>{PLATFORM_NAME[p]} {value[p].length > 0 ? `· ${value[p].length} seçili` : '· seçilmezse bu platformda paylaşılmaz'}</span>
+              {sel.length > 1 && (
+                <button type="button" onClick={() => onChange({ ...value, [p]: allOn ? [] : sel })} className="normal-case text-blue-700 underline dark:text-blue-300">
+                  {allOn ? 'Hiçbiri' : `Tümü (${sel.length})`}
+                </button>
+              )}
             </legend>
             {opts.map((o) => {
               const on = value[p].includes(o.accountId)

@@ -10,7 +10,7 @@ import {
   ExternalLink, Wand2, Loader2,
   Newspaper, BarChart3, Clock, Tag, Globe, Pencil, X,
   ChevronLeft, ChevronRight, Eye, Share2, Smartphone, Star, Zap, MapPin,
-  Facebook, Instagram, ChevronDown, ArrowDownWideNarrow,
+  Facebook, Instagram, ChevronDown, ArrowDownWideNarrow, Clapperboard,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
@@ -655,7 +655,7 @@ function newsHasShareImage(post: AdminNewsItem): boolean {
   return (post.mediaItems ?? []).some((m) => m.type === 'image' && !!m.url?.trim())
 }
 
-type SocialShareMode = 'story' | 'post'
+type SocialShareMode = 'story' | 'post' | 'reel' | 'video_story'
 
 /** Platform bazında çok satırlı paylaşım sonucu için. */
 const SHARE_TOAST_STYLE = { whiteSpace: 'pre-line' as const, maxWidth: 560, textAlign: 'left' as const }
@@ -691,6 +691,34 @@ const POST_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<
   { key: 'threads', label: 'Threads', Icon: ThreadsIcon },
 ]
 
+/** REELS-3: news video as Reels or video story — pick the format, then the accounts. */
+function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; newsTitle: string; onClose: () => void }) {
+  const [fmt, setFmt] = useState<'reel' | 'video_story'>('reel')
+  return (
+    <div className="space-y-1.5 px-1">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Haber videosu — biçim ve hesaplar</p>
+        <a href={`/admin/media-studio/reels?newsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-blue-700 underline dark:text-blue-300">
+          Stüdyoda önizle
+        </a>
+      </div>
+      <div className="flex gap-1 text-[11px]">
+        {(['reel', 'video_story'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFmt(f)}
+            className={cn('rounded-full border px-2.5 py-0.5 font-bold', fmt === f ? 'border-red-600 bg-red-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]')}
+          >
+            {f === 'reel' ? 'Reels' : 'Video hikâye'}
+          </button>
+        ))}
+      </div>
+      <ManualShareFlow key={fmt} newsId={newsId} newsTitle={newsTitle} mode={fmt} onClose={onClose} compact />
+    </div>
+  )
+}
+
 function SocialSharePopover({
   newsId,
   newsTitle,
@@ -718,12 +746,18 @@ function SocialSharePopover({
       ref={popoverRef}
       className="absolute right-0 top-full z-50 mt-1 w-96 max-w-[92vw] rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
     >
-      <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-        {mode === 'story' ? 'Hikâye — hedef hesapları seçin' : 'Post — hedef hesapları seçin'}
-      </p>
-      <div className="px-1">
-        <ManualShareFlow newsId={newsId} newsTitle={newsTitle} mode={mode} onClose={onClose} compact />
-      </div>
+      {mode === 'reel' || mode === 'video_story' ? (
+        <ReelsPopoverBody newsId={newsId} newsTitle={newsTitle} onClose={onClose} />
+      ) : (
+        <>
+          <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
+            {mode === 'story' ? 'Hikâye — hedef hesapları seçin' : 'Post — hedef hesapları seçin'}
+          </p>
+          <div className="px-1">
+            <ManualShareFlow newsId={newsId} newsTitle={newsTitle} mode={mode} onClose={onClose} compact />
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -988,6 +1022,26 @@ function NewsRow({
                 />
               )}
             </div>
+
+            {/* Reels / video hikâye — haber videosu (görsel şart değil; hak yoksa marka arka planı) */}
+            {post.status === 'published' && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setPopoverMode(popoverMode === 'reel' ? null : 'reel')}
+                  disabled={busy}
+                  title="Haberden Reels / video hikâye üret ve paylaş (IG/FB)"
+                  className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
+                >
+                  <Clapperboard className="h-3 w-3" />
+                  Reels
+                  <ChevronDown className="h-2.5 w-2.5 opacity-50" />
+                </button>
+                {popoverMode === 'reel' && (
+                  <SocialSharePopover newsId={post.id} newsTitle={post.title ?? ''} mode="reel" onClose={() => setPopoverMode(null)} />
+                )}
+              </div>
+            )}
 
             <button onClick={() => { setShowAi(v => !v); setShowSeo(false); setExpanded(false) }}
               className={cn('flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',

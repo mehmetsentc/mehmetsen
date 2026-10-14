@@ -44,10 +44,23 @@ export function ReelsVoiceLibrary({
       setMsg({ ok: false, text: r.error })
       return
     }
-    const audio = new Audio(r.data.audio)
-    audio.onended = () => setPlaying(null)
-    audio.onerror = () => setPlaying(null)
-    void audio.play().catch(() => setPlaying(null))
+    // CSP media-src allows blob: (not data:) → decode the WAV into a Blob URL.
+    const b64 = r.data.audio.slice(r.data.audio.indexOf(',') + 1)
+    const bin = atob(b64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }))
+    const audio = new Audio(url)
+    const done = () => {
+      setPlaying(null)
+      URL.revokeObjectURL(url)
+    }
+    audio.onended = done
+    audio.onerror = () => {
+      done()
+      setMsg({ ok: false, text: 'Ses çalınamadı' })
+    }
+    void audio.play().catch(() => done())
   }
 
   const save = async () => {

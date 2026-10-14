@@ -9,7 +9,7 @@ import { buildPublicArticleUrl } from './articleUrl'
 import { publishToTarget } from './accounts/targetedPublish'
 import type { FacebookPublishTarget, InstagramPublishTarget } from './accounts/targetTypes'
 import type { PublishOneSocialOptions, PublishOneSocialResult } from './publishOneSocial'
-import { publishFacebookReel, publishInstagramReel } from './reelAdapters'
+import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from './reelAdapters'
 import { safeErrorText } from './safeLog'
 
 function str(v: unknown): string {
@@ -33,9 +33,10 @@ export function buildReelCaption(d: Record<string, unknown>, articleUrl: string 
 }
 
 export async function publishReelOne(newsId: string, options: PublishOneSocialOptions): Promise<PublishOneSocialResult> {
+  const format = options.mode === 'video_story' ? 'video_story' : 'reel'
   const skip = (reason: string): PublishOneSocialResult => ({ ok: false, newsId, skipped: true, reason })
   const entries = Object.entries(options.targets ?? {}).filter(([, v]) => !!v) as Array<[string, string]>
-  if (entries.length !== 1) return skip('Reels yalnızca tek bir hedef hesaba paylaşılır')
+  if (entries.length !== 1) return skip('Video yalnızca tek bir hedef hesaba paylaşılır')
   const [platform, accountId] = entries[0]!
   if (platform !== 'instagram' && platform !== 'facebook') return skip('Reels yalnızca Instagram ve Facebook hesaplarında')
   if (!options.actorUid) return skip('Reels paylaşımı için yetkili kullanıcı gerekli')
@@ -58,8 +59,8 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
   const res = await publishToTarget({
     newsId,
     platform,
-    format: 'reel',
-    mode: 'reel',
+    format,
+    mode: format,
     accountId,
     force: options.ledgerForce ?? options.force ?? false,
     acknowledgeUncertainRecordId: options.acknowledgeUncertainRecordId ?? null,
@@ -67,9 +68,13 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
     actorUid: options.actorUid,
     trigger: options.trigger ?? (options.automation ? 'automation' : 'studio'),
     publish: (t) =>
-      platform === 'instagram'
-        ? publishInstagramReel({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
-        : publishFacebookReel({ newsId, videoUrl, caption }, t as FacebookPublishTarget),
+      format === 'video_story'
+        ? platform === 'instagram'
+          ? publishInstagramVideoStory({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
+          : publishFacebookVideoStory({ newsId, videoUrl, caption }, t as FacebookPublishTarget)
+        : platform === 'instagram'
+          ? publishInstagramReel({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
+          : publishFacebookReel({ newsId, videoUrl, caption }, t as FacebookPublishTarget),
   })
   return {
     ok: res.success,

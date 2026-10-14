@@ -157,7 +157,7 @@ export interface TargetRowLike {
   platform: string
   accountId: string
   accountName: string | null
-  format: 'post' | 'story'
+  format: 'post' | 'story' | 'reel' | 'video_story'
   success: boolean
   code: string | null
   error: string | null
@@ -181,7 +181,7 @@ export function rowAsResult(r: TargetRowLike): ShareResultLike {
 
 /** «Instagram · NaHaber Antalya · hikâye: ✓ yayımlandı · gönderi 123». */
 export function describeTargetRow(r: TargetRowLike): string {
-  const label = `${PLATFORM_TR[r.platform] ?? r.platform} · ${r.accountName ?? r.accountId} · ${r.format === 'story' ? 'hikâye' : 'gönderi'}`
+  const label = `${PLATFORM_TR[r.platform] ?? r.platform} · ${r.accountName ?? r.accountId} · ${r.format === 'story' ? 'hikâye' : r.format === 'reel' ? 'reels' : r.format === 'video_story' ? 'video hikâye' : 'gönderi'}`
   const line = describeShareResult(label, rowAsResult(r))
   // describeShareResult adds «(hesap)»; the account is already in the label.
   return line.replace(` (${r.accountName ?? 'seçilen hesap'})`, '')

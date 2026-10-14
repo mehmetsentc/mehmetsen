@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/firebase/admin', () => ({ getAdminFirestore: vi.fn(), getAdminStorage: vi.fn() }))
 
 import { clampRate, isValidVoiceName, parseVoiceSettings, previewText, resolveReelVoice, sortVoices, STATIC_TR_VOICES, PREVIEW_TEXT_MAX } from './voiceRules'
-import { formatsForMode, requiredFormats, supportedFormats, supportsReel } from '@/lib/social/accounts/capabilities'
+import { formatsForMode, requiredFormats, scopeFormatFor, supportedFormats, supportsReel, supportsVideoStory } from '@/lib/social/accounts/capabilities'
 import { buildReelCaption } from '@/lib/social/reelPublish'
-import { publishFacebookReel, publishInstagramReel } from '@/lib/social/reelAdapters'
+import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from '@/lib/social/reelAdapters'
 import { apiBaseFor } from '@/lib/social/accounts/apiHosts'
 import type { FacebookPublishTarget, InstagramPublishTarget } from '@/lib/social/accounts/targetTypes'
 
@@ -60,6 +60,17 @@ describe('REELS-2 capabilities', () => {
     expect(formatsForMode(ig, 'reel')).toEqual(['reel'])
     expect(formatsForMode(th as never, 'reel')).toEqual([])
     expect(requiredFormats('instagram', 'reel')).toEqual(['reel'])
+  })
+  it('video story: IG professional / FB only; follows story scope, reel follows post scope', () => {
+    const personal = { platform: 'instagram' as const, connectionMethod: 'instagram_login' as const, platformAccountType: 'PERSONAL' }
+    expect(supportsVideoStory(ig)).toBe(true)
+    expect(supportsVideoStory(fb)).toBe(true)
+    expect(supportsVideoStory(personal)).toBe(false)
+    expect(supportsVideoStory(th as never)).toBe(false)
+    expect(formatsForMode(fb, 'video_story')).toEqual(['video_story'])
+    expect(requiredFormats('facebook', 'video_story')).toEqual(['video_story'])
+    expect(scopeFormatFor('video_story')).toBe('story')
+    expect(scopeFormatFor('reel')).toBe('post')
   })
 })
 
@@ -128,5 +139,39 @@ describe('REELS-2 Meta reel adapters', () => {
     const up = seen.find((s) => s.url.includes('rupload'))!
     expect((up.init?.headers as Record<string, string>).file_url).toBe('https://storage.googleapis.com/b/v.mp4')
     expect(String(seen.at(-1)!.init?.body)).toContain('video_state=PUBLISHED')
+  })
+
+  it('Instagram video story: STORIES container without caption', async () => {
+    vi.useFakeTimers()
+    const bodies: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.body) bodies.push(String(init.body))
+      if (url.endsWith('/media')) return res({ id: 'c2' })
+      if (url.includes('/c2?fields=status_code')) return res({ status_code: 'FINISHED' })
+      if (url.endsWith('/media_publish')) return res({ id: 's1' })
+      return res({}, 400)
+    }))
+    const target = withToken({ platform: 'instagram', accountId: 'a1', connectionMethod: 'facebook_login', apiBase: apiBaseFor('instagram', 'facebook_login')!, igUserId: '1789' }) as InstagramPublishTarget
+    const p = publishInstagramVideoStory({ newsId: 'n1', videoUrl: 'https://storage.googleapis.com/b/v.mp4', caption: 'c' }, target)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await expect(p).resolves.toEqual({ success: true, platformId: 's1' })
+    expect(bodies[0]).toContain('media_type=STORIES')
+    expect(bodies[0]).not.toContain('caption=')
+  })
+
+  it('Facebook video story: video_stories start → rupload → finish', async () => {
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      urls.push(url)
+      if (url.includes('rupload.facebook.com')) return res({ success: true })
+      const body = String(init?.body ?? '')
+      if (body.includes('upload_phase=start')) return res({ video_id: 'v7' })
+      if (body.includes('upload_phase=finish')) return res({ success: true, post_id: 'p7' })
+      return res({}, 400)
+    }))
+    const target = withToken({ platform: 'facebook', accountId: 'p1', connectionMethod: 'facebook_login', apiBase: apiBaseFor('facebook', 'facebook_login')!, pageId: '1234', legacyCredentialMode: null, appId: null, appName: null }) as FacebookPublishTarget
+    const r = await publishFacebookVideoStory({ newsId: 'n1', videoUrl: 'https://storage.googleapis.com/b/v.mp4', caption: 'c' }, target)
+    expect(r).toEqual({ success: true, platformId: 'p7' })
+    expect(urls[0]).toContain('/1234/video_stories')
   })
 })

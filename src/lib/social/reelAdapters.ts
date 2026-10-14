@@ -30,16 +30,24 @@ async function form(url: string, params: Record<string, string>): Promise<{ stat
 }
 
 export async function publishInstagramReel(input: ReelPublishInput, target: InstagramPublishTarget): Promise<SocialPublishResult> {
+  return publishInstagramVideo(input, target, 'REELS')
+}
+
+/** REELS-3: the reel MP4 as an Instagram story (no caption on stories). */
+export async function publishInstagramVideoStory(input: ReelPublishInput, target: InstagramPublishTarget): Promise<SocialPublishResult> {
+  return publishInstagramVideo(input, target, 'STORIES')
+}
+
+async function publishInstagramVideo(input: ReelPublishInput, target: InstagramPublishTarget, kind: 'REELS' | 'STORIES'): Promise<SocialPublishResult> {
   if (!isUsableInstagramTarget(target)) return { success: false, error: INVALID_TARGET_ERROR }
-  if (!input.videoUrl.startsWith('https://')) return { success: false, error: 'Reels için herkese açık https video URL gerekli' }
+  if (!input.videoUrl.startsWith('https://')) return { success: false, error: 'Video için herkese açık https video URL gerekli' }
   const base = target.apiBase
   const token = target.accessToken
   try {
     const c = await form(`${base}/${target.igUserId}/media`, {
-      media_type: 'REELS',
+      media_type: kind,
       video_url: input.videoUrl,
-      caption: input.caption.slice(0, 2200),
-      share_to_feed: 'true',
+      ...(kind === 'REELS' ? { caption: input.caption.slice(0, 2200), share_to_feed: 'true' } : {}),
       access_token: token,
     })
     const containerId = typeof c.json.id === 'string' ? c.json.id : ''
@@ -97,6 +105,36 @@ export async function publishFacebookReel(input: ReelPublishInput, target: Faceb
     return { success: true, platformId: videoId }
   } catch (err) {
     socialLog('error', 'facebook', 'reel', { corr: input.newsId, account: target.accountId, result: 'failed', error: safeErrorText(err).slice(0, 160) })
+    return { success: false, error: safeErrorText(err) }
+  }
+}
+
+/**
+ * REELS-3: the reel MP4 as a Facebook Page story.
+ * POST /{page-id}/video_stories upload_phase=start → rupload file_url → upload_phase=finish.
+ */
+export async function publishFacebookVideoStory(input: ReelPublishInput, target: FacebookPublishTarget): Promise<SocialPublishResult> {
+  if (!isUsableFacebookTarget(target)) return { success: false, error: INVALID_TARGET_ERROR }
+  if (!input.videoUrl.startsWith('https://')) return { success: false, error: 'Video için herkese açık https video URL gerekli' }
+  const base = target.apiBase
+  const token = target.accessToken
+  try {
+    const s = await form(`${base}/${target.pageId}/video_stories`, { upload_phase: 'start', access_token: token })
+    const videoId = typeof s.json.video_id === 'string' ? s.json.video_id : ''
+    if (s.status >= 400 || s.json.error || !videoId) throw platformError('facebook', 'video hikâye başlatma', s.status, s.json)
+    const up = await fetch(`https://rupload.facebook.com/video-upload/${META_GRAPH_API_VERSION}/${videoId}`, {
+      method: 'POST',
+      headers: { Authorization: `OAuth ${token}`, file_url: input.videoUrl },
+    })
+    const upJson = (await up.json().catch(() => ({}))) as Record<string, unknown>
+    if (up.status >= 400 || upJson.error || upJson.success === false) throw platformError('facebook', 'video hikâye yükleme', up.status, upJson)
+    const f = await form(`${base}/${target.pageId}/video_stories`, { upload_phase: 'finish', video_id: videoId, access_token: token })
+    if (f.status >= 400 || f.json.error || f.json.success === false) throw platformError('facebook', 'video hikâye yayınlama', f.status, f.json)
+    const postId = typeof f.json.post_id === 'string' ? f.json.post_id : videoId
+    socialLog('log', 'facebook', 'video_story', { corr: input.newsId, account: target.accountId, result: 'published', postId })
+    return { success: true, platformId: postId }
+  } catch (err) {
+    socialLog('error', 'facebook', 'video_story', { corr: input.newsId, account: target.accountId, result: 'failed', error: safeErrorText(err).slice(0, 160) })
     return { success: false, error: safeErrorText(err) }
   }
 }

@@ -160,6 +160,7 @@ describe('validateRuleInput', () => {
     expect(validateRuleInput({ ...ok, minIntervalMinutes: 1 }).ok).toBe(false)
     expect(validateRuleInput({ ...ok, formats: ['video'] }).ok).toBe(false)
     expect(validateRuleInput({ ...ok, formats: ['post', 'reel'] }).ok).toBe(true)
+    expect(validateRuleInput({ ...ok, formats: ['video_story'] }).ok).toBe(false) // hikâye gibi öne çıkan koşulu ister
     expect(validateRuleInput({ ...ok, quietHours: { startHour: 3, endHour: 3 } }).ok).toBe(false)
     expect(validateRuleInput({ ...ok, accountId: 'legacy' }).ok).toBe(false)
   })

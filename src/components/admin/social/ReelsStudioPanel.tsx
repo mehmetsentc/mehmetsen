@@ -6,9 +6,10 @@
  * manage the voice library, watch / download, and share to Instagram / Facebook.
  */
 import { useEffect, useState } from 'react'
-import { Clapperboard, Loader2, RefreshCw, Send } from 'lucide-react'
+import { Clapperboard, Film, Image as ImageIcon, Loader2, RefreshCw, Search } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
 import { tierForVoice } from '@/lib/reels/ttsQuotaRules'
+import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { GENDER_TEXT, reelsCall, TIER_TEXT, voiceLabel, type VoicesResponse } from './reelsApi'
 
@@ -23,8 +24,7 @@ type ReelResult = {
   voice?: string
   rate?: number
 }
-type ReelAccount = { accountId: string; platform: 'instagram' | 'facebook'; displayName: string; username: string | null }
-type ShareOutcome = { ok: boolean; skipped?: boolean; reason?: string; reel?: { facebook?: { success: boolean; error?: string | null; code?: string | null }; instagram?: { success: boolean; error?: string | null; code?: string | null } } }
+type NewsPick = { newsId: string; title: string; category: string; city: string | null; publishedAt: number | null; imageUrl: string | null; hasVideo: boolean }
 type Status = { enabled: boolean; voice: string; rate: number; ttsReady: boolean }
 type Usage = {
   month: string
@@ -60,10 +60,18 @@ export function ReelsStudioPanel() {
   const [voices, setVoices] = useState<VoicesResponse | null>(null)
   const [voicePick, setVoicePick] = useState('') // '' = automatic (category / default)
   const [showLibrary, setShowLibrary] = useState(false)
-  const [accounts, setAccounts] = useState<ReelAccount[]>([])
-  const [shareTo, setShareTo] = useState('')
-  const [shareBusy, setShareBusy] = useState(false)
-  const [shareMsg, setShareMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [q, setQ] = useState('')
+  const [news, setNews] = useState<NewsPick[]>([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [picked, setPicked] = useState<NewsPick | null>(null)
+  const [shareFmt, setShareFmt] = useState<'reel' | 'video_story' | null>(null)
+
+  const loadNews = async (query: string) => {
+    setNewsLoading(true)
+    const r = await call<{ items: NewsPick[] }>('GET', undefined, `/api/admin/social/reels/news?q=${encodeURIComponent(query)}`)
+    setNewsLoading(false)
+    if (r.ok) setNews(r.data.items)
+  }
 
   const loadVoices = async () => {
     const v = await call<VoicesResponse>('GET', undefined, '/api/admin/social/reels/voices')
@@ -89,8 +97,7 @@ export function ReelsStudioPanel() {
       if (r.ok) setStatus(r.data)
       void loadUsage()
       void loadVoices()
-      const a = await call<{ accounts: ReelAccount[] }>('GET', undefined, '/api/admin/social/reels/share')
-      if (a.ok) setAccounts(a.data.accounts)
+      void loadNews('')
     })
     try {
       const q = new URLSearchParams(window.location.search).get('newsId')
@@ -106,28 +113,12 @@ export function ReelsStudioPanel() {
     if (!newsId) return
     setBusy(true)
     setError(null)
-    setShareMsg(null)
+    setShareFmt(null)
     const r = await call<{ result: ReelResult }>('POST', { newsId, force, ...(voicePick ? { voice: voicePick } : {}) })
     setBusy(false)
     if (r.ok) setResult(r.data.result)
     else setError(r.error)
     void loadUsage()
-  }
-
-  const share = async () => {
-    const newsId = parseNewsId(input)
-    const acc = accounts.find((a) => a.accountId === shareTo)
-    if (!newsId || !acc) return
-    if (!window.confirm(`Bu haberin Reels videosu ${acc.platform === 'instagram' ? 'Instagram' : 'Facebook'} · ${acc.displayName} hesabında yayımlansın mı?`)) return
-    setShareBusy(true)
-    setShareMsg(null)
-    const r = await call<{ result: ShareOutcome }>('POST', { newsId, accountId: acc.accountId }, '/api/admin/social/reels/share')
-    setShareBusy(false)
-    void loadUsage()
-    const out = r.ok ? r.data.result : null
-    const target = out?.reel?.[acc.platform]
-    if (r.ok && out?.ok) setShareMsg({ ok: true, text: 'Reels yayımlandı ✓' })
-    else setShareMsg({ ok: false, text: target?.error || out?.reason || (r.ok ? 'Paylaşılamadı' : r.error) })
   }
 
   return (
@@ -207,11 +198,63 @@ export function ReelsStudioPanel() {
         <ReelsVoiceLibrary data={voices} onSaved={() => void loadVoices()} onUsageChange={() => void loadUsage()} />
       ) : null}
 
+      <div className="space-y-2 rounded-xl border border-[rgb(var(--color-border))] p-3" data-reels-news>
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 text-[rgb(var(--color-muted))]" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void loadNews(q)
+            }}
+            placeholder="Haber ara (başlıktan) — Enter"
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button type="button" onClick={() => void loadNews(q)} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-xs font-semibold">
+            {newsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Ara'}
+          </button>
+        </div>
+        <ul className="max-h-64 space-y-1 overflow-y-auto">
+          {news.map((n) => (
+            <li key={n.newsId}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPicked(n)
+                  setInput(n.newsId)
+                  setResult(null)
+                }}
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-[rgb(var(--color-surface))] ${picked?.newsId === n.newsId ? 'ring-2 ring-red-600' : ''}`}
+              >
+                {n.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={n.imageUrl} alt="" className="h-10 w-14 shrink-0 rounded object-cover" />
+                ) : (
+                  <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded bg-[rgb(var(--color-border))]"><ImageIcon className="h-4 w-4" /></span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-1 font-semibold">{n.title}</span>
+                  <span className="text-xs text-[rgb(var(--color-muted))]">
+                    {n.category}
+                    {n.city ? ` · ${n.city}` : ''}
+                    {n.publishedAt ? ` · ${new Date(n.publishedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </span>
+                </span>
+                {n.hasVideo ? (
+                  <span className="inline-flex items-center gap-1 rounded bg-red-600/10 px-1.5 py-0.5 text-[10px] font-bold text-red-600"><Film className="h-3 w-3" />VİDEO</span>
+                ) : null}
+              </button>
+            </li>
+          ))}
+          {!newsLoading && news.length === 0 ? <li className="px-2 text-xs text-[rgb(var(--color-muted))]">Haber bulunamadı.</li> : null}
+        </ul>
+      </div>
+
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Haber ID veya CMS düzenleme linki (/admin/news/…/edit)"
+          placeholder="Seçilen haber (ya da haber ID / düzenleme linki yapıştırın)"
           className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm"
         />
         <button
@@ -252,31 +295,22 @@ export function ReelsStudioPanel() {
             </a>
             <div className="mt-3 space-y-2 border-t border-[rgb(var(--color-border))] pt-3" data-reels-share>
               <p className="font-semibold">Sosyal medyada paylaş</p>
-              {accounts.length === 0 ? (
-                <p className="text-xs text-[rgb(var(--color-muted))]">Reels paylaşabilecek bağlı Instagram / Facebook hesabı yok (SMM → Hesaplar).</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <select value={shareTo} onChange={(e) => setShareTo(e.target.value)} className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm">
-                    <option value="">Hesap seç…</option>
-                    {accounts.map((a) => (
-                      <option key={a.accountId} value={a.accountId}>
-                        {a.platform === 'instagram' ? 'Instagram' : 'Facebook'} · {a.displayName}
-                        {a.username ? ` (@${a.username})` : ''}
-                      </option>
-                    ))}
-                  </select>
+              <div className="flex gap-1.5 text-xs">
+                {(['reel', 'video_story'] as const).map((f) => (
                   <button
+                    key={f}
                     type="button"
-                    disabled={!shareTo || shareBusy}
-                    onClick={share}
-                    className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                    onClick={() => setShareFmt(shareFmt === f ? null : f)}
+                    className={`rounded-full border px-3 py-1 font-bold ${shareFmt === f ? 'border-red-600 bg-red-600 text-white' : 'border-[rgb(var(--color-border))]'}`}
                   >
-                    {shareBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Reels olarak paylaş
+                    {f === 'reel' ? 'Reels olarak' : 'Video hikâye olarak'}
                   </button>
-                </div>
-              )}
-              {shareMsg ? <p className={shareMsg.ok ? 'text-xs text-emerald-600' : 'text-xs text-red-500'}>{shareMsg.text}</p> : null}
-              <p className="text-xs text-[rgb(var(--color-muted))]">Otomatik paylaşım için: SMM → Otomasyon kuralında «Reels» biçimini işaretleyin.</p>
+                ))}
+              </div>
+              {shareFmt ? (
+                <ManualShareFlow key={shareFmt} newsId={result.newsId} newsTitle={picked?.title ?? result.newsId} mode={shareFmt} onClose={() => setShareFmt(null)} />
+              ) : null}
+              <p className="text-xs text-[rgb(var(--color-muted))]">Otomatik paylaşım için: SMM → Otomasyon kuralında «Reels» / «Video hikâye» biçimini işaretleyin.</p>
             </div>
           </div>
         </div>

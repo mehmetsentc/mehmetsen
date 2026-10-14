@@ -225,13 +225,13 @@ export function validateRuleInput(raw: unknown): RuleValidation {
     return bad('featuredMode', '«Tüm kategoriler VEYA öne çıkan» zaten tüm haberler demektir — «Yalnızca kategoriler» + «Tüm kategoriler» seçin')
   }
 
-  const formats = uniqStrings(r.formats, 3) as AutomationFormat[] | null
-  if (!formats || formats.length === 0 || formats.some((f) => f !== 'post' && f !== 'story' && f !== 'reel')) {
-    return bad('formats', 'En az bir biçim seçilmeli (gönderi / hikâye / reels)')
+  const formats = uniqStrings(r.formats, 4) as AutomationFormat[] | null
+  if (!formats || formats.length === 0 || formats.some((f) => f !== 'post' && f !== 'story' && f !== 'reel' && f !== 'video_story')) {
+    return bad('formats', 'En az bir biçim seçilmeli (gönderi / hikâye / reels / video hikâye)')
   }
   // Otomatik hikâye yalnız açık bir öne çıkan / önem koşuluyla: «tüm konumlar»
   // veya bir kategori tek başına her haberi hikâyeye göndermez.
-  if (formats.includes('story') && featuredMode !== 'featured_only' && featuredMode !== 'featured_in_categories') {
+  if ((formats.includes('story') || formats.includes('video_story')) && featuredMode !== 'featured_only' && featuredMode !== 'featured_in_categories') {
     return bad('formats', 'Otomatik hikâye için öne çıkan koşulu gerekir: «Yalnızca öne çıkanlar» veya «Seçilen kategorilerde yalnızca öne çıkanlar»')
   }
 

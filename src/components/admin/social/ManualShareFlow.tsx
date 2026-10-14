@@ -41,7 +41,9 @@ import {
   type TargetSelection,
 } from './ComposerTargetPicker'
 
-export type ShareMode = 'post' | 'story'
+export type ShareMode = 'post' | 'story' | 'reel' | 'video_story'
+
+const MODE_TEXT: Record<ShareMode, string> = { post: 'Görselli gönderi', story: 'Hikâye', reel: 'Reels (haber videosu)', video_story: 'Video hikâye (haber videosu)' }
 
 export type ManualShareResult = {
   ok: boolean
@@ -64,8 +66,44 @@ const CODE_TEXT: Record<string, string> = {
   not_found: 'Hedef hesap bulunamadı',
 }
 
+/**
+ * REELS-3: reels / video stories — the news video is built once (reused afterwards)
+ * and published account by account (one request each, so each has its own budget).
+ */
+async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_story'; targets: TargetSelection; names: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
+  const list = (['instagram', 'facebook'] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
+  if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
+  const rows: TargetRowLike[] = []
+  let i = 0
+  for (const t of list) {
+    onProgress?.(i++, list.length)
+    const token = (await auth.currentUser?.getIdToken()) ?? ''
+    let row: TargetRowLike = { platform: t.platform, accountId: t.accountId, accountName: input.names.get(t.accountId) ?? null, format: input.mode, success: false, code: null, error: null, ledgerStatus: null, externalPostId: null }
+    try {
+      const res = await fetch('/api/admin/social/reels/share', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newsId: input.newsId, accountId: t.accountId, format: input.mode }),
+      })
+      const d = (await res.json().catch(() => null)) as { error?: string; code?: string; result?: { ok?: boolean; reason?: string; reel?: Record<string, { success?: boolean; error?: string; code?: string; platformId?: string; ledgerStatus?: string }> } } | null
+      const r = d?.result?.reel?.[t.platform]
+      row = { ...row, success: !!r?.success, code: r?.code ?? d?.code ?? null, error: r?.error ?? d?.result?.reason ?? d?.error ?? (res.ok ? null : `HTTP ${res.status}`), ledgerStatus: r?.ledgerStatus ?? null, externalPostId: r?.platformId ?? null }
+    } catch {
+      row = { ...row, error: unreadableResponseText(0) }
+    }
+    rows.push(row)
+  }
+  onProgress?.(list.length, list.length)
+  const overall = overallShareState(rows.map(rowAsResult))
+  return { ok: overall === 'published' || overall === 'partial', status: 200, overall, rows, message: null }
+}
+
 /** POST /api/admin/social/force-reshare with explicit multi-account targets. */
-export async function sendManualShare(input: { newsId: string; mode: ShareMode; targets: TargetSelection; extra?: Record<string, unknown> }): Promise<ManualShareResult> {
+export async function sendManualShare(input: { newsId: string; mode: ShareMode; targets: TargetSelection; extra?: Record<string, unknown>; names?: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
+  if (input.mode === 'reel' || input.mode === 'video_story') {
+    return sendVideoShare({ newsId: input.newsId, mode: input.mode, targets: { ...input.targets, threads: [] }, names: input.names ?? new Map() }, onProgress)
+  }
   const sel: TargetSelection = input.mode === 'story' ? { ...input.targets, threads: [] } : input.targets
   if (targetCount(sel) === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -139,13 +177,16 @@ export function ManualShareFlow({
   const [options, setOptions] = useState<TargetOption[]>([])
   const [result, setResult] = useState<ManualShareResult | null>(null)
   const [retry, setRetry] = useState<string[]>([])
-  const effective: TargetSelection = mode === 'story' ? { ...targets, threads: [] } : targets
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const effective: TargetSelection = mode === 'post' ? targets : { ...targets, threads: [] }
   const count = targetCount(effective)
   const labels = selectedLabels(effective, options)
 
   const send = async (sel: TargetSelection) => {
     setStage('sending')
-    const r = await sendManualShare({ newsId, mode, targets: sel })
+    const names = new Map(options.map((o) => [o.accountId, o.username ? `${o.displayName} (@${o.username})` : o.displayName]))
+    const r = await sendManualShare({ newsId, mode, targets: sel, names }, (done, total) => setProgress({ done, total }))
+    setProgress(null)
     setResult(r)
     setRetry([])
     setStage('result')
@@ -193,7 +234,7 @@ export function ManualShareFlow({
             <span className="text-[rgb(var(--color-muted))]">Haber:</span> <b>{newsTitle}</b>
           </p>
           <p>
-            <span className="text-[rgb(var(--color-muted))]">Biçim:</span> <b>{mode === 'story' ? 'Hikâye' : 'Görselli gönderi'}</b>
+            <span className="text-[rgb(var(--color-muted))]">Biçim:</span> <b>{MODE_TEXT[mode]}</b>
           </p>
           <div>
             <p className="text-[rgb(var(--color-muted))]">Hedef hesaplar ({count}):</p>
@@ -217,7 +258,10 @@ export function ManualShareFlow({
 
       {stage === 'sending' && (
         <p className="flex items-center gap-1.5 text-[rgb(var(--color-muted))]">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> {count} hedefe sırayla gönderiliyor…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />{' '}
+          {mode === 'reel' || mode === 'video_story'
+            ? `Haber videosu hazırlanıyor ve ${progress ? `${Math.min(progress.done + 1, progress.total)}/${progress.total}` : count} hesaba gönderiliyor (hesap başına ~30–90 sn)…`
+            : `${count} hedefe sırayla gönderiliyor…`}
         </p>
       )}
 

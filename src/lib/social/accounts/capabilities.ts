@@ -23,9 +23,15 @@
 import type { SocialAccountPlatform, SocialConnectionMethod, SocialAccountStatus, PublishPermissionState } from './types'
 
 export type PublishFormat = 'post' | 'story'
-/** Ledger / automation formats: post, story and the REELS-1 news reel. */
-export type AutomationFormat = PublishFormat | 'reel'
-export type ComposerMode = 'post' | 'story' | 'both' | 'reel'
+/** Ledger / automation formats: post, story, the REELS news reel and the reel MP4 as a story. */
+export type AutomationFormat = PublishFormat | 'reel' | 'video_story'
+/** Rendered-video formats (REELS): built from the news, published by reelPublish. */
+export type VideoFormat = 'reel' | 'video_story'
+export type ComposerMode = 'post' | 'story' | 'both' | 'reel' | 'video_story'
+
+export function isVideoFormat(f: unknown): f is VideoFormat {
+  return f === 'reel' || f === 'video_story'
+}
 
 export type ContentKind = 'image_post' | 'carousel_post' | 'story' | 'reel' | 'video'
 /** Composer image choice for a post. `carousel` never silently degrades to one image. */
@@ -78,9 +84,22 @@ export function supportsReel(a: CapabilityInput): boolean {
   return publishableKinds(a).includes('reel')
 }
 
-/** Formats an account can take for a composer mode (reel handled separately from post/story). */
+/** REELS-3: the rendered reel MP4 as a video story (IG professional / FB Page). */
+export function supportsVideoStory(a: CapabilityInput): boolean {
+  const k = publishableKinds(a)
+  return k.includes('reel') && k.includes('story')
+}
+
+/** Formats an account can take for a composer mode (video formats handled separately from post/story). */
 export function formatsForMode(a: CapabilityInput, mode: ComposerMode): AutomationFormat[] {
-  return mode === 'reel' ? (supportsReel(a) ? ['reel'] : []) : supportedFormats(a)
+  if (mode === 'reel') return supportsReel(a) ? ['reel'] : []
+  if (mode === 'video_story') return supportsVideoStory(a) ? ['video_story'] : []
+  return supportedFormats(a)
+}
+
+/** Post/story scope rules a video format follows (location/category scope, manual access). */
+export function scopeFormatFor(f: AutomationFormat): PublishFormat {
+  return f === 'story' || f === 'video_story' ? 'story' : 'post'
 }
 
 /**
@@ -108,7 +127,7 @@ export function parseImageMode(v: unknown): ImageMode | undefined | 'invalid' {
 
 /** Formats a composer mode requires from one platform's target. Threads never posts stories. */
 export function requiredFormats(platform: SocialAccountPlatform, mode: ComposerMode): AutomationFormat[] {
-  if (mode === 'reel') return ['reel']
+  if (mode === 'reel' || mode === 'video_story') return [mode]
   if (platform === 'threads') return mode === 'story' ? ['story'] : ['post']
   if (mode === 'both') return ['post', 'story']
   return [mode]

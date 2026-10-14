@@ -16,7 +16,7 @@ import { auth } from '@/lib/firebase/auth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { cn } from '@/lib/utils'
-import { supportedFormats, supportsReel, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type PublishFormat } from '@/lib/social/accounts/capabilities'
+import { supportedFormats, supportsReel, supportsVideoStory, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type PublishFormat } from '@/lib/social/accounts/capabilities'
 import type { SocialAccountPublic, SocialAccountPlatform } from '@/lib/social/accounts/types'
 import { summarizeRule } from '@/lib/social/automation/match'
 import { draftRuleFor } from '@/lib/social/automation/drafts'
@@ -46,7 +46,7 @@ type WorkerBeat = {
 type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
 const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
-const FORMAT_TEXT: Record<AutomationFormat, string> = { post: 'Gönderi', story: 'Hikâye', reel: 'Reels' }
+const FORMAT_TEXT: Record<AutomationFormat, string> = { post: 'Gönderi', story: 'Hikâye', reel: 'Reels', video_story: 'Video hikâye' }
 const MODE_OPTIONS: Array<{ value: FeaturedMode; label: string }> = [
   { value: 'categories_only', label: 'Seçilen kategoriler' },
   { value: 'featured_only', label: 'Yalnızca öne çıkanlar' },
@@ -539,7 +539,7 @@ function LegacyHandoffSection({
         const accountRules = data.rules.filter((x) => x.accountId === r.accountId)
         const rulesOn = accountRules.filter((x) => x.enabled).length
         // Devir yalnızca bu hesabın kurallarındaki biçimleri kapsar (ör. yalnız gönderi → eski otomatik hikâye sürer).
-        const ruleFormats = [...new Set(accountRules.flatMap((x) => x.formats))].filter((f): f is PublishFormat => f !== 'reel')
+        const ruleFormats = [...new Set(accountRules.flatMap((x) => x.formats))].filter((f): f is PublishFormat => f === 'post' || f === 'story')
         const handoffFormats: PublishFormat[] = ruleFormats.length ? ruleFormats : ['post', 'story']
         const connected = !!acc && acc.connectionMethod !== 'legacy'
         return (
@@ -612,7 +612,7 @@ function RuleForm({
   const [provQuery, setProvQuery] = useState('')
 
   const account = accounts.find((a) => a.id === input.accountId)
-  const formatsAllowed: AutomationFormat[] = account ? [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : [])] : []
+  const formatsAllowed: AutomationFormat[] = account ? [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : []), ...(supportsVideoStory(account) ? (['video_story'] as const) : [])] : []
   const set = (patch: Partial<AutomationRuleInput>) => {
     setInput((p) => ({ ...p, ...patch }))
     setPreview(null)
@@ -800,7 +800,7 @@ function RuleForm({
       <div className="grid gap-3 md:grid-cols-4">
         <fieldset className="space-y-1 text-sm">
           <legend className="font-semibold">Biçim</legend>
-          {(['post', 'story', 'reel'] as const).map((f) => (
+          {(['post', 'story', 'reel', 'video_story'] as const).map((f) => (
             <label key={f} className={cn('flex items-center gap-1.5', !formatsAllowed.includes(f) && 'opacity-50')}>
               <input
                 type="checkbox"
@@ -812,7 +812,7 @@ function RuleForm({
               {!formatsAllowed.includes(f) ? ' (bu hesapta yok)' : ''}
             </label>
           ))}
-          <p className="text-xs text-[rgb(var(--color-muted))]">Reels: haber için Google sesli, daktilo başlıklı dikey video otomatik üretilir (Instagram / Facebook).</p>
+          <p className="text-xs text-[rgb(var(--color-muted))]">Reels / Video hikâye: haber için Google sesli dikey video otomatik üretilir; Reels akışta, Video hikâye hikâyelerde yayımlanır (Instagram / Facebook).</p>
         </fieldset>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Günlük en fazla</span>

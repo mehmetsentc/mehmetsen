@@ -25,7 +25,9 @@ import { Collections } from '@/lib/firebase/collections'
 import { canAccessContentScope, contentScopeOf } from '@/lib/cms/rbacScope'
 import { canManageAccount, canPublishToAccount, canUseForManual, type SocialActor } from './access'
 import { listAccountsForActor } from './connect/flows'
-import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishFormat, type TargetBlocker } from './capabilities'
+import { scopeFormatFor, supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type TargetBlocker } from './capabilities'
+
+const FORMAT_WORD: Record<AutomationFormat, string> = { post: 'gönderi', story: 'hikâye', reel: 'reels', video_story: 'video hikâye' }
 import { readPublishScope, newsScopeProblemFor, type AccountPublishScope } from './publishScope'
 import { ownershipKind, parseSocialAccount, toPublicSocialAccount, type SocialAccount } from './types'
 import { newsFactsFrom } from '../automation/match'
@@ -41,7 +43,7 @@ export function manualTargetCheck(
   actor: SocialActor,
   account: SocialAccount,
   news: { id: string; data: Record<string, unknown> },
-  formats: PublishFormat[],
+  formats: AutomationFormat[],
   now: number,
 ): ManualTargetCheck {
   const scope = readPublishScope(account, supportedFormats(account))
@@ -67,21 +69,21 @@ export function manualTargetCheck(
         reason: reconnect
           ? `Yeniden bağlantı gerekli (${TARGET_BLOCKER_TEXT[b]})`
           : b === 'format_unsupported'
-            ? `Biçim desteklenmiyor: hesap «${f === 'post' ? 'gönderi' : 'hikâye'}» yayımlayamaz`
+            ? `Biçim desteklenmiyor: hesap «${FORMAT_WORD[f]}» yayımlayamaz`
             : `Hesap kullanılamıyor: ${TARGET_BLOCKER_TEXT[b]}`,
         reconnect: reconnect && canManageAccount(actor, account.ownership),
         hidden: false,
       }
     }
-    if (!scope.formats.includes(f)) {
-      return { ok: false, code: 'format_not_allowed', reason: `Biçim kapsamda kapalı: «${f === 'post' ? 'gönderi' : 'hikâye'}» bu hesabın yayın kapsamında izinli değil`, reconnect: false, hidden: false }
+    if (!scope.formats.includes(scopeFormatFor(f))) {
+      return { ok: false, code: 'format_not_allowed', reason: `Biçim kapsamda kapalı: «${FORMAT_WORD[scopeFormatFor(f)]}» bu hesabın yayın kapsamında izinli değil`, reconnect: false, hidden: false }
     }
   }
   const facts = newsFactsFrom(news.id, news.data)
   for (const f of formats) {
-    const p = newsScopeProblemFor(scope, facts, f)
+    const p = newsScopeProblemFor(scope, facts, scopeFormatFor(f))
     if (p) {
-      const what = f === 'story' ? 'hikâye' : 'gönderi'
+      const what = FORMAT_WORD[f]
       return {
         ok: false,
         code: p.code,
@@ -129,10 +131,10 @@ export interface TargetOption {
   reconnect: boolean
   canManage: boolean
   /** Ledger state of THIS news on this account for the requested formats (shared lock). */
-  ledger: Array<{ format: PublishFormat; status: string; externalPostId: string | null }>
+  ledger: Array<{ format: AutomationFormat; status: string; externalPostId: string | null }>
 }
 
-export async function manualTargetsForNews(actor: SocialActor, newsId: string, formats: PublishFormat[], now: number): Promise<{ ok: true; options: TargetOption[] } | { ok: false; status: number; code: string }> {
+export async function manualTargetsForNews(actor: SocialActor, newsId: string, formats: AutomationFormat[], now: number): Promise<{ ok: true; options: TargetOption[] } | { ok: false; status: number; code: string }> {
   const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
   if (!snap.exists) return { ok: false, status: 404, code: 'news_not_found' }
   const data = snap.data() as Record<string, unknown>
@@ -158,8 +160,8 @@ export async function manualTargetsForNews(actor: SocialActor, newsId: string, f
     if (c.ok) {
       const done = ledger.find((l) => l.status === 'succeeded')
       const unsure = ledger.find((l) => l.status === 'uncertain' || l.status === 'publishing')
-      if (unsure) c = { ok: false, code: 'uncertain_previous_attempt', reason: `Önceki deneme ${unsure.status === 'publishing' ? 'sürüyor' : 'belirsiz'} (${unsure.format === 'post' ? 'gönderi' : 'hikâye'}) — Paylaşımlar → «Sonucu belirsiz paylaşımlar»dan kontrol edin`, reconnect: false, hidden: false }
-      else if (done) c = { ok: false, code: 'already_published', reason: `Bu haber bu hesapta zaten yayımlandı (${done.format === 'post' ? 'gönderi' : 'hikâye'}); tekrar gönderilmez`, reconnect: false, hidden: false }
+      if (unsure) c = { ok: false, code: 'uncertain_previous_attempt', reason: `Önceki deneme ${unsure.status === 'publishing' ? 'sürüyor' : 'belirsiz'} (${FORMAT_WORD[unsure.format]}) — Paylaşımlar → «Sonucu belirsiz paylaşımlar»dan kontrol edin`, reconnect: false, hidden: false }
+      else if (done) c = { ok: false, code: 'already_published', reason: `Bu haber bu hesapta zaten yayımlandı (${FORMAT_WORD[done.format]}); tekrar gönderilmez`, reconnect: false, hidden: false }
     }
     options.push({
       accountId: a.id,
