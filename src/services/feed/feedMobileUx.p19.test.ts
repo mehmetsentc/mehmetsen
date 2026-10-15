@@ -41,13 +41,12 @@ describe('P19 Global Nav', () => {
 })
 
 describe('P19 typewriter', () => {
-  it('starts empty when active; reduced-motion uses reveal path', () => {
+  it('FEED-UX-2: headline and summary paint at once and in full (typewriter removed)', () => {
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
-    expect(card).toContain("useState(() => (isActive ? '' : item.headline))")
+    expect(card).toContain('useState(() => item.headline)')
     expect(card).toContain('headlineReveal')
-    expect(card).toContain('prefers-reduced-motion: reduce')
     expect(card).toContain('data-feed-typewriter')
-    expect(card).toContain('setHeadlineReveal(false)')
+    expect(card).not.toContain('setHeadlineReveal(false)')
   })
 })
 

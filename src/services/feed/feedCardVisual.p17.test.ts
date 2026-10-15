@@ -37,13 +37,13 @@ describe('P17 Feed V2 approved card visual', () => {
     expect(card).not.toContain('smart-feed-wipe')
   })
 
-  it('headline/summary stay high-contrast; summary clamp when highlights', () => {
+  it('headline/summary stay high-contrast and are never cut (FEED-UX-2)', () => {
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
-    expect(card).toContain("showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6'")
-    expect(card).toContain("data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}")
+    expect(card).not.toContain('line-clamp-')
+    expect(card).toContain('data-feed-summary-clamp="none"')
     expect(card).toContain('text-white')
     expect(card).toContain('font-extrabold')
-    expect(card).toContain('pr-[4.75rem]')
+    expect(card).toContain('pr-[4.25rem]')
   })
 
   it('social inset + Haberi Oku + discovery slot order preserved', () => {

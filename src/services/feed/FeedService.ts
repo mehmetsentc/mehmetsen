@@ -18,6 +18,7 @@ import {
 } from '@/lib/feed/resolveCategoryFilterIds'
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
 import { attachReelVideoRows, loadReelVideoIndex } from '@/lib/reels/reelLibrary'
+import { arrangeVideoAware } from '@/lib/feed/videoAwareOrder'
 import { publicFeedAuthor } from '@/lib/seo/publicAuthorIdentity'
 import { publicArticleSocialCounts } from '@/lib/feed/articleEngagement'
 import type {
@@ -491,7 +492,7 @@ export class FeedService {
           loadSocialState(ctx.userId, articleIds),
           enrichPublisherSlugs(ordered).then(attachReelVideos),
         ])
-        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
+        const items = arrangeVideoAware(enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug)))
 
         const last = ordered[ordered.length - 1]!
         const mayHaveMore = hasMoreInSnapshot || !nextPayload.corpusExhausted
@@ -582,7 +583,7 @@ export class FeedService {
           loadSocialState(ctx.userId, articleIds),
           enrichPublisherSlugs(ranked).then(attachReelVideos),
         ])
-        const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
+        const items = arrangeVideoAware(enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug)))
 
         const last = ranked[ranked.length - 1]
         const nextCursor = pipelineResult.sessionToken
@@ -649,7 +650,7 @@ export class FeedService {
         loadSocialState(ctx.userId, articleIds),
         enrichPublisherSlugs(ranked).then(attachReelVideos),
       ])
-      const items = enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug))
+      const items = arrangeVideoAware(enriched.map((r) => toDto(r, socialMap.get(r.articleId), opts?.debug, ctx.citySlug)))
 
       const last = ranked[ranked.length - 1]
       const nextCursor = encodeFeedCursor({

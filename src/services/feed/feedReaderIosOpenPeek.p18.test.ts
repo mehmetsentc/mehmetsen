@@ -73,7 +73,7 @@ describe('P18 iOS Haberi Aç / card peek human NO-GO', () => {
     expect(card).toContain('data-feed-open-touch-action="pan-y"')
     expect(card).toMatch(/smart-feed-double-tap-zone[\s\S]{0,280}touch-pan-y|touch-pan-y[\s\S]{0,280}smart-feed-double-tap-zone/)
     expect(card).not.toMatch(/smart-feed-double-tap-zone[\s\S]{0,200}touch-manipulation/)
-    // Media layer stays pointer-events-none; paint follows the theme (dark: black).
-    expect(card).toMatch(/pointer-events-none absolute inset-0 [^"]*dark:bg-black" data-testid="smart-feed-media"/)
+    // Media layer stays pointer-events-none; FEED-UX-2 cards are always dark (full-screen media).
+    expect(card).toMatch(/pointer-events-none absolute inset-0 [^"]*bg-black" data-testid="smart-feed-media"/)
   })
 })

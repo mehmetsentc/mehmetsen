@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import Link from 'next/link'
 import Image from 'next/image'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { Check, ChevronDown, ExternalLink, Heart, Newspaper, Zap } from 'lucide-react'
+import { Check, ChevronRight, ExternalLink, Heart, Newspaper, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ROUTES } from '@/constants/routes'
 import { FollowButton } from '@/components/social/FollowButton'
@@ -131,19 +131,31 @@ interface FullscreenNewsCardProps {
  * Publisher lives in the bottom text stack (reference Reels composition).
  */
 const MODE_NAV_CLEARANCE = 'pt-2'
-const HERO_FRAME =
-  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-white/25 shadow-[0_14px_36px_rgba(0,0,0,0.55)] bg-transparent'
-const CITY_HERO_FRAME =
-  'relative min-h-[var(--feed-v2-hero-min)] w-full flex-1 overflow-hidden bg-neutral-950'
+/**
+ * FEED-UX-2: every card is full screen (Reels layout). The photo / video fills the
+ * card behind the copy; category, headline, summary, Haberi Oku and the publisher
+ * sit on it at the bottom, the social rail at the bottom right.
+ */
+const HERO_FRAME = 'absolute inset-0 z-0 overflow-hidden bg-black'
+const CITY_HERO_FRAME = HERO_FRAME
+
+/** Headline / summary are never cut: long text steps down in size instead (no line-clamp). */
+export function feedCopySizeClasses(headline: string, summary: string): { headline: string; summary: string } {
+  const h = headline.trim().length
+  const s = summary.trim().length
+  return {
+    headline: h > 80 ? 'text-[1.05rem] leading-[1.22]' : h > 60 ? 'text-[1.15rem] leading-[1.22]' : 'text-[1.25rem] leading-[1.2]',
+    summary: s > 320 ? 'text-[0.82rem] leading-[1.4]' : s > 220 ? 'text-[0.88rem] leading-[1.42]' : 'text-[0.95rem] leading-[1.45]',
+  }
+}
 
 /**
  * Copy / action zone sits BELOW the hero frame, not on the photo, so it follows
  * the site theme. `dark:` keeps the approved P17 cinematic values unchanged.
  */
-const COPY_TEXT = 'text-[rgb(var(--color-text))] dark:text-white'
-const COPY_SUBTLE = 'text-[rgb(var(--color-muted))] dark:text-white/70'
-const COPY_PILL =
-  'bg-[rgb(var(--color-card))] ring-1 ring-[rgb(var(--color-border))] dark:bg-black/75 dark:ring-white/10'
+const COPY_TEXT = 'text-white'
+const COPY_SUBTLE = 'text-white/75'
+const COPY_PILL = 'bg-black/30 ring-1 ring-white/15 backdrop-blur-sm'
 
 export function FullscreenNewsCard({
   item,
@@ -187,9 +199,9 @@ export function FullscreenNewsCard({
   const [videoError, setVideoError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
-  const [typedHeadline, setTypedHeadline] = useState(() => (isActive ? '' : item.headline))
-  const [typedSummary, setTypedSummary] = useState(() => (isActive ? '' : item.summary ?? ''))
-  const [headlineDone, setHeadlineDone] = useState(() => !isActive)
+  const [typedHeadline, setTypedHeadline] = useState(() => item.headline)
+  const [typedSummary, setTypedSummary] = useState(() => item.summary ?? '')
+  const [headlineDone, setHeadlineDone] = useState(true)
   const [headlineReveal, setHeadlineReveal] = useState(true)
   const [showCursor, setShowCursor] = useState(false)
   const [cursorOn, setCursorOn] = useState<'headline' | 'summary' | null>(null)
@@ -206,6 +218,7 @@ export function FullscreenNewsCard({
   // FEED-VIDEO-1: a NaHaber reel already shows the headline + summary in the picture, so its
   // card is the video at full height / original size and the copy is not repeated under it.
   const reelCard = Boolean(videoEnabled && playableVideo && !videoError && isNahaberReelVideoUrl(item.video))
+  const copySize = feedCopySizeClasses(item.headline || '', item.summary || '')
   const hasValidImage = Boolean(item.image && !imageError)
   const cat = categoryLabel(item.category)
   const timeLabel = formatRelativeTime(item.publishedAt)
@@ -262,118 +275,19 @@ export function FullscreenNewsCard({
     return () => mq.removeEventListener?.('change', sync)
   }, [])
 
-  // Typewriter: only when card becomes active.
-  // Reduced motion → short opacity reveal (no multi-step daktilo).
+  // FEED-UX-2: headline and summary appear at once and in full (no typewriter).
   useEffect(() => {
-    const clearType = () => {
-      if (typeTimerRef.current != null) {
-        window.clearTimeout(typeTimerRef.current)
-        typeTimerRef.current = null
-      }
+    if (typeTimerRef.current != null) {
+      window.clearTimeout(typeTimerRef.current)
+      typeTimerRef.current = null
     }
-
-    clearType()
-
-    const summary = item.summary || ''
-
-    if (!isActive) {
-      setTypedHeadline(item.headline)
-      setTypedSummary(summary)
-      setHeadlineDone(true)
-      setShowCursor(false)
-      setCursorOn(null)
-      setHeadlineReveal(true)
-      return
-    }
-
-    const full = item.headline || ''
-    if (!full && !summary) {
-      setTypedHeadline('')
-      setTypedSummary('')
-      setHeadlineDone(true)
-      setShowCursor(false)
-      setCursorOn(null)
-      setHeadlineReveal(true)
-      return
-    }
-
-    const reduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    if (reduced) {
-      // Soft reveal — no character typing against OS preference.
-      setTypedHeadline(full)
-      setTypedSummary(summary)
-      setShowCursor(false)
-      setCursorOn(null)
-      setHeadlineDone(false)
-      setHeadlineReveal(false)
-      typeTimerRef.current = window.setTimeout(() => {
-        setHeadlineReveal(true)
-        setHeadlineDone(true)
-        typeTimerRef.current = null
-      }, 180)
-      return clearType
-    }
-
-    // Headline ~1.1s, then summary ~1.3s, regardless of length.
-    const step = Math.max(12, Math.min(skin.typeMs, Math.floor(1100 / Math.max(full.length, 1))))
-    const summaryStep = Math.max(8, Math.min(16, Math.floor(1300 / Math.max(summary.length, 1))))
-    setTypedHeadline('')
-    setTypedSummary('')
-    setHeadlineDone(false)
+    setTypedHeadline(item.headline || '')
+    setTypedSummary(item.summary || '')
+    setHeadlineDone(true)
+    setShowCursor(false)
+    setCursorOn(null)
     setHeadlineReveal(true)
-    setShowCursor(true)
-    setCursorOn(full ? 'headline' : 'summary')
-
-    let i = 0
-    let j = 0
-    const tickSummary = () => {
-      if (!summary) {
-        setShowCursor(false)
-        setCursorOn(null)
-        typeTimerRef.current = null
-        return
-      }
-      j += 1
-      setTypedSummary(summary.slice(0, j))
-      if (j >= summary.length) {
-        setShowCursor(false)
-        setCursorOn(null)
-        typeTimerRef.current = null
-        return
-      }
-      typeTimerRef.current = window.setTimeout(tickSummary, summaryStep)
-    }
-    const tick = () => {
-      if (!full) {
-        setHeadlineDone(true)
-        setCursorOn('summary')
-        tickSummary()
-        return
-      }
-      i += 1
-      setTypedHeadline(full.slice(0, i))
-      if (i >= full.length) {
-        setHeadlineDone(true)
-        if (!summary) {
-          setShowCursor(false)
-          setCursorOn(null)
-          typeTimerRef.current = null
-          return
-        }
-        setCursorOn('summary')
-        typeTimerRef.current = window.setTimeout(tickSummary, summaryStep)
-        return
-      }
-      typeTimerRef.current = window.setTimeout(tick, step)
-    }
-    // slight delay so media expand / chrome settle
-    typeTimerRef.current = window.setTimeout(full ? tick : tickSummary, 140)
-
-    return clearType
-  }, [isActive, item.headline, item.summary, item.articleId, skin.typeMs])
+  }, [isActive, item.headline, item.summary, item.articleId])
 
 
   const triggerDoubleTapLike = useCallback(
@@ -424,7 +338,7 @@ export function FullscreenNewsCard({
           </span>
           {publisherHref ? (
             <span
-              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--color-text))] text-[rgb(var(--color-surface))] dark:bg-white dark:text-black"
+              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-white text-black"
               title="Doğrulanmış"
               aria-label="Doğrulanmış yayıncı"
             >
@@ -447,7 +361,7 @@ export function FullscreenNewsCard({
         heroWatchRef.current = node
         cardRef?.(node)
       }}
-      className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-[rgb(var(--color-surface))]"
+      className="relative flex h-[var(--feed-card-h,100dvh)] w-full snap-start snap-always flex-col overflow-hidden bg-black"
       aria-label={item.headline}
       data-article-id={item.articleId}
       data-active={isActive ? 'true' : 'false'}
@@ -477,9 +391,9 @@ export function FullscreenNewsCard({
         L2 — dark readability gradients
         L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
       */}
-      <div className="pointer-events-none absolute inset-0 bg-[rgb(var(--color-surface))] dark:bg-black" data-testid="smart-feed-media">
+      <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
         {hasValidImage && isActive ? (
-          <div className="absolute inset-0 hidden dark:block" data-testid="smart-feed-bg-blur" aria-hidden>
+          <div className="absolute inset-0" data-testid="smart-feed-bg-blur" aria-hidden>
             <SafeNewsImage
               src={item.image!}
               alt=""
@@ -491,7 +405,7 @@ export function FullscreenNewsCard({
         ) : hasValidImage ? (
           <span data-testid="smart-feed-bg-blur" className="sr-only" />
         ) : (
-          <div className="relative flex h-full w-full flex-col items-center justify-center bg-[rgb(var(--color-surface))] select-none dark:bg-gradient-to-br dark:from-neutral-900 dark:via-black dark:to-neutral-950">
+          <div className="relative flex h-full w-full flex-col items-center justify-center select-none bg-gradient-to-br from-neutral-900 via-black to-neutral-950">
             <div className="absolute inset-0 hidden opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] dark:block" />
             <div className="flex flex-col items-center gap-2 opacity-25">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-text)/0.06)] backdrop-blur-sm dark:border-white/10 dark:bg-white/10">
@@ -507,19 +421,19 @@ export function FullscreenNewsCard({
         {/* Readability veil — cinematic, not a hard black box */}
         <div
           className={cn(
-            'pointer-events-none absolute inset-x-0 top-0 hidden h-[28%] bg-gradient-to-b from-black/55 via-black/20 to-transparent dark:block',
+            'pointer-events-none absolute inset-x-0 top-0 h-[28%] bg-gradient-to-b from-black/55 via-black/20 to-transparent',
             isCenter && 'from-black/45'
           )}
           aria-hidden
           data-testid="smart-feed-readability-top"
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent dark:block"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent"
           aria-hidden
           data-testid="smart-feed-readability-bottom"
         />
         <div
-          className="pointer-events-none absolute inset-0 hidden bg-black/25 dark:block"
+          className="pointer-events-none absolute inset-0 bg-black/25"
           aria-hidden
           data-testid="smart-feed-readability-veil"
         />
@@ -541,8 +455,8 @@ export function FullscreenNewsCard({
 
       <div
         className={cn(
-          'relative z-10 flex min-h-0 flex-1 flex-col',
-          fullBleed ? 'px-0' : 'px-3 sm:px-4',
+          'z-10 flex min-h-0 flex-1 flex-col',
+          'px-0',
           /* Immersive Feed: no MobileNav — only safe-area / home-indicator breath */
           'pb-[var(--feed-v2-bottom-clearance)]',
           MODE_NAV_CLEARANCE,
@@ -562,7 +476,7 @@ export function FullscreenNewsCard({
           at the bottom — do not inflate summary to eat height.
         */}
         <div
-          className="relative flex min-h-0 w-full flex-1 touch-pan-y flex-col"
+          className="flex min-h-0 w-full flex-1 touch-pan-y flex-col"
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
           data-feed-hero-flex="1"
@@ -596,6 +510,15 @@ export function FullscreenNewsCard({
                 priority={heroEager}
                 loading={heroEager ? 'eager' : 'lazy'}
                 onError={() => setImageError(true)}
+              />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-[24%] bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent',
+                  reelCard ? 'h-[34%] from-black/80' : 'h-[72%] from-black/95 via-black/65'
+                )}
+                aria-hidden
+                data-testid="smart-feed-hero-shade"
               />
               {playableVideo ? (
                 <span
@@ -643,9 +566,19 @@ export function FullscreenNewsCard({
                 url={item.video!}
                 isActive={isActive}
                 poster={reelCard ? null : item.image}
-                fit="contain"
+                fit="auto"
                 onUnusable={() => setVideoError(true)}
               />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-[24%] bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent',
+                  reelCard ? 'h-[34%] from-black/80' : 'h-[72%] from-black/95 via-black/65'
+                )}
+                aria-hidden
+                data-testid="smart-feed-video-shade"
+              />
+
               {showSwipeDiscoveryCoach ? (
                 <SwipeDiscoveryCoach
                   active={isActive}
@@ -687,7 +620,8 @@ export function FullscreenNewsCard({
 
           {/* Social rail sits on the photo's lower edge — same place in Safari and Chrome. */}
           <div
-            className="pointer-events-auto absolute right-2 top-[42%] z-30 flex flex-col items-center gap-2.5"
+            className="pointer-events-auto absolute right-1.5 z-30 flex flex-col items-center gap-2.5"
+            style={{ bottom: 'calc(var(--feed-v2-bottom-clearance, 5rem) + 0.75rem)' }}
             data-testid="smart-feed-social-dock"
             data-no-reader-gesture="1"
           >
@@ -711,17 +645,16 @@ export function FullscreenNewsCard({
               likeLoading={likeLoading}
               saveLoading={saveLoading}
               orientation="vertical"
-              className="text-white"
+              className="text-white [&_.rounded-full]:!bg-transparent [&_.rounded-full]:!backdrop-blur-none [&_svg]:drop-shadow-[0_1px_3px_rgba(0,0,0,0.65)]"
               data-testid="smart-feed-social-rail"
             />
             {progressLabel ? (
               <div
-                className="flex items-center gap-0.5 rounded-full bg-black/45 px-1.5 py-0.5 text-xs font-semibold text-white/90 drop-shadow"
+                className="sr-only"
                 data-testid="smart-feed-card-progress"
                 aria-label={`Kart ${progressLabel}`}
               >
                 <span>{progressLabel}</span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
               </div>
             ) : null}
           </div>
@@ -733,9 +666,9 @@ export function FullscreenNewsCard({
         */}
         <div
           className={cn(
-            'relative z-[2] mt-auto flex w-full shrink-0 flex-col pt-2.5 sm:pt-3 dark:bg-gradient-to-t dark:from-black dark:via-black/95 dark:to-transparent',
+            'relative z-[2] mt-auto flex w-full shrink-0 flex-col pt-2.5 sm:pt-3',
             /* Keep right pad after full-bleed pl — px-* would wipe the social-rail gutter. */
-            fullBleed ? 'pl-3 pr-[4.75rem] sm:pl-4' : 'pr-[4.75rem]'
+            'pl-3 pr-[4.25rem] sm:pl-4'
           )}
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"
@@ -746,7 +679,8 @@ export function FullscreenNewsCard({
             data-testid="smart-feed-copy-scroll"
             data-feed-nested-scroll="1"
             style={{
-              maxHeight: 'var(--feed-v2-copy-scroll-max)',
+              // Full copy is always shown (sizes step down); this cap only guards odd data.
+              maxHeight: 'max(var(--feed-v2-copy-scroll-max), 62dvh)',
               WebkitOverflowScrolling: 'touch',
             }}
           >
@@ -760,7 +694,7 @@ export function FullscreenNewsCard({
                     className={cn(
                       'text-[11px] font-extrabold tracking-[0.06em]',
                       skin.badge === 'ghost'
-                        ? 'rounded-md bg-[rgb(var(--color-text)/0.08)] px-2 py-0.5 text-[rgb(var(--color-text))] dark:bg-white/20 dark:text-white'
+                        ? 'rounded-md bg-white/20 px-2 py-0.5 text-white'
                         : skin.badge === 'solid'
                           ? 'rounded-md px-2 py-0.5 text-white'
                           : cn('rounded-md px-2 py-0.5', COPY_TEXT),
@@ -777,7 +711,7 @@ export function FullscreenNewsCard({
                     onClick={onCategoryClick}
                     data-testid="smart-feed-category-goto"
                     data-no-reader-gesture="1"
-                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[rgb(var(--color-text)/0.06)] px-2.5 py-0.5 text-[11px] font-bold text-[rgb(var(--color-text))] ring-1 ring-[rgb(var(--color-border))] backdrop-blur-sm transition active:scale-[0.98] dark:bg-white/20 dark:text-white dark:ring-white/35"
+                    className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white ring-1 ring-white/30 backdrop-blur-sm transition active:scale-[0.98]"
                     aria-label={`${cat} kategorisine git`}
                   >
                     <span className="hidden min-[360px]:inline">Kategoriye Git</span>
@@ -800,8 +734,9 @@ export function FullscreenNewsCard({
                 className={cn(
                   'wrap-words',
                   COPY_TEXT,
-                  'dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
-                  'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]',
+                  'drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
+                  copySize.headline,
+                  'font-extrabold tracking-[-0.02em]',
                   'transition-opacity duration-200',
                   headlineReveal ? 'opacity-100' : 'opacity-0',
                   reelCard && 'sr-only'
@@ -825,16 +760,16 @@ export function FullscreenNewsCard({
               {item.summary ? (
                 <p
                   className={cn(
-                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
-                    'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-[rgb(var(--color-body))] dark:text-white',
-                    // With highlights: keep rail discoverable — presentation clamp only.
-                    showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
+                    'wrap-words whitespace-pre-wrap transition-opacity duration-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
+                    // Never cut: no line-clamp; long summaries use a smaller size.
+                    copySize.summary,
+                    'font-medium text-white/90',
                     headlineDone ? 'opacity-100' : 'opacity-0',
                     reelCard && 'sr-only'
                   )}
                   data-testid="smart-feed-summary"
                   data-feed-typewriter={cursorOn === 'summary' ? '1' : '0'}
-                  data-feed-summary-clamp={showDiscoveryRail ? '4' : '6'}
+                  data-feed-summary-clamp="none"
                   style={{ marginTop: 'var(--feed-v2-gap-headline-summary)' }}
                 >
                   {typedSummary}
@@ -913,14 +848,12 @@ export function FullscreenNewsCard({
                 e.stopPropagation()
                 onReadClick()
               }}
-              className="relative z-10 inline-flex h-14 w-full shrink-0 touch-manipulation appearance-none items-center justify-center rounded-full px-5 text-sm font-extrabold transition active:scale-[0.99] [-webkit-appearance:none] [-webkit-tap-highlight-color:transparent]"
-              /* Inline so Safari cannot paint system gray; tokens so it inverts with the theme. */
-              style={{
-                backgroundColor: 'rgb(var(--color-text))',
-                color: 'rgb(var(--color-surface))',
-              }}
+              className="relative z-10 inline-flex h-9 w-auto shrink-0 self-start touch-manipulation appearance-none items-center justify-center gap-0.5 rounded-full pl-4 pr-3 text-[13px] font-extrabold shadow-[0_2px_10px_rgba(0,0,0,0.35)] transition active:scale-[0.97] [-webkit-appearance:none] [-webkit-tap-highlight-color:transparent]"
+              /* Inline so Safari cannot paint system gray. */
+              style={{ backgroundColor: '#ffffff', color: '#0b1020' }}
             >
               Haberi Oku
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
 
             {item.authorName?.trim() ? (
@@ -983,7 +916,7 @@ export function FullscreenNewsCard({
                   </Link>
                 ) : (
                   <div
-                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-[rgb(var(--color-card))] py-1 pl-1 pr-2.5 dark:bg-black/75"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-full bg-black/30 py-1 pl-1 pr-2.5 backdrop-blur-sm"
                     style={{ boxShadow: `inset 0 0 0 1px ${publisherAccent}55` }}
                   >
                     {publisherBlock}

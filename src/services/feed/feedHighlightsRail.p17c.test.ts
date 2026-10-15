@@ -58,7 +58,7 @@ describe('P17c Feed rail presentation', () => {
 
   it('summary clamp + rail outside nested scroll + Haberi Oku safe', () => {
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
-    expect(card).toContain("showDiscoveryRail ? 'line-clamp-4'")
+    expect(card).not.toContain('line-clamp-')
     expect(card).toContain('data-feed-summary-clamp')
     expect(card).toContain('smart-feed-discovery-slot')
     expect(card).toContain('onSeeAll={onCategoryClick}')
@@ -69,7 +69,7 @@ describe('P17c Feed rail presentation', () => {
     expect(slotIdx).toBeGreaterThan(scrollIdx)
     expect(actionIdx).toBeGreaterThan(slotIdx)
     expect(card).toContain('smart-feed-read-cta')
-    expect(card).toContain('pr-[4.75rem]')
+    expect(card).toContain('pr-[4.25rem]')
   })
 
   it('city tenants lock highlights to that province only', () => {

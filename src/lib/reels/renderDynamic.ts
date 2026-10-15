@@ -15,7 +15,7 @@ import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createCanvas, loadImage, type Image, type SKRSContext2D } from '@napi-rs/canvas'
+import { createCanvas, loadImage, type Canvas, type Image, type SKRSContext2D } from '@napi-rs/canvas'
 import { REEL_FPS, REEL_H, REEL_W, wrapLines, type ReelTimeline } from './timeline'
 import { buildFxTrack, dynamicAudioGraph, readWav, wavSeconds, writeWav } from './audio'
 import {
@@ -25,10 +25,15 @@ import {
   type Brand, type ReelOutro, type ReelStyle,
 } from './reelTheme'
 import type { ReelInput, ReelResult } from './renderReel'
+import { summaryOptions } from './headlineCard'
 
-const HEAD_SIZES = [76, 68, 60]
-const SUM = 42
-const SUM_LH = 58
+/** REELS-9: text is never cut — the size steps down until the whole headline fits. */
+const HEAD_SIZES = [76, 68, 60, 54, 48, 44]
+const HEAD_MAX_LINES = 5
+const SUM_SIZES = [42, 38, 34]
+const SUM_MAX_LINES = 6
+const SLIDE_MIN_S = 2.4
+const SLIDE_FADE_S = 0.5
 const TEXT_X = SAFE.x
 /** Left-aligned text, clear of the Instagram action column on the right. */
 const TEXT_W = REEL_W - TEXT_X - SAFE.right
@@ -121,6 +126,38 @@ function kicker(ctx: SKRSContext2D, left: string, right: string, rightColor: str
   ctx.fillText(left, x + pad, cy + 2)
   ctx.fillText(right, x + lw + pad, cy + 2)
   ctx.restore()
+}
+
+/**
+ * REELS-9 photo: an upright photo fills the frame; a landscape photo is shown whole
+ * (full width, gentle zoom) over a blurred, darkened copy of itself — never cropped to a strip.
+ */
+type Slide = { img: Image; blur: Canvas | null }
+function makeSlide(img: Image): Slide {
+  if (img.height >= img.width * 1.25) return { img, blur: null }
+  const small = createCanvas(54, 96)
+  drawCover(small.getContext('2d'), img, 0, 0, 54, 96, 1.15, 0.5, 0.5)
+  const big = createCanvas(REEL_W, REEL_H)
+  const b = big.getContext('2d')
+  b.imageSmoothingQuality = 'high'
+  b.drawImage(small, 0, 0, REEL_W, REEL_H)
+  b.fillStyle = 'rgba(0,0,0,0.45)'
+  b.fillRect(0, 0, REEL_W, REEL_H)
+  return { img, blur: big }
+}
+function drawSlide(ctx: SKRSContext2D, s: Slide, k: number): void {
+  if (!s.blur) {
+    drawCover(ctx, s.img, 0, 0, REEL_W, REEL_H, 1.04 + 0.08 * k, 0.5, 0.45)
+    return
+  }
+  ctx.drawImage(s.blur, 0, 0)
+  const z = 1 + 0.06 * k
+  const w = REEL_W * z
+  const h = Math.min(REEL_H * 0.62, (w * s.img.height) / s.img.width)
+  const dw = Math.min(w, (h * s.img.width) / s.img.height)
+  // centre of the photo above the text block, below the logo
+  const cy = REEL_H * 0.4
+  ctx.drawImage(s.img, (REEL_W - dw) / 2, cy - h / 2, dw, h)
 }
 
 function leftLines(ctx: SKRSContext2D, lines: string[], y0: number, lh: number, a: number[], rise = 26): void {
@@ -278,12 +315,25 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
       HEAD = size
       m.font = `${size}px ${FONT_XB}`
       head = wrapLines((s) => m.measureText(s).width, upper, TEXT_W)
-      if (head.length <= 4) break
+      if (head.length <= HEAD_MAX_LINES) break
     }
-    if (head.length > 4) head = wrapLines((s) => m.measureText(s).width, upper, TEXT_W, 4)
+    // REELS-9: never «…» — at the smallest size every line of the headline is kept.
     const HEAD_LH = Math.round(HEAD * 1.13)
-    m.font = `${SUM}px ${FONT_MD}`
-    const sum = wrapLines((s) => m.measureText(s).width, input.summary || input.headline, TEXT_W, 5)
+    // summary: as many whole sentences as fit, largest size first (never cut mid-sentence)
+    let SUM = SUM_SIZES[0]!
+    let sum: string[] = []
+    pick: for (const opt of summaryOptions(input.summary || input.headline)) {
+      for (const size of SUM_SIZES) {
+        m.font = `${size}px ${FONT_MD}`
+        const lines = wrapLines((s) => m.measureText(s).width, opt, TEXT_W)
+        if (lines.length <= SUM_MAX_LINES) {
+          SUM = size
+          sum = lines
+          break pick
+        }
+      }
+    }
+    const SUM_LH = Math.round(SUM * 1.38)
     const headY = TEXT_BOTTOM - head.length * HEAD_LH
     const kickY = headY - 62
     const sumY = TEXT_BOTTOM - sum.length * SUM_LH
@@ -325,8 +375,16 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
     })
 
     const brand = await loadBrand(root)
-    let image: Image | null = null
-    if (input.media.kind === 'image') image = await loadImage(input.media.data)
+    // REELS-9: every photo of the story, shown in turn with a soft cross-fade
+    const slides: Slide[] = []
+    if (input.media.kind === 'image') {
+      for (const buf of [input.media.data, ...(input.media.more ?? [])]) {
+        const img = await loadImage(buf).catch(() => null)
+        if (img && img.width > 0 && img.height > 0) slides.push(makeSlide(img))
+      }
+    }
+    const nSlides = Math.max(1, Math.min(slides.length, Math.floor(endStart / SLIDE_MIN_S) || 1))
+    const slideLen = endStart / nSlides
     const vid = input.media.kind === 'video' ? videoFrames(ffmpeg, input.media.path, frames, REEL_W, REEL_H) : null
     const vidCanvas = createCanvas(REEL_W, REEL_H)
     const vctx = vidCanvas.getContext('2d')
@@ -346,7 +404,19 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
         }
       }
       if (haveVid) ctx.drawImage(vidCanvas, 0, 0)
-      else if (image) drawCover(ctx, image, 0, 0, REEL_W, REEL_H, 1.06 + 0.1 * p, 0.5, 0.45)
+      else if (slides.length) {
+        const idx = Math.min(nSlides - 1, Math.floor(Math.min(t, endStart - 0.001) / slideLen))
+        const local = clamp01((t - idx * slideLen) / slideLen)
+        drawSlide(ctx, slides[idx]!, local)
+        // cross-fade into the next photo
+        const fadeIn = idx + 1 < nSlides ? span(t, (idx + 1) * slideLen - SLIDE_FADE_S, (idx + 1) * slideLen) : 0
+        if (fadeIn > 0) {
+          ctx.save()
+          ctx.globalAlpha *= fadeIn
+          drawSlide(ctx, slides[idx + 1]!, 0)
+          ctx.restore()
+        }
+      }
       else brandBackground(ctx, brand, t, p, accent, input.category)
 
       // bottom fade (lighter while the story's own video plays with sound)

@@ -221,13 +221,7 @@ export function SocialActionRail({
           </span>
         ) : null}
       </button>
-      <BaseSaveButton
-        saved={saved}
-        count={saveCount}
-        onToggle={onToggleSave}
-        loading={saveLoading}
-        variant="overlay"
-      />
+      {/* Instagram order: like · comment · share · save (FEED-UX-2) */}
       <BaseShareButton
         postId={articleId}
         slug={slug}
@@ -235,6 +229,13 @@ export function SocialActionRail({
         text={summary}
         variant="overlay"
         count={shareCount}
+      />
+      <BaseSaveButton
+        saved={saved}
+        count={saveCount}
+        onToggle={onToggleSave}
+        loading={saveLoading}
+        variant="overlay"
       />
       {viewLabel ? (
         <div

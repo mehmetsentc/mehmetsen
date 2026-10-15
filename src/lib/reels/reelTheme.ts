@@ -12,7 +12,8 @@ import { createCanvas, GlobalFonts, loadImage, type Canvas, type Image, type SKR
 import { REEL_FPS, REEL_H, REEL_W, ease } from './timeline'
 
 export type ReelMedia =
-  | { kind: 'image'; data: Buffer }
+  /** `more`: the story's other photos (REELS-9 slideshow), in order. */
+  | { kind: 'image'; data: Buffer; more?: Buffer[] }
   | { kind: 'video'; path: string }
   | { kind: 'none' }
 

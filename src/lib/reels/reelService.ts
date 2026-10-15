@@ -61,6 +61,8 @@ export type ReelSource = {
   categoryId: string
   place: string | null
   imageUrl: string | null
+  /** REELS-9: the story's other photos (gallery, extra images, body images), cover excluded. */
+  imageUrls?: string[]
   videoUrl: string | null
   mediaAllowed: boolean
   mediaBasis: string
@@ -100,6 +102,7 @@ export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUs
     categoryId,
     place: str(d.city) || null,
     imageUrl: extractImageUrl(d) ?? null,
+    imageUrls: reelPhotoUrlsFromDoc(d, extractImageUrl(d) ?? null).slice(1),
     videoUrl,
     mediaAllowed: verdict.ok || !!approval?.by || (!!policy.alwaysUseMedia && !!(videoUrl || extractImageUrl(d))),
     mediaBasis: verdict.ok ? verdict.basis : approval?.by ? 'studio_approved' : policy.alwaysUseMedia && (videoUrl || extractImageUrl(d)) ? 'studio_policy' : verdict.code,
@@ -222,6 +225,38 @@ export async function loadPresenterPhoto(url: string | null): Promise<Buffer | n
   }
 }
 
+const MAX_REEL_PHOTOS = 6
+
+/** REELS-9: every photo of a story (cover first), https only, no duplicates, no video files. */
+export function reelPhotoUrlsFromDoc(d: Record<string, unknown>, cover: string | null): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  const add = (v: unknown) => {
+    const u = typeof v === 'string' ? v.trim() : ''
+    if (!/^https:\/\//i.test(u) || /\.(mp4|mov|m3u8|webm)(\?|#|$)/i.test(u) || /\/api\/og\//.test(u)) return
+    const key = u.split('?')[0]!
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push(u)
+  }
+  add(cover)
+  for (const k of ['thumbnail', 'coverImageUrl', 'imageUrl', 'featuredImage', 'image']) add(d[k])
+  const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+  for (const m of list(d.mediaItems)) {
+    const o = (m ?? {}) as Record<string, unknown>
+    const type = String(o.type ?? '').toLowerCase()
+    if (!type || type === 'image') add(o.url)
+  }
+  for (const m of list(d.additionalImages)) add(typeof m === 'string' ? m : (m as Record<string, unknown> | null)?.url)
+  for (const m of list(d.galleryImages)) add(typeof m === 'string' ? m : (m as Record<string, unknown> | null)?.url)
+  for (const b of list(d.bodyBlocks)) {
+    const o = (b ?? {}) as Record<string, unknown>
+    if (o.type === 'image') add(o.url)
+    if (o.type === 'gallery') for (const g of list(o.images)) add((g as Record<string, unknown> | null)?.url)
+  }
+  return out.slice(0, MAX_REEL_PHOTOS)
+}
+
 /** Resolve licensed media (video file on disk or image bytes); brand panel otherwise. */
 export async function resolveReelMedia(src: ReelSource, tag: string): Promise<{ media: ReelMedia; tmp: string | null }> {
   if (!src.mediaAllowed) return { media: { kind: 'none' }, tmp: null }
@@ -232,7 +267,13 @@ export async function resolveReelMedia(src: ReelSource, tag: string): Promise<{ 
       await fs.writeFile(tmp, await fetchBytes(src.videoUrl))
       return { media: { kind: 'video', path: tmp }, tmp }
     }
-    if (src.imageUrl) return { media: { kind: 'image', data: await fetchBytes(src.imageUrl) }, tmp: null }
+    if (src.imageUrl) {
+      const data = await fetchBytes(src.imageUrl)
+      // the other photos are optional: a failed fetch just drops that slide
+      const more = (await Promise.allSettled((src.imageUrls ?? []).map((u) => fetchBytes(u))))
+        .flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+      return { media: { kind: 'image', data, ...(more.length ? { more } : {}) }, tmp: null }
+    }
   } catch (err) {
     console.warn('[reels] media fetch failed, using brand panel:', err instanceof Error ? err.message : err)
   }

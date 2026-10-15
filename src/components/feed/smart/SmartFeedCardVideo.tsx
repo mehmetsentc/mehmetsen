@@ -41,8 +41,11 @@ interface SmartFeedCardVideoProps {
   isActive: boolean
   poster?: string | null
   onUnusable?: () => void
-  /** FEED-VIDEO-1: 'contain' keeps the video's own size/aspect (default); 'cover' crops to the frame. */
-  fit?: 'contain' | 'cover'
+  /**
+   * FEED-VIDEO-1 / FEED-UX-2: 'auto' (default) fills the screen with an upright video (Reels)
+   * and shows a landscape one whole at its own aspect; 'contain' / 'cover' force one.
+   */
+  fit?: 'auto' | 'contain' | 'cover'
 }
 
 export function SmartFeedCardVideo({
@@ -50,7 +53,7 @@ export function SmartFeedCardVideo({
   isActive,
   poster,
   onUnusable,
-  fit = 'contain',
+  fit = 'auto',
 }: SmartFeedCardVideoProps) {
   const resolved = resolveFeedCardVideo(url)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -62,6 +65,9 @@ export function SmartFeedCardVideo({
   const [paused, setPaused] = useState(false)
   const [preferredMuted, setPreferredMuted] = useState(true)
   const [playerMuted, setPlayerMuted] = useState<boolean | null>(null)
+  const [upright, setUpright] = useState<boolean | null>(null)
+  const [progress, setProgress] = useState(0)
+  const objectFit = fit === 'auto' ? (upright === false ? 'contain' : 'cover') : fit
 
   const effectiveMuted = playerMuted ?? preferredMuted
 
@@ -247,8 +253,16 @@ export function SmartFeedCardVideo({
           ref={videoRef}
           src={resolved.url}
           poster={poster ?? undefined}
-          className={fit === 'cover' ? 'h-full w-full object-cover' : 'h-full w-full object-contain'}
-          data-video-fit={fit}
+          className={objectFit === 'cover' ? 'h-full w-full object-cover' : 'h-full w-full object-contain'}
+          data-video-fit={objectFit}
+          onLoadedMetadata={(event) => {
+            const v = event.currentTarget
+            if (v.videoWidth && v.videoHeight) setUpright(v.videoHeight >= v.videoWidth * 1.1)
+          }}
+          onTimeUpdate={(event) => {
+            const v = event.currentTarget
+            if (v.duration > 0) setProgress(Math.min(1, v.currentTime / v.duration))
+          }}
           playsInline
           muted
           loop
@@ -288,16 +302,29 @@ export function SmartFeedCardVideo({
         </div>
       ) : null}
 
+      {/* Sound: round button top right, under the category bar (Reels). */}
       <button
         type="button"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={toggleSound}
         aria-label={effectiveMuted ? 'Sesi aç' : 'Sesi kapat'}
-        className="absolute bottom-3 left-3 z-[3] flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white"
+        data-testid="smart-feed-video-sound"
+        className="absolute right-3 z-[3] flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 6rem)' }}
       >
-        {effectiveMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        {effectiveMuted ? 'Sessiz' : 'Sesli'}
+        {effectiveMuted ? <VolumeX className="h-[18px] w-[18px]" /> : <Volume2 className="h-[18px] w-[18px]" />}
+        <span className="sr-only">{effectiveMuted ? 'Sessiz' : 'Sesli'}</span>
       </button>
+      {resolved.kind === 'native' && isActive ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-[3] h-[2px] bg-white/25"
+          style={{ bottom: 'var(--feed-v2-bottom-clearance, 4.5rem)' }}
+          aria-hidden
+          data-testid="smart-feed-video-progress"
+        >
+          <div className="h-full bg-white" style={{ width: `${Math.round(progress * 1000) / 10}%` }} />
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -16,10 +16,11 @@ describe('FEED-VIDEO-1 video cards in the smart feed', () => {
   })
   it('videos keep their original size and a reel card does not repeat its copy', () => {
     const v = read('src/components/feed/smart/SmartFeedCardVideo.tsx')
-    expect(v).toContain("fit = 'contain'")
+    expect(v).toContain("fit = 'auto'")
     expect(v).toContain('object-contain')
+    expect(v).toContain('setUpright(v.videoHeight >= v.videoWidth * 1.1)')
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
-    expect(card).toContain('fit="contain"')
+    expect(card).toContain('fit="auto"')
     expect(card).toContain('isNahaberReelVideoUrl(item.video)')
     expect(card.match(/reelCard && 'sr-only'/g)?.length).toBe(2)
   })
