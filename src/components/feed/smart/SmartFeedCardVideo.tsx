@@ -41,6 +41,8 @@ interface SmartFeedCardVideoProps {
   isActive: boolean
   poster?: string | null
   onUnusable?: () => void
+  /** FEED-VIDEO-1: 'contain' keeps the video's own size/aspect (default); 'cover' crops to the frame. */
+  fit?: 'contain' | 'cover'
 }
 
 export function SmartFeedCardVideo({
@@ -48,6 +50,7 @@ export function SmartFeedCardVideo({
   isActive,
   poster,
   onUnusable,
+  fit = 'contain',
 }: SmartFeedCardVideoProps) {
   const resolved = resolveFeedCardVideo(url)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -244,7 +247,8 @@ export function SmartFeedCardVideo({
           ref={videoRef}
           src={resolved.url}
           poster={poster ?? undefined}
-          className="h-full w-full object-cover"
+          className={fit === 'cover' ? 'h-full w-full object-cover' : 'h-full w-full object-contain'}
+          data-video-fit={fit}
           playsInline
           muted
           loop

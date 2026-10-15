@@ -20,7 +20,7 @@ import { resolveFeedCardSkin } from '@/lib/feed/feedCardSkins'
 import { publisherAccentFromId } from '@/lib/feed/publisherAccent'
 import { FEED_READER_SURFACE_CLASS, FEED_V2_CHROME_CSS_VARS } from '@/lib/feed/reader/feedChrome'
 import { useFeedCardTapGestures } from '@/lib/feed/reader/useFeedCardTapGestures'
-import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
+import { isNahaberReelVideoUrl, resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import { SmartFeedCardVideo } from '@/components/feed/smart/SmartFeedCardVideo'
 import type { FeedItemDto } from '@/types/smartFeed'
 
@@ -203,6 +203,9 @@ export function FullscreenNewsCard({
   const videoEnabled = isSmartFeedVideoEnabledClient()
   const playableVideo = resolveFeedCardVideo(item.video)
   const showVideo = Boolean(videoEnabled && playableVideo && isActive && !videoError)
+  // FEED-VIDEO-1: a NaHaber reel already shows the headline + summary in the picture, so its
+  // card is the video at full height / original size and the copy is not repeated under it.
+  const reelCard = Boolean(videoEnabled && playableVideo && !videoError && isNahaberReelVideoUrl(item.video))
   const hasValidImage = Boolean(item.image && !imageError)
   const cat = categoryLabel(item.category)
   const timeLabel = formatRelativeTime(item.publishedAt)
@@ -614,9 +617,10 @@ export function FullscreenNewsCard({
             </div>
           ) : showVideo ? (
             <div
-              className={fullBleed ? CITY_HERO_FRAME : HERO_FRAME}
+              className={cn(fullBleed ? CITY_HERO_FRAME : HERO_FRAME, 'bg-black')}
               data-testid="smart-feed-fg-hero"
               data-feed-full-bleed={fullBleed ? '1' : undefined}
+              data-feed-video-card={reelCard ? 'reel' : 'video'}
               style={{
                 borderColor:
                   'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
@@ -628,16 +632,18 @@ export function FullscreenNewsCard({
                   src={item.image!}
                   alt=""
                   fill
-                  className="object-cover object-center"
+                  className="scale-110 object-cover object-center opacity-45 blur-2xl"
                   sizes="(max-width: 768px) 100vw, 44rem"
                   priority={heroEager}
                   loading={heroEager ? 'eager' : 'lazy'}
                 />
               ) : null}
+              {/* Original size: the whole video is visible (letterbox on the blurred photo). */}
               <SmartFeedCardVideo
                 url={item.video!}
                 isActive={isActive}
-                poster={item.image}
+                poster={reelCard ? null : item.image}
+                fit="contain"
                 onUnusable={() => setVideoError(true)}
               />
               {showSwipeDiscoveryCoach ? (
@@ -733,6 +739,7 @@ export function FullscreenNewsCard({
           )}
           data-testid="smart-feed-bottom-chrome"
           data-feed-copy-follows-hero="1"
+          data-feed-reel-card={reelCard ? '1' : undefined}
         >
           <div
             className="min-w-0 overflow-y-auto overscroll-y-contain touch-pan-y"
@@ -796,7 +803,8 @@ export function FullscreenNewsCard({
                   'dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]',
                   'text-[clamp(1.15rem,4.1vw,1.4rem)] font-extrabold leading-[1.22] tracking-[-0.02em]',
                   'transition-opacity duration-200',
-                  headlineReveal ? 'opacity-100' : 'opacity-0'
+                  headlineReveal ? 'opacity-100' : 'opacity-0',
+                  reelCard && 'sr-only'
                 )}
                 data-testid="smart-feed-headline"
                 data-feed-typewriter={showCursor ? '1' : '0'}
@@ -821,7 +829,8 @@ export function FullscreenNewsCard({
                     'text-[clamp(0.9rem,3.3vw,1.02rem)] font-medium leading-[1.45] text-[rgb(var(--color-body))] dark:text-white',
                     // With highlights: keep rail discoverable — presentation clamp only.
                     showDiscoveryRail ? 'line-clamp-4' : 'line-clamp-6',
-                    headlineDone ? 'opacity-100' : 'opacity-0'
+                    headlineDone ? 'opacity-100' : 'opacity-0',
+                    reelCard && 'sr-only'
                   )}
                   data-testid="smart-feed-summary"
                   data-feed-typewriter={cursorOn === 'summary' ? '1' : '0'}
