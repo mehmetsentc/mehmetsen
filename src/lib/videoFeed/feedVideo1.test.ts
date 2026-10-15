@@ -29,3 +29,12 @@ describe('FEED-VIDEO-1 video cards in the smart feed', () => {
     expect(card.match(/reelCard && 'sr-only'/g)?.length).toBeGreaterThanOrEqual(2)
   })
 })
+
+describe('FEED-SOUND-1 feed videos start with sound', () => {
+  it('sound is on by default, the viewer choice is remembered, blocked autoplay unmutes on first touch', () => {
+    const v = readFileSync(path.join(process.cwd(), 'src/components/feed/smart/SmartFeedCardVideo.tsx'), 'utf8')
+    expect(v).toContain("window.localStorage.getItem(FEED_SOUND_KEY) === 'off'")
+    expect(v).toContain('const [preferredMuted, setPreferredMuted] = useState(false)')
+    expect(v).toContain('onNextUserGesture(')
+  })
+})

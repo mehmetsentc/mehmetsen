@@ -16,25 +16,41 @@ import {
 import { youtubeEmbedParentOrigin, youtubeEmbedSrc } from '@/lib/videoFeed/youtubeEmbedOrigin'
 import { pauseOtherPageVideos } from '@/lib/videoPlayback'
 
-const FEED_AUDIO_KEY = 'nahaber-feed-v2-preferred-unmuted'
+/**
+ * FEED-SOUND-1: feed videos start WITH sound by default. The viewer's choice (speaker
+ * button) is remembered on this device and applies to every next video. Browsers that
+ * block autoplay with sound start the video muted and switch the sound on at the first
+ * touch / key press (unless the viewer has turned it off).
+ */
+const FEED_SOUND_KEY = 'nahaber-feed-v2-sound'
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 
-function readPreferredMuted(): boolean {
-  if (typeof window === 'undefined') return true
+export function readPreferredMuted(): boolean {
+  if (typeof window === 'undefined') return false
   try {
-    return window.sessionStorage.getItem(FEED_AUDIO_KEY) !== '1'
+    return window.localStorage.getItem(FEED_SOUND_KEY) === 'off'
   } catch {
-    return true
+    return false
   }
 }
 
 function persistPreferredMuted(muted: boolean) {
   try {
-    if (muted) window.sessionStorage.removeItem(FEED_AUDIO_KEY)
-    else window.sessionStorage.setItem(FEED_AUDIO_KEY, '1')
+    window.localStorage.setItem(FEED_SOUND_KEY, muted ? 'off' : 'on')
   } catch {
     /* ignore */
   }
+}
+
+/** Run `fn` once on the viewer's next touch / click / key press (a user activation). */
+function onNextUserGesture(fn: () => void): () => void {
+  const events = ['pointerup', 'touchend', 'keydown'] as const
+  const handler = () => {
+    events.forEach((e) => window.removeEventListener(e, handler, true))
+    fn()
+  }
+  events.forEach((e) => window.addEventListener(e, handler, { capture: true, passive: true }))
+  return () => events.forEach((e) => window.removeEventListener(e, handler, true))
 }
 
 interface SmartFeedCardVideoProps {
@@ -63,10 +79,11 @@ export function SmartFeedCardVideo({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const userPausedRef = useRef(false)
   const ytPlayerStateRef = useRef<number | null>(null)
-  const preferredMutedRef = useRef(true)
+  const preferredMutedRef = useRef(false)
+  const gestureUnmuteRef = useRef<(() => void) | null>(null)
   const [userPaused, setUserPaused] = useState(false)
   const [paused, setPaused] = useState(false)
-  const [preferredMuted, setPreferredMuted] = useState(true)
+  const [preferredMuted, setPreferredMuted] = useState(false)
   const [playerMuted, setPlayerMuted] = useState<boolean | null>(null)
   const [upright, setUpright] = useState<boolean | null>(null)
   const [progress, setProgress] = useState(0)
@@ -105,12 +122,26 @@ export function SmartFeedCardVideo({
       if (command === 'play') {
         pauseOtherPageVideos(el)
         void el.play().catch(() => {
+          // autoplay with sound blocked: play muted, turn the sound on at the first touch
           el.muted = true
           setPlayerMuted(true)
           void el.play().catch(() => {
             setPaused(true)
             onUnusable?.()
           })
+          if (!preferredMutedRef.current && !gestureUnmuteRef.current) {
+            gestureUnmuteRef.current = onNextUserGesture(() => {
+              gestureUnmuteRef.current = null
+              const v = videoRef.current
+              if (!v || preferredMutedRef.current || v.paused) return
+              v.muted = false
+              setPlayerMuted(false)
+              void v.play().catch(() => {
+                v.muted = true
+                setPlayerMuted(true)
+              })
+            })
+          }
         })
         setPaused(false)
       } else {
@@ -130,6 +161,9 @@ export function SmartFeedCardVideo({
   useEffect(() => {
     preferredMutedRef.current = preferredMuted
   }, [preferredMuted])
+
+  // drop a pending «sound on at first touch» when the card unmounts
+  useEffect(() => () => gestureUnmuteRef.current?.(), [])
 
   useEffect(() => {
     if (!resolved) {
