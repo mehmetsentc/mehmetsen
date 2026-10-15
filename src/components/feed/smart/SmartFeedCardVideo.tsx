@@ -310,7 +310,7 @@ export function SmartFeedCardVideo({
         aria-label={effectiveMuted ? 'Sesi aç' : 'Sesi kapat'}
         data-testid="smart-feed-video-sound"
         className="absolute right-3 z-[3] flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 6rem)' }}
+        style={{ top: '0.5rem' }}
       >
         {effectiveMuted ? <VolumeX className="h-[18px] w-[18px]" /> : <Volume2 className="h-[18px] w-[18px]" />}
         <span className="sr-only">{effectiveMuted ? 'Sessiz' : 'Sesli'}</span>
@@ -318,7 +318,7 @@ export function SmartFeedCardVideo({
       {resolved.kind === 'native' && isActive ? (
         <div
           className="pointer-events-none absolute inset-x-0 z-[3] h-[2px] bg-white/25"
-          style={{ bottom: 'var(--feed-v2-bottom-clearance, 4.5rem)' }}
+          style={{ bottom: 0 }}
           aria-hidden
           data-testid="smart-feed-video-progress"
         >

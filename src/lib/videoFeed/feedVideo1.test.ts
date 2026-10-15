@@ -20,7 +20,10 @@ describe('FEED-VIDEO-1 video cards in the smart feed', () => {
     expect(v).toContain('object-contain')
     expect(v).toContain('setUpright(v.videoHeight >= v.videoWidth * 1.1)')
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
-    expect(card).toContain('fit="auto"')
+    // FEED-UX-2c: the whole video is always visible, scaled to the space
+    expect(card).toContain('fit="contain"')
+    expect(card).toContain("const HERO_FRAME = 'relative min-h-0 w-full flex-1 overflow-hidden'")
+    expect(card).toContain('object-contain object-center')
     expect(card).toContain('isNahaberReelVideoUrl(item.video)')
     expect(card.match(/reelCard && 'sr-only'/g)?.length).toBe(2)
   })

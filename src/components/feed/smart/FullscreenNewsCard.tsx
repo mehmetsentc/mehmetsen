@@ -132,11 +132,14 @@ interface FullscreenNewsCardProps {
  */
 const MODE_NAV_CLEARANCE = 'pt-2'
 /**
- * FEED-UX-2: every card is full screen (Reels layout). The photo / video fills the
- * card behind the copy; category, headline, summary, Haberi Oku and the publisher
- * sit on it at the bottom, the social rail at the bottom right.
+ * FEED-UX-2c: full-screen card, media shown WHOLE. The photo / video sits in the space
+ * between the category bar and the copy, scaled to fit (object-contain) so nothing is
+ * cropped or spills over; a blurred copy of the photo fills the rest of the screen.
+ * Copy, Haberi Oku and the publisher sit below the media; the social rail bottom right.
  */
-const HERO_FRAME = 'absolute inset-0 z-0 overflow-hidden bg-black'
+const HERO_FRAME = 'relative min-h-0 w-full flex-1 overflow-hidden'
+/** Top room for the overlay header + category bar, so the media starts under it. */
+const MEDIA_TOP = 'calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 6.75rem)'
 const CITY_HERO_FRAME = HERO_FRAME
 
 /** Headline / summary are never cut: long text steps down in size instead (no line-clamp). */
@@ -392,7 +395,7 @@ export function FullscreenNewsCard({
         L3 — sharp foreground hero lives in chrome (not full-bleed competitor)
       */}
       <div className="pointer-events-none absolute inset-0 bg-black" data-testid="smart-feed-media">
-        {hasValidImage && isActive ? (
+        {hasValidImage && heroEager ? (
           <div className="absolute inset-0" data-testid="smart-feed-bg-blur" aria-hidden>
             <SafeNewsImage
               src={item.image!}
@@ -476,7 +479,8 @@ export function FullscreenNewsCard({
           at the bottom — do not inflate summary to eat height.
         */}
         <div
-          className="flex min-h-0 w-full flex-1 touch-pan-y flex-col"
+          className="flex min-h-0 w-full flex-1 touch-pan-y flex-col pb-2"
+          style={{ paddingTop: MEDIA_TOP }}
           data-testid="smart-feed-double-tap-zone"
           data-feed-open-touch-action="pan-y"
           data-feed-hero-flex="1"
@@ -505,20 +509,11 @@ export function FullscreenNewsCard({
                 src={item.image!}
                 alt={item.headline || ''}
                 fill
-                className="object-cover object-center"
+                className="object-contain object-center"
                 sizes="(max-width: 768px) 100vw, 44rem"
                 priority={heroEager}
                 loading={heroEager ? 'eager' : 'lazy'}
                 onError={() => setImageError(true)}
-              />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-[24%] bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
-              <div
-                className={cn(
-                  'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent',
-                  reelCard ? 'h-[34%] from-black/80' : 'h-[72%] from-black/95 via-black/65'
-                )}
-                aria-hidden
-                data-testid="smart-feed-hero-shade"
               />
               {playableVideo ? (
                 <span
@@ -540,7 +535,7 @@ export function FullscreenNewsCard({
             </div>
           ) : showVideo ? (
             <div
-              className={cn(fullBleed ? CITY_HERO_FRAME : HERO_FRAME, 'bg-black')}
+              className={fullBleed ? CITY_HERO_FRAME : HERO_FRAME}
               data-testid="smart-feed-fg-hero"
               data-feed-full-bleed={fullBleed ? '1' : undefined}
               data-feed-video-card={reelCard ? 'reel' : 'video'}
@@ -549,34 +544,13 @@ export function FullscreenNewsCard({
                   'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
               }}
             >
-              {hasValidImage ? (
-                <SafeNewsImage
-                  key={`fg-${item.articleId}-${heroEager ? 'now' : 'wait'}`}
-                  src={item.image!}
-                  alt=""
-                  fill
-                  className="scale-110 object-cover object-center opacity-45 blur-2xl"
-                  sizes="(max-width: 768px) 100vw, 44rem"
-                  priority={heroEager}
-                  loading={heroEager ? 'eager' : 'lazy'}
-                />
-              ) : null}
-              {/* Original size: the whole video is visible (letterbox on the blurred photo). */}
+              {/* Whole video, scaled to fit the space (blurred photo behind the card). */}
               <SmartFeedCardVideo
                 url={item.video!}
                 isActive={isActive}
                 poster={reelCard ? null : item.image}
-                fit="auto"
+                fit="contain"
                 onUnusable={() => setVideoError(true)}
-              />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-[24%] bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
-              <div
-                className={cn(
-                  'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent',
-                  reelCard ? 'h-[34%] from-black/80' : 'h-[72%] from-black/95 via-black/65'
-                )}
-                aria-hidden
-                data-testid="smart-feed-video-shade"
               />
 
               {showSwipeDiscoveryCoach ? (

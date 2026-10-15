@@ -6237,9 +6237,9 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat {
   padding-top: var(--feed-overlay-sat, env(safe-area-inset-top, 0px));
 }
 
-/* Same distance below the category row on Safari and Chrome. */
+/* FEED-UX-2: the social rail sits at the bottom right (Reels); the card sets `bottom`. */
 html[data-feed-overlay-chrome='1'] [data-testid='smart-feed-social-dock'] {
-  top: calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 11rem);
+  top: auto;
 }
 
 html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header {
@@ -6248,18 +6248,13 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header 
   min-height: 2.75rem;
 }
 
-/* Safari must not paint the system gray over Haberi Oku. */
+/* Safari must not paint the system gray over Haberi Oku. FEED-UX-2: the pill sits on the
+   photo / video in every theme, so it is always white with dark text. */
 [data-testid='smart-feed-read-cta'] {
   -webkit-appearance: none;
   appearance: none;
-  /* !important keeps Safari's system gray off; colors invert with the theme. */
-  background-color: rgb(var(--color-text)) !important;
-  color: rgb(var(--color-surface)) !important;
-}
-
-html.dark [data-testid='smart-feed-read-cta'] {
   background-color: #ffffff !important;
-  color: #000000 !important;
+  color: #0b1020 !important;
 }
 
 /* Reader footer is absolute; keep the scrollport above it so the last lines stay visible. */

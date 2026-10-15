@@ -13,7 +13,7 @@ describe('P18.3M feed-v2 Reels reference layout', () => {
     expect(card).toContain('ROUTES.AUTHOR')
     expect(card).toContain('smart-feed-copy-scroll')
     expect(card).toContain('smart-feed-card-progress')
-    expect(card).toContain('object-cover object-center')
+    expect(card).toContain('object-contain object-center') // FEED-UX-2c: whole photo, fitted
     expect(card).not.toMatch(/-webkit-line-clamp/)
     expect(card).toContain('Haberi Oku')
     expect(card).toContain('variant="overlay"')
