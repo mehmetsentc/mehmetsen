@@ -4,7 +4,7 @@ import 'server-only'
  * REELS-5 — NaHaber reel cover (1080×1920 JPEG) for the Instagram grid / Reels tab.
  * Instagram shows the cover 9:16 in the Reels tab and crops it to the centre 3:4
  * (y 240…1680) on the profile grid, so the logo, tag and headline all sit inside
- * that band. Looks: «manset» (photo full-bleed, big headline), «panel» (photo in a
+ * that band. Looks: «foto» (REELS-8 default: same card as the post / story), «manset» (photo full-bleed, big headline), «panel» (photo in a
  * rounded card on navy) and «bulten» (photo on top, white panel — same as the post card).
  * All text starts at the left margin (REELS-6).
  */
@@ -16,14 +16,15 @@ import {
   type Brand, type ReelStyle,
 } from './reelTheme'
 
-export type ReelCoverVariant = 'manset' | 'panel' | 'bulten'
+export type ReelCoverVariant = 'foto' | 'manset' | 'panel' | 'bulten'
 export const REEL_COVER_VARIANTS: ReadonlyArray<{ id: ReelCoverVariant; label: string }> = [
+  { id: 'foto', label: 'Foto' },
   { id: 'manset', label: 'Manşet' },
   { id: 'panel', label: 'Panel' },
   { id: 'bulten', label: 'Bülten' },
 ]
 export function isReelCoverVariant(v: unknown): v is ReelCoverVariant {
-  return v === 'manset' || v === 'panel' || v === 'bulten'
+  return v === 'foto' || v === 'manset' || v === 'panel' || v === 'bulten'
 }
 
 export type ReelCoverInput = {
@@ -127,7 +128,12 @@ export async function renderReelCover(input: ReelCoverInput, opts: { root?: stri
   const root = opts.root ?? process.cwd()
   ensureFonts(root)
   const brand = await loadBrand(root)
-  const variant: ReelCoverVariant = input.variant ?? 'manset'
+  const variant: ReelCoverVariant = input.variant ?? 'foto'
+  if (variant === 'foto') {
+    // REELS-8: same card as the post / image story (photo full-bleed, headline + summary)
+    const { renderHeadlineCard } = await import('./headlineCard')
+    return renderHeadlineCard({ headline: input.headline, summary: input.summary, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image }, 'story', opts)
+  }
   if (variant === 'bulten') {
     const { renderBulletinCard } = await import('./bulletinCard')
     return renderBulletinCard({ headline: input.headline, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image, summary: input.summary }, 'story', opts)

@@ -1,8 +1,8 @@
 import 'server-only'
 
 /**
- * REELS-6 — Post / image-story card in the NaHaber «Bülten» theme (same look as the
- * reels): photo on top, red category band, white panel with a left-aligned headline.
+ * REELS-8 — Post / image-story card in the NaHaber «Foto» theme (same look as the reel
+ * cover): photo full-bleed, logo top-left, category row, upper-case headline + summary.
  * Used by materializeBrandedOgForPublish before the legacy OG compositor; any failure
  * (assets not traced, render error, upload error) returns null and the legacy path runs.
  * Switch: studio setting postTheme ('nahaber' default | 'onyeditivi'), env SOCIAL_POST_THEME.
@@ -70,9 +70,9 @@ export async function nahaberThemeCard(
     if (!headline) return null
     const categoryId = str(context?.categoryId) || str(d.categoryId) || 'gundem'
     const { getCategoryLabel } = await import('@/lib/newsMapper')
-    const { renderBulletinCard } = await import('@/lib/reels/bulletinCard')
+    const { renderHeadlineCard } = await import('@/lib/reels/headlineCard')
     const breaking = context?.isBreaking ?? (d.isBreaking === true || categoryId === 'son-dakika')
-    const jpg = await renderBulletinCard(
+    const jpg = await renderHeadlineCard(
       {
         headline,
         summary: str(context?.summary) || str(d.socialStorySummary) || str(d.summary) || str(d.spot) || null,
@@ -80,7 +80,6 @@ export async function nahaberThemeCard(
         place: str(d.city) || null,
         breaking,
         image: await fetchImage(imageUrl),
-        dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }),
       },
       kind,
       { root },

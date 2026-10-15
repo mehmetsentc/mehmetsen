@@ -103,6 +103,7 @@ const MUSIC_TEXT: Record<string, [string, string]> = {
   none: ['Müziksiz', ''],
 }
 const COVER_TEXT: Record<string, [string, string]> = {
+  foto: ['Foto', 'tam foto, manşet + özet'],
   manset: ['Manşet', 'foto + büyük başlık'],
   panel: ['Panel', 'foto kartı + lacivert'],
   bulten: ['Bülten', 'foto + beyaz panel'],
@@ -222,7 +223,7 @@ export function ReelsStudio() {
   const [intro, setIntro] = useState('soft')
   const [outro, setOutro] = useState('logo')
   const [music, setMusic] = useState('auto')
-  const [cover, setCover] = useState('bulten')
+  const [cover, setCover] = useState('foto')
   const [layout, setLayout] = useState('dinamik')
   const [result, setResult] = useState<ReelResult | null>(null)
   const [busy, setBusy] = useState<null | 'plan' | 'render' | 'approve' | 'digest'>(null)
@@ -252,7 +253,7 @@ export function ReelsStudio() {
       setIntro((v) => (v === 'soft' ? r.data.defaults.intro : v))
       setOutro((v) => (v === 'logo' ? r.data.defaults.outro : v))
       setMusic((v) => (v === 'auto' ? r.data.defaults.music : v))
-      setCover((v) => (v === 'bulten' ? r.data.defaults.cover ?? 'bulten' : v))
+      setCover((v) => (v === 'foto' ? r.data.defaults.cover ?? 'foto' : v))
       setLayout((v) => (v === 'dinamik' ? r.data.defaults.layout ?? 'dinamik' : v))
     }
   }, [])
@@ -724,7 +725,7 @@ export function ReelsStudio() {
                     <OptionGrid items={pv?.options.music ?? Object.keys(MUSIC_TEXT)} value={music} onChange={setMusic} labels={MUSIC_TEXT} />
                   </Section>
                   <Section title="Instagram kapağı" hint={<span className="text-[10px] text-[rgb(var(--color-muted))]">profil ızgarası + Reels sekmesi</span>}>
-                    <OptionGrid items={(pv?.options.covers ?? [{ id: 'bulten', label: '' }, { id: 'manset', label: '' }, { id: 'panel', label: '' }]).map((c) => c.id)} value={cover} onChange={setCover} labels={COVER_TEXT} cols={3} />
+                    <OptionGrid items={(pv?.options.covers ?? [{ id: 'foto', label: '' }, { id: 'bulten', label: '' }, { id: 'manset', label: '' }, { id: 'panel', label: '' }]).map((c) => c.id)} value={cover} onChange={setCover} labels={COVER_TEXT} cols={2} />
                     {result?.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={result.coverUrl} alt="Reels kapağı" className="mt-2 h-40 rounded-lg border border-[rgb(var(--color-border))] object-cover" />

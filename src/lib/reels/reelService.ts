@@ -130,7 +130,7 @@ export type ReelBuildOptions = {
   voiceText?: string | null
   /** Preview the editor's decision without rendering. */
   dryRun?: boolean
-  /** REELS-5: cover look (manset | panel | bulten); default from studio settings. */
+  /** REELS-5/8: cover look (foto | manset | panel | bulten); default from studio settings. */
   cover?: string | null
   /** REELS-6/7: reel layout (dinamik | bulten | kart); default from studio settings. */
   layout?: string | null
@@ -309,8 +309,8 @@ async function coverFor(newsId: string, src: ReelSource, style: ReelStyle, varia
   return { url: await saveReelCover(newsId, src, style, variant), created: true }
 }
 
-type CoverVariant = 'manset' | 'panel' | 'bulten'
-const isCoverVariant = (v: unknown): v is CoverVariant => v === 'manset' || v === 'panel' || v === 'bulten'
+type CoverVariant = 'foto' | 'manset' | 'panel' | 'bulten'
+const isCoverVariant = (v: unknown): v is CoverVariant => v === 'foto' || v === 'manset' || v === 'panel' || v === 'bulten'
 type Layout = 'kart' | 'bulten' | 'dinamik'
 const isLayout = (v: unknown): v is Layout => v === 'kart' || v === 'bulten' || v === 'dinamik'
 
@@ -327,7 +327,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   const settings = await getReelVoiceSettings()
   const src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')
-  const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'bulten'
+  const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'foto'
   const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'dinamik'
   const slug = str(d.slug) || null
   const record = (url: string, coverUrl: string | null, m: { seconds?: number | null; persona?: string | null; style?: string | null; media?: string | null }) =>
