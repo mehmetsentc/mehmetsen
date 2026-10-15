@@ -32,9 +32,10 @@ import {
 import { publisherService } from '@/services/publisher/publisherService'
 import { publisherAdInventoryService } from '@/services/publisher/publisherAdInventoryService'
 
-// Published articles stay on the CDN for an hour. The homepage and breaking
-// strip refresh on their own shorter caches.
-export const revalidate = 3600
+// Published articles stay on the CDN for 3 hours (FinOps 15 Oct, was 1h: /haber/[slug]
+// was the largest ISR write source). Edits and unpublishes still drop the article's
+// `news:{slug}` tag and path, so corrections go live immediately.
+export const revalidate = 10800
 
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.

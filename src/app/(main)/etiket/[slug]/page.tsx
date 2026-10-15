@@ -13,7 +13,9 @@ import { getPostsByTag } from '@/services/newsService.server'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 
-export const revalidate = 300
+// FinOps 15 Oct: 3h (was 5 min). Tag data is cached 3h anyway (posts-by-tag-v2), so a
+// 5-minute page TTL only re-wrote ISR for long-tail tags (Vercel: writes > reads per path).
+export const revalidate = 10800
 
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.

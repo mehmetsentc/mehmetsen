@@ -124,7 +124,7 @@ describe('P0-C city host article rewrite', () => {
     expect(cityArticle).toContain("from '../../../(main)/haber/[slug]/page'")
     expect(cityArticle).toContain('generateMetadata')
     expect(cityArticle).toContain('revalidate')
-    expect(read('src/app/(main)/haber/[slug]/page.tsx')).toContain('revalidate = 3600')
+    expect(read('src/app/(main)/haber/[slug]/page.tsx')).toContain('revalidate = 10800')
     const cityLayout = read('src/app/city-site/layout.tsx')
     expect(cityLayout).toContain('CityLayoutClient')
   })

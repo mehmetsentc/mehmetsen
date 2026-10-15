@@ -13,7 +13,9 @@ import {
 } from '@/services/newsService.server'
 import { AuthorProfileClient } from '@/components/author/AuthorProfileClient'
 
-export const revalidate = 180
+// FinOps 15 Oct: 1h (was 3 min). Author data caches are 30 min; a 3-minute page TTL made
+// long-tail author pages write ISR more often than they were read.
+export const revalidate = 3600
 
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.

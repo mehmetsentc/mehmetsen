@@ -10,9 +10,9 @@ import { join } from 'node:path'
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8')
 
 const ROUTES = [
-  { file: 'src/app/(main)/haber/[slug]/page.tsx', revalidate: 3600 },
-  { file: 'src/app/(main)/etiket/[slug]/page.tsx', revalidate: 300 },
-  { file: 'src/app/(main)/yazar/[username]/page.tsx', revalidate: 180 },
+  { file: 'src/app/(main)/haber/[slug]/page.tsx', revalidate: 10800 },
+  { file: 'src/app/(main)/etiket/[slug]/page.tsx', revalidate: 10800 },
+  { file: 'src/app/(main)/yazar/[username]/page.tsx', revalidate: 3600 },
   { file: 'src/app/(main)/kategori/[id]/page.tsx', revalidate: 300 },
 ]
 
