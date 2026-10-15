@@ -10,6 +10,10 @@ import { REBUILD_STATUS_TR } from '@/services/crawler/ops/opsState'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+/** MOBILE-ADMIN-2: the snapshot takes ~20 s; editors get the last one for 2 min (?fresh=1 skips). */
+const CACHE_MS = 120_000
+let cached: { at: number; body: Record<string, unknown> } | null = null
+
 export async function GET(request: Request) {
   const auth = await verifyCmsToken(request, 'news:read')
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,13 +26,18 @@ export async function GET(request: Request) {
     })
   }
 
+  const fresh = new URL(request.url).searchParams.get('fresh') === '1'
+  if (!fresh && cached && Date.now() - cached.at < CACHE_MS) {
+    return NextResponse.json({ ...cached.body, cachedAt: new Date(cached.at).toISOString() })
+  }
+
   const store = new DrizzleCrawlerStore()
   const snapshot = await crawlerDashboardSnapshot(store)
   let ops = await readCrawlerOpsState(store)
   if (ops.rebuildStatus !== 'IDLE' && ops.rebuildStatus !== 'ERROR') {
     ops = await refreshRebuildProgress(store)
   }
-  return NextResponse.json({
+  const body: Record<string, unknown> = {
     postgres: true,
     ...snapshot,
     rebuild24h: {
@@ -45,5 +54,7 @@ export async function GET(request: Request) {
       multiSource: ops.multiSource,
       windowHours: ops.rebuildWindowHours,
     },
-  })
+  }
+  cached = { at: Date.now(), body }
+  return NextResponse.json(body)
 }

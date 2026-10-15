@@ -525,9 +525,9 @@ describe('Phase 4C.1 — authorized event + cost ledger', () => {
     expect(src).toContain("document.body.style.overflow = 'hidden'")
     expect(src).toContain("aria-label=\"Kapat\"")
     expect(src).toContain('<X ')
-    expect(src).toContain('Manuel Düzenle')
+    expect(src).toContain('Kendim yazayım') // MOBILE-ADMIN-2 (was «Manuel Düzenle»)
     expect(src).toContain('Kaynağı Aç')
-    expect(src).toContain('Olay Kümesini Gör')
+    expect(src).toContain('Aynı olay haberleri') // MOBILE-ADMIN-2
     expect(src).toContain('e.stopPropagation()')
     expect(src).toContain('createPortal')
     expect(src).toContain('closeDrawer()')

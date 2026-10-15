@@ -9,19 +9,19 @@ const TABS = [
   { href: '/admin/crawler/discover', label: 'Kaynak Keşfi' },
   { href: '/admin/crawler/sources', label: 'Kaynaklar' },
   { href: '/admin/crawler/raw-articles', label: 'Ham Haberler' },
-  { href: '/admin/crawler/clusters', label: 'Olay Kümeleri' },
-  { href: '/admin/crawler/queue', label: 'Ön-AI Kuyruk' },
+  { href: '/admin/crawler/clusters', label: 'Aynı Olay Haberleri' },
+  { href: '/admin/crawler/queue', label: 'AI Öncesi Seçim' },
   { href: '/admin/crawler/ai-drafts', label: 'AI Taslakları' },
-  { href: '/admin/crawler/ai-dispatch', label: 'AI Dispatch' },
-  { href: '/admin/crawler/ai-cost', label: 'AI Maliyet' },
+  { href: '/admin/crawler/ai-dispatch', label: 'Otomatik AI Yazımı' },
+  { href: '/admin/crawler/ai-cost', label: 'AI Maliyeti' },
   { href: '/admin/crawler/failures', label: 'Hatalar' },
-  { href: '/admin/crawler/health', label: 'Crawler Sağlığı' },
+  { href: '/admin/crawler/health', label: 'Toplama Durumu' },
 ]
 
 export function CrawlerSubnav() {
   const pathname = usePathname()
   return (
-    <nav className="flex flex-wrap gap-2">
+    <nav className="flex gap-2 max-lg:-mx-1 max-lg:overflow-x-auto max-lg:px-1 max-lg:pb-1 lg:flex-wrap [&::-webkit-scrollbar]:hidden">
       {TABS.map((tab) => {
         const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)
         return (
@@ -29,7 +29,7 @@ export function CrawlerSubnav() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              'rounded-lg px-3 py-1.5 text-sm font-medium',
+              'shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium',
               active
                 ? 'bg-[rgb(var(--color-brand))] text-white'
                 : 'bg-[rgb(var(--color-surface))] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]'

@@ -51,6 +51,7 @@ function listQueryFromUrl(url: URL): RawArticleListQuery {
     sourceId: url.searchParams.get('source') || url.searchParams.get('sourceId'),
     country: url.searchParams.get('country'),
     city: url.searchParams.get('city'),
+    category: url.searchParams.get('category'),
     status: url.searchParams.get('status'),
     qualityStatus:
       quality === 'EXTRACTED' ||

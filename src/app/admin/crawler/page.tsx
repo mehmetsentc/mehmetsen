@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AdminOsMetricGrid, AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
+import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 import { auth } from '@/lib/firebase/auth'
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -145,6 +146,7 @@ interface DashboardResponse {
 }
 
 export default function CrawlerDashboardPage() {
+  const isMobile = useIsMobileAdminViewport()
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -166,8 +168,8 @@ export default function CrawlerDashboardPage() {
 
   return (
     <AdminOsPageShell
-      title="Crawler Özeti"
-      subtitle="Türkiye ağı. AI dispatch kapalı. Kaynaklar adil kuyrukla çekilir."
+      title="Haber Toplama"
+      subtitle="Kaynak sitelerden otomatik haber toplama. Kaynaklar sırayla taranır."
     >
       <CrawlerSubnav />
       {error ? (
@@ -176,9 +178,9 @@ export default function CrawlerDashboardPage() {
         <>
           <p className="text-sm text-[rgb(var(--color-muted))]">
             Durum:{' '}
-            <strong>{data?.enabled ? 'GLOBAL_CRAWLER_ENABLED=true' : 'kapalı'}</strong>
-            {data?.aiDispatchEnabled ? ' · AI dispatch AÇIK' : ' · AI dispatch kapalı'}
-            {data?.postgres === false ? ' · Postgres tanımlı değil' : null}
+            <strong>{data?.enabled ? 'Haber toplama açık' : 'Haber toplama kapalı'}</strong>
+            {data?.aiDispatchEnabled ? ' · Otomatik AI yazımı AÇIK' : ' · Otomatik AI yazımı kapalı'}
+            {data?.postgres === false ? ' · Veritabanı bağlı değil' : null}
           </p>
           {data?.rebuild24h ? (
             <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
@@ -201,7 +203,7 @@ export default function CrawlerDashboardPage() {
           ) : null}
           {data?.freshness ? (
             <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
-              <h2 className="mb-2 text-sm font-semibold">Tazelik / Cron Sağlığı</h2>
+              <h2 className="mb-2 text-sm font-semibold">Toplama hattı tazeliği</h2>
               <p className="mb-3 text-xs text-[rgb(var(--color-muted))]">
                 Durum: <strong>{data.freshness.status}</strong>
                 {data.freshness.reason ? ` · ${data.freshness.reason}` : null}
@@ -209,41 +211,46 @@ export default function CrawlerDashboardPage() {
               <AdminOsMetricGrid
                 items={[
                   { label: 'Son Haber Keşfi', value: fmtTs(data.freshness.sonHaberKesfi) },
-                  { label: 'Son Full Scrape', value: fmtTs(data.freshness.sonFullScrape) },
+                  { label: 'Son tam tarama', value: fmtTs(data.freshness.sonFullScrape) },
                   { label: 'Son Kümeleme', value: fmtTs(data.freshness.sonKumeleme) },
-                  { label: 'Bekleyen URL', value: fmt(data.freshness.bekleyenUrl) },
+                  { label: 'Bekleyen bağlantı', value: fmt(data.freshness.bekleyenUrl) },
                   { label: 'En Eski Bekleyen', value: fmtTs(data.freshness.enEskiBekleyen) },
-                  { label: 'Son 15 dk Yeni URL', value: fmt(data.freshness.son15dkYeniUrl) },
-                  { label: 'Son 15 dk Full Scrape', value: fmt(data.freshness.son15dkFullScrape) },
+                  { label: 'Son 15 dk yeni bağlantı', value: fmt(data.freshness.son15dkYeniUrl) },
+                  { label: 'Son 15 dk tam tarama', value: fmt(data.freshness.son15dkFullScrape) },
                   { label: 'Son 15 dk Oluşan Olay', value: fmt(data.freshness.son15dkOlustanOlay) },
                 ]}
               />
             </section>
           ) : null}
+          {/* MOBILE-ADMIN-2: on a phone the ~40 detail numbers stay folded under one line */}
+          <details className="group" open={isMobile === false ? true : undefined}>
+          <summary className="mb-2 cursor-pointer list-none text-sm font-semibold lg:hidden">
+            Ayrıntılı sayılar <span className="text-[rgb(var(--color-muted))]">(dokun)</span>
+          </summary>
           <AdminOsMetricGrid
             items={[
               { label: 'Aktif kaynak', value: fmt(data?.activeSources) },
               { label: 'Sıradaki kaynak', value: fmt(data?.sourcesDue) },
-              { label: 'Keşfedilen URL', value: fmt(data?.urlsDiscovered) },
-              { label: 'Tekil URL', value: fmt(data?.uniqueUrls ?? data?.newUrls) },
+              { label: 'Bulunan bağlantı', value: fmt(data?.urlsDiscovered) },
+              { label: 'Tekil bağlantı', value: fmt(data?.uniqueUrls ?? data?.newUrls) },
               { label: 'Düşük kalite hariç', value: fmt(data?.lowQualityExcluded) },
               { label: 'Çok kaynaklı olay', value: fmt(data?.funnel?.multiSourceClusters) },
               { label: 'Önlenen mükerrer iş', value: fmt(data?.funnel?.duplicateArticleJobsAvoided ?? data?.funnel?.avoidedDuplicateEventJobs) },
-              { label: 'Gerçek AI istek', value: fmt(data?.funnel?.actualAiRequests ?? data?.aiRequests), tone: 'ok' },
-              { label: 'Yeni URL', value: fmt(data?.newUrls) },
+              { label: 'AI\'a giden', value: fmt(data?.funnel?.actualAiRequests ?? data?.aiRequests), tone: 'ok' },
+              { label: 'Yeni bağlantı', value: fmt(data?.newUrls) },
               { label: 'Çekilen haber', value: fmt(data?.articlesFetched) },
               { label: 'Başarılı çıkarım', value: fmt(data?.extractionSuccess) },
               { label: 'Başarısız çıkarım', value: fmt(data?.extractionFailed) },
-              { label: 'HTTP istekleri', value: fmt(data?.httpRequests) },
-              { label: 'Tarayıcı istekleri', value: fmt(data?.browserRequests) },
+              { label: 'Site istekleri', value: fmt(data?.httpRequests) },
+              { label: 'Tarayıcıyla açılan', value: fmt(data?.browserRequests) },
               { label: 'Mükerrer', value: fmt(data?.duplicatesRemoved) },
-              { label: 'Kaçınılan AI', value: fmt(data?.aiRequestsAvoided) },
+              { label: 'AI\'sız geçilen', value: fmt(data?.aiRequestsAvoided) },
               { label: 'AI’sız haber', value: fmt(data?.extractionSuccess) },
               { label: 'Düşük güven', value: fmt(data?.lowConfidence) },
               { label: 'Zayıf kaynak', value: fmt(data?.degradedSources) },
               { label: 'Duraklatılan', value: fmt(data?.pausedSources) },
               { label: 'Ham Haberler', value: fmt(data?.editorial?.rawArticles ?? data?.funnel?.rawArticles) },
-              { label: 'Olay Kümeleri', value: fmt(data?.editorial?.uniqueEvents ?? data?.funnel?.uniqueEvents) },
+              { label: 'Aynı olay grubu', value: fmt(data?.editorial?.uniqueEvents ?? data?.funnel?.uniqueEvents) },
               { label: 'İzlenen', value: fmt(data?.editorial?.watching ?? data?.funnel?.watching) },
               { label: 'Uygun', value: fmt(data?.editorial?.eligible ?? data?.funnel?.aiEligibleEvents) },
               { label: 'AI İçin Onaylanan', value: fmt(data?.editorial?.approvedForAi) },
@@ -256,15 +263,16 @@ export default function CrawlerDashboardPage() {
               { label: '24 Saatten Eski', value: fmt(data?.editorial?.olderThan24h) },
               { label: '24 Saatten Eski Onaylı', value: fmt(data?.editorial?.staleApproved) },
               { label: 'Gerçek AI maliyeti', value: '$0', tone: 'ok' },
-              { label: 'Tahmini AI maliyeti', value: data?.editorial?.estimatedCostLabel || data?.funnel?.estimatedCostLabel || 'COST_UNKNOWN' },
+              { label: 'Tahmini AI maliyeti', value: (data?.editorial?.estimatedCostLabel || data?.funnel?.estimatedCostLabel || 'Bilinmiyor').replace('COST_UNKNOWN', 'Bilinmiyor') },
               { label: 'Otomatik AI istek', value: fmt(data?.editorial?.automaticAiRequests ?? 0), tone: 'ok' },
               { label: 'Görselli haber', value: fmt(data?.articlesWithPrimaryImage) },
               { label: 'Görselsiz haber', value: fmt(data?.articlesWithoutImage) },
               { label: 'Editör reddetti', value: fmt(data?.editorial?.editorRejected) },
               { label: 'Arşivlenen', value: fmt(data?.editorial?.archived) },
-              { label: 'AI dispatch', value: data?.editorial?.dispatchEnabled ? 'AÇIK' : 'KAPALI', tone: 'ok' },
+              { label: 'Otomatik AI yazımı', value: data?.editorial?.dispatchEnabled ? 'AÇIK' : 'KAPALI', tone: 'ok' },
             ]}
           />
+          </details>
           {data?.editorial?.pipeline ? (
             <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">
               <h2 className="mb-3 text-sm font-semibold">Haber hattı</h2>
@@ -295,10 +303,10 @@ export default function CrawlerDashboardPage() {
               <h2 className="mb-3 text-sm font-semibold">Haber Giriş Hatları</h2>
               <AdminOsMetricGrid
                 items={[
-                  { label: 'Global Crawler', value: data.ingestionLanes.crawler || '—' },
-                  { label: 'Legacy RSS Keşfi', value: data.ingestionLanes.legacyRssDiscovery || '—' },
-                  { label: 'Legacy Doğrudan AI', value: data.ingestionLanes.legacyDirectAi || 'Kapalı', tone: data.ingestionLanes.legacyDirectAi === 'Kapalı' ? 'ok' : 'warn' },
-                  { label: 'Crawler AI Dispatch', value: data.ingestionLanes.crawlerAiDispatch || 'Kapalı', tone: 'ok' },
+                  { label: 'Haber toplama', value: data.ingestionLanes.crawler || '—' },
+                  { label: 'Eski RSS keşfi', value: data.ingestionLanes.legacyRssDiscovery || '—' },
+                  { label: 'Eski doğrudan AI', value: data.ingestionLanes.legacyDirectAi || 'Kapalı', tone: data.ingestionLanes.legacyDirectAi === 'Kapalı' ? 'ok' : 'warn' },
+                  { label: 'Otomatik AI yazımı', value: data.ingestionLanes.crawlerAiDispatch || 'Kapalı', tone: 'ok' },
                   { label: 'Manuel AI Editörü', value: data.ingestionLanes.manualEditor || 'Kullanılabilir', tone: 'ok' },
                   { label: 'Crawler URL (bugün)', value: fmt(data.ingestionLanes.last24h?.crawlerUrls) },
                   { label: 'Legacy RSS URL', value: fmt(data.ingestionLanes.last24h?.legacyRssUrls) },

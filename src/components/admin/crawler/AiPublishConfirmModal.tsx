@@ -25,8 +25,8 @@ export function AiPublishConfirmModal({
   return (
     <CrawlerConfirmModal
       open={open}
-      title="AI için onayla"
-      confirmLabel="AI için onayla"
+      title="AI ile yaz"
+      confirmLabel="AI ile yaz"
       busy={busy}
       onClose={onClose}
       onConfirm={() => ack && onConfirm()}
@@ -35,8 +35,8 @@ export function AiPublishConfirmModal({
       <div className="space-y-3 text-sm">
         <p>
           <strong>{count}</strong> ham haber seçildi. AI şimdi yazar; siteye kendiliğinden çıkmaz.
-          Hazırlananlar <strong>Yayın Odası → Onay Bekliyor</strong> taslağı olur. Kuyrukta bekleyen
-          onaylar da bu turda yazılır.
+          Hazırlananlar <strong>Onay bekleyenler</strong> listesine düşer. Sırada bekleyenler de bu
+          turda yazılır.
         </p>
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
           Yazım bitene kadar bu pencere açık kalır. Bitenler{' '}

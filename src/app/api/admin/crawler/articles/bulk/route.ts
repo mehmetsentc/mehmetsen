@@ -32,8 +32,20 @@ function filterFrom(body: Record<string, unknown>): RawArticleListQuery {
     sourceId: typeof body.source === 'string' ? body.source : typeof body.sourceId === 'string' ? body.sourceId : null,
     country: typeof body.country === 'string' ? body.country : null,
     city: typeof body.city === 'string' ? body.city : null,
+    category: typeof body.category === 'string' ? body.category : null,
     status: typeof body.status === 'string' ? body.status : null,
-    qualityStatus: quality === 'EXTRACTED' || quality === 'LOW_CONFIDENCE' || quality === 'FAILED' ? quality : null,
+    // same quality values as the list (so «select all matching» never widens the filter)
+    qualityStatus:
+      quality === 'EXTRACTED' ||
+      quality === 'GOOD' ||
+      quality === 'LOW_CONFIDENCE' ||
+      quality === 'FAILED' ||
+      quality === 'TOO_SHORT' ||
+      quality === 'PARTIAL' ||
+      quality === 'EXTRACTION_FAILED' ||
+      quality === 'STALE'
+        ? quality
+        : null,
     dateFrom: parseDate(body.dateFrom),
     dateTo: parseDate(body.dateTo),
     search: typeof body.search === 'string' ? body.search : null,

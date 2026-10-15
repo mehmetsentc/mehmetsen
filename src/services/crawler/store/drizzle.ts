@@ -1337,6 +1337,28 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       duplicates: row.duplicates,
     }))
 
+    // MOBILE-ADMIN-2: city / category counts for the filter sheet (optional — never fail the list)
+    const catExpr = sql<string | null>`coalesce(${newsClusters.categoryHint}, ${newsClusters.category})`
+    const [cities, categories] = await Promise.all([
+      this.db()
+        .select({ city: rawArticles.city, articleCount: sql<number>`count(*)::int` })
+        .from(rawArticles)
+        .where(this.rawArticleFilters({ ...query, city: null }))
+        .groupBy(rawArticles.city)
+        .orderBy(sql`count(*) desc`)
+        .limit(60)
+        .catch(() => []),
+      this.db()
+        .select({ category: catExpr, articleCount: sql<number>`count(*)::int` })
+        .from(rawArticles)
+        .leftJoin(newsClusters, eq(newsClusters.id, rawArticles.clusterId))
+        .where(this.rawArticleFilters({ ...query, category: null }))
+        .groupBy(catExpr)
+        .orderBy(sql`count(*) desc`)
+        .limit(30)
+        .catch(() => []),
+    ])
+
     const summary = {
       total,
       sourceCount: summaryAgg?.sources ?? sources.length,
@@ -1372,6 +1394,8 @@ export class DrizzleCrawlerStore implements CrawlerStore {
         totalPages,
         summary,
         sources,
+        cities,
+        categories,
         groups,
         queueCounts: queueCountsFromStatuses(breakdown.counts, 0, breakdown.activeExactDuplicates),
       }
@@ -1389,7 +1413,7 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       .offset((page - 1) * pageSize)
     const articles: RawArticleListRow[] = rows.map((r) => ({ ...mapRaw(r.article), sourceName: r.sourceName }))
     const queueCounts = queueCountsFromStatuses(breakdown.counts, 0, breakdown.activeExactDuplicates)
-    return { articles, total, page, pageSize, totalPages, summary, sources, queueCounts }
+    return { articles, total, page, pageSize, totalPages, summary, sources, cities, categories, queueCounts }
   }
 
   private rawArticleOrder(query: RawArticleListQuery) {
@@ -1431,6 +1455,11 @@ export class DrizzleCrawlerStore implements CrawlerStore {
     if (query.sourceId) parts.push(eq(rawArticles.sourceId, query.sourceId))
     if (query.country) parts.push(eq(rawArticles.countryCode, query.country.toUpperCase()))
     if (query.city) parts.push(ilike(rawArticles.city, query.city))
+    if (query.category === 'none') {
+      parts.push(sql`not exists (select 1 from ${newsClusters} nc where nc.id = ${rawArticles.clusterId} and coalesce(nc.category_hint, nc.category) is not null)`)
+    } else if (query.category) {
+      parts.push(sql`exists (select 1 from ${newsClusters} nc where nc.id = ${rawArticles.clusterId} and lower(coalesce(nc.category_hint, nc.category)) = lower(${query.category}))`)
+    }
     if (query.qualityStatus) parts.push(eq(rawArticles.qualityStatus, query.qualityStatus))
     if (query.editorialStatus) parts.push(eq(rawArticles.editorialStatus, query.editorialStatus))
     else {

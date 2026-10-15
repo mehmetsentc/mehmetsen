@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel } from '@/services/crawler/editorial/labels'
+import { EDITORIAL_STATUS_LABELS, crawlerStatusLabel, extractionMethodLabel, imageSourceLabel } from '@/services/crawler/editorial/labels'
 
 interface MediaRow {
   sourceUrl: string
@@ -175,30 +175,30 @@ export function RawArticleDrawer({
             </dd>
             <dt className="text-[rgb(var(--color-muted))]">Yayın tarihi</dt>
             <dd>{fmtDate(article.publishedAt)}</dd>
-            <dt className="text-[rgb(var(--color-muted))]">Scrape zamanı</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Bize geldiği saat</dt>
             <dd>{fmtDate(article.fetchedAt)}</dd>
-            <dt className="text-[rgb(var(--color-muted))]">Coğrafya</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Ülke / şehir</dt>
             <dd>{[article.countryCode, article.city, article.district].filter(Boolean).join(' / ') || '—'}</dd>
             <dt className="text-[rgb(var(--color-muted))]">Kelime</dt>
             <dd>{article.wordCount ?? '—'}</dd>
-            <dt className="text-[rgb(var(--color-muted))]">Güven</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Metin doğruluğu</dt>
             <dd>
               {article.extractionConfidence != null
                 ? `${Math.round(article.extractionConfidence * 100)}%`
                 : '—'}
             </dd>
-            <dt className="text-[rgb(var(--color-muted))]">Extraction</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Metin alma</dt>
             <dd>
-              {crawlerStatusLabel(article)} {article.extractionMethod ? `· ${article.extractionMethod}` : ''}
+              {crawlerStatusLabel(article)} {article.extractionMethod ? `· ${extractionMethodLabel(article.extractionMethod)}` : ''}
             </dd>
-            <dt className="text-[rgb(var(--color-muted))]">Editoryal</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Durum</dt>
             <dd>
               {EDITORIAL_STATUS_LABELS[article.editorialStatus as keyof typeof EDITORIAL_STATUS_LABELS] ||
                 article.editorialStatus}
             </dd>
-            <dt className="text-[rgb(var(--color-muted))]">Provenance</dt>
+            <dt className="text-[rgb(var(--color-muted))]">Görsel kaynağı</dt>
             <dd>
-              {primary?.imageSource || article.primaryImageMethod || '—'}
+              {imageSourceLabel(primary?.imageSource || article.primaryImageMethod)}
               {primary?.imageConfidence != null ? ` · ${Math.round(primary.imageConfidence * 100)}%` : ''}
             </dd>
           </dl>
@@ -230,7 +230,7 @@ export function RawArticleDrawer({
               </a>
             ) : (
               <button type="button" className="underline" disabled={busy} onClick={onManual}>
-                {busy ? 'Açılıyor…' : 'Manuel Düzenle'}
+                {busy ? 'Açılıyor…' : 'Kendim yazayım'}
               </button>
             )}
             <a className="underline" href={sourceUrl} target="_blank" rel="noreferrer">
@@ -238,7 +238,7 @@ export function RawArticleDrawer({
             </a>
             {article.clusterId ? (
               <a className="underline" href={`/admin/crawler/clusters/${article.clusterId}`}>
-                Olay Kümesini Gör
+                Aynı olay haberleri
               </a>
             ) : null}
           </div>

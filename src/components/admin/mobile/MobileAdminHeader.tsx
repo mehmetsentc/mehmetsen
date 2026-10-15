@@ -12,6 +12,12 @@ import { cn } from '@/lib/utils'
 const PRIMARY_EXACT = new Set(['/admin', '/admin/approvals', '/admin/news', '/admin/menu', '/admin/social/shares'])
 
 const NESTED_TITLES: { prefix: string; title: string; backHref: string }[] = [
+  { prefix: '/admin/crawler/raw-articles', title: 'Ham Haberler', backHref: '/admin/menu' },
+  { prefix: '/admin/crawler/clusters', title: 'Aynı Olay Haberleri', backHref: '/admin/crawler' },
+  { prefix: '/admin/crawler/queue', title: 'AI Öncesi Seçim', backHref: '/admin/crawler' },
+  { prefix: '/admin/crawler/ai-dispatch', title: 'Otomatik AI Yazımı', backHref: '/admin/crawler' },
+  { prefix: '/admin/crawler/health', title: 'Toplama Durumu', backHref: '/admin/crawler' },
+  { prefix: '/admin/crawler', title: 'Haber Toplama', backHref: '/admin/menu' },
   { prefix: '/admin/inbox', title: 'Mail Kutusu', backHref: '/admin/menu' },
   { prefix: '/admin/submissions', title: 'Gönderiler', backHref: '/admin/menu' },
   { prefix: '/admin/job-classifieds', title: 'İş Kariyer', backHref: '/admin/menu' },

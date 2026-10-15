@@ -166,6 +166,8 @@ export interface RawArticleListQuery {
   sourceId?: string | null
   country?: string | null
   city?: string | null
+  /** MOBILE-ADMIN-2: event category (news_clusters.category_hint / category); 'none' = no category. */
+  category?: string | null
   status?: string | null
   qualityStatus?: CrawlerQualityStatus | null
   dateFrom?: Date | null
@@ -226,6 +228,9 @@ export interface RawArticleListResult {
   summary: RawArticleInboxSummary
   queueCounts?: RawArticleQueueCounts
   sources: RawArticleSourceFacet[]
+  /** MOBILE-ADMIN-2 facets for the mobile filter sheet (counts for the current filter). */
+  cities?: Array<{ city: string | null; articleCount: number }>
+  categories?: Array<{ category: string | null; articleCount: number }>
   groups?: Array<RawArticleSourceFacet & { articles: RawArticleListRow[] }>
 }
 

@@ -5,10 +5,48 @@ import type {
 } from '../types'
 import { classifyCrawlerFailure, type CrawlerFailureClass } from '../failures/classify'
 
+/** MOBILE-ADMIN-2: how the text was read from the source page, in plain Turkish. */
+export function extractionMethodLabel(method: string | null | undefined): string {
+  const m = (method || '').toLowerCase()
+  if (!m) return '—'
+  if (m.includes('jsonld') || m.includes('json-ld') || m.includes('schema')) return 'yapısal veri'
+  if (m.includes('readability')) return 'sayfa metni'
+  if (m.includes('rss') || m.includes('feed')) return 'RSS akışı'
+  if (m.includes('amp')) return 'mobil sayfa'
+  if (m.includes('browser') || m.includes('playwright')) return 'tarayıcıyla açıldı'
+  if (m.includes('og') || m.includes('meta')) return 'sayfa özeti'
+  return 'diğer'
+}
+
+/** Where the main photo came from (was «Provenance»). */
+export function imageSourceLabel(source: string | null | undefined): string {
+  const s = (source || '').toLowerCase()
+  if (!s) return '—'
+  if (s.includes('manual')) return 'elle seçildi'
+  if (s.includes('og')) return 'sayfa paylaşım görseli'
+  if (s.includes('jsonld') || s.includes('schema')) return 'yapısal veri'
+  if (s.includes('rss') || s.includes('feed')) return 'RSS akışı'
+  if (s.includes('body') || s.includes('content') || s.includes('article')) return 'haber metni içinden'
+  return 'diğer'
+}
+
+/**
+ * Why a raw story was not sent to AI — never show system codes («X_ENABLED=false») to editors.
+ * Returns null when the reason is the global «automatic AI writing is off» switch: the page
+ * says that once at the top instead of on every row.
+ */
+export function aiSkipReasonLabel(reason: string | null | undefined): string | null {
+  const r = (reason || '').trim()
+  if (!r) return null
+  if (/CRAWLER_AI_DISPATCH_ENABLED\s*=\s*false/i.test(r)) return null
+  if (/^[A-Z0-9_]+\s*=/.test(r) || /^[A-Z0-9_]{6,}$/.test(r)) return 'Sistem ayarı nedeniyle AI\'a gönderilmedi'
+  return r
+}
+
 export const EDITORIAL_STATUS_LABELS: Record<CrawlerEditorialStatus, string> = {
   NEW: 'Yeni',
   IN_REVIEW: 'İncelemede',
-  AI_CANDIDATE: 'AI Adayı',
+  AI_CANDIDATE: 'AI için işaretli',
   REJECTED: 'Reddedildi',
   ARCHIVED: 'Arşiv',
   DELETED: 'Silindi',

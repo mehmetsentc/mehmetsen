@@ -38,6 +38,9 @@ import { loadAdminJson } from '@/lib/adminApiError'
 import { parseApiResponse } from '@/lib/parseApiResponse'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import { clusterCategoryLabel, realAgendaBadgeLabel, sameEventBadgeLabel } from '@/services/crawler/editorial/eventDesk'
+import { aiSkipReasonLabel } from '@/services/crawler/editorial/labels'
+import { MobileRawArticles } from '@/components/admin/crawler/MobileRawArticles'
+import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -101,6 +104,8 @@ interface ListResponse {
     duplicates: number
   }
   sources?: Array<{ sourceId: string; sourceName: string; articleCount: number }>
+  cities?: Array<{ city: string | null; articleCount: number }>
+  categories?: Array<{ category: string | null; articleCount: number }>
   queueCounts?: {
     active: number
     published: number
@@ -176,7 +181,9 @@ function CrawlerArticlesInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { can, isSuperAdmin, loading: authLoading } = useCmsAuth()
+  const isMobile = useIsMobileAdminViewport()
   const [data, setData] = useState<ListResponse | null>(null)
+  const [loadingList, setLoadingList] = useState(true)
   const [detail, setDetail] = useState<ArticleRow | null>(null)
   const [detailMedia, setDetailMedia] = useState<
     Array<{
@@ -241,9 +248,11 @@ function CrawlerArticlesInner() {
 
   const load = useCallback(async () => {
     setError(null)
+    setLoadingList(true)
     const result = await loadAdminJson<ListResponse>(`/api/admin/crawler/articles?${queryString}`, {
       headers: await authHeaders(),
     })
+    setLoadingList(false)
     if (!result.ok) {
       setError(result.error)
       setData(null)
@@ -263,6 +272,7 @@ function CrawlerArticlesInner() {
         source: searchParams.get('source'),
         country: searchParams.get('country'),
         city: searchParams.get('city'),
+        category: searchParams.get('category'),
         status: searchParams.get('status'),
         qualityStatus: searchParams.get('qualityStatus'),
         hasImage: searchParams.get('hasImage'),
@@ -323,6 +333,7 @@ function CrawlerArticlesInner() {
       source: searchParams.get('source'),
       country: searchParams.get('country'),
       city: searchParams.get('city'),
+      category: searchParams.get('category'),
       status: searchParams.get('status'),
       qualityStatus: searchParams.get('qualityStatus'),
       hasImage: searchParams.get('hasImage'),
@@ -397,10 +408,10 @@ function CrawlerArticlesInner() {
       if (!res.ok) throw new Error(body.error || 'İşlem başarısız')
       const labels: Record<string, string> = {
         review: `${body.affected} haber incelemeye alındı.`,
-        ai_candidate: `${body.affected} haber AI adayı olarak işaretlendi.`,
+        ai_candidate: `${body.affected} haber AI için işaretlendi.`,
         reject: `${body.affected} haber reddedildi.`,
         archive: `${body.affected} haber arşivlendi.`,
-        delete: `${body.affected} haber silindi (${body.tombstoned} tombstone, ${body.hardDeleted} kalıcı).`,
+        delete: `${body.affected} haber silindi.`,
       }
       notifyCrawlerBulk(body, labels[op] || 'İşlem tamam')
       setSelection(clearSelection(filterKey))
@@ -450,8 +461,8 @@ function CrawlerArticlesInner() {
   const aiPublishHint = authLoading
     ? 'Yetki yükleniyor…'
     : !canAiPublish
-      ? 'Yayın yetkisi (news:publish) gerekli'
-      : 'Seçili haberleri AI yazar, Onay Bekliyor taslağı olur'
+      ? 'Bu işlem için yayın yetkisi gerekli'
+      : 'Seçili haberleri AI yazar, Onay bekleyenler’e düşer'
   const sortCol = searchParams.get('sort')
   const sortOrder = searchParams.get('order')
 
@@ -511,7 +522,7 @@ function CrawlerArticlesInner() {
         <option value="without">Görselsiz</option>
       </select>
       <select name="editorialStatus" defaultValue={searchParams.get('editorialStatus') || ''} className="rounded border px-2 py-1">
-        <option value="">Editoryal</option>
+        <option value="">Haber durumu</option>
         {Object.entries(EDITORIAL_STATUS_LABELS).map(([k, v]) => (
           <option key={k} value={k}>
             {v}
@@ -563,7 +574,7 @@ function CrawlerArticlesInner() {
             title={aiPublishHint}
             onClick={() => openAiPublishConfirm(row.id)}
           >
-            AI için onayla
+            AI ile yaz
           </button>
         ) : null}
         {published && needsReview && row.editorialNewsId ? (
@@ -587,7 +598,7 @@ function CrawlerArticlesInner() {
             disabled={busyId === row.id}
             onClick={() => void openManual(row.id)}
           >
-            {busyId === row.id ? 'Açılıyor…' : 'Manuel Düzenle'}
+            {busyId === row.id ? 'Açılıyor…' : 'Kendim yazayım'}
           </button>
         )}
         {row.canonicalUrl || row.originalUrl ? (
@@ -597,7 +608,7 @@ function CrawlerArticlesInner() {
         ) : null}
         {row.clusterId ? (
           <a className="underline" href={`/admin/crawler/clusters/${row.clusterId}`}>
-            Olay Kümesini Gör
+            Aynı olay haberleri
           </a>
         ) : null}
         <RowOverflowMenu
@@ -605,7 +616,7 @@ function CrawlerArticlesInner() {
             ...(rowAiPublishEligible
               ? [
                   {
-                    label: 'AI için onayla',
+                    label: 'AI ile yaz',
                     disabled: aiPublishDisabled || busyBulk,
                     title: aiPublishHint,
                     onClick: () => openAiPublishConfirm(row.id),
@@ -613,7 +624,7 @@ function CrawlerArticlesInner() {
                 ]
               : []),
             { label: 'İncelemeye Al', onClick: () => void runBulk('review', { ids: [row.id] }) },
-            { label: 'AI Adayı', onClick: () => void runBulk('ai_candidate', { ids: [row.id] }) },
+            { label: 'AI için işaretle', onClick: () => void runBulk('ai_candidate', { ids: [row.id] }) },
             {
               label: 'Reddet',
               onClick: () => {
@@ -668,17 +679,17 @@ function CrawlerArticlesInner() {
               </th>
               <th className="px-3 py-2">
                 <button type="button" onClick={() => cycleSort('extractionConfidence')}>
-                  Güven{sortMark('extractionConfidence')}
+                  Doğruluk{sortMark('extractionConfidence')}
                 </button>
               </th>
               <th className="px-3 py-2">
                 <button type="button" onClick={() => cycleSort('status')}>
-                  Durum{sortMark('status')}
+                  Metin{sortMark('status')}
                 </button>
               </th>
               <th className="px-3 py-2">
                 <button type="button" onClick={() => cycleSort('editorial')}>
-                  Editoryal{sortMark('editorial')}
+                  Durum{sortMark('editorial')}
                 </button>
               </th>
               <th className="px-3 py-2">İşlemler</th>
@@ -747,9 +758,9 @@ function CrawlerArticlesInner() {
                 <td className="px-3 py-2">{crawlerStatusLabel(row)}</td>
                 <td className="px-3 py-2">
                   {EDITORIAL_STATUS_LABELS[row.editorialStatus] || row.editorialStatus}
-                  {row.aiSkipReason ? (
-                    <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-200" title={row.aiSkipReason}>
-                      {row.aiSkipReason}
+                  {aiSkipReasonLabel(row.aiSkipReason) ? (
+                    <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-200">
+                      {aiSkipReasonLabel(row.aiSkipReason)}
                     </span>
                   ) : null}
                   {row.reviewMeta?.needsReview ? (
@@ -764,7 +775,7 @@ function CrawlerArticlesInner() {
             {!list.length ? (
               <tr>
                 <td className="px-3 py-6 text-[rgb(var(--color-muted))]" colSpan={11}>
-                  Kayıt yok.
+                  {loadingList ? 'Yükleniyor…' : 'Bu filtrede haber yok.'}
                 </td>
               </tr>
             ) : null}
@@ -774,8 +785,130 @@ function CrawlerArticlesInner() {
     )
   }
 
+  const modals = (
+    <>
+      {detail ? (
+        <RawArticleDrawer
+          article={detail}
+          media={detailMedia}
+          busy={busyId === detail.id}
+          onClose={closeDrawer}
+          onManual={() => void openManual(detail.id)}
+        />
+      ) : null}
+      <RejectReasonModal
+        open={rejectOpen}
+        count={count || 1}
+        busy={busyBulk}
+        onClose={() => setRejectOpen(false)}
+        onConfirm={(reason, note) => void runBulk('reject', { reason, note })}
+      />
+      <AiPublishConfirmModal
+        open={confirmAiPublish}
+        count={singleAiPublishId ? 1 : count}
+        busy={busyBulk}
+        onClose={closeAiPublishConfirm}
+        onConfirm={() => void runAiEnqueue()}
+      />
+      {reviewTarget && reviewTarget.editorialNewsId ? (
+        <ReviewClassificationDrawer
+          open
+          rawArticleId={reviewTarget.id}
+          newsId={reviewTarget.editorialNewsId}
+          title={reviewTarget.reviewMeta?.newsTitle || reviewTarget.title || '(başlıksız)'}
+          reviewMeta={reviewTarget.reviewMeta ?? null}
+          onClose={() => setReviewTarget(null)}
+          onSaved={() => void load()}
+        />
+      ) : null}
+      <CrawlerConfirmModal
+        open={confirmDelete}
+        title="Ham haberleri sil"
+        body={`${count} ham haber silinecek.\nAynı haber kaynaktan tekrar gelmez.\nBu işlem geri alınamaz. Devam etmek istiyor musunuz?`}
+        confirmLabel="Sil"
+        danger
+        busy={busyBulk}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void runBulk('delete')}
+      />
+      <CrawlerConfirmModal
+        open={confirmMatch}
+        title="Tüm eşleşen sonuçlar"
+        body={`Tüm ${total.toLocaleString('tr-TR')} sonuç sunucu tarafında seçilecek. Toplu işlem bu filtreyi kullanır.`}
+        confirmLabel="Tümünü seç"
+        busy={false}
+        onClose={() => setConfirmMatch(false)}
+        onConfirm={() => {
+          setSelection(selectAllMatching(filterKey, total))
+          setConfirmMatch(false)
+        }}
+      />
+    </>
+  )
+
+  // MOBILE-ADMIN-2: phones / portrait tablets get the card desk (same data, same actions)
+  if (isMobile) {
+    const aiDispatchOff = rows.some((r) => /CRAWLER_AI_DISPATCH_ENABLED\s*=\s*false/i.test(r.aiSkipReason || ''))
+    return (
+      <AdminOsPageShell title="Ham Haberler" subtitle="">
+        {error ? <p className="text-sm text-red-500">{error}</p> : null}
+        <MobileRawArticles
+          rows={rows}
+          loading={loadingList}
+          total={total}
+          page={page}
+          totalPages={totalPages}
+          queue={queue}
+          queues={[
+            { id: 'active', label: 'Yeni', count: data?.queueCounts?.active },
+            { id: 'ai_queue', label: 'AI yazıyor', count: data?.queueCounts?.aiQueue },
+            { id: 'review', label: 'İncelemede', count: data?.queueCounts?.review },
+            { id: 'published', label: 'Yayında', count: data?.queueCounts?.published },
+            { id: 'rejected', label: 'Reddedilen', count: data?.queueCounts?.rejected },
+            { id: 'archived', label: 'Arşiv', count: data?.queueCounts?.archived },
+          ]}
+          params={{
+            search: searchParams.get('search') || '',
+            category: searchParams.get('category') || '',
+            city: searchParams.get('city') || '',
+            source: searchParams.get('source') || '',
+            hasImage: searchParams.get('hasImage') || '',
+            when: searchParams.get('when') || '',
+          }}
+          categories={data?.categories || []}
+          cities={data?.cities || []}
+          sources={data?.sources || []}
+          aiDispatchOff={aiDispatchOff}
+          aiDisabled={aiPublishDisabled}
+          aiHint={aiPublishHint}
+          busyId={busyId}
+          busyBulk={busyBulk}
+          selectedIds={selection.mode === 'matching' ? visibleIds : selection.ids}
+          selectedCount={count}
+          onToggleSelect={(id) => setSelection((prev) => toggleRow(prev, id, visibleIds))}
+          onSelectPage={() => setSelection(selectCurrentPage(visibleIds, filterKey, total))}
+          onClearSelection={() => setSelection(clearSelection(filterKey))}
+          setParam={setParam}
+          onClearFilters={() => router.replace('/admin/crawler/raw-articles' + (queue !== 'active' ? `?queue=${queue}` : ''))}
+          onPage={(pg) => setParam({ page: String(pg) })}
+          onOpen={(row) => openDrawer(row as ArticleRow)}
+          onAiWrite={(id) => openAiPublishConfirm(id)}
+          onEdit={(id) => void openManual(id)}
+          onRowOp={(op, id) => void runBulk(op, { ids: [id] })}
+          onReject={(id) => {
+            if (id) setSelection({ ids: [id], mode: 'none', matchingTotal: total, filterKey })
+            setRejectOpen(true)
+          }}
+          onBulk={(op) => void runBulk(op)}
+          onDelete={() => setConfirmDelete(true)}
+        />
+        {modals}
+      </AdminOsPageShell>
+    )
+  }
+
   return (
-    <AdminOsPageShell title="Ham Haberler" subtitle="Crawler çıkarımı. AI için onayla haberi hemen yazar; taslak Yayın Odası → Onay Bekliyor'a düşer.">
+    <AdminOsPageShell title="Ham Haberler" subtitle="Kaynak sitelerden toplanan haberler. «AI ile yaz» haberi hemen yazar; taslak Onay bekleyenler’e düşer.">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <AdminOsMetricGrid
@@ -792,7 +925,7 @@ function CrawlerArticlesInner() {
         {(
           [
             ['active', 'Aktif kuyruk', data?.queueCounts?.active],
-            ['ai_queue', '⏳ AI Kuyruğu', data?.queueCounts?.aiQueue],
+            ['ai_queue', 'AI yazıyor', data?.queueCounts?.aiQueue],
             ['review', 'İnceleme', data?.queueCounts?.review],
             ['published', 'Yayınlananlar', data?.queueCounts?.published],
             ['rejected', 'Reddedilenler', data?.queueCounts?.rejected],
@@ -831,7 +964,7 @@ function CrawlerArticlesInner() {
       ) : null}
       {count > 0 && queue === 'active' ? (
         <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
-          Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI için onayla</strong> — AI hemen yazar, haber Onay Bekliyor'a düşer. İncelemeye Al ve AI Adayı yalnızca
+          Yayın için: <strong className="text-[rgb(var(--color-fg))]">AI ile yaz</strong> — AI hemen yazar, haber Onay bekleyenler’e düşer. İncelemeye Al ve AI için işaretle yalnızca
           editoryal durumu değiştirir, yayınlamaz.
         </p>
       ) : null}
@@ -852,14 +985,14 @@ function CrawlerArticlesInner() {
             title={aiPublishHint}
             onClick={() => openAiPublishConfirm()}
           >
-            AI için onayla
+            AI ile yaz
           </button>
         ) : null}
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('review')}>
           İncelemeye Al
         </button>
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => void runBulk('ai_candidate')}>
-          AI Adayı
+          AI için işaretle
         </button>
         <button type="button" className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-1" onClick={() => setRejectOpen(true)}>
           Reddet
@@ -873,7 +1006,7 @@ function CrawlerArticlesInner() {
       </BulkToolbar>
       <div className="my-3 flex flex-wrap items-center justify-between gap-2 text-sm">
         <div>
-          {total ? `${start}–${end} / ${total.toLocaleString('tr-TR')} haber` : '0 haber'}
+          {loadingList && !data ? 'Yükleniyor…' : total ? `${start}–${end} / ${total.toLocaleString('tr-TR')} haber` : '0 haber'}
         </div>
         <Pager page={page} totalPages={totalPages} onPage={(p) => setParam({ page: String(p) })} />
       </div>
@@ -881,62 +1014,7 @@ function CrawlerArticlesInner() {
       <div className="mt-3 flex justify-end">
         <Pager page={page} totalPages={totalPages} onPage={(p) => setParam({ page: String(p) })} />
       </div>
-      {detail ? (
-        <RawArticleDrawer
-          article={detail}
-          media={detailMedia}
-          busy={busyId === detail.id}
-          onClose={closeDrawer}
-          onManual={() => void openManual(detail.id)}
-        />
-      ) : null}
-      <RejectReasonModal
-        open={rejectOpen}
-        count={count || 1}
-        busy={busyBulk}
-        onClose={() => setRejectOpen(false)}
-        onConfirm={(reason, note) => void runBulk('reject', { reason, note })}
-      />
-      <AiPublishConfirmModal
-        open={confirmAiPublish}
-        count={singleAiPublishId ? 1 : count}
-        busy={busyBulk}
-        onClose={closeAiPublishConfirm}
-        onConfirm={() => void runAiEnqueue()}
-      />
-      {reviewTarget && reviewTarget.editorialNewsId ? (
-        <ReviewClassificationDrawer
-          open
-          rawArticleId={reviewTarget.id}
-          newsId={reviewTarget.editorialNewsId}
-          title={reviewTarget.reviewMeta?.newsTitle || reviewTarget.title || '(başlıksız)'}
-          reviewMeta={reviewTarget.reviewMeta ?? null}
-          onClose={() => setReviewTarget(null)}
-          onSaved={() => void load()}
-        />
-      ) : null}
-      <CrawlerConfirmModal
-        open={confirmDelete}
-        title="Ham haberleri sil"
-        body={`${count} ham haber silinecek.\nKaynak URL crawler belleğinde kalır; aynı haber birkaç dakika sonra geri gelmez.\nKüme/medya ilişkisi varsa kayıt tombstone olur.\nBu işlem geri alınamaz. Devam etmek istiyor musunuz?`}
-        confirmLabel="Sil"
-        danger
-        busy={busyBulk}
-        onClose={() => setConfirmDelete(false)}
-        onConfirm={() => void runBulk('delete')}
-      />
-      <CrawlerConfirmModal
-        open={confirmMatch}
-        title="Tüm eşleşen sonuçlar"
-        body={`Tüm ${total.toLocaleString('tr-TR')} sonuç sunucu tarafında seçilecek. Toplu işlem bu filtreyi kullanır.`}
-        confirmLabel="Tümünü seç"
-        busy={false}
-        onClose={() => setConfirmMatch(false)}
-        onConfirm={() => {
-          setSelection(selectAllMatching(filterKey, total))
-          setConfirmMatch(false)
-        }}
-      />
+      {modals}
     </AdminOsPageShell>
   )
 }

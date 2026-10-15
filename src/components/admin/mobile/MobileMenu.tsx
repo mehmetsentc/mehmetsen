@@ -36,6 +36,7 @@ const MOBILE_READY: MenuItem[] = [
   { href: '/admin/news/create', label: 'Hızlı haber', icon: Plus, perm: 'news:create' },
   { href: '/admin/social/shares', label: 'Paylaşım', icon: Share2, perm: 'news:read' },
   { href: '/admin/media-studio/reels', label: 'Reels stüdyosu', icon: Clapperboard, perm: 'video:read' },
+  { href: '/admin/crawler/raw-articles', label: 'Ham Haberler', icon: Inbox, perm: 'news:read' },
 ]
 const COVERED_BY_MOBILE = new Set(['/admin/approvals', '/admin/news'])
 
@@ -59,7 +60,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, perm: 'ai:use' },
       { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, perm: 'ai:use' },
       { href: '/admin/ai/news', label: 'AI Asistan', icon: Bot, perm: 'ai:use' },
-      { href: '/admin/crawler', label: 'Crawler', icon: Radar, perm: 'news:read' },
+      { href: '/admin/crawler', label: 'Haber Toplama', icon: Radar, perm: 'news:read' },
     ],
   },
   {
