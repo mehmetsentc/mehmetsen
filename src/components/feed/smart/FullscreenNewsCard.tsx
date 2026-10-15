@@ -137,7 +137,11 @@ const MODE_NAV_CLEARANCE = 'pt-2'
  * cropped or spills over; a blurred copy of the photo fills the rest of the screen.
  * Copy, Haberi Oku and the publisher sit below the media; the social rail bottom right.
  */
-const HERO_FRAME = 'relative min-h-0 w-full flex-1 overflow-hidden'
+// min height ≈ a full-width 16:9 photo: it never shrinks to a thumbnail when highlights or a
+// long summary show (the copy scrolls inside its box instead — never cut)
+const HERO_FRAME = 'relative min-h-[26dvh] w-full flex-1 overflow-hidden'
+/** Video card: the video layer covers the whole card (Reels); the copy sits on it. */
+const VIDEO_FRAME = 'absolute inset-0 z-0 overflow-hidden'
 /** Top room for the overlay header + category bar, so the media starts under it. */
 const MEDIA_TOP = 'calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 6.75rem)'
 const CITY_HERO_FRAME = HERO_FRAME
@@ -401,7 +405,7 @@ export function FullscreenNewsCard({
               src={item.image!}
               alt=""
               fill
-              className="scale-110 object-cover opacity-70 blur-2xl brightness-[0.45] saturate-[1.05]"
+              className="scale-110 object-cover opacity-90 blur-2xl brightness-[0.62] saturate-[1.1]"
               sizes="64px"
             />
           </div>
@@ -436,7 +440,7 @@ export function FullscreenNewsCard({
           data-testid="smart-feed-readability-bottom"
         />
         <div
-          className="pointer-events-none absolute inset-0 bg-black/25"
+          className="pointer-events-none absolute inset-0 bg-black/10"
           aria-hidden
           data-testid="smart-feed-readability-veil"
         />
@@ -535,22 +539,27 @@ export function FullscreenNewsCard({
             </div>
           ) : showVideo ? (
             <div
-              className={fullBleed ? CITY_HERO_FRAME : HERO_FRAME}
+              className={VIDEO_FRAME}
               data-testid="smart-feed-fg-hero"
               data-feed-full-bleed={fullBleed ? '1' : undefined}
               data-feed-video-card={reelCard ? 'reel' : 'video'}
-              style={{
-                borderColor:
-                  'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
-              }}
             >
-              {/* Whole video, scaled to fit the space (blurred photo behind the card). */}
+              {/* FEED-UX-2d: Reels — the video at its original size, full screen width, right
+                  above the bottom bar; copy, Haberi Oku and the rail sit on it. */}
               <SmartFeedCardVideo
                 url={item.video!}
                 isActive={isActive}
                 poster={reelCard ? null : item.image}
-                fit="contain"
+                fit="reels"
                 onUnusable={() => setVideoError(true)}
+              />
+              <div
+                className={cn(
+                  'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent',
+                  reelCard ? 'h-[26%] from-black/85' : 'h-[50%] from-black/90 via-black/55'
+                )}
+                aria-hidden
+                data-testid="smart-feed-video-shade"
               />
 
               {showSwipeDiscoveryCoach ? (
@@ -654,7 +663,10 @@ export function FullscreenNewsCard({
             data-feed-nested-scroll="1"
             style={{
               // Full copy is always shown (sizes step down); this cap only guards odd data.
-              maxHeight: 'max(var(--feed-v2-copy-scroll-max), 62dvh)',
+              // what is left after the header, the photo's minimum, the actions and the bar
+              maxHeight: showDiscoveryRail
+                ? 'max(6.5rem, calc(74dvh - 33rem))'
+                : 'max(var(--feed-v2-copy-scroll-max), calc(74dvh - 17.5rem))',
               WebkitOverflowScrolling: 'touch',
             }}
           >
@@ -662,7 +674,7 @@ export function FullscreenNewsCard({
               className="min-w-0"
               data-testid="smart-feed-copy-preview"
             >
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className={cn('flex flex-wrap items-center gap-1.5', reelCard && 'sr-only')}>
                 {cat ? (
                   <span
                     className={cn(

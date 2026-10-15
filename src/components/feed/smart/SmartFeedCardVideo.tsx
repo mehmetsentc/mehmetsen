@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Play, Volume2, VolumeX } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import {
   applyYoutubeMuteIntent,
@@ -42,10 +43,12 @@ interface SmartFeedCardVideoProps {
   poster?: string | null
   onUnusable?: () => void
   /**
-   * FEED-VIDEO-1 / FEED-UX-2: 'auto' (default) fills the screen with an upright video (Reels)
-   * and shows a landscape one whole at its own aspect; 'contain' / 'cover' force one.
+   * FEED-VIDEO-1 / FEED-UX-2: 'auto' fills the screen with an upright video and shows a
+   * landscape one whole; 'contain' / 'cover' force one. 'reels' (FEED-UX-2d): the video at
+   * its original size — full screen width, its own height, never cropped — an upright video
+   * sits right above the bottom bar (Instagram Reels), a landscape one in the middle.
    */
-  fit?: 'auto' | 'contain' | 'cover'
+  fit?: 'auto' | 'contain' | 'cover' | 'reels'
 }
 
 export function SmartFeedCardVideo({
@@ -68,6 +71,7 @@ export function SmartFeedCardVideo({
   const [upright, setUpright] = useState<boolean | null>(null)
   const [progress, setProgress] = useState(0)
   const objectFit = fit === 'auto' ? (upright === false ? 'contain' : 'cover') : fit
+  const reelsUpright = fit === 'reels' && upright !== false
 
   const effectiveMuted = playerMuted ?? preferredMuted
 
@@ -253,7 +257,14 @@ export function SmartFeedCardVideo({
           ref={videoRef}
           src={resolved.url}
           poster={poster ?? undefined}
-          className={objectFit === 'cover' ? 'h-full w-full object-cover' : 'h-full w-full object-contain'}
+          className={
+            fit === 'reels'
+              ? cn('absolute inset-x-0 h-auto max-h-full w-full', !reelsUpright && 'top-1/2 -translate-y-1/2')
+              : objectFit === 'cover'
+                ? 'h-full w-full object-cover'
+                : 'h-full w-full object-contain'
+          }
+          style={fit === 'reels' && reelsUpright ? { bottom: 'var(--feed-v2-bottom-clearance, 4.5rem)' } : undefined}
           data-video-fit={objectFit}
           onLoadedMetadata={(event) => {
             const v = event.currentTarget
@@ -310,7 +321,7 @@ export function SmartFeedCardVideo({
         aria-label={effectiveMuted ? 'Sesi aç' : 'Sesi kapat'}
         data-testid="smart-feed-video-sound"
         className="absolute right-3 z-[3] flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm"
-        style={{ top: '0.5rem' }}
+        style={{ top: fit === 'reels' ? 'calc(var(--feed-overlay-sat, env(safe-area-inset-top, 0px)) + 7.25rem)' : '0.5rem' }}
       >
         {effectiveMuted ? <VolumeX className="h-[18px] w-[18px]" /> : <Volume2 className="h-[18px] w-[18px]" />}
         <span className="sr-only">{effectiveMuted ? 'Sessiz' : 'Sesli'}</span>
@@ -318,7 +329,7 @@ export function SmartFeedCardVideo({
       {resolved.kind === 'native' && isActive ? (
         <div
           className="pointer-events-none absolute inset-x-0 z-[3] h-[2px] bg-white/25"
-          style={{ bottom: 0 }}
+          style={{ bottom: fit === 'reels' ? 'var(--feed-v2-bottom-clearance, 4.5rem)' : 0 }}
           aria-hidden
           data-testid="smart-feed-video-progress"
         >
