@@ -11,7 +11,7 @@
  * already reserved in `Collections.SOCIAL_ACCOUNTS` (Newsroom OS shell).
  */
 
-export const SOCIAL_ACCOUNT_PLATFORMS = ['facebook', 'instagram', 'threads'] as const
+export const SOCIAL_ACCOUNT_PLATFORMS = ['facebook', 'instagram', 'threads', 'youtube'] as const
 export type SocialAccountPlatform = (typeof SOCIAL_ACCOUNT_PLATFORMS)[number]
 
 export const SOCIAL_CONNECTION_METHODS = [
@@ -19,6 +19,7 @@ export const SOCIAL_CONNECTION_METHODS = [
   'facebook_login',
   'instagram_login',
   'threads_oauth',
+  'google_oauth',
 ] as const
 export type SocialConnectionMethod = (typeof SOCIAL_CONNECTION_METHODS)[number]
 
@@ -28,6 +29,8 @@ export const ALLOWED_CONNECTION_METHODS: Record<SocialAccountPlatform, readonly 
   // Instagram API with Facebook Login (page-linked) OR Instagram API with Instagram Login.
   instagram: ['legacy', 'facebook_login', 'instagram_login'],
   threads: ['legacy', 'threads_oauth'],
+  // YouTube: Google OAuth only (no legacy Onyeditivi credential exists).
+  youtube: ['google_oauth'],
 }
 
 export const SOCIAL_ACCOUNT_STATUSES = ['active', 'paused', 'needs_reauth', 'disabled'] as const
@@ -134,11 +137,19 @@ export interface ThreadsAccount extends SocialAccountCommon {
   threads: { threadsUserId: string }
 }
 
+/** YouTube channel via Google OAuth (YouTube Data API v3). externalId = channel id (UC…). */
+export interface YouTubeAccount extends SocialAccountCommon {
+  platform: 'youtube'
+  connectionMethod: 'google_oauth'
+  youtube: { channelId: string }
+}
+
 export type SocialAccount =
   | FacebookPageAccount
   | InstagramFacebookLoginAccount
   | InstagramLoginAccount
   | ThreadsAccount
+  | YouTubeAccount
 
 /**
  * Shape safe to return to the browser. Built by whitelisting fields — never by
@@ -174,6 +185,10 @@ export interface SocialAccountPublic {
 
 export type PublishPermissionState = 'verified' | 'missing' | 'unverified' | 'legacy'
 
+/** Google OAuth scopes for YouTube (upload + read own channel identity). Nothing broader. */
+export const YOUTUBE_UPLOAD_SCOPE = 'https://www.googleapis.com/auth/youtube.upload'
+export const YOUTUBE_READONLY_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly'
+
 /**
  * Permissions each connection method needs before an account may publish.
  * Source: Meta docs (Pages API / Instagram API with Instagram Login / Threads API).
@@ -183,6 +198,8 @@ export const REQUIRED_PUBLISH_PERMISSIONS: Record<SocialConnectionMethod, readon
   facebook_login: ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'],
   instagram_login: ['instagram_business_basic', 'instagram_business_content_publish'],
   threads_oauth: ['threads_basic', 'threads_content_publish'],
+  // Google returns the granted scopes (space separated) in the token response.
+  google_oauth: [YOUTUBE_UPLOAD_SCOPE, YOUTUBE_READONLY_SCOPE],
 }
 
 /** Required permissions for an account (Instagram via Facebook Login uses the IG FB-Login set). */
@@ -300,6 +317,11 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
       connectionMethod: method as InstagramFacebookLoginAccount['connectionMethod'],
       instagram: { igUserId: externalId, linkedFacebookPageId: str(ig.linkedFacebookPageId) },
     }
+  }
+  if (platform === 'youtube') {
+    const yt = (r.youtube ?? {}) as Record<string, unknown>
+    if (str(yt.channelId) !== externalId) return null
+    return { ...common, platform, connectionMethod: 'google_oauth', youtube: { channelId: externalId } }
   }
   const th = (r.threads ?? {}) as Record<string, unknown>
   if (str(th.threadsUserId) !== externalId) return null

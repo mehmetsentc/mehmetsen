@@ -285,6 +285,8 @@ export interface SocialPublishOverrides {
     instagram?: boolean
     twitter?: boolean
     threads?: boolean
+    /** YouTube: only the REELS (Shorts) path with an explicit target. */
+    youtube?: boolean
   }
   /**
    * Post görsel biçimi (composer'da açık seçim).
@@ -360,8 +362,9 @@ export function automationCallProblem(options: PublishOneSocialOptions): string 
   if (t.length !== 1) return 'automation_target'
   const plat = options.overrides?.platforms
   if (!plat || plat.twitter) return 'automation_platforms'
-  const on = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
+  const on = (['facebook', 'instagram', 'threads', 'youtube'] as const).filter((p) => plat[p])
   if (on.length !== 1 || on[0] !== t[0][0]) return 'automation_platforms'
+  if (on[0] === 'youtube' && options.mode !== 'reel') return 'automation_mode'
   if (options.mode === 'post' && options.overrides?.imageMode !== 'single') return 'automation_image_mode'
   return null
 }
@@ -389,6 +392,7 @@ export interface PublishOneSocialResult {
     attempted: boolean
     facebook?: SocialPublishResult
     instagram?: SocialPublishResult
+    youtube?: SocialPublishResult
     videoUrl?: string
   }
 }
@@ -473,7 +477,7 @@ export async function publishOneSocial(
     if (!manual || !options.actorUid) return skipped(newsId, TEST_ENV_TEXT.autoDisabled)
     const plat = overrides?.platforms
     if (!plat || plat.twitter) return skipped(newsId, plat?.twitter ? TEST_ENV_TEXT.twitterDisabled : TEST_ENV_TEXT.legacyDisabled)
-    const wanted = (['facebook', 'instagram', 'threads'] as const).filter((p) => plat[p])
+    const wanted = (['facebook', 'instagram', 'threads', 'youtube'] as const).filter((p) => plat[p])
     if (wanted.length === 0 || wanted.some((p) => !targets[p])) return skipped(newsId, TEST_ENV_TEXT.legacyDisabled)
   }
   // REELS-1: reels never take the post/story path (no legacy credentials, one target).

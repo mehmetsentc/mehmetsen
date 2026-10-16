@@ -52,7 +52,7 @@ export async function socialApi<T>(path: string, init: RequestInit = {}): Promis
   return { ok: true, data: body as T }
 }
 
-export const PLATFORM_LABEL: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
+export const PLATFORM_LABEL: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube' }
 
 export function ownerLabel(a: Pick<SocialAccountPublic, 'ownerKind' | 'ownership'>, publisherNames: Record<string, string> = {}): string {
   switch (a.ownerKind) {

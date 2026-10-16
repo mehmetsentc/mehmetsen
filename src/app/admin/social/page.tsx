@@ -2234,7 +2234,7 @@ export default function SocialPage() {
                             type="button"
                             disabled={retryKeys.length === 0}
                             onClick={() => {
-                              const sel: TargetSelection = { facebook: [], instagram: [], threads: [] }
+                              const sel: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
                               for (const r of targetRows) if (retryKeys.includes(`${r.accountId}__${r.format}`) && isSafelyRetryable(r)) sel[r.platform as TargetPlatform].push(r.accountId)
                               setTargetSel(sel)
                               setTargetRows([])

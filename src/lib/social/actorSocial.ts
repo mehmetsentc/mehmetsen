@@ -13,7 +13,7 @@ import { canAccessContentScope, contentScopeOf } from '@/lib/cms/rbacScope'
 import { loadSocialAccount } from './accounts/accountStore'
 import { canManageAccount, canPublishToAccount, canViewAccount, ruleScopeProblem, type SocialActor } from './accounts/access'
 import { listAccountsForActor } from './accounts/connect/flows'
-import { supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishFormat } from './accounts/capabilities'
+import { supportedFormats, scopeFormats, targetBlocker, TARGET_BLOCKER_TEXT, type PublishFormat } from './accounts/capabilities'
 import { ownershipKind, toPublicSocialAccount, type SocialAccount } from './accounts/types'
 import { writeSocialAudit } from './accounts/audit'
 import { CLAIM_TEXT } from './accounts/publishLedger'
@@ -51,7 +51,7 @@ export async function accountsForActor(actor: SocialActor) {
       canManage: canManageAccount(actor, a.ownership),
       canPublish: canPublishToAccount(actor, a.ownership),
       formats: supportedFormats(a),
-      publishScope: readPublishScope(a, supportedFormats(a)),
+      publishScope: readPublishScope(a, scopeFormats(a)),
       // Connection ≠ publish permission ≠ automation: separate states.
       health: {
         connected: a.connectionMethod !== 'legacy',
@@ -75,7 +75,7 @@ export async function setPublishScopeForActor(actor: SocialActor, accountId: str
   const a = await accountForActor(actor, accountId, 'manage')
   if ('ok' in a) return a
   if (a.connectionMethod === 'legacy') return err(409, 'legacy', 'Eski bağlantının kapsamı düzenlenemez')
-  const parsed = parsePublishScope(raw, supportedFormats(a))
+  const parsed = parsePublishScope(raw, scopeFormats(a))
   if (!parsed.ok) return err(400, 'invalid_scope', parsed.message)
   // Post scope: an il yöneticisi may only choose own il / ilçe. Story scope is
   // intentionally free (Görev 18: manual stories from all locations) — it does
@@ -83,14 +83,14 @@ export async function setPublishScopeForActor(actor: SocialActor, accountId: str
   const problem = ruleScopeProblem(actor, a.ownership, { geo: parsed.value.geo, dailyLimit: 0 })
   if (problem) return err(403, 'scope_forbidden', problem)
   const rawStory = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).storyGeo : undefined
-  const current = readPublishScope(a, supportedFormats(a))
+  const current = readPublishScope(a, scopeFormats(a))
   if (rawStory === undefined) parsed.value.storyGeo = current.storyGeo
   const rawObj = raw as Record<string, unknown>
   if (rawObj.storyAllCategories === undefined && rawObj.storyCategoryIds === undefined) {
     parsed.value.storyAllCategories = current.storyAllCategories
     parsed.value.storyCategoryIds = current.storyCategoryIds
   }
-  const before = readPublishScope(a, supportedFormats(a))
+  const before = readPublishScope(a, scopeFormats(a))
   const now = Date.now()
   const value = { ...parsed.value, updatedAt: now, updatedBy: actor.uid }
   await getAdminFirestore().collection(Collections.SOCIAL_ACCOUNTS).doc(a.id).update({ publishScope: value, updatedAt: now, updatedBy: actor.uid })
@@ -313,7 +313,7 @@ export async function shareForActor(
     trigger: 'share',
     targets: { [platform]: a.id },
     overrides: {
-      platforms: { facebook: platform === 'facebook', instagram: platform === 'instagram', threads: platform === 'threads', twitter: false },
+      platforms: { facebook: platform === 'facebook', instagram: platform === 'instagram', threads: platform === 'threads', youtube: platform === 'youtube', twitter: false },
       ...(input.format === 'post' ? { imageMode: 'single' as const } : {}),
     },
   })

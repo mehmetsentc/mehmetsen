@@ -18,6 +18,7 @@ export const PLATFORM_LABEL: Record<SocialAccountPlatform, string> = {
   facebook: 'Facebook Sayfası',
   instagram: 'Instagram (Instagram Login)',
   threads: 'Threads',
+  youtube: 'YouTube kanalı',
 }
 
 const KIND_LABEL: Record<ContentKind, string> = {
@@ -61,6 +62,9 @@ export const RESULT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   },
   no_eligible_pages: { ok: false, text: 'İçerik oluşturma yetkiniz olan sayfa bulunamadı.' },
   not_professional: { ok: false, text: 'Instagram hesabı profesyonel (İşletme/İçerik Üretici) değil.' },
+  no_channel: { ok: false, text: 'Seçilen Google hesabında YouTube kanalı bulunamadı. Hesap seçicide kanalın bağlı olduğu hesabı (marka hesabı) seçip yeniden deneyin.' },
+  multiple_channels: { ok: false, text: 'Google birden fazla kanal döndürdü; hangi kanalın bağlanacağı kesinleşmedi. Hesap seçicide doğrudan kanalın hesabını seçip yeniden deneyin.' },
+  no_refresh_token: { ok: false, text: 'Google kalıcı erişim izni vermedi. myaccount.google.com → Güvenlik → Üçüncü taraf erişimi bölümünden NaHaber erişimini kaldırıp yeniden bağlayın.' },
   account_mismatch: { ok: false, text: 'Yeniden bağlamada farklı bir hesapla giriş yapıldı. Mevcut bağlantı değişmedi.' },
   owned_elsewhere: { ok: false, text: 'Bu hesap başka bir il/yayıncıya bağlı. Sessizce yeniden atanmadı.' },
   test_account_not_allowed: { ok: false, text: 'Test ortamı: bu hesap izin listesinde değil; kaydedilmedi.' },

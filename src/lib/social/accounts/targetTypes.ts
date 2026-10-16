@@ -36,4 +36,10 @@ export interface ThreadsPublishTarget extends PublishTargetBase {
   threadsUserId: string
 }
 
-export type PublishTarget = FacebookPublishTarget | InstagramPublishTarget | ThreadsPublishTarget
+/** `accessToken` here is a short-lived Google access token minted from the stored refresh token. */
+export interface YouTubePublishTarget extends PublishTargetBase {
+  platform: 'youtube'
+  channelId: string
+}
+
+export type PublishTarget = FacebookPublishTarget | InstagramPublishTarget | ThreadsPublishTarget | YouTubePublishTarget

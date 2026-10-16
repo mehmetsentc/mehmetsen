@@ -243,7 +243,7 @@ export function testModeAccountProblem(accountId: string, env: Env = process.env
   return testAllowedAccountIds(env).has(accountId) ? null : 'test_env_target_not_allowed'
 }
 
-const CONNECT_PLATFORMS = new Set(['facebook', 'instagram', 'threads'])
+const CONNECT_PLATFORMS = new Set(['facebook', 'instagram', 'threads', 'youtube'])
 
 /** SOCIAL_TEST_CONNECT_PLATFORMS → açıkça adı verilen platformlar (joker yok). */
 export function testConnectPlatforms(env: Env = process.env): string[] {

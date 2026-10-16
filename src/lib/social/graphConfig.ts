@@ -40,3 +40,12 @@ export const THREADS_LONG_LIVED_TOKEN_URL = 'https://graph.threads.net/access_to
 /** Long-lived token refresh (official; token ≥ 24 h old and unexpired → valid 60 days from refresh). */
 export const INSTAGRAM_REFRESH_TOKEN_URL = 'https://graph.instagram.com/refresh_access_token'
 export const THREADS_REFRESH_TOKEN_URL = 'https://graph.threads.net/refresh_access_token'
+
+// ── Google / YouTube (Data API v3) ────────────────────────────────────────────
+/** YouTube Data API v3 (REST). */
+export const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
+/** Resumable media upload endpoint for videos.insert. */
+export const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos'
+export const GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+export const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+export const GOOGLE_OAUTH_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'

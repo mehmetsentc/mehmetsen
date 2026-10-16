@@ -246,7 +246,7 @@ export async function processJob(
     mode: job.format,
     targets: { [job.platform]: job.accountId },
     // Tek görselli gönderi (kaydırmalı otomasyonda yok); AI yeniden yazımı publishOneSocial'da kapalı.
-    overrides: { platforms: { facebook: job.platform === 'facebook', instagram: job.platform === 'instagram', threads: job.platform === 'threads', twitter: false }, imageMode: 'single' },
+    overrides: { platforms: { facebook: job.platform === 'facebook', instagram: job.platform === 'instagram', threads: job.platform === 'threads', youtube: job.platform === 'youtube', twitter: false }, imageMode: 'single' },
     actorUid: AUTOMATION_ACTOR_UID,
     automation: { jobId: job.id, attemptId: job.attemptId! },
     trigger: 'automation',

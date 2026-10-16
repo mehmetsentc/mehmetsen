@@ -157,6 +157,8 @@ export async function saveConnectedAccount(input: ConnectedAccountInput): Promis
         account = { ...common, platform: 'facebook', connectionMethod: 'facebook_login', facebook: { pageId: input.externalId } }
       } else if (input.platform === 'instagram' && input.connectionMethod === 'instagram_login') {
         account = { ...common, platform: 'instagram', connectionMethod: 'instagram_login', instagram: { igUserId: input.externalId, linkedFacebookPageId: null } }
+      } else if (input.platform === 'youtube' && input.connectionMethod === 'google_oauth') {
+        account = { ...common, platform: 'youtube', connectionMethod: 'google_oauth', youtube: { channelId: input.externalId } }
       } else if (input.platform === 'threads' && input.connectionMethod === 'threads_oauth') {
         account = { ...common, platform: 'threads', connectionMethod: 'threads_oauth', threads: { threadsUserId: input.externalId } }
       } else {

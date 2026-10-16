@@ -22,10 +22,10 @@ import Link from 'next/link'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 
-export type TargetPlatform = 'facebook' | 'instagram' | 'threads'
+export type TargetPlatform = 'facebook' | 'instagram' | 'threads' | 'youtube'
 /** platform → selected account ids (empty = not published on that platform). */
 export type TargetSelection = Record<TargetPlatform, string[]>
-export const EMPTY_TARGETS: TargetSelection = { facebook: [], instagram: [], threads: [] }
+export const EMPTY_TARGETS: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
 
 export type TargetOption = {
   accountId: string
@@ -42,7 +42,7 @@ export type TargetOption = {
   ledger?: Array<{ format: string; status: string; externalPostId: string | null }>
 }
 
-export const PLATFORM_NAME: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
+export const PLATFORM_NAME: Record<TargetPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube' }
 
 export function accountLabel(o: Pick<TargetOption, 'displayName' | 'username'>): string {
   return o.username ? `${o.displayName} (@${o.username})` : o.displayName
@@ -54,12 +54,12 @@ export function explicitTargets(sel: TargetSelection): Partial<Record<TargetPlat
 }
 
 export function targetCount(sel: TargetSelection): number {
-  return sel.facebook.length + sel.instagram.length + sel.threads.length
+  return sel.facebook.length + sel.instagram.length + sel.threads.length + sel.youtube.length
 }
 
 /** Platform flags derived from the selection (a platform is on only if it has targets). */
 export function platformsOf(sel: TargetSelection) {
-  return { facebook: sel.facebook.length > 0, instagram: sel.instagram.length > 0, threads: sel.threads.length > 0, twitter: false }
+  return { facebook: sel.facebook.length > 0, instagram: sel.instagram.length > 0, threads: sel.threads.length > 0, youtube: sel.youtube.length > 0, twitter: false }
 }
 
 /** «Instagram · NaHaber Antalya (@antalya_nahaber_com)» lines for confirmations. */
@@ -114,7 +114,7 @@ export function ComposerTargetPicker({
         const byId = new Map(options.map((o) => [o.accountId, o]))
         const cur = valueRef.current
         const gone: string[] = []
-        const next: TargetSelection = { facebook: [], instagram: [], threads: [] }
+        const next: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
         for (const p of Object.keys(next) as TargetPlatform[]) {
           for (const id of cur[p] ?? []) {
             if (ok.has(id)) next[p].push(id)
@@ -133,7 +133,8 @@ export function ComposerTargetPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newsId, formats])
 
-  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'post' || mode === 'both' ? ['facebook', 'instagram', 'threads'] : ['facebook', 'instagram']), [mode])
+  // YouTube: yalnız Reels videosu (Shorts). Gönderi / hikâye / video hikâye YouTube API'sinde yok.
+  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'post' || mode === 'both' ? ['facebook', 'instagram', 'threads'] : mode === 'reel' ? ['facebook', 'instagram', 'youtube'] : ['facebook', 'instagram']), [mode])
 
   if (state.kind === 'loading') return <p className="text-xs text-[rgb(var(--color-muted))]">Hesaplar yükleniyor…</p>
   if (state.kind === 'error') return <p className="text-xs text-red-700 dark:text-red-300">{state.message}. Paylaşım yapılmaz.</p>
@@ -146,7 +147,7 @@ export function ComposerTargetPicker({
   const count = targetCount(value)
   const selectableIn = (p: TargetPlatform) => state.options.filter((o) => o.platform === p && o.selectable).map((o) => o.accountId)
   const selectAll = () => {
-    const next: TargetSelection = { facebook: [], instagram: [], threads: [] }
+    const next: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
     for (const p of platforms) next[p] = selectableIn(p)
     onChange(next)
   }
@@ -178,7 +179,7 @@ export function ComposerTargetPicker({
             Uygun hepsini seç ({allSelectable})
           </button>
           {count > 0 && (
-            <button type="button" onClick={() => onChange({ facebook: [], instagram: [], threads: [] })} className="font-semibold text-[rgb(var(--color-muted))] underline">
+            <button type="button" onClick={() => onChange({ facebook: [], instagram: [], threads: [], youtube: [] })} className="font-semibold text-[rgb(var(--color-muted))] underline">
               Temizle
             </button>
           )}

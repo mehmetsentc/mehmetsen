@@ -143,7 +143,7 @@ export function ShareComposer({ publisherId, accountFilter }: { publisherId?: st
   }
 
   const retrySelection = (): TargetSelection => {
-    const sel: TargetSelection = { facebook: [], instagram: [], threads: [] }
+    const sel: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
     for (const r of rows) if (retry.includes(`${r.accountId}__${r.format}`) && isSafelyRetryable(r)) sel[r.platform as TargetPlatform].push(r.accountId)
     return sel
   }

@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/social/oauth/{facebook|instagram|threads}/callback
+ * GET /api/admin/social/oauth/{facebook|instagram|threads|youtube}/callback
  *
  * Platform redirect target. Validates state (binding cookie, NaHaber
  * cms_session uid, platform, expiry, single use), re-checks the initiator's

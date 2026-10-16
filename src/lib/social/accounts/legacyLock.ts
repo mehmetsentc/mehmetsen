@@ -50,6 +50,8 @@ const LEGACY_NEWS_FIELD: Record<SocialAccountPlatform, Partial<Record<Automation
   facebook: { post: 'facebookPostId', story: 'facebookStoryId' },
   instagram: { post: 'instagramMediaId', story: 'instagramStoryId' },
   threads: { post: 'threadsPostId' },
+  // YouTube has no legacy (Onyeditivi) path and no news-doc post id field.
+  youtube: {},
 }
 
 /**

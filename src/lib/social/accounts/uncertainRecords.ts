@@ -32,7 +32,7 @@ export interface UncertainRecordView extends OpenUncertainRecord {
   newsTitle: string | null
 }
 
-const PLATFORMS: SocialAccountPlatform[] = ['facebook', 'instagram', 'threads']
+const PLATFORMS: SocialAccountPlatform[] = ['facebook', 'instagram', 'threads', 'youtube']
 
 export async function listUncertainForPanel(now: number): Promise<UncertainRecordView[]> {
   const records = await listOpenUncertain(now)
@@ -133,17 +133,22 @@ export async function republishUncertainRecord(input: {
         facebook: rec.platform === 'facebook',
         instagram: rec.platform === 'instagram',
         threads: rec.platform === 'threads',
+        youtube: rec.platform === 'youtube',
         twitter: false,
       },
     },
     ...(targets ? { targets } : {}),
   })
   const result =
-    rec.format === 'post'
+    rec.format === 'reel' || rec.format === 'video_story'
+      ? (rec.platform === 'threads' ? null : (r.reel?.[rec.platform] ?? null))
+      : rec.format === 'post'
       ? (r.post?.[rec.platform as 'facebook' | 'instagram' | 'threads'] ?? null)
       : rec.platform === 'threads'
         ? null
-        : (r.story?.[rec.platform] ?? null)
+        : rec.platform === 'youtube'
+          ? null
+          : (r.story?.[rec.platform] ?? null)
 
   await writeSocialAudit({
     actorId: input.actorUid,

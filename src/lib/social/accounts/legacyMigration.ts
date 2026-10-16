@@ -15,8 +15,8 @@ import {
   isValidExternalId,
   type SocialAccount,
   type SocialAccountOwnership,
-  type SocialAccountPlatform,
 } from './types'
+import type { LegacyCapablePlatform } from './secretStore.shared'
 import { LEGACY_CREDENTIAL_SOURCES, type LegacySecretRecord } from './secretStore.shared'
 
 export interface LegacyIdSource {
@@ -30,7 +30,7 @@ export interface LegacyMigrationInput {
   instagramUserId: LegacyIdSource
   threadsUserId: LegacyIdSource
   /** Whether a usable legacy credential exists for each platform (booleans only). */
-  credentialPresent: Record<SocialAccountPlatform, boolean>
+  credentialPresent: Record<LegacyCapablePlatform, boolean>
   ownership: SocialAccountOwnership
   actor: string
   now: number
@@ -40,7 +40,7 @@ export interface LegacyMigrationInput {
 
 export type PlanItem =
   | {
-      platform: SocialAccountPlatform
+      platform: LegacyCapablePlatform
       action: 'create'
       accountId: string
       idSource: string
@@ -48,8 +48,8 @@ export type PlanItem =
       secret: LegacySecretRecord
       warnings: string[]
     }
-  | { platform: SocialAccountPlatform; action: 'exists'; accountId: string; idSource: string; warnings: string[] }
-  | { platform: SocialAccountPlatform; action: 'skip'; reason: string; idSource: string }
+  | { platform: LegacyCapablePlatform; action: 'exists'; accountId: string; idSource: string; warnings: string[] }
+  | { platform: LegacyCapablePlatform; action: 'skip'; reason: string; idSource: string }
 
 export interface LegacyMigrationPlan {
   items: PlanItem[]
@@ -57,14 +57,14 @@ export interface LegacyMigrationPlan {
   existingChecked: boolean
 }
 
-const DISPLAY_NAMES: Record<SocialAccountPlatform, string> = {
+const DISPLAY_NAMES: Record<LegacyCapablePlatform, string> = {
   facebook: 'Onyeditivi (Facebook)',
   instagram: 'Onyeditivi (Instagram)',
   threads: 'Onyeditivi (Threads)',
 }
 
 function buildAccount(
-  platform: SocialAccountPlatform,
+  platform: LegacyCapablePlatform,
   externalId: string,
   input: LegacyMigrationInput,
   active: boolean,
@@ -104,7 +104,7 @@ export function buildLegacyMigrationPlan(input: LegacyMigrationInput): LegacyMig
     return { items, problems, existingChecked: input.existingAccountIds !== null }
   }
 
-  const ids: Record<SocialAccountPlatform, LegacyIdSource> = {
+  const ids: Record<LegacyCapablePlatform, LegacyIdSource> = {
     facebook: input.facebookPageId,
     instagram: input.instagramUserId,
     threads: input.threadsUserId,

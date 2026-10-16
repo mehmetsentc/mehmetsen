@@ -8,13 +8,14 @@
  */
 import { redactSecrets } from './redact'
 
-export type SocialPlatformName = 'facebook' | 'instagram' | 'threads' | 'twitter'
+export type SocialPlatformName = 'facebook' | 'instagram' | 'threads' | 'twitter' | 'youtube'
 
 const LABEL: Record<SocialPlatformName, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   threads: 'Threads',
   twitter: 'X',
+  youtube: 'YouTube',
 }
 
 export interface PlatformErrorFields {

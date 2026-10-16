@@ -3,7 +3,7 @@
  * the platform publishers, so a publish can never pick a host from untrusted
  * input. Instagram Login and Facebook Login never share a host.
  */
-import { FACEBOOK_GRAPH_BASE, INSTAGRAM_LOGIN_GRAPH_BASE, THREADS_GRAPH_BASE } from '../graphConfig'
+import { FACEBOOK_GRAPH_BASE, INSTAGRAM_LOGIN_GRAPH_BASE, THREADS_GRAPH_BASE, YOUTUBE_API_BASE } from '../graphConfig'
 import type { SocialAccountPlatform, SocialConnectionMethod } from './types'
 
 export function apiBaseFor(
@@ -17,5 +17,6 @@ export function apiBaseFor(
     if (method === 'instagram_login') return INSTAGRAM_LOGIN_GRAPH_BASE
     return method === 'legacy' || method === 'facebook_login' ? FACEBOOK_GRAPH_BASE : null
   }
+  if (platform === 'youtube') return method === 'google_oauth' ? YOUTUBE_API_BASE : null
   return method === 'legacy' || method === 'threads_oauth' ? THREADS_GRAPH_BASE : null
 }

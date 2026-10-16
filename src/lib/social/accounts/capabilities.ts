@@ -47,6 +47,8 @@ type CapabilityInput = {
 
 /** What the platform supports for this account type (docs), independent of NaHaber's code. */
 export function platformCapabilities(a: CapabilityInput): ContentKind[] {
+  // YouTube: video upload (a vertical ≤ 3 min video is a Short). No image post / story via the API.
+  if (a.platform === 'youtube') return ['video', 'reel']
   if (a.platform === 'threads') return ['image_post', 'carousel_post', 'video']
   if (a.platform === 'facebook') return ['image_post', 'carousel_post', 'story', 'video', 'reel']
   if (a.connectionMethod === 'instagram_login') {
@@ -63,6 +65,8 @@ export const ADAPTER_IMPLEMENTED: Record<SocialAccountPlatform, readonly Content
   facebook: ['image_post', 'story', 'reel'],
   instagram: ['image_post', 'carousel_post', 'story', 'reel'],
   threads: ['image_post'],
+  // REELS MP4 uploaded as a YouTube Short (youtubeShorts.ts).
+  youtube: ['reel'],
 }
 
 /** Selectable kinds = platform capability ∩ adapter implementation. */
@@ -77,6 +81,17 @@ export function supportedFormats(a: CapabilityInput): PublishFormat[] {
   if (kinds.includes('image_post')) out.push('post')
   if (kinds.includes('story')) out.push('story')
   return out
+}
+
+/**
+ * Formats the account's NaHaber publish scope governs. Video formats follow the
+ * POST scope (scopeFormatFor), so a video-only platform (YouTube Shorts) still
+ * gets a «post» scope entry — it never makes the account a post TARGET
+ * (targetBlocker / formatsForMode use supportedFormats).
+ */
+export function scopeFormats(a: CapabilityInput): PublishFormat[] {
+  const f = supportedFormats(a)
+  return supportsReel(a) && !f.includes('post') ? ['post', ...f] : f
 }
 
 /** REELS-1: news reel publishing (automation rules + Reels studio). */

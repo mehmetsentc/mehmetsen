@@ -25,7 +25,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { canAccessContentScope, contentScopeOf } from '@/lib/cms/rbacScope'
 import { canManageAccount, canPublishToAccount, canUseForManual, type SocialActor } from './access'
 import { listAccountsForActor } from './connect/flows'
-import { scopeFormatFor, supportedFormats, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type TargetBlocker } from './capabilities'
+import { scopeFormatFor, supportedFormats, scopeFormats, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type TargetBlocker } from './capabilities'
 
 const FORMAT_WORD: Record<AutomationFormat, string> = { post: 'gönderi', story: 'hikâye', reel: 'reels', video_story: 'video hikâye' }
 import { readPublishScope, newsScopeProblemFor, type AccountPublishScope } from './publishScope'
@@ -46,7 +46,7 @@ export function manualTargetCheck(
   formats: AutomationFormat[],
   now: number,
 ): ManualTargetCheck {
-  const scope = readPublishScope(account, supportedFormats(account))
+  const scope = readPublishScope(account, scopeFormats(account))
   if (!canUseForManual(actor, account.ownership, scope.manualAccess)) {
     return { ok: false, code: 'not_permitted', reason: 'Bu hesapla paylaşım yetkiniz yok', reconnect: false, hidden: true }
   }
@@ -112,7 +112,7 @@ export async function listManualTargetAccounts(actor: SocialActor): Promise<Soci
       if (!a || seen.has(a.id)) continue
       const kind = ownershipKind(a.ownership)
       if (kind !== 'central' && kind !== 'province') continue
-      if (canUseForManual(actor, a.ownership, readPublishScope(a, supportedFormats(a)).manualAccess)) seen.set(a.id, a)
+      if (canUseForManual(actor, a.ownership, readPublishScope(a, scopeFormats(a)).manualAccess)) seen.set(a.id, a)
     }
   }
   return [...seen.values()].filter((a) => a.connectionMethod !== 'legacy')

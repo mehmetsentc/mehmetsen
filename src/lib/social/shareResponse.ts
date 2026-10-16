@@ -59,7 +59,7 @@ export async function attachAccountNames(results: PublishOneSocialResult[], load
 
 /** One row per target account and format (Görev 18 EK) — never collapsed per platform. */
 export interface TargetResultRow {
-  platform: 'facebook' | 'instagram' | 'threads'
+  platform: 'facebook' | 'instagram' | 'threads' | 'youtube'
   accountId: string
   accountName: string | null
   format: 'post' | 'story' | 'reel' | 'video_story'

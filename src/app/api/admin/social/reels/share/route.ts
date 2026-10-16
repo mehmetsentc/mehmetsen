@@ -19,6 +19,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 const NEWS_RE = /^[A-Za-z0-9_-]{4,128}$/
+/** Platforms that take the rendered news video (YouTube: Shorts only — manualTargetCheck refuses video_story). */
+const VIDEO_PLATFORMS = new Set<string>(['instagram', 'facebook', 'youtube'])
 const fmtOf = (v: unknown): VideoFormat => (v === 'video_story' ? 'video_story' : 'reel')
 
 export async function GET(request: Request) {
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
   if (!r.ok) return json({ error: r.code, code: r.code }, r.status)
   return json({
     accounts: r.options
-      .filter((o) => o.platform === 'instagram' || o.platform === 'facebook')
+      .filter((o) => VIDEO_PLATFORMS.has(o.platform))
       .map((o) => ({ accountId: o.accountId, platform: o.platform, displayName: o.displayName, username: o.username, selectable: o.selectable, reason: o.reason })),
   })
 }
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
   const r = await manualTargetsForNews(auth.actor, newsId, [format], Date.now())
   if (!r.ok) return json({ error: r.code, code: r.code }, r.status)
   if (body.prepare === true) {
-    if (!r.options.some((o) => o.selectable && (o.platform === 'instagram' || o.platform === 'facebook'))) return json({ error: 'Bu haber için kullanılabilir hesap yok', code: 'not_found' }, 404)
+    if (!r.options.some((o) => o.selectable && VIDEO_PLATFORMS.has(o.platform))) return json({ error: 'Bu haber için kullanılabilir hesap yok', code: 'not_found' }, 404)
     try {
       const { buildReelForNews } = await import('@/lib/reels/reelService')
       const b = await buildReelForNews(newsId, { by: auth.actor.uid })
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
     }
   }
   const target = r.options.find((o) => o.accountId === accountId)
-  if (!target || (target.platform !== 'instagram' && target.platform !== 'facebook')) return json({ error: 'Bu hesap bu haber için kullanılamaz', code: 'not_found' }, 404)
+  if (!target || !VIDEO_PLATFORMS.has(target.platform)) return json({ error: 'Bu hesap bu haber için kullanılamaz', code: 'not_found' }, 404)
   if (!target.selectable) return json({ error: target.reason ?? 'Hesap seçilemez', code: target.code }, 409)
   const result = await publishOneSocial(newsId, {
     mode: format,

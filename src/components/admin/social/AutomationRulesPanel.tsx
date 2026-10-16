@@ -28,7 +28,7 @@ type LegacyHandoff = { accountId: string; platform: SocialAccountPlatform; forma
 type RulesResponse = {
   rules: RuleRow[]
   accounts: SocialAccountPublic[]
-  legacyAccountIds: Record<SocialAccountPlatform, string | null>
+  legacyAccountIds: Record<'facebook' | 'instagram' | 'threads', string | null>
   handoffs: Record<string, LegacyHandoff>
   counters: Record<string, { today: number; lastSentAt: number | null }>
   reconcile: { cursor: number | null; updatedAt: number | null }
@@ -45,7 +45,7 @@ type WorkerBeat = {
 }
 type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
-const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' }
+const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube' }
 const FORMAT_TEXT: Record<AutomationFormat, string> = { post: 'Gönderi', story: 'Hikâye', reel: 'Reels', video_story: 'Video hikâye' }
 const MODE_OPTIONS: Array<{ value: FeaturedMode; label: string }> = [
   { value: 'categories_only', label: 'Seçilen kategoriler' },
@@ -138,7 +138,19 @@ function WorkerStatus({ beat }: { beat: WorkerBeat | null }) {
   )
 }
 
+/** YouTube kanalları yalnız Shorts (reel) alır; diğer hesaplar gönderiyle başlar. */
+function defaultFormatsFor(accountId: string): AutomationFormat[] {
+  return accountId.startsWith('youtube_') ? ['reel'] : ['post']
+}
+
+/**
+ * YouTube API kotası proje başına paylaşılır (varsayılan ~6 yükleme/gün, tüm
+ * kanallar toplam); bu yüzden YouTube kuralı düşük günlük sınırla başlar.
+ */
+const YOUTUBE_DAILY_LIMIT_DEFAULT = 3
+
 function emptyInput(accountId = ''): AutomationRuleInput {
+  const youtube = accountId.startsWith('youtube_')
   return {
     name: '',
     accountId,
@@ -147,8 +159,8 @@ function emptyInput(accountId = ''): AutomationRuleInput {
     allCategories: false,
     featuredMode: 'categories_only',
     featuredKind: 'either',
-    formats: ['post'],
-    dailyLimit: RULE_LIMITS.dailyLimitDefault,
+    formats: defaultFormatsFor(accountId),
+    dailyLimit: youtube ? Math.min(RULE_LIMITS.dailyLimitDefault, YOUTUBE_DAILY_LIMIT_DEFAULT) : RULE_LIMITS.dailyLimitDefault,
     minIntervalMinutes: RULE_LIMITS.minIntervalDefault,
     quietHours: null,
   }
@@ -442,7 +454,7 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
             <p className="text-sm text-[rgb(var(--color-muted))]">
               Açıldıktan sonra yayımlanan ve bu koşullara uyan haberler bu hesaba <b>gerçekten paylaşılır</b>. Önceki haberler paylaşılmaz.
             </p>
-            {data?.legacyAccountIds[confirmRule.platform] === confirmRule.accountId && !data?.handoffs[confirmRule.accountId] ? (
+            {confirmRule.platform !== 'youtube' && data?.legacyAccountIds[confirmRule.platform] === confirmRule.accountId && !data?.handoffs[confirmRule.accountId] ? (
               <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
                 Bu hesap eski Onyeditivi otomatik yolunun da hedefi. Ortak kilit aynı haberin iki kez gitmesini engeller; eski yolu durdurmak için aşağıdaki «Eski yol devri» bölümünü kullanın.
               </p>
@@ -522,7 +534,7 @@ function LegacyHandoffSection({
   if (!data) return null
   const rows = (['facebook', 'instagram', 'threads'] as const)
     .map((p) => ({ platform: p, accountId: data.legacyAccountIds[p] }))
-    .filter((r): r is { platform: SocialAccountPlatform; accountId: string } => !!r.accountId)
+    .filter((r): r is { platform: 'facebook' | 'instagram' | 'threads'; accountId: string } => !!r.accountId)
   if (rows.length === 0) return null
   return (
     <section className="space-y-2 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
@@ -663,7 +675,7 @@ function RuleForm({
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Hedef hesap</span>
-          <select value={input.accountId} disabled={!!ruleId} onChange={(e) => set({ accountId: e.target.value, formats: ['post'] })} className={cn(input_, 'w-full')}>
+          <select value={input.accountId} disabled={!!ruleId} onChange={(e) => set({ accountId: e.target.value, formats: defaultFormatsFor(e.target.value), ...(e.target.value.startsWith('youtube_') ? { dailyLimit: Math.min(input.dailyLimit, YOUTUBE_DAILY_LIMIT_DEFAULT) } : {}) })} className={cn(input_, 'w-full')}>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {accountLabel(a, a.id)}

@@ -62,6 +62,7 @@ import {
   isInstagramProfessional,
 } from './instagramLogin'
 import { buildThreadsAuthorizeUrl, exchangeThreadsCode, exchangeThreadsLongLived, fetchThreadsProfile, verifyThreadsScopes } from './threadsOAuth'
+import { buildGoogleAuthorizeUrl, exchangeGoogleCode, fetchMyYouTubeChannels } from './googleOAuth'
 import { saveConnectedAccount, type SaveConnectionResult } from './connectionStore'
 import {
   consumeFacebookSelectSession,
@@ -78,6 +79,7 @@ export const METHOD_FOR_PLATFORM: Record<SocialAccountPlatform, OAuthConnectionM
   facebook: 'facebook_login',
   instagram: 'instagram_login',
   threads: 'threads_oauth',
+  youtube: 'google_oauth',
 }
 
 export interface CookieToSet {
@@ -95,6 +97,7 @@ export function allConfigStatuses(): Record<SocialAccountPlatform, PlatformConfi
     facebook: getPlatformConfigStatus('facebook'),
     instagram: getPlatformConfigStatus('instagram'),
     threads: getPlatformConfigStatus('threads'),
+    youtube: getPlatformConfigStatus('youtube'),
   }
 }
 
@@ -174,7 +177,9 @@ export async function startConnection(input: {
       ? buildFacebookAuthorizeUrl(cfg, state, !!reconnectAccountId)
       : platform === 'instagram'
         ? buildInstagramAuthorizeUrl(cfg, state)
-        : buildThreadsAuthorizeUrl(cfg, state)
+        : platform === 'youtube'
+          ? buildGoogleAuthorizeUrl(cfg, state)
+          : buildThreadsAuthorizeUrl(cfg, state)
 
   await writeSocialAudit({
     actorId: input.actor.uid,
@@ -287,6 +292,7 @@ export async function handleOAuthCallback(input: {
   try {
     if (platform === 'facebook') result = await facebookCallback(cfg, code, consumed, now)
     else if (platform === 'instagram') result = await instagramCallback(cfg, code, consumed, now)
+    else if (platform === 'youtube') result = await youtubeCallback(cfg, code, consumed, now)
     else result = await threadsCallback(cfg, code, consumed, now)
   } catch (err) {
     const step = err instanceof MetaCallError ? err.step : 'internal'
@@ -417,6 +423,51 @@ async function threadsCallback(
     tokenExpiryVerified: long.expiresAt !== null,
     grantedPermissions: scopes,
     permissionsVerifiedAt: scopes ? now : null,
+    ownership: consumed.ownership,
+    reconnectAccountId: consumed.reconnectAccountId,
+    actorUid: consumed.uid,
+    now,
+  })
+  return finishSave(save, consumed)
+}
+
+/**
+ * YouTube (Google OAuth). Stores ONLY the refresh token (encrypted,
+ * `youtube_refresh`); the channel is the one the user picked on Google's
+ * account chooser (`channels?mine=true`). Scopes come from Google's token
+ * response — never from what was requested.
+ */
+async function youtubeCallback(
+  cfg: ReturnType<typeof getPlatformOAuthConfig>,
+  code: string,
+  consumed: Consumed,
+  now: number,
+): Promise<CallbackOutcome> {
+  const { accessToken, refreshToken, scopes } = await exchangeGoogleCode(cfg, code)
+  const required = requiredPermissionsFor('youtube', 'google_oauth')
+  if (!scopes) return outcome('permission_unverified', {}, [], consumed.returnTo)
+  if (!required.every((p) => scopes.includes(p))) return outcome('permission_missing', {}, [], consumed.returnTo)
+  // Without a refresh token NaHaber could only publish for one hour → refuse.
+  if (!refreshToken) return outcome('no_refresh_token', {}, [], consumed.returnTo)
+  const channels = await fetchMyYouTubeChannels(accessToken)
+  if (channels.length === 0) return outcome('no_channel', {}, [], consumed.returnTo)
+  if (channels.length > 1) return outcome('multiple_channels', {}, [], consumed.returnTo)
+  const ch = channels[0]!
+  const save = await saveConnectedAccount({
+    platform: 'youtube',
+    connectionMethod: 'google_oauth',
+    externalId: ch.channelId,
+    displayName: ch.title,
+    username: ch.handle,
+    platformAccountType: null,
+    accessToken: refreshToken,
+    tokenType: 'youtube_refresh',
+    // Refresh tokens carry no expiry; revocation (or the 7-day «Testing» limit)
+    // surfaces as invalid_grant at publish / check time → needs_reauth.
+    tokenExpiresAt: null,
+    tokenExpiryVerified: false,
+    grantedPermissions: scopes,
+    permissionsVerifiedAt: now,
     ownership: consumed.ownership,
     reconnectAccountId: consumed.reconnectAccountId,
     actorUid: consumed.uid,

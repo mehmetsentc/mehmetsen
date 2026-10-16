@@ -114,7 +114,8 @@ export const RULE_LIMITS = {
 
 const PROVINCE_SLUGS = new Set(TURKISH_PROVINCES.map((p) => p.slug))
 const CATEGORY_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
-const ACCOUNT_ID_RE = /^(facebook|instagram|threads)_[0-9]{1,30}$/
+/** Meta ids are numeric; YouTube channel ids are `UC` + 22 url-safe chars. */
+const ACCOUNT_ID_RE = /^(?:(?:facebook|instagram|threads)_[0-9]{1,30}|youtube_UC[0-9A-Za-z_-]{22})$/
 
 export function isProvinceSlug(slug: string): boolean {
   return PROVINCE_SLUGS.has(slug)
@@ -259,6 +260,6 @@ export function validateRuleInput(raw: unknown): RuleValidation {
 
 /** Platform of an account id (`facebook_123` → facebook). */
 export function platformOfAccountId(accountId: string): SocialAccountPlatform | null {
-  const m = /^(facebook|instagram|threads)_/.exec(accountId)
+  const m = /^(facebook|instagram|threads|youtube)_/.exec(accountId)
   return m ? (m[1] as SocialAccountPlatform) : null
 }

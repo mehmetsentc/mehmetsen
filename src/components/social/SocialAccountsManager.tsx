@@ -115,7 +115,7 @@ export function SocialAccountsManager({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [platform, setPlatform] = useState<'instagram' | 'facebook' | 'threads'>('instagram')
+  const [platform, setPlatform] = useState<'instagram' | 'facebook' | 'threads' | 'youtube'>('instagram')
   const [ownerKey, setOwnerKey] = useState('')
   const [citySlug, setCitySlug] = useState('')
   const [pages, setPages] = useState<PageRow[]>([])
@@ -444,7 +444,7 @@ export function SocialAccountsManager({
             <li>
               <span className="mb-1 block text-xs font-semibold text-[rgb(var(--color-muted))]">1. Platform</span>
               <div className="flex flex-wrap gap-2">
-                {(['instagram', 'facebook', 'threads'] as const).map((p) => (
+                {(['instagram', 'facebook', 'threads', 'youtube'] as const).map((p) => (
                   <label key={p} className={cn('inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5', !readyPlatforms.includes(p) && 'opacity-50')}>
                     <input type="radio" name="wiz-platform" disabled={!readyPlatforms.includes(p)} checked={platform === p} onChange={() => setPlatform(p)} />
                     {PLATFORM_LABEL[p]}
@@ -472,7 +472,18 @@ export function SocialAccountsManager({
                   </p>
                 </div>
               )}
-              {me?.platforms?.[platform]?.publicAccess !== 'approved' && (
+              {platform === 'youtube' && (
+                <div className="mt-1 space-y-1 text-xs text-[rgb(var(--color-muted))]">
+                  <p>Google hesabınızla giriş yapılır; hesap seçicide kanalın bağlı olduğu hesabı (marka hesabıysa kanalın adını) seçin. Her kanal ayrı hesap olarak kaydedilir.</p>
+                  <p>YouTube’a yalnız NaHaber’in ürettiği dikey Reels videosu <b>Shorts</b> olarak yüklenir; görselli gönderi ve hikâye YouTube API’sinde yoktur.</p>
+                </div>
+              )}
+              {platform === 'youtube' && me?.platforms?.youtube?.publicAccess !== 'approved' && (
+                <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                  Google doğrulaması ve YouTube API denetimi bekleniyor: şimdilik yalnız Google Cloud’da test kullanıcısı olarak eklenen hesaplar bağlanabilir, bağlantı 7 günde bir yenilenmelidir ve YouTube yüklenen videoları gizli (private) tutar.
+                </p>
+              )}
+              {platform !== 'youtube' && me?.platforms?.[platform]?.publicAccess !== 'approved' && (
                 <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
                   Uygulamanın genel hesap bağlantısı onayı bekleniyor (Meta incelemesi). Şimdilik yalnız NaHaber uygulamasında rolü olan hesaplar bağlanabilir; diğer hesaplar platformun giriş ekranında «Yetersiz geliştirici görevi» benzeri bir uyarı görür.
                 </p>
@@ -579,7 +590,7 @@ export function SocialAccountsManager({
         <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="Hesap filtreleri">
           <select value={fPlatform} onChange={(e) => setFPlatform(e.target.value)} className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1">
             <option value="">Tüm platformlar</option>
-            {(['instagram', 'facebook', 'threads'] as const).map((p) => (
+            {(['instagram', 'facebook', 'threads', 'youtube'] as const).map((p) => (
               <option key={p} value={p}>
                 {PLATFORM_LABEL[p]}
               </option>

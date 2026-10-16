@@ -25,7 +25,7 @@ import { errorLogFields, socialLog } from '../safeLog'
 import { metaCodeFromSafeError } from '../shareResultText'
 import { markTokenRejected, TOKEN_REJECTED_CODES } from './connectionCheck'
 
-export const TARGETABLE_PLATFORMS = ['facebook', 'instagram', 'threads'] as const satisfies readonly SocialAccountPlatform[]
+export const TARGETABLE_PLATFORMS = ['facebook', 'instagram', 'threads', 'youtube'] as const satisfies readonly SocialAccountPlatform[]
 export type TargetablePlatform = (typeof TARGETABLE_PLATFORMS)[number]
 export type PublishTargets = Partial<Record<TargetablePlatform, string>>
 

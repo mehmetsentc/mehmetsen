@@ -54,6 +54,9 @@ const meta = {
   threadsUserIdAsNumber: false,
   fbNoPages: false,
   fbAccountsError: false,
+  ytScope: '',
+  ytNoRefresh: false,
+  ytChannels: [] as Array<{ id: string; snippet: { title: string; customUrl?: string } }>,
 }
 const META_DEFAULTS = () => ({
   threadsUserIdAsNumber: false,
@@ -67,6 +70,9 @@ const META_DEFAULTS = () => ({
   threadsDebugOk: true,
   threadsScopes: ['threads_basic', 'threads_content_publish'],
   threadsUserId: '4440001',
+  ytScope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
+  ytNoRefresh: false,
+  ytChannels: [{ id: 'UCnahaberAAAAAAAAAAAAAAA', snippet: { title: 'NaHaber', customUrl: '@nahaber' } }],
 })
 const SECRETS = [
   'FB_APP_SECRET_VALUE',
@@ -81,6 +87,9 @@ const SECRETS = [
   'IGAA_LONG',
   'THQ_SHORT',
   'THQ_LONG',
+  'YT_CLIENT_SECRET_VALUE',
+  'GOOG_REFRESH',
+  'GOOG_ACCESS',
 ]
 
 function jsonRes(d: unknown, status = 200) {
@@ -171,6 +180,14 @@ async function metaFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     }
     if (p.endsWith(`/${meta.threadsUserId}`)) return jsonRes({ id: meta.threadsUserId, username: 'antalya.th', name: 'Antalya Threads' })
   }
+  if (u.host === 'oauth2.googleapis.com' && p === '/token') {
+    const body = new URLSearchParams(init?.body ? String(init.body) : '')
+    if (body.get('code') !== 'AUTHCODE123') return jsonRes({ error: 'invalid_grant', error_description: 'Bad code GOOG_ACCESS' }, 400)
+    return jsonRes({ access_token: 'GOOG_ACCESS', expires_in: 3599, token_type: 'Bearer', scope: meta.ytScope, ...(meta.ytNoRefresh ? {} : { refresh_token: 'GOOG_REFRESH' }) })
+  }
+  if (u.host === 'www.googleapis.com' && p === '/youtube/v3/channels') {
+    return jsonRes({ items: meta.ytChannels })
+  }
   return jsonRes({ error: { message: `unexpected ${u.host}${p}` } }, 404)
 }
 
@@ -187,6 +204,8 @@ const ENV = {
   SOCIAL_IG_APP_SECRET: 'IG_APP_SECRET_VALUE',
   SOCIAL_THREADS_APP_ID: '3333333',
   SOCIAL_THREADS_APP_SECRET: 'TH_APP_SECRET_VALUE',
+  SOCIAL_YT_CLIENT_ID: '4444444-abcdefgh12345678.apps.googleusercontent.com',
+  SOCIAL_YT_CLIENT_SECRET: 'YT_CLIENT_SECRET_VALUE',
 }
 const ORIGIN = 'https://www.nahaber.com'
 
@@ -201,7 +220,7 @@ async function cmsSession(uid: string) {
 }
 
 async function begin(
-  platform: 'facebook' | 'instagram' | 'threads',
+  platform: 'facebook' | 'instagram' | 'threads' | 'youtube',
   uid = 'admin1',
   citySlug: string | Record<string, unknown> = 'antalya',
   reconnectAccountId?: string,
@@ -890,5 +909,68 @@ describe('durum geçişleri ve yönetim API’si', () => {
       { params: Promise.resolve({ id: 'instagram_17840000000000001' }) },
     )
     expect(patch.status).toBe(403)
+  })
+})
+
+// ── YouTube (Google OAuth) ──────────────────────────────────────────────────
+describe('YouTube', () => {
+  const YT_ID = 'youtube_UCnahaberAAAAAAAAAAAAAAA'
+
+  it('Google istemcisi, doğru uçlar; yalnız refresh token şifreli saklanır; kanal kimliği Google’dan', async () => {
+    const a = await begin('youtube', 'admin1', { kind: 'central' })
+    const auth = new URL(a.authorizeUrl)
+    expect(auth.host).toBe('accounts.google.com')
+    expect(auth.searchParams.get('client_id')).toBe(ENV.SOCIAL_YT_CLIENT_ID)
+    expect(auth.searchParams.get('redirect_uri')).toBe('https://www.nahaber.com/api/admin/social/oauth/youtube/callback')
+    expect(result(await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('connected')
+    expect(calls.map((c) => `${c.method} ${new URL(c.url).host}${new URL(c.url).pathname}`)).toEqual([
+      'POST oauth2.googleapis.com/token',
+      'GET www.googleapis.com/youtube/v3/channels',
+    ])
+    expect(fs.store.get(`socialAccounts/${YT_ID}`)).toMatchObject({
+      platform: 'youtube',
+      connectionMethod: 'google_oauth',
+      status: 'active',
+      displayName: 'NaHaber',
+      username: '@nahaber',
+      youtube: { channelId: 'UCnahaberAAAAAAAAAAAAAAA' },
+      tokenExpiresAt: null,
+      ownership: { central: true },
+    })
+    expect(fs.store.get(`socialAccountSecrets/${YT_ID}`)).toMatchObject({ kind: 'encrypted', tokenType: 'youtube_refresh' })
+  })
+
+  it('yükleme izni verilmezse ya da refresh token gelmezse kayıt yapılmaz', async () => {
+    meta.ytScope = 'https://www.googleapis.com/auth/youtube.readonly'
+    let a = await begin('youtube', 'admin1', { kind: 'central' })
+    expect(result(await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('permission_missing')
+    Object.assign(meta, META_DEFAULTS())
+    meta.ytNoRefresh = true
+    a = await begin('youtube', 'admin1', { kind: 'central' })
+    expect(result(await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('no_refresh_token')
+    expect(fs.store.get(`socialAccounts/${YT_ID}`)).toBeUndefined()
+  })
+
+  it('kanalı olmayan / birden çok kanal döndüren giriş bağlanmaz (sessiz seçim yok)', async () => {
+    meta.ytChannels = []
+    let a = await begin('youtube', 'admin1', { kind: 'central' })
+    expect(result(await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('no_channel')
+    meta.ytChannels = [
+      { id: 'UCnahaberAAAAAAAAAAAAAAA', snippet: { title: 'A' } },
+      { id: 'UCnahaberBBBBBBBBBBBBBBB', snippet: { title: 'B' } },
+    ]
+    a = await begin('youtube', 'admin1', { kind: 'central' })
+    expect(result(await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader))).toBe('multiple_channels')
+    expect([...fs.store.keys()].some((k) => k.startsWith('socialAccounts/youtube_'))).toBe(false)
+  })
+
+  it('yeniden bağlamada farklı kanal → account_mismatch, mevcut bağlantı korunur', async () => {
+    const a = await begin('youtube', 'admin1', { kind: 'central' })
+    await callback('youtube', { state: a.state, code: 'AUTHCODE123' }, a.cookieHeader)
+    const before = JSON.stringify(fs.store.get(`socialAccountSecrets/${YT_ID}`))
+    meta.ytChannels = [{ id: 'UCnahaberBBBBBBBBBBBBBBB', snippet: { title: 'Başka' } }]
+    const r = await begin('youtube', 'admin1', { kind: 'central' }, YT_ID)
+    expect(result(await callback('youtube', { state: r.state, code: 'AUTHCODE123' }, r.cookieHeader))).toBe('account_mismatch')
+    expect(JSON.stringify(fs.store.get(`socialAccountSecrets/${YT_ID}`))).toBe(before)
   })
 })

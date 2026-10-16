@@ -16,6 +16,10 @@ import 'server-only'
 import { isSocialTestMode } from '../testEnvironment'
 import { isWellFormedAccountId, loadSocialAccount } from './accountStore'
 import { decryptAccessToken, LEGACY_CREDENTIAL_SOURCES, readSecretRecord, type SocialTokenType } from './secretStore'
+import { isLegacyCapablePlatform } from './secretStore.shared'
+import { youtubeClientCredentials } from './connect/oauthConfig'
+import { GoogleRefreshRejectedError, refreshGoogleAccessToken } from './connect/googleOAuth'
+import { markTokenRejected } from './connectionCheck'
 import { apiBaseFor } from './apiHosts'
 import { publishPermissionState, type SocialAccount, type SocialAccountPlatform } from './types'
 import type { PublishTarget } from './targetTypes'
@@ -39,6 +43,8 @@ export type ResolveTargetErrorCode =
   | 'legacy_mismatch'
   | 'publish_permission_missing'
   | 'publish_permission_unverified'
+  | 'not_configured'
+  | 'token_refresh_failed'
 
 export type ResolvePublishTargetResult =
   | { ok: true; target: PublishTarget }
@@ -60,6 +66,8 @@ const MESSAGES: Record<ResolveTargetErrorCode, string> = {
   legacy_mismatch: 'Legacy bağlantı bu hesabı göstermiyor',
   publish_permission_missing: 'Yayın izni verilmemiş — yeniden bağlantı gerekli',
   publish_permission_unverified: 'Yayın izni doğrulanmadı — yeniden bağlantı gerekli',
+  not_configured: 'Platform bağlantı ayarları sunucuda eksik',
+  token_refresh_failed: 'Platformdan geçici erişim anahtarı alınamadı — biraz sonra tekrar deneyin',
 }
 
 function fail(accountId: string, code: ResolveTargetErrorCode): ResolvePublishTargetResult {
@@ -88,6 +96,8 @@ interface LegacyCredentials {
 export async function resolveLegacyCredentials(platform: SocialAccountPlatform): Promise<LegacyCredentials | null> {
   // Test (preview) ortamında Onyeditivi token'ları hiç okunmaz.
   if (isSocialTestMode()) return null
+  // YouTube'un Onyeditivi (legacy) kimlik bilgisi yoktur.
+  if (!isLegacyCapablePlatform(platform)) return null
   if (platform === 'facebook') {
     const creds = await resolveFacebookCredentials(PRIMARY_FACEBOOK_SITE_ID)
     if (!creds.pageId || !creds.accessToken) return null
@@ -134,6 +144,9 @@ function buildTarget(
   if (account.platform === 'instagram') {
     return withToken({ ...base, platform: 'instagram' as const, igUserId: account.instagram.igUserId }, accessToken)
   }
+  if (account.platform === 'youtube') {
+    return withToken({ ...base, platform: 'youtube' as const, channelId: account.youtube.channelId }, accessToken)
+  }
   return withToken({ ...base, platform: 'threads' as const, threadsUserId: account.threads.threadsUserId }, accessToken)
 }
 
@@ -141,6 +154,7 @@ function buildTarget(
 export function expectedTokenType(account: SocialAccount): SocialTokenType {
   if (account.platform === 'facebook') return 'facebook_page'
   if (account.platform === 'threads') return 'threads_user'
+  if (account.platform === 'youtube') return 'youtube_refresh'
   return account.connectionMethod === 'instagram_login' ? 'instagram_user' : 'facebook_page'
 }
 
@@ -180,7 +194,7 @@ export async function resolvePublishTarget(
 
   if (secret.kind === 'legacy') {
     if (account.connectionMethod !== 'legacy') return fail(id, 'secret_invalid')
-    if (secret.legacySource !== LEGACY_CREDENTIAL_SOURCES[account.platform]) return fail(id, 'secret_invalid')
+    if (!isLegacyCapablePlatform(account.platform) || secret.legacySource !== LEGACY_CREDENTIAL_SOURCES[account.platform]) return fail(id, 'secret_invalid')
     const legacy = await resolveLegacyCredentials(account.platform).catch(() => null)
     if (!legacy) return fail(id, 'legacy_unavailable')
     if (legacy.externalId !== account.externalId) return fail(id, 'legacy_mismatch')
@@ -191,5 +205,21 @@ export async function resolvePublishTarget(
   if (secret.tokenType !== expectedTokenType(account)) return fail(id, 'secret_invalid')
   const token = await decryptAccessToken(secret)
   if (!token) return fail(id, 'secret_decrypt_failed')
+  if (account.platform === 'youtube') {
+    // Stored value is a refresh token → mint a short-lived access token (never stored).
+    const creds = youtubeClientCredentials()
+    if (!creds) return fail(id, 'not_configured')
+    try {
+      const { accessToken } = await refreshGoogleAccessToken(creds, token)
+      return { ok: true, target: buildTarget(account, apiBase, accessToken) }
+    } catch (err) {
+      if (err instanceof GoogleRefreshRejectedError) {
+        // Revoked / expired refresh token (incl. the 7-day limit of «Testing» apps).
+        await markTokenRejected(id, { by: 'system', now, source: 'resolve:youtube', code: 401, subcode: null }).catch(() => undefined)
+        return fail(id, 'needs_reauth')
+      }
+      return fail(id, 'token_refresh_failed')
+    }
+  }
   return { ok: true, target: buildTarget(account, apiBase, token) }
 }

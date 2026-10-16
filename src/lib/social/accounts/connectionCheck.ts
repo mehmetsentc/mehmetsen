@@ -20,6 +20,9 @@ import { decryptAccessToken, readSecretRecord } from './secretStore'
 import { loadSocialAccount } from './accountStore'
 import { writeSocialAudit } from './audit'
 import type { SocialAccount } from './types'
+import { youtubeClientCredentials } from './connect/oauthConfig'
+import { fetchMyYouTubeChannels, GoogleRefreshRejectedError, refreshGoogleAccessToken } from './connect/googleOAuth'
+import { MetaCallError } from './connect/metaHttp'
 
 /** Meta: access token invalid / expired / revoked / session invalidated. */
 export const TOKEN_REJECTED_CODES = new Set([190, 102])
@@ -82,6 +85,7 @@ export async function checkAccountConnection(accountId: string, input: { by: str
     token = null
   }
   if (!token) return { state: 'unavailable', reason: 'no_secret' }
+  if (a.platform === 'youtube') return checkYouTube(accountId, a.youtube.channelId, token, input)
   const url = checkUrl(a, token)
   if (!url) return { state: 'unavailable', reason: 'legacy' }
   const r = await metaRequest<{ id?: string }>(`${a.platform}.connection_check`, url)
@@ -95,4 +99,32 @@ export async function checkAccountConnection(accountId: string, input: { by: str
   }
   if (r.error.status === 0) return { state: 'unavailable', reason: 'network' }
   return { state: 'unavailable', reason: 'platform_error', httpStatus: r.error.status, code: r.error.code }
+}
+
+/**
+ * YouTube: refresh token → access token → `channels?mine=true` must still be
+ * the connected channel. invalid_grant (revoked / expired) → needs_reauth.
+ */
+async function checkYouTube(
+  accountId: string,
+  channelId: string,
+  refreshToken: string,
+  input: { by: string; now: number },
+): Promise<ConnectionCheck> {
+  const creds = youtubeClientCredentials()
+  if (!creds) return { state: 'unavailable', reason: 'platform_error' }
+  try {
+    const { accessToken } = await refreshGoogleAccessToken(creds, refreshToken)
+    const channels = await fetchMyYouTubeChannels(accessToken)
+    if (!channels.some((c) => c.channelId === channelId)) return { state: 'unavailable', reason: 'platform_error' }
+  } catch (err) {
+    if (err instanceof GoogleRefreshRejectedError) {
+      const statusChanged = await markTokenRejected(accountId, { by: input.by, now: input.now, source: 'connection_check', code: 401, subcode: null })
+      return { state: 'token_rejected', code: 401, subcode: null, statusChanged }
+    }
+    if (err instanceof MetaCallError && err.info.status === 0) return { state: 'unavailable', reason: 'network' }
+    return { state: 'unavailable', reason: 'platform_error', httpStatus: err instanceof MetaCallError ? err.info.status : undefined }
+  }
+  await getAdminFirestore().collection(Collections.SOCIAL_ACCOUNTS).doc(accountId).update({ connectionCheckedAt: input.now }).catch(() => undefined)
+  return { state: 'ok', checkedAt: input.now }
 }

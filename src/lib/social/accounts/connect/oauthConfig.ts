@@ -10,6 +10,8 @@
  *         — NOT the Meta App ID.
  *   - Threads:                 SOCIAL_THREADS_APP_ID / SOCIAL_THREADS_APP_SECRET
  *       = Threads App ID / Threads App Secret (Threads use case)
+ *   - YouTube (Google OAuth):  SOCIAL_YT_CLIENT_ID / SOCIAL_YT_CLIENT_SECRET
+ *       = Google Cloud OAuth client (Web application) of the «NaHaber SMM» project
  *
  * Callback base: SOCIAL_OAUTH_BASE_URL (optional) → else NEXT_PUBLIC_APP_URL via
  * getSiteUrl(). Never derived from the request Host header. Must be https
@@ -32,12 +34,14 @@ export const CALLBACK_PATHS: Record<ConnectPlatform, string> = {
   facebook: '/api/admin/social/oauth/facebook/callback',
   instagram: '/api/admin/social/oauth/instagram/callback',
   threads: '/api/admin/social/oauth/threads/callback',
+  youtube: '/api/admin/social/oauth/youtube/callback',
 }
 
 const ENV_NAMES: Record<ConnectPlatform, { id: string; secret: string }> = {
   facebook: { id: 'SOCIAL_FB_APP_ID', secret: 'SOCIAL_FB_APP_SECRET' },
   instagram: { id: 'SOCIAL_IG_APP_ID', secret: 'SOCIAL_IG_APP_SECRET' },
   threads: { id: 'SOCIAL_THREADS_APP_ID', secret: 'SOCIAL_THREADS_APP_SECRET' },
+  youtube: { id: 'SOCIAL_YT_CLIENT_ID', secret: 'SOCIAL_YT_CLIENT_SECRET' },
 }
 
 export interface PlatformOAuthConfig {
@@ -64,6 +68,22 @@ export interface PlatformConfigStatus {
 }
 
 const APP_ID_RE = /^[0-9]{5,25}$/
+/** Google OAuth client id (`<digits>-<id>.apps.googleusercontent.com`). */
+const GOOGLE_CLIENT_ID_RE = /^[0-9]{5,25}-[0-9a-z]{8,64}\.apps\.googleusercontent\.com$/
+
+function clientIdValid(platform: ConnectPlatform, id: string): boolean {
+  return platform === 'youtube' ? GOOGLE_CLIENT_ID_RE.test(id) : APP_ID_RE.test(id)
+}
+
+/**
+ * Google client credentials alone (no callback URL) — used at PUBLISH time to
+ * turn a stored refresh token into an access token. null when not configured.
+ */
+export function youtubeClientCredentials(env: NodeJS.ProcessEnv = process.env): { appId: string; appSecret: string } | null {
+  const appId = env.SOCIAL_YT_CLIENT_ID?.trim() || ''
+  const appSecret = env.SOCIAL_YT_CLIENT_SECRET?.trim() || ''
+  return GOOGLE_CLIENT_ID_RE.test(appId) && appSecret ? { appId, appSecret } : null
+}
 
 /** Trusted origin for callbacks. Returns null when not safe to use. */
 export function oauthBaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
@@ -98,7 +118,7 @@ export function getPlatformConfigStatus(
     if (cfgId && !APP_ID_RE.test(cfgId)) missing.push('SOCIAL_FB_LOGIN_CONFIG_ID')
   }
   const id = env[names.id]?.trim() || ''
-  if (!APP_ID_RE.test(id)) missing.push(names.id)
+  if (!clientIdValid(platform, id)) missing.push(names.id)
   if (!env[names.secret]?.trim()) missing.push(names.secret)
   const base = oauthBaseUrl(env)
   if (!base) missing.push('SOCIAL_OAUTH_BASE_URL')
@@ -106,7 +126,7 @@ export function getPlatformConfigStatus(
   if (!env.CMS_SESSION_SECRET?.trim()) missing.push('CMS_SESSION_SECRET')
   for (const name of socialTestEnvStatus(env).problems) if (!missing.includes(name)) missing.push(name)
   // appId is the PUBLIC OAuth client id (it is part of every authorize URL); never the secret.
-  return { ready: missing.length === 0, missing, redirectUri: base ? `${base}${CALLBACK_PATHS[platform]}` : null, appId: APP_ID_RE.test(id) ? id : null }
+  return { ready: missing.length === 0, missing, redirectUri: base ? `${base}${CALLBACK_PATHS[platform]}` : null, appId: clientIdValid(platform, id) ? id : null }
 }
 
 /** Full config for server-side use. Throws when not ready (callers check status first). */

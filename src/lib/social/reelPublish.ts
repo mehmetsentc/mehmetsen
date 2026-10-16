@@ -7,7 +7,8 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { buildPublicArticleUrl } from './articleUrl'
 import { publishToTarget } from './accounts/targetedPublish'
-import type { FacebookPublishTarget, InstagramPublishTarget } from './accounts/targetTypes'
+import type { FacebookPublishTarget, InstagramPublishTarget, YouTubePublishTarget } from './accounts/targetTypes'
+import { publishYouTubeShort } from './youtubeShorts'
 import type { PublishOneSocialOptions, PublishOneSocialResult } from './publishOneSocial'
 import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from './reelAdapters'
 import { safeErrorText } from './safeLog'
@@ -32,13 +33,28 @@ export function buildReelCaption(d: Record<string, unknown>, articleUrl: string 
   return [title, summary, articleUrl ? `Haberin tamamı: ${articleUrl}` : '', tags.join(' ')].filter(Boolean).join('\n\n')
 }
 
+/** YouTube Short metadata: headline as title; summary, article link and hashtags as description. */
+export function buildYouTubeShortMeta(d: Record<string, unknown>, articleUrl: string | null): { title: string; description: string; tags: string[] } {
+  const title = str(d.title)
+  const summary = clamp(str(d.summary) || str(d.spot) || str(d.description), 1200)
+  const city = str(d.city)
+  const category = str(d.categoryName) || str(d.category)
+  const hashtags = ['#Shorts', '#haber', '#NaHaber', ...(city ? [`#${city.replace(/\s+/g, '')}`] : [])]
+  return {
+    title,
+    description: [summary, articleUrl ? `Haberin tamamı: ${articleUrl}` : '', hashtags.join(' ')].filter(Boolean).join('\n\n'),
+    tags: ['haber', 'NaHaber', ...(city ? [city] : []), ...(category ? [category] : [])],
+  }
+}
+
 export async function publishReelOne(newsId: string, options: PublishOneSocialOptions): Promise<PublishOneSocialResult> {
   const format = options.mode === 'video_story' ? 'video_story' : 'reel'
   const skip = (reason: string): PublishOneSocialResult => ({ ok: false, newsId, skipped: true, reason })
   const entries = Object.entries(options.targets ?? {}).filter(([, v]) => !!v) as Array<[string, string]>
   if (entries.length !== 1) return skip('Video yalnızca tek bir hedef hesaba paylaşılır')
   const [platform, accountId] = entries[0]!
-  if (platform !== 'instagram' && platform !== 'facebook') return skip('Reels yalnızca Instagram ve Facebook hesaplarında')
+  if (platform !== 'instagram' && platform !== 'facebook' && platform !== 'youtube') return skip('Reels yalnızca Instagram, Facebook ve YouTube hesaplarında')
+  if (platform === 'youtube' && format !== 'reel') return skip('YouTube yalnızca Shorts (reel) biçimini destekler')
   if (!options.actorUid) return skip('Reels paylaşımı için yetkili kullanıcı gerekli')
 
   const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
@@ -58,7 +74,8 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
     return skip(`Reels videosu üretilemedi: ${safeErrorText(err).slice(0, 200)}`)
   }
 
-  const caption = buildReelCaption(d, buildPublicArticleUrl(newsId, d))
+  const articleUrl = buildPublicArticleUrl(newsId, d)
+  const caption = buildReelCaption(d, articleUrl)
   const res = await publishToTarget({
     newsId,
     platform,
@@ -71,7 +88,9 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
     actorUid: options.actorUid,
     trigger: options.trigger ?? (options.automation ? 'automation' : 'studio'),
     publish: (t) =>
-      format === 'video_story'
+      platform === 'youtube'
+        ? publishYouTubeShort({ newsId, videoUrl, ...buildYouTubeShortMeta(d, articleUrl) }, t as YouTubePublishTarget)
+        : format === 'video_story'
         ? platform === 'instagram'
           ? publishInstagramVideoStory({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
           : publishFacebookVideoStory({ newsId, videoUrl, caption }, t as FacebookPublishTarget)

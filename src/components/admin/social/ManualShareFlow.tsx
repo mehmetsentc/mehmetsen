@@ -71,7 +71,7 @@ const CODE_TEXT: Record<string, string> = {
  * and published account by account (one request each, so each has its own budget).
  */
 async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_story'; targets: TargetSelection; names: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
-  const list = (['instagram', 'facebook'] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
+  const list = (['instagram', 'facebook', ...(input.mode === 'reel' ? (['youtube'] as const) : [])] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
   if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   const rows: TargetRowLike[] = []
   // REELS-5: build (or reuse) the video + cover once, in its own request.
@@ -123,7 +123,8 @@ export async function sendManualShare(input: { newsId: string; mode: ShareMode; 
   if (input.mode === 'reel' || input.mode === 'video_story') {
     return sendVideoShare({ newsId: input.newsId, mode: input.mode, targets: { ...input.targets, threads: [] }, names: input.names ?? new Map() }, onProgress)
   }
-  const sel: TargetSelection = input.mode === 'story' ? { ...input.targets, threads: [] } : input.targets
+  // YouTube yalnız Reels (Shorts) yolundan gider; gönderi / hikâyede seçili kalsa bile gönderilmez.
+  const sel: TargetSelection = input.mode === 'story' ? { ...input.targets, threads: [], youtube: [] } : { ...input.targets, youtube: [] }
   const count = targetCount(sel)
   if (count === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   if (count === 1) return sendManualShareBatch(input, sel)
@@ -133,7 +134,7 @@ export async function sendManualShare(input: { newsId: string; mode: ShareMode; 
   let i = 0
   for (const t of singles) {
     onProgress?.(i++, singles.length)
-    const one: TargetSelection = { facebook: [], instagram: [], threads: [], [t.platform]: [t.accountId] }
+    const one: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [], [t.platform]: [t.accountId] }
     const r = await sendManualShareBatch(input, one)
     if (r.rows.length) rows.push(...r.rows)
     else {
@@ -238,7 +239,7 @@ export function ManualShareFlow({
   }
 
   const retrySelection = (): TargetSelection => {
-    const sel: TargetSelection = { facebook: [], instagram: [], threads: [] }
+    const sel: TargetSelection = { facebook: [], instagram: [], threads: [], youtube: [] }
     for (const row of result?.rows ?? []) {
       if (retry.includes(`${row.accountId}__${row.format}`) && isSafelyRetryable(row)) sel[row.platform as TargetPlatform].push(row.accountId)
     }

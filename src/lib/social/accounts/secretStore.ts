@@ -11,10 +11,10 @@
  * Never log or return token values.
  */
 import 'server-only'
+import type { SocialAccountPlatform } from './types'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { decryptSecret, encryptSecret, hasSecretEncryptionKey } from '@/lib/crypto/secretCrypto'
-import type { SocialAccountPlatform } from './types'
 
 export {
   LEGACY_CREDENTIAL_SOURCES,
@@ -27,6 +27,7 @@ export {
 } from './secretStore.shared'
 import {
   LEGACY_CREDENTIAL_SOURCES,
+  isLegacyCapablePlatform,
   parseSecretRecord,
   type EncryptedSecretRecord,
   type LegacyCredentialSource,
@@ -63,6 +64,7 @@ export async function buildEncryptedSecretRecord(
 }
 
 export function buildLegacySecretRecord(platform: SocialAccountPlatform, now = Date.now()): LegacySecretRecord {
+  if (!isLegacyCapablePlatform(platform)) throw new Error('bu platformun legacy (Onyeditivi) kaynağı yok')
   return { kind: 'legacy', legacySource: LEGACY_CREDENTIAL_SOURCES[platform], updatedAt: now }
 }
 
