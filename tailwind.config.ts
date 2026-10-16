@@ -16,6 +16,8 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // class strings kept in helpers (e.g. event category pills in eventUtils)
+    './src/lib/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

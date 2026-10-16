@@ -74,6 +74,8 @@ export interface JobDetailContent {
   applyUrl: string | null
   applyHint: string
   related: JobDetailRelated[]
+  /** Dates for JobPosting structured data (scraped listings only). */
+  schema?: { datePosted: string | null; validThrough: string | null; workType: string | null }
 }
 
 function factsFrom(pairs: Array<[string, string | null | undefined]>): JobDetailFact[] {
@@ -128,6 +130,11 @@ export function buildListingDetail(
       place: jobDistrictName(item, provinceDistricts),
       sourceLabel: jobSourceLabel(item.source),
     })),
+    schema: {
+      datePosted: job.publishedAt,
+      validThrough: job.deadlineAt,
+      workType: job.workType,
+    },
   }
 }
 

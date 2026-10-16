@@ -39,7 +39,14 @@ import {
   type CityJobFilterState,
   type CityJobSort,
 } from '@/lib/cityJobFilters'
-import { jobMonogram } from '@/lib/jobListingPresentation'
+import {
+  countRecentJobs,
+  groupDuplicateJobs,
+  jobVacancies,
+  pickFeaturedJobs,
+} from '@/lib/cityServices/jobGrouping'
+import { CityFeaturedJobs } from '@/components/city/CityFeaturedJobs'
+import { JobCategoryIcon } from '@/components/city/JobCategoryIcon'
 import { cn } from '@/lib/utils'
 import type { JobClassified } from '@/types/jobClassified'
 import type { JobListing } from '@/types/jobListing'
@@ -167,8 +174,15 @@ export function CityJobsClient({
 
   const filtered = useMemo(() => {
     const list = filterCityJobs(openingsPool, filters, provinceDistricts)
-    return sortCityJobs(list, sort)
+    // one card per employer + position + place («5 kadro» instead of five rows)
+    return groupDuplicateJobs(sortCityJobs(list, sort))
   }, [openingsPool, filters, provinceDistricts, sort])
+
+  const featuredJobs = useMemo(
+    () => pickFeaturedJobs(groupDuplicateJobs(openingsPool)),
+    [openingsPool]
+  )
+  const recentCount = useMemo(() => countRecentJobs(openingsPool), [openingsPool])
 
   const filteredSeekers = useMemo(() => {
     const q = filters.query.trim().toLocaleLowerCase('tr-TR')
@@ -293,10 +307,10 @@ export function CityJobsClient({
           </div>
           <div className="border-l border-[rgb(var(--color-border))] px-4 py-3 sm:px-5">
             <dt className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-              İş arayan
+              {seekerClassifieds.length > 0 ? 'İş arayan' : 'Son 7 gün'}
             </dt>
             <dd className="mt-0.5 text-lg font-black tabular-nums text-[rgb(var(--color-text))]">
-              {seekerClassifieds.length}
+              {seekerClassifieds.length > 0 ? seekerClassifieds.length : `+${recentCount}`}
             </dd>
           </div>
           <div className="border-l border-[rgb(var(--color-border))] px-4 py-3 sm:px-5">
@@ -507,6 +521,13 @@ export function CityJobsClient({
             </div>
           )}
 
+          {boardTab === 'openings' && activeFilterCount === 0 ? (
+            <CityFeaturedJobs
+              jobs={featuredJobs}
+              placeOf={(job) => districtDisplayName(job, provinceDistricts)}
+            />
+          ) : null}
+
           {/* Toolbar */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -715,9 +736,7 @@ export function CityJobsClient({
                         'hover:border-[rgb(var(--color-brand))]/45'
                       )}
                     >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] text-sm font-black tracking-tight text-white">
-                        {jobMonogram(job.title, job.employer)}
-                      </span>
+                      <JobCategoryIcon category={category} size={48} />
                       <span className="min-w-0 flex-1">
                         <span className="mb-1 flex flex-wrap items-center gap-1.5">
                           <span className="rounded bg-[rgb(var(--color-brand))]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-brand))]">
@@ -761,10 +780,10 @@ export function CityJobsClient({
                                 {formatDeadline(job.deadlineAt)}
                               </span>
                             )}
-                            {job.openPositions != null && job.openPositions > 0 && (
-                              <span className="inline-flex items-center gap-1">
+                            {jobVacancies(job) > 1 && (
+                              <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-300">
                                 <Users className="h-3.5 w-3.5" />
-                                {job.openPositions} kişi
+                                {jobVacancies(job)} kadro
                               </span>
                             )}
                           </span>

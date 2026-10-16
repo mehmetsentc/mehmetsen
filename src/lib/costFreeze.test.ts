@@ -32,15 +32,22 @@ describe('FINOPS cost freeze', () => {
     expect(page).not.toContain('firestore')
   })
 
-  it('keeps only the crawler tick (+ the social automation worker); AI and publisher schedules stay off', () => {
+  it('keeps only the crawler tick, the social worker and daily city service syncs; AI and publisher schedules stay off', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
     // Görev 15 dar istisna: hesap bazlı sosyal otomasyon çalışanı (kullanıcı onaylı, 5 dk).
     // Açık kural yokken haber taramaz; AI çağırmaz; tek ortak çalışan.
+    // CITY-SERVICES-1 (user-approved 2026-10-16): once-a-day city service syncs are back —
+    // nöbetçi eczane (2), etkinlik (1), İŞKUR/Kariyer ilanları (2). No AI, no publishing.
     expect(vercel.crons).toEqual([
       { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
       { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
+      { path: '/api/cron/iskur-jobs?city=canakkale', schedule: '0 6 * * *' },
+      { path: '/api/cron/iskur-jobs?city=antalya', schedule: '15 6 * * *' },
+      { path: '/api/cron/antalya-nobetci-eczane', schedule: '30 6 * * *' },
+      { path: '/api/cron/canakkale-nobetci-eczane', schedule: '0 7 * * *' },
+      { path: '/api/events/sync', schedule: '0 21 * * *' },
     ])
     const worker = readFileSync(join(process.cwd(), 'src/lib/social/automation/worker.ts'), 'utf8')
     expect(worker).not.toContain('generateSocialContent')

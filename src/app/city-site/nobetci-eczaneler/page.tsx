@@ -9,6 +9,12 @@ import {
 } from '@/lib/dutyPharmacies/constants'
 import { CityDutyPharmaciesClient } from '@/components/city/CityDutyPharmaciesClient'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
+import { isDutyListStale } from '@/lib/cityServices/geo'
+import {
+  buildDutyPharmacyItemListJsonLd,
+  cityServicesSchemaLive,
+  jsonLdString,
+} from '@/lib/seo/cityServicesJsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,5 +42,17 @@ export default async function CityDutyPharmaciesPage() {
   const cityName = getCityCategoryName(tenant.provinceSlug)
   const snapshot = await getDutyPharmaciesServer(tenant.provinceSlug)
 
-  return <CityDutyPharmaciesClient cityName={cityName} snapshot={snapshot} />
+  const jsonLd =
+    snapshot && cityServicesSchemaLive() && !isDutyListStale(snapshot)
+      ? buildDutyPharmacyItemListJsonLd(snapshot, cityName)
+      : null
+
+  return (
+    <>
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      ) : null}
+      <CityDutyPharmaciesClient cityName={cityName} snapshot={snapshot} />
+    </>
+  )
 }

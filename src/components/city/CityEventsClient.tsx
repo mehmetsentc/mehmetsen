@@ -34,6 +34,8 @@ import {
 } from './CityEventFiltersPanel'
 import { CityCinemaEventsStrip } from './CityCinemaEventsStrip'
 import { CityEventListCard, CityEventListCardSkeleton } from './CityEventListCard'
+import { CityFeaturedEvents } from './CityFeaturedEvents'
+import { dedupeCityEvents, pickFeaturedEvents } from '@/lib/cityServices/eventDedupe'
 
 interface CityEventsClientProps {
   citySlug: string
@@ -84,7 +86,7 @@ export function CityEventsClient({
   })()
 
   const displayEvents = useMemo(
-    () => filterEventsForQuery(rawDisplayEvents, { timeRange }),
+    () => dedupeCityEvents(filterEventsForQuery(rawDisplayEvents, { timeRange })),
     [rawDisplayEvents, timeRange]
   )
 
@@ -141,6 +143,11 @@ export function CityEventsClient({
   }, [cityName, filters.dateFilter])
 
   const activeFilterCount = countActiveFilters(filters)
+
+  const featuredEvents = useMemo(
+    () => (activeFilterCount > 0 ? [] : pickFeaturedEvents(displayEvents)),
+    [displayEvents, activeFilterCount]
+  )
 
   const handleResetFilters = () => setFilters(DEFAULT_CITY_EVENT_FILTERS)
 
@@ -277,6 +284,8 @@ export function CityEventsClient({
               )}
             </div>
           </div>
+
+          {!showSkeletons ? <CityFeaturedEvents events={featuredEvents} /> : null}
 
           {showSkeletons ? (
             <div className="mb-5 flex gap-3 overflow-hidden">

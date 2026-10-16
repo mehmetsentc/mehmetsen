@@ -2,14 +2,17 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Pill, Search } from 'lucide-react'
+import { AlertTriangle, Pill, Search } from 'lucide-react'
 import {
   dutyPharmacyDistrictChips,
   filterDutyPharmacyGroups,
 } from '@/lib/dutyPharmacies/officialDistrict'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
-import { DutyPharmacyGroupList } from '@/components/city/DutyPharmacyGroupList'
+import { DutyPharmacyGroupList, pharmacyKey } from '@/components/city/DutyPharmacyGroupList'
+import { CityNearestPharmacies } from '@/components/city/CityNearestPharmacies'
+import { useUserLocation } from '@/components/city/useUserLocation'
+import { distanceKm, hasCoords, isDutyListStale } from '@/lib/cityServices/geo'
 import type { DutyPharmacySnapshot } from '@/types/dutyPharmacy'
 
 interface CityDutyPharmaciesClientProps {
@@ -54,6 +57,8 @@ export function CityDutyPharmaciesClient({
   districtName = null,
 }: CityDutyPharmaciesClientProps) {
   const [query, setQuery] = useState('')
+  const { status: locStatus, position, locate } = useUserLocation()
+  const stale = useMemo(() => isDutyListStale(snapshot), [snapshot])
 
   const groups = snapshot?.groups ?? []
   const citySlug = snapshot?.citySlug ?? ''
@@ -84,6 +89,24 @@ export function CityDutyPharmaciesClient({
       }))
       .filter((group) => group.pharmacies.length > 0)
   }, [districtGroups, q])
+
+  /** km per pharmacy once the visitor shared a position. */
+  const distances = useMemo(() => {
+    const m = new Map<string, number>()
+    if (!position) return m
+    for (const g of groups)
+      for (const p of g.pharmacies) if (hasCoords(p)) m.set(pharmacyKey(p), distanceKm(position, p))
+    return m
+  }, [groups, position])
+
+  /** With a position: nearest district first, nearest pharmacy first inside it. */
+  const orderedGroups = useMemo(() => {
+    if (distances.size === 0) return filteredGroups
+    const km = (p: { name: string; phone: string }) => distances.get(pharmacyKey(p)) ?? Infinity
+    return filteredGroups
+      .map((g) => ({ ...g, pharmacies: [...g.pharmacies].sort((a, b) => km(a) - km(b)) }))
+      .sort((a, b) => km(a.pharmacies[0]!) - km(b.pharmacies[0]!))
+  }, [filteredGroups, distances])
 
   const visibleCount = filteredGroups.reduce(
     (sum, group) => sum + group.pharmacies.length,
@@ -135,6 +158,34 @@ export function CityDutyPharmaciesClient({
           ) : null}
         </p>
       </header>
+
+      {stale ? (
+        <div
+          role="alert"
+          className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-sm text-[rgb(var(--color-text))]"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <p className="leading-snug">
+            <span className="font-bold">Bu liste güncel olmayabilir.</span>{' '}
+            {dutyDateLabel ? `${dutyDateLabel} tarihli nöbet listesi gösteriliyor.` : ''} Gitmeden önce
+            eczaneyi arayın ya da{' '}
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+              {sourceLabel}
+            </a>{' '}
+            sayfasına bakın.
+          </p>
+        </div>
+      ) : null}
+
+      {groups.length > 0 && !q ? (
+        <CityNearestPharmacies
+          groups={districtGroups}
+          status={locStatus}
+          position={position}
+          onLocate={locate}
+          stale={stale}
+        />
+      ) : null}
 
       {groups.length > 0 && (
         <>
@@ -192,7 +243,7 @@ export function CityDutyPharmaciesClient({
             : 'Bu aramaya uyan nöbetçi eczane yok.'}
         </div>
       ) : (
-        <DutyPharmacyGroupList groups={filteredGroups} />
+        <DutyPharmacyGroupList groups={orderedGroups} distances={distances} stale={stale} />
       )}
     </div>
   )

@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import type { EventCategory } from '@/types/event'
 import type { CityEventDateFilter, CityEventFilterState } from '@/lib/cityEventFilters'
+import { EventCategoryIcon } from './eventCategoryIcon'
 
 const DATE_OPTIONS: Array<{ id: CityEventDateFilter; label: string }> = [
   { id: 'all', label: 'Tümü' },
@@ -56,7 +57,7 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        'shrink-0 rounded-full font-medium transition-colors',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full font-medium transition-colors',
         size === 'compact' ? 'px-3 py-1.5 text-xs' : 'px-3 py-1.5 text-sm',
         active
           ? 'bg-[rgb(var(--color-brand))] text-white shadow-sm'
@@ -128,6 +129,7 @@ export function CityEventQuickFilters({
               onClick={() => set({ category: cat.id })}
               size="compact"
             >
+              <EventCategoryIcon category={cat.id} className="h-3.5 w-3.5" />
               {cat.label}
             </Chip>
           ))}

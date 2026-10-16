@@ -97,6 +97,26 @@
     {
       "path": "/api/cron/social-automation",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/iskur-jobs?city=canakkale",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/iskur-jobs?city=antalya",
+      "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/antalya-nobetci-eczane",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/canakkale-nobetci-eczane",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/events/sync",
+      "schedule": "0 21 * * *"
     }
   ]
 }

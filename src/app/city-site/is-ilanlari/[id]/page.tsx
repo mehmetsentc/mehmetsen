@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { CityJobDetail } from '@/components/city/CityJobDetail'
 import { getActiveTenant } from '@/lib/tenantContext'
 import { loadCityJobDetail } from '@/services/jobDetailPage.server'
+import { buildJobPostingJsonLd, cityServicesSchemaLive, jsonLdString } from '@/lib/seo/cityServicesJsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,5 +32,25 @@ export default async function CityJobDetailPage({ params }: Props) {
   const detail = await loadCityJobDetail(tenant.provinceSlug, id)
   if (!detail) notFound()
 
-  return <CityJobDetail detail={detail} />
+  const jsonLd =
+    cityServicesSchemaLive() && detail.schema
+      ? buildJobPostingJsonLd({
+          id: detail.id,
+          title: detail.title,
+          employer: detail.employer,
+          summary: detail.summary,
+          place: detail.place,
+          cityName: detail.cityName,
+          ...detail.schema,
+        })
+      : null
+
+  return (
+    <>
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      ) : null}
+      <CityJobDetail detail={detail} />
+    </>
+  )
 }
