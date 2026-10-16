@@ -23,6 +23,13 @@ import { useFeedCardTapGestures } from '@/lib/feed/reader/useFeedCardTapGestures
 import { isNahaberReelVideoUrl, resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import { SmartFeedCardVideo } from '@/components/feed/smart/SmartFeedCardVideo'
 import type { FeedItemDto } from '@/types/smartFeed'
+import {
+  feedHeroShape,
+  heroRatioCache,
+  landscapeCopyGive,
+  landscapeHeroHeight,
+  portraitHeroHeight,
+} from '@/lib/feed/heroShape'
 
 function formatRelativeTime(dateStr?: string | null): string | null {
   if (!dateStr) return null
@@ -203,6 +210,27 @@ export function FullscreenNewsCard({
   // actually on screen, remount the photo as an eager same-origin request.
   const [heroOnScreen, setHeroOnScreen] = useState(isActive)
   const heroWatchRef = useRef<HTMLElement | null>(null)
+  // FEED-UX-3: real photo shape (h / w), measured when the sharp photo loads
+  const heroFrameRef = useRef<HTMLDivElement | null>(null)
+  const [heroRatio, setHeroRatio] = useState<number | null>(() =>
+    item.image ? heroRatioCache.get(item.image) ?? null : null
+  )
+  const [narrowScreen, setNarrowScreen] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(max-width: 767px)')
+    const sync = () => setNarrowScreen(mq.matches)
+    sync()
+    mq.addEventListener?.('change', sync)
+    return () => mq.removeEventListener?.('change', sync)
+  }, [])
+  const measureHero = useCallback(() => {
+    const img = heroFrameRef.current?.querySelector('img')
+    if (!img || !img.naturalWidth || !img.naturalHeight) return
+    const r = img.naturalHeight / img.naturalWidth
+    if (item.image) heroRatioCache.set(item.image, r)
+    setHeroRatio(r)
+  }, [item.image])
   const [videoError, setVideoError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [heartBurst, setHeartBurst] = useState<{ id: number; x: number; y: number } | null>(null)
@@ -246,6 +274,13 @@ export function FullscreenNewsCard({
   const isCenter = false
   const playMediaDolly = isActive && motionOk
   const heroEager = isActive || heroOnScreen
+  const heroShape = narrowScreen ? feedHeroShape(heroRatio) : 'unknown'
+  const portraitHero = heroShape === 'portrait' && hasValidImage && !showVideo
+  const landscapeHero = heroShape === 'landscape' && hasValidImage && !showVideo
+  useEffect(() => {
+    // a cached photo can finish before React attaches onLoad
+    if (heroEager) measureHero()
+  }, [heroEager, measureHero])
 
   useEffect(() => {
     if (isActive) setHeroOnScreen(true)
@@ -425,6 +460,25 @@ export function FullscreenNewsCard({
           </div>
         )}
 
+        {portraitHero && heroEager && heroRatio ? (
+          // FEED-UX-3: tall photo fills the card from the top, full width, real height
+          <div
+            className="absolute inset-x-0 top-0 overflow-hidden"
+            style={{ height: portraitHeroHeight(heroRatio) }}
+            data-testid="smart-feed-portrait-hero"
+            aria-hidden
+          >
+            <SafeNewsImage
+              src={item.image!}
+              alt=""
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 768px) 100vw, 44rem"
+              priority
+            />
+          </div>
+        ) : null}
+
         {/* Readability veil — cinematic, not a hard black box */}
         <div
           className={cn(
@@ -435,7 +489,10 @@ export function FullscreenNewsCard({
           data-testid="smart-feed-readability-top"
         />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black via-black/88 to-transparent"
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black to-transparent',
+            portraitHero ? 'h-[62%] via-black/75' : 'h-[68%] via-black/88'
+          )}
           aria-hidden
           data-testid="smart-feed-readability-bottom"
         />
@@ -496,27 +553,32 @@ export function FullscreenNewsCard({
                 playMediaDolly &&
                   'animate-[smart-feed-media-dolly_2.6s_cubic-bezier(0.16,1,0.3,1)_forwards]'
               )}
+              ref={heroFrameRef}
               data-testid="smart-feed-fg-hero"
               data-feed-hero-fit={fullBleed ? undefined : 'contain'}
               data-feed-full-bleed={fullBleed ? '1' : undefined}
-              style={
-                fullBleed
-                  ? undefined
+              data-feed-hero-shape={heroShape}
+              style={{
+                ...(fullBleed
+                  ? {}
                   : {
                       borderColor:
                         'color-mix(in srgb, var(--feed-skin-accent) 35%, rgba(255,255,255,0.28))',
-                    }
-              }
+                    }),
+                // FEED-UX-3: a wide photo keeps its real full-width height
+                ...(landscapeHero && heroRatio ? { minHeight: landscapeHeroHeight(heroRatio) } : {}),
+              }}
             >
               <SafeNewsImage
                 key={`fg-${item.articleId}-${heroEager ? 'now' : 'wait'}`}
                 src={item.image!}
                 alt={item.headline || ''}
                 fill
-                className="object-contain object-center"
+                className={cn('object-contain object-center', portraitHero && 'opacity-0')}
                 sizes="(max-width: 768px) 100vw, 44rem"
                 priority={heroEager}
                 loading={heroEager ? 'eager' : 'lazy'}
+                onLoad={measureHero}
                 onError={() => setImageError(true)}
               />
               {playableVideo ? (
@@ -664,9 +726,15 @@ export function FullscreenNewsCard({
             style={{
               // Full copy is always shown (sizes step down); this cap only guards odd data.
               // what is left after the header, the photo's minimum, the actions and the bar
-              maxHeight: showDiscoveryRail
-                ? 'max(6.5rem, calc(74dvh - 33rem))'
-                : 'max(var(--feed-v2-copy-scroll-max), calc(74dvh - 17.5rem))',
+              // FEED-UX-3: a wide photo at real size takes its room from this box
+              maxHeight:
+                landscapeHero && heroRatio
+                  ? showDiscoveryRail
+                    ? `max(6.5rem, calc(74dvh - 33rem - ${landscapeCopyGive(heroRatio)}))`
+                    : `max(9rem, calc(74dvh - 17.5rem - ${landscapeCopyGive(heroRatio)}))`
+                  : showDiscoveryRail
+                    ? 'max(6.5rem, calc(74dvh - 33rem))'
+                    : 'max(var(--feed-v2-copy-scroll-max), calc(74dvh - 17.5rem))',
               WebkitOverflowScrolling: 'touch',
             }}
           >
