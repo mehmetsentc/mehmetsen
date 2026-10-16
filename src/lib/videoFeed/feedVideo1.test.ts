@@ -22,7 +22,7 @@ describe('FEED-VIDEO-1 video cards in the smart feed', () => {
     const card = read('src/components/feed/smart/FullscreenNewsCard.tsx')
     // FEED-UX-2d: video at its original size (full width, own height), Reels layout
     expect(card).toContain('fit="reels"')
-    expect(v).toContain("bottom: 'var(--feed-v2-bottom-clearance, 4.5rem)'")
+    expect(v).toContain("'var(--feed-v2-bottom-clearance, 4.5rem)'")
     expect(card).toContain("const HERO_FRAME = 'relative min-h-[26dvh] w-full flex-1 overflow-hidden'")
     expect(card).toContain('object-contain object-center')
     expect(card).toContain('isNahaberReelVideoUrl(item.video)')
@@ -33,7 +33,10 @@ describe('FEED-VIDEO-1 video cards in the smart feed', () => {
 describe('FEED-SOUND-1 feed videos start with sound', () => {
   it('sound is on by default, the viewer choice is remembered, blocked autoplay unmutes on first touch', () => {
     const v = readFileSync(path.join(process.cwd(), 'src/components/feed/smart/SmartFeedCardVideo.tsx'), 'utf8')
-    expect(v).toContain("window.localStorage.getItem(FEED_SOUND_KEY) === 'off'")
+    // FEED-SOUND-2: every visit starts with sound; one shared <video> keeps the sound on later cards
+    expect(v).toContain("window.sessionStorage.getItem(FEED_SOUND_KEY) === 'off'")
+    expect(v).toContain('getSharedFeedVideo()')
+    expect(v).toContain('if (v.parentNode === host)')
     expect(v).toContain('const [preferredMuted, setPreferredMuted] = useState(false)')
     expect(v).toContain('onNextUserGesture(')
   })

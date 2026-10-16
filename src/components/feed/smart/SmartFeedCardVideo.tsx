@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Play, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
@@ -15,12 +15,14 @@ import {
 } from '@/lib/videoFeed/playbackIntent'
 import { youtubeEmbedParentOrigin, youtubeEmbedSrc } from '@/lib/videoFeed/youtubeEmbedOrigin'
 import { pauseOtherPageVideos } from '@/lib/videoPlayback'
+import { getSharedFeedVideo } from '@/lib/videoFeed/sharedFeedVideo'
 
 /**
- * FEED-SOUND-1: feed videos start WITH sound by default. The viewer's choice (speaker
- * button) is remembered on this device and applies to every next video. Browsers that
- * block autoplay with sound start the video muted and switch the sound on at the first
- * touch / key press (unless the viewer has turned it off).
+ * FEED-SOUND-1/2: feed videos start WITH sound by default. The viewer's choice (speaker
+ * button) applies to every next video for this visit; each new visit (app open) starts with
+ * sound again. Browsers that block autoplay with sound start the first video muted and
+ * switch the sound on at the first touch; all cards share one <video> element
+ * (sharedFeedVideo) so later videos keep the sound.
  */
 const FEED_SOUND_KEY = 'nahaber-feed-v2-sound'
 const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
@@ -28,7 +30,7 @@ const YT_EMBED_ORIGIN = 'https://www.youtube-nocookie.com'
 export function readPreferredMuted(): boolean {
   if (typeof window === 'undefined') return false
   try {
-    return window.localStorage.getItem(FEED_SOUND_KEY) === 'off'
+    return window.sessionStorage.getItem(FEED_SOUND_KEY) === 'off'
   } catch {
     return false
   }
@@ -36,7 +38,7 @@ export function readPreferredMuted(): boolean {
 
 function persistPreferredMuted(muted: boolean) {
   try {
-    window.localStorage.setItem(FEED_SOUND_KEY, muted ? 'off' : 'on')
+    window.sessionStorage.setItem(FEED_SOUND_KEY, muted ? 'off' : 'on')
   } catch {
     /* ignore */
   }
@@ -75,7 +77,8 @@ export function SmartFeedCardVideo({
   fit = 'auto',
 }: SmartFeedCardVideoProps) {
   const resolved = resolveFeedCardVideo(url)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const hostRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const userPausedRef = useRef(false)
   const ytPlayerStateRef = useRef<number | null>(null)
@@ -273,6 +276,75 @@ export function SmartFeedCardVideo({
     [effectiveMuted, sendYTCmd]
   )
 
+  const nativeUrl = resolved?.kind === 'native' ? resolved.url : null
+  const videoClass =
+    fit === 'reels'
+      ? cn('absolute inset-x-0 h-auto max-h-full w-full', !reelsUpright && 'top-1/2 -translate-y-1/2')
+      : objectFit === 'cover'
+        ? 'h-full w-full object-cover'
+        : 'h-full w-full object-contain'
+
+  // FEED-SOUND-2: borrow the shared <video> while this card is active
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    if (!nativeUrl || !isActive || !host) return
+    const v = getSharedFeedVideo()
+    videoRef.current = v
+    v.dataset.feedActive = '1'
+    if (v.getAttribute('src') !== nativeUrl) {
+      v.src = nativeUrl
+      setUpright(null)
+      setProgress(0)
+    }
+    if (poster) v.poster = poster
+    else v.removeAttribute('poster')
+    host.appendChild(v)
+    const onMeta = () => {
+      if (v.videoWidth && v.videoHeight) setUpright(v.videoHeight >= v.videoWidth * 1.1)
+    }
+    const onTime = () => {
+      if (v.duration > 0) setProgress(Math.min(1, v.currentTime / v.duration))
+    }
+    const onErr = () => onUnusable?.()
+    const onPlaying = () => {
+      if (userPausedRef.current) v.pause()
+    }
+    const onDown = (e: PointerEvent) => e.stopPropagation()
+    const onClick = (e: MouseEvent) => togglePause(e as unknown as React.MouseEvent)
+    v.addEventListener('loadedmetadata', onMeta)
+    v.addEventListener('timeupdate', onTime)
+    v.addEventListener('error', onErr)
+    v.addEventListener('playing', onPlaying)
+    v.addEventListener('pointerdown', onDown)
+    v.addEventListener('click', onClick)
+    if (v.readyState >= 1) onMeta()
+    applyPlayback()
+    return () => {
+      v.removeEventListener('loadedmetadata', onMeta)
+      v.removeEventListener('timeupdate', onTime)
+      v.removeEventListener('error', onErr)
+      v.removeEventListener('playing', onPlaying)
+      v.removeEventListener('pointerdown', onDown)
+      v.removeEventListener('click', onClick)
+      // the next card may already have taken the element — only stop it if it is still ours
+      if (v.parentNode === host) {
+        delete v.dataset.feedActive
+        v.pause()
+        host.removeChild(v)
+      }
+      if (videoRef.current === v) videoRef.current = null
+    }
+    // applyPlayback / togglePause change with state; re-attaching on each change would restart the video
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nativeUrl, isActive])
+
+  useLayoutEffect(() => {
+    const v = videoRef.current
+    if (!v || !nativeUrl) return
+    v.className = videoClass
+    v.style.bottom = fit === 'reels' && reelsUpright ? 'var(--feed-v2-bottom-clearance, 4.5rem)' : ''
+  })
+
   if (!resolved) return null
 
   const embedSrc =
@@ -287,38 +359,7 @@ export function SmartFeedCardVideo({
   return (
     <div className="absolute inset-0" data-testid="smart-feed-card-video" data-video-kind={resolved.kind}>
       {resolved.kind === 'native' ? (
-        <video
-          ref={videoRef}
-          src={resolved.url}
-          poster={poster ?? undefined}
-          className={
-            fit === 'reels'
-              ? cn('absolute inset-x-0 h-auto max-h-full w-full', !reelsUpright && 'top-1/2 -translate-y-1/2')
-              : objectFit === 'cover'
-                ? 'h-full w-full object-cover'
-                : 'h-full w-full object-contain'
-          }
-          style={fit === 'reels' && reelsUpright ? { bottom: 'var(--feed-v2-bottom-clearance, 4.5rem)' } : undefined}
-          data-video-fit={objectFit}
-          onLoadedMetadata={(event) => {
-            const v = event.currentTarget
-            if (v.videoWidth && v.videoHeight) setUpright(v.videoHeight >= v.videoWidth * 1.1)
-          }}
-          onTimeUpdate={(event) => {
-            const v = event.currentTarget
-            if (v.duration > 0) setProgress(Math.min(1, v.currentTime / v.duration))
-          }}
-          playsInline
-          muted
-          loop
-          autoPlay={isActive && !userPaused}
-          onError={() => onUnusable?.()}
-          onPlaying={() => {
-            if (userPausedRef.current) videoRef.current?.pause()
-          }}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={togglePause}
-        />
+        <div ref={hostRef} className="absolute inset-0" data-testid="smart-feed-native-host" data-video-fit={objectFit} />
       ) : (
         <>
           <iframe
