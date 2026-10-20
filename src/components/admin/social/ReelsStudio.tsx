@@ -26,6 +26,8 @@ type NewsPick = {
   publishedAt: number | null
   imageUrl: string | null
   hasVideo: boolean
+  /** file → reel uses the story's video; youtube / embed → photos (YouTube is never downloaded). */
+  videoKind?: 'file' | 'youtube' | 'embed' | 'none'
   mediaOk: boolean
   /** media cleared by the social rights check / editor approval (without the «always use» policy) */
   rightsOk?: boolean
@@ -521,7 +523,15 @@ export function ReelsStudio() {
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-0.5">
-                        {n.hasVideo ? <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-extrabold text-red-700">VİDEO</span> : null}
+                        {n.hasVideo ? (
+                          n.videoKind === 'youtube' || n.videoKind === 'embed' ? (
+                            <span title="Video YouTube / dış oynatıcıda: indirilip yeniden yüklenmez. Reels haberin fotoğraflarıyla üretilir; gönderide videoya yönlendirilir." className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-800">
+                              {n.videoKind === 'youtube' ? 'YOUTUBE' : 'DIŞ VİDEO'}
+                            </span>
+                          ) : (
+                            <span title="Reels haberin kendi videosuyla üretilir" className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-extrabold text-red-700">VİDEO</span>
+                          )
+                        ) : null}
                         {n.mediaOk ? (
                           <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-extrabold', n.rightsOk === false ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-700')} title={n.rightsOk === false ? 'Başka kaynaktan — «her zaman kullan» ayarıyla kullanılıyor' : undefined}>
                             {n.rightsOk === false ? 'GÖRSEL · KAYNAK' : 'GÖRSEL ✓'}

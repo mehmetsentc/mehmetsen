@@ -10,6 +10,7 @@ import { getCategoryLabel } from '@/lib/newsMapper'
 import { extractImageUrl } from '@/lib/social/publishOneSocial'
 import { reelSourceFromDoc } from '@/lib/reels/reelService'
 import { getReelVoiceSettings } from '@/lib/reels/voiceSettings'
+import { newsHasVideo, resolveNewsVideo } from '@/lib/social/newsVideo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,6 @@ export async function GET(request: Request) {
     .map((d) => {
       const x = d.data() as Record<string, unknown>
       const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
-      const media = Array.isArray(x.mediaItems) ? (x.mediaItems as Array<{ type?: string; url?: string }>) : []
       return {
         newsId: d.id,
         title: str(x.title).slice(0, 160),
@@ -34,7 +34,9 @@ export async function GET(request: Request) {
         city: str(x.city) || null,
         publishedAt: typeof x.publishedAt === 'number' ? x.publishedAt : null,
         imageUrl: extractImageUrl(x) ?? null,
-        hasVideo: Boolean(str(x.videoUrl) || media.some((m) => m.type === 'video' && m.url)),
+        hasVideo: newsHasVideo(x),
+        // file = the reel uses the story's own video; youtube / embed = photos (never downloaded)
+        videoKind: resolveNewsVideo(x).kind,
         mediaOk: reelSourceFromDoc(x, policy).mediaAllowed,
         rightsOk: reelSourceFromDoc(x).mediaAllowed,
         approved: !!(x.reelMediaApproval && typeof x.reelMediaApproval === 'object'),

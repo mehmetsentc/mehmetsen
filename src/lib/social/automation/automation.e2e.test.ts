@@ -279,13 +279,13 @@ describe('eşleşme → iş → yayın', () => {
     expect(ai.generateSocialContent).not.toHaveBeenCalled()
   })
 
-  it('harici kaynak / video haber kuyruğa girmez', async () => {
+  it('harici kaynak kuyruğa girmez; NaHaber’in videolu haberi girer', async () => {
     await enabledRule()
     await seedNews('n1', { sourceUrl: 'https://baska-site.com/haber' })
     await seedNews('n2', { hasVideo: true })
     await tick()
     expect(job('n1')).toBeUndefined()
-    expect(job('n2')).toBeUndefined()
+    expect(job('n2')).toBeDefined()
   })
 })
 

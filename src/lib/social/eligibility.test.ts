@@ -29,9 +29,9 @@ describe('sosyal yayın uygunluğu', () => {
     expect(socialEligibility({ ...base, rightsStatus: 'DO_NOT_PUBLISH' }, h)).toMatchObject({ ok: false, code: 'rights_blocked' })
     expect(socialEligibility({ ...base, rightsStatus: 'REWRITE_REQUIRED', socialEligibility: { status: 'allowed', mediaRights: 'own' } }, h)).toMatchObject({ ok: false, code: 'rights_blocked' })
   })
-  it('video, canlı yayın ve görselsiz içerik hiçbir kararla otomatik gitmez', () => {
+  it('canlı yayın ve görselsiz içerik hiçbir kararla otomatik gitmez; videolu haber artık paylaşılabilir', () => {
     const allowed = { socialEligibility: { status: 'allowed', mediaRights: 'own' } }
-    expect(socialEligibility({ ...base, ...allowed, hasVideo: true }, h)).toMatchObject({ code: 'video_not_supported' })
+    expect(socialEligibility({ ...base, ...allowed, hasVideo: true }, h)).toMatchObject({ ok: true })
     expect(socialEligibility({ ...base, ...allowed, isLive: true }, h)).toMatchObject({ code: 'not_suitable' })
     expect(socialEligibility({ title: 't', ...allowed }, h)).toMatchObject({ code: 'no_image' })
   })

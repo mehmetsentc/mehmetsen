@@ -61,7 +61,7 @@ export function readEligibilityRecord(d: Record<string, unknown>): SocialEligibi
 const no = (code: string, text: string, action: string): EligibilityVerdict => ({ ok: false, code, text, action })
 
 export function socialEligibility(d: Record<string, unknown>, h: EligibilityHelpers): EligibilityVerdict {
-  if (d.hasVideo || d.isVideo) return no('video_not_supported', 'Video haber', 'Video/Reels paylaşımı henüz desteklenmiyor')
+  // Videolu haberler artık paylaşılır (gönderi kapak görseliyle; video Reels / Shorts ile).
   if (h.isSkippableForSocial(d)) return no('not_suitable', 'Canlı yayın / tanıtım / boş içerik', 'Sosyal paylaşıma uygun değil')
   if (!h.extractImageUrl(d)) return no('no_image', 'Kapak görseli yok', 'Habere kapak görseli ekleyin')
   const rec = readEligibilityRecord(d)

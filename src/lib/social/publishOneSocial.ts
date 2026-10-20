@@ -7,6 +7,7 @@
  * Fire-and-forget güvenli: hataları loglar, fırlatmaz (void çağrılar için).
  * Admin manuel paylaşımda options + result döner.
  */
+import { resolveNewsVideo } from './newsVideo'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { safeErrorText } from './safeLog'
 import { Collections } from '@/lib/firebase/collections'
@@ -443,6 +444,9 @@ function reconcileForNewsDoc(r: SocialPublishResult): SocialPublishResult {
   return rest
 }
 
+/** Caption line for news with a video (posts carry the cover image; the video plays on NaHaber). */
+export const VIDEO_CAPTION_LINE = '🎥 Videolu haber — videonun tamamı NaHaber\'de.'
+
 export async function publishOneSocial(
   newsId: string,
   options: PublishOneSocialOptions = {},
@@ -496,10 +500,11 @@ export async function publishOneSocial(
 
     let data = doc.data() as Record<string, unknown>
 
-    // Video haberler atla
-    if (data.hasVideo || data.isVideo) {
-      return skipped(newsId, 'Video haberler sosyal medyaya gönderilmez')
-    }
+    // Videolu haberler de paylaşılır: gönderi / hikâye kapak görseliyle gider ve
+    // açıklamada videoya yönlendirilir; videonun kendisi Reels / video hikâye /
+    // YouTube Shorts biçiminde kullanılır (reelPublish). YouTube videosu indirilmez.
+    const newsVideo = resolveNewsVideo(data)
+    const videoNews = newsVideo.kind !== 'none' || data.hasVideo === true || data.isVideo === true
     // Harici RSS/scraper: yalnızca otomatik (cron) yolunda engelle; manuel admin paylaşımı serbest
     if (!manual && !isOwnContent(data)) {
       console.log(`[publishOneSocial] Harici kaynak — otomatik paylaşım atlandı: ${newsId}`)
@@ -818,6 +823,11 @@ export async function publishOneSocial(
     if (!overrides?.caption?.trim() && isGarbledSocialCopy(socialContent.caption)) {
       // buildFeedCaption zaten "📰 {başlık}" ekler — fallback sadece spot özeti
       socialContent.caption = spot.trim() || ''
+    }
+    // Videolu haber: gönderi kapak görseliyle gider, açıklama videoya yönlendirir
+    // (haber bağlantısını publisher ekler).
+    if (videoNews && !/video/i.test(socialContent.caption)) {
+      socialContent.caption = [socialContent.caption.trim(), VIDEO_CAPTION_LINE].filter(Boolean).join('\n\n')
     }
 
     // Hikâye özeti: daima tam cümle (override dahil) — OG mid-word clip önlemi

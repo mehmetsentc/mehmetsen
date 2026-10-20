@@ -27,11 +27,12 @@ import { renderReel, type ReelMedia } from './renderReel'
 import { synthesizeReelVoiceEx } from './voice'
 import { clampRate, isValidVoiceName } from './voiceRules'
 import { getReelVoiceSettings } from './voiceSettings'
+import { resolveNewsVideo, type NewsVideo } from '@/lib/social/newsVideo'
+import { prepareSourceVideo } from './sourceVideo'
 
 const BUCKET =
   process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebasestorage.app`
 const MAX_MEDIA_BYTES = 200 * 1024 * 1024
-const VIDEO_RE = /\.(mp4|mov|m4v|webm|m3u8)(\?|$)/i
 
 export function reelsEnabled(): boolean {
   return (process.env.SOCIAL_REELS_ENABLED ?? 'true').trim().toLowerCase() !== 'false'
@@ -43,6 +44,17 @@ export function reelStoragePath(newsId: string): string {
 
 export function reelCoverStoragePath(newsId: string): string {
   return `videos/reels/${newsId.replace(/[^A-Za-z0-9_-]/g, '_')}-cover.jpg`
+}
+
+/**
+ * A stored reel made from photos is rebuilt once when the story now has a usable
+ * video file. `videoSource` remembers the video already tried, so a source that
+ * cannot be read does not trigger a new render (and TTS) on every share.
+ */
+export function needsVideoRebuild(src: Pick<ReelSource, 'videoUrl' | 'mediaAllowed'>, meta: Record<string, string>): boolean {
+  if (!src.videoUrl || !src.mediaAllowed) return false
+  if (meta.media === 'video') return false
+  return (meta.videoSource ?? '') !== src.videoUrl.slice(0, 500)
 }
 
 /** `v` (Storage generation) busts edge caches after a re-render. */
@@ -64,19 +76,25 @@ export type ReelSource = {
   /** REELS-9: the story's other photos (gallery, extra images, body images), cover excluded. */
   imageUrls?: string[]
   videoUrl: string | null
+  /** Where videoUrl lives: NaHaber storage or an external link (copied into Storage before use). */
+  videoOrigin?: 'nahaber' | 'external' | null
+  videoHls?: boolean
+  /** What the story's video is, also when it can't be used (YouTube / player page). */
+  videoKind?: NewsVideo['kind']
   mediaAllowed: boolean
   mediaBasis: string
   breaking: boolean
   postType: string | null
 }
 
-/** First playable video: legacy videoUrl, then mediaItems videos. */
+/**
+ * The story's video FILE (NaHaber storage, external MP4 or HLS) from every video
+ * field (playbackUrl, videoUrl, videoEmbedUrl, mediaItems, bodyBlocks).
+ * YouTube / player pages are not files → null (the reel uses the photos).
+ */
 export function videoUrlFromDoc(d: Record<string, unknown>): string | null {
-  const direct = str(d.videoUrl)
-  if (VIDEO_RE.test(direct)) return direct
-  const items = Array.isArray(d.mediaItems) ? (d.mediaItems as Array<{ type?: string; url?: string }>) : []
-  const v = items.find((m) => m?.type === 'video' && VIDEO_RE.test(str(m.url)))
-  return v ? str(v.url) : null
+  const v = resolveNewsVideo(d)
+  return v.kind === 'file' ? v.url : null
 }
 
 /**
@@ -85,7 +103,8 @@ export function videoUrlFromDoc(d: Record<string, unknown>): string | null {
  * — video when there is one, otherwise the image — regardless of the social rights check.
  */
 export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUseMedia?: boolean } = {}): ReelSource {
-  const videoUrl = videoUrlFromDoc(d)
+  const video = resolveNewsVideo(d)
+  const videoUrl = video.kind === 'file' ? video.url : null
   // Same media-rights rule as posts/stories; only the «video not supported» gate is lifted.
   const docForRights = videoUrl ? { ...d, hasVideo: false, isVideo: false } : d
   const verdict = socialEligibility(docForRights, {
@@ -104,6 +123,9 @@ export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUs
     imageUrl: extractImageUrl(d) ?? null,
     imageUrls: reelPhotoUrlsFromDoc(d, extractImageUrl(d) ?? null).slice(1),
     videoUrl,
+    videoOrigin: video.kind === 'file' ? video.origin : null,
+    videoHls: video.kind === 'file' ? video.hls : false,
+    videoKind: video.kind,
     mediaAllowed: verdict.ok || !!approval?.by || (!!policy.alwaysUseMedia && !!(videoUrl || extractImageUrl(d))),
     mediaBasis: verdict.ok ? verdict.basis : approval?.by ? 'studio_approved' : policy.alwaysUseMedia && (videoUrl || extractImageUrl(d)) ? 'studio_policy' : verdict.code,
     breaking: d.isBreaking === true || categoryId === 'son-dakika',
@@ -258,14 +280,20 @@ export function reelPhotoUrlsFromDoc(d: Record<string, unknown>, cover: string |
 }
 
 /** Resolve licensed media (video file on disk or image bytes); brand panel otherwise. */
-export async function resolveReelMedia(src: ReelSource, tag: string): Promise<{ media: ReelMedia; tmp: string | null }> {
+export async function resolveReelMedia(src: ReelSource, tag: string, storeKey: string | null = null): Promise<{ media: ReelMedia; tmp: string | null }> {
   if (!src.mediaAllowed) return { media: { kind: 'none' }, tmp: null }
   try {
     if (src.videoUrl) {
-      if (/\.m3u8(\?|$)/i.test(src.videoUrl)) return { media: { kind: 'video', path: src.videoUrl }, tmp: null } // ffmpeg reads HLS directly
-      const tmp = path.join(os.tmpdir(), `reel-src-${tag}-${Date.now()}.mp4`)
-      await fs.writeFile(tmp, await fetchBytes(src.videoUrl))
-      return { media: { kind: 'video', path: tmp }, tmp }
+      // The story's own video: a local copy, time-boxed; external links are kept in Storage.
+      const v = await prepareSourceVideo({
+        url: src.videoUrl,
+        origin: src.videoOrigin ?? (/firebasestorage|storage\.googleapis\.com/.test(src.videoUrl) ? 'nahaber' : 'external'),
+        hls: src.videoHls ?? /\.m3u8(\?|$)/i.test(src.videoUrl),
+        tag,
+        storeKey,
+      })
+      if (v.ok) return { media: { kind: 'video', path: v.path }, tmp: v.path }
+      console.warn(`[reels] story video unusable (${v.reason}), using photos`)
     }
     if (src.imageUrl) {
       const data = await fetchBytes(src.imageUrl)
@@ -381,9 +409,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   // Plain «build» (automation / share) reuses whatever reel exists.
   if (!opts.force && !hasStudioChoice && !opts.dryRun) {
     const [exists] = await file.exists()
-    if (exists) {
-      const [meta] = await file.getMetadata()
-      const m = (meta.metadata ?? {}) as Record<string, string>
+    const [meta] = exists ? await file.getMetadata() : [null]
+    const m = (meta?.metadata ?? {}) as Record<string, string>
+    // A reel rendered from photos while the story has a usable video is rebuilt with the video.
+    if (exists && meta && !(needsVideoRebuild(src, m))) {
       const url = reelPublicUrl(newsId, meta.generation ?? null)
       const cover = await coverFor(newsId, src, styleOf(m.style), coverVariant)
       if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: m.persona, style: m.style, media: m.media })
@@ -414,7 +443,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     if (exists) {
       const [meta] = await file.getMetadata()
       const m = (meta.metadata ?? {}) as Record<string, string>
-      if (m.optionsHash === hash) {
+      if (m.optionsHash === hash && !(needsVideoRebuild(src, m))) {
         const url = reelPublicUrl(newsId, meta.generation ?? null)
         const cover = await coverFor(newsId, src, plan.style, coverVariant)
         if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: plan.persona.id, style: plan.style, media: m.media })
@@ -424,7 +453,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   }
 
   const spoken = await synthesizeReelVoiceEx(plan.voiceText, AbortSignal.timeout(40_000), { voice: plan.voice, rate: plan.rate, gemini: plan.gemini })
-  const { media, tmp } = await resolveReelMedia(src, newsId)
+  const { media, tmp } = await resolveReelMedia(src, newsId, newsId)
   try {
     const r = await renderReel({
       headline: src.headline,
@@ -457,6 +486,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
           style: plan.style,
           engine: spoken.engine,
           optionsHash: hash,
+          videoSource: (src.videoUrl ?? '').slice(0, 500),
         },
       },
     })
