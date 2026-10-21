@@ -115,6 +115,8 @@ export interface Post {
   /** Persistent AI editor persona */
   aiEditorId?: string
   authorIsAI?: boolean
+  /** Newsroom pipeline AI rewrite flag (SEO-11b index gate). */
+  aiGenerated?: boolean
   /** SEO-11: stored AI body word count / research source count (index gate). */
   seoWordCount?: number
   seoResearchSourceCount?: number

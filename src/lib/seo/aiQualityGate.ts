@@ -24,6 +24,10 @@ export type AiQualityGateInput = {
   aiEditorId?: string | null
   authorIsAI?: boolean | null
   isAI?: boolean | null
+  /** Set by the newsroom pipeline on every AI rewrite (SEO-11b). */
+  aiGenerated?: boolean | null
+  /** Only the AI pipeline publishes with this flag (SEO-11b). */
+  aiAutoPublished?: boolean | null
   authorId?: string | null
   publishedAt?: unknown
   seoWordCount?: number | null
@@ -55,8 +59,15 @@ function toMs(value: unknown): number | null {
   return null
 }
 
+/**
+ * SEO-11b: rewrites published without a persona carry the NaHaber house author and no
+ * aiEditorId, so the persona checks alone missed ~all crawler/RSS rewrites (live 21 Oct:
+ * a 168-word rewrite was still «index»). The pipeline's own flags close that gap.
+ */
 function isAiWritten(p: AiQualityGateInput): boolean {
   return (
+    p.aiGenerated === true ||
+    p.aiAutoPublished === true ||
     Boolean(p.aiEditorId?.trim()) ||
     p.authorIsAI === true ||
     p.isAI === true ||

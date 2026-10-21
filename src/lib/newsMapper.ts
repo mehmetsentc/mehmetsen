@@ -523,6 +523,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
       authorId.startsWith('ai_editor_') ||
       data.isAI === true,
     readingTimeMinutes: data.readingTimeMinutes,
+    ...(data.aiGenerated === true ? { aiGenerated: true } : {}),
     ...(typeof data.seoWordCount === 'number' ? { seoWordCount: data.seoWordCount } : {}),
     ...(typeof data.seoResearchSourceCount === 'number'
       ? { seoResearchSourceCount: data.seoResearchSourceCount }

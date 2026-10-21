@@ -84,11 +84,18 @@ describe('P2 cron does not fan out to a deployment host', () => {
     const vercel = JSON.parse(readFileSync(join(process.cwd(), 'vercel.json'), 'utf8')) as {
       crons: Array<{ path: string; schedule: string }>
     }
-    // Görev 15 dar istisna: yalnızca hesap bazlı sosyal otomasyon çalışanı eklendi.
+    // Görev 15 dar istisna: hesap bazlı sosyal otomasyon çalışanı.
+    // CITY-SERVICES-1 (16 Eki, kullanıcı onaylı): günde bir kez şehir servis senkronları.
     expect(vercel.crons).toEqual([
       { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
       { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
+      { path: '/api/cron/iskur-jobs?city=canakkale', schedule: '0 6 * * *' },
+      { path: '/api/cron/iskur-jobs?city=antalya', schedule: '15 6 * * *' },
+      { path: '/api/cron/antalya-nobetci-eczane', schedule: '30 6 * * *' },
+      { path: '/api/cron/canakkale-nobetci-eczane', schedule: '0 7 * * *' },
+      { path: '/api/events/sync', schedule: '0 21 * * *' },
     ])
+    expect(vercel.crons.every((c) => c.path.startsWith('/api/'))).toBe(true)
     const social = readFileSync(join(process.cwd(), 'src/app/api/cron/social-automation/route.ts'), 'utf8')
     expect(social).not.toContain('vercel.app')
     expect(social).not.toContain('VERCEL_URL')

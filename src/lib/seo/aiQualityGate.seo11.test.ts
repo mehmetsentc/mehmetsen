@@ -54,4 +54,14 @@ describe('SEO-11 AI quality gate', () => {
     const ok = buildPostMetadata({ ...post, seoWordCount: 500 } as Post, { robotsOverride: { index: true, follow: true } })
     expect((ok.robots as { index: boolean }).index).toBe(true)
   })
+  it('SEO-11b: persona-less pipeline rewrites (house author) are gated too', () => {
+    const house = { authorId: 'nahaber', publishedAt: after, seoWordCount: 168, citySlug: 'istanbul' }
+    expect(failsAiQualityGate(house, true)).toBe(false)
+    expect(failsAiQualityGate({ ...house, aiGenerated: true }, true)).toBe(true)
+    expect(failsAiQualityGate({ ...house, aiAutoPublished: true }, true)).toBe(true)
+    expect(failsAiQualityGate({ ...house, aiGenerated: true, seoWordCount: 557 }, true)).toBe(false)
+    expect(failsAiQualityGate({ ...house, aiGenerated: true, citySlug: 'canakkale' }, true)).toBe(false)
+    expect(ARTICLE_SITEMAP_FIRESTORE_FIELDS).toContain('aiGenerated')
+    expect(ARTICLE_SITEMAP_FIRESTORE_FIELDS).toContain('aiAutoPublished')
+  })
 })

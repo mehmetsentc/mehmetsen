@@ -83,6 +83,8 @@ export const ARTICLE_SITEMAP_FIRESTORE_FIELDS = [
   'citySlug',
   'aiEditorId',
   'isAI',
+  // SEO-11b: AI flag on persona-less rewrites
+  'aiGenerated',
   'featured',
   'isEditorPick',
   'articleFormat',
