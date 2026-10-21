@@ -123,6 +123,8 @@ describe('legacy (hedefsiz) yayın yolu — Onyeditivi', () => {
     expect(r.platformId).toBe('ig-media-1')
     expect(endpoints(rec.calls)).toEqual([
       'POST https://graph.facebook.com/v21.0/LEGACY_IG_USER_ID/media',
+      // waits for FINISHED before media_publish (Instagram 9007 / 2207027 otherwise)
+      'GET https://graph.facebook.com/v21.0/ig-container-1',
       'POST https://graph.facebook.com/v21.0/LEGACY_IG_USER_ID/media_publish',
     ])
     for (const c of metaCalls(rec.calls)) expect(accessTokenOf(c)).toBe('LEGACY_IG_TOKEN')

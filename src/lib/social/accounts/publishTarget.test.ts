@@ -244,6 +244,7 @@ describe('platform yayıncıları — açık hedef', () => {
     const calls = metaCalls(rec.calls)
     expect(calls.map((c) => c.url.split('?')[0])).toEqual([
       `${INSTAGRAM_LOGIN_GRAPH_BASE}/7781/media`,
+      `${INSTAGRAM_LOGIN_GRAPH_BASE}/ig-container-1`,
       `${INSTAGRAM_LOGIN_GRAPH_BASE}/7781/media_publish`,
     ])
     for (const c of calls) expect(accessTokenOf(c)).toBe('IGAA_ANTALYA')

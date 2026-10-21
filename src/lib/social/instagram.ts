@@ -372,7 +372,9 @@ async function publishSingleImage(
     locationId,
   )
   socialLog('log', 'instagram', 'single', { corr: newsId, result: 'container_created' })
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  // Instagram answers 9007 / 2207027 («media not ready») when media_publish comes before
+  // the container finished processing; a fixed 1 s pause was not enough for larger images.
+  await waitForContainerReady(containerId, accessToken, base)
   const mediaId = await publishMediaContainer(igBusinessId, accessToken, containerId, base)
   socialLog('log', 'instagram', 'single', { corr: newsId, result: 'published', mediaId })
   return { success: true, platformId: mediaId }
