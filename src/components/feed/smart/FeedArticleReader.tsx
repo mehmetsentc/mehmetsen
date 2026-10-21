@@ -91,6 +91,8 @@ import {
 import { getClientAuthToken } from '@/lib/firebase/auth'
 import { markReaderReturnCoachLearned, readerCoachScopeKey } from '@/lib/feed/reader/readerReturnCoach'
 import { ReaderReturnCoach } from '@/components/feed/smart/ReaderReturnCoach'
+import { ReaderVideoPlayButton, ReaderVideoPlayer } from '@/components/feed/smart/ReaderVideoPlayer'
+import { resolveFeedCardVideo } from '@/lib/videoFeed/feedCardVideo'
 import { FeedDiscoveryRail } from '@/components/feed/smart/FeedDiscoveryRail'
 
 export type { FeedReaderCloseReason } from '@/lib/feed/reader/history'
@@ -337,6 +339,16 @@ export function FeedArticleReader({
   const sourceUrl = detail?.sourceUrl
   const canonicalPath = detail?.canonicalPath || `/haber/${item.slug}`
   const readingMins = detail?.readingTimeMinutes
+  // ARTICLE-VIDEO-1: the reader (mobile «haber detay» from the feed, also in the app)
+  // showed only the photo — the story's video never appeared.
+  const readerVideo = useMemo(
+    () => resolveFeedCardVideo(detail?.video ?? item.video ?? null),
+    [detail?.video, item.video],
+  )
+  const [videoOpen, setVideoOpen] = useState(false)
+  useEffect(() => {
+    setVideoOpen(false)
+  }, [item.slug])
 
   const bodySettled = fetchState === 'ok' || fetchState === 'error'
 
@@ -1347,16 +1359,23 @@ export function FeedArticleReader({
               data-testid="feed-reader-hero"
             >
               <div className="relative aspect-[16/9] min-h-[11rem] w-full overflow-hidden rounded-[10px] bg-[color:var(--reader-page-elevated)]">
-                <SafeNewsImage
-                  src={hero.url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 704px) 100vw, 704px"
-                  priority
-                  onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
-                  onError={() => acceptHeroLoad(hero.url!, 'error')}
-                />
+                {readerVideo && videoOpen ? (
+                  <ReaderVideoPlayer video={readerVideo} poster={hero.url} title={headline} />
+                ) : (
+                  <>
+                    <SafeNewsImage
+                      src={hero.url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 704px) 100vw, 704px"
+                      priority
+                      onLoad={() => acceptHeroLoad(hero.url!, 'ok')}
+                      onError={() => acceptHeroLoad(hero.url!, 'error')}
+                    />
+                    {readerVideo ? <ReaderVideoPlayButton onPlay={() => setVideoOpen(true)} /> : null}
+                  </>
+                )}
                 {returnCoach}
               </div>
               {hero.caption && hero.caption.trim() !== headline.trim() ? (
@@ -1364,6 +1383,17 @@ export function FeedArticleReader({
                   {hero.caption}
                 </figcaption>
               ) : null}
+            </figure>
+          ) : null}
+
+          {readerVideo && hero.state !== 'VALID_MEDIA' && hero.state !== 'LOADING' ? (
+            <figure
+              className="mx-auto mt-7 w-full max-w-[var(--feed-reader-surface-max,44rem)]"
+              data-testid="feed-reader-video-hero"
+            >
+              <div className="relative aspect-[16/9] min-h-[11rem] w-full overflow-hidden rounded-[10px] bg-black">
+                <ReaderVideoPlayer video={readerVideo} title={headline} autoPlay={false} />
+              </div>
             </figure>
           ) : null}
 
