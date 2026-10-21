@@ -87,7 +87,7 @@ describe('P2 cron does not fan out to a deployment host', () => {
     // Görev 15 dar istisna: hesap bazlı sosyal otomasyon çalışanı.
     // CITY-SERVICES-1 (16 Eki, kullanıcı onaylı): günde bir kez şehir servis senkronları.
     expect(vercel.crons).toEqual([
-      { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
+      { path: '/api/cron/crawler/tick', schedule: '*/30 * * * *' },
       { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
       { path: '/api/cron/iskur-jobs?city=canakkale', schedule: '0 6 * * *' },
       { path: '/api/cron/iskur-jobs?city=antalya', schedule: '15 6 * * *' },

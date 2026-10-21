@@ -34,9 +34,11 @@ describe('minimum-cost crawler switch', () => {
     vi.stubEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', '')
     const limits = crawlerTickLimits()
     expect(limits.maxSourcesPerTick).toBe(25)
-    expect(limits.maxFetchPerTick).toBe(40)
-    expect(limits.maxTickRuntimeMs).toBe(150_000)
-    expect(limits.maxTickRuntimeMs).toBeLessThan(3 * 60_000)
+    expect(limits.maxFetchPerTick).toBe(80)
+    expect(limits.maxTickRuntimeMs).toBe(240_000)
+    // CRAWL-CADENCE-1: under the route's 300s maxDuration, far inside the 30-minute gap.
+    expect(limits.maxTickRuntimeMs).toBeLessThan(5 * 60_000)
+    expect(limits.maxTickRuntimeMs - limits.maxClusterRuntimeMs - limits.maxMediaRuntimeMs).toBeGreaterThan(limits.maxTickRuntimeMs / 2)
   })
 
   it('leaves paid AI closed unless a flag is explicitly true', () => {

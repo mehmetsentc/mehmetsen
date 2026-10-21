@@ -102,9 +102,17 @@ export async function runCrawlerTick(opts?: {
   let aiCandidates = 0
   let aiAvoided = 0
 
-  // Leave the second half of the tick for fetches. Discovery of every due
-  // source used to consume the whole budget and Ham Haberler stayed empty.
-  const discoveryDeadline = tickStarted + Math.floor(limits.maxTickRuntimeMs / 2)
+  // Discovery gets at most a third of the tick; discovery of every due source
+  // used to consume the whole budget and Ham Haberler stayed empty.
+  // CRAWL-CADENCE-1: fetches stop early enough that clustering and media
+  // still run in the same tick (they share the tick budget and were starved).
+  const discoveryDeadline = tickStarted + Math.floor(limits.maxTickRuntimeMs / 3)
+  const fetchDeadline =
+    tickStarted +
+    Math.max(
+      Math.floor(limits.maxTickRuntimeMs / 2),
+      limits.maxTickRuntimeMs - limits.maxClusterRuntimeMs - limits.maxMediaRuntimeMs,
+    )
   for (const source of sources) {
     if (Date.now() > discoveryDeadline) break
     await store.incrementMetric('sources_checked', 1, now)
@@ -198,7 +206,7 @@ export async function runCrawlerTick(opts?: {
     maxPerSource: limits.maxFetchPerSource,
   })
   for (const item of pending) {
-    if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
+    if (Date.now() > fetchDeadline) break
     const source = sourceMap.get(item.sourceId) || (await store.getSource(item.sourceId))
     if (!source || source.status === 'DISABLED' || source.status === 'PAUSED') {
       await store.updateDiscoveredUrl(item.id, {
@@ -517,7 +525,7 @@ export async function runCrawlerTick(opts?: {
   let parkedMarked = 0
   for (const item of parked) {
     if (parkedMarked >= 10) break
-    if (Date.now() - tickStarted > limits.maxTickRuntimeMs) break
+    if (Date.now() > fetchDeadline) break
     const source = sourceMap.get(item.sourceId)
     await store.updateDiscoveredUrl(item.id, {
       status: 'FAILED',

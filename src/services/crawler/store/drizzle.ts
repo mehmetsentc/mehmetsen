@@ -1439,15 +1439,17 @@ export class DrizzleCrawlerStore implements CrawlerStore {
       const rank = sql`(case when ${rawArticles.isExactDuplicate} = 1 then 2 when ${rawArticles.qualityStatus} = 'FAILED' then 3 when ${rawArticles.qualityStatus} = 'LOW_CONFIDENCE' then 1 else 0 end)`
       return asc ? sql`${rank} asc, ${rawArticles.fetchedAt} desc` : sql`${rank} desc, ${rawArticles.fetchedAt} desc`
     }
-    if (column === 'publishedAt' || query.sort === 'published') {
-      return asc
-        ? sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) asc nulls last`
-        : sql`coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}) desc nulls last`
+    if (column === 'fetchedAt') {
+      return asc ? sql`${rawArticles.fetchedAt} asc nulls last` : sql`${rawArticles.fetchedAt} desc nulls last`
     }
-    if (query.sort === 'oldest' || (column === 'fetchedAt' && asc)) {
-      return sql`${rawArticles.fetchedAt} asc nulls last`
+    // RAW-SORT-1: «En Yeni Haber» = the story's own time, not when the crawler
+    // happened to fetch it. A source date can never be later than our fetch, so
+    // least(...) also neutralises feeds that stamp future dates.
+    const storyTime = sql`least(coalesce(${rawArticles.publishedAt}, ${rawArticles.fetchedAt}), ${rawArticles.fetchedAt})`
+    if (asc || query.sort === 'oldest') {
+      return sql`${storyTime} asc nulls last, ${rawArticles.fetchedAt} asc`
     }
-    return sql`${rawArticles.fetchedAt} desc nulls last`
+    return sql`${storyTime} desc nulls last, ${rawArticles.fetchedAt} desc`
   }
 
   private rawArticleFilters(query: RawArticleListQuery) {

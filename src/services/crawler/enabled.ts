@@ -54,14 +54,14 @@ export function defaultCrawlIntervalSeconds(
 
 export function crawlerTickLimits() {
   return {
-    // */30 cron. The tick stays under 3 minutes so Neon can suspend in the gap.
-    // 40 fresh fetches per tick is about 80 ham haber an hour, without the old
-    // 80-per-10-minutes pace that kept compute awake all afternoon.
+    // CRAWL-CADENCE-1 (user-approved 2026-10-22): */30 cron, up to 80 fresh
+    // fetches per tick (was hourly × 40 ≈ 35 ham haber an hour). The tick stays
+    // under 4 minutes so Neon can still suspend in the 26-minute gap.
     maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 25), 1, 160),
-    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 40), 1, 160),
+    maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
     maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
-    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 150_000), 5_000, 280_000),
+    maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 240_000), 5_000, 280_000),
     defaultFreshnessHours: clamp(intEnv('NEWS_CRAWLER_FRESHNESS_HOURS', 48), 1, 168),
     maxClusterArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_ARTICLES_PER_TICK', 80), 1, 160),
     maxClusterCandidatesPerArticle: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_CANDIDATES', 40), 5, 80),

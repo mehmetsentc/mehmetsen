@@ -41,7 +41,7 @@ describe('FINOPS cost freeze', () => {
     // CITY-SERVICES-1 (user-approved 2026-10-16): once-a-day city service syncs are back —
     // nöbetçi eczane (2), etkinlik (1), İŞKUR/Kariyer ilanları (2). No AI, no publishing.
     expect(vercel.crons).toEqual([
-      { path: '/api/cron/crawler/tick', schedule: '0 * * * *' },
+      { path: '/api/cron/crawler/tick', schedule: '*/30 * * * *' },
       { path: '/api/cron/social-automation', schedule: '*/5 * * * *' },
       { path: '/api/cron/iskur-jobs?city=canakkale', schedule: '0 6 * * *' },
       { path: '/api/cron/iskur-jobs?city=antalya', schedule: '15 6 * * *' },

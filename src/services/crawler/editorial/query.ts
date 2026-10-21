@@ -218,7 +218,7 @@ export function sortRawArticleRows<T extends RawArticleListRow>(rows: T[], query
     else if (column === 'source') cmp = a.sourceName.localeCompare(b.sourceName, 'tr')
     else if (column === 'editorial') cmp = a.editorialStatus.localeCompare(b.editorialStatus)
     else if (column === 'status') cmp = statusRank(a) - statusRank(b)
-    else if (column === 'publishedAt') cmp = timestamp(a.publishedAt || a.fetchedAt) - timestamp(b.publishedAt || b.fetchedAt)
+    else if (column === 'publishedAt') cmp = storyTime(a) - storyTime(b)
     else cmp = timestamp(a.fetchedAt) - timestamp(b.fetchedAt)
     if (cmp === 0) cmp = timestamp(a.fetchedAt) - timestamp(b.fetchedAt)
     return cmp * dir
@@ -226,16 +226,22 @@ export function sortRawArticleRows<T extends RawArticleListRow>(rows: T[], query
   return copy
 }
 
+/**
+ * RAW-SORT-1: the story's own time — source date, but never later than our
+ * fetch (feeds that stamp future dates cannot jump to the top).
+ */
+export function storyTime(a: { publishedAt?: Date | null; fetchedAt?: Date | null }): number {
+  const fetched = timestamp(a.fetchedAt ?? null)
+  const published = timestamp(a.publishedAt ?? null)
+  if (!published) return fetched
+  return fetched ? Math.min(published, fetched) : published
+}
+
 export function sortRawArticles(articles: RawArticleRecord[], sort: RawArticleListQuery['sort']): RawArticleRecord[] {
   const copy = [...articles]
   copy.sort((a, b) => {
-    if (sort === 'oldest') {
-      return (a.fetchedAt?.getTime() || 0) - (b.fetchedAt?.getTime() || 0)
-    }
-    if (sort === 'published') {
-      return (b.publishedAt?.getTime() || b.fetchedAt?.getTime() || 0) - (a.publishedAt?.getTime() || a.fetchedAt?.getTime() || 0)
-    }
-    return (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0)
+    const cmp = storyTime(b) - storyTime(a) || (b.fetchedAt?.getTime() || 0) - (a.fetchedAt?.getTime() || 0)
+    return sort === 'oldest' ? -cmp : cmp
   })
   return copy
 }
