@@ -376,7 +376,7 @@ const EDITORIAL_RULES = `TEMEL EDİTÖRYEL KURALLAR:
 - TAGS KURALI: tags dizisine KAYNAK GAZETENİN ŞEHRİNİ ekleme. Sadece haberin konusuyla ilgili etiketler ekle. "Bursa Gazetesi"nden İngiltere haberi geliyorsa tags'e "bursa" ekleme.
 - KAYNAK AJANS/GAZETE ADI YASAK: İçerikte "Anka Ajansı", "AA", "DHA", "İHA", "Bursa Gazetesi" gibi kaynak ajans veya gazete adı ASLA yazma. Haber NaHaber editörü tarafından yazılıyormuş gibi kaleme al. Alıntı gerektiğinde yalnızca birincil kaynağı (kişi/kurum) referans göster.
 - ÇIKTI KALİTE ZORUNLULUĞU:
-  * content alanı minimum 220 kelime içermelidir (hedef 250-450).
+  * content alanı minimum 220 kelime içermelidir (hedef 450-650, en az 400; uzunluk yalnızca doğrulanabilir bilgi ve olayla ilgili arka planla, doldurma yok).
   * content içinde HTML tag, JSON yapısı ({\\"className\\":), React/Next.js kodu, script bloğu, self.__next_f gibi teknik içerik KESİNLİKLE yasak.
   * Kaynak içerik teknik veri (HTML/JSON/JS) içeriyorsa YALNIZCAoriginalTitle + originalSummary'den yararlanarak haber yaz; teknik içeriği kopyalama.
   * title 6-12 kelime; en çarpıcı olgu başlıkta. spot en az 3 cümle içermelidir.
@@ -388,7 +388,7 @@ const HEADLINE_RULES = `ALAN TANIMLARI:
 - summary: Feed teaser. Maks 120 karakter. title ve spot'tan TAMAMEN farklı ilgi çekici detay.
 - seoTitle: Google arama başlığı. 55-65 karakter. Anahtar kelimeler öne.
 - seoDescription: SERP açıklaması. 145-160 karakter. Değer önerisi + anahtar kelime.
-- content: Makale gövdesi. 3-6 paragraf (250-450 kelime). Spot'u tekrarlama. Bağlam+olgular+arka plan.`
+- content: Makale gövdesi. 4-7 paragraf (450-650 kelime, en az 400). Spot'u tekrarlama. Bağlam+olgular+arka plan; doldurma/uydurma yok.`
 
 function buildSystemPrompt(mode: 'feed' | 'archive' = 'feed'): string {
   const categories = Object.entries(AI_NEWS_CATEGORIES)

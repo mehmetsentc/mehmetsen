@@ -6,9 +6,16 @@
 /** Canlı yayına uygun minimum gövde (spot hariç content/description). */
 export const MIN_NEWS_BODY_WORDS = 220
 
-/** AI prompt hedef bandı — alt sınır MIN_NEWS_BODY_WORDS ile uyumlu. */
-export const TARGET_NEWS_BODY_WORDS_MIN = 250
-export const TARGET_NEWS_BODY_WORDS_MAX = 450
+/**
+ * AI prompt hedef bandı (SEO-13, 21 Eki 2026): 450–650 kelime.
+ * SEO index kapısı ≥400 kelimelik AI haberlerini Google'a açık bırakır
+ * (src/lib/seo/aiQualityGate.ts → AI_QUALITY_MIN_WORDS). Hedef bunun biraz üstünde.
+ * MIN_NEWS_BODY_WORDS yayın tabanı olarak kalır (yeniden deneme / maliyet değişmez).
+ */
+export const TARGET_NEWS_BODY_WORDS_MIN = 450
+export const TARGET_NEWS_BODY_WORDS_MAX = 650
+/** Google'a açık kalmak için gereken gövde (aiQualityGate ile aynı). */
+export const SEO_INDEXABLE_BODY_WORDS = 400
 
 /** Chief/reviewer: bunun altı rejected / needs_revision. */
 export const REVIEW_REJECT_BELOW_WORDS = 120

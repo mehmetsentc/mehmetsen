@@ -87,7 +87,7 @@ AA "ANKARA" dateline olay yeri değildir. Belirsizse city boş bırak.`
 export const SHARED_NEWS_STYLE = `GAZETE HABERİ yaz (ters piramit).
 - Manşet SES KARTINA uyar. Başlık en çarpıcı olguyu söyler; 5N1K spot ve gövdede açılır, manşette saklanmaz.
 - 5N1K; en önemli bilgi spotun ilk cümlesinde (manşet tam döküm değil)
-- 250-450 kelime gövde (asgari ~220); doldurma yok; kaynak inceyse bile olgusal bağlam ekle
+- 450-650 kelime gövde, en az 400 (yalnızca doğrulanabilir bilgi ve olayla ilgili arka planla); doldurma/uydurma yok; bilgi yetmiyorsa kısa yaz (asgari ~220)
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca ~220 kelimelik en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Giriş", "Gelişme", "Önemi", "Genel Değerlendirme" vb.) YASAK
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma

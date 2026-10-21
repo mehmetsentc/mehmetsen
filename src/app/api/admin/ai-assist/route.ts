@@ -90,7 +90,7 @@ CMS TEK-TUŞ GÖREVİ — UZMAN AI EDİTÖR:
 - Spot okuyucuyu ilk 2 cümlede bilgilendirsin; 5W+1H eksiksiz
 - Gövde editörün tarzında olsun (kelime seçimi, tempo, vurgu); ansiklopedi / okul kompozisyonu yazma
 - Kaynakta olmayan sayı, alıntı, olay uydurma
-- content: ## H2 kullan (# H1 yok); en fazla 2-3 kısa bölüm; 250-450 kelime hedef (asgari ~220)
+- content: ## H2 kullan (# H1 yok); 2-4 bölüm; 450-650 kelime hedef, en az 400 (yalnızca doğrulanabilir bilgiyle; yetmiyorsa asgari ~220)
 - HTML (<p>, <div>, <br>…) ASLA — yalnızca düz metin + markdown
 - summary en fazla 280 karakter
 - seoTitle KESİNLİKLE 50-65 karakter arasında olsun; 65 karakteri ASLA AŞMA

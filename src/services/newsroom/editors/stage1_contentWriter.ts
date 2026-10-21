@@ -86,12 +86,12 @@ ${NAHABER_HEADLINE_STYLE}
 HABER BİÇİMİ (zorunlu):
 - Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — manşette çarpıcı olgu, spotta ayrıntı
 - spot: 2-4 cümle lider; content spot'u tekrarlama
-- content: kaynakta yeterli olgu varsa 400-650 kelime; kaynak kısaysa asgari ~220 kelime ve o kadar. Uzunluk için uydurma/doldurma YASAK
+- content: 450-650 kelime hedef, en az 400 (Google'a açık kalma eşiği). Uzunluğu kaynaktaki olgular, resmi veriler, araştırma kaynaklarındaki ilgili arka plan ve önceki gelişmelerle kur. Doğrulanmış bilgi yetmiyorsa kısa yaz (asgari ~220). Uzunluk için uydurma/doldurma YASAK
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Ceza Tutarı", "Resmi Açıklama", "Vatandaşlar Ne Diyor"); jenerik ders kitabı / ansiklopedi başlığı YASAK: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
-- Kaynak inceyse kısa yaz; arka plan yalnızca doğrulanabilir ve olayla doğrudan ilgiliyse (önceki karar, resmi veri, aynı konudaki önceki gelişme)
+- Kaynak inceyse arka planı yalnızca doğrulanabilir ve olayla doğrudan ilgili bilgiyle ekle (önceki karar, resmi veri, aynı konudaki önceki gelişme, araştırma kaynakları); bu da yetmiyorsa kısa yaz
 - Okurun arama niyetine cevap ver: ne oldu, nerede, ne zaman, kimi etkiliyor, sırada ne var — yalnızca kaynakta olanla
 
 ALANLAR:

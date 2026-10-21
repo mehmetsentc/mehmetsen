@@ -3,6 +3,7 @@ import { getActivePrompt } from './aiEditorService'
 import {
   TARGET_NEWS_BODY_WORDS_MAX,
   TARGET_NEWS_BODY_WORDS_MIN,
+  SEO_INDEXABLE_BODY_WORDS,
   MIN_NEWS_BODY_WORDS,
 } from '@/lib/contentQuality'
 import {
@@ -50,7 +51,9 @@ const NEWS_FORMAT_LOCK = `
 HABER BİÇİMİ (bu editörün tarzıyla birlikte uygula):
 ${NAHABER_HEADLINE_STYLE}
 - Ters piramit gazete haberi yaz; okul kompozisyonu (giriş-gelişme-sonuç) YAZMA
-- content gövdesi ${TARGET_NEWS_BODY_WORDS_MIN}-${TARGET_NEWS_BODY_WORDS_MAX} kelime hedef (asgari ~${MIN_NEWS_BODY_WORDS}); kaynak inceyse bile olguları genişleterek anlamlı paragraf yaz, doldurma/nutuk yok
+- UZUNLUK (bu kural yukarıdaki eski uzunluk talimatlarını ezer): content gövdesi ${TARGET_NEWS_BODY_WORDS_MIN}-${TARGET_NEWS_BODY_WORDS_MAX} kelime hedef, EN AZ ${SEO_INDEXABLE_BODY_WORDS} kelime.
+- Uzunluğu yalnızca doğrulanabilir bilgiyle kur: kaynaktaki tüm olgular, resmi açıklama ve rakamlar, araştırma kaynaklarındaki ilgili arka plan, aynı konudaki önceki gelişmeler, olayın kimi nasıl etkilediği ve sırada ne olduğu.
+- Doldurma, tekrar, genel bilgi paragrafı, ahlak dersi ve uydurma YASAK. Doğrulanmış bilgi ${SEO_INDEXABLE_BODY_WORDS} kelimeye yetmiyorsa kısa yaz (asgari ~${MIN_NEWS_BODY_WORDS}); uydurmak kısa yazmaktan her zaman kötüdür.
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari kelime sınırına yakın en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Önemi", "Genel Değerlendirme", "Biyolojik Çeşitlilik…" vb.) YASAK
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
