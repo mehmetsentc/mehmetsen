@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/store/themeContext'
 import { cn } from '@/lib/utils'
+import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
 import type { Post } from '@/types/post'
 
 type FontSize = 'sm' | 'md' | 'lg' | 'xl'
@@ -107,7 +108,8 @@ export function ArticleReaderTools({
     const root = document.querySelector<HTMLElement>(contentSelector)
     const text = root?.innerText?.trim() || post.summary || post.title
     if (!text) return
-    const utter = new SpeechSynthesisUtterance(text)
+    // REELS-10: «19.20» → «on dokuz yirmi», «%15» → «yüzde on beş» …
+    const utter = new SpeechSynthesisUtterance(toSpokenTurkish(text))
     utter.lang = 'tr-TR'
     utter.rate = 1.0
     utter.pitch = 1.0

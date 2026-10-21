@@ -12,6 +12,7 @@
 
 import { getAdminStorage } from '@/lib/firebase/admin'
 import { refundTtsChars, reserveTtsChars, TtsQuotaError, type TtsReservation } from '@/lib/reels/ttsQuota'
+import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 
@@ -40,7 +41,8 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
   }
 
   // Trim to 4800 chars to stay safely under API limits
-  const text = voiceText.slice(0, 4800)
+  // REELS-10: saat, tarih, yüzde, kısaltma ve kısaltma harflerini seslendirmeye uygun yaz
+  const text = toSpokenTurkish(voiceText).slice(0, 4800)
 
   // Free-tier guard shared with reels (monthly character counter, no overage without approval).
   let reservation: TtsReservation

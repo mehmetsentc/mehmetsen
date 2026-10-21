@@ -3,6 +3,8 @@
  * Length follows the voice-over: intro sting → voice → short tail → end card.
  */
 
+import { acronym } from './ttsNormalize'
+
 export const REEL_W = 1080
 export const REEL_H = 1920
 export const REEL_FPS = 30
@@ -46,9 +48,12 @@ export function ease(x: number): number {
   return 1 - (1 - t) ** 3
 }
 
-/** All-caps words (≥3 letters) are read letter by letter by TTS — "GESTAŞ" → "Gestaş". */
+/**
+ * All-caps words: names with vowels read as a word («GESTAŞ» → «Gestaş»), consonant-only
+ * acronyms spelled the newsreader way («CHP» → «Ce He Pe»). REELS-10: see ttsNormalize.
+ */
 export function speakable(text: string): string {
-  return text.replace(/(?<!\p{L})([A-ZÇĞİÖŞÜ]{3,})(?!\p{L})/gu, (w) => w.charAt(0) + w.slice(1).toLocaleLowerCase('tr-TR'))
+  return text.replace(/(?<!\p{L})([A-ZÇĞİÖŞÜ]{3,})(?!\p{L})/gu, (w) => acronym(w))
 }
 
 function firstSentence(text: string): string {

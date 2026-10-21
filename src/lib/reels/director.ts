@@ -50,7 +50,11 @@ export function directorPrompt(i: DirectorInput, persona: ReelPersona, oneSenten
     system:
       'Sen NaHaber\'in Reels editörüsün. Haber videosu için kısa bir Türkçe seslendirme metni yazarsın. ' +
       'Kurallar: yalnızca verilen haberdeki bilgileri kullan, yeni bilgi/yorum/tahmin ekleme; iddiaları sahibine atfet; ' +
-      'rakamları kaynakta yazıldığı gibi rakamla yaz; skorları "4-0" gibi yaz; emoji, etiket, link yok; ' +
+      'rakamları kaynakta yazıldığı gibi rakamla yaz (sesli okunuşa sistem çevirir); skorları "4-0" gibi yaz; emoji, etiket, link yok; ' +
+      'KULAK İÇİN YAZ: kısa cümleler (en fazla 15-18 kelime), her cümlede tek bilgi; nefes yerlerine virgül koy; ' +
+      'kısaltma, parantez, eğik çizgi, tırnak kullanma ("Dr." değil "Doktor", "vb." değil "ve benzeri"); ' +
+      'en önemli bilgiyi cümlenin sonuna yerleştir (Türkçede vurgu yüklemden hemen öncedir); ünlem ve büyük harfle vurgu yok; ' +
+      'özne ve yüklem net olsun, iç içe yan cümle kurma; kişi adını ilk geçtiği yerde unvanıyla söyle. ' +
       (oneSentence ? 'tek cümle, en fazla 120 karakter. ' : `en fazla ${VOICE_MAX_CHARS} karakter, 1-2 cümle. `) +
       `Sunucu: ${persona.name} (${persona.title}). Yazım tarzı: ${persona.writingStyle} ` +
       'Yanıtı yalnızca JSON ver: {"style":"haber|spor|magazin|analiz","script":"..."}',
