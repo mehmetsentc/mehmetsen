@@ -64,4 +64,24 @@ describe('SEO-11 AI quality gate', () => {
     expect(ARTICLE_SITEMAP_FIRESTORE_FIELDS).toContain('aiGenerated')
     expect(ARTICLE_SITEMAP_FIRESTORE_FIELDS).toContain('aiAutoPublished')
   })
+  it('SEO-11c: page counts the body when the stored word count is missing', async () => {
+    const { gateWordCount } = await import('./aiQualityGate')
+    expect(gateWordCount({ seoWordCount: 410 })).toBe(410)
+    expect(gateWordCount({ content: '<p>' + 'kelime '.repeat(168) + '</p>' })).toBe(168)
+    expect(gateWordCount({})).toBeNull()
+    const post = {
+      id: 'a2', slug: 'kisa', title: 'Kısa', content: '<p>' + 'kelime '.repeat(168) + '</p>', summary: 's',
+      categoryId: 'gundem', tags: [], visibility: 'public', status: 'published',
+      authorId: 'ai_editor_x', aiEditorId: 'ai_editor_x', aiGenerated: true,
+      publishedAt: new Date(after).toISOString(), createdAt: new Date(after).toISOString(), citySlug: 'isparta',
+    } as unknown as Post
+    const meta = buildPostMetadata(post)
+    expect(JSON.stringify(meta.robots)).toContain('"index":false')
+  })
+  it('SEO-11c: draft → publish keeps the gate inputs', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/services/newsDraftService.ts', 'utf8')
+    expect(src).toContain("typeof d.seoWordCount === 'number' ? { seoWordCount: d.seoWordCount }")
+    expect(src).toContain('seoResearchSourceCount: d.seoResearchSourceCount')
+  })
 })

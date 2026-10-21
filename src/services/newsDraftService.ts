@@ -409,6 +409,16 @@ function draftToPublishedNews(
       ? { coverImageUrl: draft.coverImageUrl }
       : {}),
     ...('seoTitle' in draft && draft.seoTitle ? { seoTitle: draft.seoTitle } : {}),
+    // SEO-11c: keep the AI index gate inputs (were dropped on draft → publish)
+    ...(() => {
+      const d = draft as { seoWordCount?: unknown; seoResearchSourceCount?: unknown }
+      return {
+        ...(typeof d.seoWordCount === 'number' ? { seoWordCount: d.seoWordCount } : {}),
+        ...(typeof d.seoResearchSourceCount === 'number'
+          ? { seoResearchSourceCount: d.seoResearchSourceCount }
+          : {}),
+      }
+    })(),
     ...('seoDescription' in draft && draft.seoDescription
       ? { seoDescription: draft.seoDescription }
       : {}),

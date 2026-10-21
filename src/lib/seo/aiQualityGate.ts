@@ -12,6 +12,9 @@
  * Kill switch: SEO_AI_QUALITY_GATE=off.
  */
 
+import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
+import { countPlainWords } from '@/lib/contentQuality'
+
 /** 15 Oct 2026 00:00 Europe/Istanbul. */
 export const AI_QUALITY_GATE_CUTOFF_MS = Date.parse('2026-10-14T21:00:00.000Z')
 /** Project focus cities (local authority we are building). */
@@ -92,4 +95,21 @@ export function failsAiQualityGate(p: AiQualityGateInput, enabled = isAiQualityG
     return false
   }
   return true
+}
+
+/**
+ * SEO-11c: draft → publish (newsDraftService.draftToPublishedNews) dropped the stored
+ * seoWordCount until 21 Oct, so the gate skipped every pipeline story. On the article page
+ * the body is loaded anyway: count it when the stored number is missing (body only, like
+ * the pipeline's readingWords). Sitemaps have no body and keep using the stored field.
+ */
+export function gateWordCount(p: {
+  seoWordCount?: number | null
+  bodyBlocks?: ArticleBlock[] | null
+  content?: string | null
+}): number | null {
+  if (typeof p.seoWordCount === 'number' && Number.isFinite(p.seoWordCount)) return p.seoWordCount
+  const blockText = p.bodyBlocks?.length ? articleBlocksToPlainText(p.bodyBlocks) : ''
+  const n = countPlainWords(blockText || p.content || '')
+  return n > 0 ? n : null
 }
