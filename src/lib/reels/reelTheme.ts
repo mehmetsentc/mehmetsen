@@ -619,7 +619,8 @@ export function presenterCard(ctx: SKRSContext2D, p: { name: string; title?: str
 export async function* videoFrames(ffmpeg: string, file: string, n: number, w = REEL_W, h = REEL_H): AsyncGenerator<Uint8Array> {
   const proc = spawn(ffmpeg, [
     '-v', 'error', '-stream_loop', '-1', '-i', file, '-t', (n / REEL_FPS).toFixed(3),
-    '-vf', `fps=${REEL_FPS},scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`,
+    // REELS-11: fast scaler — the frame is redrawn under text anyway; big sources were the slow part
+    '-vf', `fps=${REEL_FPS},scale=${w}:${h}:force_original_aspect_ratio=increase:flags=fast_bilinear,crop=${w}:${h}`,
     '-f', 'rawvideo', '-pix_fmt', 'rgba', '-',
   ], { stdio: ['ignore', 'pipe', 'inherit'] })
   const size = w * h * 4

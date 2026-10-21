@@ -38,7 +38,8 @@ const TEXT_X = SAFE.x
 /** Left-aligned text, clear of the Instagram action column on the right. */
 const TEXT_W = REEL_W - TEXT_X - SAFE.right
 const TEXT_BOTTOM = SAFE.bottom - 10
-const VIDEO_AUDIO_MAX_S = 25
+/** REELS-11: the story video's own sound after the voice-over, capped (was 25 s → render timeouts). */
+const VIDEO_AUDIO_MAX_S = 12
 const END_S = 2.8
 
 /** Duration + audio presence of a local file or URL (ffmpeg -i banner). */

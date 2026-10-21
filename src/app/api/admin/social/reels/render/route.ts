@@ -11,7 +11,9 @@ import { clampRate, isValidVoiceName } from '@/lib/reels/voiceRules'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
+// REELS-11: a reel from the story's own video (download + decode + encode) needs more than
+// 300 s on one vCPU; Vercel Pro + Fluid allows 800 s. Photo reels still finish in ~1–2 min.
+export const maxDuration = 800
 
 export async function GET(request: Request) {
   const auth = await requireAccountManager(request, { mutation: false })

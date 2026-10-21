@@ -16,7 +16,9 @@ import { publishOneSocial } from '@/lib/social/publishOneSocial'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
+// REELS-11: a reel from the story's own video (download + decode + encode) needs more than
+// 300 s on one vCPU; Vercel Pro + Fluid allows 800 s. Photo reels still finish in ~1–2 min.
+export const maxDuration = 800
 
 const NEWS_RE = /^[A-Za-z0-9_-]{4,128}$/
 /** Platforms that take the rendered news video (YouTube: Shorts only — manualTargetCheck refuses video_story). */
