@@ -243,7 +243,8 @@ export function buildVideoObjectJsonLd(post: Post): Record<string, unknown> | nu
     post.seoDescription?.trim() ||
     post.content?.trim().slice(0, 280) ||
     post.title
-  const durationMinutes = Math.max(1, post.readingTimeMinutes ?? 1)
+  // ARTICLE-VIDEO-1: no `duration` — it used the article's reading time (a 14 s clip
+  // was declared PT4M). The property is optional; a wrong value is worse than none.
 
   return {
     '@context': 'https://schema.org',
@@ -255,7 +256,6 @@ export function buildVideoObjectJsonLd(post: Post): Record<string, unknown> | nu
     dateModified,
     contentUrl: video.url,
     embedUrl: `${siteUrl}${ROUTES.REELS_VIDEO(post.id)}`,
-    duration: `PT${durationMinutes}M`,
     mainEntityOfPage: url,
     publisher: {
       '@type': 'NewsMediaOrganization',

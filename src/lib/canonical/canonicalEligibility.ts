@@ -80,6 +80,7 @@ export function canonicalRowToPost(row: CanonicalNewsRow): Post {
   const authorId = (row.authorId?.trim() || 'nahaber').slice(0, 128)
   const authorDisplayName = (row.authorDisplayName?.trim() || 'NaHaber').slice(0, 120)
   const imageUrl = row.coverImageUrl || row.thumbnailUrl || null
+  const videoUrl = row.videoUrl?.trim() || null
 
   const content = row.content || row.description || ''
   const summary = row.summary || content.slice(0, 280)
@@ -106,19 +107,18 @@ export function canonicalRowToPost(row: CanonicalNewsRow): Post {
     districtSlug: row.districtSlug,
     location: null,
     tags: row.tags || [],
-    postType: row.videoUrl ? 'video' : 'news',
+    postType: videoUrl ? 'video' : 'news',
     source: row.source || authorDisplayName,
-    mediaItems: imageUrl
-      ? [
-          {
-            type: 'image',
-            url: imageUrl,
-            thumbnailUrl: imageUrl,
-            caption: null,
-            alt: row.title,
-          },
-        ]
-      : [],
+    // ARTICLE-VIDEO-1: the CMS video (news.video_url) was dropped here, so the
+    // article page — which reads this Postgres row first — never showed the play
+    // button or the video, while Firestore-fed cards showed the video badge.
+    mediaItems: [
+      ...(imageUrl
+        ? [{ type: 'image' as const, url: imageUrl, thumbnailUrl: imageUrl, caption: null, alt: row.title }]
+        : []),
+      ...(videoUrl ? [{ type: 'video' as const, url: videoUrl, thumbnailUrl: imageUrl, caption: null }] : []),
+    ],
+    videoUrl: videoUrl ?? undefined,
     coverImageUrl: imageUrl,
     status: 'published',
     visibility: 'public',
