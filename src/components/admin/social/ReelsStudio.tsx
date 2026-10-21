@@ -14,7 +14,7 @@ import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
-import { GENDER_TEXT, reelsCall, voiceLabel, type VoicesResponse } from './reelsApi'
+import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 
 // ── types ────────────────────────────────────────────────────────────────────
 type NewsPick = {
@@ -351,7 +351,8 @@ export function ReelsStudio() {
     if (!picked) return
     setBusy('render')
     setError(null)
-    const r = await reelsCall<{ result: ReelResult }>('POST', '/api/admin/social/reels/render', { newsId: picked.newsId, force, ...opts() })
+    // REELS-12: background job + polling (a video reel can take several minutes)
+    const r = await reelsJob<{ result: ReelResult }>('/api/admin/social/reels/render', { newsId: picked.newsId, force, ...opts(), async: true })
     setBusy(null)
     void loadUsage()
     if (!r.ok) return setError(r.error)

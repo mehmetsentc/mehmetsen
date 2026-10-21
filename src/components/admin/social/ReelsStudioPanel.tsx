@@ -11,7 +11,7 @@ import { auth } from '@/lib/firebase/auth'
 import { tierForVoice } from '@/lib/reels/ttsQuotaRules'
 import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
-import { GENDER_TEXT, reelsCall, TIER_TEXT, voiceLabel, type VoicesResponse } from './reelsApi'
+import { GENDER_TEXT, reelsCall, reelsJob, TIER_TEXT, voiceLabel, type VoicesResponse } from './reelsApi'
 
 type ReelResult = {
   newsId: string
@@ -114,7 +114,8 @@ export function ReelsStudioPanel() {
     setBusy(true)
     setError(null)
     setShareFmt(null)
-    const r = await call<{ result: ReelResult }>('POST', { newsId, force, ...(voicePick ? { voice: voicePick } : {}) })
+    // REELS-12: background job + polling
+    const r = await reelsJob<{ result: ReelResult }>('/api/admin/social/reels/render', { newsId, force, ...(voicePick ? { voice: voicePick } : {}), async: true })
     setBusy(false)
     if (r.ok) setResult(r.data.result)
     else setError(r.error)

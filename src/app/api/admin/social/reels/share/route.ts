@@ -13,6 +13,7 @@ import { json, readJsonBody } from '@/lib/social/accounts/connect/routeHelpers'
 import type { VideoFormat } from '@/lib/social/accounts/capabilities'
 import { manualTargetsForNews } from '@/lib/social/accounts/manualTargets'
 import { publishOneSocial } from '@/lib/social/publishOneSocial'
+import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,14 @@ export async function GET(request: Request) {
   const auth = await requireActor(request, { mutation: false })
   if ('response' in auth) return auth.response
   const url = new URL(request.url)
+  // REELS-12: poll a background build / share (?job=…); only the user who started it
+  const job = url.searchParams.get('job')
+  if (job !== null) {
+    if (!isReelJobId(job)) return json({ error: 'job geçersiz' }, 400)
+    const j = await readReelJob(job)
+    if (!j || j.by !== auth.actor.uid) return json({ error: 'İş bulunamadı' }, 404)
+    return json({ job: { jobId: j.jobId, status: j.status, result: j.result, error: j.error, httpStatus: j.httpStatus } })
+  }
   const newsId = url.searchParams.get('newsId') ?? ''
   if (!NEWS_RE.test(newsId)) return json({ error: 'newsId gerekli' }, 400)
   const r = await manualTargetsForNews(auth.actor, newsId, [fmtOf(url.searchParams.get('format'))], Date.now())
@@ -52,17 +61,49 @@ export async function POST(request: Request) {
   if (!r.ok) return json({ error: r.code, code: r.code }, r.status)
   if (body.prepare === true) {
     if (!r.options.some((o) => o.selectable && VIDEO_PLATFORMS.has(o.platform))) return json({ error: 'Bu haber için kullanılabilir hesap yok', code: 'not_found' }, 404)
-    try {
-      const { buildReelForNews } = await import('@/lib/reels/reelService')
-      const b = await buildReelForNews(newsId, { by: auth.actor.uid })
-      return json({ prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused })
-    } catch (err) {
-      return json({ error: err instanceof Error ? err.message : String(err), code: 'render_failed' }, 500)
-    }
+    // REELS-12: build in the background; the client polls ?job= (a video reel can take minutes)
+    const uid = auth.actor.uid
+    const job = await startReelJob({
+      jobId: reelJobId(['build', newsId]),
+      kind: 'build',
+      newsId,
+      by: uid,
+      run: async () => {
+        const { buildReelForNews } = await import('@/lib/reels/reelService')
+        const b = await buildReelForNews(newsId, { by: uid })
+        return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused } }
+      },
+    })
+    return json({ job }, 202)
   }
   const target = r.options.find((o) => o.accountId === accountId)
   if (!target || !VIDEO_PLATFORMS.has(target.platform)) return json({ error: 'Bu hesap bu haber için kullanılamaz', code: 'not_found' }, 404)
   if (!target.selectable) return json({ error: target.reason ?? 'Hesap seçilemez', code: target.code }, 409)
+  if (body.async === true) {
+    // REELS-12: publish in the background (Instagram video processing alone can take ~2 min)
+    const uid = auth.actor.uid
+    const job = await startReelJob({
+      jobId: reelJobId(['share', newsId, target.accountId, format]),
+      kind: 'share',
+      newsId,
+      by: uid,
+      run: async () => {
+        const result = await publishOneSocial(newsId, {
+          mode: format,
+          targets: { [target.platform]: target.accountId },
+          manual: true,
+          actorUid: uid,
+          force: body.force === true,
+          trigger: 'studio',
+        })
+        return {
+          result: { result, platform: target.platform, accountId: target.accountId, format },
+          httpStatus: result.ok ? 200 : result.skipped ? 409 : 502,
+        }
+      },
+    })
+    return json({ job }, 202)
+  }
   const result = await publishOneSocial(newsId, {
     mode: format,
     targets: { [target.platform]: target.accountId },

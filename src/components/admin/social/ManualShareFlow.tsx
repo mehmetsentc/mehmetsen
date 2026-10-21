@@ -29,6 +29,7 @@ import {
   type TargetRowLike,
 } from '@/lib/social/shareResultText'
 import { showShareToast } from '@/lib/social/shareToast'
+import { runReelJob } from './reelsApi'
 import {
   ComposerTargetPicker,
   EMPTY_TARGETS,
@@ -74,38 +75,23 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   const list = (['instagram', 'facebook', ...(input.mode === 'reel' ? (['youtube'] as const) : [])] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
   if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   const rows: TargetRowLike[] = []
-  // REELS-5: build (or reuse) the video + cover once, in its own request.
+  // REELS-5 / REELS-12: build (or reuse) the video + cover once, as a background job that is
+  // polled — a video reel can take minutes and Cloudflare closes plain requests at 100 s.
   onProgress?.(0, list.length + 1)
-  try {
-    const token = (await auth.currentUser?.getIdToken()) ?? ''
-    const res = await fetch('/api/admin/social/reels/share', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ newsId: input.newsId, format: input.mode, prepare: true }),
-    })
-    const d = (await res.json().catch(() => null)) as { error?: string } | null
-    if (!res.ok && res.status < 520) return { ok: false, status: res.status, overall: 'error', rows: [], message: `Video hazırlanamadı: ${d?.error ?? `HTTP ${res.status}`}` }
-  } catch {
-    // a slow first render: the per-account requests build / reuse it anyway
-  }
+  const prep = await runReelJob('/api/admin/social/reels/share', { newsId: input.newsId, format: input.mode, prepare: true })
+  if (!prep.ok) return { ok: false, status: prep.status ?? 500, overall: 'error', rows: [], message: `Video hazırlanamadı: ${prep.error}` }
   let i = 1
   for (const t of list) {
     onProgress?.(i++, list.length + 1)
-    const token = (await auth.currentUser?.getIdToken()) ?? ''
     let row: TargetRowLike = { platform: t.platform, accountId: t.accountId, accountName: input.names.get(t.accountId) ?? null, format: input.mode, success: false, code: null, error: null, ledgerStatus: null, externalPostId: null }
-    try {
-      const res = await fetch('/api/admin/social/reels/share', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ newsId: input.newsId, accountId: t.accountId, format: input.mode }),
-      })
-      const d = (await res.json().catch(() => null)) as { error?: string; code?: string; result?: { ok?: boolean; reason?: string; reel?: Record<string, { success?: boolean; error?: string; code?: string; platformId?: string; ledgerStatus?: string }> } } | null
+    const job = await runReelJob('/api/admin/social/reels/share', { newsId: input.newsId, accountId: t.accountId, format: input.mode, async: true })
+    if (!job.ok) {
+      row = { ...row, error: job.error }
+    } else {
+      const d = job.job.result as { error?: string; code?: string; result?: { ok?: boolean; reason?: string; reel?: Record<string, { success?: boolean; error?: string; code?: string; platformId?: string; ledgerStatus?: string }> } } | null
       const r = d?.result?.reel?.[t.platform]
-      row = { ...row, success: !!r?.success, code: r?.code ?? d?.code ?? null, error: r?.error ?? d?.result?.reason ?? d?.error ?? (res.ok ? null : `HTTP ${res.status}`), ledgerStatus: r?.ledgerStatus ?? null, externalPostId: r?.platformId ?? null }
-    } catch {
-      row = { ...row, error: unreadableResponseText(0) }
+      const httpOk = (job.job.httpStatus ?? 200) < 400
+      row = { ...row, success: !!r?.success, code: r?.code ?? d?.code ?? null, error: r?.error ?? d?.result?.reason ?? d?.error ?? (httpOk ? null : `HTTP ${job.job.httpStatus}`), ledgerStatus: r?.ledgerStatus ?? null, externalPostId: r?.platformId ?? null }
     }
     rows.push(row)
   }
