@@ -12,38 +12,57 @@ import { publishYouTubeShort } from './youtubeShorts'
 import type { PublishOneSocialOptions, PublishOneSocialResult } from './publishOneSocial'
 import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from './reelAdapters'
 import { safeErrorText } from './safeLog'
+import { buildSeoDescription, buildSeoHashtags, socialLocationFromDoc, type SocialLocation } from './socialSeo'
+import { resolveFacebookPlaceId } from './placeResolver'
+import { FACEBOOK_GRAPH_BASE } from './graphConfig'
+import { getCategoryLabel } from '@/lib/newsMapper'
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : ''
 }
 
-function clamp(text: string, max: number): string {
-  if (text.length <= max) return text
-  const cut = text.slice(0, max)
-  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf(' '))
-  return (end > max * 0.6 ? cut.slice(0, end + 1) : cut).trim() + '…'
+/** SOCIAL-SEO-1: the story's 5 discovery hashtags (city, district, category, topics). */
+export function reelSeoHashtags(d: Record<string, unknown>, loc: SocialLocation = socialLocationFromDoc(d)): string[] {
+  return buildSeoHashtags({
+    location: loc,
+    categoryLabel: (str(d.categoryId) ? getCategoryLabel(str(d.categoryId)) : '') || str(d.categoryName) || str(d.category),
+    tags: d.tags,
+    keywords: d.seoKeywords,
+    breaking: d.isBreaking === true,
+  })
 }
 
-/** Caption: headline, one short summary, article link, a few plain hashtags. */
+/** Body text of the story (for the longer description). */
+function storyBody(d: Record<string, unknown>): string {
+  const raw = str(d.content) || str(d.description)
+  return raw.replace(/<[^>]+>/g, ' ').replace(/[#*_`>]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2500)
+}
+
+/** Caption: headline, a longer search-friendly description with «📍 place», link, 5 SEO hashtags. */
 export function buildReelCaption(d: Record<string, unknown>, articleUrl: string | null): string {
   const title = str(d.title)
-  const summary = clamp(str(d.summary) || str(d.spot) || str(d.description), 280)
-  const city = str(d.city)
-  const tags = ['#haber', '#NaHaber', ...(city ? [`#${city.replace(/\s+/g, '')}`] : [])]
-  return [title, summary, articleUrl ? `Haberin tamamı: ${articleUrl}` : '', tags.join(' ')].filter(Boolean).join('\n\n')
+  const loc = socialLocationFromDoc(d)
+  const desc = buildSeoDescription({ title, spot: str(d.spot) || str(d.summary), body: storyBody(d), location: loc, maxChars: 900 })
+  const tags = reelSeoHashtags(d, loc)
+  return [title, desc, articleUrl ? `Haberin tamamı: ${articleUrl}` : '', tags.join(' ')].filter(Boolean).join('\n\n').slice(0, 2200)
 }
 
 /** YouTube Short metadata: headline as title; summary, article link and hashtags as description. */
-export function buildYouTubeShortMeta(d: Record<string, unknown>, articleUrl: string | null): { title: string; description: string; tags: string[] } {
+export function buildYouTubeShortMeta(
+  d: Record<string, unknown>,
+  articleUrl: string | null,
+): { title: string; description: string; tags: string[]; location?: { latitude: number; longitude: number; description?: string } } {
   const title = str(d.title)
-  const summary = clamp(str(d.summary) || str(d.spot) || str(d.description), 1200)
-  const city = str(d.city)
+  const loc = socialLocationFromDoc(d)
+  const summary = buildSeoDescription({ title, spot: str(d.spot) || str(d.summary), body: storyBody(d), location: loc, maxChars: 1500 })
+  const seo = reelSeoHashtags(d, loc)
   const category = str(d.categoryName) || str(d.category)
-  const hashtags = ['#Shorts', '#haber', '#NaHaber', ...(city ? [`#${city.replace(/\s+/g, '')}`] : [])]
+  const hashtags = ['#Shorts', ...seo]
   return {
     title,
     description: [summary, articleUrl ? `Haberin tamamı: ${articleUrl}` : '', hashtags.join(' ')].filter(Boolean).join('\n\n'),
-    tags: ['haber', 'NaHaber', ...(city ? [city] : []), ...(category ? [category] : [])],
+    tags: [...seo.map((t) => t.slice(1)), 'haber', 'NaHaber', ...(loc.city ? [loc.city] : []), ...(loc.district ? [loc.district] : []), ...(category ? [category] : [])],
+    ...(loc.lat != null && loc.lng != null ? { location: { latitude: loc.lat, longitude: loc.lng, description: loc.label ?? undefined } } : {}),
   }
 }
 
@@ -95,7 +114,14 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
           ? publishInstagramVideoStory({ newsId, videoUrl, caption }, t as InstagramPublishTarget)
           : publishFacebookVideoStory({ newsId, videoUrl, caption }, t as FacebookPublishTarget)
         : platform === 'instagram'
-          ? publishInstagramReel({ newsId, videoUrl, caption, coverUrl }, t as InstagramPublishTarget)
+          ? (async () => {
+              const ig = t as InstagramPublishTarget
+              const locationId = await resolveFacebookPlaceId(
+                socialLocationFromDoc(d),
+                ig.apiBase === FACEBOOK_GRAPH_BASE ? ig.accessToken : null,
+              )
+              return publishInstagramReel({ newsId, videoUrl, caption, coverUrl, locationId }, ig)
+            })()
           : publishFacebookReel({ newsId, videoUrl, caption }, t as FacebookPublishTarget),
   })
   return {

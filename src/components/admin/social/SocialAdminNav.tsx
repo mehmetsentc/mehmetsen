@@ -11,6 +11,7 @@ const TABS = [
   { href: '/admin/social/shares', label: 'Paylaşımlar' },
   { href: '/admin/social/reels', label: 'Reels' },
   { href: '/admin/social/network', label: 'İl Ağı' },
+  { href: '/admin/social/places', label: 'Konumlar' },
 ] as const
 
 /** Sosyal medya yönetimi sekmeleri (merkez / il yöneticisi). */

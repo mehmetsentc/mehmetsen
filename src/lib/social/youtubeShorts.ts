@@ -42,6 +42,8 @@ export interface YouTubeShortInput {
   title: string
   description: string
   tags: string[]
+  /** SOCIAL-SEO-1: where the story happened (YouTube recordingDetails.location). */
+  location?: { latitude: number; longitude: number; description?: string }
 }
 
 /** YouTube «News & Politics». */
@@ -175,11 +177,20 @@ export async function publishYouTubeShort(
       defaultAudioLanguage: 'tr',
     },
     status: { privacyStatus: privacy, selfDeclaredMadeForKids: false, embeddable: true },
+    ...(input.location
+      ? {
+          recordingDetails: {
+            location: { latitude: input.location.latitude, longitude: input.location.longitude },
+            ...(input.location.description ? { locationDescription: input.location.description.slice(0, 100) } : {}),
+          },
+        }
+      : {}),
   }
 
   let sessionUri = ''
   try {
-    const init = await fetchFn(`${YOUTUBE_UPLOAD_URL}?uploadType=resumable&part=snippet,status`, {
+    const parts = input.location ? 'snippet,status,recordingDetails' : 'snippet,status'
+    const init = await fetchFn(`${YOUTUBE_UPLOAD_URL}?uploadType=resumable&part=${parts}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

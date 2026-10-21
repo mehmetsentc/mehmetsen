@@ -14,7 +14,14 @@ import { META_GRAPH_API_VERSION } from './graphConfig'
 import { platformError, safeErrorText, socialLog } from './safeLog'
 
 /** coverUrl (REELS-5): NaHaber cover JPEG for the Instagram grid / Reels tab. */
-export type ReelPublishInput = { newsId: string; videoUrl: string; caption: string; coverUrl?: string | null }
+export type ReelPublishInput = {
+  newsId: string
+  videoUrl: string
+  caption: string
+  coverUrl?: string | null
+  /** SOCIAL-SEO-1: Facebook place id → Instagram reel location tag. */
+  locationId?: string | null
+}
 
 const IG_POLL_MS = 4000
 const IG_POLL_MAX = 30 // ~2 minutes of video processing
@@ -45,13 +52,20 @@ async function publishInstagramVideo(input: ReelPublishInput, target: InstagramP
   const base = target.apiBase
   const token = target.accessToken
   try {
-    const c = await form(`${base}/${target.igUserId}/media`, {
+    const fields = {
       media_type: kind,
       video_url: input.videoUrl,
       ...(kind === 'REELS' ? { caption: input.caption.slice(0, 2200), share_to_feed: 'true' } : {}),
       ...(kind === 'REELS' && input.coverUrl?.startsWith('https://') ? { cover_url: input.coverUrl } : {}),
       access_token: token,
-    })
+    }
+    const withPlace = kind === 'REELS' && input.locationId ? { ...fields, location_id: input.locationId } : null
+    let c = await form(`${base}/${target.igUserId}/media`, withPlace ?? fields)
+    if (withPlace && (c.status >= 400 || c.json.error)) {
+      // a rejected location must never cost the reel: retry once without it
+      socialLog('warn', 'instagram', 'location_tag', { corr: input.newsId, result: 'rejected_retry_without' })
+      c = await form(`${base}/${target.igUserId}/media`, fields)
+    }
     const containerId = typeof c.json.id === 'string' ? c.json.id : ''
     if (c.status >= 400 || c.json.error || !containerId) throw platformError('instagram', 'reels kapsayıcısı', c.status, c.json)
     socialLog('log', 'instagram', 'reel_container', { corr: input.newsId, account: target.accountId, result: 'created' })

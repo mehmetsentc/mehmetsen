@@ -106,4 +106,9 @@ export interface SocialPublishPayload {
    * Yoksa global `metaAiRewrite` ayarı geçerlidir (manuel yayın değişmez).
    */
   aiRewrite?: boolean
+  /**
+   * SOCIAL-SEO-1: where the story happened. Instagram/Facebook adapters turn it into a
+   * location tag (Facebook place id) when one is known; captions carry «📍 …».
+   */
+  location?: import('./socialSeo').SocialLocation
 }

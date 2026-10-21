@@ -33,6 +33,7 @@ import { buildPublicArticleUrl, isPublicShareArticleUrl } from '@/lib/social/art
 import { buildSocialImagePayload } from './carouselImages'
 import { buildOgSocialUrl } from './ogCacheVersion'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
+import { resolveFacebookPlaceId } from './placeResolver'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
 import { generateSocialContent } from './aiSocialEditor'
 import { rewriteForSocial, rewriteForPlatform, logAiRewrite } from '@/services/metaAiRewriteService'
@@ -159,14 +160,36 @@ function allowedHashtags(tags?: string[]): string[] {
   return out
 }
 
-/** Facebook photo caption — no title dump, no https links, max 2 allowed hashtags. */
+/**
+ * SOCIAL-SEO-1: the story's own SEO hashtags (city, district, category, topics) — up to 5.
+ * Without them the old rule applies (max 2: #Çanakkale / #SonDakika).
+ */
+function facebookHashtags(tags?: string[]): string[] {
+  const seo = (tags ?? [])
+    .map((t) => String(t).trim())
+    .filter(Boolean)
+    .map((t) => (t.startsWith('#') ? t : `#${t}`))
+  return seo.length >= 5 ? seo.slice(0, 5) : allowedHashtags(tags)
+}
+
+/** Facebook photo caption — no title dump, no https links; «📍 place» + hashtags. */
 export function buildFacebookPhotoCaption(payload: SocialPublishPayload): string {
   const summary = (payload.description ?? '').trim() || payload.title
-  const body = rewriteAwayFromTitle(summary, payload.title)
-  const city = resolveCityLabel(payload)
-  const tags = allowedHashtags(payload.hashtags)
+  // SOCIAL-SEO-1: a long multi-paragraph description is kept whole (no 2-sentence clamp)
+  const titleHead = payload.title.toLocaleLowerCase('tr-TR').slice(0, 40)
+  const longDesc =
+    summary.length >= 300 && !summary.toLocaleLowerCase('tr-TR').startsWith(titleHead)
+      ? summary.replace(/https?:\/\/\S+/gi, '').replace(/www\.\S+/gi, '').replace(/[ \t]{2,}/g, ' ').trim()
+      : ''
+  const body = longDesc
+    ? longDesc.length <= 1500
+      ? longDesc.replace(/\n{3,}/g, '\n\n')
+      : clampCompleteSentences(longDesc, 1400, 1500)
+    : rewriteAwayFromTitle(summary, payload.title)
+  const city = payload.location?.label || resolveCityLabel(payload)
+  const tags = facebookHashtags(payload.hashtags)
 
-  let caption = `${body}\n\n📍 ${city}`
+  let caption = body.includes('📍') ? body : `${body}\n\n📍 ${city}`
   if (tags.length) caption += `\n\n${tags.join(' ')}`
   // Safety: never leave a URL in caption
   return stripUrls(caption).replace(/\n{3,}/g, '\n\n').trim()
@@ -265,10 +288,13 @@ async function publishPhotoPost(
   newsId: string,
   imageUrl: string,
   caption: string,
+  /** SOCIAL-SEO-1: Facebook place id (location tag). */
+  placeId: string | null = null,
 ): Promise<SocialPublishResult> {
   const body: Record<string, unknown> = {
     url: imageUrl,
     caption,
+    ...(placeId ? { place: placeId } : {}),
     published: true,
     privacy: JSON.stringify({ value: 'EVERYONE' }),
     access_token: accessToken,
@@ -291,6 +317,11 @@ async function publishPhotoPost(
   }
 
   if (!res.ok || json.error || !json.id) {
+    if (placeId && res.status < 500) {
+      // a rejected place must never cost the post: retry once without it
+      socialLog('warn', 'facebook', 'location_tag', { corr: newsId, result: 'rejected_retry_without' })
+      return publishPhotoPost(pageId, accessToken, newsId, imageUrl, caption, null)
+    }
     const err = platformError('facebook', 'fotoğraf paylaşımı', res.status, json)
     socialLog('error', 'facebook', 'photos', { corr: newsId, pageId, result: 'failed', ...errorLogFields(err) })
     return { success: false, error: err.message }
@@ -612,9 +643,10 @@ async function publishToFacebookUnlocked(
     aiSource = ai.source
     aiError = ai.error
     cacheKey = ai.cacheKey
-    aiHashtags = ai.hashtags
-    const tagLine = ai.hashtags.length ? `\n\n${ai.hashtags.join(' ')}` : ''
-    caption = `${ai.caption}\n\n📍 ${city}${tagLine}`.trim()
+    const seoTags = facebookHashtags(payload.hashtags)
+    aiHashtags = seoTags.length >= 5 ? seoTags : ai.hashtags
+    const tagLine = aiHashtags.length ? `\n\n${aiHashtags.join(' ')}` : ''
+    caption = `${ai.caption}\n\n📍 ${payload.location?.label || city}${tagLine}`.trim()
     commentOpener = ai.comment_text || 'Haberin detayı:'
   } else {
     caption = buildFacebookPhotoCaption(payload)
@@ -623,6 +655,8 @@ async function publishToFacebookUnlocked(
   // Safety: never leave https in caption
   caption = caption.replace(/https?:\/\/\S+/gi, '').replace(/www\.\S+/gi, '').replace(/\n{3,}/g, '\n\n').trim()
 
+  const placeId = payload.location ? await resolveFacebookPlaceId(payload.location, accessToken) : null
+
   try {
     const result = await publishPhotoPost(
       pageId,
@@ -630,6 +664,7 @@ async function publishToFacebookUnlocked(
       payload.newsId,
       imageCheck.url,
       caption,
+      placeId,
     )
 
     if (!result.success || !result.platformId) {

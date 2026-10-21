@@ -20,6 +20,8 @@ import { generateSocialContent } from '@/lib/social/aiSocialEditor'
 import type { SocialPublishPayload, SocialPublishResult } from '@/lib/social/types'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from '@/lib/social/feedCaption'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from '@/lib/social/socialFactualFidelity'
+import { buildSeoDescription, buildSeoHashtags, socialLocationFromDoc, withLocationLine } from '@/lib/social/socialSeo'
+import { getCategoryLabel } from '@/lib/newsMapper'
 import { getRuleForCategory } from '@/lib/social/categoryRulesStore'
 import { allowsAutoPost, allowsAutoStory } from '@/lib/social/categoryRules'
 import { getAutoShareSettings } from '@/lib/social/autoShareSettingsStore'
@@ -735,6 +737,9 @@ export async function publishOneSocial(
         ? automationCityName(typeof data.citySlug === 'string' ? data.citySlug : '')
         : 'Çanakkale'
 
+    // SOCIAL-SEO-1: story location (city / district / coordinates) for tags and captions
+    const socialLoc = socialLocationFromDoc(data)
+
     // ── AI içerik üretimi (override yoksa) ───────────────────────────────────
     const storedHeadline = typeof data.socialHeadline === 'string' ? data.socialHeadline.trim() : ''
     const storedCaption = typeof data.socialCaption === 'string' ? data.socialCaption.trim() : ''
@@ -823,6 +828,25 @@ export async function publishOneSocial(
     if (!overrides?.caption?.trim() && isGarbledSocialCopy(socialContent.caption)) {
       // buildFeedCaption zaten "📰 {başlık}" ekler — fallback sadece spot özeti
       socialContent.caption = spot.trim() || ''
+    }
+    // SOCIAL-SEO-1: longer search-friendly description, «📍 place», 5 SEO hashtags.
+    if (!overrides?.caption?.trim()) {
+      const current = socialContent.caption.trim()
+      socialContent.caption =
+        current.length < 300
+          ? buildSeoDescription({ title, spot: current || spot, body: bodyText, location: socialLoc })
+          : withLocationLine(current, socialLoc)
+    }
+    if (!(Array.isArray(overrides?.hashtags) && overrides.hashtags.length > 0)) {
+      socialContent.hashtags = buildSeoHashtags({
+        location: socialLoc,
+        categoryLabel:
+          (typeof data.categoryId === 'string' && data.categoryId ? getCategoryLabel(data.categoryId) : '') ||
+          (typeof data.category === 'string' ? data.category : ''),
+        tags: data.tags,
+        keywords: data.seoKeywords,
+        breaking: data.isBreaking === true,
+      })
     }
     // Videolu haber: gönderi kapak görseliyle gider, açıklama videoya yönlendirir
     // (haber bağlantısını publisher ekler).
@@ -957,6 +981,7 @@ export async function publishOneSocial(
         hashtags: socialContent.hashtags,
         cityName,
         citySlug: typeof data.citySlug === 'string' ? data.citySlug : undefined,
+        location: socialLoc,
         // Otomasyon: Meta AI yeniden yazımı kapalı (manuel yayın global ayarı izler).
         ...(neutral ? { aiRewrite: false } : {}),
       }

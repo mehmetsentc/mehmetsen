@@ -27,6 +27,8 @@ import { buildFeedCaption, isIncompleteCaption, isThinSocialCaption } from './fe
 import { resolveCarouselUrls } from './carouselImages'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
 import { FACEBOOK_GRAPH_BASE } from './graphConfig'
+import { resolveFacebookPlaceId } from './placeResolver'
+import { withLocationLine } from './socialSeo'
 import { errorLogFields, platformError, PlatformApiError, safeErrorText, socialLog } from './safeLog'
 import type { InstagramPublishTarget } from './accounts/targetTypes'
 import { INVALID_TARGET_ERROR, isUsableInstagramTarget } from './accounts/targetGuards'
@@ -79,8 +81,11 @@ async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<s
   }
 
   const baseTags = payload.hashtags ?? []
+  // SOCIAL-SEO-1: the story's 5 SEO hashtags win; Meta AI tags only fill when none are given
   const merged =
-    ai.hashtags.length > 0
+    baseTags.length >= 5
+      ? baseTags.slice(0, 5)
+      : ai.hashtags.length > 0
       ? [
           ...ai.hashtags,
           ...baseTags.filter(
@@ -94,7 +99,7 @@ async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<s
 
   return buildFeedCaption({
     title: payload.title,
-    body: metaBody,
+    body: withLocationLine(metaBody, payload.location),
     articleUrl: payload.articleUrl,
     hashtags: merged,
     maxLen: IG_CAPTION_LIMIT,
@@ -110,7 +115,9 @@ async function createMediaContainer(
   accessToken: string,
   imageUrl: string,
   caption: string,
-  base: string = GRAPH_BASE
+  base: string = GRAPH_BASE,
+  /** SOCIAL-SEO-1: Facebook place id of the story location (location tag). */
+  locationId: string | null = null,
 ): Promise<string> {
   const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
@@ -118,6 +125,7 @@ async function createMediaContainer(
     body: JSON.stringify({
       image_url: imageUrl,
       caption,
+      ...(locationId ? { location_id: locationId } : {}),
       access_token: accessToken,
     }),
   })
@@ -125,6 +133,11 @@ async function createMediaContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
+    if (locationId) {
+      // a rejected location must never cost the post: retry once without it
+      socialLog('warn', 'instagram', 'location_tag', { result: 'rejected_retry_without' })
+      return createMediaContainer(igBusinessId, accessToken, imageUrl, caption, base, null)
+    }
     throw platformError('instagram', 'medya kapsayıcısı', res.status, json)
   }
 
@@ -163,7 +176,8 @@ async function createCarouselParentContainer(
   accessToken: string,
   childIds: string[],
   caption: string,
-  base: string = GRAPH_BASE
+  base: string = GRAPH_BASE,
+  locationId: string | null = null,
 ): Promise<string> {
   const res = await fetch(`${base}/${igBusinessId}/media`, {
     method: 'POST',
@@ -172,6 +186,7 @@ async function createCarouselParentContainer(
       media_type: 'CAROUSEL',
       children: childIds.join(','),
       caption,
+      ...(locationId ? { location_id: locationId } : {}),
       access_token: accessToken,
     }),
   })
@@ -179,6 +194,10 @@ async function createCarouselParentContainer(
   const json = (await res.json()) as { id?: string; error?: { message?: string } }
 
   if (!res.ok || json.error || !json.id) {
+    if (locationId) {
+      socialLog('warn', 'instagram', 'location_tag', { result: 'rejected_retry_without' })
+      return createCarouselParentContainer(igBusinessId, accessToken, childIds, caption, base, null)
+    }
     throw platformError('instagram', 'kaydırmalı kapsayıcı', res.status, json)
   }
 
@@ -340,7 +359,8 @@ async function publishSingleImage(
   newsId: string,
   imageUrl: string,
   caption: string,
-  base: string = GRAPH_BASE
+  base: string = GRAPH_BASE,
+  locationId: string | null = null,
 ): Promise<SocialPublishResult> {
   socialLog('log', 'instagram', 'single', { corr: newsId, result: 'start' })
   const containerId = await createMediaContainer(
@@ -348,7 +368,8 @@ async function publishSingleImage(
     accessToken,
     imageUrl,
     caption,
-    base
+    base,
+    locationId,
   )
   socialLog('log', 'instagram', 'single', { corr: newsId, result: 'container_created' })
   await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -371,6 +392,7 @@ async function publishCarousel(
   base: string = GRAPH_BASE,
   /** Explicit carousel choice: never degrade to a single image. */
   strict = false,
+  locationId: string | null = null,
 ): Promise<SocialPublishResult> {
   socialLog('log', 'instagram', 'carousel', { corr: newsId, result: 'start', slides: imageUrls.length })
 
@@ -399,7 +421,8 @@ async function publishCarousel(
       newsId,
       fallbackImageUrl,
       caption,
-      base
+      base,
+      locationId,
     )
   }
 
@@ -410,7 +433,8 @@ async function publishCarousel(
       accessToken,
       childIds,
       caption,
-      base
+      base,
+      locationId,
     )
     socialLog('log', 'instagram', 'carousel', { corr: newsId, result: 'parent_created' })
     await waitForContainerReady(parentId, accessToken, base)
@@ -439,7 +463,8 @@ async function publishCarousel(
       newsId,
       fallbackImageUrl,
       caption,
-      base
+      base,
+      locationId,
     )
   }
 }
@@ -474,6 +499,10 @@ async function publishToInstagramUnlocked(
   }
 
   const caption = await resolveInstagramCaption(payload)
+  // SOCIAL-SEO-1: location tag (Facebook place id). Search only with a Facebook Graph token.
+  const locationId = payload.location
+    ? await resolveFacebookPlaceId(payload.location, base === FACEBOOK_GRAPH_BASE ? accessToken : null)
+    : null
 
   try {
     if (carouselUrls && carouselUrls.length >= 2) {
@@ -486,6 +515,7 @@ async function publishToInstagramUnlocked(
         singleUrl,
         base,
         payload.imageMode === 'carousel',
+        locationId,
       )
     }
     if (payload.imageMode === 'carousel') {
@@ -497,7 +527,8 @@ async function publishToInstagramUnlocked(
       payload.newsId,
       singleUrl,
       caption,
-      base
+      base,
+      locationId,
     )
   } catch (err) {
     socialLog('error', 'instagram', 'publish', { corr: payload.newsId, result: 'failed', ...errorLogFields(err) })
