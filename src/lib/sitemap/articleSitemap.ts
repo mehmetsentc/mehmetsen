@@ -169,9 +169,49 @@ const getClosedMonthCached = unstable_cache(
   { revalidate: ARTICLE_MONTH_REVALIDATE_CLOSED_S, tags: ['article-sitemaps'] }
 )
 
-export async function getArticleMonth(month: MonthKey, nowMs = Date.now()): Promise<ArticleSitemapMonth> {
+/**
+ * FinOps 22 Oct: in-process floor under the data cache. Query Insights showed the
+ * month scan (status + publishedAt range, LIMIT 1000 + START_AFTER) at ~470 pages/day
+ * (~443k reads) although the data cache revalidates daily: Vercel logs regenerated
+ * Sep 4x, Jul 3x, Jun 2x and Oct 2x within 9 hours, and Google fetches several month
+ * shards in the same second. Per-instance memo + in-flight sharing keeps one scan per
+ * month per instance per TTL. Errors and empty months are never pinned.
+ */
+export const ARTICLE_MONTH_MEMO_CURRENT_MS = 6 * 60 * 60 * 1000
+export const ARTICLE_MONTH_MEMO_CLOSED_MS = 24 * 60 * 60 * 1000
+const articleMonthMemo = new Map<MonthKey, { at: number; value: ArticleSitemapMonth }>()
+const articleMonthInflight = new Map<MonthKey, Promise<ArticleSitemapMonth>>()
+
+export function __resetArticleMonthMemoForTests(): void {
+  articleMonthMemo.clear()
+  articleMonthInflight.clear()
+}
+
+export async function getArticleMonth(
+  month: MonthKey,
+  nowMs = Date.now(),
+  load: (month: MonthKey, closed: boolean) => Promise<ArticleSitemapMonth> = (m, closed) =>
+    closed ? getClosedMonthCached(m) : getCurrentMonthCached(m)
+): Promise<ArticleSitemapMonth> {
   if (!isMonthKey(month)) throw new Error(`invalid month key: ${month}`)
-  return isClosedMonth(month, nowMs) ? getClosedMonthCached(month) : getCurrentMonthCached(month)
+  const closed = isClosedMonth(month, nowMs)
+  const ttl = closed ? ARTICLE_MONTH_MEMO_CLOSED_MS : ARTICLE_MONTH_MEMO_CURRENT_MS
+  const memo = articleMonthMemo.get(month)
+  if (memo && nowMs - memo.at < ttl) return memo.value
+
+  let pending = articleMonthInflight.get(month)
+  if (!pending) {
+    pending = load(month, closed)
+      .then((value) => {
+        if (value.entries.length > 0) articleMonthMemo.set(month, { at: Date.now(), value })
+        return value
+      })
+      .finally(() => {
+        articleMonthInflight.delete(month)
+      })
+    articleMonthInflight.set(month, pending)
+  }
+  return pending
 }
 
 /**
