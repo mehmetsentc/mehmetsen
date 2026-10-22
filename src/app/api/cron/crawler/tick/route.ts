@@ -26,7 +26,16 @@ async function handle(request: Request) {
   }
 
   const result = await runCrawlerTick()
-  return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
+  // SEO-15 / INDEXNOW-1: new indexable stories → Bing/Yandex. Never fails the tick.
+  let indexNow: { submitted: number; skipped?: string } | { error: string }
+  try {
+    const { submitFreshNewsToIndexNow } = await import('@/lib/seo/indexNowBatch')
+    indexNow = await submitFreshNewsToIndexNow()
+  } catch (err) {
+    indexNow = { error: err instanceof Error ? err.message.slice(0, 120) : 'failed' }
+    console.warn('[indexnow-batch] failed', indexNow.error)
+  }
+  return NextResponse.json({ ...result, indexNow }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 export const GET = handle

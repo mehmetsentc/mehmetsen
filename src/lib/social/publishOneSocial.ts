@@ -37,6 +37,7 @@ import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks
 import { publishToTarget, type PublishTargets, type TargetablePlatform } from '@/lib/social/accounts/targetedPublish'
 import { imageModeProblem, type ImageMode, type PublishFormat } from '@/lib/social/accounts/capabilities'
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
+import { payloadWithUtm } from '@/lib/social/utm'
 import { isSocialTestMode, socialTestEnvStatus, TEST_ENV_TEXT } from '@/lib/social/testEnvironment'
 import { isVerifiedPublish, legacyAccountId, type LegacyPublishOptions } from './accounts/legacyLock'
 import { DISTRICT_TO_PROVINCE_SLUG, getCityCategoryName, isTurkishProvinceSlug } from '@/constants/cities'
@@ -997,33 +998,33 @@ export async function publishOneSocial(
       let thResult: SocialPublishResult = { success: false, error: wantTh ? 'not attempted' : 'skipped' }
 
       if (wantFb) {
-        if (targets.facebook) fbResult = await targeted('facebook', 'post', targets.facebook, (t) => publishToFacebook(singleCoverPayload(payload, 'facebook'), t as never))
+        if (targets.facebook) fbResult = await targeted('facebook', 'post', targets.facebook, (t) => publishToFacebook(payloadWithUtm(singleCoverPayload(payload, 'facebook'), 'facebook', 'post', targets.facebook), t as never))
         else {
-          try { fbResult = await publishToFacebook(singleCoverPayload(payload, 'facebook'), undefined, legacyOpts) }
+          try { fbResult = await publishToFacebook(payloadWithUtm(singleCoverPayload(payload, 'facebook'), 'facebook', 'post'), undefined, legacyOpts) }
           catch (err) { fbResult = { success: false, error: safeErrorText(err) } }
         }
         await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantIg) {
-        if (targets.instagram) igResult = await targeted('instagram', 'post', targets.instagram, (t) => publishToInstagram(payload, t as never))
+        if (targets.instagram) igResult = await targeted('instagram', 'post', targets.instagram, (t) => publishToInstagram(payloadWithUtm(payload, 'instagram', 'post', targets.instagram), t as never))
         else {
-          try { igResult = await publishToInstagram(payload, undefined, legacyOpts) }
+          try { igResult = await publishToInstagram(payloadWithUtm(payload, 'instagram', 'post'), undefined, legacyOpts) }
           catch (err) { igResult = { success: false, error: safeErrorText(err) } }
         }
         await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantTw) {
-        try { twResult = await publishToTwitter(payload) }
+        try { twResult = await publishToTwitter(payloadWithUtm(payload, 'twitter', 'post')) }
         catch (err) { twResult = { success: false, error: safeErrorText(err) } }
         if (wantTh) await new Promise(r => setTimeout(r, 2000))
       }
 
       if (wantTh) {
-        if (targets.threads) thResult = await targeted('threads', 'post', targets.threads, (t) => publishToThreads(singleCoverPayload(payload, 'threads'), t as never))
+        if (targets.threads) thResult = await targeted('threads', 'post', targets.threads, (t) => publishToThreads(payloadWithUtm(singleCoverPayload(payload, 'threads'), 'threads', 'post', targets.threads), t as never))
         else {
-          try { thResult = await publishToThreads(singleCoverPayload(payload, 'threads'), undefined, legacyOpts) }
+          try { thResult = await publishToThreads(payloadWithUtm(singleCoverPayload(payload, 'threads'), 'threads', 'post'), undefined, legacyOpts) }
           catch (err) { thResult = { success: false, error: safeErrorText(err) } }
         }
       }
@@ -1100,13 +1101,13 @@ export async function publishOneSocial(
       let fbStoryResult: SocialPublishResult = { success: false, error: wantFb ? 'not attempted' : 'skipped' }
 
       if (wantIg && targets.instagram) {
-        igStoryResult = await targeted('instagram', 'story', targets.instagram, (t) => publishInstagramStory(storyPayload, t as never))
+        igStoryResult = await targeted('instagram', 'story', targets.instagram, (t) => publishInstagramStory(payloadWithUtm(storyPayload, 'instagram', 'story', targets.instagram), t as never))
         if (wantFb) await new Promise(r => setTimeout(r, 2000))
       } else if (wantIg && legacyStoryBlocked) {
         igStoryResult = { success: false, error: 'Onyeditivi hikâyesi zaten paylaşılmış (yeniden paylaşmak için force)' }
       } else if (wantIg) {
         try {
-          igStoryResult = await publishInstagramStory(storyPayload, undefined, legacyOpts)
+          igStoryResult = await publishInstagramStory(payloadWithUtm(storyPayload, 'instagram', 'story'), undefined, legacyOpts)
           console.log(`[publishOneSocial] IG Story → ${newsId}: ${igStoryResult.success ? '✓' : safeErrorText(igStoryResult.error ?? '')}`)
         } catch (err) {
           igStoryResult = { success: false, error: safeErrorText(err) }
@@ -1115,12 +1116,12 @@ export async function publishOneSocial(
       }
 
       if (wantFb && targets.facebook) {
-        fbStoryResult = await targeted('facebook', 'story', targets.facebook, (t) => publishFacebookStory(storyPayload, t as never))
+        fbStoryResult = await targeted('facebook', 'story', targets.facebook, (t) => publishFacebookStory(payloadWithUtm(storyPayload, 'facebook', 'story', targets.facebook), t as never))
       } else if (wantFb && legacyStoryBlocked) {
         fbStoryResult = { success: false, error: 'Onyeditivi hikâyesi zaten paylaşılmış (yeniden paylaşmak için force)' }
       } else if (wantFb) {
         try {
-          fbStoryResult = await publishFacebookStory(storyPayload, undefined, legacyOpts)
+          fbStoryResult = await publishFacebookStory(payloadWithUtm(storyPayload, 'facebook', 'story'), undefined, legacyOpts)
           console.log(`[publishOneSocial] FB Story → ${newsId}: ${fbStoryResult.success ? '✓' : safeErrorText(fbStoryResult.error ?? '')}`)
         } catch (err) {
           fbStoryResult = { success: false, error: safeErrorText(err) }

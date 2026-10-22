@@ -6,6 +6,7 @@
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { buildPublicArticleUrl } from './articleUrl'
+import { withSocialUtm } from './utm'
 import { publishToTarget } from './accounts/targetedPublish'
 import type { FacebookPublishTarget, InstagramPublishTarget, YouTubePublishTarget } from './accounts/targetTypes'
 import { publishYouTubeShort } from './youtubeShorts'
@@ -93,7 +94,13 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
     return skip(`Reels videosu üretilemedi: ${safeErrorText(err).slice(0, 200)}`)
   }
 
-  const articleUrl = buildPublicArticleUrl(newsId, d)
+  // SOCIAL-UTM-1: per-platform tagged link (canonical stays the clean /haber URL).
+  const articleUrl =
+    withSocialUtm(buildPublicArticleUrl(newsId, d), {
+      platform,
+      format: format === 'video_story' ? 'video_story' : 'reel',
+      accountId,
+    }) ?? null
   const caption = buildReelCaption(d, articleUrl)
   const res = await publishToTarget({
     newsId,
