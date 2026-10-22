@@ -711,7 +711,7 @@ export function ReelsStudio() {
                     <textarea
                       value={script}
                       onChange={(e) => {
-                        setScript(e.target.value.slice(0, 320))
+                        setScript(e.target.value.slice(0, 900))
                         setScriptSource('studio')
                       }}
                       rows={4}
@@ -719,7 +719,7 @@ export function ReelsStudio() {
                       className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent p-2 text-xs leading-relaxed"
                     />
                     <p className="text-[10px] text-[rgb(var(--color-muted))]">
-                      {script.length}/320 · {scriptSource === 'ai' ? 'AI editör yazdı' : scriptSource === 'studio' ? 'sizin metniniz' : scriptSource === 'rules' ? 'kural metni (AI yanıt vermedi)' : '—'} · haberde olmayan rakam kabul edilmez
+                      {script.length}/900 · {scriptSource === 'ai' ? 'AI editör yazdı' : scriptSource === 'studio' ? 'sizin metniniz' : scriptSource === 'rules' ? 'kural metni (AI yanıt vermedi)' : '—'} · haberde olmayan rakam kabul edilmez
                     </p>
                   </Section>
                   <Section title="Video düzeni">

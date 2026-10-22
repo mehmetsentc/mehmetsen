@@ -11,8 +11,9 @@ export function reelsEditorLlm(): ((system: string, user: string) => Promise<str
     const r = await geminiFastChat({
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       temperature: 0.4,
-      maxTokens: 400,
-      timeoutMs: 12_000,
+      // REELS-13: a 40–60 s anchor script (≈ 800 characters) needs room.
+      maxTokens: 1500,
+      timeoutMs: 25_000,
       jsonMode: true,
       skipTelemetry: true,
     })

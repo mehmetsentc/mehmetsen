@@ -26,6 +26,7 @@ import {
 } from './reelTheme'
 import type { ReelInput, ReelResult } from './renderReel'
 import { summaryOptions } from './headlineCard'
+import { sentencesOf } from './director'
 
 /** REELS-9: text is never cut — the size steps down until the whole headline fits. */
 const HEAD_SIZES = [76, 68, 60, 54, 48, 44]
@@ -41,6 +42,44 @@ const TEXT_BOTTOM = SAFE.bottom - 10
 /** REELS-11: the story video's own sound after the voice-over, capped (was 25 s → render timeouts). */
 const VIDEO_AUDIO_MAX_S = 12
 const END_S = 2.8
+/** REELS-13: Facebook Reels accept ≤ 90 s; the whole reel stays below that. */
+export const MAX_REEL_S = 88
+/** Captions: at most this many lines per on-screen sentence. */
+const CAP_MAX_LINES = 4
+
+/**
+ * REELS-13: the spoken script → caption chunks (whole sentences; a long sentence is
+ * split at a comma near its middle). Pure — exported for tests.
+ */
+export function captionChunks(script: string, maxChars = 150): string[] {
+  const sentences = sentencesOf(script)
+  const out: string[] = []
+  const split = (x: string) => {
+    if (x.length <= maxChars) return void out.push(x)
+    const mid = x.length / 2
+    let best = -1
+    for (let i = x.indexOf(', '); i !== -1; i = x.indexOf(', ', i + 1)) if (best === -1 || Math.abs(i - mid) < Math.abs(best - mid)) best = i
+    if (best <= 0) {
+      const sp = x.lastIndexOf(' ', Math.floor(mid) + 20)
+      best = sp > 0 ? sp - 1 : Math.floor(mid)
+    }
+    split(x.slice(0, best + 1).trim())
+    split(x.slice(best + 1).trim())
+  }
+  for (const x of sentences) split(x)
+  return out
+}
+
+/** Caption windows proportional to each chunk's length over the voice-over. */
+export function captionWindows(chunks: string[], voiceStart: number, voiceSec: number): Array<{ text: string; start: number; end: number }> {
+  const total = chunks.reduce((n, c) => n + c.length, 0) || 1
+  let acc = 0
+  return chunks.map((text) => {
+    const start = voiceStart + (voiceSec * acc) / total
+    acc += text.length
+    return { text, start, end: voiceStart + (voiceSec * acc) / total }
+  })
+}
 
 /** Duration + audio presence of a local file or URL (ffmpeg -i banner). */
 export async function probeMedia(ffmpeg: string, src: string): Promise<{ duration: number; hasAudio: boolean }> {
@@ -300,10 +339,20 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
         }
       }
     }
+    // REELS-13: keep the whole reel under the Facebook Reels limit (the story video's tail gives way first)
+    videoTail = Math.max(0, Math.min(videoTail, MAX_REEL_S - END_S - 0.45 - voiceEnd))
+    if (videoTail < 2) {
+      videoAudio = false
+      videoTail = 0
+    }
     const endStart = voiceEnd + 0.45 + videoTail
     const total = endStart + END_S
     const frames = Math.ceil(total * REEL_FPS)
-    const sumAt = voiceStart + Math.max(2.8, voiceSec * 0.45)
+    // REELS-13: captions follow the voice; the headline stays for the opening sentence (3–7 s)
+    const capWin = input.captions?.trim() ? captionWindows(captionChunks(input.captions), voiceStart, voiceSec) : []
+    const sumAt = capWin.length > 1
+      ? Math.min(voiceStart + 7, Math.max(voiceStart + 3, capWin[0]!.end))
+      : voiceStart + Math.max(2.8, voiceSec * 0.45)
     const textOut = videoAudio ? voiceEnd + 0.35 : endStart
     const tl: ReelTimeline = { total, frames, voiceStart, typeStart: 0.3, typeEnd: 0.9, summaryStart: sumAt, endStart }
 
@@ -335,6 +384,20 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
       }
     }
     const SUM_LH = Math.round(SUM * 1.38)
+    // REELS-13: one layout per caption chunk (largest size that fits in CAP_MAX_LINES)
+    const caps = capWin.map((c) => {
+      let size = SUM_SIZES[SUM_SIZES.length - 1]!
+      let lines: string[] = []
+      for (const sz of SUM_SIZES) {
+        m.font = `${sz}px ${FONT_MD}`
+        lines = wrapLines((x) => m.measureText(x).width, c.text, TEXT_W)
+        size = sz
+        if (lines.length <= CAP_MAX_LINES) break
+      }
+      const lh = Math.round(size * 1.38)
+      const y = TEXT_BOTTOM - lines.length * lh
+      return { ...c, size, lines, lh, y }
+    })
     const headY = TEXT_BOTTOM - head.length * HEAD_LH
     const kickY = headY - 62
     const sumY = TEXT_BOTTOM - sum.length * SUM_LH
@@ -459,8 +522,26 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
           leftLines(ctx, head, headY, HEAD_LH, head.map((_, k) => span(t, 0.45 + k * 0.14, 0.85 + k * 0.14)))
           ctx.restore()
         }
-        // phase 2: rule + summary
-        const sk = span(t, sumAt, sumAt + 0.5)
+        // phase 2 (REELS-13): the sentence being spoken, as a caption
+        const capNow = caps.length > 1 && t >= sumAt ? caps.reduce((cur, c) => (t >= c.start - 0.05 ? c : cur), caps[0]!) : null
+        if (capNow) {
+          const ck = span(t, Math.max(sumAt, capNow.start - 0.05), Math.max(sumAt, capNow.start - 0.05) + 0.3)
+          const ruleY2 = capNow.y - 34
+          ctx.save()
+          ctx.globalAlpha *= Math.max(0.0001, ck)
+          ctx.fillStyle = RED
+          ctx.fillRect(TEXT_X, ruleY2, 160, 5)
+          ctx.fillStyle = 'rgba(255,255,255,0.9)'
+          ctx.fillRect(TEXT_X + 160, ruleY2 + 1, 360, 3)
+          ctx.font = `${capNow.size}px ${FONT_MD}`
+          ctx.fillStyle = WHITE
+          ctx.textBaseline = 'top'
+          ctx.shadowColor = 'rgba(0,0,0,0.6)'
+          ctx.shadowBlur = 14
+          leftLines(ctx, capNow.lines, capNow.y, capNow.lh, capNow.lines.map(() => 1), 18)
+          ctx.restore()
+        }
+        const sk = capNow ? 0 : span(t, sumAt, sumAt + 0.5)
         if (sk > 0) {
           const rw = 520 * sk
           ctx.fillStyle = RED

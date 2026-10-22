@@ -27,6 +27,9 @@ import { renderReel, type ReelMedia } from './renderReel'
 import { synthesizeReelVoiceEx } from './voice'
 import { clampRate, isValidVoiceName } from './voiceRules'
 import { getReelVoiceSettings } from './voiceSettings'
+import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
+import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
+import { NEWS_BODY_MAX, NEWS_SCRIPT_MAX } from './director'
 import { resolveNewsVideo, type NewsVideo } from '@/lib/social/newsVideo'
 import { prepareSourceVideo } from './sourceVideo'
 
@@ -69,6 +72,8 @@ function str(v: unknown): string {
 export type ReelSource = {
   headline: string
   summary: string
+  /** REELS-13: the article body as plain text (≤ NEWS_BODY_MAX), source of the anchor script. */
+  body?: string
   category: string
   categoryId: string
   place: string | null
@@ -117,6 +122,7 @@ export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUs
   return {
     headline: str(d.title),
     summary: str(d.summary) || str(d.spot) || str(d.description),
+    body: newsBodyText(d),
     category: getCategoryLabel(categoryId),
     categoryId,
     place: str(d.city) || null,
@@ -199,6 +205,26 @@ export type ReelPlan = {
   note?: string
 }
 
+/**
+ * REELS-13: reels made before the full anchor script (short 1–2 sentence voice-over)
+ * are rebuilt once when shared again; later shares reuse the new reel.
+ */
+export const REEL_SCRIPT_VERSION = '13'
+
+/** Plain article text: content / body HTML, else the article blocks. */
+export function newsBodyText(d: Record<string, unknown>): string {
+  const html = str(d.content) || str(d.body) || str(d.htmlContent)
+  let text = html ? stripHtmlToNewsPlainText(html).replace(/(^|\n)#{1,6}\s*/g, '$1') : ''
+  if (!text && Array.isArray(d.bodyBlocks)) {
+    try {
+      text = articleBlocksToPlainText(d.bodyBlocks as ArticleBlock[])
+    } catch {
+      text = ''
+    }
+  }
+  return text.replace(/\s+/g, ' ').trim().slice(0, NEWS_BODY_MAX)
+}
+
 /** The editor's decision for one story (also used by the studio «Önizle» step and the digest). */
 export async function planReel(src: ReelSource, opts: ReelBuildOptions = {}, oneSentence = false): Promise<ReelPlan> {
   const settings = await getReelVoiceSettings()
@@ -206,10 +232,10 @@ export async function planReel(src: ReelSource, opts: ReelBuildOptions = {}, one
   const ruleFirst = personaFor(personas, 'haber', opts.personaId)
   const studioText = str(opts.voiceText).replace(/\s+/g, ' ')
   const dir =
-    studioText && !scriptProblem(studioText, `${src.headline} ${src.summary} ${studioText}`, 320)
+    studioText && !scriptProblem(studioText, `${src.headline} ${src.summary} ${src.body ?? ''} ${studioText}`, NEWS_SCRIPT_MAX)
       ? { style: (await directReel({ title: src.headline, summary: src.summary, categoryId: src.categoryId, categoryLabel: src.category, breaking: src.breaking, postType: src.postType }, ruleFirst, null)).style, voiceText: studioText, source: 'studio' as const }
       : await directReel(
-          { title: src.headline, summary: src.summary, categoryId: src.categoryId, categoryLabel: src.category, breaking: src.breaking, postType: src.postType },
+          { title: src.headline, summary: src.summary, body: src.body ?? '', categoryId: src.categoryId, categoryLabel: src.category, breaking: src.breaking, postType: src.postType },
           ruleFirst,
           reelsEditorLlm(),
           { oneSentence },
@@ -412,7 +438,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     const [meta] = exists ? await file.getMetadata() : [null]
     const m = (meta?.metadata ?? {}) as Record<string, string>
     // A reel rendered from photos while the story has a usable video is rebuilt with the video.
-    if (exists && meta && !(needsVideoRebuild(src, m))) {
+    if (exists && meta && !needsVideoRebuild(src, m) && m.scriptVersion === REEL_SCRIPT_VERSION) {
       const url = reelPublicUrl(newsId, meta.generation ?? null)
       const cover = await coverFor(newsId, src, styleOf(m.style), coverVariant)
       if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: m.persona, style: m.style, media: m.media })
@@ -443,7 +469,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     if (exists) {
       const [meta] = await file.getMetadata()
       const m = (meta.metadata ?? {}) as Record<string, string>
-      if (m.optionsHash === hash && !(needsVideoRebuild(src, m))) {
+      if (m.optionsHash === hash && !needsVideoRebuild(src, m) && m.scriptVersion === REEL_SCRIPT_VERSION) {
         const url = reelPublicUrl(newsId, meta.generation ?? null)
         const cover = await coverFor(newsId, src, plan.style, coverVariant)
         if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: plan.persona.id, style: plan.style, media: m.media })
@@ -470,6 +496,8 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       presenter: plan.persona.showCard ? { name: plan.persona.name, title: plan.persona.title, photo: await loadPresenterPhoto(plan.persona.photoUrl) } : null,
       dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }),
       layout,
+      // REELS-13: the spoken script as on-screen captions (sentence by sentence)
+      captions: plan.voiceText,
     })
     await file.save(r.mp4, {
       resumable: false,
@@ -486,6 +514,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
           style: plan.style,
           engine: spoken.engine,
           optionsHash: hash,
+          scriptVersion: REEL_SCRIPT_VERSION,
           videoSource: (src.videoUrl ?? '').slice(0, 500),
         },
       },

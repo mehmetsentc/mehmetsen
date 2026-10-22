@@ -41,6 +41,8 @@ export type ReelInput = {
   dateLabel?: string | null
   /** 'kart' = media card on navy; 'bulten' = photo on top + white panel; 'dinamik' = full-screen media, centred text (REELS-7). */
   layout?: ReelLayout
+  /** REELS-13: the spoken script; the dynamic layout shows it as sentence captions. */
+  captions?: string | null
 }
 
 export type ReelResult = { mp4: Buffer; seconds: number; timeline: ReelTimeline }
