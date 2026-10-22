@@ -211,6 +211,13 @@ export type ReelPlan = {
  */
 export const REEL_SCRIPT_VERSION = '13'
 
+/**
+ * REELS-14: time a VIDEO render may take (projected from its first frames). The
+ * background job ends at 800 s; voice, AI script and the video download come first,
+ * and a photo render (~2–3 min on Vercel) must still fit after an early abort.
+ */
+export const VIDEO_RENDER_BUDGET_MS = 420_000
+
 /** Plain article text: content / body HTML, else the article blocks. */
 export function newsBodyText(d: Record<string, unknown>): string {
   const html = str(d.content) || str(d.body) || str(d.htmlContent)
@@ -479,26 +486,42 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   }
 
   const spoken = await synthesizeReelVoiceEx(plan.voiceText, AbortSignal.timeout(40_000), { voice: plan.voice, rate: plan.rate, gemini: plan.gemini })
-  const { media, tmp } = await resolveReelMedia(src, newsId, newsId)
+  const resolved = await resolveReelMedia(src, newsId, newsId)
+  let media = resolved.media
+  const tmp = resolved.tmp
   try {
-    const r = await renderReel({
+    const presenter = plan.persona.showCard ? { name: plan.persona.name, title: plan.persona.title, photo: await loadPresenterPhoto(plan.persona.photoUrl) } : null
+    const reelInput = (mediaIn: ReelMedia) => ({
       headline: src.headline,
       summary: src.summary,
       category: src.category,
       place: src.place,
-      media,
+      media: mediaIn,
       voiceWav: spoken.wav,
       style: plan.style,
       breaking: src.breaking,
       intro: plan.intro,
       outro: plan.outro,
       music: plan.music,
-      presenter: plan.persona.showCard ? { name: plan.persona.name, title: plan.persona.title, photo: await loadPresenterPhoto(plan.persona.photoUrl) } : null,
+      presenter,
       dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }),
       layout,
       // REELS-13: the spoken script as on-screen captions (sentence by sentence)
       captions: plan.voiceText,
     })
+    // REELS-14: a video reel that cannot finish inside the background job (800 s)
+    // is stopped after its first frames and made from the story's photos instead.
+    let r: Awaited<ReturnType<typeof renderReel>>
+    let videoFallback = false
+    try {
+      r = await renderReel(reelInput(media), media.kind === 'video' ? { budgetMs: VIDEO_RENDER_BUDGET_MS } : {})
+    } catch (err) {
+      if (!(err instanceof Error && err.name === 'RenderBudgetError')) throw err
+      console.warn(`[reels] ${newsId}: video render over budget (${err.message}), using photos`)
+      media = (await resolveReelMedia({ ...src, videoUrl: null }, `${newsId}-p`)).media
+      r = await renderReel(reelInput(media))
+      videoFallback = true
+    }
     await file.save(r.mp4, {
       resumable: false,
       metadata: {
@@ -530,7 +553,8 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     const url = reelPublicUrl(newsId, gen)
     const coverUrl = await saveReelCover(newsId, src, plan.style, coverVariant, media)
     await record(url, coverUrl, { seconds: r.seconds, persona: plan.persona.id, style: plan.style, media: media.kind })
-    return { ...base, url, coverUrl, reused: false, seconds: r.seconds, media: media.kind, engine: spoken.engine, ...(spoken.note ? { note: spoken.note } : {}) }
+    const note = [spoken.note, videoFallback ? 'Haberin videosu zamanında işlenemedi; Reels fotoğraflarla üretildi.' : null].filter(Boolean).join(' ')
+    return { ...base, url, coverUrl, reused: false, seconds: r.seconds, media: media.kind, engine: spoken.engine, ...(note ? { note } : {}) }
   } finally {
     if (tmp) await fs.rm(tmp, { force: true }).catch(() => {})
   }

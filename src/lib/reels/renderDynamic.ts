@@ -42,6 +42,21 @@ const TEXT_BOTTOM = SAFE.bottom - 10
 /** REELS-11: the story video's own sound after the voice-over, capped (was 25 s → render timeouts). */
 const VIDEO_AUDIO_MAX_S = 12
 const END_S = 2.8
+/** REELS-14: a render that would not finish in time (projected from the first frames). */
+export class RenderBudgetError extends Error {
+  constructor(readonly projectedMs: number) {
+    super(`reels: render would take ~${Math.round(projectedMs / 1000)} s (over budget)`)
+    this.name = 'RenderBudgetError'
+  }
+}
+/** Frames measured before the projection is trusted. */
+const BUDGET_PROBE_FRAMES = 90
+
+/** Projected total render time after `done` of `total` frames took `elapsedMs`. */
+export function projectRenderMs(elapsedMs: number, done: number, total: number): number {
+  return done > 0 ? (elapsedMs / done) * total : 0
+}
+
 /** REELS-13: Facebook Reels accept ≤ 90 s; the whole reel stays below that. */
 export const MAX_REEL_S = 88
 /** Captions: at most this many lines per on-screen sentence. */
@@ -309,10 +324,13 @@ function spawnDynamicEncoder(ffmpeg: string, a: { voice: string; bed: string | n
       const code = await done
       if (code !== 0) throw new Error(`reels: ffmpeg failed (${code}): ${err.slice(-400)}`)
     },
+    abort() {
+      if (enc.exitCode === null) enc.kill('SIGKILL')
+    },
   }
 }
 
-export async function renderDynamic(input: ReelInput, opts: { root?: string } = {}): Promise<ReelResult> {
+export async function renderDynamic(input: ReelInput, opts: { root?: string; budgetMs?: number } = {}): Promise<ReelResult> {
   const root = opts.root ?? process.cwd()
   ensureFonts(root)
   const ffmpeg = await resolveFfmpegPath()
@@ -455,8 +473,18 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string } = 
     const vidData = vctx.createImageData(REEL_W, REEL_H)
     let haveVid = false
     const { canvas, ctx } = newCanvas()
+    const renderStart = Date.now()
 
     for (let i = 0; i < frames; i++) {
+      // REELS-14: give up early (not after 13 min) when the render cannot finish in time
+      if (opts.budgetMs && i === BUDGET_PROBE_FRAMES) {
+        const projected = projectRenderMs(Date.now() - renderStart, i, frames)
+        if (projected > opts.budgetMs) {
+          enc.abort()
+          await vid?.return(undefined)
+          throw new RenderBudgetError(projected)
+        }
+      }
       const t = i / REEL_FPS
       const p = clamp01(t / Math.max(1, endStart))
       if (vid) {

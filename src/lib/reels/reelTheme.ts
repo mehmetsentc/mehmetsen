@@ -624,13 +624,29 @@ export async function* videoFrames(ffmpeg: string, file: string, n: number, w = 
     '-f', 'rawvideo', '-pix_fmt', 'rgba', '-',
   ], { stdio: ['ignore', 'pipe', 'inherit'] })
   const size = w * h * 4
-  let pending: Buffer = Buffer.alloc(0)
-  for await (const chunk of proc.stdout as AsyncIterable<Buffer>) {
-    pending = pending.length ? Buffer.concat([pending, chunk]) : chunk
-    while (pending.length >= size) {
-      yield pending.subarray(0, size)
-      pending = pending.subarray(size)
+  // REELS-14: one preallocated frame, chunks copied straight in. The old
+  // Buffer.concat per ~64 KB chunk re-copied the growing frame (~8 MB) hundreds of
+  // times per frame; long video reels ran out of time (800 s) on Vercel.
+  // The yielded buffer is reused: callers copy it before asking for the next frame.
+  const frame = Buffer.allocUnsafe(size)
+  let off = 0
+  try {
+    for await (const chunk of proc.stdout as AsyncIterable<Buffer>) {
+      let i = 0
+      while (i < chunk.length) {
+        const n = Math.min(size - off, chunk.length - i)
+        chunk.copy(frame, off, i, i + n)
+        off += n
+        i += n
+        if (off === size) {
+          yield frame
+          off = 0
+        }
+      }
     }
+  } finally {
+    // an abandoned render (error / time budget) must not leave ffmpeg running
+    if (proc.exitCode === null) proc.kill('SIGKILL')
   }
 }
 

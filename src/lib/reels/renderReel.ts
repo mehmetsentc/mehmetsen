@@ -56,7 +56,7 @@ const TEXT_X = SAFE.x + 20
 const TEXT_W = REEL_W - TEXT_X - SAFE.right
 const BAR_X = SAFE.x - 12
 
-export async function renderReel(input: ReelInput, opts: { root?: string } = {}): Promise<ReelResult> {
+export async function renderReel(input: ReelInput, opts: { root?: string; budgetMs?: number } = {}): Promise<ReelResult> {
   if (input.layout === 'dinamik') {
     const { renderDynamic } = await import('./renderDynamic')
     return renderDynamic(input, opts)
