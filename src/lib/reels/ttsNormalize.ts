@@ -149,6 +149,12 @@ export function toSpokenTurkish(input: string): string {
     .replace(/[’`´]/g, "'")
   // 2. abbreviations
   for (const [re, w] of ABBREVIATIONS) t = t.replace(re, w)
+  // 2b. initials «Y.D.», «A. Yılmaz», «M.K.A.»: the voice reads a lone capital + dot as a
+  //     Roman ordinal (D. → «beş yüzüncü», C. → «yüzüncü»), so spell them as letters.
+  t = t.replace(/(?<![\p{L}\d.])((?:[A-ZÇĞİÖŞÜ]\.\s?)+[A-ZÇĞİÖŞÜ]?)(?!\p{L})/gu, (m) => {
+    const letters = m.replace(/[^A-ZÇĞİÖŞÜ]/g, '')
+    return ` ${spell(letters)} `
+  })
   // 3. dates 21.10.2026 / 21/10/2026 → 21 Ekim 2026
   t = t.replace(/(?<!\d)(\d{1,2})[./](\d{1,2})[./](\d{4})(?!\d)/g, (all, d, m, y) => {
     const mi = Number(m)
