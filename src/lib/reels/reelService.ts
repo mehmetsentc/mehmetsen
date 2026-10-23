@@ -8,6 +8,7 @@ import 'server-only'
  * passes the social media-rights check or an editor approved it in the studio.
  * Idempotent: an existing reel with the same options is reused unless force.
  */
+import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
@@ -120,9 +121,10 @@ export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUs
   const approval = d.reelMediaApproval && typeof d.reelMediaApproval === 'object' ? (d.reelMediaApproval as { by?: string }) : null
   const categoryId = str(d.categoryId) || 'gundem'
   return {
-    headline: str(d.title),
-    summary: str(d.summary) || str(d.spot) || str(d.description),
-    body: newsBodyText(d),
+    // SOCIAL-SENS-1: Reels metni, altyazı ve ses nötr haber diliyle.
+    headline: neutralizeSocialText(str(d.title)),
+    summary: neutralizeSocialText(str(d.summary) || str(d.spot) || str(d.description)),
+    body: neutralizeSocialText(newsBodyText(d)),
     category: getCategoryLabel(categoryId),
     categoryId,
     place: str(d.city) || null,

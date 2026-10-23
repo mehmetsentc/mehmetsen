@@ -7,6 +7,7 @@
  *   Facebook:  POST /{page-id}/video_reels upload_phase=start → rupload file_url
  *              → POST /{page-id}/video_reels upload_phase=finish video_state=PUBLISHED
  */
+import { neutralizeSocialText } from './sensitiveNews'
 import type { SocialPublishResult } from './types'
 import type { FacebookPublishTarget, InstagramPublishTarget } from './accounts/targetTypes'
 import { INVALID_TARGET_ERROR, isUsableFacebookTarget, isUsableInstagramTarget } from './accounts/targetGuards'
@@ -55,7 +56,7 @@ async function publishInstagramVideo(input: ReelPublishInput, target: InstagramP
     const fields = {
       media_type: kind,
       video_url: input.videoUrl,
-      ...(kind === 'REELS' ? { caption: input.caption.slice(0, 2200), share_to_feed: 'true' } : {}),
+      ...(kind === 'REELS' ? { caption: neutralizeSocialText(input.caption).slice(0, 2200), share_to_feed: 'true' } : {}),
       ...(kind === 'REELS' && input.coverUrl?.startsWith('https://') ? { cover_url: input.coverUrl } : {}),
       access_token: token,
     }
@@ -113,7 +114,7 @@ export async function publishFacebookReel(input: ReelPublishInput, target: Faceb
       upload_phase: 'finish',
       video_id: videoId,
       video_state: 'PUBLISHED',
-      description: input.caption.slice(0, 2200),
+      description: neutralizeSocialText(input.caption).slice(0, 2200),
       access_token: token,
     })
     if (f.status >= 400 || f.json.error || f.json.success === false) throw platformError('facebook', 'reels yayınlama', f.status, f.json)

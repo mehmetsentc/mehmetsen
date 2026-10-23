@@ -82,6 +82,8 @@ const JOB_CODE_TEXT: Record<string, string> = {
   already_published: 'zaten yayımlanmıştı (yeniden gönderilmedi)',
   needs_reauth: 'hesap yeniden bağlantı bekliyor',
   lease_expired: 'çalışan yarıda kaldı',
+  sensitive_blocked: 'hassas haber (intihar / çocuk mağdur / istismar) — otomatik paylaşılmaz, elle paylaşılabilir',
+  sensitive_format: 'hassas olay haberi — otomatik Reels / hikâye yok, yalnızca gönderi',
 }
 
 const CATEGORY_OPTIONS = DEFAULT_CATEGORIES.filter((c) => !['trend', 'tekrarlayan'].includes(c.id)).map((c) => ({ id: c.id, name: c.name, child: !!c.parentId }))

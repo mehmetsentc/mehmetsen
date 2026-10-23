@@ -11,6 +11,7 @@
  * Meta bunu hesap tarafında açar, API'ye özel link alanı gerekmez.
  */
 
+import { neutralizeSocialText } from './sensitiveNews'
 import { isFaithfulSocialHeadline } from './socialFactualFidelity'
 
 const DEFAULT_HASHTAGS = ['#NaHaber', '#Çanakkale', '#SonDakika']
@@ -295,7 +296,8 @@ export function pickCompleteOgHeadline(
 
 /** Görsel overlay: her zaman haber başlığı (AI manşet basılmaz). */
 export function overlayHeadlineFromTitle(sourceTitle: string, max = 120, softMax = 160): string {
-  return clampCompleteHeadline(sourceTitle, max, softMax)
+  // SOCIAL-SENS-1: görsel manşet nötr haber diliyle («öldü» → «hayatını kaybetti»).
+  return clampCompleteHeadline(neutralizeSocialText(sourceTitle), max, softMax)
 }
 
 /** Cümle sonu: .!?… + isteğe bağlı kapanış tırnak/parantez (örn. gelmek.') */

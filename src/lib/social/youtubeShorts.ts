@@ -27,6 +27,7 @@
  *
  * Tokens, session URIs and YouTube error messages are never logged.
  */
+import { neutralizeSocialText } from './sensitiveNews'
 import type { SocialPublishResult } from './types'
 import type { YouTubePublishTarget } from './accounts/targetTypes'
 import { INVALID_TARGET_ERROR } from './accounts/targetGuards'
@@ -169,8 +170,8 @@ export async function publishYouTubeShort(
 
   const metadata = {
     snippet: {
-      title: youtubeTitle(input.title),
-      description: youtubeDescription(input.description),
+      title: youtubeTitle(neutralizeSocialText(input.title)),
+      description: youtubeDescription(neutralizeSocialText(input.description)),
       tags: youtubeTags(input.tags),
       categoryId: YOUTUBE_NEWS_CATEGORY_ID,
       defaultLanguage: 'tr',

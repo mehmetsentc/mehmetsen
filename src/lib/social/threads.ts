@@ -16,6 +16,7 @@
  *   IMAGE — image_url + text (caption)
  *   TEXT  — text only (fallback when no image)
  */
+import { neutralizeSocialText } from './sensitiveNews'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { clampAtWordBoundary, clampCompleteHeadline, clampCompleteSentences } from './feedCaption'
 import { rewriteForPlatform } from '@/services/metaAiRewriteService'
@@ -153,7 +154,7 @@ async function createThreadsContainer(
 
   const body = new URLSearchParams()
   body.set('access_token', accessToken)
-  body.set('text', text)
+  body.set('text', neutralizeSocialText(text))
   body.set('media_type', imageUrl ? 'IMAGE' : 'TEXT')
   if (imageUrl) {
     body.set('image_url', imageUrl)

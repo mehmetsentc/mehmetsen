@@ -12,6 +12,7 @@
  *
  * Idle cost: one rules query + two tiny job queries per tick.
  */
+import { automationSensitivityBlock, SENSITIVE_BLOCK_TEXT, sensitivityFromDoc } from '../sensitiveNews'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isSocialTestMode } from '../testEnvironment'
@@ -204,6 +205,9 @@ export async function processJob(
   }
   const problem = contentProblem(data)
   if (problem) return { status: 'skipped', code: problem, message: CONTENT_PROBLEM_TEXT[problem] ?? problem }
+  // SOCIAL-SENS-1: hassas haber — intihar / çocuk mağdur otomatik paylaşılmaz; ölüm / ağır şiddette Reels-hikâye yok.
+  const sensitive = automationSensitivityBlock(sensitivityFromDoc(data).level, job.format)
+  if (sensitive) return { status: 'skipped', code: sensitive, message: SENSITIVE_BLOCK_TEXT[sensitive] }
 
   // ── A rule still enabled for this account+format AND matching right now ──
   const matching = enabledRules.filter((r) => r.accountId === job.accountId && r.formats.includes(job.format) && evaluateRule(r, facts).match)

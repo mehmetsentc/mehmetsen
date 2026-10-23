@@ -21,6 +21,7 @@
  *   "Publishing stickers (i.e., link, poll, location) is not supported" — so the
  *   story container carries no link/sticker parameter (Görev 6).
  */
+import { neutralizeSocialText } from './sensitiveNews'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { getSocialTokens } from './tokenStore'
 import { buildFeedCaption, isIncompleteCaption, isThinSocialCaption } from './feedCaption'
@@ -124,7 +125,7 @@ async function createMediaContainer(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       image_url: imageUrl,
-      caption,
+      caption: neutralizeSocialText(caption),
       ...(locationId ? { location_id: locationId } : {}),
       access_token: accessToken,
     }),
@@ -185,7 +186,7 @@ async function createCarouselParentContainer(
     body: JSON.stringify({
       media_type: 'CAROUSEL',
       children: childIds.join(','),
-      caption,
+      caption: neutralizeSocialText(caption),
       ...(locationId ? { location_id: locationId } : {}),
       access_token: accessToken,
     }),

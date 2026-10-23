@@ -14,6 +14,7 @@
  *   Fallback: FACEBOOK_PAGE_ID + FACEBOOK_PAGE_ACCESS_TOKEN / config/socialMedia
  *   (logs "global app kullanıldı" on fallback).
  */
+import { neutralizeSocialText } from './sensitiveNews'
 import sharp from 'sharp'
 import type { SocialPublishPayload, SocialPublishResult } from './types'
 import { resolveFacebookCredentials } from './facebookCredentials'
@@ -293,7 +294,7 @@ async function publishPhotoPost(
 ): Promise<SocialPublishResult> {
   const body: Record<string, unknown> = {
     url: imageUrl,
-    caption,
+    caption: neutralizeSocialText(caption),
     ...(placeId ? { place: placeId } : {}),
     published: true,
     privacy: JSON.stringify({ value: 'EVERYONE' }),

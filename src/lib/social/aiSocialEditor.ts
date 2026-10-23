@@ -91,6 +91,7 @@ KURALLAR:
   * NOT: Post görseli 4:5 (1080×1350) — caption kısa-orta olsun, görselle uyumlu uzunluk.
 - hashtags: TAM OLARAK 5 adet, Türkçe, #ile başlayan, haber konusuyla ilgili
 - altText: SEO uyumlu, haber ne anlattığını açıklayan, 10-20 kelime
+- HASSAS HABER DİLİ (ölüm, kaza, şiddet, intihar): "öldü" yerine "hayatını kaybetti", "ceset" yerine "cansız beden" yaz; kan, yöntem ve sansasyonel ayrıntı verme; intiharda yöntem ve yer yazma; #cinayet #intihar #uyuşturucu #ölüm gibi hashtag kullanma (#asayiş + il/ilçe kullan). Kelimeleri yıldızla maskeleme.
 - ÇIKTI: Yalnızca geçerli JSON, başka hiçbir şey ekleme`
 
 function buildPrompt(title: string, description: string, cityName: string): string {
