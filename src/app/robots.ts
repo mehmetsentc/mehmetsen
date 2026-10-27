@@ -105,6 +105,24 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     disallow: [...commonDisallow, '/etiket/'],
   }
 
+  // FinOps 27 Oct: Anthropic's search crawler (Claude-SearchBot, not covered by
+  // the ClaudeBot training-crawler block above) made ~81k requests/day, walking
+  // ~17k unique /etiket/ and /yazar/ paths per 12h. Each cold path is an ISR
+  // write + uncached Firestore query (Vercel ISR Writes doubled 26–27 Oct).
+  // Articles and categories on www stay crawlable so NaHaber still appears in
+  // Claude search; tag/author long-tail pages are off. City hosts only serve
+  // www-canonical duplicates, so the bot is kept off them entirely.
+  const LONG_TAIL_LIMITED_BOTS = ['Claude-SearchBot']
+  const longTailLimitedRule = {
+    userAgent: LONG_TAIL_LIMITED_BOTS,
+    allow: '/',
+    disallow: [...commonDisallow, '/etiket/', '/yazar/'],
+  }
+  const cityLongTailLimitedRule = {
+    userAgent: LONG_TAIL_LIMITED_BOTS,
+    disallow: '/',
+  }
+
   if (citySlug) {
     // ── City subdomain ──────────────────────────────────────────────────────
     return {
@@ -133,6 +151,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           disallow: '/',
         },
         tagLimitedRule,
+        cityLongTailLimitedRule,
       ],
       // SEO-2C: city hosts own no NewsArticle URLs (article canonicals are www),
       // so their /news-sitemap.xml is permanently empty and is not advertised.
@@ -174,6 +193,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         disallow: '/',
       },
       tagLimitedRule,
+      longTailLimitedRule,
     ],
     sitemap: [
       `${siteUrl}/sitemap.xml`,

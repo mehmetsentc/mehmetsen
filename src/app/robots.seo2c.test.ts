@@ -48,7 +48,8 @@ describe('SEO-2C robots sitemap declarations', () => {
     expect(star.disallow).toContain('/admin/')
     expect(ruleFor(r, 'GPTBot')?.disallow).toBe('/')
     // FinOps 6 Oct: + Amzn-SearchBot group (noindex /etiket/ only).
-    expect(rulesOf(r)).toHaveLength(6)
+    // FinOps 27 Oct: + Claude-SearchBot group (off city hosts).
+    expect(rulesOf(r)).toHaveLength(7)
     expect(ruleFor(r, 'Amzn-SearchBot')?.disallow).toContain('/etiket/')
   })
 
@@ -76,7 +77,8 @@ describe('SEO-2C robots sitemap declarations', () => {
     expect(ruleFor(r, 'Googlebot-Video')?.allow).toEqual(['/haber/', '/reels', '/video', '/video-sitemap.xml'])
     expect(ruleFor(r, 'GPTBot')?.disallow).toBe('/')
     // FinOps 6 Oct: + Amzn-SearchBot group (noindex /etiket/ only).
-    expect(rulesOf(r)).toHaveLength(7)
+    // FinOps 27 Oct: + Claude-SearchBot group (no /etiket/, /yazar/).
+    expect(rulesOf(r)).toHaveLength(8)
     expect(ruleFor(r, 'Amzn-SearchBot')?.disallow).toContain('/etiket/')
   })
 })
