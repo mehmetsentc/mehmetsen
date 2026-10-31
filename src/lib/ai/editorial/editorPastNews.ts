@@ -127,3 +127,49 @@ export function formatPastNewsForPrompt(items: EditorPastNewsItem[]): string {
     'Aynı olayı yeniden yazma; önemli yeni gelişme yoksa yükseltme / uyarı öner.',
   ].join('\n')
 }
+
+/**
+ * AI-FOLLOWUP-1: aynı il (yoksa aynı kategori) son yayımlanan haberler —
+ * takip haberinin daha önce yayımlanmış ana olay haberini bulmak için aday
+ * havuzu. Tek sınırlı sorgu (varsayılan 30 kayıt); benzerlik seçimi
+ * `pickRelatedNews` ile bellekte yapılır. Hata → boş liste (yazımı durdurmaz).
+ */
+export async function fetchRelatedNewsCandidates(input: {
+  citySlug?: string | null
+  categoryId?: string | null
+  editor?: AiEditorDocument | null
+  limit?: number
+}): Promise<Array<{ id: string; title: string; summary: string; publishedAt: number | null }>> {
+  const limit = Math.min(Math.max(input.limit ?? 30, 5), 60)
+  const city = input.citySlug?.trim().toLowerCase() || (input.editor ? resolveEditorCitySlug(input.editor) : null)
+  const category = input.categoryId?.trim() || (input.editor ? resolveManagedCategories(input.editor)[0] : '') || ''
+  if (!city && !category) return []
+  const toMs = (raw: unknown): number | null => {
+    const iso = publishedAtIso(raw)
+    if (!iso) return null
+    const t = Date.parse(iso)
+    return Number.isFinite(t) ? t : null
+  }
+  try {
+    const db = getAdminFirestore()
+    const base = db.collection(Collections.NEWS).where('status', '==', 'published')
+    const q = city ? base.where('citySlug', '==', city) : base.where('categoryId', '==', category)
+    const snap = await q.orderBy('publishedAt', 'desc').limit(limit).get()
+    return snap.docs.map((d) => {
+      const data = d.data() as Record<string, unknown>
+      const pa = data.publishedAt
+      return {
+        id: d.id,
+        title: String(data.title ?? ''),
+        summary: String(data.summary ?? data.spot ?? '').slice(0, 200),
+        publishedAt:
+          pa && typeof (pa as { toMillis?: () => number }).toMillis === 'function'
+            ? (pa as { toMillis: () => number }).toMillis()
+            : toMs(pa),
+      }
+    })
+  } catch (err) {
+    console.warn('[editorPastNews] related candidates failed:', err instanceof Error ? err.message : err)
+    return []
+  }
+}

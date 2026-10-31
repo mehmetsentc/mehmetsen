@@ -8,6 +8,7 @@ import 'server-only'
  * passes the social media-rights check or an editor approved it in the studio.
  * Idempotent: an existing reel with the same options is reused unless force.
  */
+import { splitBackgroundSection } from '@/lib/ai/editorial/followUp'
 import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -222,7 +223,8 @@ export const VIDEO_RENDER_BUDGET_MS = 420_000
 
 /** Plain article text: content / body HTML, else the article blocks. */
 export function newsBodyText(d: Record<string, unknown>): string {
-  const html = str(d.content) || str(d.body) || str(d.htmlContent)
+  // AI-FOLLOWUP-1: «Olayın Geçmişi» hatırlatma bölümü seslendirmeye girmez (takip haberinde eski olay öne geçmesin).
+  const html = splitBackgroundSection(str(d.content) || str(d.body) || str(d.htmlContent)).main
   let text = html ? stripHtmlToNewsPlainText(html).replace(/(^|\n)#{1,6}\s*/g, '$1') : ''
   if (!text && Array.isArray(d.bodyBlocks)) {
     try {

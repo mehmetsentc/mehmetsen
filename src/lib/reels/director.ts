@@ -4,6 +4,7 @@
  * the persona's style and may refine the style. Every LLM script is checked: every
  * number must exist in the source, length is bounded — otherwise the rule script is used.
  */
+import { formatTrDate } from '@/lib/ai/editorial/followUp'
 import type { ReelStyle } from './reelOptions'
 import type { ReelPersona } from './personas'
 import { buildVoiceText, speakable, VOICE_MAX_CHARS } from './timeline'
@@ -71,18 +72,20 @@ export function directorPrompt(i: DirectorInput, persona: ReelPersona, oneSenten
       'özne ve yüklem net olsun, iç içe yan cümle kurma; kişi adını ilk geçtiği yerde unvanıyla söyle. ' +
       (oneSentence
         ? 'tek cümle, en fazla 120 karakter. '
-        : 'PROFESYONEL HABER ANLATIMI: bir haber spikerinin 40-60 saniyelik anlatımı; ' +
+        : 'PROFESYONEL HABER ANLATIMI: tarafsız, güvenilir bir haber sunucusunun 40-60 saniyelik anlatımı; ' +
+          'izleyici haberi ilk kez duyuyormuş gibi açık, sakin ve anlaşılır anlat; yorum, taraf tutma, duygu sömürüsü ve abartı yok; ' +
           `${NEWS_SCRIPT_TARGET_MIN}-${NEWS_SCRIPT_TARGET_MAX} karakter, 5-7 cümle. Yapı: ` +
-          '1) giriş: haberin özü tek cümlede (ne oldu, nerede); ' +
+          '1) giriş: haberin özü tek cümlede (ne oldu, nerede); takip haberinde giriş BUGÜNKÜ GELİŞMEDİR (tutuklama, rapor, karar), ana olay değil; ' +
           '2) ayrıntılar: kim, ne zaman, nasıl, rakamlar ve somut bilgiler haber metninden; ' +
           '3) açıklamalar: yetkililerin ya da tarafların söyledikleri, sahibine atfederek; ' +
           '4) kapanış: son durum ya da beklenen gelişme (yalnızca haberde yazıyorsa); ' +
+          'geçmiş olayı en fazla tek cümleyle, tarihiyle ve geçmiş zamanla hatırlat ("20 Ekim\'de meydana gelen kazada…"); ' +
           'başlığı aynen tekrar etme, özetin cümlelerini kopyalama, kendi haber dilinle anlat; ' +
           'selamlama, "merhaba", "bu haberde", "detaylar linkte" gibi kalıplar kullanma. ') +
       `Sunucu: ${persona.name} (${persona.title}). Yazım tarzı: ${persona.writingStyle} ` +
       'Yanıtı yalnızca JSON ver: {"style":"haber|spor|magazin|analiz","script":"..."}',
     user:
-      `Kategori: ${i.categoryLabel}\nBaşlık: ${i.title}\nÖzet: ${i.summary.slice(0, 900)}` +
+      `Bugün: ${formatTrDate(Date.now(), true)}\nKategori: ${i.categoryLabel}\nBaşlık: ${i.title}\nÖzet: ${i.summary.slice(0, 900)}` +
       (!oneSentence && i.body?.trim() ? `\nHaber metni: ${i.body.replace(/\s+/g, ' ').trim().slice(0, NEWS_BODY_MAX)}` : ''),
   }
 }

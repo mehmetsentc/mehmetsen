@@ -119,6 +119,8 @@ import { routeAiEditor, authorFieldsFromEditor, aiEditorBlocksAutoPublish } from
 import { editorRouteGeoFromResolved } from '@/lib/ai/editorial/editorRouteGeo'
 import { applyScaleQualityOutcome } from '@/lib/ai/editorial/aiEditorService'
 import { buildEditorPrompt } from '@/lib/ai/editorial/promptBuilder'
+import { buildFollowUpContext, pickRelatedNews, type FollowUpContext } from '@/lib/ai/editorial/followUp'
+import { fetchRelatedNewsCandidates } from '@/lib/ai/editorial/editorPastNews'
 import { resolveModelForEditor, recordAiUsage } from '@/lib/ai/editorial/modelRouter'
 import type { NewsroomArticleInput } from '@/services/newsroom/types'
 import {
@@ -898,6 +900,8 @@ export async function processNewsroomArticle(
           categoryId: workingInput.forcedCategoryId,
           province: workingInput.forcedCity,
           district: workingInput.forcedDistrict,
+          // AI-FOLLOWUP-1: ilgisiz «son 8 haber» yerine aşağıdaki aynı-olay bloğu kullanılır.
+          includePastNews: false,
         })
         personaSystem = built.system
         personaUser = built.user
@@ -916,7 +920,36 @@ export async function processNewsroomArticle(
       }
     }
 
+    // ── AI-FOLLOWUP-1: tarih bilinci + takip (gelişme) haberi ────────────────
+    // Yazara bugünün / kaynağın tarihi verilir; aynı olayın daha önce yayımlanan
+    // haberleri (tek sınırlı sorgu) bulunursa ya da kaynakta takip işareti varsa
+    // manşet ve spot yeni gelişmeyi anlatır, ana olay sonda kısaca hatırlatılır.
+    let followUp: FollowUpContext | null = null
+    if (!workingInput.skipAiRewrite) {
+      const nowMs = Date.now()
+      const bodyForMatch = workingInput.originalContent || workingInput.originalSummary || ''
+      const candidates = await fetchRelatedNewsCandidates({
+        citySlug: workingInput.forcedCitySlug ?? null,
+        categoryId: workingInput.forcedCategoryId ?? null,
+        editor: routedEditor,
+      }).catch(() => [])
+      followUp = buildFollowUpContext({
+        now: nowMs,
+        sourcePublishedAt: workingInput.sourcePublishedAt ?? null,
+        title: workingInput.originalTitle || '',
+        body: bodyForMatch,
+        related: pickRelatedNews(candidates, { title: workingInput.originalTitle || '', body: bodyForMatch, now: nowMs }),
+      })
+      if (followUp.isFollowUp) {
+        console.log(
+          `[pipeline] takip haberi: ilgili=${followUp.related.length} işaret=${followUp.markers.join('|') || '-'}: ${workingInput.originalTitle?.slice(0, 80)}`,
+        )
+      }
+    }
+
     const stageInputBase = {
+      editorialContext: followUp?.block,
+      previousTitles: followUp?.isFollowUp ? followUp.related.map((r) => r.title) : undefined,
       sourceLabel: workingInput.sourceLabel,
       originalTitle: workingInput.originalTitle,
       originalSummary: workingInput.originalSummary,
@@ -1033,6 +1066,7 @@ export async function processNewsroomArticle(
             systemPromptOverride: stageInputBase.systemPromptOverride,
             userPromptOverride: stageInputBase.userPromptOverride,
             sourceAlreadyIncluded: stageInputBase.sourceAlreadyIncluded,
+            editorialContext: stageInputBase.editorialContext,
             model: stageInputBase.writerModel,
             generationReason: 'quality_retry',
             retryTriggers: normalizeQualityRetryTriggers(qualityRetryInput(current)),
@@ -2090,6 +2124,9 @@ export async function processNewsroomArticle(
       originalTitle: workingInput.originalTitle ?? null,
       ingestedAt: now,
       sourcePublishedAt: workingInput.sourcePublishedAt ?? null,
+      ...(followUp?.isFollowUp
+        ? { isFollowUp: true, followUpOf: followUp.related.map((r) => r.id), followUpMarkers: followUp.markers }
+        : {}),
       createdAt: now,
       updatedAt: now,
       editorId: workingInput.editorId,

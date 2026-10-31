@@ -9,6 +9,7 @@
  */
 
 import type { WrittenArticle } from './stage1_contentWriter'
+import { HEADLINE_REPEAT_REASON, headlineRepeatsPrevious } from '@/lib/ai/editorial/followUp'
 import type { FactCheckResult } from './stage2_factChecker'
 import type { CategoryResult } from './stage3_categoryEditor'
 
@@ -27,6 +28,8 @@ interface GateInput {
   category: CategoryResult
   /** Son-dakika için ek kontrol — önceden hesaplanmış breaking score */
   breakingScore?: number
+  /** AI-FOLLOWUP-1: takip haberinde daha önce yayımlanan aynı olay manşetleri. */
+  previousTitles?: string[]
 }
 
 /**
@@ -126,6 +129,12 @@ export function gateKeep(input: GateInput): GateResult {
       reasons: ['içerik çok kısa — min gövde kelimesi karşılanmadı'],
       publishScore: Math.min(publishScore, 40),
     }
+  }
+
+  // AI-FOLLOWUP-1: takip haberi ana olayı manşette tekrar ediyorsa yayınlama → yeniden yazım.
+  if (input.previousTitles?.length && headlineRepeatsPrevious(input.written.title, input.previousTitles)) {
+    publishScore -= 45
+    reasons.push(HEADLINE_REPEAT_REASON)
   }
 
   if (input.factCheck.titleMismatch) {

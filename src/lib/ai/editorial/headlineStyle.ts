@@ -5,7 +5,9 @@
 
 export const NAHABER_HEADLINE_STYLE = `MANŞET SÖZLEŞMESİ (agresif gazete manşeti — çarpıcı olgu + dürüstlük):
 - Başlık haberi saklamaz. Okuyucu başlıktan ne olduğunu görsün ve ayrıntıyı okumak istesin.
-- EN ÇARPICI DOĞRULANMIŞ OLGUSU başlığa koy: ölü/yaralı sayısı, tutar, karar, isim, skor, el konulan mal, ceza, tarih. Varsa sayı şart.
+- Haberin EN YENİ ve EN ÖNEMLİ DOĞRULANMIŞ OLGUSUNU (bugün olanı) başlığa koy; en çarpıcı olgu bu ise o: ölü/yaralı sayısı, tutar, karar, isim, skor, el konulan mal, ceza, tarih. Varsa sayı şart.
+- TAKİP HABERİ: Olay daha önce yaşandıysa manşet YENİ GELİŞMEYİ söyler (tutuklama, rapor, karar, açıklama). İlk günün ölü/yaralı sayısını ve "çarpıştı/öldü" olgusunu manşette tekrar etme.
+- TARAFSIZ: Taraf tutan sıfat, yorum, suçlama yok; iddiayı sahibine atfet ("…iddia edildi", "…açıkladı").
 - Jenerik ve üstü kapalı manşet YASAK. "Büyük kaza", "önemli gelişme", "dikkat çeken karar", "flaş iddia" olayı söylemez.
 - Kaza, yangın, saldırı, deprem, operasyon: yer + sonuç aynı başlıkta. 5 kişi öldüyse "büyük kaza" yazma; "5 ölü" yaz.
 - 6-12 kelime, maks 85 karakter. Kişi veya kurum + fiil + çarpıcı sonuç. Nokta koyma.
@@ -17,7 +19,9 @@ export const NAHABER_HEADLINE_STYLE = `MANŞET SÖZLEŞMESİ (agresif gazete man
 İYİ: "TCMB faizi yüzde 50'de sabit bıraktı"
 KÖTÜ: "Büyük kaza" (5 ölü varken sayıyı sakladı)
 KÖTÜ: "Ankara'da trafik alarmı"
-KÖTÜ: "ŞOK! Korkunç kaza can aldı"`.trim()
+KÖTÜ: "ŞOK! Korkunç kaza can aldı"
+İYİ (takip): "Küçükçekmece'deki kazada otomobil sürücüsü tutuklandı"
+KÖTÜ (takip): "Küçükçekmece'de motosiklet otomobille çarpıştı: 21 yaşındaki sürücü öldü" (10 gün önceki olay yeni gibi)`.trim()
 
 /** Sosyal paylaşım manşeti + özet — OG/story overlay ve feed caption. */
 export const NAHABER_SOCIAL_SHARE_STYLE = `SOSYAL PAYLAŞIM (manşet + özet net ayrılsın):

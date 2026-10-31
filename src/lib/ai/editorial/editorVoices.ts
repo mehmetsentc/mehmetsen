@@ -24,7 +24,7 @@ export function formatVoiceCard(voice: EditorVoice): string {
     `SES KARTI: ${voice.slug}`,
     HOUSE,
     'Bu kart manşeti ve üslubu belirler; eski "yorum yapma" cümlesi manşeti kapsamaz. Gövdeye yeni siyasi hüküm ekleme. Gövde olgusaldır: kaynakta olmayan sayı, alıntı, isim, sır yazma.',
-    'Başlık 6-12 kelime. En çarpıcı doğrulanmış olgu başlıkta: sayı, isim, karar, skor, tutar. Jenerik ve üstü kapalı manşet yasak. seoTitle de olayı söylesin, ŞOK kullanmasın.',
+    'Başlık 6-12 kelime. En yeni ve en önemli doğrulanmış olgu başlıkta: sayı, isim, karar, skor, tutar; takip haberinde yeni gelişme. Jenerik ve üstü kapalı manşet yasak. seoTitle de olayı söylesin, ŞOK kullanmasın.',
     `KARAKTER: ${voice.character}`,
     `HABER SUNUŞU: ${voice.presentation}`,
     `SİYASİ ÇİZGİ: ${voice.politics}`,

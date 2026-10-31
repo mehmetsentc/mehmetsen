@@ -12,6 +12,7 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
+import { formatTrDate, PRESENTER_RULES } from '@/lib/ai/editorial/followUp'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
 import { NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 import { isGarbledSocialCopy, repairSocialCopyAgainstSource } from './socialFactualFidelity'
@@ -47,6 +48,7 @@ export interface AISocialContent {
 const SYSTEM_PROMPT = `Sen NaHaber'in Sosyal Medya Editörüsün.
 Türkçe haberlerden Instagram ve Facebook (özellikle HİKAYE / story görseli) için profesyonel içerik üretiyorsun.
 Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
+${PRESENTER_RULES}
 Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
 ÇİFT HEDEF (ikisi birden zorunlu):
@@ -74,7 +76,7 @@ KURALLAR:
   * TAM kelimeler; yarım cümle / kesik kelime YASAK. Nokta ile bitirme (gazete manşeti gibi).
   * Karakter sınırı için kelime atmak zorundaysan önce sıfat/bağlaç at; sayı + isim tamlamasını ASLA atma.
 - storySummary: Manşetin ALTINDA görünecek TAM FAYDALI ÖZET. 1 veya 2 TAM cümle; toplam max ${STORY_SUMMARY_MAX} karakter. Her cümle nokta, ünlem veya soru işareti ile bitsin. Asla cümleyi veya kelimeyi ortadan kesme.
-  * 1. görev — ANLAŞILIRLIK: Ne olduğu net olsun (kim/ne/nerede + ana olay). Okuyucu özetten haberi anlamalı; teaser / "ipuucu verip sakla" YASAK.
+  * 1. görev — ANLAŞILIRLIK: Ne olduğu net olsun (kim/ne/nerede + haberin konusu olan olay; takip haberinde YENİ GELİŞME, ana olay en fazla yarım cümle ve tarihiyle). Okuyucu özetten haberi anlamalı; teaser / "ipuucu verip sakla" YASAK.
   * 2. görev — MERAK + DERİNLİK İŞTAHI: Özetin kendisi de ilgi çekici olsun; monoton "X açıklandı, Y yapıldı" kalıplarına düşme. Etki, sonuç veya sürpriz detayı öne çıkar — "git oku" demeden.
   * YASAK meta CTA kalıpları (özetten ASLA kullanma): "haberimizde", "detayları haberimizde", "detaylar için", "devamı için", "devamını oku", "tıklayın", "tıkla", "linkten", "haberi oku", "ayrıntılar", "işte detaylar" vb.
   * Sade, akıcı, dilbilgisi doğru Türkçe; jargon ve abartı yok. Olgu kelimelerini düşürme.
@@ -82,7 +84,7 @@ KURALLAR:
   * ÖNEMLİ — TEKRAR YASAK: Sistem otomatik olarak "📰 {başlık}" ekliyor ve görselde de başlık var.
     Caption'da başlığı ASLA tekrarlama, başlıkla aynı anlama gelen cümle kurma.
   * AMAÇ: Feed'de kaydıran kullanıcıyı yakalamak — başlıktan SONRA gelen bilgi/bağlam/derinlik olsun.
-  * İçerik: Olayın ARKAPLAN + DETAY + ETKİSİ — başlıkta olmayan ek bilgiyi öne çıkar.
+  * İçerik: Olayın DETAY + ETKİSİ + kısa ARKA PLANI — başlıkta olmayan ek bilgiyi öne çıkar. Takip haberinde ilk paragraf yeni gelişme; geçmiş olay en fazla bir cümle, tarihiyle ve geçmiş zamanla.
     Ne zaman, nerede, nasıl, neden, kim etkilendi; sayı/isim/tamlama doğru.
   * Toplam ~400–700 karakter. 1. paragraf emoji ile başlasın (🔴 değil — başlıkta kullanılmış olabilir).
     Paragraflar arasında boş satır (\\n\\n).
@@ -95,7 +97,8 @@ KURALLAR:
 - ÇIKTI: Yalnızca geçerli JSON, başka hiçbir şey ekleme`
 
 function buildPrompt(title: string, description: string, cityName: string): string {
-  return `Aşağıdaki haber için sosyal medya + hikaye görseli içeriği oluştur.
+  return `BUGÜN: ${formatTrDate(Date.now(), true)} (Europe/Istanbul). Metinde bugünden önceki tarihe ait olay geçmiştir; yeni olmuş gibi yazma.
+Aşağıdaki haber için sosyal medya + hikaye görseli içeriği oluştur.
 ÖNEMLİ: Başlık ve açıklamalar hem DİKKAT ÇEKİCİ / MERAK UYANDIRICI hem BİLGİLENDİRİCİ olsun. Sıradan özet yapıştırma. Doğruluktan taviz yok: sayı, isim, "hava aracı" gibi tamlama isimlerini düşürme; Türkçe dilbilgisi doğru olsun.
 
 BAŞLIK: ${title}

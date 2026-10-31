@@ -58,6 +58,12 @@ export interface WriterInput {
   retryTriggers?: string[]
   /** Persona temperature. Defaults to 0.4 when omitted. */
   temperature?: number
+  /**
+   * AI-FOLLOWUP-1: bugünün / kaynağın tarihi + (takip haberinde) takip kuralları
+   * ve daha önce yayımlanan aynı olay haberleri. Sistem talimatının SONUNA eklenir
+   * (persona ve varsayılan talimatın uzunluk / manşet kurallarını ezer).
+   */
+  editorialContext?: string
 }
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
@@ -68,7 +74,8 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - DOLDURMA YASAK: kaynakta yeterli olgu yoksa KISA yaz. Genel ansiklopedik bilgi, tekrar, "vatandaşlar dikkatli olmalı" türü nutukla uzatma
 - Tarih ve yer açık olsun: "dün/bugün" yerine gün ve ay; yerel haberde il ve ilçe adı ilk paragrafta
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
-- Manşet SES KARTINA uyar. En çarpıcı doğrulanmış olgu başlıkta: sayı, isim, karar. "Büyük kaza" gibi jenerik başlık yasak.
+- Manşet SES KARTINA uyar. En yeni ve en önemli doğrulanmış olgu başlıkta: sayı, isim, karar. Takip haberinde yeni gelişme başlıkta, eski olay değil. "Büyük kaza" gibi jenerik başlık yasak.
+- Tarafsız haber dili: yorum, taraf tutma, duygu sömürüsü yok; iddiayı sahibine atfet
 - ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma
@@ -192,9 +199,11 @@ export function buildStage1WriterPrompt(
     packSource && Boolean(override) && input.sourceAlreadyIncluded === true
   const promptPacking: Stage1PromptPacking = pack ? 'source_once' : 'source_inline'
   const promptVersion = pack ? STAGE1_WRITER_PACKED_PROMPT_VERSION : STAGE1_WRITER_PROMPT_VERSION
-  const systemContent = input.systemPromptOverride?.trim()
+  const ctx = input.editorialContext?.trim()
+  const systemBase = input.systemPromptOverride?.trim()
     ? `${input.systemPromptOverride.trim()}\n\n${HARD_RULES}`
     : `${DEFAULT_NEWS_SYSTEM}\n\n${HARD_RULES}`
+  const systemContent = ctx ? `${systemBase}\n\n${ctx}` : systemBase
   const writerTail = buildPrompt(input, !pack)
   const userContent = override ? `${override}\n\n${writerTail}` : writerTail
   const sourceArticle = (input.originalContent || input.originalSummary || '').slice(

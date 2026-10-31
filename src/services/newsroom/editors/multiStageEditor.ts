@@ -60,6 +60,10 @@ export interface MultiStageInput {
   temperature?: number
   /** First successful DeepSeek Stage3 — reused only on quality_retry. */
   previousStage3?: CategoryResult
+  /** AI-FOLLOWUP-1: tarih + takip talimatı (Stage 1 sistem talimatına eklenir). */
+  editorialContext?: string
+  /** AI-FOLLOWUP-1: takip haberinde daha önce yayımlanan aynı olay manşetleri (Stage 4 tekrar denetimi). */
+  previousTitles?: string[]
 }
 
 export interface MultiStageResult extends AiRewriteResult {
@@ -101,6 +105,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     generationReason: input.generationReason,
     retryTriggers: input.retryTriggers,
     temperature: input.temperature,
+    editorialContext: input.editorialContext,
   })
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────
@@ -163,7 +168,7 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
   }
 
   // ── Stage 4: Gate Keeper ─────────────────────────────────────────────────────
-  const gate = gateKeep({ written, factCheck, category })
+  const gate = gateKeep({ written, factCheck, category, previousTitles: input.previousTitles })
 
   const durationMs = Date.now() - startMs
   console.log(
