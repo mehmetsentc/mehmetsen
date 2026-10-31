@@ -31,8 +31,12 @@ function hasImage(item: NewsItem | null | undefined): item is Imaged {
   return Boolean(item?.imageUrl?.trim())
 }
 
+/** Feed payloads cut summaries mid-word ("… giymiş ve c"); end on a word. */
 function itemSummary(item: NewsItem): string {
-  return (item.summary || item.description || '').trim()
+  const text = (item.summary || item.description || '').trim()
+  if (!text || /[.!?…"'”»)]$/.test(text)) return text
+  const lastSpace = text.lastIndexOf(' ')
+  return `${lastSpace > 40 ? text.slice(0, lastSpace) : text}…`
 }
 
 const META_FORMAT = new Intl.DateTimeFormat('tr-TR', {
@@ -385,6 +389,16 @@ export function EditorialFrontPage({
               ))}
             </ul>
           ) : null}
+          {local && localCards.length >= 2 ? (
+            <section className="ed-section ed-section--local ed-main__local" aria-label={local.title}>
+              <EdSectionHead title={local.title} href={local.href} more="Tüm yerel haberler" />
+              <div className="ed-grid ed-grid--4">
+                {localCards.map((item) => (
+                  <EdCard key={item.id} item={item} sizes="240px" />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
         <aside className="ed-main__rail" aria-label={mostReadTitle}>
           {ranked.length > 0 ? (
@@ -404,17 +418,6 @@ export function EditorialFrontPage({
       </div>
 
       {afterLead}
-
-      {local && localCards.length >= 2 ? (
-        <section className="ed-section ed-section--local" aria-label={local.title}>
-          <EdSectionHead title={local.title} href={local.href} more="Tüm yerel haberler" />
-          <div className="ed-grid ed-grid--4">
-            {localCards.map((item) => (
-              <EdCard key={item.id} item={item} sizes="240px" />
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {plans.map((plan) => (
         <EdSectionBlock key={plan.section.id} plan={plan} />

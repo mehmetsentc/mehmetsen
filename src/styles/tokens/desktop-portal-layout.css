@@ -1049,6 +1049,10 @@ html[data-theme='oled'] .desktop-portal-manset__time {
   }
 
   .ed-lead__dek {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     margin: 0.9rem 0 0;
     font-family: var(--ed-sans, Inter, system-ui, sans-serif);
     font-size: 1.0625rem;
@@ -1121,6 +1125,11 @@ html[data-theme='oled'] .desktop-portal-manset__time {
 
   .ed-main__body {
     min-width: 0;
+  }
+
+  .ed-main__local {
+    margin-top: 2rem;
+    padding-bottom: 0;
   }
 
   .ed-main__rail {
@@ -1620,5 +1629,54 @@ html[data-theme='oled'] .desktop-portal-manset__time {
 
   .article-desktop-tools:empty {
     display: none;
+  }
+
+  /* Full page: header, hero and body share one left edge (no centred measure). */
+  .article-desktop-layout .news-article-header,
+  .article-desktop-layout .news-article-hero-block {
+    align-items: flex-start;
+  }
+
+  .article-desktop-layout .news-article-hero-block {
+    padding-inline: 0;
+  }
+
+  .article-desktop-layout .news-article-hero-block > * {
+    max-width: 100%;
+  }
+
+  .article-desktop-layout .news-article-header > :not(.feed-reader-headline) {
+    max-width: 100%;
+  }
+
+  .article-desktop-rail a,
+  .article-reader-shell .article-desktop-rail a {
+    color: rgb(var(--color-text));
+  }
+
+  /* Article Lift modal (soft navigation): single column with inner padding,
+     no right rail — the dialog is narrower than the page grid. */
+  [role='dialog'] .article-desktop-layout {
+    display: block;
+  }
+
+  [role='dialog'] .article-desktop-rail {
+    display: none;
+  }
+
+  [role='dialog'] .news-article-page > .news-article-card--continued {
+    width: auto;
+  }
+
+  [role='dialog'] .article-reader-shell .news-article-header,
+  [role='dialog'] .article-reader-shell .news-article-body,
+  [role='dialog'] .news-article-card--continued .news-article-body,
+  [role='dialog'] .article-desktop-layout .news-article-hero-block {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+
+  [role='dialog'] .article-reader-shell .news-article-header {
+    padding-top: 4rem;
   }
 }
