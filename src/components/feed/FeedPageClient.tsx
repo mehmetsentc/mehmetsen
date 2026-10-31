@@ -45,8 +45,9 @@ interface FeedPageClientProps {
 }
 
 function FeedScrollHeaderConfig({ homeFeedData }: FeedPageClientProps) {
-  const breakingItems =
-    homeFeedData.breaking.length > 0 ? homeFeedData.breaking : homeFeedData.latest
+  // Desktop "Son dakika" band only shows real breaking stories — never the
+  // latest list relabelled as breaking (consumed by desktop headers only).
+  const breakingItems = homeFeedData.breaking
   useScrollHeaderConfig({
     breakingItems,
     showBreaking: breakingItems.length > 0,

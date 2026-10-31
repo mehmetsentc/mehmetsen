@@ -14,10 +14,7 @@ import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { newsItemDetailHref } from '@/lib/newsItemUtils'
 import type { NewsItem } from '@/types/newsItem'
 
-const SOCIAL = [
-  { label: 'Facebook', href: process.env.NEXT_PUBLIC_FACEBOOK_URL ?? 'https://www.facebook.com/nahabercom' },
-  { label: 'X', href: process.env.NEXT_PUBLIC_X_URL ?? 'https://x.com/nahabercom' },
-] as const
+const NATIONAL_HOME = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://www.nahaber.com'
 
 export function CityDesktopNewspaperHeader({
   cityName,
@@ -55,28 +52,15 @@ export function CityDesktopNewspaperHeader({
             <Link prefetch={false} href={withCityTenantHref(ROUTES.WEATHER, tenantSlug)} className="desktop-portal-utility__link">
               Hava Durumu
             </Link>
-            <span className="desktop-portal-utility__meta hidden xl:inline">
-              {cityName} dijital gazetesi
-            </span>
           </div>
+          {/* Kurumsal ve sosyal bağlantılar footer'da; burada ana siteye dönüş. */}
           <div className="flex items-center gap-3">
-            <Link prefetch={false} href="/hakkimizda" className="desktop-portal-utility__link">
-              Hakkımızda
+            <a href={NATIONAL_HOME} className="desktop-portal-utility__link">
+              NaHaber Türkiye <span aria-hidden>›</span>
+            </a>
+            <Link prefetch={false} href={ROUTES.SEARCH} className="desktop-portal-utility__link" aria-label="Haber ara">
+              Ara
             </Link>
-            <Link prefetch={false} href="/iletisim" className="desktop-portal-utility__link">
-              İletişim
-            </Link>
-            {SOCIAL.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer me"
-                className="desktop-portal-utility__link hidden sm:inline"
-              >
-                {item.label}
-              </a>
-            ))}
             <CityDesktopThemeButton />
           </div>
         </div>

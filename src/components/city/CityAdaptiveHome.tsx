@@ -20,8 +20,8 @@ export async function CityAdaptiveHome({
     getCityEventsServer(citySlug, 'upcoming', 10),
   ])
   const cityName = getCityCategoryName(citySlug)
-  const breakingItems =
-    homeFeedData.breaking.length > 0 ? homeFeedData.breaking : homeFeedData.latest
+  // Only real breaking stories feed the desktop "Son dakika" band.
+  const breakingItems = homeFeedData.breaking
 
   return (
     <div className="hidden lg:block" data-city-desktop-newspaper="1">

@@ -1,5 +1,10 @@
 import Script from 'next/script'
-import { DEFAULT_THEME, THEME_STORAGE_KEY } from '@/lib/theme'
+import {
+  DEFAULT_THEME,
+  DESKTOP_DEFAULT_THEME,
+  DESKTOP_THEME_MIN_WIDTH,
+  THEME_STORAGE_KEY,
+} from '@/lib/theme'
 
 /**
  * Tema init — FOUC (flash of unstyled content) önlemek için
@@ -10,7 +15,8 @@ export function ThemeScript() {
   const script = `
     (function() {
       try {
-        var pref = localStorage.getItem('${THEME_STORAGE_KEY}') || '${DEFAULT_THEME}';
+        var pref = localStorage.getItem('${THEME_STORAGE_KEY}') ||
+          (window.innerWidth >= ${DESKTOP_THEME_MIN_WIDTH} ? '${DESKTOP_DEFAULT_THEME}' : '${DEFAULT_THEME}');
         var resolved = pref;
         if (pref === 'system') {
           resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

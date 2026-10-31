@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { ArticleGallery } from '@/components/news/ArticleGallery'
 import {
@@ -11,6 +11,8 @@ interface ArticleBlocksRendererProps {
   blocks: ArticleBlock[]
   title: string
   longform?: boolean
+  /** Desktop extras (e.g. inline "İlgili" box) inside the same prose flow. */
+  insertAfter?: { index: number; node: ReactNode }
 }
 
 function toYouTubeEmbed(url: string): string | null {
@@ -34,6 +36,7 @@ export function ArticleBlocksRenderer({
   blocks,
   title,
   longform = false,
+  insertAfter,
 }: ArticleBlocksRendererProps) {
   return (
     <div
@@ -41,7 +44,9 @@ export function ArticleBlocksRenderer({
         longform ? 'article-blocks-longform' : ''
       }`}
     >
-      {blocks.map((block, index) => {
+      {blocks.map((block, index) => (
+        <Fragment key={`blk-${block.id ?? index}`}>
+          {((): ReactNode => {
         if (block.type === 'heading') {
           const id = headingAnchor(block.text, `bolum-${index + 1}`)
           return block.level === 1 ? (
@@ -146,7 +151,10 @@ export function ArticleBlocksRenderer({
             <hr className="article-block-divider" />
           </Fragment>
         )
-      })}
+          })()}
+          {insertAfter && insertAfter.index === index ? insertAfter.node : null}
+        </Fragment>
+      ))}
     </div>
   )
 }

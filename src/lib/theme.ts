@@ -23,6 +23,20 @@ export const THEME_STORAGE_KEY = 'nahaber-theme'
  */
 export const DEFAULT_THEME: ThemePreference = 'dark'
 
+/**
+ * Desktop (>= 1024px) first visit opens light — newspaper reading surface
+ * (BBC / NYT / Guardian pattern). Mobile keeps DEFAULT_THEME. A stored
+ * choice still wins on every viewport.
+ */
+export const DESKTOP_DEFAULT_THEME: ThemePreference = 'light'
+export const DESKTOP_THEME_MIN_WIDTH = 1024
+
+/** First-visit theme for the current viewport (no stored preference). */
+export function defaultThemeForViewport(): ThemePreference {
+  if (typeof window === 'undefined') return DEFAULT_THEME
+  return window.innerWidth >= DESKTOP_THEME_MIN_WIDTH ? DESKTOP_DEFAULT_THEME : DEFAULT_THEME
+}
+
 const VALID: ThemePreference[] = ['light', 'dark', 'oled', 'system']
 
 export function getStoredTheme(): ThemePreference {
@@ -35,7 +49,7 @@ export function getStoredTheme(): ThemePreference {
   } catch {
     // ignore (private mode vb.)
   }
-  return DEFAULT_THEME
+  return defaultThemeForViewport()
 }
 
 export function setStoredTheme(theme: ThemePreference): void {

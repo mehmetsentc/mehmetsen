@@ -46,7 +46,7 @@ function RateRow({
   )
 }
 
-export function DesktopPortalPulse() {
+export function DesktopPortalPulse({ layout = 'band' }: { layout?: 'band' | 'rail' } = {}) {
   const [rates, setRates] = useState<FinanceRates | null>(null)
   const [weather, setWeather] = useState<WeatherRow[]>([])
 
@@ -92,6 +92,51 @@ export function DesktopPortalPulse() {
   }, [])
 
   if (!rates && weather.length === 0) return null
+
+  if (layout === 'rail') {
+    // Editorial right rail: compact market + weather lists, no empty boxes.
+    return (
+      <>
+        {rates ? (
+          <section className="ed-rail-block" aria-label="Piyasalar">
+            <h2 className="ed-rail-block__title">
+              <Link prefetch={false} href={ROUTES.CATEGORY('ekonomi')}>
+                Piyasalar
+              </Link>
+            </h2>
+            <ul className="desktop-portal-pulse__list ed-pulse">
+              <RateRow label="USD/TL" value={`₺${fmt(rates.usdTry.value, 4)}`} change={rates.usdTry.change} />
+              <RateRow label="EUR/TL" value={`₺${fmt(rates.eurTry.value, 4)}`} change={rates.eurTry.change} />
+              <RateRow
+                label="Gram altın"
+                value={`₺${fmt(rates.goldTryGram.value, 0)}`}
+                change={rates.goldTryGram.change}
+              />
+              <RateRow label="BIST 100" value={fmt(rates.bist100.value, 2)} change={rates.bist100.change} />
+            </ul>
+          </section>
+        ) : null}
+        {weather.length > 0 ? (
+          <section className="ed-rail-block" aria-label="Hava durumu">
+            <h2 className="ed-rail-block__title">
+              <Link prefetch={false} href={ROUTES.WEATHER}>
+                Hava durumu
+              </Link>
+            </h2>
+            <ul className="desktop-portal-pulse__list ed-pulse">
+              {weather.map((row) => (
+                <li key={row.city} className="desktop-portal-pulse__row">
+                  <span>{row.city}</span>
+                  <span className="desktop-portal-pulse__val">{row.temp}°</span>
+                  <span className="desktop-portal-pulse__wx">{row.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </>
+    )
+  }
 
   return (
     <section className="desktop-portal-band" aria-label="Döviz ve hava durumu">

@@ -173,7 +173,7 @@ export function DesktopSiteNavLinks({
                 <span className="relative inline-block whitespace-nowrap">
                   {item.label}
                   {active ? (
-                    <span className="absolute inset-x-0 -bottom-2 h-0.5 bg-[#E50914]" />
+                    <span className="absolute inset-x-0 -bottom-2 h-0.5 bg-[rgb(var(--color-text))]" />
                   ) : null}
                 </span>
               </Link>

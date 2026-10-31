@@ -805,3 +805,102 @@ html[data-desktop-header='newspaper']:not(.dark)
     color: rgb(17 17 17 / 0.5);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Editorial white paper (lg+ only) — Oct 2026 desktop redesign.
+ * BBC / NYT / Guardian reference: white page, near-black ink, hairline grey
+ * rules. Overrides the cream newspaper tokens above on desktop light theme
+ * only; mobile (< 1024px) and dark / oled keep their tokens.
+ * ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:has(.admin-shell)) {
+    --nl-paper: 255 255 255;
+    --nl-ink: 18 18 18;
+    --bg-base: 255 255 255;
+    --bg-subtle: 247 247 245;
+    --bg-muted: 238 238 235;
+    --bg-card: 255 255 255;
+    --bg-elevated: 255 255 255;
+    --text-primary: 18 18 18;
+    --text-body: 34 34 34;
+    --text-secondary: 84 84 84;
+    --text-tertiary: 100 100 100;
+    --text-muted: 110 110 110;
+    --border-subtle: 229 229 225;
+    --border-default: 216 216 211;
+    --nav-bar-bg: 255 255 255;
+    --nav-hover: 243 243 240;
+    --header-brand-bg: 255 255 255;
+    --header-navy-bg: 255 255 255;
+    --color-text: 18 18 18;
+    --color-text-secondary: 84 84 84;
+    --color-body: 34 34 34;
+    --color-summary: 84 84 84;
+    --color-muted: 92 92 92;
+    --color-meta: 110 110 110;
+    --color-surface-raised: 243 243 240;
+    --color-surface-raised-hover: 247 247 245;
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']) .desktop-newspaper,
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']) .content-main-newspaper {
+    --nl-paper: 255 255 255;
+    --nl-ink: 18 18 18;
+    --color-text: 18 18 18;
+    --color-text-secondary: 84 84 84;
+    --color-body: 34 34 34;
+    --color-summary: 84 84 84;
+    --color-muted: 92 92 92;
+    --color-meta: 110 110 110;
+    --color-bg: 255 255 255;
+    --color-surface: 255 255 255;
+    --color-card: 255 255 255;
+    --color-border: 222 222 218;
+    background: rgb(255 255 255);
+    color: rgb(18 18 18);
+  }
+
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']):not(:has(.admin-shell)) body,
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']) .min-h-screen,
+  html[data-platform='desktop'][data-desktop-header='newspaper']:not(.dark):not([data-theme='oled']) .desktop-web-header--newspaper,
+  html[data-platform='desktop']:not(.dark):not([data-theme='oled']) .nl-masthead-compact,
+  html[data-platform='desktop']:not(.dark):not([data-theme='oled']) .desktop-scroll-header-compact-inner {
+    background: rgb(255 255 255);
+  }
+
+  html[data-platform='desktop']:not(.dark):not([data-theme='oled']) .nl-masthead-utility,
+  html[data-platform='desktop']:not(.dark):not([data-theme='oled']) .nl-masthead-compact {
+    border-bottom-color: rgb(var(--border-default));
+  }
+
+  .nl-masthead-utility {
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* Alt kategori sekmeleri: tek satır, siyah alt çizgi (kırmızı değil). */
+  .nl-masthead-subnav {
+    gap: 1.25rem;
+    padding: 0.7rem 0 0.2rem;
+  }
+
+  .nl-masthead-subnav__link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .nl-masthead-subnav__link.is-active,
+  .nl-masthead-subnav__link[aria-current='page'] {
+    box-shadow: inset 0 -2px 0 rgb(var(--color-text));
+  }
+
+  /* Son dakika: beyaz zemin, kırmızı etiket. */
+  .desktop-newspaper .nl-breaking-ticker,
+  .nl-breaking-ticker {
+    background: rgb(var(--color-card));
+    border: 0;
+    border-bottom: 1px solid rgb(var(--color-border));
+  }
+}

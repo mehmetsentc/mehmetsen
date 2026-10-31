@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ALargeSmall,
@@ -279,6 +280,49 @@ export function ArticleReaderTools({
     </>
   )
 
+  // Desktop: render Dinle + Araçlar inline in the article byline row when the
+  // page provides #article-desktop-tools; otherwise keep the floating FABs.
+  const [desktopMount, setDesktopMount] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setDesktopMount(document.getElementById('article-desktop-tools'))
+  }, [])
+
+  const desktopInline = desktopMount
+    ? createPortal(
+        <div className="relative flex items-center gap-2">
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={playing ? 'Duraklat' : 'Haberi dinle'}
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors',
+              playing
+                ? 'border-brand-500 bg-brand-500 text-white'
+                : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-nav-hover))]'
+            )}
+          >
+            {playing ? <Pause className="h-3.5 w-3.5" /> : <Headphones className="h-3.5 w-3.5" />}
+            {playing ? 'Dinleniyor' : 'Dinle'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? 'Araçları kapat' : 'Okuma araçları'}
+            aria-expanded={open}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] transition-colors hover:bg-[rgb(var(--color-nav-hover))]"
+          >
+            {open ? <X className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+          </button>
+          {open ? (
+            <div className="absolute right-0 top-full z-overlay mt-2 w-64 overflow-hidden rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-left shadow-xl">
+              {PanelContent}
+            </div>
+          ) : null}
+        </div>,
+        desktopMount
+      )
+    : null
+
   return (
     <>
       {/* ═══════════════════════════════════════════════════════════
@@ -385,7 +429,13 @@ export function ArticleReaderTools({
           MASAÜSTÜ TASARIM  (hidden lg:flex)
           FAB sağ-alt + floating kart (orijinal davranış)
       ═══════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-6 right-4 z-overlay hidden flex-col items-end gap-2 lg:flex">
+      {desktopInline}
+      <div
+        className={cn(
+          'fixed bottom-6 right-4 z-overlay hidden flex-col items-end gap-2',
+          desktopMount ? 'lg:hidden' : 'lg:flex'
+        )}
+      >
         <AnimatePresence>
           {open && (
             <motion.div

@@ -42,6 +42,9 @@ export function NewsletterPrompt() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // Desktop: the article already ends with an inline signup; a floating
+    // modal over the reading column interrupts reading (BBC/NYT don't).
+    if (window.matchMedia('(min-width: 1024px)').matches) return
     if (wasDismissedRecently()) return
 
     let shown = false

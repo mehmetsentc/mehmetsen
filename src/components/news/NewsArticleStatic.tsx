@@ -21,6 +21,7 @@ import { ArticleGallery } from '@/components/news/ArticleGallery'
 import { ArticleBlocksRenderer } from '@/components/news/ArticleBlocksRenderer'
 import type { ArticleLatestLink } from '@/lib/seo/articleLatestLinks'
 import { ArticleRelatedLinks } from '@/components/news/ArticleRelatedLinks'
+import { ArticleDesktopRail, ArticleInlineRelated } from '@/components/news/ArticleDesktopRail'
 import { HaberEndRecommendations } from '@/components/news/HaberEndRecommendations'
 import { InfographicBlock } from '@/components/news/InfographicBlock'
 import { NewsArticleBody, NewsArticleCard, NewsArticlePage } from '@/components/news/NewsArticlePage'
@@ -292,6 +293,7 @@ export function NewsArticleStatic({
         </ol>
       </nav>
 
+      <div className="article-desktop-layout">
       <NewsArticleCard className="border-[color:var(--reader-page-edge)] bg-[color:var(--reader-page-elevated)]">
         <header className="news-article-header">
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -329,6 +331,8 @@ export function NewsArticleStatic({
               <Clock className="h-3.5 w-3.5" />
               {readMinutes} dk okuma
             </span>
+            {/* Desktop: ArticleReaderTools portals Dinle + Araçlar here. */}
+            <span id="article-desktop-tools" className="article-desktop-tools hidden lg:ml-auto lg:inline-flex" />
           </div>
         </header>
 
@@ -373,11 +377,19 @@ export function NewsArticleStatic({
 
           {hasBodyBlocks && articleBlocks.length > 0 && (() => {
             if (!adSlots?.mid) {
+              // Desktop "İlgili" box after the third block (hidden < lg),
+              // inside the same prose container so mobile rendering is unchanged.
+              const relatedAt = articleBlocks.length >= 5 && relatedPosts.length > 0 ? 2 : null
               return (
                 <ArticleBlocksRenderer
                   blocks={articleBlocks}
                   title={post.title}
                   longform={post.articleLayout === 'longform'}
+                  insertAfter={
+                    relatedAt != null
+                      ? { index: relatedAt, node: <ArticleInlineRelated posts={relatedPosts} /> }
+                      : undefined
+                  }
                 />
               )
             }
@@ -425,6 +437,9 @@ export function NewsArticleStatic({
                       <p>{paragraph}</p>
                       {inline && <InlineImage item={inline} title={post.title} />}
                       {midAt != null && index === midAt - 1 ? adSlots?.mid : null}
+                      {midAt == null && index === 2 && paragraphs.length >= 5 ? (
+                        <ArticleInlineRelated posts={relatedPosts} />
+                      ) : null}
                     </Fragment>
                   )
                 })}
@@ -528,6 +543,8 @@ export function NewsArticleStatic({
           )}
         </NewsArticleBody>
       </NewsArticleCard>
+      <ArticleDesktopRail latestLinks={latestLinks} />
+      </div>
 
       {/* Feed V2–aligned end recommendations (rails → related fallback). */}
       <HaberEndRecommendations

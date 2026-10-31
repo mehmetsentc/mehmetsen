@@ -143,11 +143,7 @@
     }
   }
 
-  @media (min-width: 1440px) {
-    :root {
-      --layout-newspaper-max: 1440px;
-    }
-  }
+  /* Desktop editorial grid stays 1280px on wide screens too (was 1440px). */
 
   @media (min-width: 1280px) {
     :root {
@@ -2927,28 +2923,7 @@
     color: rgb(var(--color-body));
   }
 
-  .article-prose > p:first-of-type::first-letter {
-    float: left;
-    font-family: var(--font-serif-display, Georgia, serif);
-    font-size: 3.5rem;
-    line-height: 0.85;
-    font-weight: 700;
-    padding-right: 0.5rem;
-    padding-top: 0.15rem;
-    color: rgb(var(--color-brand));
-  }
-
-  @media (max-width: 1023px) {
-    .article-prose > p:first-of-type::first-letter {
-      float: none;
-      font-size: inherit;
-      line-height: inherit;
-      font-weight: inherit;
-      padding: 0;
-      font-family: inherit;
-      color: inherit;
-    }
-  }
+  /* Drop cap removed (Oct 2026 desktop editorial redesign); mobile never had it. */
 
   .article-blocks {
     display: flex;
@@ -5972,27 +5947,10 @@ html[data-platform='tablet'] .content-main:not(.content-main-reels) {
   }
 }
 
-@media (min-width: 1440px) {
-  html:has([data-city-desktop='1']),
-  html:has([data-city-portal='1']),
-  html:has([data-city-feed-overlay='1']) {
-    --layout-newspaper-max: 1440px;
-  }
-}
+/* City desktop shares the national 1280px editorial grid (was 1440px on >= 1440). */
 
-/* City desktop nav must stay navy + white; newspaper tokens turn navy-bg cream. */
-html:has([data-city-desktop='1']) .desktop-portal-nav,
-[data-city-desktop='1'] .desktop-portal-nav {
-  background: #111827 !important;
-  color: #fff !important;
-}
-
-html:has([data-city-desktop='1']) .desktop-portal-nav__link,
-html:has([data-city-desktop='1']) .desktop-portal-nav__search,
-[data-city-desktop='1'] .desktop-portal-nav__link,
-[data-city-desktop='1'] .desktop-portal-nav__search {
-  color: #fff !important;
-}
+/* City desktop nav: same light editorial nav as nahaber.com (navy bar removed,
+   Oct 2026). Styles live in desktop-portal-layout.css → "Editorial" block. */
 
 html:has([data-city-desktop='1']) .city-masthead-city,
 html:has([data-city-desktop='1']) .city-masthead-title,

@@ -15,7 +15,7 @@ function fmt(n: number, decimals = 2) {
   })
 }
 
-function RateCard({
+function RateItem({
   label,
   value,
   change,
@@ -26,13 +26,12 @@ function RateCard({
 }) {
   const up = change >= 0
   return (
-    <article className="desktop-portal-fx-card">
-      <p className="desktop-portal-fx-card__label">{label}</p>
-      <p className="desktop-portal-fx-card__value">{value}</p>
-      <p className={`desktop-portal-fx-card__change ${up ? 'is-up' : 'is-down'}`}>
-        {up ? '▲' : '▼'} %{Math.abs(change).toFixed(2)}
-      </p>
-    </article>
+    <li>
+      <span className="ed-service-strip__muted">{label}</span> <strong>{value}</strong>{' '}
+      <span className={up ? 'is-up' : 'is-down'}>
+        {up ? '▲' : '▼'}%{Math.abs(change).toFixed(2)}
+      </span>
+    </li>
   )
 }
 
@@ -86,50 +85,33 @@ export function CityNewspaperServiceCards({
     ? conditionEmoji(weather.current.condition.code, isDay, weather.current.condition.icon)
     : '•'
 
+  // Editorial desktop: one thin service strip (weather · markets · city
+  // guide links) instead of five large cards competing with the news.
   return (
-    <section className="desktop-portal-service" aria-label="Hava ve piyasalar">
+    <section className="ed-service-strip" aria-label="Hava ve piyasalar">
       {weather ? (
-        <Link prefetch={false} href={ROUTES.WEATHER} className="desktop-portal-weather-card">
-          <p className="desktop-portal-weather-card__kicker">Hava durumu</p>
-          <p className="desktop-portal-weather-card__city" data-city-weather={citySlug}>
-            {cityName}
-          </p>
-          <div className="desktop-portal-weather-card__row">
-            <span className="desktop-portal-weather-card__emoji" aria-hidden>
-              {emoji}
-            </span>
-            <p className="desktop-portal-weather-card__temp">
-              {Math.round(weather.current.temp_c)}°
-            </p>
-          </div>
-          <p className="desktop-portal-weather-card__cond">{weather.current.condition.text}</p>
+        <Link prefetch={false} href={ROUTES.WEATHER} className="ed-service-strip__weather">
+          <span aria-hidden>{emoji}</span>
+          <strong data-city-weather={citySlug}>{cityName}</strong>
+          <span>{Math.round(weather.current.temp_c)}°</span>
+          <span className="ed-service-strip__muted">{weather.current.condition.text}</span>
         </Link>
       ) : null}
 
       {rates ? (
-        <div className="desktop-portal-service__fx" aria-label="Döviz kurları">
-          <RateCard
-            label="USD/TL"
-            value={`₺${fmt(rates.usdTry.value, 4)}`}
-            change={rates.usdTry.change}
-          />
-          <RateCard
-            label="EUR/TL"
-            value={`₺${fmt(rates.eurTry.value, 4)}`}
-            change={rates.eurTry.change}
-          />
-          <RateCard
-            label="Altın"
-            value={`₺${fmt(rates.goldTryGram.value, 0)}`}
-            change={rates.goldTryGram.change}
-          />
-          <RateCard
-            label="BIST 100"
-            value={fmt(rates.bist100.value, 2)}
-            change={rates.bist100.change}
-          />
-        </div>
+        <ul className="ed-service-strip__rates" aria-label="Döviz kurları">
+          <RateItem label="USD/TL" value={`₺${fmt(rates.usdTry.value, 2)}`} change={rates.usdTry.change} />
+          <RateItem label="EUR/TL" value={`₺${fmt(rates.eurTry.value, 2)}`} change={rates.eurTry.change} />
+          <RateItem label="Altın" value={`₺${fmt(rates.goldTryGram.value, 0)}`} change={rates.goldTryGram.change} />
+          <RateItem label="BIST 100" value={fmt(rates.bist100.value, 0)} change={rates.bist100.change} />
+        </ul>
       ) : null}
+
+      <nav className="ed-service-strip__links" aria-label="Şehir rehberi">
+        <Link prefetch={false} href="/nobetci-eczaneler">Nöbetçi eczaneler</Link>
+        <Link prefetch={false} href="/etkinlik">Etkinlikler</Link>
+        <Link prefetch={false} href="/ilceler">İlçeler</Link>
+      </nav>
     </section>
   )
 }

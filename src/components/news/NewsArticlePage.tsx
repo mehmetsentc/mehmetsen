@@ -45,6 +45,7 @@ export function NewsArticleCard({ children, className, continued }: NewsArticleC
     <article
       className={cn(
         'news-article-card overflow-hidden border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]',
+        continued && 'news-article-card--continued',
         continued
           ? 'rounded-none border-t-0 sm:rounded-b-2xl'
           : 'rounded-none sm:rounded-2xl',

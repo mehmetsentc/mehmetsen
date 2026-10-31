@@ -99,11 +99,6 @@ function SubcategoryTabs({
   )
 }
 
-const UTILITY_SOCIAL = [
-  { label: 'X', href: process.env.NEXT_PUBLIC_X_URL ?? 'https://x.com/nahabercom' },
-  { label: 'Facebook', href: process.env.NEXT_PUBLIC_FACEBOOK_URL ?? 'https://www.facebook.com/nahabercom' },
-] as const
-
 export function DesktopWebHeader({
   breakingItems = [],
   showBreaking = false,
@@ -122,9 +117,6 @@ export function DesktopWebHeader({
       : null
   const cityTenant = propTenant ?? contextTenant ?? queryTenant
   const homeHref = cityTenant ? withCityTenantHref('/', cityTenant.slug) : ROUTES.FEED
-  const editionLabel = cityTenant
-    ? `${cityTenant.displayName} dijital gazetesi`
-    : 'Dijital Gazete · Türkiye'
   const showSubTabs = Boolean(subcategories && subcategories.length > 0 && tabParent)
 
   if (variant === 'compact') {
@@ -183,32 +175,13 @@ export function DesktopWebHeader({
       <div className="nl-masthead-utility">
         <div className="nl-masthead-utility__left">
           <HeaderSidebarToggle />
-          {cityTenant ? null : (
-            <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
-          )}
+          <p className="nl-masthead-utility__meta m-0 capitalize">{formatNewsDateLong()}</p>
           <Link prefetch={false} href={ROUTES.WEATHER} className="nl-masthead-utility__meta hover:underline">
             Hava Durumu
           </Link>
         </div>
-        <p className="nl-masthead-utility__edition">{editionLabel}</p>
+        {/* Hakkımızda / İletişim / sosyal bağlantılar footer'da. */}
         <div className="nl-masthead-utility__right">
-          <Link prefetch={false} href="/hakkimizda" className="nl-masthead-utility__meta hover:underline">
-            Hakkımızda
-          </Link>
-          <Link prefetch={false} href="/iletisim" className="nl-masthead-utility__meta hover:underline">
-            İletişim
-          </Link>
-          {UTILITY_SOCIAL.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="nl-masthead-utility__meta hover:underline"
-            >
-              {item.label}
-            </a>
-          ))}
           <Link prefetch={false}
             href={ROUTES.SEARCH}
             className="flex h-8 w-8 items-center justify-center text-[rgb(var(--color-text))]/70 hover:text-[rgb(var(--color-text))]"
