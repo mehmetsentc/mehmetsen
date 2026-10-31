@@ -1691,6 +1691,12 @@ html[data-theme='oled'] .desktop-portal-manset__time {
   }
 
   [role='dialog'] .article-reader-shell .news-article-header {
-    padding-top: 4rem;
+    padding-top: 2rem;
+  }
+
+  [role='dialog'] .news-article-breadcrumb {
+    margin-top: 3.5rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
   }
 }
