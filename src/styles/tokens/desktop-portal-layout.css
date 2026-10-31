@@ -1499,6 +1499,20 @@ html[data-theme='oled'] .desktop-portal-manset__time {
     color: rgb(var(--color-text)) !important;
   }
 
+  /* Every page with the city portal header (home, article, category). */
+  .desktop-portal-nav {
+    background: rgb(var(--color-card));
+    color: rgb(var(--color-text));
+    border-top: 3px solid rgb(var(--color-text));
+    border-bottom: 1px solid rgb(var(--color-border));
+  }
+
+  .desktop-portal-nav .desktop-portal-nav__link,
+  .desktop-portal-nav .desktop-portal-nav__search,
+  .desktop-portal-nav .desktop-portal-nav__home {
+    color: rgb(var(--color-text));
+  }
+
   .desktop-portal-nav__inner {
     justify-content: center;
   }
