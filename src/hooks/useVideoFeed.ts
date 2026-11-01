@@ -73,6 +73,10 @@ export function useVideoFeed(
   const [resolvingTarget, setResolvingTarget] = useState(Boolean(targetVideoId))
 
   const lastDocRef = useRef<QueryDocumentSnapshot | null>(null)
+  // VIDEO-REEL-1: NaHaber Reels sayfası ayrı imleçle ilerler; biten kaynak yeniden sorgulanmaz.
+  const reelCursorRef = useRef<QueryDocumentSnapshot | null>(null)
+  const newsDoneRef = useRef(false)
+  const reelsDoneRef = useRef(false)
   const fetchIdRef = useRef(0)
   const isFetchingRef = useRef(false)
   const hasFetchedRef = useRef(false)
@@ -175,6 +179,9 @@ export function useVideoFeed(
 
       if (reset) {
         lastDocRef.current = null
+        reelCursorRef.current = null
+        newsDoneRef.current = false
+        reelsDoneRef.current = false
         autoFetchAllSeenRef.current = 0
         emptyVisualPageRef.current = 0
         setLoading(true)
@@ -190,7 +197,12 @@ export function useVideoFeed(
             ? await postService.getFollowingVideoFeed(userId, cursor, { surface: currentSurface })
             : isCategoryTab(mode)
               ? await postService.getVideoFeedByCategory(mode, cursor, { surface: currentSurface })
-              : await postService.getVideoFeed(cursor, { surface: currentSurface })
+              : await postService.getVideoFeed(cursor, {
+                  surface: currentSurface,
+                  reelCursor: reset ? null : reelCursorRef.current,
+                  newsDone: reset ? false : newsDoneRef.current,
+                  reelsDone: reset ? false : reelsDoneRef.current,
+                })
 
         if (fetchId !== fetchIdRef.current) return
 
@@ -198,6 +210,12 @@ export function useVideoFeed(
         if (fetchId !== fetchIdRef.current) return
 
         lastDocRef.current = result.lastDoc
+        if ('reelCursor' in result) {
+          const r = result as { reelCursor?: QueryDocumentSnapshot | null; reelHasMore?: boolean; newsHasMore?: boolean }
+          reelCursorRef.current = r.reelCursor ?? null
+          reelsDoneRef.current = !r.reelHasMore
+          newsDoneRef.current = !r.newsHasMore
+        }
         setVideos((prev) => {
           const merged = reset ? enriched : dedupePostsById([...prev, ...enriched])
           const next = partitionBySeen(merged, userId)

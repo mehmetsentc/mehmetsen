@@ -29,6 +29,7 @@ import {
   shouldUseTtsVideoFallback,
 } from '@/lib/videoFeed/selectVideoFeedPosts'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
+import { mergeVideoPages, nahaberReelUrl, withNahaberReel } from '@/lib/videoFeed/nahaberReel'
 import {
   hasNewsVideoUrl,
   mapNewsSnapshot,
@@ -46,6 +47,12 @@ const PAGE_SIZE = 10
 const REELS_PAGE_SIZE = 24
 const VIDEO_SURFACE_PAGE_SIZE = 40
 const QUERY_TIMEOUT_MS = 8_000
+/** VIDEO-REEL-1: NaHaber Reels sayfası (news.reelVideoUrl, reelUpdatedAt sırası). */
+const NAHABER_REEL_PAGE_SIZE = 20
+
+/** Video akışı için haber belgesi: NaHaber Reels'i varsa oynatılacak video odur. */
+const reelAwareDocs = (docs: QueryDocumentSnapshot[]) =>
+  docs.map((d) => ({ id: d.id, data: () => withNahaberReel(d.data() as NewsDocument) }))
 
 // ── Videos collection document (AI-generated TTS reels) ──────────────────────
 interface VideoCollectionDoc {
@@ -390,7 +397,13 @@ export const postService = {
 
   async getVideoFeed(
     lastDoc?: QueryDocumentSnapshot,
-    options?: { surface?: VideoFeedSurface }
+    options?: {
+      surface?: VideoFeedSurface
+      /** VIDEO-REEL-1: NaHaber Reels sayfalama imleci ve bitmiş kaynaklar. */
+      reelCursor?: QueryDocumentSnapshot | null
+      newsDone?: boolean
+      reelsDone?: boolean
+    }
   ) {
     const surface: VideoFeedSurface = options?.surface ?? 'reels'
     const pageSize = surface === 'video' ? VIDEO_SURFACE_PAGE_SIZE : REELS_PAGE_SIZE
@@ -402,7 +415,7 @@ export const postService = {
 
     const mapReelsDocs = (docs: QueryDocumentSnapshot[]) =>
       finalizeVideoFeedPosts(
-        mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))).filter((p) =>
+        mapNewsSnapshot(reelAwareDocs(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument)))).filter((p) =>
           isPubliclyVisibleStatus(p.status)
         ),
         surface
@@ -431,7 +444,47 @@ export const postService = {
       ],
     ]
 
-    for (let attempt = 0; attempt < queryAttempts.length; attempt++) {
+    // ── VIDEO-REEL-1: NaHaber'in ürettiği Reels videoları (reelVideoUrl) ──
+    // Tek alanlı otomatik dizin (reelUpdatedAt) — yeni Firestore dizini gerekmez.
+    let reelPosts: Post[] = []
+    let reelLastDoc: QueryDocumentSnapshot | null = options?.reelCursor ?? null
+    let reelHasMore = false
+    if (!options?.reelsDone) {
+      try {
+        const reelSnap = await withTimeout(
+          getDocs(
+            query(
+              collection(db, VIDEO_FEED_COLLECTION),
+              orderBy('reelUpdatedAt', 'desc'),
+              limit(NAHABER_REEL_PAGE_SIZE),
+              ...(options?.reelCursor ? [startAfter(options.reelCursor)] : [])
+            )
+          ),
+          QUERY_TIMEOUT_MS,
+          'getVideoFeed-nahaber-reels'
+        )
+        reelPosts = finalizeVideoFeedPosts(
+          mapNewsSnapshot(
+            reelAwareDocs(reelSnap.docs.filter((d) => !!nahaberReelUrl(d.data() as NewsDocument)))
+          ).filter((p) => isPubliclyVisibleStatus(p.status)),
+          surface
+        )
+        reelLastDoc = reelSnap.docs[reelSnap.docs.length - 1] ?? reelLastDoc
+        reelHasMore = reelSnap.docs.length >= NAHABER_REEL_PAGE_SIZE
+      } catch (reelError) {
+        console.warn('[postService] NaHaber reels page failed:', reelError)
+      }
+    }
+    const withReels = (r: { posts: Post[]; lastDoc: QueryDocumentSnapshot | null; hasMore: boolean }) => ({
+      posts: mergeVideoPages(r.posts, reelPosts),
+      lastDoc: r.lastDoc,
+      hasMore: r.hasMore || reelHasMore,
+      newsHasMore: r.hasMore,
+      reelCursor: reelLastDoc,
+      reelHasMore,
+    })
+
+    for (let attempt = 0; !options?.newsDone && attempt < queryAttempts.length; attempt++) {
       const constraints = queryAttempts[attempt]
       try {
         const snap = await withTimeout(
@@ -456,12 +509,12 @@ export const postService = {
       }
     }
 
-    if (surface === 'video' || newsPosts.length > 0 || lastDoc) {
-      return { posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore }
+    if (surface === 'video' || newsPosts.length > 0 || reelPosts.length > 0 || lastDoc || options?.newsDone) {
+      return withReels({ posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore })
     }
 
     if (!shouldUseTtsVideoFallback(surface, newsPosts.length, Boolean(lastDoc))) {
-      return { posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore }
+      return withReels({ posts: newsPosts, lastDoc: newsLastDoc, hasMore: newsHasMore })
     }
 
     // Final fallback: videos collection (AI-generated TTS audio reels) — /reels only
@@ -501,7 +554,7 @@ export const postService = {
     const pageSize = surface === 'video' ? VIDEO_SURFACE_PAGE_SIZE : REELS_PAGE_SIZE
     const mapReelsDocs = (docs: QueryDocumentSnapshot[]) =>
       finalizeVideoFeedPosts(
-        mapNewsSnapshot(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument))).filter((p) =>
+        mapNewsSnapshot(reelAwareDocs(docs.filter((d) => hasNewsVideoUrl(d.data() as NewsDocument)))).filter((p) =>
           isPubliclyVisibleStatus(p.status)
         ),
         surface
