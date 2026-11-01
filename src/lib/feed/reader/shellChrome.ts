@@ -38,8 +38,14 @@ export function isImmersiveVideoPathname(pathname: string): boolean {
   return isReelsPathname(pathname) || isPublicVideoPathname(pathname)
 }
 
-/** Desktop /video uses the newspaper masthead; mobile/tablet keep the immersive player. */
+/**
+ * VIDEO-FEED-DESKTOP-1: desktop /video is the same scrolling video feed as mobile
+ * (immersive player, swipe/wheel to the next video). The old newspaper "single
+ * player + list" layout stays available only as a rollback switch:
+ * NEXT_PUBLIC_DESKTOP_VIDEO_LAYOUT=newspaper.
+ */
 export function isNewspaperDesktopVideo(pathname: string, isDesktop: boolean): boolean {
+  if ((process.env.NEXT_PUBLIC_DESKTOP_VIDEO_LAYOUT ?? '').trim() !== 'newspaper') return false
   return isDesktop && isPublicVideoPathname(pathname)
 }
 

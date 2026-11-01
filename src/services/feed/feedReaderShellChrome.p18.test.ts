@@ -99,7 +99,8 @@ describe('shell chrome authority', () => {
   it('public /video stays distinct from /reels; mobile chrome stays off', () => {
     expect(isPublicVideoPathname('/video')).toBe(true)
     expect(isReelsPathname('/video')).toBe(false)
-    expect(isNewspaperDesktopVideo('/video', true)).toBe(true)
+    // VIDEO-FEED-DESKTOP-1: desktop /video is the scrolling feed unless rolled back.
+    expect(isNewspaperDesktopVideo('/video', true)).toBe(false)
     expect(isNewspaperDesktopVideo('/video', false)).toBe(false)
     expect(isNewspaperDesktopVideo('/reels', true)).toBe(false)
     expect(resolveSiteChromeVisible({ pathname: '/video', readerSurfaceActive: false })).toBe(
@@ -123,7 +124,7 @@ describe('shell chrome authority', () => {
     expect(header).not.toMatch(/pathname === ROUTES\.VIDEO/)
     expect(effects).not.toMatch(/pathname === ROUTES\.VIDEO/)
     expect(layout).toContain('isNewspaperDesktopVideo')
-    expect(layout).toContain("isDesktop ? 'newspaper' : 'reels'")
+    expect(layout).toContain("isNewspaperDesktopVideo(pathname, isDesktop) ? 'newspaper' : 'reels'")
   })
 
   it('MainLayoutClient wires MobileNav + top Navbar separately', () => {

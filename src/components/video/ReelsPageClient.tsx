@@ -1,5 +1,7 @@
 'use client'
 
+import { isNewspaperDesktopVideo } from '@/lib/feed/reader/shellChrome'
+import { ROUTES } from '@/constants/routes'
 import { Suspense } from 'react'
 import { VideoFeed } from '@/components/video/VideoFeed'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
@@ -34,13 +36,14 @@ function ReelsLoadingFallback({ newspaper }: { newspaper?: boolean }) {
  */
 export function ReelsPageClient({ surface = 'reels' }: { surface?: VideoFeedSurface }) {
   const { isDesktop } = usePlatformLayout()
-  const newspaperVideo = surface === 'video' && isDesktop
+  const newspaperVideo = surface === 'video' && isNewspaperDesktopVideo(ROUTES.VIDEO, isDesktop)
 
   return (
     <div
       className={cn(
         'h-full min-h-0',
-        newspaperVideo ? 'nl-video-shell' : 'dark'
+        // VIDEO-FEED-DESKTOP-1: newspaper CSS is scoped to .nl-video-newspaper (rollback layout only).
+        newspaperVideo ? 'nl-video-newspaper nl-video-shell' : 'dark'
       )}
       style={newspaperVideo ? undefined : { colorScheme: 'dark' }}
     >

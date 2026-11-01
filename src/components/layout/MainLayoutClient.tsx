@@ -58,7 +58,7 @@ type ContentVariant = 'default' | 'wide' | 'newspaper' | 'reels' | 'messages'
 
 function getContentVariant(pathname: string, isDesktop: boolean): ContentVariant {
   if (isReelsPathname(pathname) || isFeedV2Pathname(pathname)) return 'reels'
-  if (isPublicVideoPathname(pathname)) return isDesktop ? 'newspaper' : 'reels'
+  if (isPublicVideoPathname(pathname)) return isNewspaperDesktopVideo(pathname, isDesktop) ? 'newspaper' : 'reels'
   if (pathname.startsWith('/messages')) return 'messages'
   if (pathname.startsWith('/admin')) return 'default'
   if (pathname.startsWith('/publisher-studio') || pathname.startsWith('/advertiser')) return 'default'

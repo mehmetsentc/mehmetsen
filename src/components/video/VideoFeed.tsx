@@ -1,5 +1,6 @@
 'use client'
 
+import { isNewspaperDesktopVideo } from '@/lib/feed/reader/shellChrome'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
@@ -42,7 +43,7 @@ export function VideoFeed({ surface = 'reels' }: { surface?: VideoFeedSurface })
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { isDesktop } = usePlatformLayout()
-  const newspaperVideo = surface === 'video' && isDesktop
+  const newspaperVideo = surface === 'video' && isNewspaperDesktopVideo(ROUTES.VIDEO, isDesktop)
   const targetVideoId = searchParams.get('v')
   const [feedTab, setFeedTab] = useState<ReelsFeedTab>('for-you')
   const [unusableIds, setUnusableIds] = useState<Set<string>>(() => new Set())
