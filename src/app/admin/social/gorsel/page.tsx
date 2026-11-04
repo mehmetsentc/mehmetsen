@@ -125,15 +125,15 @@ export default function SosyalGorselPage() {
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
 
       {/* ── Left: article list ── */}
-      <div className="flex w-80 shrink-0 flex-col border-r border-white/10">
+      <div className="flex w-80 shrink-0 flex-col border-r border-[rgb(var(--color-border))]">
         {/* Header */}
-        <div className="border-b border-white/10 p-4">
+        <div className="border-b border-[rgb(var(--color-border))] p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white">Son 48 Saat</h2>
+            <h2 className="text-sm font-bold text-[rgb(var(--color-text))]">Son 48 Saat</h2>
             <button
               onClick={() => void load()}
               disabled={loading}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-1.5 text-[rgb(var(--color-muted))] hover:bg-white/10 hover:text-[rgb(var(--color-text))]"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -154,7 +154,7 @@ export default function SosyalGorselPage() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-[10px] text-[rgb(var(--color-muted))]">
             {filtered.length} Çanakkale haberi · görsel hazır
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function SosyalGorselPage() {
         <div className="flex-1 overflow-y-auto">
           {loading && (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-[rgb(var(--color-muted))]" />
             </div>
           )}
           {!loading && filtered.map((a) => (
@@ -189,11 +189,11 @@ export default function SosyalGorselPage() {
               </div>
               {/* Info */}
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-[11px] font-medium leading-snug text-white">
+                <p className="line-clamp-2 text-[11px] font-medium leading-snug text-[rgb(var(--color-text))]">
                   {a.title}
                 </p>
                 <span
-                  className="mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                  className="mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[rgb(var(--color-text))]"
                   style={{ backgroundColor: CAT_COLOR[a.categoryId] ?? '#3b82f6' }}
                 >
                   {CAT_LABEL[a.categoryId] ?? a.categoryId}
@@ -207,7 +207,7 @@ export default function SosyalGorselPage() {
       {/* ── Right: preview pane ── */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto p-8">
         {!selectedId && (
-          <div className="text-center text-slate-500">
+          <div className="text-center text-[rgb(var(--color-muted))]">
             <ImageIcon className="mx-auto mb-3 h-12 w-12 opacity-20" />
             <p className="text-sm">Sol listeden bir haber seçin</p>
             <p className="mt-1 text-xs opacity-60">
@@ -234,9 +234,9 @@ export default function SosyalGorselPage() {
 
             {/* Title */}
             <div className="max-w-sm text-center">
-              <p className="text-sm font-semibold text-white">{selected.title}</p>
+              <p className="text-sm font-semibold text-[rgb(var(--color-text))]">{selected.title}</p>
               <span
-                className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold text-white"
+                className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold text-[rgb(var(--color-text))]"
                 style={{ backgroundColor: CAT_COLOR[selected.categoryId] ?? '#3b82f6' }}
               >
                 {CAT_LABEL[selected.categoryId] ?? selected.categoryId}
@@ -259,7 +259,7 @@ export default function SosyalGorselPage() {
                 href={ogUrl(selected.id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-[rgb(var(--color-text))] hover:bg-white/15 transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 Tam boyut aç
@@ -267,7 +267,7 @@ export default function SosyalGorselPage() {
             </div>
 
             {/* Info chips */}
-            <div className="flex gap-3 text-xs text-slate-500">
+            <div className="flex gap-3 text-xs text-[rgb(var(--color-muted))]">
               <span>1080 × 1350 px</span>
               <span>·</span>
               <span>4:5</span>

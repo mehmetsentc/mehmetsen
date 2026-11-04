@@ -47,7 +47,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/admin/approvals', label: 'Onay Kuyruğu', icon: Clock, perm: 'news:read' },
       { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, perm: 'news:read' },
       { href: '/admin/inbox', label: 'Mail Kutusu', icon: Mail, perm: 'news:read' },
-      { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, perm: 'news:read' },
+      { href: '/admin/submissions', label: 'Okur Haberleri', icon: Inbox, perm: 'news:read' },
       { href: '/admin/job-classifieds', label: 'İş Kariyer', icon: Briefcase, perm: 'news:publish' },
       { href: '/admin/archive', label: 'Arşiv', icon: Archive, perm: 'news:read' },
       { href: '/admin/videos', label: 'Videolar', icon: Video, perm: 'video:read' },

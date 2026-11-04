@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
-import { AlertCircle, ArrowDownToLine, LayoutGrid, Plus, Search, Settings } from 'lucide-react'
+import { AlertCircle, ArrowDownToLine, Clapperboard, LayoutGrid, Plus, Search, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { STUDIO_NAV, isStudioNavActive } from '@/media-studio/routes'
 import { sessionSummary } from '@/media-studio/session'
@@ -13,11 +13,21 @@ import { focusRing } from './styles'
 import { useStudioActions } from './studioActions'
 import { useStudioLinks } from './studioLinks'
 
+const RAIL_SHORT: Record<string, string> = {
+  'Yeni İndirme': 'Yeni',
+  İndirmeler: 'İşler',
+  Kütüphane: 'Kütüphane',
+  Başarısız: 'Hatalar',
+  'Seslendirme & Reels': 'Reels',
+  Ayarlar: 'Ayarlar',
+}
+
 const RAIL_ICON: Record<string, LucideIcon> = {
   '/admin/media-studio': Plus,
   '/admin/media-studio/jobs': ArrowDownToLine,
   '/admin/media-studio/library': LayoutGrid,
   '/admin/media-studio/failed': AlertCircle,
+  '/admin/media-studio/reels': Clapperboard,
   '/admin/media-studio/settings': Settings,
 }
 
@@ -47,7 +57,7 @@ export function MediaStudioShell({
   return (
     <div className="flex min-h-full min-w-0 bg-[rgb(var(--color-bg))]">
       <nav
-        className="sticky top-0 z-20 hidden h-screen w-[72px] shrink-0 flex-col items-center border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-4 md:flex"
+        className="sticky top-0 z-20 hidden h-screen w-[76px] shrink-0 flex-col items-center border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] py-4 md:flex"
         aria-label="Medya Stüdyosu"
       >
         <Link prefetch={false}
@@ -152,7 +162,8 @@ function RailLink({
       aria-label={label}
       title={label}
       className={cn(
-        'group relative flex h-11 w-11 items-center justify-center rounded-xl',
+        // ADMIN-UX-1: every rail entry shows its name (no more unlabeled / duplicate «+» icons)
+        'group relative flex w-14 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5',
         focusRing,
         active
           ? 'bg-[rgb(var(--color-brand))] text-white'
@@ -160,7 +171,8 @@ function RailLink({
       )}
     >
       <Icon className="h-5 w-5" aria-hidden="true" />
-      <span className="pointer-events-none absolute left-14 z-30 hidden whitespace-nowrap rounded-lg bg-[rgb(var(--color-text))] px-2 py-1 text-xs font-medium text-[rgb(var(--color-bg))] group-hover:block">
+      <span className="max-w-full truncate text-[9.5px] font-semibold leading-tight">{RAIL_SHORT[label] ?? label}</span>
+      <span className="pointer-events-none absolute left-16 z-30 hidden whitespace-nowrap rounded-lg bg-[rgb(var(--color-text))] px-2 py-1 text-xs font-medium text-[rgb(var(--color-bg))] group-hover:block">
         {label}
       </span>
     </Link>

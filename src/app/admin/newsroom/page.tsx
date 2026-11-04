@@ -196,7 +196,7 @@ export default function NewsroomPage() {
           ].map(s => {
             const Icon = s.icon
             return (
-              <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div key={s.label} className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-[rgb(var(--color-muted))]">{s.label}</p>
                   <Icon className={cn('h-3.5 w-3.5', s.color)} />
@@ -270,7 +270,7 @@ export default function NewsroomPage() {
                       </span>
                     </div>
                     <div className="mt-3">
-                      <p className="text-sm font-bold text-white">{agent.name}</p>
+                      <p className="text-sm font-bold text-[rgb(var(--color-text))]">{agent.name}</p>
                       <p className="text-[11px] text-[rgb(var(--color-muted))]">{agent.role || 'Birincil haber motoru'}</p>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-[10px] text-[rgb(var(--color-muted))]">
@@ -283,12 +283,12 @@ export default function NewsroomPage() {
                   </div>
                 )
               })}
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 opacity-80">
+              <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-4 opacity-80">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-blue-300">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div className="mt-3">
-                  <p className="text-sm font-bold text-white">Gemini</p>
+                  <p className="text-sm font-bold text-[rgb(var(--color-text))]">Gemini</p>
                   <p className="text-[11px] text-[rgb(var(--color-muted))]">
                     Opsiyonel — varsayılan kapalı (maliyet). Yalnızca LIVE_RESEARCH / vision bayrakları açıkken.
                   </p>
@@ -298,7 +298,7 @@ export default function NewsroomPage() {
             </div>
 
             {/* Pipeline flow diagram — matches live DeepSeek-first architecture */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5">
               <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Pipeline Akışı</p>
               <div className="flex flex-wrap items-center gap-2">
                 {[
@@ -310,7 +310,7 @@ export default function NewsroomPage() {
                 ].map((step, i, arr) => (
                   <div key={step.label} className="flex items-center gap-2">
                     <div className={cn('rounded-lg border border-white/10 px-3 py-2 text-center text-xs', step.color)}>
-                      <p className="font-bold text-white">{step.label}</p>
+                      <p className="font-bold text-[rgb(var(--color-text))]">{step.label}</p>
                       {step.sub && <p className="text-[10px] text-[rgb(var(--color-muted))]">{step.sub}</p>}
                     </div>
                     {i < arr.length - 1 && <ChevronRight className="h-3 w-3 text-[rgb(var(--color-muted))]" />}
@@ -324,7 +324,7 @@ export default function NewsroomPage() {
             </div>
 
             {/* Queue chart */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5">
               <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Kuyruk Durumu</p>
               <div className="grid grid-cols-5 gap-3 text-center">
                 {[
@@ -363,9 +363,9 @@ export default function NewsroomPage() {
             {loading.queue ? (
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" /></div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-white/10">
+              <div className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
                 <table className="w-full text-sm">
-                  <thead className="border-b border-white/10 bg-white/5">
+                  <thead className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-[rgb(var(--color-muted))]">Haber</th>
                       <th className="hidden px-4 py-3 text-left text-xs font-semibold text-[rgb(var(--color-muted))] sm:table-cell">Kaynak</th>
@@ -375,13 +375,13 @@ export default function NewsroomPage() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-[rgb(var(--color-muted))]">İşlem</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-[rgb(var(--color-border))]">
                     {queue.length === 0 ? (
                       <tr><td colSpan={6} className="py-10 text-center text-[rgb(var(--color-muted))]">Kuyruk boş</td></tr>
                     ) : queue.map(item => (
-                      <tr key={item.id} className="hover:bg-white/5">
+                      <tr key={item.id} className="hover:bg-[rgb(var(--color-surface))]">
                         <td className="px-4 py-3">
-                          <p className="line-clamp-2 text-xs font-medium text-white">{item.originalTitle}</p>
+                          <p className="line-clamp-2 text-xs font-medium text-[rgb(var(--color-text))]">{item.originalTitle}</p>
                           <p className="mt-0.5 text-[10px] text-[rgb(var(--color-muted))]">
                             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: tr })}
                           </p>
@@ -448,11 +448,11 @@ export default function NewsroomPage() {
             {loading.logs ? (
               <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" /></div>
             ) : (
-              <div className="rounded-xl border border-white/10 bg-black/30 font-mono text-xs">
+              <div className="rounded-xl border border-[rgb(var(--color-border))] bg-black/30 font-mono text-xs">
                 {logs.length === 0 ? (
                   <p className="py-10 text-center text-[rgb(var(--color-muted))]">Log bulunamadı</p>
                 ) : logs.map(log => (
-                  <div key={log.id} className="flex items-start gap-3 border-b border-white/5 px-4 py-2 hover:bg-white/5">
+                  <div key={log.id} className="flex items-start gap-3 border-b border-[rgb(var(--color-border))] px-4 py-2 hover:bg-[rgb(var(--color-surface))]">
                     <span className={cn('mt-0.5 shrink-0 font-bold uppercase', LOG_COLORS[log.level] ?? 'text-white')}>
                       [{log.level.toUpperCase()}]
                     </span>
@@ -476,8 +476,8 @@ export default function NewsroomPage() {
         {/* ── Pipeline Tab ─────────────────────────────────────────────── */}
         {tab === 'pipeline' && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-              <p className="mb-4 text-sm font-semibold text-white">Manuel Pipeline Tetikleyici</p>
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-6">
+              <p className="mb-4 text-sm font-semibold text-[rgb(var(--color-text))]">Manuel Pipeline Tetikleyici</p>
               <p className="mb-4 text-xs text-[rgb(var(--color-muted))]">
                 Bu buton bekleyen kuyruk öğelerini anında işler (maks. 5 haber/çalışma).
                 Kuyruğa haber eklemek için newsroom cron'larından birini tetikleyin.
@@ -493,7 +493,7 @@ export default function NewsroomPage() {
             </div>
 
             {/* Cron schedule info */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+            <div className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-5">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[rgb(var(--color-muted))]">Otomatik Cron</p>
               <div className="space-y-2">
                 {[
@@ -501,7 +501,7 @@ export default function NewsroomPage() {
                   { path: '/api/cron/social', schedule: 'Her 5 dakika', desc: 'Facebook + Instagram paylaşımı' },
                   { path: '/api/cron/newsroom/ingest', schedule: 'Her 10 dakika', desc: 'RSS kaynak toplama' },
                 ].map(cron => (
-                  <div key={cron.path} className="flex items-start gap-3 rounded-lg bg-white/5 px-3 py-2">
+                  <div key={cron.path} className="flex items-start gap-3 rounded-lg bg-[rgb(var(--color-surface))] px-3 py-2">
                     <Activity className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
                     <div className="min-w-0 flex-1">
                       <code className="text-[11px] text-emerald-300">{cron.path}</code>

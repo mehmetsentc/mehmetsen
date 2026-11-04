@@ -51,3 +51,34 @@ export function useSocialNetwork() {
 
   return { accounts, rules, records, byProvince, loading, error, reload: load }
 }
+
+/**
+ * ADMIN-UX-1: the one definition of «il hazır» for summary cards (Dashboard), so the
+ * Dashboard, İl Ağı and the SMM map no longer show three different numbers.
+ * Reads only the accounts list (one call): connected = an il has ≥ 1 province account,
+ * ready = ≥ 1 of them is active with no publish blocker.
+ */
+export function useProvinceReach() {
+  const [accounts, setAccounts] = useState<SocialAccountRow[] | null>(null)
+  useEffect(() => {
+    let live = true
+    void socialApi<{ accounts: SocialAccountRow[] }>('/api/social/accounts').then((a) => {
+      if (live) setAccounts(a.ok ? a.data.accounts : [])
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  return useMemo(() => {
+    if (!accounts) return { loading: true, connected: 0, ready: 0, readySlugs: new Set<string>() }
+    const connected = new Set<string>()
+    const readySlugs = new Set<string>()
+    for (const a of accounts) {
+      const slug = a.ownerKind === 'province' ? a.ownership.citySlug : null
+      if (!slug) continue
+      connected.add(slug)
+      if (a.status === 'active' && !a.health.publishBlocker) readySlugs.add(slug)
+    }
+    return { loading: false, connected: connected.size, ready: readySlugs.size, readySlugs }
+  }, [accounts])
+}

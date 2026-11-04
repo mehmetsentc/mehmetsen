@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { CalendarDays, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
@@ -297,16 +298,9 @@ export default function AdminEventsPage() {
   )
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[rgb(var(--color-text))]">Event Yönetimi</h1>
-        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Etkinlik ekle, düzenle, listele ve sil. Sağlayıcı kayıtları iptal edilir; manuel kayıtlar
-          silinir.
-        </p>
-      </div>
-
-      <div className="mb-8 max-w-sm">
+    <AdminOsPageShell title="Etkinlikler" subtitle="Etkinlik ekle, düzenle, listele ve sil. Sağlayıcı kayıtları iptal edilir; manuel kayıtlar silinir.">
+    <div>
+      <div className="mb-6 max-w-sm">
         <StatsCard
           title="Toplam Etkinlik"
           value={count ?? '…'}
@@ -598,5 +592,6 @@ export default function AdminEventsPage() {
         </table>
       </div>
     </div>
+    </AdminOsPageShell>
   )
 }

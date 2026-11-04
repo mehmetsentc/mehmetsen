@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
@@ -915,11 +916,10 @@ export default function CanonicalDraftRightsPage() {
     progress.published === 0
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
+    <AdminOsPageShell title={RIGHTS_PAGE.title} subtitle={RIGHTS_PAGE.subtitle}>
+    <div className="mx-auto max-w-5xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold text-zinc-900">{RIGHTS_PAGE.title}</h1>
-        <p className="mt-2 text-sm text-zinc-700">{RIGHTS_PAGE.subtitle}</p>
-        <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           {RIGHTS_PAGE.rightsVsPublish}
         </p>
 
@@ -1107,6 +1107,7 @@ export default function CanonicalDraftRightsPage() {
         </section>
       ))}
     </div>
+    </AdminOsPageShell>
   )
 }
 

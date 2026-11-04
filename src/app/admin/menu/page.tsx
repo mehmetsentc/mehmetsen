@@ -1,23 +1,21 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MobileMenu } from '@/components/admin/mobile/MobileMenu'
 import { useIsMobileAdminViewport } from '@/hooks/useIsMobileAdminViewport'
 
 export default function AdminMenuPage() {
   const isMobile = useIsMobileAdminViewport()
+  const router = useRouter()
 
-  if (isMobile === null) {
-    return <div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>
-  }
+  // ADMIN-UX-1: on a wide screen the sidebar is the menu — go to the dashboard instead of an empty page
+  useEffect(() => {
+    if (isMobile === false) router.replace('/admin')
+  }, [isMobile, router])
 
   if (!isMobile) {
-    return (
-      <div className="p-8">
-        <p className="text-sm text-[rgb(var(--color-muted))]">
-          Menü mobil navigasyon içindir. Sol kenar çubuğunu kullanın.
-        </p>
-      </div>
-    )
+    return <div className="p-4 text-sm text-[rgb(var(--color-muted))]">Yükleniyor…</div>
   }
 
   return <MobileMenu />

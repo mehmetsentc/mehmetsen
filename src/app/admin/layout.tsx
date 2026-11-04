@@ -36,9 +36,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <IsolateAdminFromNewspaperTheme />
       <AdminGuard>
         <MobileAdminProvider>
-          <div className="admin-shell flex h-screen min-w-0 overflow-hidden bg-[rgb(var(--color-bg))]">
+          <div className="admin-shell flex h-screen min-w-0 supports-[height:100dvh]:h-[100dvh] overflow-hidden bg-[rgb(var(--color-bg))]">
             <div className="hidden lg:block">
-              <Suspense fallback={<div className="h-screen w-[248px] bg-[rgb(var(--admin-sidebar))]" />}>
+              <Suspense fallback={<div className="h-screen w-[72px] bg-[rgb(var(--admin-sidebar))] xl:w-[248px]" />}>
                 <CMSSidebar />
               </Suspense>
             </div>

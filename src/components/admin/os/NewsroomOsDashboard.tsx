@@ -1,5 +1,6 @@
 'use client'
 
+import { useProvinceReach } from '@/components/admin/social/useSocialNetwork'
 import Link from 'next/link'
 import {
   Activity,
@@ -260,7 +261,7 @@ export function NewsroomOsDashboard({
   healthChecks?: Array<{ id: string; label: string; status: string; detail: string; href?: string }>
 }) {
   const dash = (v: number | string) => (loading ? '–' : v)
-  const smmOk = stats.smmActive > 0 && stats.smmActive >= Math.min(stats.smmTotal, 81)
+  const reach = useProvinceReach()
 
   return (
     <div className="space-y-4 p-4 sm:p-5 lg:p-6">
@@ -294,13 +295,14 @@ export function NewsroomOsDashboard({
           hint={stats.totalReads == null ? 'Analitik bağlanınca' : undefined}
         />
         <KpiCard title="Toplam Kullanıcı" value={dash(stats.totalUsers)} icon={Users} href="/admin/users" />
+        {/* ADMIN-UX-1: same definition as İl Ağı (real connected accounts), not the AI-agent seed count */}
         <KpiCard
-          title="81 İl SMM Durumu"
-          value={loading ? '–' : `${stats.smmActive}/${stats.smmTotal || 81}`}
+          title="İl Ağı"
+          value={reach.loading ? '–' : `${reach.ready}/81`}
           icon={Map}
-          href="/admin/smm"
-          tone={smmOk ? 'success' : 'neutral'}
-          hint={stats.smmActive === 0 ? 'Seed bekleniyor' : smmOk ? 'Aktif' : 'Kısmi aktif'}
+          href="/admin/social/network"
+          tone={reach.ready > 0 ? 'success' : 'neutral'}
+          hint={reach.loading ? undefined : `il yayına hazır · ${reach.connected} ilde hesap bağlı`}
         />
       </section>
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { TableSkeleton } from '@/components/admin/ui/TableSkeleton'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -65,6 +66,7 @@ interface ClusterRow {
 
 export default function CrawlerClustersPage() {
   const [rows, setRows] = useState<ClusterRow[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hours, setHours] = useState('24')
   const [country, setCountry] = useState('')
@@ -107,10 +109,12 @@ export default function CrawlerClustersPage() {
       setError(result.error)
       // Do not fake empty success — leave previous rows or clear without claiming 0.
       setRows([])
+      setLoaded(true)
       setTotal(-1)
       return
     }
     setRows((result.data.clusters || []) as ClusterRow[])
+    setLoaded(true)
     setTotal(Number(result.data.total ?? 0))
     setTotalPages(Number(result.data.totalPages || 1))
   }, [hours, country, city, eligibility, decision, minSources, page, pageSize])
@@ -209,7 +213,8 @@ export default function CrawlerClustersPage() {
           Arşivle
         </button>
       </BulkToolbar>
-      <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
+      {!loaded && !error ? <TableSkeleton rows={10} cols={8} /> : null}
+      <div className={loaded ? 'overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]' : 'hidden'}>
         <table className="min-w-full text-left text-sm">
           <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase text-[rgb(var(--color-muted))]">
             <tr>

@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import { AdminCommandPalette, useAdminCommandHotkey } from '@/components/admin/AdminCommandPalette'
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
+import { AdminSectionTabs } from '@/components/admin/AdminSectionTabs'
 import { countVisiblePendingApprovals, isDuplicateNewsData } from '@/services/adminNewsService'
 
 const SEEN_KEY = 'cms_notif_seen_at'
@@ -291,6 +292,7 @@ export function CMSHeader({ title, subtitle, actions }: CMSHeaderProps) {
           ) : null}
         </div>
       </header>
+      <AdminSectionTabs />
 
       <AdminCommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
     </>

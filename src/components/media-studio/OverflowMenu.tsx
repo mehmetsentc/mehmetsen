@@ -1,52 +1,33 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
+import { AnchoredMenu } from '@/components/admin/ui/AnchoredMenu'
 import { focusRing } from './styles'
 
 export const overflowItemClass = `flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] ${focusRing}`
 
+/** ADMIN-UX-1: portal menu (never clipped by the card / last row), bottom sheet on phones. */
 export function OverflowMenu({ label = 'Diğer işlemler', children }: { label?: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('mousedown', onPointer)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onPointer)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
+  const btn = useRef<HTMLButtonElement>(null)
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="relative shrink-0">
       <button
+        ref={btn}
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={label}
-        className={`flex h-8 w-8 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] ${focusRing}`}
+        className={`flex h-8 w-8 items-center justify-center rounded-lg text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] max-md:h-11 max-md:w-11 ${focusRing}`}
         onClick={() => setOpen((value) => !value)}
       >
         <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
       </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 z-30 mt-1 min-w-44 rounded-xl bg-[rgb(var(--color-card))] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)] ring-1 ring-[rgb(var(--color-border))]"
-          onClick={() => setOpen(false)}
-        >
-          {children}
-        </div>
-      ) : null}
+      <AnchoredMenu anchorRef={btn} open={open} onClose={() => setOpen(false)} width={208} title={label} className="p-1">
+        <div onClick={() => setOpen(false)}>{children}</div>
+      </AnchoredMenu>
     </div>
   )
 }

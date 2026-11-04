@@ -156,7 +156,7 @@ export default function AiTasksPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
         </div>
       ) : error ? (
         <AdminOsErrorState description={error} onRetry={() => void load()} />
@@ -166,9 +166,9 @@ export default function AiTasksPage() {
           description="Pipeline aşamaları görev ürettikçe burada listelenir. Fact Check veya Çanakkale SMM Generate ile örnek görev oluşturabilirsiniz."
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10">
+        <div className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-[11px] uppercase tracking-wide text-slate-500">
+            <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
               <tr>
                 <th className="px-4 py-3">Tip</th>
                 <th className="px-4 py-3">Atanan</th>
@@ -178,27 +178,27 @@ export default function AiTasksPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[rgb(var(--color-border))]">
               {tasks.map((t) => (
-                <tr key={t.id} className="hover:bg-white/[0.03]">
-                  <td className="px-4 py-3 font-semibold text-white">{t.type}</td>
-                  <td className="px-4 py-3 text-slate-300">{t.assignedAgentId ?? t.assignedHumanId ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{t.priority}</td>
+                <tr key={t.id} className="hover:bg-[rgb(var(--color-surface))]">
+                  <td className="px-4 py-3 font-semibold text-[rgb(var(--color-text))]">{t.type}</td>
+                  <td className="px-4 py-3 text-[rgb(var(--color-text))]">{t.assignedAgentId ?? t.assignedHumanId ?? '—'}</td>
+                  <td className="px-4 py-3 text-[rgb(var(--color-muted))]">{t.priority}</td>
                   <td className="px-4 py-3">
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
-                        t.status === 'COMPLETED' && 'bg-emerald-500/15 text-emerald-300',
-                        t.status === 'FAILED' && 'bg-red-500/15 text-red-300',
-                        t.status === 'NEEDS_HUMAN' && 'bg-amber-500/15 text-amber-300',
-                        t.status === 'PENDING' && 'bg-slate-500/20 text-slate-300',
-                        t.status === 'PROCESSING' && 'bg-blue-500/15 text-blue-300'
+                        t.status === 'COMPLETED' && 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                        t.status === 'FAILED' && 'bg-red-500/15 text-red-700 dark:text-red-300',
+                        t.status === 'NEEDS_HUMAN' && 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+                        t.status === 'PENDING' && 'bg-slate-500/15 text-slate-700 dark:text-slate-300',
+                        t.status === 'PROCESSING' && 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
                       )}
                     >
                       {t.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{t.newsId ?? '—'}</td>
+                  <td className="px-4 py-3 text-[rgb(var(--color-muted))]">{t.newsId ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {t.status === 'PENDING' || t.status === 'PROCESSING' ? (
                       <button

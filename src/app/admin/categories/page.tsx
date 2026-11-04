@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { Info, Folder } from 'lucide-react'
@@ -21,13 +22,11 @@ export default function AdminCategoriesPage() {
   )
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <header>
-        <h1 className="text-2xl font-black text-[rgb(var(--color-text))]">Kategoriler</h1>
-        <p className="mt-1 text-sm text-[rgb(var(--color-muted))]">
-          Tek kaynak: <code className="rounded bg-[rgb(var(--color-surface))] px-1.5 py-0.5 text-xs">src/constants/config.ts</code>
-        </p>
-      </header>
+    <AdminOsPageShell
+      title="Kategoriler"
+      subtitle="Salt okunur — kategoriler kodda tanımlı (src/constants/config.ts)"
+      actions={<span className="hidden rounded-full border border-[rgb(var(--color-border))] px-2.5 py-1 text-[11px] font-semibold text-[rgb(var(--color-muted))] lg:inline">Salt okunur</span>}
+    >
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300 flex gap-3">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
@@ -96,6 +95,6 @@ export default function AdminCategoriesPage() {
           </tbody>
         </table>
       </div>
-    </div>
+    </AdminOsPageShell>
   )
 }

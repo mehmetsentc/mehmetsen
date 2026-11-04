@@ -103,13 +103,14 @@ function BarRow({ label, value, max, color = 'bg-blue-500' }: { label: string; v
   )
 }
 
-function KpiCard({ label, value, icon: Icon, color }: { label: string; value: string; icon: React.ElementType; color: string }) {
+function KpiCard({ label, value, icon: Icon, color, hint }: { label: string; value: string; icon: React.ElementType; color: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--color-muted))]">{label}</p>
           <p className={cn('mt-1 text-2xl font-black tabular-nums', color)}>{value}</p>
+          {hint ? <p className="mt-0.5 text-[11px] text-[rgb(var(--color-muted))]">{hint}</p> : null}
         </div>
         <Icon className={cn('h-5 w-5 mt-0.5', color)} />
       </div>
@@ -215,6 +216,7 @@ export default function AnalyticsPage() {
   const osEntries = Object.entries(data?.os ?? {}).sort((a, b) => b[1] - a[1])
   const maxOs = Math.max(...osEntries.map(e => e[1]), 1)
 
+  const trafficPaused = !!data && (data.totalViews ?? 0) === 0 && (data.sessions ?? 0) === 0 && (data.uniqueVisitors ?? 0) === 0
   return (
     <div className="flex flex-col">
       <CMSHeader
@@ -248,24 +250,31 @@ export default function AnalyticsPage() {
       <div className="p-6 space-y-6">
 
         {!loading && !data && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-200">
             Analitik verisi yüklenemedi. Oturumunuzun açık olduğundan emin olun ve yenileyin.
           </div>
         )}
 
         {!loading && data && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            Canlı analitik toplama Firebase per-pageview yazımı olarak duraklatıldı
-            (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
-            Yeni mimari Neon buffer → saatlik/günlük aggregate; CMS yalnız aggregate okur.
-            Production ingest kapalı (<code className="text-[11px]">ANALYTICS_NEON_INGEST_ENABLED=false</code>).
-            Maliyet modeli: 10K/100K/1M sayfa görüntüleme için Neon buffer yazma tahmini; fiyat yoksa COST_UNKNOWN (asla $0 varsayılmaz).
-            Haber başına{' '}
-            <code className="text-[11px]">viewsCount</code> ise hafif sayaç ile güncellenir
-            (<code className="text-[11px]">/api/news/view</code>, oturum başına en fazla 1 yazma) —
-            Admin → Haberler listesinde görünür; canlı trafik paneli değildir.
-            Eski günler için <strong>7 Gün</strong> veya <strong>30 Gün</strong> filtresini deneyin.
-          </div>
+          // ADMIN-UX-1: one readable line; the technical detail is folded away
+          <details className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+            <summary className="cursor-pointer font-semibold">
+              Canlı trafik toplama şu an kapalı (maliyet nedeniyle). Haber başına okunma sayıları çalışıyor.
+            </summary>
+            <div className="mt-2 space-y-1 text-[13px] leading-relaxed">
+              <p>
+                Firebase per-pageview yazımı duraklatıldı (<code className="text-[11px]">/api/analytics/track</code> → cost-pause).
+                Yeni mimari Neon buffer → saatlik/günlük aggregate; CMS yalnız aggregate okur. Production ingest kapalı
+                (<code className="text-[11px]">ANALYTICS_NEON_INGEST_ENABLED=false</code>). Maliyet modeli: 10K/100K/1M sayfa
+                görüntüleme için Neon buffer yazma tahmini; fiyat yoksa COST_UNKNOWN (asla $0 varsayılmaz).
+              </p>
+              <p>
+                Haber başına <code className="text-[11px]">viewsCount</code> hafif sayaç ile güncellenir
+                (<code className="text-[11px]">/api/news/view</code>, oturum başına en fazla 1 yazma) — Admin → Haberler listesinde
+                görünür; canlı trafik paneli değildir. Eski günler için <strong>7 Gün</strong> veya <strong>30 Gün</strong> filtresini deneyin.
+              </p>
+            </div>
+          </details>
         )}
 
         {/* KPIs */}
@@ -273,9 +282,10 @@ export default function AnalyticsPage() {
           {loading
             ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-[rgb(var(--color-card))]" />)
             : <>
-              <KpiCard label="Sayfa Görüntülenme" value={(data?.totalViews ?? 0).toLocaleString('tr-TR')} icon={Eye} color="text-blue-600" />
-              <KpiCard label="Tekil Ziyaretçi" value={(data?.uniqueVisitors ?? 0).toLocaleString('tr-TR')} icon={Users} color="text-cyan-600" />
-              <KpiCard label="Oturum" value={(data?.sessions ?? 0).toLocaleString('tr-TR')} icon={Activity} color="text-emerald-600" />
+              {/* ADMIN-UX-1: while collecting is paused, «Kapalı» — never a misleading 0 */}
+              <KpiCard label="Sayfa Görüntülenme" value={trafficPaused ? 'Kapalı' : (data?.totalViews ?? 0).toLocaleString('tr-TR')} hint={trafficPaused ? 'toplama duraklatıldı' : undefined} icon={Eye} color={trafficPaused ? 'text-[rgb(var(--color-muted))]' : 'text-blue-600'} />
+              <KpiCard label="Tekil Ziyaretçi" value={trafficPaused ? 'Kapalı' : (data?.uniqueVisitors ?? 0).toLocaleString('tr-TR')} hint={trafficPaused ? 'toplama duraklatıldı' : undefined} icon={Users} color={trafficPaused ? 'text-[rgb(var(--color-muted))]' : 'text-cyan-600'} />
+              <KpiCard label="Oturum" value={trafficPaused ? 'Kapalı' : (data?.sessions ?? 0).toLocaleString('tr-TR')} hint={trafficPaused ? 'toplama duraklatıldı' : undefined} icon={Activity} color={trafficPaused ? 'text-[rgb(var(--color-muted))]' : 'text-emerald-600'} />
               <KpiCard label="Kayıtlı Kullanıcı" value={(data?.totalUsers ?? 0).toLocaleString('tr-TR')} icon={UserRound} color="text-amber-600" />
               <KpiCard label="Yayınlanan Haber" value={(data?.totalPosts ?? 0).toLocaleString('tr-TR')} icon={Newspaper} color="text-purple-600" />
             </>
@@ -283,9 +293,9 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <KpiCard label="Ort. Sayfada Kalma" value={formatDuration(data?.averageDurationMs ?? 0)} icon={Clock3} color="text-indigo-600" />
-          <KpiCard label="Ort. Kaydırma" value={`${data?.averageScrollDepth ?? 0}%`} icon={MousePointer2} color="text-fuchsia-600" />
-          <KpiCard label="Hemen Çıkma" value={`${data?.bounceRate ?? 0}%`} icon={ExternalLink} color="text-rose-600" />
+          <KpiCard label="Ort. Sayfada Kalma" value={trafficPaused ? '—' : formatDuration(data?.averageDurationMs ?? 0)} icon={Clock3} color="text-indigo-600" />
+          <KpiCard label="Ort. Kaydırma" value={trafficPaused ? '—' : `${data?.averageScrollDepth ?? 0}%`} icon={MousePointer2} color="text-fuchsia-600" />
+          <KpiCard label="Hemen Çıkma" value={trafficPaused ? '—' : `${data?.bounceRate ?? 0}%`} icon={ExternalLink} color="text-rose-600" />
         </div>
 
         {/* Traffic chart */}

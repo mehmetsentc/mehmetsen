@@ -5,6 +5,7 @@
  * province's editors: areas (ilçe × kategori) and rights one by one.
  * All rules are enforced by /api/admin/staff/assignments.
  */
+import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Pencil, UserPlus } from 'lucide-react'
@@ -65,28 +66,25 @@ export default function StaffTeamPage() {
   const provinceName = TURKISH_PROVINCES.find((p) => p.slug === province)?.name ?? province
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">{isSuper ? 'İl Ekipleri' : 'Ekibim'} — {provinceName}</h1>
-          <p className="text-sm text-[rgb(var(--color-muted))]">
-            Editörler yalnızca kendilerine verilen ilçe/kategori bölümlerinde, işaretlenen yetkilerle çalışır.
-          </p>
-        </div>
+    <AdminOsPageShell
+      title={`${isSuper ? 'İl Ekipleri' : 'Ekibim'} — ${provinceName}`}
+      subtitle="Editörler yalnızca kendilerine verilen ilçe/kategori bölümlerinde, işaretlenen yetkilerle çalışır."
+      actions={
         <div className="flex items-center gap-2">
           {isSuper && !fixedProvince && (
-            <select value={province} onChange={(e) => setProvince(e.target.value)} className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm">
+            <select aria-label="İl" value={province} onChange={(e) => setProvince(e.target.value)} className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-2 text-sm">
               {TURKISH_PROVINCES.filter((p) => STAFF_HIERARCHY_ACTIVE_PROVINCES.includes(p.slug)).map((p) => (
                 <option key={p.slug} value={p.slug}>{p.name}</option>
               ))}
             </select>
           )}
-          <button type="button" onClick={() => setFinding(true)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+          <button type="button" onClick={() => setFinding(true)} className="inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-sm font-semibold text-white hover:opacity-90">
             <UserPlus className="h-4 w-4" /> Editör ekle
           </button>
         </div>
-      </header>
-
+      }
+    >
+    <div className="mx-auto max-w-6xl space-y-5">
       <section className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
         <table className="w-full text-sm">
           <thead className="bg-[rgb(var(--color-surface))] text-left text-xs uppercase tracking-wide text-[rgb(var(--color-muted))]">
@@ -156,5 +154,6 @@ export default function StaffTeamPage() {
         />
       )}
     </div>
+    </AdminOsPageShell>
   )
 }

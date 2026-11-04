@@ -1,5 +1,6 @@
 'use client'
 
+import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
@@ -39,15 +40,9 @@ export default function AdminArchivePage() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[rgb(var(--color-text))]">Haber Arşivi</h1>
-        <p className="mt-1 text-sm text-[rgb(var(--color-text-muted))]">
-          Son 90 gün RSS arşivi — feed&apos;e otomatik yayınlanmaz ({items.length} kayıt)
-        </p>
-      </div>
+    <AdminOsPageShell title="Haber Arşivi" subtitle={`Son 90 gün RSS arşivi — feed'e otomatik yayınlanmaz (${items.length} kayıt)`}>
 
-      <div className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))]">
+      <div className="overflow-x-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
         <table className="min-w-full divide-y divide-[rgb(var(--color-border))] text-sm">
           <thead className="bg-[rgb(var(--color-surface-elevated))]">
             <tr>
@@ -112,6 +107,6 @@ export default function AdminArchivePage() {
           </Button>
         </div>
       )}
-    </div>
+    </AdminOsPageShell>
   )
 }

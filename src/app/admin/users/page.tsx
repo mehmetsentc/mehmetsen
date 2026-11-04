@@ -152,7 +152,7 @@ export default function UsersAdminPage() {
             <button
               type="button"
               onClick={() => setFinding(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-[rgb(var(--color-brand))] px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
             >
               <UserPlus className="h-4 w-4" /> Editör ekle
             </button>

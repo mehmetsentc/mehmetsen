@@ -29,8 +29,8 @@ export type ReelInput = {
   category: string
   place?: string | null
   media: ReelMedia
-  /** PCM16 WAV (Google TTS LINEAR16 or any PCM16 WAV). */
-  voiceWav: Buffer
+  /** PCM16 WAV (Google TTS LINEAR16 or any PCM16 WAV). null = no voice-over (REELS-T1 templates, dynamic layout only). */
+  voiceWav: Buffer | null
   style?: ReelStyle
   intro?: ReelIntro
   /** Theme music; default follows the style. */
@@ -43,6 +43,10 @@ export type ReelInput = {
   layout?: ReelLayout
   /** REELS-13: the spoken script; the dynamic layout shows it as sentence captions. */
   captions?: string | null
+  /** REELS-T1: how the sound runs (dynamic layout). */
+  audioMode?: import('./reelTemplates').ReelAudioMode
+  /** REELS-T1: captions | typewriter | ticker (dynamic layout). */
+  textStyle?: import('./reelTemplates').ReelTextStyle
 }
 
 export type ReelResult = { mp4: Buffer; seconds: number; timeline: ReelTimeline }
@@ -57,7 +61,8 @@ const TEXT_W = REEL_W - TEXT_X - SAFE.right
 const BAR_X = SAFE.x - 12
 
 export async function renderReel(input: ReelInput, opts: { root?: string; budgetMs?: number } = {}): Promise<ReelResult> {
-  if (input.layout === 'dinamik') {
+  // REELS-T1: templates (and every reel without a voice-over) use the dynamic layout
+  if (input.layout === 'dinamik' || !input.voiceWav || (input.audioMode && input.audioMode !== 'voice_then_video') || (input.textStyle && input.textStyle !== 'captions')) {
     const { renderDynamic } = await import('./renderDynamic')
     return renderDynamic(input, opts)
   }

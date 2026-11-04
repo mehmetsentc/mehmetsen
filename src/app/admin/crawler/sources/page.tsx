@@ -1,5 +1,6 @@
 'use client'
 
+import { TableSkeleton } from '@/components/admin/ui/TableSkeleton'
 import { useCallback, useEffect, useState } from 'react'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
@@ -43,6 +44,7 @@ function fmtPct(value: number | null): string {
 
 export default function CrawlerSourcesPage() {
   const [sources, setSources] = useState<SourceRow[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
@@ -83,10 +85,12 @@ export default function CrawlerSourcesPage() {
     if (!result.ok) {
       setError(result.error)
       setSources([])
+      setLoaded(true)
       setTotal(-1)
       return
     }
     setSources(result.data.sources || [])
+    setLoaded(true)
     setTotal(Number(result.data.total ?? (result.data.sources || []).length))
     setTotalPages(Number(result.data.totalPages || 1))
   }, [page, pageSize, search, status, country, scope, tier])
@@ -252,7 +256,8 @@ export default function CrawlerSourcesPage() {
         <pre className="max-h-64 overflow-auto rounded-xl bg-[rgb(var(--color-surface))] p-3 text-xs">{testResult}</pre>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]">
+      {!loaded && !error ? <TableSkeleton rows={10} cols={8} /> : null}
+      <div className={loaded ? 'overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))]' : 'hidden'}>
         <table className="min-w-full text-left text-sm">
           <thead className="bg-[rgb(var(--color-surface))] text-[11px] uppercase tracking-wide text-[rgb(var(--color-muted))]">
             <tr>

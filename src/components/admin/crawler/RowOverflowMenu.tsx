@@ -1,38 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { MoreHorizontal } from 'lucide-react'
+import { AnchoredMenu } from '@/components/admin/ui/AnchoredMenu'
 
+/** ADMIN-UX-1: portal menu (never clipped by the table / last row), bottom sheet on phones. */
 export function RowOverflowMenu({
   items,
 }: {
   items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean; title?: string }>
 }) {
   const [open, setOpen] = useState(false)
+  const btn = useRef<HTMLButtonElement>(null)
   return (
     <div className="relative inline-block">
-      <button type="button" className="rounded px-2 py-1 text-xs" aria-label="Diğer işlemler" onClick={() => setOpen((v) => !v)}>
-        ⋯
+      <button
+        ref={btn}
+        type="button"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-[rgb(var(--color-muted))] hover:bg-[rgb(var(--color-surface))] hover:text-[rgb(var(--color-text))] max-md:h-11 max-md:w-11"
+        aria-label="Diğer işlemler"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
       </button>
-      {open ? (
-        <div className="absolute right-0 z-10 mt-1 min-w-[10rem] rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-bg))] py-1 shadow-lg">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              title={item.title}
-              disabled={item.disabled}
-              className={`block w-full px-3 py-1.5 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50 ${item.danger ? 'text-red-600' : ''}`}
-              onClick={() => {
-                if (item.disabled) return
-                setOpen(false)
-                item.onClick()
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <AnchoredMenu anchorRef={btn} open={open} onClose={() => setOpen(false)} width={200} title="Diğer işlemler" className="py-1">
+        {items.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            role="menuitem"
+            title={item.title}
+            disabled={item.disabled}
+            className={`block w-full rounded-md px-3 py-1.5 text-left text-xs hover:bg-[rgb(var(--color-surface))] disabled:cursor-not-allowed disabled:opacity-50 max-md:py-3 max-md:text-sm ${item.danger ? 'text-red-600' : 'text-[rgb(var(--color-text))]'}`}
+            onClick={() => {
+              if (item.disabled) return
+              setOpen(false)
+              item.onClick()
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </AnchoredMenu>
     </div>
   )
 }

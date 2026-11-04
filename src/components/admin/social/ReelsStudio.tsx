@@ -5,7 +5,7 @@
  *   Left   : news picker (search, filters; single select or 2–7 ordered for the digest)
  *   Center : sticky 9:16 preview, render / re-render / MP4 / share, media-rights banner
  *   Right  : tabs — Ayarlar (presenter, script, intro, outro, music) · Paylaş · Sesler & sunucular
- * Modes: Tek haber · Günün Öne Çıkanları · Video yükle (yakında).
+ * Modes: Tek haber · Günün Öne Çıkanları · Video yükle (REELS-T1: own / library video, templates).
  * Each pane scrolls on its own; the page itself does not scroll on desktop.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,7 +14,9 @@ import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
+import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
+import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
 
 // ── types ────────────────────────────────────────────────────────────────────
 type NewsPick = {
@@ -73,6 +75,7 @@ type ReelResult = {
   music?: string
   note?: string
   coverUrl?: string | null
+  template?: string
 }
 type LibraryItem = { newsId: string; slug: string | null; headline: string; url: string; coverUrl: string | null; seconds: number | null; persona: string | null; style: string | null; media: string | null; updatedAt: string | null; renders: number }
 type Digest = { id: string; newsIds: string[]; title: string; url: string; caption: string; seconds: number; createdAt: number; lines: string[] }
@@ -201,6 +204,61 @@ function MusicPreview({ name }: { name: string }) {
   )
 }
 
+// ── REELS-T1: template picker ───────────────────────────────────────────────
+const TEMPLATE_GLYPH: Record<ReelTemplateId, string> = {
+  klasik: '🎙️', sahadan: '🎥', orijinal: '🔊', daktilo: '⌨️', sondakika: '⚡', spor: '🏟️', analiz: '📊',
+}
+
+function TemplatePicker({ value, onChange, suggested }: { value: 'auto' | 'none' | ReelTemplateId; onChange: (v: 'auto' | 'none' | ReelTemplateId) => void; suggested: ReelTemplateId }) {
+  const sug = reelTemplate(suggested)
+  return (
+    <Section title="Reels şablonu" hint={value === 'auto' ? `öneri: ${sug.label}` : 'sizin seçiminiz'}>
+      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Reels şablonu">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={value === 'auto'}
+          onClick={() => onChange('auto')}
+          className={cn('col-span-2 flex items-start gap-2 rounded-xl border p-2 text-left', value === 'auto' ? 'border-red-600 ring-2 ring-red-200' : 'border-[rgb(var(--color-border))]')}
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white"><Sparkles className="h-4 w-4" /></span>
+          <span className="min-w-0 text-xs">
+            <b className="block">Otomatik — haberin türüne göre</b>
+            <span className="block text-[10px] leading-snug text-[rgb(var(--color-muted))]">Bu haber için: {sug.label}. {sug.description}</span>
+          </span>
+        </button>
+        {REEL_TEMPLATES.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="radio"
+            aria-checked={value === t.id}
+            title={t.description}
+            onClick={() => onChange(t.id)}
+            className={cn('flex min-h-[64px] flex-col items-start gap-0.5 rounded-xl border p-2 text-left', value === t.id ? 'border-red-600 bg-red-50 ring-2 ring-red-200 dark:bg-red-950/30' : 'border-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-surface))]')}
+          >
+            <span className="text-xs font-bold"><span aria-hidden="true">{TEMPLATE_GLYPH[t.id]}</span> {t.label}</span>
+            <span className="line-clamp-2 text-[10px] leading-snug text-[rgb(var(--color-muted))]">{t.description}</span>
+            {!templateHasVoice(t) ? <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">seslendirmesiz</span> : null}
+          </button>
+        ))}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={value === 'none'}
+          onClick={() => onChange('none')}
+          className={cn('col-span-2 rounded-lg border px-2 py-1.5 text-[11px] font-semibold', value === 'none' ? 'border-red-600 text-red-700' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-muted))]')}
+        >
+          Şablonsuz — eski düzen seçimi (Dinamik / Bülten / Kart)
+        </button>
+      </div>
+      {REEL_TEMPLATES.some((t) => t.needsVideoAudio) ? (
+        <p className="text-[10px] text-[rgb(var(--color-muted))]">Sahadan, Spor ve Orijinal Ses haberin sesli videosunu ister; video sesi yoksa en yakın şablonla üretilir (Klasik / Daktilo).</p>
+      ) : null}
+    </Section>
+  )
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 export function ReelsStudio() {
   const [mode, setMode] = useState<Mode>('single')
@@ -227,6 +285,11 @@ export function ReelsStudio() {
   const [music, setMusic] = useState('auto')
   const [cover, setCover] = useState('foto')
   const [layout, setLayout] = useState('dinamik')
+  // REELS-T1: reel template ('auto' = suggested by the story)
+  const [template, setTemplate] = useState<'auto' | 'none' | ReelTemplateId>('auto')
+  // REELS-T1 «Video yükle»: the user's own / library video as the reel media
+  const [ownVideo, setOwnVideo] = useState<PickedVideo | null>(null)
+  const single = mode === 'single' || mode === 'upload'
   const [result, setResult] = useState<ReelResult | null>(null)
   const [busy, setBusy] = useState<null | 'plan' | 'render' | 'approve' | 'digest'>(null)
   const [error, setError] = useState<string | null>(null)
@@ -324,6 +387,11 @@ export function ReelsStudio() {
       return next
     })
 
+  // REELS-T1: the template the studio will use (Otomatik = suggested by the story)
+  const suggestedTpl: ReelTemplateId = mode === 'upload' && ownVideo ? 'sahadan' : recommendTemplate({ hasVideo: picked?.videoKind === 'file' || (!!picked?.hasVideo && picked?.videoKind == null) })
+  const effectiveTpl: ReelTemplateId | null = template === 'auto' ? suggestedTpl : template === 'none' ? null : template
+  const tplVoice = !effectiveTpl || templateHasVoice(reelTemplate(effectiveTpl))
+
   const opts = () => ({
     personaId: personaId || null,
     voice: voiceOverride || null,
@@ -332,6 +400,8 @@ export function ReelsStudio() {
     music,
     cover,
     layout,
+    template: template === 'none' ? null : template,
+    videoItemId: mode === 'upload' && ownVideo ? ownVideo.id : null,
     voiceText: scriptSource === 'studio' && script.trim() ? script.trim() : null,
   })
 
@@ -349,6 +419,7 @@ export function ReelsStudio() {
 
   const render = async (force: boolean) => {
     if (!picked) return
+    if (mode === 'upload' && !ownVideo) return setError('Önce bir video yükleyin veya kütüphaneden seçin.')
     setBusy('render')
     setError(null)
     // REELS-12: background job + polling (a video reel can take several minutes)
@@ -439,14 +510,6 @@ export function ReelsStudio() {
 
       {mode === 'library' ? (
         <ReelLibrary />
-      ) : mode === 'upload' ? (
-        <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-[rgb(var(--color-muted))]">
-          <div className="max-w-md space-y-2">
-            <Film className="mx-auto h-10 w-10" />
-            <p className="font-bold text-[rgb(var(--color-text))]">Video yükleme bir sonraki adımda geliyor</p>
-            <p>Şimdilik: videoyu haberin medyasına (admin editör) ekleyin; stüdyo haberdeki videoyu otomatik kullanır. Ajans videolarında «Görseli kullan — hakkımız var» onayı gerekir.</p>
-          </div>
-        </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-auto p-3 lg:grid-cols-[320px_minmax(0,1fr)_380px] lg:overflow-hidden">
           {/* LEFT — news */}
@@ -554,7 +617,7 @@ export function ReelsStudio() {
             <div className="relative aspect-[9/16] w-full max-w-[320px] shrink-0 overflow-hidden rounded-[2rem] border-[10px] border-black bg-black shadow-2xl">
               {videoUrl ? (
                 <video key={videoUrl} src={videoUrl} controls playsInline autoPlay className="h-full w-full object-cover" />
-              ) : mode === 'single' && picked?.imageUrl ? (
+              ) : single && picked?.imageUrl ? (
                 <div className="relative h-full w-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={picked.imageUrl} alt="" className={cn('h-full w-full object-cover', !picked.mediaOk && 'opacity-40 grayscale')} />
@@ -590,7 +653,7 @@ export function ReelsStudio() {
               ) : null}
             </div>
 
-            {mode === 'single' && result ? (
+            {single && result ? (
               <div className="flex max-w-xl flex-wrap justify-center gap-1.5 text-[11px] font-bold">
                 <span className="rounded-full border border-[rgb(var(--color-border))] px-2.5 py-1">{result.media === 'video' ? '🎬 Haber videosu' : result.media === 'image' ? '🖼 Haber görseli' : '🎨 Marka arka planı'}</span>
                 {result.seconds ? <span className="rounded-full border border-[rgb(var(--color-border))] px-2.5 py-1">⏱ {result.seconds.toFixed(1)} sn</span> : null}
@@ -607,7 +670,7 @@ export function ReelsStudio() {
             ) : null}
 
             <div className="flex flex-wrap justify-center gap-2">
-              {mode === 'single' ? (
+              {single ? (
                 <>
                   <button type="button" disabled={!picked || !!busy} onClick={() => void render(false)} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-extrabold text-white disabled:opacity-50">
                     <Clapperboard className="h-4 w-4" /> Videoyu üret
@@ -626,7 +689,7 @@ export function ReelsStudio() {
                   <Download className="h-4 w-4" /> MP4
                 </a>
               ) : null}
-              {mode === 'single' && result?.coverUrl ? (
+              {single && result?.coverUrl ? (
                 <a href={result.coverUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] px-4 py-2 text-sm font-bold">
                   <ImageIcon className="h-4 w-4" /> Kapak
                 </a>
@@ -639,7 +702,7 @@ export function ReelsStudio() {
             </div>
             {error ? <p className="max-w-xl rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</p> : null}
 
-            {mode === 'single' && picked && picked.imageUrl && !picked.mediaOk ? (
+            {single && picked && picked.imageUrl && !picked.mediaOk ? (
               <div className="max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
                 <b>Görsel kullanım hakkı:</b> Bu haberin görseli başka bir kaynaktan; hak onayı yoksa videoda marka arka planı kullanılır.{' '}
                 <button type="button" disabled={busy === 'approve'} onClick={() => void approveMedia(true)} className="font-bold underline">
@@ -647,7 +710,7 @@ export function ReelsStudio() {
                 </button>
               </div>
             ) : null}
-            {mode === 'single' && picked?.approved ? (
+            {single && picked?.approved ? (
               <p className="text-[11px] text-[rgb(var(--color-muted))]">
                 Görsel kullanımı sizin onayınızla açık.{' '}
                 <button type="button" onClick={() => void approveMedia(false)} className="underline">Onayı kaldır</button>
@@ -671,8 +734,21 @@ export function ReelsStudio() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {!ready ? <p className="p-4 text-xs text-[rgb(var(--color-muted))]">Giriş bekleniyor…</p> : null}
 
-              {tab === 'settings' && mode === 'single' ? (
+              {tab === 'settings' && single ? (
                 <>
+                  {mode === 'upload' ? (
+                    <Section title="Video" hint={ownVideo ? 'seçildi' : 'haberin videosu yerine'}>
+                      <ReelsVideoPicker value={ownVideo} onChange={setOwnVideo} />
+                      <p className="text-[10px] text-[rgb(var(--color-muted))]">Soldan haberi seçin (başlık ve metin oradan gelir), burada videoyu seçin. «Orijinal Ses» şablonu seslendirmesiz, videonun kendi sesiyle üretir.</p>
+                    </Section>
+                  ) : null}
+                  <TemplatePicker value={template} onChange={setTemplate} suggested={suggestedTpl} />
+                  {!tplVoice ? (
+                    <p className="mx-4 my-3 rounded-lg bg-[rgb(var(--color-surface))] px-3 py-2 text-[11px] text-[rgb(var(--color-muted))]">
+                      Bu şablonda seslendirme yok — sunucu ve seslendirme ayarları kullanılmaz, TTS kotası harcanmaz. Ekrandaki yazı aşağıdaki metinden (boşsa haber özetinden) gelir.
+                    </p>
+                  ) : null}
+                  <div className={cn(!tplVoice && 'pointer-events-none opacity-40')} aria-disabled={!tplVoice}>
                   <Section title="Haber sunucusu" hint={personaId ? 'sizin seçiminiz' : 'AI editör seçer'}>
                     <div className="grid grid-cols-2 gap-1.5">
                       <button type="button" onClick={() => setPersonaId('')} className={cn('flex items-center gap-2 rounded-xl border p-2 text-left', !personaId ? 'border-red-600 ring-2 ring-red-200' : 'border-[rgb(var(--color-border))]')}>
@@ -722,10 +798,13 @@ export function ReelsStudio() {
                       {script.length}/900 · {scriptSource === 'ai' ? 'AI editör yazdı' : scriptSource === 'studio' ? 'sizin metniniz' : scriptSource === 'rules' ? 'kural metni (AI yanıt vermedi)' : '—'} · haberde olmayan rakam kabul edilmez
                     </p>
                   </Section>
-                  <Section title="Video düzeni">
-                    <OptionGrid items={['dinamik', 'bulten', 'kart']} value={layout} onChange={setLayout} labels={LAYOUT_TEXT} cols={3} />
-                    <p className="text-[10px] text-[rgb(var(--color-muted))]">Dinamik: haberde ses içeren video varsa seslendirmeden sonra videonun kendi sesi çalar (en fazla 25 sn).</p>
-                  </Section>
+                  </div>
+                  {template === 'none' ? (
+                    <Section title="Video düzeni">
+                      <OptionGrid items={['dinamik', 'bulten', 'kart']} value={layout} onChange={setLayout} labels={LAYOUT_TEXT} cols={3} />
+                      <p className="text-[10px] text-[rgb(var(--color-muted))]">Dinamik: haberde ses içeren video varsa seslendirmeden sonra videonun kendi sesi çalar (en fazla 25 sn).</p>
+                    </Section>
+                  ) : null}
                   <Section title="Giriş efekti">
                     <OptionGrid items={pv?.options.intros ?? ['soft', 'slide', 'perde', 'zoom', 'minimal']} value={intro} onChange={setIntro} labels={INTRO_TEXT} />
                   </Section>
@@ -814,7 +893,7 @@ export function ReelsStudio() {
                 </>
               ) : null}
 
-              {tab === 'share' && mode === 'single' ? (
+              {tab === 'share' && single ? (
                 result ? (
                   <div className="space-y-3 p-4">
                     <div className="flex gap-1.5 text-xs">
@@ -843,15 +922,15 @@ export function ReelsStudio() {
             </div>
             {tab === 'settings' ? (
               <div className="flex gap-2 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))] p-3">
-                {mode === 'single' ? (
-                  <button type="button" disabled={!picked || !!busy} onClick={() => void render(false)} className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-extrabold text-white disabled:opacity-50">Videoyu üret</button>
+                {single ? (
+                  <button type="button" disabled={!picked || !!busy} title={!picked ? 'Önce soldan bir haber seçin' : undefined} onClick={() => void render(false)} className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-extrabold text-white disabled:opacity-50">{!picked ? 'Önce haber seçin' : mode === 'upload' && !ownVideo ? 'Önce video seçin' : busy === 'render' ? 'Üretiliyor…' : effectiveTpl ? `Videoyu üret · ${reelTemplate(effectiveTpl).label}` : 'Videoyu üret'}</button>
                 ) : (
                   <button type="button" disabled={selected.length < 2 || !!busy} onClick={() => void buildDigest()} className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-extrabold text-white disabled:opacity-50">Toplu videoyu üret</button>
                 )}
                 <button
                   type="button"
                   onClick={async () => {
-                    const r = await reelsCall<PersonasView>('POST', '/api/admin/social/reels/personas', mode === 'single' ? { intro, outro, music, cover, layout } : { music: dMusic })
+                    const r = await reelsCall<PersonasView>('POST', '/api/admin/social/reels/personas', single ? { intro, outro, music, cover, layout } : { music: dMusic })
                     if (r.ok) setPv(r.data)
                   }}
                   className="rounded-xl border border-[rgb(var(--color-border))] px-3 py-2 text-xs font-bold"

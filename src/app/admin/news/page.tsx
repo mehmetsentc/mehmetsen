@@ -13,6 +13,7 @@ import {
   Facebook, Instagram, ChevronDown, ArrowDownWideNarrow, Clapperboard,
 } from 'lucide-react'
 import { CMSHeader } from '@/components/admin/CMSHeader'
+import { AnchoredMenu } from '@/components/admin/ui/AnchoredMenu'
 import { AdminNewsEditor } from '@/components/admin/AdminNewsEditor'
 import { MobileContent } from '@/components/admin/mobile/MobileContent'
 import { adminNewsService, type AdminNewsFilter, type AdminNewsItem, type AdminNewsSort } from '@/services/adminNewsService'
@@ -252,63 +253,11 @@ function CategoryDropdownPortal({
   align?: 'left' | 'right'
   children: React.ReactNode
 }) {
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [style, setStyle] = useState<{ top: number; left: number; width: number } | null>(null)
-
-  const updatePosition = useCallback(() => {
-    const anchor = anchorRef.current
-    if (!anchor) return
-    const rect = anchor.getBoundingClientRect()
-    const width = 208
-    const margin = 8
-    const panelMaxH = 256
-    const spaceBelow = window.innerHeight - rect.bottom - margin
-    const spaceAbove = rect.top - margin
-    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow
-    const top = openUp
-      ? Math.max(margin, rect.top - Math.min(panelMaxH, spaceAbove))
-      : rect.bottom + 4
-    const left = align === 'right'
-      ? Math.min(rect.right - width, window.innerWidth - width - margin)
-      : Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin))
-    setStyle({ top, left, width })
-  }, [anchorRef, align])
-
-  useEffect(() => {
-    if (!open) return
-    updatePosition()
-    const onScroll = () => updatePosition()
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', onScroll)
-    return () => {
-      window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', onScroll)
-    }
-  }, [open, updatePosition])
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      const t = e.target as Node
-      if (panelRef.current?.contains(t)) return
-      if (anchorRef.current?.contains(t)) return
-      onClose()
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open, onClose, anchorRef])
-
-  if (!open || typeof document === 'undefined' || !style) return null
-
-  return createPortal(
-    <div
-      ref={panelRef}
-      style={{ position: 'fixed', top: style.top, left: style.left, width: style.width, zIndex: 9999 }}
-      className="max-h-64 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
-    >
+  // ADMIN-UX-1: shared AnchoredMenu (portal + flip up + bottom sheet on phones)
+  return (
+    <AnchoredMenu anchorRef={anchorRef} open={open} onClose={onClose} align={align} width={208} maxHeight={256} role="listbox" title="Seçin" className="p-2">
       {children}
-    </div>,
-    document.body
+    </AnchoredMenu>
   )
 }
 
@@ -720,11 +669,13 @@ function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; news
 }
 
 function SocialSharePopover({
+  anchorRef,
   newsId,
   newsTitle,
   mode,
   onClose,
 }: {
+  anchorRef: React.RefObject<HTMLElement | null>
   newsId: string
   newsTitle: string
   mode: SocialShareMode
@@ -732,33 +683,23 @@ function SocialSharePopover({
 }) {
   // Görev 18 EK: ortak çoklu hesap akışı (seç → onayla → gönder → hedef bazlı sonuç).
   // Eski «Onyeditivi (mevcut bağlantı)» seçeneği yok; hiçbir hesap önceden seçili gelmez.
-  const popoverRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [onClose])
-
+  // ADMIN-UX-1: AnchoredMenu — son satırda da kesilmez, gerekirse yukarı açılır; telefonda alt sayfa.
+  const title = mode === 'reel' || mode === 'video_story' ? 'Reels' : mode === 'story' ? 'Hikâye — hedef hesapları seçin' : 'Post — hedef hesapları seçin'
   return (
-    <div
-      ref={popoverRef}
-      className="absolute right-0 top-full z-50 mt-1 w-96 max-w-[92vw] rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 shadow-xl"
-    >
+    <AnchoredMenu anchorRef={anchorRef} open onClose={onClose} align="right" width={384} maxHeight={520} role="dialog" title={title} className="p-2">
       {mode === 'reel' || mode === 'video_story' ? (
         <ReelsPopoverBody newsId={newsId} newsTitle={newsTitle} onClose={onClose} />
       ) : (
         <>
-          <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-            {mode === 'story' ? 'Hikâye — hedef hesapları seçin' : 'Post — hedef hesapları seçin'}
+          <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))] max-md:hidden">
+            {title}
           </p>
           <div className="px-1">
             <ManualShareFlow newsId={newsId} newsTitle={newsTitle} mode={mode} onClose={onClose} compact />
           </div>
         </>
       )}
-    </div>
+    </AnchoredMenu>
   )
 }
 
@@ -820,6 +761,9 @@ function NewsRow({
   const [socialPublished, setSocialPublished] = useState(!!post.socialPublished)
   const [storyPublished, setStoryPublished] = useState(!!post.storyPublished)
   const [popoverMode, setPopoverMode] = useState<SocialShareMode | null>(null)
+  const storyBtnRef = useRef<HTMLButtonElement>(null)
+  const postBtnRef = useRef<HTMLButtonElement>(null)
+  const reelBtnRef = useRef<HTMLButtonElement>(null)
   const busy = actionLoading === post.id || sharingMode !== null
   // Tekrar haber: yalnızca TEKRAR rozeti — Bekliyor/Arşiv yanıltıcı
   const badge = post.isDuplicate
@@ -851,7 +795,8 @@ function NewsRow({
   return (
     <div className={cn('border-b border-[rgb(var(--color-border))] transition-colors', selected && 'bg-blue-50/50 dark:bg-blue-950/10')}>
       {/* Main row */}
-      <div className="flex items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--color-surface))]">
+      {/* ADMIN-UX-1: < 1536 px aksiyonlar başlığın altına iner (başlık hiçbir genişlikte ezilmez) */}
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--color-surface))] 2xl:flex-nowrap">
         <input type="checkbox" checked={selected} onChange={onToggleSelect}
           className="mt-1 h-3.5 w-3.5 shrink-0 accent-blue-600" />
 
@@ -859,9 +804,9 @@ function NewsRow({
           <img src={post.coverImageUrl} alt="" className="h-14 w-20 shrink-0 rounded-lg object-cover" />
         )}
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[240px]">
           <div className="flex items-start gap-2 flex-wrap">
-            <p className="line-clamp-2 text-sm font-semibold text-[rgb(var(--color-text))] flex-1">{post.title}</p>
+            <p className="line-clamp-2 min-w-[160px] flex-1 text-sm font-semibold text-[rgb(var(--color-text))]">{post.title}</p>
             {badge && (
               <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', badge.cls)}>{badge.label}</span>
             )}
@@ -886,7 +831,7 @@ function NewsRow({
               </span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-[rgb(var(--color-muted))]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[rgb(var(--color-muted))]">
             <InlineCategoryChanger
               postId={post.id}
               categoryId={post.categoryId ?? ''}
@@ -944,9 +889,9 @@ function NewsRow({
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex shrink-0 flex-col gap-1 items-end">
-          <div className="flex flex-wrap justify-end gap-1">
+        {/* Actions — ADMIN-UX-1: dar ekranda tam genişlik alt satır, 2xl'de sağda en fazla %46 */}
+        <div className={cn('flex w-full flex-col gap-1 2xl:w-auto 2xl:max-w-[46%] 2xl:shrink-0 2xl:items-end 2xl:pl-0', post.coverImageUrl ? 'pl-[118px]' : 'pl-[26px]')}>
+          <div className="flex flex-wrap gap-1 2xl:justify-end">
             {(post.isDuplicate || post.status === 'pending' || post.status === 'draft' || post.needsReview) && (
               <button onClick={() => onApprove(post)} disabled={busy}
                 className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
@@ -971,6 +916,7 @@ function NewsRow({
             <div className="relative">
               <button
                 type="button"
+                ref={storyBtnRef}
                 onClick={() => setPopoverMode(popoverMode === 'story' ? null : 'story')}
                 disabled={!canShare || busy}
                 title={canShare ? (storyPublished ? 'Hikâye yeniden paylaş (IG/FB)' : 'Hikâye paylaş (IG/FB)') : 'Görsel yok — paylaşım için kapak gerekli'}
@@ -987,6 +933,7 @@ function NewsRow({
               </button>
               {popoverMode === 'story' && (
                 <SocialSharePopover
+                  anchorRef={storyBtnRef}
                   newsId={post.id}
                   newsTitle={post.title ?? ''}
                   mode="story"
@@ -999,6 +946,7 @@ function NewsRow({
             <div className="relative">
               <button
                 type="button"
+                ref={postBtnRef}
                 onClick={() => setPopoverMode(popoverMode === 'post' ? null : 'post')}
                 disabled={!canShare || busy}
                 title={canShare ? (socialPublished ? 'Post yeniden paylaş (FB/IG/Th/X)' : 'Post paylaş (FB/IG/Th/X)') : 'Görsel yok — paylaşım için kapak gerekli'}
@@ -1015,6 +963,7 @@ function NewsRow({
               </button>
               {popoverMode === 'post' && (
                 <SocialSharePopover
+                  anchorRef={postBtnRef}
                   newsId={post.id}
                   newsTitle={post.title ?? ''}
                   mode="post"
@@ -1028,7 +977,8 @@ function NewsRow({
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setPopoverMode(popoverMode === 'reel' ? null : 'reel')}
+                  ref={reelBtnRef}
+                onClick={() => setPopoverMode(popoverMode === 'reel' ? null : 'reel')}
                   disabled={busy}
                   title="Haberden Reels / video hikâye üret ve paylaş (IG/FB)"
                   className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))] disabled:opacity-40"
@@ -1038,7 +988,7 @@ function NewsRow({
                   <ChevronDown className="h-2.5 w-2.5 opacity-50" />
                 </button>
                 {popoverMode === 'reel' && (
-                  <SocialSharePopover newsId={post.id} newsTitle={post.title ?? ''} mode="reel" onClose={() => setPopoverMode(null)} />
+                  <SocialSharePopover anchorRef={reelBtnRef} newsId={post.id} newsTitle={post.title ?? ''} mode="reel" onClose={() => setPopoverMode(null)} />
                 )}
               </div>
             )}
@@ -1053,51 +1003,6 @@ function NewsRow({
                 showSeo ? 'border-blue-500 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]')}>
               <BarChart3 className="h-3 w-3" />SEO
             </button>
-            <InlineCategoryChanger
-              postId={post.id}
-              categoryId={post.categoryId ?? ''}
-              citySlug={post.citySlug}
-              onCategoryChange={onCategoryChange}
-              disabled={busy}
-              variant="action"
-            />
-            <InlineCityChanger
-              postId={post.id}
-              citySlug={post.citySlug ?? post.city}
-              onCityChange={onCityChange}
-              disabled={busy}
-              variant="action"
-            />
-            <InlineFlagToggle
-              active={nationalFeaturedOn}
-              label="Genelde"
-              title={nationalFeaturedOn ? 'Ana sayfa öne çıkanından kaldır' : 'Ana sayfada öne çıkan yap (otomatik Yayında)'}
-              icon={Star}
-              activeClass="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-              onToggle={() => onFeaturedChange(post.id, !nationalFeaturedOn)}
-              disabled={busy}
-              variant="action"
-            />
-            <InlineFlagToggle
-              active={localFeaturedOn}
-              label="Yerelde"
-              title={localFeaturedOn ? 'Yerel sayfa öne çıkanından kaldır' : 'Bu ilin yerel sayfasında öne çıkan yap (il gerekli)'}
-              icon={MapPin}
-              activeClass="border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/40 dark:text-sky-200"
-              onToggle={() => onLocalFeaturedChange(post.id, !localFeaturedOn)}
-              disabled={busy}
-              variant="action"
-            />
-            <InlineFlagToggle
-              active={!!post.isBreaking}
-              label="Son Dakika"
-              title={post.isBreaking ? 'Son dakikayı kaldır' : 'Son dakika yap (ulusal: ana sayfa + /kategori/son-dakika; yerel/kıbrıs kendi sayfasında kalır)'}
-              icon={Zap}
-              activeClass="border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200"
-              onToggle={() => onBreakingChange(post.id, !post.isBreaking)}
-              disabled={busy}
-              variant="action"
-            />
             <button onClick={() => onEdit(post)}
               className="flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-[11px] font-bold text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-surface))]"
               title="Düzenle">

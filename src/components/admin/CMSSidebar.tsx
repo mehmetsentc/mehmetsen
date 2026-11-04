@@ -13,14 +13,14 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Send, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
 import { useCmsAuth } from '@/hooks/useCmsAuth'
 import type { CmsPermission } from '@/types/cms'
 import { isMediaStudioEnabled } from '@/media-studio/featureFlag'
-import { MEDIA_STUDIO_HREF, MEDIA_STUDIO_LABEL, insertMediaStudioNav } from '@/media-studio/nav'
+import { MEDIA_STUDIO_HREF, insertMediaStudioNav } from '@/media-studio/nav'
 import { adminNewsService } from '@/services/adminNewsService'
 import { auth } from '@/lib/firebase/auth'
 import { getCachedStaffScope, scopeHasRight, subscribeStaffScope, type MyStaffScope } from '@/lib/cms/staffScopeClient'
@@ -74,6 +74,16 @@ function buildSidebarCategories() {
 }
 
 const CATEGORIES = buildSidebarCategories()
+
+/** Scroll a just-opened sidebar block into view once it has rendered. */
+function revealSoon(selector: string) {
+  if (typeof window === 'undefined') return
+  window.requestAnimationFrame(() =>
+    window.requestAnimationFrame(() => {
+      document.querySelector(selector)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  )
+}
 const COLLAPSE_KEY = 'cms_nav_collapsed_groups'
 
 interface NavItem {
@@ -85,6 +95,8 @@ interface NavItem {
   countKey?: 'inbox' | 'draft' | 'pending' | 'scheduled' | 'published' | 'smmQueue'
   requiredPermissions?: CmsPermission[]
   exact?: boolean
+  /** ADMIN-UX-1: other paths that also highlight this entry (its sub-tabs). */
+  matches?: string[]
 }
 
 interface NavGroup {
@@ -93,10 +105,12 @@ interface NavGroup {
   items: NavItem[]
 }
 
+// ADMIN-UX-1: 7 çalışma alanı. Bir alanın alt sayfaları sayfa başlığının altındaki
+// sekmelerden açılır (AdminSectionTabs / CrawlerNav / SocialAdminNav); rotalar değişmez.
 const NAV_GROUPS: NavGroup[] = [
   {
     id: 'overview',
-    label: 'Genel Bakış',
+    label: 'Masa',
     items: [
       { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
       { href: '/admin/live-center', label: 'Canlı Haber Merkezi', icon: Activity, requiredPermissions: ['news:read'] },
@@ -104,100 +118,80 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'newsroom-desk',
+    id: 'newsroom',
     label: 'Yayın Odası',
     items: [
-      { href: '/admin/inbox', label: 'Mail Kutusu', icon: Mail, requiredPermissions: ['news:read'], countKey: 'inbox' },
-      { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'], countKey: 'draft' },
+      { href: '/admin/news', label: 'Haberler', icon: Newspaper, requiredPermissions: ['news:read'], countKey: 'published', exact: true },
       { href: '/admin/approvals', label: 'Onay Bekleyenler', icon: Clock, requiredPermissions: ['news:read'], countKey: 'pending' },
+      { href: '/admin/news?filter=draft', label: 'Taslaklar', icon: FileText, requiredPermissions: ['news:read'], countKey: 'draft' },
       { href: '/admin/news?filter=scheduled', label: 'Planlananlar', icon: Calendar, requiredPermissions: ['news:read'], countKey: 'scheduled' },
-      { href: '/admin/news?filter=published', label: 'Yayında', icon: Newspaper, requiredPermissions: ['news:read'], countKey: 'published' },
+      { href: '/admin/submissions', label: 'Okur Haberleri', icon: Inbox, requiredPermissions: ['news:read'] },
+      { href: '/admin/inbox', label: 'Mail Kutusu', icon: Mail, requiredPermissions: ['news:read'], countKey: 'inbox' },
       { href: '/admin/archive', label: 'Arşiv', icon: Archive, requiredPermissions: ['news:read'] },
+      { href: '/admin/canonical-drafts/rights', label: 'Yayın Hakları', icon: Shield, requiredPermissions: ['news:edit'] },
     ],
   },
   {
     id: 'content',
-    label: 'İçerik',
+    label: 'İçerik Yapısı',
     items: [
-      { href: '/admin/news', label: 'Tüm Haberler', icon: Newspaper, requiredPermissions: ['news:read'] },
-      { href: '/admin/canonical-drafts/rights', label: 'Yayın Hakları', icon: Shield, requiredPermissions: ['news:edit'], badge: 'P18' },
       { href: '/admin/categories', label: 'Kategoriler', icon: Tag, requiredPermissions: ['news:read'] },
-      { href: '/admin/locations', label: '81 İl', icon: Building2, requiredPermissions: ['locations:manage'], badge: 'YENİ' },
+      { href: '/admin/locations', label: '81 İl ve Lokasyon', icon: Building2, requiredPermissions: ['locations:manage'] },
+      { href: '/admin/publishers', label: 'Yayıncılar', icon: Landmark, requiredPermissions: ['system:settings'] },
       { href: '/admin/ekip', label: 'İl Ekipleri', icon: Users, requiredPermissions: ['users:assign_role'] },
-      { href: '/admin/publishers', label: 'Publisherlar', icon: Landmark, requiredPermissions: ['system:settings'], badge: 'P1' },
-      { href: '/admin/videos', label: 'Medya Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
-      { href: '/admin/submissions', label: 'Gönderiler', icon: Inbox, requiredPermissions: ['news:read'] },
-      { href: '/admin/events', label: 'Event Yönetimi', icon: Calendar, requiredPermissions: ['news:read'] },
+      { href: '/admin/events', label: 'Etkinlikler', icon: Calendar, requiredPermissions: ['news:read'] },
     ],
   },
   {
-    id: 'ai',
-    label: 'AI Newsroom',
+    id: 'media',
+    label: 'Medya Merkezi',
     items: [
-      { href: '/admin/ai-org', label: 'AI Organizasyonu', icon: Network, requiredPermissions: ['agents:manage'] },
-      { href: '/admin/ai-editors', label: 'AI Editörler', icon: Bot, requiredPermissions: ['ai:use'] },
-      { href: '/admin/ai-agents', label: 'AI Ajanlar', icon: BrainCircuit, requiredPermissions: ['agents:manage'] },
-      { href: '/admin/ai-instructions', label: 'Talimatlar', icon: BookOpen, requiredPermissions: ['ai:instructions'] },
-      { href: '/admin/ai-tasks', label: 'Görevler', icon: ListTodo, requiredPermissions: ['ai:use'] },
-      { href: '/admin/ai-memory', label: 'Hafıza', icon: Layers, requiredPermissions: ['ai:configure'] },
-      { href: '/admin/ai-learning', label: 'Öğrenme Merkezi', icon: GraduationCap, requiredPermissions: ['ai:configure'] },
-      { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, requiredPermissions: ['ai:use'] },
-    ],
-  },
-  {
-    id: 'crawler',
-    label: 'Crawler',
-    items: [
-      { href: '/admin/crawler', label: 'Özet', icon: Radar, requiredPermissions: ['news:read'], exact: true },
-      { href: '/admin/crawler/discover', label: 'Kaynak Keşfi', icon: Search, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/sources', label: 'Kaynaklar', icon: Globe, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/raw-articles', label: 'Ham Haberler', icon: FileText, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/clusters', label: 'Aynı Olay Haberleri', icon: Layers, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/queue', label: 'AI Öncesi Seçim', icon: ListTodo, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/ai-dispatch', label: 'Otomatik AI Yazımı', icon: Bot, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/failures', label: 'Hatalar', icon: ShieldAlert, requiredPermissions: ['news:read'] },
-      { href: '/admin/crawler/health', label: 'Toplama Durumu', icon: Activity, requiredPermissions: ['system:settings'] },
+      { href: '/admin/videos', label: 'Video Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
+      { href: '/admin/social/reels', label: 'Reels Stüdyosu', icon: Clapperboard, requiredPermissions: ['social:view'], matches: ['/admin/media-studio/reels'] },
     ],
   },
   {
     id: 'social',
-    label: 'Sosyal Medya',
+    label: 'Sosyal ve Dağıtım',
     items: [
-      { href: '/admin/smm', label: '81 İl SMM', icon: Map, requiredPermissions: ['social:view'], badge: 'YENİ', exact: true },
-      { href: '/admin/social/overview', label: 'Sosyal Genel Bakış', icon: Share2, requiredPermissions: ['social:view'], exact: true },
-      { href: '/admin/social/accounts', label: 'Hesaplar', icon: Share2, requiredPermissions: ['social:view'], exact: true },
-      { href: '/admin/social/shares', label: 'Paylaşımlar', icon: Share2, requiredPermissions: ['social:view'], exact: true },
+      { href: '/admin/social/overview', label: 'Genel Bakış', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/social/network', label: 'İl Ağı', icon: Map, requiredPermissions: ['social:view'], exact: true },
-      { href: '/admin/social', label: 'Haber paylaşım masası', icon: Share2, requiredPermissions: ['social:view'], exact: true },
+      { href: '/admin/social/accounts', label: 'Hesaplar', icon: Users, requiredPermissions: ['social:view'], exact: true },
+      { href: '/admin/social', label: 'Paylaşım Masası', icon: Send, requiredPermissions: ['social:view'], exact: true },
+      { href: '/admin/social/shares', label: 'Hesaplara Paylaş', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: ListTodo, requiredPermissions: ['social:view'], countKey: 'smmQueue' },
       { href: '/admin/social/automation', label: 'Otomasyon Kuralları', icon: Zap, requiredPermissions: ['social:view'] },
-      { href: '/admin/social?panel=automation', label: 'Eski Onyeditivi otomasyonu', icon: Zap, requiredPermissions: ['social:manage'] },
-      { href: '/admin/analytics?scope=smm', label: 'Performans', icon: TrendingUp, requiredPermissions: ['analytics:read'] },
+      { href: '/admin/smm', label: 'İl SMM Ajanları', icon: Bot, requiredPermissions: ['social:view'], exact: true },
     ],
   },
   {
-    id: 'app-mgmt',
-    label: 'Uygulama Yönetimi',
+    id: 'ai',
+    label: 'AI ve Otomasyon',
     items: [
-      { href: '/admin/page-controls', label: 'Sayfa Kontrolleri', icon: LayoutGrid, requiredPermissions: ['pages:manage'] },
-      { href: '/admin/global-layout', label: 'Global Dizilim', icon: Layers, requiredPermissions: ['pages:manage'] },
-      { href: '/admin/feed-algorithm', label: 'Algoritma Yönetimi', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
+      { href: '/admin/ai-org', label: 'AI Ekip', icon: Network, requiredPermissions: ['agents:manage', 'ai:use'], matches: ['/admin/ai-editors', '/admin/ai-agents'] },
+      { href: '/admin/ai-instructions', label: 'Talimatlar ve Hafıza', icon: BookOpen, requiredPermissions: ['ai:instructions', 'ai:configure'], matches: ['/admin/ai-memory', '/admin/ai-learning'] },
+      { href: '/admin/ai-tasks', label: 'AI Görevler', icon: ListTodo, requiredPermissions: ['ai:use'] },
+      { href: '/admin/ai-usage', label: 'AI Maliyet', icon: Coins, requiredPermissions: ['ai:use'] },
+      { href: '/admin/crawler', label: 'Crawler', icon: Radar, requiredPermissions: ['news:read'], matches: ['/admin/crawler/'] },
     ],
   },
   {
-    id: 'team',
-    label: 'Yönetim',
+    id: 'system',
+    label: 'Sistem',
     items: [
-      { href: '/admin/users', label: 'Adminler', icon: Users, requiredPermissions: ['users:read'] },
-      { href: '/admin/roles', label: 'Roller & Yetkiler', icon: Shield, requiredPermissions: ['roles:manage'] },
-      { href: '/admin/cron', label: 'Cron İzleme', icon: Timer, requiredPermissions: ['cron:read'] },
+      { href: '/admin/page-controls', label: 'Sayfa ve Dizilim', icon: LayoutGrid, requiredPermissions: ['pages:manage'], matches: ['/admin/global-layout'] },
+      { href: '/admin/feed-algorithm', label: 'Algoritma', icon: SlidersHorizontal, requiredPermissions: ['algorithm:view'] },
+      { href: '/admin/users', label: 'Ekip ve Yetkiler', icon: Shield, requiredPermissions: ['users:read', 'roles:manage'], matches: ['/admin/roles'] },
       { href: '/admin/settings', label: 'Global Ayarlar', icon: Settings, requiredPermissions: ['system:settings'] },
-      { href: '/admin/audit-logs', label: 'Loglar', icon: ScrollText, requiredPermissions: ['logs:view'] },
-      { href: '/admin/system-health', label: 'Sistem Durumu', icon: Activity, requiredPermissions: ['system:settings'] },
+      { href: '/admin/system-health', label: 'Sağlık ve Loglar', icon: Activity, requiredPermissions: ['system:settings', 'cron:read', 'logs:view'], matches: ['/admin/cron', '/admin/audit-logs'] },
     ],
   },
 ]
 
+/** Media Studio routes (feature-flagged) added to the «Medya Merkezi» group. */
+const MEDIA_STUDIO_EXTRA: NavItem[] = [
+  { href: '/admin/media-studio/jobs', label: 'İşler ve Hatalar', icon: ListTodo, requiredPermissions: ['video:read'], matches: ['/admin/media-studio/failed'] },
+]
 
 /** Phase 2: navigation for il/ilçe/kategori editors — only their own section. */
 function scopedNavGroups(scope: MyStaffScope): NavGroup[] {
@@ -259,15 +253,19 @@ function NavItemRow({
   search: string
   counts: Partial<Record<NonNullable<NavItem['countKey']>, number>>
 }) {
-  const active = isActive(pathname, search, item.href, item.exact)
+  const active =
+    isActive(pathname, search, item.href, item.exact) ||
+    (item.matches ?? []).some((m) => (m.endsWith('/') ? pathname.startsWith(m) : pathname === m || pathname.startsWith(`${m}/`)))
   const Icon = item.icon
   const count = item.countKey ? counts[item.countKey] : undefined
 
   return (
     <Link
       href={item.href}
+      title={item.label}
+      aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors duration-150',
+        'group relative flex items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors duration-150 max-xl:justify-center max-xl:px-0 max-xl:py-2.5',
         active
           ? 'bg-[rgb(var(--color-brand))]/15 text-white'
           : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
@@ -282,9 +280,9 @@ function NavItemRow({
           active ? 'text-[rgb(var(--color-brand))]' : 'text-slate-400 group-hover:text-slate-200'
         )}
       />
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="flex-1 truncate max-xl:sr-only">{item.label}</span>
       {typeof count === 'number' && count > 0 ? (
-        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-200">
+        <span className="rounded-md bg-white/10 max-xl:absolute max-xl:right-1 max-xl:top-0.5 max-xl:px-1 max-xl:text-[9px] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-200">
           {count > 999 ? '999+' : count}
         </span>
       ) : null}
@@ -307,7 +305,11 @@ function CategoryMenu({ pathname }: { pathname: string }) {
     <div>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) revealSoon('[data-nav-categories]')
+          setOpen((o) => !o)
+        }}
+        aria-expanded={open}
         className={cn(
           'group flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors',
           isNewsPage && activeCategory
@@ -320,7 +322,7 @@ function CategoryMenu({ pathname }: { pathname: string }) {
         <ChevronDown className={cn('h-3.5 w-3.5 text-slate-500 transition-transform', open && 'rotate-180')} />
       </button>
       {open ? (
-        <div className="ml-3 mt-0.5 max-h-[min(280px,40vh)] space-y-px overflow-y-auto border-l border-white/10 pl-2.5">
+        <div data-nav-categories="" className="ml-3 mt-0.5 max-h-[min(280px,40vh)] scroll-mb-4 space-y-px overflow-y-auto border-l border-white/10 pl-2.5">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon
             const active = isNewsPage && activeCategory === cat.id
@@ -421,6 +423,8 @@ export function CMSSidebar() {
   }, [])
 
   const toggleGroup = (id: string) => {
+    // ADMIN-UX-1: a group opened at the bottom of the sidebar scrolls into view (it used to open below the fold)
+    if (collapsed[id]) revealSoon(`[data-nav-group="${id}"]`)
     setCollapsed((prev) => {
       const next = { ...prev, [id]: !prev[id] }
       try {
@@ -441,15 +445,26 @@ export function CMSSidebar() {
       (staffScope?.scoped ? scopedNavGroups(staffScope) : NAV_GROUPS).map((group) => ({
         ...group,
         items: insertMediaStudioNav(
-          group.items.filter(
-            (item) => !item.requiredPermissions || item.requiredPermissions.some((p) => can(p))
-          ),
-          group.id === 'content' && isMediaStudioEnabled() && can('video:read')
+          [
+            ...group.items,
+            ...(group.id === 'media' && isMediaStudioEnabled() ? MEDIA_STUDIO_EXTRA : []),
+          ]
+            .map((item) =>
+              // Reels has one home: inside Medya Stüdyosu when it is on, else the social page
+              item.href === '/admin/social/reels' && isMediaStudioEnabled()
+                ? { ...item, href: '/admin/media-studio/reels', matches: ['/admin/social/reels'] }
+                : item
+            )
+            .filter(
+              (item) => !item.requiredPermissions || item.requiredPermissions.some((p) => can(p))
+            ),
+          group.id === 'media' && isMediaStudioEnabled() && can('video:read')
             ? {
                 href: MEDIA_STUDIO_HREF,
-                label: MEDIA_STUDIO_LABEL,
+                label: 'İçe Aktar',
                 icon: Images,
                 requiredPermissions: ['video:read'],
+                exact: true,
               }
             : null
         ),
@@ -457,13 +472,14 @@ export function CMSSidebar() {
     [can, staffScope]
   )
 
+  // ADMIN-UX-1: 1024–1279 px (tablet yatay / küçük laptop) → 72 px ikon çubuğu; 1280+ tam sidebar
   return (
-    <aside className="flex h-screen w-[248px] shrink-0 flex-col overflow-hidden bg-[rgb(var(--admin-sidebar))] text-white">
-      <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-4">
+    <aside className="flex h-screen w-[72px] shrink-0 flex-col overflow-hidden bg-[rgb(var(--admin-sidebar))] text-white supports-[height:100dvh]:h-[100dvh] xl:w-[248px]">
+      <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-4 max-xl:justify-center max-xl:px-0">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] shadow-sm">
           <Radio className="h-5 w-5 text-white" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 max-xl:hidden">
           <p className="truncate text-sm font-bold tracking-tight">
             <span className="text-[rgb(var(--color-brand))]">Na</span>Haber CMS
           </p>
@@ -471,25 +487,28 @@ export function CMSSidebar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5 max-xl:justify-center max-xl:px-0" title="Canlı yayın aktif">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-[11px] font-medium text-slate-400">Canlı yayın aktif</span>
+        <span className="text-[11px] font-medium text-slate-400 max-xl:hidden">Canlı yayın aktif</span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+      <nav className="flex-1 overflow-y-auto pb-8 pt-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
         {visibleGroups.map((group) => {
           const isCollapsed = Boolean(collapsed[group.id])
           return (
-            <div key={group.id} className="mb-3 px-2.5">
+            <div key={group.id} data-nav-group={group.id} className="mb-3 scroll-mb-4 px-2.5 max-xl:px-2">
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="mb-1 flex w-full items-center gap-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-300"
+                aria-expanded={!isCollapsed}
+                title={group.label}
+                className="mb-1 flex w-full items-center gap-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-slate-300 max-xl:justify-center max-xl:px-0"
               >
-                <span className="flex-1 text-left">{group.label}</span>
+                <span className="flex-1 text-left max-xl:hidden">{group.label}</span>
+                <span className="hidden h-px flex-1 bg-white/10 max-xl:block" aria-hidden="true" />
                 <ChevronDown className={cn('h-3 w-3 transition-transform', isCollapsed && '-rotate-90')} />
               </button>
               {!isCollapsed ? (
@@ -503,7 +522,7 @@ export function CMSSidebar() {
                       counts={counts}
                     />
                   ))}
-                  {group.id === 'content' && can('news:read') ? <CategoryMenu pathname={pathname} /> : null}
+                  {group.id === 'newsroom' && can('news:read') ? <div className="max-xl:hidden"><CategoryMenu pathname={pathname} /></div> : null}
                 </div>
               ) : null}
             </div>
@@ -514,10 +533,11 @@ export function CMSSidebar() {
       <div className="border-t border-white/[0.06] px-2.5 py-3">
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+          title="Uygulamaya Dön"
+          className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white max-xl:justify-center"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Uygulamaya Dön
+          <span className="max-xl:hidden">Uygulamaya Dön</span>
         </Link>
       </div>
     </aside>

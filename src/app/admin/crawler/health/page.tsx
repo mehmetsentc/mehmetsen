@@ -1,5 +1,6 @@
 'use client'
 
+import { TableSkeleton } from '@/components/admin/ui/TableSkeleton'
 import { useEffect, useState } from 'react'
 import { AdminOsPageShell } from '@/components/admin/os/AdminOsPageShell'
 import { CrawlerSubnav } from '@/components/admin/crawler/CrawlerSubnav'
@@ -41,6 +42,7 @@ function formatYield(y?: YieldSummary): string {
 
 export default function CrawlerHealthPage() {
   const [rows, setRows] = useState<Row[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [http429, setHttp429] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -52,6 +54,7 @@ export default function CrawlerHealthPage() {
     void (async () => {
       const res = await fetch(`/api/admin/crawler/health?page=${page}&pageSize=${pageSize}`, { headers: await authHeaders() })
       const body = await res.json()
+      setLoaded(true)
       if (!res.ok) setError(body.error || 'Yüklenemedi')
       else {
         setRows((body.sources || []) as Row[])
@@ -66,8 +69,9 @@ export default function CrawlerHealthPage() {
     <AdminOsPageShell title="Crawler Sağlığı" subtitle="Kaynak sağlığı, 429, çıkarım oranları, unique yield">
       <CrawlerSubnav />
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
-      <p className="mb-3 text-sm">Bugünkü HTTP 429: {http429}</p>
-      <div className="overflow-x-auto">
+      <p className="mb-3 text-sm">Bugünkü HTTP 429: {loaded ? http429 : '…'}</p>
+      {!loaded && !error ? <TableSkeleton rows={10} cols={8} /> : null}
+      <div className={loaded ? 'overflow-x-auto' : 'hidden'}>
       <table className="min-w-full text-left text-sm">
         <thead>
           <tr>

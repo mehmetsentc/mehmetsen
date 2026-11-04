@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/social/reels/render { newsId, force?, personaId?, intro?, outro?, music?, voiceText?, cover?, layout?, dryRun? }
+ * POST /api/admin/social/reels/render { newsId, force?, personaId?, intro?, outro?, music?, voiceText?, cover?, layout?, template?, dryRun? }
  * Builds (or reuses) the NaHaber news reel MP4 for one published article and
  * returns its public Storage URL. Auth: central social-account manager.
  * Kill switch: SOCIAL_REELS_ENABLED=false.
@@ -50,6 +50,8 @@ export async function POST(request: Request) {
     voiceText: s(body.voiceText)?.slice(0, 900) ?? null,
     cover: s(body.cover),
     layout: s(body.layout),
+    template: s(body.template)?.slice(0, 32) ?? null,
+    videoItemId: s(body.videoItemId)?.slice(0, 64) ?? null,
     by: auth.ctx.uid,
   }
   // REELS-12: long renders run in the background (Cloudflare closes requests at 100 s)
@@ -77,13 +79,15 @@ export async function POST(request: Request) {
       voiceText: s(body.voiceText)?.slice(0, 900) ?? null,
       cover: s(body.cover),
       layout: s(body.layout),
+      template: s(body.template)?.slice(0, 32) ?? null,
+      videoItemId: s(body.videoItemId)?.slice(0, 64) ?? null,
       by: auth.ctx.uid,
     })
     return json({ result })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[reels] render failed', newsId, message)
-    const status = err instanceof Error && err.name === 'TtsQuotaError' ? 429 : message.includes('not found') ? 404 : 500
+    const status = err instanceof Error && err.name === 'TtsQuotaError' ? 429 : message.includes('not found') || message.includes('bulunamadı') ? 404 : message.includes('hakkı') || message.includes('geçersiz') || message.includes('hazır değil') ? 400 : 500
     return json({ error: message, ...(status === 429 ? { code: 'tts_free_tier_reached' } : {}) }, status)
   }
 }

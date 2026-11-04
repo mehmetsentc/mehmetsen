@@ -17,7 +17,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { createCanvas, loadImage, type Canvas, type Image, type SKRSContext2D } from '@napi-rs/canvas'
 import { REEL_FPS, REEL_H, REEL_W, wrapLines, type ReelTimeline } from './timeline'
-import { buildFxTrack, dynamicAudioGraph, readWav, wavSeconds, writeWav } from './audio'
+import { buildFxTrack, readWav, silentWav, templateAudioGraph, wavSeconds, writeWav } from './audio'
+import { readingSeconds, type ReelAudioMode, type ReelTextStyle } from './reelTemplates'
 import {
   FONT_MD, FONT_XB, RED, SAFE, STYLE_ACCENT, WHITE,
   audioDir, bedPath, brandBackground, clamp01, drawCover, ensureFonts, loadBrand, newCanvas,
@@ -41,6 +42,12 @@ const TEXT_W = REEL_W - TEXT_X - SAFE.right
 const TEXT_BOTTOM = SAFE.bottom - 10
 /** REELS-11: the story video's own sound after the voice-over, capped (was 25 s → render timeouts). */
 const VIDEO_AUDIO_MAX_S = 12
+/** REELS-T1: longest original-sound opening before the presenter starts. */
+const VIDEO_INTRO_MAX_S = 6
+/** REELS-T1: typing speed of the typewriter text (characters per second). */
+const TYPE_CPS = 26
+const TICKER_H = 84
+const TICKER_PX_S = 210
 const END_S = 2.8
 /** REELS-14: a render that would not finish in time (projected from the first frames). */
 export class RenderBudgetError extends Error {
@@ -227,6 +234,114 @@ function leftLines(ctx: SKRSContext2D, lines: string[], y0: number, lh: number, 
 }
 
 /**
+ * REELS-T1 typewriter: the first `n` characters of the lines, a blinking cursor after them.
+ * Font / colour are set by the caller.
+ */
+function typeLines(ctx: SKRSContext2D, lines: string[], y0: number, lh: number, n: number, t: number): void {
+  if (n <= 0) return
+  let left = n
+  let lastX = TEXT_X
+  let lastY = y0
+  for (let i = 0; i < lines.length && left > 0; i++) {
+    const l = lines[i]!
+    const part = l.slice(0, left)
+    ctx.fillText(part, TEXT_X, y0 + i * lh)
+    lastX = TEXT_X + ctx.measureText(part).width
+    lastY = y0 + i * lh
+    left -= l.length + 1
+  }
+  const total = lines.reduce((k, l) => k + l.length + 1, 0)
+  // the cursor blinks while typing and for a moment after
+  if (n < total + 12 && Math.floor(t * 2.2) % 2 === 0) {
+    const h = lh * 0.78
+    ctx.save()
+    ctx.shadowBlur = 0
+    ctx.fillStyle = RED
+    ctx.fillRect(lastX + 6, lastY + lh * 0.08, Math.max(6, lh * 0.09), h)
+    ctx.restore()
+  }
+}
+
+/** REELS-T1: typewriter key clicks (about every second letter, capped). */
+function typeClicks(
+  headChars: number,
+  headStart: number,
+  caps: Array<{ text: string; start: number; end: number }>,
+  cps: (c: { text: string; start: number; end: number }) => number,
+): number[] {
+  const out: number[] = []
+  for (let k = 0; k < headChars; k += 2) out.push(headStart + k / TYPE_CPS)
+  for (const c of caps) {
+    const speed = cps(c)
+    for (let k = 0; k < c.text.length && out.length < 420; k += 3) out.push(c.start + k / speed)
+  }
+  return out.slice(0, 420)
+}
+
+/** REELS-T1: the scrolling news band (label box left, text moving right → left). */
+function tickerBand(ctx: SKRSContext2D, label: string, text: string, t: number, k: number, accent: string): void {
+  if (k <= 0) return
+  const y = SAFE.bottom - TICKER_H - 6
+  const x0 = 0
+  ctx.save()
+  ctx.globalAlpha *= k
+  ctx.fillStyle = 'rgba(7,21,48,0.92)'
+  ctx.fillRect(x0, y, REEL_W, TICKER_H)
+  ctx.fillStyle = accent
+  ctx.fillRect(x0, y - 5, REEL_W, 5)
+  ctx.font = `34px ${FONT_XB}`
+  const lw = ctx.measureText(label).width + 48
+  // text
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(lw, y, REEL_W - lw, TICKER_H)
+  ctx.clip()
+  ctx.font = `38px ${FONT_MD}`
+  ctx.fillStyle = WHITE
+  ctx.textBaseline = 'middle'
+  const item = `${text}   •   `
+  const iw = Math.max(1, ctx.measureText(item).width)
+  // the text enters from the right edge, then repeats seamlessly
+  let x = REEL_W - Math.max(0, t - 0.4) * TICKER_PX_S
+  while (x + iw < lw) x += iw
+  for (; x < REEL_W; x += iw) ctx.fillText(item, x, y + TICKER_H / 2 + 2)
+  ctx.restore()
+  // label box on top
+  ctx.fillStyle = RED
+  ctx.fillRect(x0, y, lw, TICKER_H)
+  ctx.fillStyle = WHITE
+  ctx.textBaseline = 'middle'
+  ctx.font = `34px ${FONT_XB}`
+  ctx.fillText(label, x0 + 24, y + TICKER_H / 2 + 2)
+  ctx.restore()
+}
+
+/** REELS-T1: small red pill with a speaker glyph («ORİJİNAL SES»). */
+function soundPill(ctx: SKRSContext2D, label: string, k: number, y: number): void {
+  if (k <= 0) return
+  ctx.save()
+  ctx.globalAlpha *= k
+  ctx.font = `30px ${FONT_XB}`
+  const w = ctx.measureText(label).width + 76
+  ctx.fillStyle = RED
+  roundRectPath(ctx, SAFE.x, y, w, 60, 8)
+  ctx.fill()
+  ctx.fillStyle = WHITE
+  ctx.beginPath()
+  ctx.moveTo(SAFE.x + 18, y + 22)
+  ctx.lineTo(SAFE.x + 28, y + 22)
+  ctx.lineTo(SAFE.x + 40, y + 12)
+  ctx.lineTo(SAFE.x + 40, y + 48)
+  ctx.lineTo(SAFE.x + 28, y + 38)
+  ctx.lineTo(SAFE.x + 18, y + 38)
+  ctx.closePath()
+  ctx.fill()
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, SAFE.x + 56, y + 31)
+  ctx.restore()
+}
+
+/**
  * End card over the still-playing picture: a see-through NaHaber navy veil fades in, the
  * logo + «Haberin tamamı» / nahaber.com appear, and the whole frame fades out into the
  * theme navy at the very end. No coloured stripes.
@@ -340,38 +455,70 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
   const accent = input.breaking ? RED : STYLE_ACCENT[style]
   const work = await fs.mkdtemp(path.join(os.tmpdir(), 'reeld-'))
   try {
-    const voiceSec = wavSeconds(input.voiceWav)
-    const voiceStart = 0.45
+    // REELS-T1: the template decides how the sound runs; unusable choices fall back safely
+    let mode: ReelAudioMode = input.audioMode ?? 'voice_then_video'
+    const textStyle: ReelTextStyle = input.textStyle ?? 'captions'
+    const hasVoiceWav = !!input.voiceWav && input.voiceWav.length > 44
+    if (!hasVoiceWav && (mode === 'voice_then_video' || mode === 'video_then_voice')) mode = 'music_only'
+    const pm = input.media.kind === 'video' ? await probeMedia(ffmpeg, input.media.path) : null
+    const audible = async (from: number, dur: number) =>
+      !!pm && pm.hasAudio && dur >= 2 && input.media.kind === 'video' && (await audioPeakDb(ffmpeg, input.media.path, from, dur)) > -40
+    if (mode === 'video_only' && !(await audible(0, Math.min(20, (pm?.duration ?? 0) - 0.2)))) mode = 'music_only'
+    let introLen = 0
+    if (mode === 'video_then_voice') {
+      introLen = Math.min(VIDEO_INTRO_MAX_S, Math.max(0, (pm?.duration ?? 0) - 1))
+      if (!(await audible(0, introLen))) {
+        mode = 'voice_then_video'
+        introLen = 0
+      }
+    }
+    const voiceSec = mode === 'voice_then_video' || mode === 'video_then_voice' ? wavSeconds(input.voiceWav!) : 0
+    if (mode === 'video_then_voice') introLen = Math.max(2, Math.min(introLen, MAX_REEL_S - END_S - 0.9 - voiceSec))
+    const voiceStart = mode === 'video_then_voice' ? introLen + 0.2 : 0.45
     const voiceEnd = voiceStart + voiceSec
-    // the story's own video sound after the voice-over
-    let videoAudio = false
+    // the story's own video sound
+    let videoAudio = mode === 'video_then_voice' || mode === 'video_only'
     let videoTail = 0
-    if (input.media.kind === 'video') {
-      const pm = await probeMedia(ffmpeg, input.media.path)
+    if (mode === 'voice_then_video' && pm) {
       // only real sound: an audio stream that is not silent after the voice-over
       if (pm.hasAudio && pm.duration - voiceEnd >= 2) {
         const tail = Math.min(VIDEO_AUDIO_MAX_S, pm.duration - voiceEnd - 0.15)
-        if ((await audioPeakDb(ffmpeg, input.media.path, voiceEnd, tail)) > -40) {
+        if (await audible(voiceEnd, tail)) {
           videoAudio = true
           videoTail = tail
         }
       }
+      // REELS-13: keep the whole reel under the Facebook Reels limit (the story video's tail gives way first)
+      videoTail = Math.max(0, Math.min(videoTail, MAX_REEL_S - END_S - 0.45 - voiceEnd))
+      if (videoTail < 2) {
+        videoAudio = false
+        videoTail = 0
+      }
     }
-    // REELS-13: keep the whole reel under the Facebook Reels limit (the story video's tail gives way first)
-    videoTail = Math.max(0, Math.min(videoTail, MAX_REEL_S - END_S - 0.45 - voiceEnd))
-    if (videoTail < 2) {
-      videoAudio = false
-      videoTail = 0
-    }
-    const endStart = voiceEnd + 0.45 + videoTail
+    const readText = `${input.headline}. ${input.captions?.trim() || input.summary || ''}`
+    const endStart =
+      mode === 'video_only'
+        ? Math.max(6, Math.min(pm?.duration ?? 6, MAX_REEL_S - END_S) - 0.2)
+        : mode === 'music_only'
+          ? readingSeconds(readText)
+          : voiceEnd + 0.45 + videoTail
     const total = endStart + END_S
     const frames = Math.ceil(total * REEL_FPS)
-    // REELS-13: captions follow the voice; the headline stays for the opening sentence (3–7 s)
-    const capWin = input.captions?.trim() ? captionWindows(captionChunks(input.captions), voiceStart, voiceSec) : []
-    const sumAt = capWin.length > 1
-      ? Math.min(voiceStart + 7, Math.max(voiceStart + 3, capWin[0]!.end))
-      : voiceStart + Math.max(2.8, voiceSec * 0.45)
-    const textOut = videoAudio ? voiceEnd + 0.35 : endStart
+    // REELS-13: captions follow the voice; the headline stays for the opening sentence (3–7 s).
+    // REELS-T1: without a voice-over the captions are paced for reading after the headline.
+    const spoken = mode === 'voice_then_video' || mode === 'video_then_voice'
+    const headRead = Math.max(2.6, Math.min(5, input.headline.length / 14)) + 0.45
+    const capStart = spoken ? voiceStart : headRead
+    const capSec = spoken ? voiceSec : Math.max(2, endStart - capStart - 0.4)
+    const capText = input.captions?.trim() || (spoken ? '' : input.summary?.trim() || '')
+    const capWin = capText && textStyle !== 'ticker' ? captionWindows(captionChunks(capText), capStart, capSec) : []
+    const sumAt = !spoken
+      ? capStart
+      : capWin.length > 1
+        ? Math.min(voiceStart + 7, Math.max(voiceStart + 3, capWin[0]!.end))
+        : voiceStart + Math.max(2.8, voiceSec * 0.45)
+    const textOut = mode === 'voice_then_video' && videoAudio ? voiceEnd + 0.35 : endStart
+    const textBottom = textStyle === 'ticker' ? TEXT_BOTTOM - TICKER_H - 36 : TEXT_BOTTOM
     const tl: ReelTimeline = { total, frames, voiceStart, typeStart: 0.3, typeEnd: 0.9, summaryStart: sumAt, endStart }
 
     // layout
@@ -413,15 +560,17 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
         if (lines.length <= CAP_MAX_LINES) break
       }
       const lh = Math.round(size * 1.38)
-      const y = TEXT_BOTTOM - lines.length * lh
+      const y = textBottom - lines.length * lh
       return { ...c, size, lines, lh, y }
     })
-    const headY = TEXT_BOTTOM - head.length * HEAD_LH
+    const headY = textBottom - head.length * HEAD_LH
     const kickY = headY - 62
-    const sumY = TEXT_BOTTOM - sum.length * SUM_LH
+    const sumY = textBottom - sum.length * SUM_LH
     const ruleY = sumY - 34
     const cat = input.category.toLocaleUpperCase('tr-TR')
     const right = input.breaking ? 'SON DAKİKA' : 'HABER'
+    const tickerText = (input.captions?.trim() || input.summary || input.headline).replace(/\s+/g, ' ')
+    const capCps = (c: { text: string; start: number; end: number }) => Math.max(TYPE_CPS, c.text.length / Math.max(0.6, (c.end - c.start) * 0.7))
 
     // audio
     const adir = audioDir(root)
@@ -438,20 +587,20 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
         whooshDown: await load('whoosh-down.wav'),
       },
       { total, summaryStart: sumAt, endStart },
-      [],
+      textStyle === 'typewriter' ? typeClicks(head.join(' ').length, 0.45, caps, capCps) : [],
       [],
     )
     const voicePath = path.join(work, 'voice.wav')
     const fxPath = path.join(work, 'fx.wav')
     const outPath = path.join(work, 'reel.mp4')
-    await fs.writeFile(voicePath, input.voiceWav)
+    await fs.writeFile(voicePath, spoken && input.voiceWav ? input.voiceWav : silentWav())
     await fs.writeFile(fxPath, writeWav(fx))
     const enc = spawnDynamicEncoder(ffmpeg, {
       voice: voicePath,
       bed: bedPath(root, music),
       fx: fxPath,
       media: videoAudio && input.media.kind === 'video' ? input.media.path : null,
-      filter: dynamicAudioGraph({ voiceStart, voiceEnd, bedVolume: music ? 0.9 : 0, videoAudio }),
+      filter: templateAudioGraph({ mode, voiceStart, voiceEnd, endStart, bedVolume: music ? (mode === 'video_then_voice' || mode === 'video_only' ? 0.5 : 0.9) : 0, videoAudio }),
       total,
       out: outPath,
     })
@@ -537,7 +686,8 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
         ctx.save()
         ctx.globalAlpha *= textK
         // phase 1: kicker + headline
-        const hOut = 1 - span(t, sumAt - 0.25, sumAt + 0.15)
+        // ticker: the headline stays up the whole reel (the band carries the rest)
+        const hOut = textStyle === 'ticker' ? 1 : 1 - span(t, sumAt - 0.25, sumAt + 0.15)
         if (hOut > 0) {
           ctx.save()
           ctx.globalAlpha *= hOut
@@ -547,7 +697,8 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
           ctx.textBaseline = 'top'
           ctx.shadowColor = 'rgba(0,0,0,0.5)'
           ctx.shadowBlur = 16
-          leftLines(ctx, head, headY, HEAD_LH, head.map((_, k) => span(t, 0.45 + k * 0.14, 0.85 + k * 0.14)))
+          if (textStyle === 'typewriter') typeLines(ctx, head, headY, HEAD_LH, Math.floor((t - 0.45) * TYPE_CPS), t)
+          else leftLines(ctx, head, headY, HEAD_LH, head.map((_, k) => span(t, 0.45 + k * 0.14, 0.85 + k * 0.14)))
           ctx.restore()
         }
         // phase 2 (REELS-13): the sentence being spoken, as a caption
@@ -566,10 +717,11 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
           ctx.textBaseline = 'top'
           ctx.shadowColor = 'rgba(0,0,0,0.6)'
           ctx.shadowBlur = 14
-          leftLines(ctx, capNow.lines, capNow.y, capNow.lh, capNow.lines.map(() => 1), 18)
+          if (textStyle === 'typewriter') typeLines(ctx, capNow.lines, capNow.y, capNow.lh, Math.floor((t - capNow.start) * capCps(capNow)), t)
+          else leftLines(ctx, capNow.lines, capNow.y, capNow.lh, capNow.lines.map(() => 1), 18)
           ctx.restore()
         }
-        const sk = capNow ? 0 : span(t, sumAt, sumAt + 0.5)
+        const sk = capNow || textStyle === 'ticker' ? 0 : span(t, sumAt, sumAt + 0.5)
         if (sk > 0) {
           const rw = 520 * sk
           ctx.fillStyle = RED
@@ -585,8 +737,17 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
         }
         ctx.restore()
       }
+      // REELS-T1: scrolling news band
+      if (textStyle === 'ticker' && t < endStart + 0.2) {
+        tickerBand(ctx, input.breaking ? 'SON DAKİKA' : 'NAHABER', tickerText, t, span(t, 0.3, 0.8) * (1 - span(t, endStart - 0.2, endStart + 0.2)), accent)
+      }
+      // REELS-T1: the original sound opening (Sahadan / Spor) and no-voice original-sound reels
+      if ((mode === 'video_then_voice' && t < voiceStart + 0.4) || (mode === 'video_only' && t < 4)) {
+        const k = span(t, 0.2, 0.6) * (1 - span(t, mode === 'video_only' ? 3.4 : voiceStart - 0.2, mode === 'video_only' ? 4 : voiceStart + 0.4))
+        soundPill(ctx, 'ORİJİNAL SES', k, SAFE.top + 124)
+      }
       // the story's own sound: small label
-      if (videoAudio && t >= textOut && t < endStart) {
+      if (mode === 'voice_then_video' && videoAudio && t >= textOut && t < endStart) {
         const k = span(t, textOut + 0.2, textOut + 0.6) * (1 - span(t, endStart - 0.3, endStart))
         ctx.save()
         ctx.globalAlpha *= k

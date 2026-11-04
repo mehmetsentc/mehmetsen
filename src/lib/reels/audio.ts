@@ -145,3 +145,72 @@ export function dynamicAudioGraph(o: { voiceStart: number; voiceEnd: number; bed
     `,loudnorm=I=-15:TP=-1.5:LRA=11[a]`
   )
 }
+
+/** REELS-T1: how far the video's original sound is turned down under the presenter. */
+export const VIDEO_DUCK = 0.18
+
+/**
+ * REELS-T1 — audio graph for every reel template (dynamic layout).
+ * Inputs: [1]=voice (a short silent WAV when the template has no voice-over),
+ * [2]=theme bed (looped) or silence, [3]=fx, [4]=the story video (only when its sound is used).
+ */
+export function templateAudioGraph(o: {
+  mode: 'voice_then_video' | 'video_then_voice' | 'video_only' | 'music_only'
+  voiceStart: number
+  voiceEnd: number
+  endStart: number
+  bedVolume: number
+  videoAudio: boolean
+}): string {
+  if (o.mode === 'voice_then_video') {
+    return dynamicAudioGraph({ voiceStart: o.voiceStart, voiceEnd: o.voiceEnd, bedVolume: o.bedVolume, videoAudio: o.videoAudio })
+  }
+  const mono = 'aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono'
+  const d = Math.round(o.voiceStart * 1000)
+  const voice =
+    `[1:a]${mono},highpass=f=90,equalizer=f=250:t=q:w=1:g=-2,` +
+    `equalizer=f=3200:t=q:w=1.2:g=3,acompressor=threshold=-22dB:ratio=3:attack=5:release=90:makeup=4,` +
+    `adelay=${d}|${d},apad,asplit=2[v][vsc];`
+  const fx = `[3:a]${mono}[fx];`
+  const out = Math.max(0, o.endStart - 0.5).toFixed(3)
+  const tail = `,loudnorm=I=-15:TP=-1.5:LRA=11[a]`
+  if (o.mode === 'music_only') {
+    // no voice-over: the theme music carries the reel, fading out under the end card
+    return (
+      voice.replace(',asplit=2[v][vsc];', '[v];') +
+      `[2:a]${mono},volume=${o.bedVolume},afade=t=in:d=0.6,afade=t=out:st=${o.endStart.toFixed(3)}:d=1.6[bd];` +
+      fx +
+      `[v][bd][fx]amix=inputs=3:normalize=0:weights=1 0.85 0.75` +
+      tail
+    )
+  }
+  const bed = `[2:a]${mono},volume=${o.bedVolume}[b];[b][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=250[bd];`
+  if (!o.videoAudio) {
+    return voice + bed + fx + `[v][bd][fx]amix=inputs=3:normalize=0:weights=1 0.6 0.75` + tail
+  }
+  if (o.mode === 'video_only') {
+    return (
+      voice + bed + fx +
+      `[4:a]${mono},afade=t=in:d=0.3,afade=t=out:st=${out}:d=0.9,apad[va];` +
+      `[v][bd][fx][va]amix=inputs=4:normalize=0:weights=1 0.5 0.75 1` +
+      tail
+    )
+  }
+  // video_then_voice: original sound first, turned down to VIDEO_DUCK just before the voice
+  const ds = Math.max(0, o.voiceStart - 0.6).toFixed(3)
+  const de = Math.max(0.05, o.voiceStart - 0.05).toFixed(3)
+  const span = Math.max(0.05, Number(de) - Number(ds)).toFixed(3)
+  const drop = (1 - VIDEO_DUCK).toFixed(3)
+  return (
+    voice + bed + fx +
+    `[4:a]${mono},volume='if(lt(t,${ds}),1,if(lt(t,${de}),1-${drop}*(t-${ds})/${span},${VIDEO_DUCK}))':eval=frame,` +
+    `afade=t=out:st=${out}:d=0.9,apad[va];` +
+    `[v][bd][fx][va]amix=inputs=4:normalize=0:weights=1 0.5 0.75 1` +
+    tail
+  )
+}
+
+/** REELS-T1: a short silent PCM16 WAV (stands in for the voice in no-voice templates). */
+export function silentWav(seconds = 0.2, sampleRate = 24000): Buffer {
+  return writeWav({ sampleRate, data: new Float32Array(Math.max(1, Math.round(seconds * sampleRate))) })
+}

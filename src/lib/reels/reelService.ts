@@ -27,6 +27,7 @@ import { isReelIntro, isReelMusic, isReelOutro, type ReelIntro, type ReelMusic, 
 import { recordReel } from './reelLibrary'
 import { renderReel, type ReelMedia } from './renderReel'
 import { synthesizeReelVoiceEx } from './voice'
+import { fallbackTemplate, isReelTemplateId, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplate, type ReelTemplateId } from './reelTemplates'
 import { clampRate, isValidVoiceName } from './voiceRules'
 import { getReelVoiceSettings } from './voiceSettings'
 import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
@@ -170,6 +171,10 @@ export type ReelBuildOptions = {
   layout?: string | null
   /** CMS user who built it (saved in the reel library). */
   by?: string | null
+  /** REELS-T1: reel template id, or 'auto' (suggested by the story); empty = classic behaviour. */
+  template?: string | null
+  /** REELS-T1 «Video yükle»: a rights-cleared Video Kütüphanesi file used instead of the story's media. */
+  videoItemId?: string | null
 }
 
 export type ReelBuildResult = {
@@ -192,6 +197,8 @@ export type ReelBuildResult = {
   note?: string
   /** REELS-5: Instagram cover (JPEG, public). */
   coverUrl?: string | null
+  /** REELS-T1: the template the reel was made with. */
+  template?: ReelTemplateId
 }
 
 export type ReelPlan = {
@@ -431,8 +438,15 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   const d = snap.data() as Record<string, unknown>
   if (str(d.status) !== 'published') throw new Error('reels: news is not published')
   const settings = await getReelVoiceSettings()
-  const src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
+  let src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')
+  // REELS-T1: an uploaded / library video replaces the story's media (rights checked in libraryVideoForReel)
+  if (opts.videoItemId) {
+    const { libraryVideoForReel } = await import('./libraryVideo')
+    const lv = await libraryVideoForReel(opts.videoItemId)
+    if ('error' in lv) throw new Error(`reels: ${lv.error}`)
+    src = { ...src, videoUrl: lv.url, videoOrigin: 'nahaber', videoHls: /\.m3u8(\?|$)/i.test(lv.url), mediaAllowed: true }
+  }
   const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'foto'
   const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'dinamik'
   const slug = str(d.slug) || null
@@ -440,7 +454,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     recordReel({ newsId, slug, headline: src.headline, url, coverUrl, seconds: m.seconds ?? null, persona: m.persona ?? null, style: m.style ?? null, media: m.media ?? null, by: opts.by ?? null })
       .catch((err) => console.warn('[reels] library record failed:', err instanceof Error ? err.message : err))
 
-  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText || opts.layout)
+  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText || opts.layout || opts.template || opts.videoItemId)
   const bucket = getAdminStorage().bucket(BUCKET)
   const file = bucket.file(reelStoragePath(newsId))
   // Plain «build» (automation / share) reuses whatever reel exists.
@@ -457,7 +471,17 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     }
   }
 
-  const plan = await planReel(src, opts)
+  const planned = await planReel(src, opts)
+  // REELS-T1: template → sound / text style / music (explicit studio music still wins)
+  const hasStoryVideo = !!(src.mediaAllowed && src.videoUrl)
+  const tplId: ReelTemplateId | null = isReelTemplateId(opts.template)
+    ? opts.template
+    : opts.template === 'auto'
+      ? recommendTemplate({ breaking: src.breaking, style: planned.style, hasVideo: hasStoryVideo })
+      : null
+  const tpl: ReelTemplate | null = tplId ? reelTemplate(!hasStoryVideo && reelTemplate(tplId).needsVideoAudio ? fallbackTemplate(tplId) : tplId) : null
+  const plan: ReelPlan = tpl && !isReelMusic(opts.music) ? { ...planned, music: tpl.music } : planned
+  const withVoice = !tpl || templateHasVoice(tpl)
   const base = {
     newsId,
     mediaBasis: src.mediaBasis,
@@ -470,11 +494,13 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     intro: plan.intro,
     outro: plan.outro,
     music: plan.music,
+    ...(tpl ? { template: tpl.id } : {}),
     ...(plan.note ? { note: plan.note } : {}),
   }
   if (opts.dryRun) return { ...base, url: '', reused: false, media: src.mediaAllowed ? (src.videoUrl ? 'video' : src.imageUrl ? 'image' : 'none') : 'none' }
 
-  const hash = `${optionsHash(plan)}${layout === 'kart' ? '' : layout === 'bulten' ? '-b' : '-d'}`
+  const hashCore = tpl ? `${optionsHash(plan)}-t${tpl.id}${withVoice ? '' : '-nv'}` : `${optionsHash(plan)}${layout === 'kart' ? '' : layout === 'bulten' ? '-b' : '-d'}`
+  const hash = opts.videoItemId ? `${hashCore}-v${opts.videoItemId.slice(-10)}` : hashCore
   if (!opts.force) {
     const [exists] = await file.exists()
     if (exists) {
@@ -489,7 +515,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     }
   }
 
-  const spoken = await synthesizeReelVoiceEx(plan.voiceText, AbortSignal.timeout(40_000), { voice: plan.voice, rate: plan.rate, gemini: plan.gemini })
+  // REELS-T1: templates without a voice-over spend no TTS
+  const spoken = withVoice
+    ? await synthesizeReelVoiceEx(plan.voiceText, AbortSignal.timeout(40_000), { voice: plan.voice, rate: plan.rate, gemini: plan.gemini })
+    : { wav: null, engine: undefined, note: '' }
   const resolved = await resolveReelMedia(src, newsId, newsId)
   let media = resolved.media
   const tmp = resolved.tmp
@@ -509,9 +538,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       music: plan.music,
       presenter,
       dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' }),
-      layout,
+      layout: tpl ? ('dinamik' as const) : layout,
       // REELS-13: the spoken script as on-screen captions (sentence by sentence)
       captions: plan.voiceText,
+      ...(tpl ? { audioMode: tpl.audioMode, textStyle: tpl.textStyle } : {}),
     })
     // REELS-14: a video reel that cannot finish inside the background job (800 s)
     // is stopped after its first frames and made from the story's photos instead.
@@ -539,7 +569,8 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
           rate: String(plan.rate),
           persona: plan.persona.id,
           style: plan.style,
-          engine: spoken.engine,
+          engine: spoken.engine ?? 'none',
+          template: tpl?.id ?? '',
           optionsHash: hash,
           scriptVersion: REEL_SCRIPT_VERSION,
           videoSource: (src.videoUrl ?? '').slice(0, 500),
