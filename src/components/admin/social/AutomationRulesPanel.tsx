@@ -9,7 +9,7 @@
  * - "Otomasyonu durdur" manuel paylaşımı kapatmaz; hesabı devre dışı bırakmak
  *   Hesaplar ekranında ayrı bir işlemdir.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Eye, Loader2, Pause, Play, Plus, RefreshCw, ShieldAlert, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { auth } from '@/lib/firebase/auth'
@@ -287,6 +287,24 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
     void load()
   }
 
+  // Düzenleme formu tıklanan kuralın hemen altında açılır ve görünür alana kaydırılır
+  // (sayfanın en üstünde açılınca aşağıdaki kurallarda «Düzenle» tepkisiz görünüyordu).
+  const ruleForm = editing ? (
+    <ScrollIntoViewOnMount key={editing.id ?? 'new'}>
+      <RuleForm
+        initial={editing.input}
+        ruleId={editing.id}
+        accounts={activeAccounts}
+        staff={mode === 'admin'}
+        onCancel={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null)
+          void load()
+        }}
+      />
+    </ScrollIntoViewOnMount>
+  ) : null
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -327,20 +345,7 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
         <p className="text-xs text-[rgb(var(--color-muted))]">Çalışanın son değerlendirmesi: {fmtTime(data.reconcile.updatedAt)}</p>
       ) : null}
 
-      {editing ? (
-        <RuleForm
-          key={editing.id ?? 'new'}
-          initial={editing.input}
-          ruleId={editing.id}
-          accounts={activeAccounts}
-          staff={mode === 'admin'}
-          onCancel={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null)
-            void load()
-          }}
-        />
-      ) : null}
+      {editing && editing.id === null ? ruleForm : null}
 
       {draftable.length > 0 ? (
         <section className="space-y-2 rounded-xl border border-dashed border-[rgb(var(--color-border))] p-3" aria-label="Önerilen taslaklar">
@@ -428,10 +433,11 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
                   )}
                   <button
                     type="button"
-                    onClick={() => setEditing({ id: rule.id, input: { name: rule.name, accountId: rule.accountId, geo: rule.geo, categoryIds: rule.categoryIds, allCategories: rule.allCategories, featuredMode: rule.featuredMode, featuredKind: rule.featuredKind, formats: rule.formats, dailyLimit: rule.dailyLimit, minIntervalMinutes: rule.minIntervalMinutes, quietHours: rule.quietHours } })}
+                    aria-expanded={editing?.id === rule.id}
+                    onClick={() => editing?.id === rule.id ? setEditing(null) : setEditing({ id: rule.id, input: { name: rule.name, accountId: rule.accountId, geo: rule.geo, categoryIds: rule.categoryIds, allCategories: rule.allCategories, featuredMode: rule.featuredMode, featuredKind: rule.featuredKind, formats: rule.formats, dailyLimit: rule.dailyLimit, minIntervalMinutes: rule.minIntervalMinutes, quietHours: rule.quietHours } })}
                     className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm font-semibold"
                   >
-                    Düzenle
+                    {editing?.id === rule.id ? 'Düzenlemeyi kapat' : 'Düzenle'}
                   </button>
                   {!rule.enabled ? (
                     <button type="button" disabled={busy === rule.id} onClick={() => void remove(rule)} className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700">
@@ -440,6 +446,7 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
                   ) : null}
                 </div>
               </div>
+              {editing?.id === rule.id ? <div className="mt-4">{ruleForm}</div> : null}
             </div>
           )
         })}
@@ -943,4 +950,12 @@ function EligibilityQuickAction({ newsId, onDone }: { newsId: string; onDone: ()
 function GeoKindHint({ kind }: { kind: AutomationGeo['kind'] }) {
   const text = GEO_KIND_BASIS[kind]
   return text ? <p className="text-xs text-[rgb(var(--color-muted))]">{text}</p> : null
+}
+
+function ScrollIntoViewOnMount({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+  return <div ref={ref} className="scroll-mt-24">{children}</div>
 }
