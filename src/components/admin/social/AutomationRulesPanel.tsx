@@ -42,6 +42,7 @@ type WorkerBeat = {
   tokenCheckedAt: number | null
   tokenError: string | null
   tokens: { refreshed: number; failed: number; expired: number; skipped: number; expiredFound?: number; dueFound?: number } | null
+  engagement?: { refreshed: number; failed: number; dropped: number; seeded: number | null } | null
 }
 type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
@@ -136,6 +137,12 @@ function WorkerStatus({ beat }: { beat: WorkerBeat | null }) {
         {beat.tokenError ? `hata (${beat.tokenError})` : beat.tokenCheckedAt ? fmtTime(beat.tokenCheckedAt) : '—'}
         {t ? ` · süresi dolmuş bulunan: ${t.expiredFound ?? '—'} · yenileme penceresinde (≤15 gün): ${t.dueFound ?? '—'} · yenilenen: ${t.refreshed} · başarısız: ${t.failed} · yeniden bağlantıya alınan: ${t.expired}` : ''}
       </p>
+      {beat.engagement ? (
+        <p>
+          <b className="text-[rgb(var(--color-text))]">Sosyal etkileşim okuma:</b> güncellenen gönderi: {beat.engagement.refreshed} · okunamayan: {beat.engagement.failed} · takipten çıkan (7 gün doldu / silindi): {beat.engagement.dropped}
+          {beat.engagement.seeded !== null ? ` · ilk kurulumda sıraya alınan: ${beat.engagement.seeded}` : ''}
+        </p>
+      ) : null}
     </div>
   )
 }

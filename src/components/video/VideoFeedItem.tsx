@@ -621,6 +621,7 @@ function VideoFeedItemInner({
             <VideoOverlay video={video} surface={surface} />
             <VideoCommentSheet
               postId={video.id}
+              postSlug={video.slug}
               open={commentsOpen}
               onClose={() => setCommentsOpen(false)}
               commentsCount={video.commentsCount}
@@ -727,6 +728,7 @@ function VideoFeedItemInner({
 
             <VideoCommentSheet
               postId={video.id}
+              postSlug={video.slug}
               open={commentsOpen}
               onClose={() => setCommentsOpen(false)}
               commentsCount={video.commentsCount}
@@ -773,6 +775,7 @@ function VideoFeedItemInner({
           <VideoOverlay video={video} surface={surface} />
           <VideoCommentSheet
             postId={video.id}
+            postSlug={video.slug}
             open={commentsOpen}
             onClose={() => setCommentsOpen(false)}
             commentsCount={video.commentsCount}
@@ -851,6 +854,7 @@ function VideoFeedItemInner({
               <VideoOverlay video={video} surface={surface} />
               <VideoCommentSheet
                 postId={video.id}
+                postSlug={video.slug}
                 open={commentsOpen}
                 onClose={() => setCommentsOpen(false)}
                 commentsCount={video.commentsCount}
@@ -941,6 +945,7 @@ function VideoFeedItemInner({
               <VideoOverlay video={video} surface={surface} />
               <VideoCommentSheet
                 postId={video.id}
+                postSlug={video.slug}
                 open={commentsOpen}
                 onClose={() => setCommentsOpen(false)}
                 commentsCount={video.commentsCount}
@@ -1052,6 +1057,7 @@ function VideoFeedItemInner({
 
         <VideoCommentSheet
           postId={video.id}
+          postSlug={video.slug}
           open={commentsOpen}
           onClose={() => setCommentsOpen(false)}
           commentsCount={video.commentsCount}

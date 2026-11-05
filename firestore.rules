@@ -400,5 +400,14 @@ service cloud.firestore {
     match /socialAutomationState/{docId} {
       allow read, write: if false;
     }
+    match /socialEngagementQueue/{docId} {
+      allow read, write: if false;
+    }
+    match /socialEngagement/{newsId} {
+      allow read, write: if false;
+    }
+    match /socialComments/{commentId} {
+      allow read, write: if false;
+    }
   }
 }

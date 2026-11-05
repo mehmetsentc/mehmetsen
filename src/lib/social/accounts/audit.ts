@@ -34,12 +34,13 @@ export type SocialAuditAction =
   | 'social.account.disconnect'
   | 'social.publish.share'
   | 'social.token.refresh'
+  | 'social.comment.moderate'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null

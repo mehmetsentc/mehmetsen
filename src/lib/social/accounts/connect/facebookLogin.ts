@@ -25,7 +25,7 @@ export const FACEBOOK_REQUIRED_PAGE_TASK = 'CREATE_CONTENT'
 export const FACEBOOK_PAGES_PER_REQUEST = 100
 export const FACEBOOK_MAX_PAGE_REQUESTS = 10
 
-export function buildFacebookAuthorizeUrl(cfg: PlatformOAuthConfig, state: string, rerequest = false): string {
+export function buildFacebookAuthorizeUrl(cfg: PlatformOAuthConfig, state: string, rerequest = false, extraScopes: readonly string[] = []): string {
   const params: Record<string, string> = {
     client_id: cfg.appId,
     redirect_uri: cfg.redirectUri,
@@ -38,7 +38,9 @@ export function buildFacebookAuthorizeUrl(cfg: PlatformOAuthConfig, state: strin
     params.config_id = cfg.facebookLoginConfigId
     params.override_default_response_type = 'true'
   } else {
-    params.scope = FACEBOOK_LOGIN_SCOPES.join(',')
+    // Optional engagement permissions (comment texts) are added only on request.
+    // With a Login-for-Business configuration they come from the configuration.
+    params.scope = [...new Set([...FACEBOOK_LOGIN_SCOPES, ...extraScopes])].join(',')
     if (rerequest) params.auth_type = 'rerequest'
   }
   return query(FACEBOOK_OAUTH_DIALOG_BASE, params)

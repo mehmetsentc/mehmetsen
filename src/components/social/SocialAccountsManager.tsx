@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, History, Link2, Loader2, PauseCircle, PlayCircle, Plus, RefreshCw, SlidersHorizontal, Stethoscope, Zap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, History, Link2, Loader2, MessageCircle, PauseCircle, PlayCircle, Plus, RefreshCw, SlidersHorizontal, Stethoscope, Zap } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
@@ -19,6 +19,7 @@ import { PLATFORM_LABEL, ownerLabel, socialApi, type SocialAccountRow, type Soci
 import { PublishScopeEditor } from './PublishScopeEditor'
 import { CategoryPicker, categoriesText } from './CategoryPicker'
 import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
+import { allEngagementScopes } from '@/lib/social/engagement/model'
 import type { AutomationGeo } from '@/lib/social/automation/types'
 
 const PENDING_SCOPE_KEY = 'nahaber.social.pendingScope'
@@ -65,6 +66,13 @@ function expiryText(a: SocialAccountRow): string {
   const days = Math.floor(ms / 86_400_000)
   const left = days >= 1 ? `Platform erişimi ${days} gün daha geçerli (${fmtDate(a.tokenExpiresAt)})` : 'Erişimin bitmesine bir günden az kaldı'
   return renewable ? `${left} · bitişe 15 gün kala otomatik yenileme denenir; başarısız olursa yeniden bağlantı istenir${refreshed}` : `${left} — süre dolunca yeniden bağlantı gerekir`
+}
+
+/** Optional engagement permissions (counts / insights / comment texts) this account has not granted. */
+function engagementMissing(a: SocialAccountRow): string[] {
+  const all = allEngagementScopes(a.platform, a.connectionMethod)
+  const granted = new Set(a.grantedPermissions ?? [])
+  return all.filter((p) => !granted.has(p))
 }
 
 function geoText(g: NonNullable<SocialAccountRow['publishScope']>['geo']): string {
@@ -263,10 +271,10 @@ export function SocialAccountsManager({
     }
   }
 
-  const reconnect = async (a: SocialAccountRow) => {
-    setBusy(`re:${a.id}`)
+  const reconnect = async (a: SocialAccountRow, engagement = false) => {
+    setBusy(engagement ? `en:${a.id}` : `re:${a.id}`)
     try {
-      await go(`/api/social/accounts/${encodeURIComponent(a.id)}/reconnect`, {})
+      await go(`/api/social/accounts/${encodeURIComponent(a.id)}/reconnect`, engagement ? { engagement: true } : {})
     } finally {
       setBusy(null)
     }
@@ -648,6 +656,17 @@ export function SocialAccountsManager({
                       {a.connectionMethod !== 'legacy' && (
                         <button type="button" disabled={busy === `re:${a.id}`} onClick={() => void reconnect(a)} className={cn('inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs', a.status === 'needs_reauth' ? 'bg-blue-600 font-semibold text-white' : 'border border-[rgb(var(--color-border))]')}>
                           <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Platform girişiyle yeniden bağla
+                        </button>
+                      )}
+                      {a.connectionMethod !== 'legacy' && engagementMissing(a).length > 0 && (
+                        <button
+                          type="button"
+                          disabled={busy === `en:${a.id}`}
+                          onClick={() => void reconnect(a, true)}
+                          title={`Platform girişinde ek izin istenir: ${engagementMissing(a).join(', ')}. Yayın izinleri değişmez.`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" aria-hidden /> Etkileşim ve yorum izni ver
                         </button>
                       )}
                       {a.status === 'active' ? (

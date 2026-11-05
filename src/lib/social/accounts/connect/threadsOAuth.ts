@@ -15,11 +15,12 @@ import type { PlatformOAuthConfig } from './oauthConfig'
 
 export const THREADS_SCOPES = REQUIRED_PUBLISH_PERMISSIONS.threads_oauth
 
-export function buildThreadsAuthorizeUrl(cfg: PlatformOAuthConfig, state: string): string {
+export function buildThreadsAuthorizeUrl(cfg: PlatformOAuthConfig, state: string, extraScopes: readonly string[] = []): string {
   return query(THREADS_OAUTH_AUTHORIZE_URL, {
     client_id: cfg.appId,
     redirect_uri: cfg.redirectUri,
-    scope: THREADS_SCOPES.join(','),
+    // Optional engagement permissions (insights / replies) only on request.
+    scope: [...new Set([...THREADS_SCOPES, ...extraScopes])].join(','),
     response_type: 'code',
     state,
   })

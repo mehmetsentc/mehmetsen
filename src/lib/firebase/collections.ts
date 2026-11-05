@@ -129,6 +129,12 @@ export const Collections = {
   SOCIAL_AUTOMATION_COUNTERS: 'socialAutomationCounters',
   /** Automation reconcile cursors + legacy (Onyeditivi) handoff records. Admin SDK only. */
   SOCIAL_AUTOMATION_STATE: 'socialAutomationState',
+  /** Published posts whose platform engagement is read back (due-time queue). Admin SDK only. */
+  SOCIAL_ENGAGEMENT_QUEUE: 'socialEngagementQueue',
+  /** Per-news platform counts + approved comments shown on NaHaber. Admin SDK only. */
+  SOCIAL_ENGAGEMENT: 'socialEngagement',
+  /** Comments read from platforms; pending until an editor approves. Admin SDK only. */
+  SOCIAL_COMMENTS: 'socialComments',
   SMM_QUEUE: 'smmQueue',
   SMM_MATRIX: 'smmContentMatrix',
   AUTOMATION_RULES: 'automationRules',

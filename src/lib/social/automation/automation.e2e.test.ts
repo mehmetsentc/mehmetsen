@@ -215,12 +215,14 @@ describe('kurallar kapalı teslim edilir', () => {
     const c = await createRule(ruleInput(), 'admin1', T0)
     expect(c.ok && c.rule.enabled).toBe(false)
     await seedNews('n1')
+    await tick() // ilk çalışma: tek seferlik sosyal etkileşim geçmiş kontrolü (sunucu örneği başına bir kez)
     const readsBefore = fs.reads
     const r = await tick()
     expect(r.reconcile?.ran).toBe(false)
     expect(publishes()).toHaveLength(0)
     // boşta: kural sorgusu + vadesi gelen iş + süresi dolan kira (3 küçük sorgu), haber taraması yok
-    expect(fs.reads - readsBefore).toBeLessThanOrEqual(5) // + 2 token-expiry sorgusu
+    // + 2 token-expiry sorgusu + 1 sosyal etkileşim kuyruğu sorgusu (yalnız vadesi gelen satırlar)
+    expect(fs.reads - readsBefore).toBeLessThanOrEqual(6)
     expect(job('n1')).toBeUndefined()
   })
 

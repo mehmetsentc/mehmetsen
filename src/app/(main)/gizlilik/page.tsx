@@ -115,6 +115,19 @@ export default function GizlilikPage() {
             className="text-[rgb(var(--color-brand))] underline">Meta Gizlilik Politikası</a>
           {' '}geçerlidir.
         </p>
+        <p>
+          <strong>Sosyal medya etkileşimleri ve yorumlar.</strong> {siteName} hesaplarından paylaşılan
+          gönderilerin görüntülenme, beğeni, yorum ve paylaşım sayıları ile bu gönderilere yazılan
+          yorumlar, platformların resmî arayüzleriyle paylaşımdan sonraki 7 gün boyunca okunur ve ilgili
+          haberin veya videonun altında «Sosyal medyada» bölümünde gösterilebilir. Yorumlar yalnız editör
+          onayından sonra, yazıldığı platform ve platformdaki kullanıcı adıyla gösterilir; profil fotoğrafı
+          ve başka kişisel bilgi alınmaz. Platformda silinen yorum {siteName}&apos;den de kaldırılır.
+          Yorumunuzun kaldırılmasını{' '}
+          <a href="mailto:bilgi@nahaber.com" className="text-[rgb(var(--color-brand))] underline">
+            bilgi@nahaber.com
+          </a>{' '}
+          adresinden isteyebilirsiniz.
+        </p>
 
         <h2>6. KVKK Hakları</h2>
         <p>

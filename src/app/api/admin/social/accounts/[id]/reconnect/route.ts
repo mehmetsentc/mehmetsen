@@ -3,7 +3,7 @@
  * existing account. Platform and ownership come from the stored record.
  */
 import { actorFromCms } from '@/lib/social/accounts/actor'
-import { applyCookies, json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
+import { applyCookies, json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { startConnection } from '@/lib/social/accounts/connect/flows'
 
 export const runtime = 'nodejs'
@@ -15,7 +15,7 @@ export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAccountManager(request, { mutation: true })
   if ('response' in auth) return auth.response
   const { id } = await context.params
-  const r = await startConnection({ actor: actorFromCms(auth.ctx.uid, auth.ctx), platform: null, reconnectAccountId: id })
+  const r = await startConnection({ actor: actorFromCms(auth.ctx.uid, auth.ctx), platform: null, reconnectAccountId: id, engagement: (await readJsonBody(request)).engagement === true })
   if (!r.ok) return json({ error: r.code, code: r.code, ...(r.missing ? { missing: r.missing } : {}) }, r.status)
   return applyCookies(json({ authorizeUrl: r.authorizeUrl }), [r.cookie])
 }

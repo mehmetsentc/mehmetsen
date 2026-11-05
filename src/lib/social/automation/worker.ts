@@ -34,6 +34,7 @@ import { listRules } from './ruleStore'
 import type { AutomationRule } from './types'
 
 export const MAX_JOBS_PER_TICK = 3
+let engagementSeedChecked = false
 export const TICK_BUDGET_MS = 200_000
 export const STALE_AFTER_MS = 12 * 60 * 60 * 1000
 const IN_PROGRESS_RETRY_MS = 5 * 60 * 1000
@@ -49,6 +50,8 @@ type Publisher = (newsId: string, options: PublishOneSocialOptions) => Promise<P
 export interface WorkerDeps {
   now?: () => number
   publish?: Publisher
+  /** false skips the engagement read-back (tests of the publish path). */
+  engagement?: boolean
 }
 
 /**
@@ -79,6 +82,7 @@ export interface TickReport {
   reconcile: ReconcileReport | null
   tokens?: { refreshed: number; failed: number; expired: number; skipped: number }
   processed: Array<{ jobId: string; status: string; code: string }>
+  engagement?: { refreshed: number; failed: number; dropped: number; seeded: number | null } | null
   durationMs: number
 }
 
@@ -129,8 +133,28 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
     const outcome = await runClaimedJob(job, rules, publish, contentProblem, now)
     report.processed.push({ jobId: job.id, status: outcome.status, code: outcome.code })
   }
+  // Social engagement read-back (counts + comments of published posts). Only due
+  // rows are queried; skipped when the tick has little time left.
+  let engagement: { refreshed: number; failed: number; dropped: number; seeded: number | null } | null = null
+  if (deps.engagement !== false && now() - started < TICK_BUDGET_MS - 60_000) {
+    try {
+      const mod = await import('../engagement/store')
+      // The one-time backfill check costs a read, so it runs once per server instance.
+      let seeded: number | null = null
+      if (!engagementSeedChecked) {
+        seeded = await mod.seedEngagementQueueOnce(now())
+        engagementSeedChecked = true
+      }
+      engagement = { ...(await mod.refreshDueEngagement(now, { deadline: started + TICK_BUDGET_MS })), seeded }
+    } catch (err) {
+      socialLog('error', 'cron', 'engagement_tick_error', { error: safeErrorText(err).slice(0, 200) })
+    }
+  }
+  report.engagement = engagement
+
   report.durationMs = now() - started
   await writeWorkerHeartbeat({
+    engagement,
     lastRunAt: started,
     durationMs: report.durationMs,
     enabledRules: rules.length,
@@ -306,6 +330,7 @@ export interface WorkerHeartbeat {
   tokenCheckedAt: number | null
   tokenError: string | null
   tokens: { refreshed: number; failed: number; expired: number; skipped: number; expiredFound?: number; dueFound?: number } | null
+  engagement?: { refreshed: number; failed: number; dropped: number; seeded: number | null } | null
 }
 
 /** One read for the automation panel (null = the worker has never written a heartbeat). */
@@ -324,6 +349,7 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeat | null> {
       tokenCheckedAt: num(d.tokenCheckedAt),
       tokenError: typeof d.tokenError === 'string' ? d.tokenError : null,
       tokens: d.tokens && typeof d.tokens === 'object' ? (d.tokens as WorkerHeartbeat['tokens']) : null,
+      engagement: d.engagement && typeof d.engagement === 'object' ? (d.engagement as WorkerHeartbeat['engagement']) : null,
     }
   } catch {
     return null

@@ -6,6 +6,7 @@ import { LikeButton } from '@/components/post/LikeButton'
 import { SaveButton } from '@/components/post/SaveButton'
 import { ShareButton } from '@/components/post/ShareButton'
 import { PostComments } from '@/components/post/PostComments'
+import { SocialEngagementPanel } from '@/components/news/SocialEngagementPanel'
 import { SuggestedNewsRail } from '@/components/post/SuggestedNewsRail'
 import { NextArticleCard } from '@/components/news/NextArticleCard'
 import { NewsletterPrompt } from '@/components/newsletter/NewsletterPrompt'
@@ -176,6 +177,7 @@ export function NewsArticleInteractive({ post, citySlug }: NewsArticleInteractiv
           </div>
 
           <PostComments postId={post.id} initialCount={post.commentsCount} />
+          <SocialEngagementPanel newsId={post.id} slug={post.slug} className="mt-6" />
         </NewsArticleBody>
       </NewsArticleCard>
 

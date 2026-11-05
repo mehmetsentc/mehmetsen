@@ -22,6 +22,8 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import type { SocialAccountPlatform } from './types'
+import { engagementQueueRow } from '../engagement/model'
+import { ENGAGEMENT_QUEUE } from '../engagement/collections'
 import type { AutomationFormat } from './capabilities'
 import type { SocialPublishResult } from '../types'
 
@@ -197,6 +199,12 @@ export async function finishPublish(input: {
         { attemptId: input.attemptId, status: input.status, at: input.now, by: input.actorUid, externalPostId: input.externalPostId, errorCode: input.errorCode },
       ].slice(-HISTORY_LIMIT),
     })
+    // Social engagement on NaHaber: a verified post/reel gets one queue row (same
+    // transaction, one extra write per publish). The shared worker reads it back later.
+    if (input.status === 'succeeded') {
+      const row = engagementQueueRow(input.recordId, d, input.externalPostId, input.now, input.now)
+      if (row) tx.set(db.collection(ENGAGEMENT_QUEUE).doc(input.recordId), { ...row })
+    }
     return true
   })
 }

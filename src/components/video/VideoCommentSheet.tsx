@@ -11,10 +11,13 @@ import { moderate } from '@/lib/moderationClient'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { socialApi } from '@/lib/social/clientApi'
+import { SocialEngagementPanel } from '@/components/news/SocialEngagementPanel'
 import type { VideoFeedSurface } from '@/lib/videoFeed/types'
 
 interface VideoCommentSheetProps {
   postId: string
+  /** Lets the «sosyal medyada» block find the social posts of a canonical id. */
+  postSlug?: string | null
   open: boolean
   onClose: () => void
   commentsCount: number
@@ -235,6 +238,7 @@ function CommentRow({
 // ── Ana sheet ─────────────────────────────────────────────────────────────────
 export function VideoCommentSheet({
   postId,
+  postSlug,
   open,
   onClose,
   commentsCount,
@@ -394,7 +398,7 @@ export function VideoCommentSheet({
               <Loader2 className="h-6 w-6 animate-spin text-[rgb(var(--color-muted))]" />
             </div>
           ) : comments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-[rgb(var(--color-muted))]">
+            <p className="py-6 text-center text-sm text-[rgb(var(--color-muted))]">
               Henüz yorum yok. İlk yorumu sen yap!
             </p>
           ) : (
@@ -410,6 +414,7 @@ export function VideoCommentSheet({
               ))}
             </ul>
           )}
+          <SocialEngagementPanel newsId={postId} slug={postSlug} active={open} className="mt-4" />
         </div>
 
         <form onSubmit={handleSubmit} className="border-t border-[rgb(var(--color-border))] p-3">

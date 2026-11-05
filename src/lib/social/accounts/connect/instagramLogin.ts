@@ -17,12 +17,13 @@ export const INSTAGRAM_LOGIN_SCOPES = REQUIRED_PUBLISH_PERMISSIONS.instagram_log
 /** Professional account types that can publish via the API. */
 export const INSTAGRAM_PROFESSIONAL_TYPES = ['BUSINESS', 'MEDIA_CREATOR'] as const
 
-export function buildInstagramAuthorizeUrl(cfg: PlatformOAuthConfig, state: string): string {
+export function buildInstagramAuthorizeUrl(cfg: PlatformOAuthConfig, state: string, extraScopes: readonly string[] = []): string {
   return query(INSTAGRAM_OAUTH_AUTHORIZE_URL, {
     client_id: cfg.appId,
     redirect_uri: cfg.redirectUri,
     response_type: 'code',
-    scope: INSTAGRAM_LOGIN_SCOPES.join(','),
+    // Optional engagement permissions (insights / comments) only on request.
+    scope: [...new Set([...INSTAGRAM_LOGIN_SCOPES, ...extraScopes])].join(','),
     state,
   })
 }
