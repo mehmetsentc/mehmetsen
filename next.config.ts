@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
     '/api/admin/social/reels/share': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/cron/social-automation': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/social/reels/digest': ['./src/lib/reels/assets/**/*', './node_modules/ffmpeg-static/ffmpeg'],
+    // MEDIA-1: media-project clips (ffmpeg + fonts + logo for the text layer).
+    '/api/admin/social/media-projects/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/reels/music/[name]': ['./src/lib/reels/assets/audio/broadcast/bed-*.m4a'],
     // REELS-6: post / image-story cards in the NaHaber theme (fonts + logo only).
     '/api/admin/social/force-reshare': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],

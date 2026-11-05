@@ -409,5 +409,8 @@ service cloud.firestore {
     match /socialComments/{commentId} {
       allow read, write: if false;
     }
+    match /mediaProjects/{projectId} {
+      allow read, write: if false;
+    }
   }
 }

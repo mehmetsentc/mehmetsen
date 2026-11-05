@@ -35,12 +35,14 @@ export type SocialAuditAction =
   | 'social.publish.share'
   | 'social.token.refresh'
   | 'social.comment.moderate'
+  | 'media.project.save'
+  | 'media.clip.render'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'mediaProject'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null

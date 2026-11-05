@@ -5,7 +5,8 @@
  *   Left   : news picker (search, filters; single select or 2–7 ordered for the digest)
  *   Center : sticky 9:16 preview, render / re-render / MP4 / share, media-rights banner
  *   Right  : tabs — Ayarlar (presenter, script, intro, outro, music) · Paylaş · Sesler & sunucular
- * Modes: Tek haber · Günün Öne Çıkanları · Video yükle (REELS-T1: own / library video, templates).
+ * Modes: Tek haber · Günün Öne Çıkanları · Video yükle (REELS-T1: own / library video, templates)
+ *        · Medya projesi (MEDIA-1: news-independent clips, trim, segments, original / text on-off).
  * Each pane scrolls on its own; the page itself does not scroll on desktop.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
+import { MediaProjectStudio } from './MediaProjectStudio'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
 
@@ -80,7 +82,7 @@ type ReelResult = {
 type LibraryItem = { newsId: string; slug: string | null; headline: string; url: string; coverUrl: string | null; seconds: number | null; persona: string | null; style: string | null; media: string | null; updatedAt: string | null; renders: number }
 type Digest = { id: string; newsIds: string[]; title: string; url: string; caption: string; seconds: number; createdAt: number; lines: string[] }
 type Usage = { month: string; overageApproved: boolean; tiers: Array<{ tier: string; used: number; cap: number }> }
-type Mode = 'single' | 'digest' | 'library' | 'upload'
+type Mode = 'single' | 'digest' | 'library' | 'upload' | 'media'
 type Tab = 'settings' | 'share' | 'voices'
 
 const INTRO_TEXT: Record<string, [string, string]> = {
@@ -484,6 +486,7 @@ export function ReelsStudio() {
             ['digest', 'Günün Öne Çıkanları'],
             ['library', 'Kaydedilenler'],
             ['upload', 'Video yükle'],
+            ['media', 'Medya projesi'],
           ] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={cn('rounded-lg px-3 py-1.5', mode === k ? 'bg-[rgb(var(--color-card))] shadow' : 'text-[rgb(var(--color-muted))]')}>
               {l}
@@ -510,6 +513,10 @@ export function ReelsStudio() {
 
       {mode === 'library' ? (
         <ReelLibrary />
+      ) : mode === 'media' ? (
+        <div className="flex min-h-0 flex-1 overflow-auto p-3">
+          <MediaProjectStudio />
+        </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-auto p-3 lg:grid-cols-[320px_minmax(0,1fr)_380px] lg:overflow-hidden">
           {/* LEFT — news */}
