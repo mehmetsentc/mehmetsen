@@ -8,10 +8,10 @@ import { Collections } from '@/lib/firebase/collections'
 import { buildPublicArticleUrl } from './articleUrl'
 import { withSocialUtm } from './utm'
 import { publishToTarget } from './accounts/targetedPublish'
-import type { FacebookPublishTarget, InstagramPublishTarget, YouTubePublishTarget } from './accounts/targetTypes'
+import type { FacebookPublishTarget, InstagramPublishTarget, ThreadsPublishTarget, YouTubePublishTarget } from './accounts/targetTypes'
 import { publishYouTubeShort } from './youtubeShorts'
 import type { PublishOneSocialOptions, PublishOneSocialResult } from './publishOneSocial'
-import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from './reelAdapters'
+import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory, publishThreadsVideo } from './reelAdapters'
 import { safeErrorText } from './safeLog'
 import { buildSeoDescription, buildSeoHashtags, socialLocationFromDoc, type SocialLocation } from './socialSeo'
 import { resolveFacebookPlaceId } from './placeResolver'
@@ -67,14 +67,24 @@ export function buildYouTubeShortMeta(
   }
 }
 
+/** Threads video text (≤ 500): headline, article link, up to 3 hashtags — the link is never cut off. */
+export function buildThreadsVideoText(d: Record<string, unknown>, articleUrl: string | null): string {
+  const title = str(d.title)
+  const tags = reelSeoHashtags(d).slice(0, 3).join(' ')
+  const link = articleUrl ? `Haberin tamamı: ${articleUrl}` : ''
+  const room = 500 - link.length - tags.length - 4
+  const head = title.length > room ? `${title.slice(0, Math.max(0, room - 1)).trim()}…` : title
+  return [head, link, tags].filter(Boolean).join('\n\n')
+}
+
 export async function publishReelOne(newsId: string, options: PublishOneSocialOptions): Promise<PublishOneSocialResult> {
   const format = options.mode === 'video_story' ? 'video_story' : 'reel'
   const skip = (reason: string): PublishOneSocialResult => ({ ok: false, newsId, skipped: true, reason })
   const entries = Object.entries(options.targets ?? {}).filter(([, v]) => !!v) as Array<[string, string]>
   if (entries.length !== 1) return skip('Video yalnızca tek bir hedef hesaba paylaşılır')
   const [platform, accountId] = entries[0]!
-  if (platform !== 'instagram' && platform !== 'facebook' && platform !== 'youtube') return skip('Reels yalnızca Instagram, Facebook ve YouTube hesaplarında')
-  if (platform === 'youtube' && format !== 'reel') return skip('YouTube yalnızca Shorts (reel) biçimini destekler')
+  if (platform !== 'instagram' && platform !== 'facebook' && platform !== 'youtube' && platform !== 'threads') return skip('Video yalnızca Instagram, Facebook, Threads ve YouTube hesaplarında')
+  if ((platform === 'youtube' || platform === 'threads') && format !== 'reel') return skip(platform === 'youtube' ? 'YouTube yalnızca Shorts (reel) biçimini destekler' : 'Threads video hikâyesi desteklemez')
   if (!options.actorUid) return skip('Reels paylaşımı için yetkili kullanıcı gerekli')
 
   const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
@@ -114,7 +124,9 @@ export async function publishReelOne(newsId: string, options: PublishOneSocialOp
     actorUid: options.actorUid,
     trigger: options.trigger ?? (options.automation ? 'automation' : 'studio'),
     publish: (t) =>
-      platform === 'youtube'
+      platform === 'threads'
+        ? publishThreadsVideo({ newsId, videoUrl, caption: buildThreadsVideoText(d, articleUrl) }, t as ThreadsPublishTarget)
+        : platform === 'youtube'
         ? publishYouTubeShort({ newsId, videoUrl, ...buildYouTubeShortMeta(d, articleUrl) }, t as YouTubePublishTarget)
         : format === 'video_story'
         ? platform === 'instagram'

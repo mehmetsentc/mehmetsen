@@ -134,7 +134,7 @@ export function ComposerTargetPicker({
   }, [newsId, formats])
 
   // YouTube: yalnız Reels videosu (Shorts). Gönderi / hikâye / video hikâye YouTube API'sinde yok.
-  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'post' || mode === 'both' ? ['facebook', 'instagram', 'threads'] : mode === 'reel' ? ['facebook', 'instagram', 'youtube'] : ['facebook', 'instagram']), [mode])
+  const platforms = useMemo<TargetPlatform[]>(() => (mode === 'post' || mode === 'both' ? ['facebook', 'instagram', 'threads'] : mode === 'reel' ? ['facebook', 'instagram', 'threads', 'youtube'] : ['facebook', 'instagram']), [mode])
 
   if (state.kind === 'loading') return <p className="text-xs text-[rgb(var(--color-muted))]">Hesaplar yükleniyor…</p>
   if (state.kind === 'error') return <p className="text-xs text-red-700 dark:text-red-300">{state.message}. Paylaşım yapılmaz.</p>

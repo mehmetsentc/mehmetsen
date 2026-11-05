@@ -6,11 +6,13 @@
  *              → poll status_code until FINISHED → POST /{ig-user-id}/media_publish
  *   Facebook:  POST /{page-id}/video_reels upload_phase=start → rupload file_url
  *              → POST /{page-id}/video_reels upload_phase=finish video_state=PUBLISHED
+ *   Threads:   POST /{threads-user-id}/threads media_type=VIDEO → poll → threads_publish
  */
 import { neutralizeSocialText } from './sensitiveNews'
 import type { SocialPublishResult } from './types'
-import type { FacebookPublishTarget, InstagramPublishTarget } from './accounts/targetTypes'
-import { INVALID_TARGET_ERROR, isUsableFacebookTarget, isUsableInstagramTarget } from './accounts/targetGuards'
+import type { FacebookPublishTarget, InstagramPublishTarget, ThreadsPublishTarget } from './accounts/targetTypes'
+import { INVALID_TARGET_ERROR, isUsableFacebookTarget, isUsableInstagramTarget, isUsableThreadsTarget } from './accounts/targetGuards'
+import { parseMetaJson } from './accounts/connect/metaHttp'
 import { META_GRAPH_API_VERSION } from './graphConfig'
 import { platformError, safeErrorText, socialLog } from './safeLog'
 
@@ -154,4 +156,81 @@ export async function publishFacebookVideoStory(input: ReelPublishInput, target:
     socialLog('error', 'facebook', 'video_story', { corr: input.newsId, account: target.accountId, result: 'failed', error: safeErrorText(err).slice(0, 160) })
     return { success: false, error: safeErrorText(err) }
   }
+}
+
+// ── Threads video (THREADS-VIDEO-1) ──────────────────────────────────────────
+//   POST /{threads-user-id}/threads media_type=VIDEO video_url text
+//   → poll GET /{container}?fields=status,error_message until FINISHED
+//   → POST /{threads-user-id}/threads_publish creation_id
+// Docs: video ≤ 5 min, ≤ 1 GB, MP4/MOV, 23–60 fps; text ≤ 500 characters.
+// The container must be FINISHED before publishing; a timeout BEFORE publish is a
+// definite failure (nothing was posted), never «uncertain».
+
+const TH_POLL_MS = 5000
+const TH_POLL_MAX = 60 // ~5 minutes of video processing
+export const THREADS_VIDEO_TEXT_LIMIT = 500
+
+/** Threads text: the caption cut on a word boundary to 500 characters (link and hashtags kept when they fit). */
+export function threadsVideoText(caption: string): string {
+  const t = neutralizeSocialText(caption).replace(/\n{3,}/g, '\n\n').trim()
+  if (t.length <= THREADS_VIDEO_TEXT_LIMIT) return t
+  const cut = t.slice(0, THREADS_VIDEO_TEXT_LIMIT - 1)
+  const at = cut.lastIndexOf(' ')
+  return `${(at > 300 ? cut.slice(0, at) : cut).trim()}…`
+}
+
+export async function publishThreadsVideo(input: ReelPublishInput, target: ThreadsPublishTarget): Promise<SocialPublishResult> {
+  if (!isUsableThreadsTarget(target)) return { success: false, error: INVALID_TARGET_ERROR }
+  if (!input.videoUrl.startsWith('https://')) return { success: false, error: 'Video için herkese açık https video URL gerekli' }
+  const base = target.apiBase
+  const token = target.accessToken
+  try {
+    const c = await formExact(`${base}/${target.threadsUserId}/threads`, {
+      media_type: 'VIDEO',
+      video_url: input.videoUrl,
+      text: threadsVideoText(input.caption),
+      access_token: token,
+    })
+    const containerId = typeof c.json.id === 'string' ? c.json.id : ''
+    if (c.status >= 400 || c.json.error || !containerId) throw platformError('threads', 'video kapsayıcısı', c.status, c.json)
+    socialLog('log', 'threads', 'video_container', { corr: input.newsId, account: target.accountId, result: 'created' })
+
+    for (let i = 0; ; i++) {
+      if (i >= TH_POLL_MAX) throw new Error('Threads videosu işlenmedi (zaman aşımı); yayınlama adımına geçilmedi')
+      await sleep(TH_POLL_MS)
+      const res = await fetch(`${base}/${containerId}?fields=status,error_message&access_token=${encodeURIComponent(token)}`)
+      const json = (await res.json().catch(() => ({}))) as { status?: string; error?: unknown }
+      if (json.error) throw platformError('threads', 'video durumu', res.status, json)
+      const st = (json.status ?? '').toUpperCase()
+      if (st === 'FINISHED') break
+      // error_message is platform text — not propagated.
+      if (st === 'ERROR' || st === 'EXPIRED') throw new Error(`Threads videosu işlenemedi (durum ${st})`)
+    }
+
+    const p = await formExact(`${base}/${target.threadsUserId}/threads_publish`, { creation_id: containerId, access_token: token })
+    const mediaId = typeof p.json.id === 'string' ? p.json.id : ''
+    if (p.status >= 400 || p.json.error || !mediaId) throw platformError('threads', 'video yayınlama', p.status, p.json)
+    socialLog('log', 'threads', 'video', { corr: input.newsId, account: target.accountId, result: 'published', mediaId })
+    return { success: true, platformId: mediaId }
+  } catch (err) {
+    socialLog('error', 'threads', 'video', { corr: input.newsId, account: target.accountId, result: 'failed', error: safeErrorText(err).slice(0, 160) })
+    return { success: false, error: safeErrorText(err) }
+  }
+}
+
+/** Form POST whose JSON keeps large numeric ids exact (Threads returns ids as numbers). */
+async function formExact(url: string, params: Record<string, string>): Promise<{ status: number; json: Record<string, unknown> }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  })
+  let json: Record<string, unknown> = {}
+  try {
+    json = parseMetaJson(await res.text()) as Record<string, unknown>
+  } catch {
+    json = {}
+  }
+  if (typeof json.id === 'number') json.id = String(json.id)
+  return { status: res.status, json }
 }

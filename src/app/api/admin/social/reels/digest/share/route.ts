@@ -1,5 +1,5 @@
 /**
- * GET  /api/admin/social/reels/digest/share?format=reel|video_story → central reel-capable IG/FB accounts.
+ * GET  /api/admin/social/reels/digest/share?format=reel|video_story → central reel-capable IG/FB (and Threads for reel) accounts.
  * POST /api/admin/social/reels/digest/share { digestId, accountId, format } → publish the digest video to
  *      ONE account through the shared ledger (record key digest_<id>; the digest is not one news item,
  *      so location/category scopes do not apply — central social-account managers only).
@@ -9,9 +9,9 @@ import { actorFromCms } from '@/lib/social/accounts/actor'
 import { supportsReel, supportsVideoStory, type VideoFormat } from '@/lib/social/accounts/capabilities'
 import { listManualTargetAccounts } from '@/lib/social/accounts/manualTargets'
 import { publishToTarget } from '@/lib/social/accounts/targetedPublish'
-import type { FacebookPublishTarget, InstagramPublishTarget } from '@/lib/social/accounts/targetTypes'
+import type { FacebookPublishTarget, InstagramPublishTarget, ThreadsPublishTarget } from '@/lib/social/accounts/targetTypes'
 import { getDigest } from '@/lib/reels/digestService'
-import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory } from '@/lib/social/reelAdapters'
+import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, publishInstagramVideoStory, publishThreadsVideo } from '@/lib/social/reelAdapters'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,8 +22,8 @@ const fmtOf = (v: unknown): VideoFormat => (v === 'video_story' ? 'video_story' 
 async function accounts(ctx: Parameters<typeof actorFromCms>[1] & { uid: string }, format: VideoFormat) {
   const list = await listManualTargetAccounts(actorFromCms(ctx.uid, ctx))
   return list
-    .filter((a) => (a.platform === 'instagram' || a.platform === 'facebook') && (format === 'reel' ? supportsReel(a) : supportsVideoStory(a)) && a.status === 'active')
-    .map((a) => ({ accountId: a.id, platform: a.platform as 'instagram' | 'facebook', displayName: a.displayName, username: a.username ?? null }))
+    .filter((a) => (a.platform === 'instagram' || a.platform === 'facebook' || (a.platform === 'threads' && format === 'reel')) && (format === 'reel' ? supportsReel(a) : supportsVideoStory(a)) && a.status === 'active')
+    .map((a) => ({ accountId: a.id, platform: a.platform as 'instagram' | 'facebook' | 'threads', displayName: a.displayName, username: a.username ?? null }))
 }
 
 export async function GET(request: Request) {
@@ -54,7 +54,9 @@ export async function POST(request: Request) {
     publish: (t) =>
       format === 'video_story'
         ? acc.platform === 'instagram' ? publishInstagramVideoStory(input, t as InstagramPublishTarget) : publishFacebookVideoStory(input, t as FacebookPublishTarget)
-        : acc.platform === 'instagram' ? publishInstagramReel(input, t as InstagramPublishTarget) : publishFacebookReel(input, t as FacebookPublishTarget),
+        : acc.platform === 'threads'
+          ? publishThreadsVideo(input, t as ThreadsPublishTarget)
+          : acc.platform === 'instagram' ? publishInstagramReel(input, t as InstagramPublishTarget) : publishFacebookReel(input, t as FacebookPublishTarget),
   })
   return json({ result: res, platform: acc.platform, accountId: acc.accountId, format }, res.success ? 200 : 502)
 }

@@ -1018,7 +1018,7 @@ function ReelLibrary() {
 // ── digest share (central accounts, one request per account) ─────────────────
 function DigestShare({ digest }: { digest: Digest }) {
   const [fmt, setFmt] = useState<'reel' | 'video_story'>('reel')
-  const [accounts, setAccounts] = useState<Array<{ accountId: string; platform: 'instagram' | 'facebook'; displayName: string; username: string | null }>>([])
+  const [accounts, setAccounts] = useState<Array<{ accountId: string; platform: 'instagram' | 'facebook' | 'threads'; displayName: string; username: string | null }>>([])
   const [sel, setSel] = useState<string[]>([])
   const [rows, setRows] = useState<Array<{ id: string; ok: boolean; text: string }>>([])
   const [busy, setBusy] = useState(false)
@@ -1034,7 +1034,7 @@ function DigestShare({ digest }: { digest: Digest }) {
     for (const id of sel) {
       const r = await reelsCall<{ result: { success: boolean; error?: string; code?: string } }>('POST', '/api/admin/social/reels/digest/share', { digestId: digest.id, accountId: id, format: fmt })
       const a = accounts.find((x) => x.accountId === id)
-      out.push({ id, ok: r.ok && r.data.result.success, text: `${a?.platform === 'instagram' ? 'Instagram' : 'Facebook'} · ${a?.displayName ?? id}: ${r.ok ? (r.data.result.success ? 'yayımlandı ✓' : r.data.result.error ?? r.data.result.code ?? 'başarısız') : r.error}` })
+      out.push({ id, ok: r.ok && r.data.result.success, text: `${a?.platform === 'instagram' ? 'Instagram' : a?.platform === 'threads' ? 'Threads' : 'Facebook'} · ${a?.displayName ?? id}: ${r.ok ? (r.data.result.success ? 'yayımlandı ✓' : r.data.result.error ?? r.data.result.code ?? 'başarısız') : r.error}` })
       setRows([...out])
     }
     setBusy(false)
@@ -1058,7 +1058,7 @@ function DigestShare({ digest }: { digest: Digest }) {
           <li key={a.accountId}>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={sel.includes(a.accountId)} onChange={() => setSel((c) => (c.includes(a.accountId) ? c.filter((x) => x !== a.accountId) : [...c, a.accountId]))} />
-              <span className="font-semibold">{a.platform === 'instagram' ? 'Instagram' : 'Facebook'} · {a.displayName}{a.username ? ` (@${a.username})` : ''}</span>
+              <span className="font-semibold">{a.platform === 'instagram' ? 'Instagram' : a.platform === 'threads' ? 'Threads' : 'Facebook'} · {a.displayName}{a.username ? ` (@${a.username})` : ''}</span>
             </label>
           </li>
         ))}

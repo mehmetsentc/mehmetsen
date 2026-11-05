@@ -52,13 +52,16 @@ describe('REELS-2 capabilities', () => {
   const ig = { platform: 'instagram' as const, connectionMethod: 'facebook_login' as const, platformAccountType: 'BUSINESS' }
   const fb = { platform: 'facebook' as const, connectionMethod: 'facebook_login' as const, platformAccountType: null }
   const th = { platform: 'threads' as const, connectionMethod: 'threads_oauth' as const, platformAccountType: null }
-  it('reel is supported on IG/FB, not Threads, and never leaks into post/story formats', () => {
+  it('reel is supported on IG/FB and as a Threads video (THREADS-VIDEO-1), never leaking into post/story formats', () => {
     expect(supportsReel(ig)).toBe(true)
     expect(supportsReel(fb)).toBe(true)
-    expect(supportsReel(th as never)).toBe(false)
+    expect(supportsReel(th as never)).toBe(true)
+    expect(supportsVideoStory(th as never)).toBe(false)
     expect(supportedFormats(ig)).toEqual(['post', 'story'])
+    expect(supportedFormats(th as never)).toEqual(['post'])
     expect(formatsForMode(ig, 'reel')).toEqual(['reel'])
-    expect(formatsForMode(th as never, 'reel')).toEqual([])
+    expect(formatsForMode(th as never, 'reel')).toEqual(['reel'])
+    expect(formatsForMode(th as never, 'video_story')).toEqual([])
     expect(requiredFormats('instagram', 'reel')).toEqual(['reel'])
   })
   it('video story: IG professional / FB only; follows story scope, reel follows post scope', () => {

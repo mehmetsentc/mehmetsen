@@ -22,8 +22,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 800
 
 const NEWS_RE = /^[A-Za-z0-9_-]{4,128}$/
-/** Platforms that take the rendered news video (YouTube: Shorts only — manualTargetCheck refuses video_story). */
-const VIDEO_PLATFORMS = new Set<string>(['instagram', 'facebook', 'youtube'])
+/** Platforms that take the rendered news video (YouTube / Threads: reel only — manualTargetCheck refuses video_story). */
+const VIDEO_PLATFORMS = new Set<string>(['instagram', 'facebook', 'youtube', 'threads'])
 const fmtOf = (v: unknown): VideoFormat => (v === 'video_story' ? 'video_story' : 'reel')
 
 export async function GET(request: Request) {

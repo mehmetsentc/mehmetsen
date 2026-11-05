@@ -502,19 +502,20 @@ describe('yayın biçimleri = platform yeteneği ∩ adaptör', () => {
       const k = publishableKinds(a)
       expect(k).not.toContain('video')
     }
-    // REELS-1: only the rendered news reel; never personal IG or Threads.
+    // REELS-1: only the rendered news reel; never personal IG. THREADS-VIDEO-1: Threads takes it as a video post.
     expect(all.filter((a) => publishableKinds(a).includes('reel')).map((a) => `${a.platform}:${a.platformAccountType}`)).toEqual([
       'facebook:null',
       'instagram:null',
       'instagram:BUSINESS',
       'instagram:MEDIA_CREATOR',
+      'threads:null',
     ])
     expect(publishableKinds(all[0])).toEqual(['image_post', 'story', 'reel'])
     expect(publishableKinds(all[2])).toContain('story')
     expect(publishableKinds(all[3])).toContain('story')
     expect(publishableKinds(all[4])).not.toContain('story')
     expect(publishableKinds(all[5])).not.toContain('story')
-    expect(publishableKinds(all[6])).toEqual(['image_post'])
+    expect(publishableKinds(all[6])).toEqual(['image_post', 'reel'])
     expect(imageModeProblem('carousel', ['instagram'])).toBeNull()
     expect(imageModeProblem('carousel', ['instagram', 'facebook'])).toBe('carousel_unsupported')
     expect(imageModeProblem('single', ['facebook', 'threads'])).toBeNull()

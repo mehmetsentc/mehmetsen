@@ -15,7 +15,7 @@
  * Adapter implementation (what NaHaber's code actually publishes today):
  *   Facebook: single photo post, photo story, reel (REELS-1 rendered MP4). NO multi-photo / video.
  *   Instagram: single image, carousel, story, reel (REELS-1 rendered MP4). NO plain video.
- *   Threads: single image (+ text fallback). NO carousel / video.
+ *   Threads: single image (+ text fallback), video post (reel MP4). NO carousel.
  *
  * Reels are an AUTOMATION / studio format only: supportedFormats() (manual composer,
  * account publish scopes) stays post/story; reel support is read via supportsReel().
@@ -49,7 +49,8 @@ type CapabilityInput = {
 export function platformCapabilities(a: CapabilityInput): ContentKind[] {
   // YouTube: video upload (a vertical ≤ 3 min video is a Short). No image post / story via the API.
   if (a.platform === 'youtube') return ['video', 'reel']
-  if (a.platform === 'threads') return ['image_post', 'carousel_post', 'video']
+  // Threads: a vertical video post (≤ 5 min) is offered as the «reel» format.
+  if (a.platform === 'threads') return ['image_post', 'carousel_post', 'video', 'reel']
   if (a.platform === 'facebook') return ['image_post', 'carousel_post', 'story', 'video', 'reel']
   if (a.connectionMethod === 'instagram_login') {
     const professional = !!a.platformAccountType && PROFESSIONAL_IG_TYPES.has(a.platformAccountType.toUpperCase())
@@ -64,7 +65,8 @@ export function platformCapabilities(a: CapabilityInput): ContentKind[] {
 export const ADAPTER_IMPLEMENTED: Record<SocialAccountPlatform, readonly ContentKind[]> = {
   facebook: ['image_post', 'story', 'reel'],
   instagram: ['image_post', 'carousel_post', 'story', 'reel'],
-  threads: ['image_post'],
+  // THREADS-VIDEO-1: rendered reel MP4 / media-project video as a Threads video post.
+  threads: ['image_post', 'reel'],
   // REELS MP4 uploaded as a YouTube Short (youtubeShorts.ts).
   youtube: ['reel'],
 }
