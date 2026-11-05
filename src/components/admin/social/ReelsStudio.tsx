@@ -17,6 +17,7 @@ import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
 import { MediaProjectStudio } from './MediaProjectStudio'
+import { ReelLibraryPanel } from './ReelLibraryPanel'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
 
@@ -79,7 +80,6 @@ type ReelResult = {
   coverUrl?: string | null
   template?: string
 }
-type LibraryItem = { newsId: string; slug: string | null; headline: string; url: string; coverUrl: string | null; seconds: number | null; persona: string | null; style: string | null; media: string | null; updatedAt: string | null; renders: number }
 type Digest = { id: string; newsIds: string[]; title: string; url: string; caption: string; seconds: number; createdAt: number; lines: string[] }
 type Usage = { month: string; overageApproved: boolean; tiers: Array<{ tier: string; used: number; cap: number }> }
 type Mode = 'single' | 'digest' | 'library' | 'upload' | 'media'
@@ -512,7 +512,7 @@ export function ReelsStudio() {
       </div>
 
       {mode === 'library' ? (
-        <ReelLibrary />
+        <ReelLibraryPanel />
       ) : mode === 'media' ? (
         <div className="flex min-h-0 flex-1 overflow-auto p-3">
           <MediaProjectStudio />
@@ -954,74 +954,6 @@ export function ReelsStudio() {
 }
 
 // ── saved reels (REELS-5) ────────────────────────────────────────────────────
-function ReelLibrary() {
-  const [items, setItems] = useState<LibraryItem[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [playing, setPlaying] = useState<string | null>(null)
-  const load = useCallback(async () => {
-    const r = await reelsCall<{ items: LibraryItem[] }>('GET', '/api/admin/social/reels/library?limit=90')
-    if (r.ok) setItems(r.data.items)
-    else setError(r.error)
-  }, [])
-  useEffect(() => {
-    void load()
-  }, [load])
-  return (
-    <div className="min-h-0 flex-1 overflow-auto p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <p className="text-sm font-extrabold">Kaydedilen videolar</p>
-        <span className="text-xs text-[rgb(var(--color-muted))]">Üretilen her haber videosu kapağıyla burada saklanır ve Akış 2’de haber kartında oynar.</span>
-        <button type="button" onClick={() => void load()} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1 text-xs font-bold">
-          <RefreshCw className="h-3.5 w-3.5" /> Yenile
-        </button>
-      </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {!items ? (
-        <Loader2 className="h-5 w-5 animate-spin" />
-      ) : items.length === 0 ? (
-        <p className="text-sm text-[rgb(var(--color-muted))]">Henüz kayıtlı video yok — «Tek haber» sekmesinden üretin.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-          {items.map((it) => (
-            <div key={it.newsId} className="overflow-hidden rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
-              <div className="relative aspect-[9/16] bg-black">
-                {playing === it.newsId ? (
-                  <video src={it.url} controls autoPlay playsInline className="h-full w-full object-contain" />
-                ) : (
-                  <button type="button" onClick={() => setPlaying(it.newsId)} className="group h-full w-full" aria-label="Videoyu oynat">
-                    {it.coverUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={it.coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <Film className="mx-auto h-8 w-8 text-white/60" />
-                    )}
-                    <span className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-                      <Play className="h-10 w-10 rounded-full bg-black/50 p-2 text-white" />
-                    </span>
-                  </button>
-                )}
-              </div>
-              <div className="space-y-1 p-2">
-                <p className="line-clamp-2 text-xs font-bold">{it.headline}</p>
-                <p className="text-[10px] text-[rgb(var(--color-muted))]">
-                  {it.updatedAt ? new Date(it.updatedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                  {it.seconds ? ` · ${it.seconds.toFixed(0)} sn` : ''}
-                  {it.renders > 1 ? ` · ${it.renders}. sürüm` : ''}
-                </p>
-                <div className="flex gap-1 text-[10px] font-bold">
-                  <a href={it.url} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">MP4</a>
-                  {it.coverUrl ? <a href={it.coverUrl} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Kapak</a> : null}
-                  <a href={`/admin/news/${it.newsId}/edit`} className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Haber</a>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── digest share (central accounts, one request per account) ─────────────────
 function DigestShare({ digest }: { digest: Digest }) {
   const [fmt, setFmt] = useState<'reel' | 'video_story'>('reel')

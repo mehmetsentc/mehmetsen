@@ -7,7 +7,7 @@
  *   Facebook Page post: reactions / comments summary / shares — pages_read_engagement
  *                       comment texts — pages_read_user_content (optional)
  *   Instagram (Instagram Login): like_count / comments_count — instagram_business_basic
- *                       views / shares — instagram_business_manage_insights (optional)
+ *                       views / shares / saved — instagram_business_manage_insights (optional)
  *                       comment texts — instagram_business_manage_comments (optional)
  *   Threads: views / likes / replies / reposts / quotes / shares — threads_manage_insights (optional)
  *            reply texts — threads_read_replies (optional)
@@ -142,12 +142,15 @@ async function instagram(t: Extract<PublishTarget, { platform: 'instagram' }>, a
 
   if (scopeState(account.grantedPermissions, scopes.insights) === 'missing') missing.push(...scopes.insights)
   else {
-    let ins = await metaRequest<{ data?: InsightRow[] }>('engagement.ig_insights', query(`${base}/insights`, { metric: 'views,shares', access_token: t.accessToken }))
+    let ins = await metaRequest<{ data?: InsightRow[] }>('engagement.ig_insights', query(`${base}/insights`, { metric: 'views,shares,saved', access_token: t.accessToken }))
+    // A metric the media type does not offer fails the whole call (code 100) → narrower sets.
+    if (!ins.ok && ins.error.code === 100) ins = await metaRequest<{ data?: InsightRow[] }>('engagement.ig_insights_vs', query(`${base}/insights`, { metric: 'views,shares', access_token: t.accessToken }))
     if (!ins.ok && ins.error.code === 100) ins = await metaRequest<{ data?: InsightRow[] }>('engagement.ig_insights_views', query(`${base}/insights`, { metric: 'views', access_token: t.accessToken }))
     if (ins.ok) {
       const v = insightValues(ins.data.data)
       if (v.views !== undefined) metrics.views = v.views
       if (v.shares !== undefined) metrics.shares = v.shares
+      if (v.saved !== undefined) metrics.saves = v.saved
     } else if (isPermissionError(ins.error)) missing.push(...scopes.insights)
   }
 

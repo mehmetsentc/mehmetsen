@@ -72,7 +72,8 @@ const CODE_TEXT: Record<string, string> = {
  * and published account by account (one request each, so each has its own budget).
  */
 async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_story'; targets: TargetSelection; names: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
-  const list = (['instagram', 'facebook', ...(input.mode === 'reel' ? (['youtube'] as const) : [])] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
+  // THREADS-VIDEO-1: Threads takes the reel as a video post (no video story).
+  const list = (['instagram', 'facebook', ...(input.mode === 'reel' ? (['threads', 'youtube'] as const) : [])] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
   if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
   const rows: TargetRowLike[] = []
   // REELS-5 / REELS-12: build (or reuse) the video + cover once, as a background job that is
@@ -206,7 +207,7 @@ export function ManualShareFlow({
   const [result, setResult] = useState<ManualShareResult | null>(null)
   const [retry, setRetry] = useState<string[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const effective: TargetSelection = mode === 'post' ? targets : { ...targets, threads: [] }
+  const effective: TargetSelection = mode === 'post' || mode === 'reel' ? targets : { ...targets, threads: [] }
   const count = targetCount(effective)
   const labels = selectedLabels(effective, options)
 

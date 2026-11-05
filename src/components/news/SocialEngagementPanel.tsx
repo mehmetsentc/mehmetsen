@@ -8,7 +8,7 @@
  * kept separate from NaHaber's own likes / views.
  */
 import { useEffect, useRef, useState } from 'react'
-import { ExternalLink, Eye, Heart, MessageCircle, Repeat2 } from 'lucide-react'
+import { Bookmark, ExternalLink, Eye, Heart, MessageCircle, Repeat2 } from 'lucide-react'
 import { formatCountTr, PLATFORM_TR, type EngagementMetrics, type PublicEngagement } from '@/lib/social/engagement/model'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +17,7 @@ const METRICS: Array<{ key: keyof EngagementMetrics; label: string; Icon: typeof
   { key: 'likes', label: 'beğeni', Icon: Heart },
   { key: 'comments', label: 'yorum', Icon: MessageCircle },
   { key: 'shares', label: 'paylaşım', Icon: Repeat2 },
+  { key: 'saves', label: 'kaydetme', Icon: Bookmark },
 ]
 
 const ago = (t: number | null) => {

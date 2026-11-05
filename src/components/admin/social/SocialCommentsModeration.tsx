@@ -43,7 +43,7 @@ const STATE_TR: Record<string, string> = {
   post_unavailable: 'gönderi platformda yok',
   error: 'okunamadı',
 }
-const METRIC_TR: Record<string, string> = { views: 'görüntülenme', likes: 'beğeni', comments: 'yorum', shares: 'paylaşım' }
+const METRIC_TR: Record<string, string> = { views: 'görüntülenme', likes: 'beğeni', comments: 'yorum', shares: 'paylaşım', saves: 'kaydetme' }
 const metricsText = (m: Record<string, number>) =>
   Object.keys(m).length ? Object.entries(m).map(([k, v]) => `${v} ${METRIC_TR[k] ?? k}`).join(' · ') : 'sayı yok'
 

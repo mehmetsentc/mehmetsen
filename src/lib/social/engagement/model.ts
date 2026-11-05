@@ -27,8 +27,12 @@ export const MAX_KNOWN_COMMENT_IDS = 200
 export const COMMENTS_PER_FETCH = 50
 export const COMMENT_TEXT_MAX = 1000
 
-export type EngagementMetricKey = 'views' | 'likes' | 'comments' | 'shares'
+export type EngagementMetricKey = 'views' | 'likes' | 'comments' | 'shares' | 'saves'
 export type EngagementMetrics = Partial<Record<EngagementMetricKey, number>>
+export const ENGAGEMENT_METRIC_KEYS: readonly EngagementMetricKey[] = ['views', 'likes', 'comments', 'shares', 'saves']
+
+/** Formats that are videos (Reels / video posts / Shorts) — «video görüntülenme». */
+export const VIDEO_FORMATS = new Set(['reel', 'video_story'])
 
 /** Why a target has no (or partial) data. */
 export type EngagementTargetState =
@@ -130,7 +134,7 @@ export function nextRefreshAt(publishedAt: number, now: number): number | null {
 export function sumMetrics(targets: Iterable<Pick<EngagementTarget, 'metrics'>>): EngagementMetrics {
   const out: EngagementMetrics = {}
   for (const t of targets) {
-    for (const k of ['views', 'likes', 'comments', 'shares'] as const) {
+    for (const k of ENGAGEMENT_METRIC_KEYS) {
       const v = t.metrics[k]
       if (typeof v === 'number' && Number.isFinite(v) && v >= 0) out[k] = (out[k] ?? 0) + v
     }
