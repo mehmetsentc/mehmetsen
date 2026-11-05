@@ -26,6 +26,27 @@ type Row = {
   permalink: string | null
 }
 
+type Recent = {
+  newsId: string
+  slug: string | null
+  title: string | null
+  updatedAt: number
+  totals: Record<string, number>
+  targets: Array<{ platform: Row['platform']; accountName: string | null; state: string; missing: string[]; permalink: string | null; metrics: Record<string, number> }>
+}
+
+const STATE_TR: Record<string, string> = {
+  ok: 'okundu',
+  partial: 'kısmen (ek izin gerekir)',
+  permission_missing: 'izin gerekiyor',
+  account_unavailable: 'hesap kullanılamıyor',
+  post_unavailable: 'gönderi platformda yok',
+  error: 'okunamadı',
+}
+const METRIC_TR: Record<string, string> = { views: 'görüntülenme', likes: 'beğeni', comments: 'yorum', shares: 'paylaşım' }
+const metricsText = (m: Record<string, number>) =>
+  Object.keys(m).length ? Object.entries(m).map(([k, v]) => `${v} ${METRIC_TR[k] ?? k}`).join(' · ') : 'sayı yok'
+
 const TABS: Array<[Status, string]> = [
   ['pending', 'Onay bekleyen'],
   ['approved', 'Yayında'],
@@ -39,6 +60,7 @@ export function SocialCommentsModeration() {
   const [status, setStatus] = useState<Status>('pending')
   const [rows, setRows] = useState<Row[] | null>(null)
   const [pendingCount, setPendingCount] = useState<number | null>(null)
+  const [recent, setRecent] = useState<Recent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -47,10 +69,11 @@ export function SocialCommentsModeration() {
     setRows(null)
     setError(null)
     setSelected([])
-    const r = await socialApi<{ comments: Row[]; pendingCount: number }>(`/api/admin/social/comments?status=${s}`)
+    const r = await socialApi<{ comments: Row[]; pendingCount: number; recent?: Recent[] }>(`/api/admin/social/comments?status=${s}`)
     if (!r.ok) return setError(r.status === 403 ? 'Bu ekran yalnız merkez sosyal medya yöneticilerine açık.' : 'Yorumlar yüklenemedi.')
     setRows(r.data.comments)
     setPendingCount(r.data.pendingCount)
+    setRecent(r.data.recent ?? [])
   }, [])
 
   useEffect(() => {
@@ -160,6 +183,34 @@ export function SocialCommentsModeration() {
           </li>
         ))}
       </ul>
+
+      {recent.length > 0 ? (
+        <details className="rounded-lg border border-[rgb(var(--color-border))] p-3 text-xs">
+          <summary className="cursor-pointer font-semibold text-[rgb(var(--color-text))]">Son okunan gönderiler (sayılar ve izin durumu)</summary>
+          <ul className="mt-2 space-y-2">
+            {recent.map((r) => (
+              <li key={r.newsId} className="space-y-0.5">
+                <p className="font-semibold text-[rgb(var(--color-text))]">
+                  {r.slug ? (
+                    <a href={`/haber/${r.slug}`} target="_blank" rel="noopener noreferrer" className="underline">
+                      {r.title ?? r.newsId}
+                    </a>
+                  ) : (
+                    r.title ?? r.newsId
+                  )}{' '}
+                  <span className="font-normal text-[rgb(var(--color-muted))]">· {fmt(r.updatedAt)} · toplam: {metricsText(r.totals)}</span>
+                </p>
+                {r.targets.map((t, i) => (
+                  <p key={i} className="text-[rgb(var(--color-muted))]">
+                    {PLATFORM_TR[t.platform]} {t.accountName ?? ''}: {metricsText(t.metrics)} — {STATE_TR[t.state] ?? t.state}
+                    {t.missing.length ? ` (eksik izin: ${t.missing.join(', ')})` : ''}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </section>
   )
 }

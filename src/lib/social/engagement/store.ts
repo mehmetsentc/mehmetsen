@@ -265,6 +265,28 @@ export async function countPendingComments(): Promise<number> {
   return snap.size
 }
 
+/** Last read-back results for the moderation page (admin observability; one small query). */
+export async function recentEngagement(limit = 8): Promise<Array<{ newsId: string; slug: string | null; title: string | null; updatedAt: number; totals: EngagementDoc['totals']; targets: Array<{ platform: string; accountName: string | null; state: string; missing: string[]; permalink: string | null; metrics: EngagementTarget['metrics'] }> }>> {
+  const snap = await db().collection(ENGAGEMENT).orderBy('updatedAt', 'desc').limit(limit).get()
+  const docs = snap.docs.map((d) => d.data() as EngagementDoc)
+  const titles = new Map<string, string>()
+  if (docs.length) {
+    const snaps = await db().getAll(...docs.map((d) => db().collection(Collections.NEWS).doc(d.newsId)))
+    for (const s of snaps) {
+      const t = s.exists ? (s.data() as { title?: unknown }).title : null
+      if (typeof t === 'string') titles.set(s.id, t)
+    }
+  }
+  return docs.map((d) => ({
+    newsId: d.newsId,
+    slug: d.slug,
+    title: titles.get(d.newsId) ?? null,
+    updatedAt: d.updatedAt,
+    totals: d.totals ?? {},
+    targets: Object.values(d.targets ?? {}).map((t) => ({ platform: t.platform, accountName: t.accountName, state: t.state, missing: t.missing ?? [], permalink: t.permalink, metrics: t.metrics ?? {} })),
+  }))
+}
+
 export const MODERATION_BATCH_MAX = 50
 
 export async function moderateComments(ids: string[], action: 'approve' | 'reject', actorUid: string, now: number): Promise<{ updated: number; skipped: number }> {

@@ -7,7 +7,7 @@
  * social-account managers only; same-origin for changes; audited (ids only).
  */
 import { json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
-import { countPendingComments, listCommentsForModeration, moderateComments, MODERATION_BATCH_MAX, type CommentStatus } from '@/lib/social/engagement/store'
+import { countPendingComments, listCommentsForModeration, recentEngagement, moderateComments, MODERATION_BATCH_MAX, type CommentStatus } from '@/lib/social/engagement/store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,8 +20,12 @@ export async function GET(request: Request) {
   if ('response' in auth) return auth.response
   const raw = new URL(request.url).searchParams.get('status') ?? 'pending'
   const status = (STATUSES as string[]).includes(raw) ? (raw as CommentStatus) : 'pending'
-  const [comments, pending] = await Promise.all([listCommentsForModeration(status), status === 'pending' ? Promise.resolve(null) : countPendingComments()])
-  return json({ status, comments, pendingCount: pending ?? comments.length })
+  const [comments, pending, recent] = await Promise.all([
+    listCommentsForModeration(status),
+    status === 'pending' ? Promise.resolve(null) : countPendingComments(),
+    recentEngagement().catch(() => []),
+  ])
+  return json({ status, comments, pendingCount: pending ?? comments.length, recent })
 }
 
 export async function POST(request: Request) {
