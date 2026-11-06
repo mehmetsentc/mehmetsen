@@ -202,7 +202,7 @@ export function engagementQueueRow(
   return { ledgerId, newsId: rec.newsId, accountId: rec.accountId, platform: rec.platform, format: rec.format, externalPostId, publishedAt, nextAt: Math.max(now, publishedAt + 30 * 60_000), failures: 0 }
 }
 
-export const PLATFORM_TR: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube' }
+export const PLATFORM_TR: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube', tiktok: 'TikTok' }
 
 export function formatCountTr(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace('.', ',')} Mn`

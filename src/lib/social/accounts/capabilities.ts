@@ -49,6 +49,8 @@ type CapabilityInput = {
 export function platformCapabilities(a: CapabilityInput): ContentKind[] {
   // YouTube: video upload (a vertical ≤ 3 min video is a Short). No image post / story via the API.
   if (a.platform === 'youtube') return ['video', 'reel']
+  // TikTok: video (Direct Post / inbox draft). Photo posts exist but are not offered yet.
+  if (a.platform === 'tiktok') return ['video', 'reel']
   // Threads: a vertical video post (≤ 5 min) is offered as the «reel» format.
   if (a.platform === 'threads') return ['image_post', 'carousel_post', 'video', 'reel']
   if (a.platform === 'facebook') return ['image_post', 'carousel_post', 'story', 'video', 'reel']
@@ -69,6 +71,10 @@ export const ADAPTER_IMPLEMENTED: Record<SocialAccountPlatform, readonly Content
   threads: ['image_post', 'reel'],
   // REELS MP4 uploaded as a YouTube Short (youtubeShorts.ts).
   youtube: ['reel'],
+  // TIKTOK-1: TikTok is published ONLY from its own post dialog (creator info,
+  // privacy chosen by the editor, explicit consent) — never through automation
+  // or the generic reel targets, so nothing is listed here.
+  tiktok: [],
 }
 
 /** Selectable kinds = platform capability ∩ adapter implementation. */

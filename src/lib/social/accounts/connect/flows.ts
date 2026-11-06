@@ -64,6 +64,7 @@ import {
 } from './instagramLogin'
 import { buildThreadsAuthorizeUrl, exchangeThreadsCode, exchangeThreadsLongLived, fetchThreadsProfile, verifyThreadsScopes } from './threadsOAuth'
 import { buildGoogleAuthorizeUrl, exchangeGoogleCode, fetchMyYouTubeChannels } from './googleOAuth'
+import { buildTikTokAuthorizeUrl, exchangeTikTokCode, fetchTikTokUser } from './tiktokOAuth'
 import { saveConnectedAccount, type SaveConnectionResult } from './connectionStore'
 import {
   consumeFacebookSelectSession,
@@ -81,6 +82,7 @@ export const METHOD_FOR_PLATFORM: Record<SocialAccountPlatform, OAuthConnectionM
   instagram: 'instagram_login',
   threads: 'threads_oauth',
   youtube: 'google_oauth',
+  tiktok: 'tiktok_oauth',
 }
 
 export interface CookieToSet {
@@ -99,6 +101,7 @@ export function allConfigStatuses(): Record<SocialAccountPlatform, PlatformConfi
     instagram: getPlatformConfigStatus('instagram'),
     threads: getPlatformConfigStatus('threads'),
     youtube: getPlatformConfigStatus('youtube'),
+    tiktok: getPlatformConfigStatus('tiktok'),
   }
 }
 
@@ -183,7 +186,9 @@ export async function startConnection(input: {
         ? buildInstagramAuthorizeUrl(cfg, state, extra)
         : platform === 'youtube'
           ? buildGoogleAuthorizeUrl(cfg, state)
-          : buildThreadsAuthorizeUrl(cfg, state, extra)
+          : platform === 'tiktok'
+            ? buildTikTokAuthorizeUrl(cfg, state)
+            : buildThreadsAuthorizeUrl(cfg, state, extra)
 
   await writeSocialAudit({
     actorId: input.actor.uid,
@@ -297,6 +302,7 @@ export async function handleOAuthCallback(input: {
     if (platform === 'facebook') result = await facebookCallback(cfg, code, consumed, now)
     else if (platform === 'instagram') result = await instagramCallback(cfg, code, consumed, now)
     else if (platform === 'youtube') result = await youtubeCallback(cfg, code, consumed, now)
+    else if (platform === 'tiktok') result = await tiktokCallback(cfg, code, consumed, now)
     else result = await threadsCallback(cfg, code, consumed, now)
   } catch (err) {
     const step = err instanceof MetaCallError ? err.step : 'internal'
@@ -471,6 +477,45 @@ async function youtubeCallback(
     tokenExpiresAt: null,
     tokenExpiryVerified: false,
     grantedPermissions: scopes,
+    permissionsVerifiedAt: now,
+    ownership: consumed.ownership,
+    reconnectAccountId: consumed.reconnectAccountId,
+    actorUid: consumed.uid,
+    now,
+  })
+  return finishSave(save, consumed)
+}
+
+/**
+ * TikTok (Login Kit). Stores ONLY the refresh token (encrypted, `tiktok_refresh`);
+ * the account is the TikTok user who signed in (`open_id`). Scopes come from
+ * TikTok's token response — never from what was requested.
+ */
+async function tiktokCallback(
+  cfg: ReturnType<typeof getPlatformOAuthConfig>,
+  code: string,
+  consumed: Consumed,
+  now: number,
+): Promise<CallbackOutcome> {
+  const t = await exchangeTikTokCode(cfg, code, now)
+  const required = requiredPermissionsFor('tiktok', 'tiktok_oauth')
+  if (!t.scopes) return outcome('permission_unverified', {}, [], consumed.returnTo)
+  if (!required.every((p) => t.scopes!.includes(p))) return outcome('permission_missing', {}, [], consumed.returnTo)
+  const user = await fetchTikTokUser(t.accessToken)
+  if (user.openId !== t.openId) return outcome('platform_error', {}, [], consumed.returnTo)
+  const save = await saveConnectedAccount({
+    platform: 'tiktok',
+    connectionMethod: 'tiktok_oauth',
+    externalId: t.openId,
+    displayName: user.displayName,
+    username: null,
+    platformAccountType: null,
+    accessToken: t.refreshToken,
+    tokenType: 'tiktok_refresh',
+    // The stored secret is the refresh token (365 days); access tokens are minted per use.
+    tokenExpiresAt: t.refreshExpiresAt,
+    tokenExpiryVerified: t.refreshExpiresAt !== null,
+    grantedPermissions: t.scopes,
     permissionsVerifiedAt: now,
     ownership: consumed.ownership,
     reconnectAccountId: consumed.reconnectAccountId,

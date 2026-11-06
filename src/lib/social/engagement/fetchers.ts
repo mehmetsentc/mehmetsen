@@ -283,5 +283,8 @@ export async function fetchEngagement(target: PublishTarget, account: SocialAcco
       return threads(target, account, externalPostId)
     case 'youtube':
       return youtube(target, externalPostId)
+    case 'tiktok':
+      // TIKTOK-1: no engagement read-back yet (needs video.list; not requested).
+      return { metrics: {}, permalink: null, comments: [], commentsComplete: true, state: 'permission_missing', missing: ['video.list'], code: null }
   }
 }

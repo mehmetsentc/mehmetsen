@@ -13,12 +13,13 @@ import { Bookmark, Eye, Film, Heart, Loader2, MessageCircle, Play, RefreshCw, Re
 import { cn } from '@/lib/utils'
 import { reelsCall } from './reelsApi'
 import { ManualShareFlow } from './ManualShareFlow'
+import { TikTokPostDialog } from './TikTokPostDialog'
 import { formatCountTr, PLATFORM_TR, type EngagementMetricKey, type EngagementMetrics } from '@/lib/social/engagement/model'
 
 type Engagement = {
   totals: EngagementMetrics
   video: EngagementMetrics
-  platforms: Array<{ platform: 'facebook' | 'instagram' | 'threads' | 'youtube'; accountName: string | null; format: string; permalink: string | null; metrics: EngagementMetrics; state: string; missing: string[] }>
+  platforms: Array<{ platform: 'facebook' | 'instagram' | 'threads' | 'youtube' | 'tiktok'; accountName: string | null; format: string; permalink: string | null; metrics: EngagementMetrics; state: string; missing: string[] }>
   updatedAt: number | null
 }
 type Item = {
@@ -69,6 +70,7 @@ export function ReelLibraryPanel() {
   const [error, setError] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const [share, setShare] = useState<{ item: Item; mode: 'reel' | 'video_story' } | null>(null)
+  const [tiktok, setTiktok] = useState<Item | null>(null)
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [city, setCity] = useState('')
@@ -247,6 +249,9 @@ export function ReelLibraryPanel() {
                     <button type="button" onClick={() => setShare({ item: it, mode: 'reel' })} className="inline-flex items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-white">
                       <Send className="h-3 w-3" /> {platforms.length ? 'Tekrar paylaş' : 'Paylaş'}
                     </button>
+                    <button type="button" onClick={() => setTiktok(it)} className="rounded bg-black px-1.5 py-0.5 text-white">
+                      TikTok
+                    </button>
                     <a href={it.url} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">MP4</a>
                     {it.coverUrl ? <a href={it.coverUrl} target="_blank" rel="noreferrer" className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Kapak</a> : null}
                     <a href={`/admin/news/${it.newsId}/edit`} className="rounded border border-[rgb(var(--color-border))] px-1.5 py-0.5">Haber</a>
@@ -278,6 +283,20 @@ export function ReelLibraryPanel() {
               Kayıtlı video yeniden üretilmeden kullanılır. Daha önce bu biçimde paylaşılan hesaplar «zaten paylaşıldı» olarak görünür; aynı hesaba ikinci kez gönderilmez.
             </p>
             <ManualShareFlow key={`${share.item.newsId}-${share.mode}`} newsId={share.item.newsId} newsTitle={share.item.headline} mode={share.mode} onClose={() => setShare(null)} onFinished={() => void load()} />
+          </div>
+        </div>
+      ) : null}
+
+      {tiktok ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="TikTok’ta paylaş">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl bg-[rgb(var(--color-card))] p-4 shadow-xl">
+            <div className="mb-2 flex items-start gap-2">
+              <p className="flex-1 text-sm font-extrabold">TikTok — {tiktok.headline}</p>
+              <button type="button" onClick={() => setTiktok(null)} aria-label="Kapat" className="rounded p-1 hover:bg-[rgb(var(--color-surface))]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <TikTokPostDialog key={tiktok.newsId} newsId={tiktok.newsId} videoUrl={tiktok.url} coverUrl={tiktok.coverUrl} seconds={tiktok.seconds} onFinished={() => void load()} />
           </div>
         </div>
       ) : null}

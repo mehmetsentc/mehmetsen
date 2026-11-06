@@ -17,8 +17,9 @@ import { isSocialTestMode } from '../testEnvironment'
 import { isWellFormedAccountId, loadSocialAccount } from './accountStore'
 import { decryptAccessToken, LEGACY_CREDENTIAL_SOURCES, readSecretRecord, type SocialTokenType } from './secretStore'
 import { isLegacyCapablePlatform } from './secretStore.shared'
-import { youtubeClientCredentials } from './connect/oauthConfig'
+import { tiktokClientCredentials, youtubeClientCredentials } from './connect/oauthConfig'
 import { GoogleRefreshRejectedError, refreshGoogleAccessToken } from './connect/googleOAuth'
+import { refreshAndStoreTikTokToken, TikTokRefreshRejectedError } from './connect/tiktokOAuth'
 import { markTokenRejected } from './connectionCheck'
 import { apiBaseFor } from './apiHosts'
 import { publishPermissionState, type SocialAccount, type SocialAccountPlatform } from './types'
@@ -147,6 +148,9 @@ function buildTarget(
   if (account.platform === 'youtube') {
     return withToken({ ...base, platform: 'youtube' as const, channelId: account.youtube.channelId }, accessToken)
   }
+  if (account.platform === 'tiktok') {
+    return withToken({ ...base, platform: 'tiktok' as const, openId: account.tiktok.openId }, accessToken)
+  }
   return withToken({ ...base, platform: 'threads' as const, threadsUserId: account.threads.threadsUserId }, accessToken)
 }
 
@@ -155,6 +159,7 @@ export function expectedTokenType(account: SocialAccount): SocialTokenType {
   if (account.platform === 'facebook') return 'facebook_page'
   if (account.platform === 'threads') return 'threads_user'
   if (account.platform === 'youtube') return 'youtube_refresh'
+  if (account.platform === 'tiktok') return 'tiktok_refresh'
   return account.connectionMethod === 'instagram_login' ? 'instagram_user' : 'facebook_page'
 }
 
@@ -216,6 +221,22 @@ export async function resolvePublishTarget(
       if (err instanceof GoogleRefreshRejectedError) {
         // Revoked / expired refresh token (incl. the 7-day limit of «Testing» apps).
         await markTokenRejected(id, { by: 'system', now, source: 'resolve:youtube', code: 401, subcode: null }).catch(() => undefined)
+        return fail(id, 'needs_reauth')
+      }
+      return fail(id, 'token_refresh_failed')
+    }
+  }
+  if (account.platform === 'tiktok') {
+    // Stored value is a TikTok refresh token → 24 h access token (never stored).
+    // TikTok may rotate the refresh token: the new one replaces the stored one.
+    const creds = tiktokClientCredentials()
+    if (!creds) return fail(id, 'not_configured')
+    try {
+      const t = await refreshAndStoreTikTokToken(id, account.tiktok.openId, token, creds, now)
+      return { ok: true, target: buildTarget(account, apiBase, t.accessToken) }
+    } catch (err) {
+      if (err instanceof TikTokRefreshRejectedError) {
+        await markTokenRejected(id, { by: 'system', now, source: 'resolve:tiktok', code: 401, subcode: null }).catch(() => undefined)
         return fail(id, 'needs_reauth')
       }
       return fail(id, 'token_refresh_failed')

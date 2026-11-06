@@ -338,7 +338,7 @@ describe('bağlantı başlatma', () => {
     expect(setCookie).toContain('samesite=lax')
     expect((await mk({ platform: 'instagram', ownership: { citySlug: 'atlantis' } })).status).toBe(400)
     expect((await mk({ platform: 'instagram', ownership: { citySlug: 'antalya', publisherId: 'p1' } })).status).toBe(400)
-    expect((await mk({ platform: 'tiktok', ownership: { citySlug: 'antalya' } })).status).toBe(400)
+    expect((await mk({ platform: 'myspace', ownership: { citySlug: 'antalya' } })).status).toBe(400)
   })
 
   it('Facebook Login for Business: config_id tanımlıysa scope yerine config_id + code akışı', async () => {

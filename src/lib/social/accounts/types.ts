@@ -11,7 +11,7 @@
  * already reserved in `Collections.SOCIAL_ACCOUNTS` (Newsroom OS shell).
  */
 
-export const SOCIAL_ACCOUNT_PLATFORMS = ['facebook', 'instagram', 'threads', 'youtube'] as const
+export const SOCIAL_ACCOUNT_PLATFORMS = ['facebook', 'instagram', 'threads', 'youtube', 'tiktok'] as const
 export type SocialAccountPlatform = (typeof SOCIAL_ACCOUNT_PLATFORMS)[number]
 
 export const SOCIAL_CONNECTION_METHODS = [
@@ -20,6 +20,7 @@ export const SOCIAL_CONNECTION_METHODS = [
   'instagram_login',
   'threads_oauth',
   'google_oauth',
+  'tiktok_oauth',
 ] as const
 export type SocialConnectionMethod = (typeof SOCIAL_CONNECTION_METHODS)[number]
 
@@ -31,6 +32,8 @@ export const ALLOWED_CONNECTION_METHODS: Record<SocialAccountPlatform, readonly 
   threads: ['legacy', 'threads_oauth'],
   // YouTube: Google OAuth only (no legacy Onyeditivi credential exists).
   youtube: ['google_oauth'],
+  // TikTok: Login Kit (OAuth v2) only.
+  tiktok: ['tiktok_oauth'],
 }
 
 export const SOCIAL_ACCOUNT_STATUSES = ['active', 'paused', 'needs_reauth', 'disabled'] as const
@@ -144,7 +147,15 @@ export interface YouTubeAccount extends SocialAccountCommon {
   youtube: { channelId: string }
 }
 
+/** TikTok account via Login Kit (Content Posting API). externalId = open_id (per-app user id). */
+export interface TikTokAccount extends SocialAccountCommon {
+  platform: 'tiktok'
+  connectionMethod: 'tiktok_oauth'
+  tiktok: { openId: string }
+}
+
 export type SocialAccount =
+  | TikTokAccount
   | FacebookPageAccount
   | InstagramFacebookLoginAccount
   | InstagramLoginAccount
@@ -200,6 +211,8 @@ export const REQUIRED_PUBLISH_PERMISSIONS: Record<SocialConnectionMethod, readon
   threads_oauth: ['threads_basic', 'threads_content_publish'],
   // Google returns the granted scopes (space separated) in the token response.
   google_oauth: [YOUTUBE_UPLOAD_SCOPE, YOUTUBE_READONLY_SCOPE],
+  // TikTok returns granted scopes (comma separated) in the token response.
+  tiktok_oauth: ['user.info.basic', 'video.publish'],
 }
 
 /** Required permissions for an account (Instagram via Facebook Login uses the IG FB-Login set). */
@@ -317,6 +330,11 @@ export function parseSocialAccount(id: string, raw: unknown): SocialAccount | nu
       connectionMethod: method as InstagramFacebookLoginAccount['connectionMethod'],
       instagram: { igUserId: externalId, linkedFacebookPageId: str(ig.linkedFacebookPageId) },
     }
+  }
+  if (platform === 'tiktok') {
+    const tt = (r.tiktok ?? {}) as Record<string, unknown>
+    if (str(tt.openId) !== externalId) return null
+    return { ...common, platform, connectionMethod: 'tiktok_oauth', tiktok: { openId: externalId } }
   }
   if (platform === 'youtube') {
     const yt = (r.youtube ?? {}) as Record<string, unknown>

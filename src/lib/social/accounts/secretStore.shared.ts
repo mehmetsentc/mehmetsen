@@ -10,11 +10,11 @@ export const LEGACY_CREDENTIAL_SOURCES = {
   threads: 'onyeditivi_threads_env',
 } as const satisfies Record<LegacyCapablePlatform, string>
 
-/** Platforms that have a legacy (Onyeditivi) credential source. YouTube never does. */
-export type LegacyCapablePlatform = Exclude<SocialAccountPlatform, 'youtube'>
+/** Platforms that have a legacy (Onyeditivi) credential source. YouTube and TikTok never do. */
+export type LegacyCapablePlatform = Exclude<SocialAccountPlatform, 'youtube' | 'tiktok'>
 
 export function isLegacyCapablePlatform(p: SocialAccountPlatform): p is LegacyCapablePlatform {
-  return p !== 'youtube'
+  return p !== 'youtube' && p !== 'tiktok'
 }
 
 export type LegacyCredentialSource = (typeof LEGACY_CREDENTIAL_SOURCES)[LegacyCapablePlatform]
@@ -23,7 +23,7 @@ export type LegacyCredentialSource = (typeof LEGACY_CREDENTIAL_SOURCES)[LegacyCa
  * `youtube_refresh`: the encrypted value is a Google OAuth REFRESH token; a
  * short-lived access token is minted from it at publish time and never stored.
  */
-export type SocialTokenType = 'facebook_page' | 'instagram_user' | 'threads_user' | 'youtube_refresh'
+export type SocialTokenType = 'facebook_page' | 'instagram_user' | 'threads_user' | 'youtube_refresh' | 'tiktok_refresh'
 
 export interface EncryptedSecretRecord {
   kind: 'encrypted'
@@ -47,7 +47,7 @@ export function parseSecretRecord(raw: unknown): SocialAccountSecretRecord | nul
   if (r.kind === 'encrypted') {
     const c = typeof r.accessTokenEncrypted === 'string' ? r.accessTokenEncrypted.trim() : ''
     const t = r.tokenType
-    if (!c || (t !== 'facebook_page' && t !== 'instagram_user' && t !== 'threads_user' && t !== 'youtube_refresh')) return null
+    if (!c || (t !== 'facebook_page' && t !== 'instagram_user' && t !== 'threads_user' && t !== 'youtube_refresh' && t !== 'tiktok_refresh')) return null
     return { kind: 'encrypted', accessTokenEncrypted: c, tokenType: t, updatedAt }
   }
   if (r.kind === 'legacy') {

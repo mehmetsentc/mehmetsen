@@ -128,6 +128,18 @@ export default function GizlilikPage() {
           </a>{' '}
           adresinden isteyebilirsiniz.
         </p>
+        <p>
+          <strong>TikTok bağlantısı.</strong> Bir {siteName} editörü TikTok hesabını bağladığında, TikTok&apos;un
+          kendi giriş ekranında izin verilir; şifre {siteName}&apos;e gelmez. {siteName} yalnız TikTok&apos;un verdiği
+          hesap kimliğini (open_id), görünen adı ve profil fotoğrafı bağlantısını alır; erişim anahtarı şifrelenmiş
+          olarak sunucuda saklanır ve tarayıcıya gönderilmez. Bu bağlantı yalnız editörün her paylaşımda seçtiği ayarlarla
+          (görünürlük, yorum / Duet / Stitch izinleri, ticari içerik bildirimi) haber videosu göndermek için kullanılır.
+          Bağlantı {siteName} panelinden ya da TikTok uygulamasında Ayarlar → Güvenlik → Uygulama izinleri bölümünden
+          kaldırılabilir. TikTok&apos;un veri işleme koşulları için{' '}
+          <a href="https://www.tiktok.com/legal/page/row/privacy-policy/tr" target="_blank" rel="noopener noreferrer"
+            className="text-[rgb(var(--color-brand))] underline">TikTok Gizlilik Politikası</a>
+          {' '}geçerlidir.
+        </p>
 
         <h2>6. KVKK Hakları</h2>
         <p>

@@ -19,6 +19,7 @@ export const PLATFORM_LABEL: Record<SocialAccountPlatform, string> = {
   instagram: 'Instagram (Instagram Login)',
   threads: 'Threads',
   youtube: 'YouTube kanalı',
+  tiktok: 'TikTok hesabı',
 }
 
 const KIND_LABEL: Record<ContentKind, string> = {

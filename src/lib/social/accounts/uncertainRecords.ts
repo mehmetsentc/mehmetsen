@@ -141,12 +141,12 @@ export async function republishUncertainRecord(input: {
   })
   const result =
     rec.format === 'reel' || rec.format === 'video_story'
-      ? (rec.platform === 'threads' ? null : (r.reel?.[rec.platform] ?? null))
+      ? (rec.platform === 'threads' || rec.platform === 'tiktok' ? null : (r.reel?.[rec.platform] ?? null))
       : rec.format === 'post'
       ? (r.post?.[rec.platform as 'facebook' | 'instagram' | 'threads'] ?? null)
       : rec.platform === 'threads'
         ? null
-        : rec.platform === 'youtube'
+        : rec.platform === 'youtube' || rec.platform === 'tiktok'
           ? null
           : (r.story?.[rec.platform] ?? null)
 

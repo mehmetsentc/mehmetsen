@@ -46,7 +46,7 @@ type WorkerBeat = {
 }
 type PreviewItem = { newsId: string; title: string; publishedAt: number | null; citySlug: string | null; categoryId: string | null; match: boolean; reasons: string[]; action?: string | null; eligibilityCode?: string | null }
 
-const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube' }
+const PLATFORM_SHORT: Record<SocialAccountPlatform, string> = { facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads', youtube: 'YouTube', tiktok: 'TikTok' }
 const FORMAT_TEXT: Record<AutomationFormat, string> = { post: 'Gönderi', story: 'Hikâye', reel: 'Reels', video_story: 'Video hikâye' }
 const MODE_OPTIONS: Array<{ value: FeaturedMode; label: string }> = [
   { value: 'categories_only', label: 'Seçilen kategoriler' },
@@ -470,7 +470,7 @@ export function AutomationRulesPanel({ mode = 'admin', ownerFilter }: { mode?: '
             <p className="text-sm text-[rgb(var(--color-muted))]">
               Açıldıktan sonra yayımlanan ve bu koşullara uyan haberler bu hesaba <b>gerçekten paylaşılır</b>. Önceki haberler paylaşılmaz.
             </p>
-            {confirmRule.platform !== 'youtube' && data?.legacyAccountIds[confirmRule.platform] === confirmRule.accountId && !data?.handoffs[confirmRule.accountId] ? (
+            {confirmRule.platform !== 'youtube' && confirmRule.platform !== 'tiktok' && data?.legacyAccountIds[confirmRule.platform] === confirmRule.accountId && !data?.handoffs[confirmRule.accountId] ? (
               <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
                 Bu hesap eski Onyeditivi otomatik yolunun da hedefi. Ortak kilit aynı haberin iki kez gitmesini engeller; eski yolu durdurmak için aşağıdaki «Eski yol devri» bölümünü kullanın.
               </p>

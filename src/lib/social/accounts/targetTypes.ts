@@ -42,4 +42,10 @@ export interface YouTubePublishTarget extends PublishTargetBase {
   channelId: string
 }
 
-export type PublishTarget = FacebookPublishTarget | InstagramPublishTarget | ThreadsPublishTarget | YouTubePublishTarget
+/** `accessToken` is a 24-hour TikTok user access token minted from the stored refresh token. */
+export interface TikTokPublishTarget extends PublishTargetBase {
+  platform: 'tiktok'
+  openId: string
+}
+
+export type PublishTarget = FacebookPublishTarget | InstagramPublishTarget | ThreadsPublishTarget | YouTubePublishTarget | TikTokPublishTarget

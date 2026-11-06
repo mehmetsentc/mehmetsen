@@ -35,6 +35,7 @@ export const CALLBACK_PATHS: Record<ConnectPlatform, string> = {
   instagram: '/api/admin/social/oauth/instagram/callback',
   threads: '/api/admin/social/oauth/threads/callback',
   youtube: '/api/admin/social/oauth/youtube/callback',
+  tiktok: '/api/admin/social/oauth/tiktok/callback',
 }
 
 const ENV_NAMES: Record<ConnectPlatform, { id: string; secret: string }> = {
@@ -42,6 +43,7 @@ const ENV_NAMES: Record<ConnectPlatform, { id: string; secret: string }> = {
   instagram: { id: 'SOCIAL_IG_APP_ID', secret: 'SOCIAL_IG_APP_SECRET' },
   threads: { id: 'SOCIAL_THREADS_APP_ID', secret: 'SOCIAL_THREADS_APP_SECRET' },
   youtube: { id: 'SOCIAL_YT_CLIENT_ID', secret: 'SOCIAL_YT_CLIENT_SECRET' },
+  tiktok: { id: 'SOCIAL_TIKTOK_CLIENT_KEY', secret: 'SOCIAL_TIKTOK_CLIENT_SECRET' },
 }
 
 export interface PlatformOAuthConfig {
@@ -71,8 +73,20 @@ const APP_ID_RE = /^[0-9]{5,25}$/
 /** Google OAuth client id (`<digits>-<id>.apps.googleusercontent.com`). */
 const GOOGLE_CLIENT_ID_RE = /^[0-9]{5,25}-[0-9a-z]{8,64}\.apps\.googleusercontent\.com$/
 
+/** TikTok client key (production `aw…`, sandbox `sbaw…`): short alphanumeric. */
+const TIKTOK_CLIENT_KEY_RE = /^[0-9A-Za-z]{8,64}$/
+
 function clientIdValid(platform: ConnectPlatform, id: string): boolean {
-  return platform === 'youtube' ? GOOGLE_CLIENT_ID_RE.test(id) : APP_ID_RE.test(id)
+  if (platform === 'youtube') return GOOGLE_CLIENT_ID_RE.test(id)
+  if (platform === 'tiktok') return TIKTOK_CLIENT_KEY_RE.test(id)
+  return APP_ID_RE.test(id)
+}
+
+/** TikTok client credentials alone — used at publish time to refresh the access token. */
+export function tiktokClientCredentials(env: NodeJS.ProcessEnv = process.env): { appId: string; appSecret: string } | null {
+  const appId = env.SOCIAL_TIKTOK_CLIENT_KEY?.trim() || ''
+  const appSecret = env.SOCIAL_TIKTOK_CLIENT_SECRET?.trim() || ''
+  return TIKTOK_CLIENT_KEY_RE.test(appId) && appSecret ? { appId, appSecret } : null
 }
 
 /**

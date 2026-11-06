@@ -4,7 +4,7 @@
  * is the clean /haber/{slug} URL, so tagged links never become separate pages
  * for search engines.
  */
-export type SocialUtmPlatform = 'facebook' | 'instagram' | 'threads' | 'twitter' | 'youtube'
+export type SocialUtmPlatform = 'facebook' | 'instagram' | 'threads' | 'twitter' | 'youtube' | 'tiktok'
 export type SocialUtmFormat = 'post' | 'story' | 'reel' | 'video_story'
 
 export function withSocialUtm(

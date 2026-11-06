@@ -49,3 +49,9 @@ export const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/
 export const GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 export const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 export const GOOGLE_OAUTH_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
+
+/** TikTok Login Kit (web) + Content Posting API (open.tiktokapis.com v2). */
+export const TIKTOK_OAUTH_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/'
+export const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2'
+export const TIKTOK_OAUTH_TOKEN_URL = `${TIKTOK_API_BASE}/oauth/token/`
+export const TIKTOK_OAUTH_REVOKE_URL = `${TIKTOK_API_BASE}/oauth/revoke/`
