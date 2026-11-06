@@ -20,7 +20,7 @@ export default function KVKKPage() {
 
       <Section title="1. Giriş ve Amaç">
         <p>
-          NaHaber, Shen Medya bünyesinde yayın yapan bir haber platformudur. Bu Politika;
+          NaHaber, KSD Organizasyon Sanayi ve Ticaret Limited Şirketi tarafından işletilen bir haber platformudur. Bu Politika;
           6698 sayılı <b>Kişisel Verilerin Korunması Kanunu (KVKK)</b> ve Avrupa Birliği Genel
           Veri Koruma Tüzüğü <b>(GDPR)</b> kapsamında, nahaber.com ziyaretçilerinin ve üyelerinin
           kişisel verilerini nasıl topladığımızı, işlediğimizi ve koruduğumuzu açıklamaktadır.
@@ -34,10 +34,11 @@ export default function KVKKPage() {
       <Section title="2. Veri Sorumlusu">
         <table className="w-full border-collapse text-sm">
           <tbody>
-            <TR label="Ünvan" value="Shen Medya" />
+            <TR label="Ünvan" value="KSD ORGANİZASYON SANAYİ VE TİCARET LİMİTED ŞİRKETİ" />
+            <TR label="MERSİS No" value="0590138102400001" />
             <TR label="Platform" value="NaHaber (nahaber.com)" />
             <TR label="İletişim" value="bilgi@nahaber.com" />
-            <TR label="Adres" value="Türkiye" />
+            <TR label="Adres" value="Hurma Mah. 246 Sk. Adalın Park No: 9 İç Kapı No: 2, 07130 Konyaaltı / Antalya" />
           </tbody>
         </table>
       </Section>

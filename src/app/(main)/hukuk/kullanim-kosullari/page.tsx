@@ -22,7 +22,7 @@ export default function KullanimKosullariPage() {
 
       <Section title="2. Hizmet Tanımı">
         <p>
-          NaHaber; Shen Medya tarafından işletilen, yapay zeka destekli içerik düzenleme
+          NaHaber; KSD Organizasyon Sanayi ve Ticaret Limited Şirketi tarafından işletilen, yapay zeka destekli içerik düzenleme
           teknolojileri kullanan bir haber platformudur. Platform; son dakika haberleri,
           yerel haberler, spor, ekonomi ve diğer kategorilerde içerik sunar.
         </p>

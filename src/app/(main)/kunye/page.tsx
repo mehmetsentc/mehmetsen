@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Mail, Globe, ChevronRight } from 'lucide-react'
+import { Mail, Globe, ChevronRight, Phone } from 'lucide-react'
 import { BrandWordmark } from '@/components/brand/BrandWordmark'
 
 export const metadata: Metadata = {
   title: 'Künye | NaHaber',
-  description: 'NaHaber yayın künyesi — Shen Medya bünyesinde faaliyet gösteren dijital haber platformu.',
+  description: 'NaHaber yayın künyesi — KSD Organizasyon Sanayi ve Ticaret Limited Şirketi tarafından işletilen dijital haber platformu.',
 }
 
 export default function KunyePage() {
@@ -33,7 +33,18 @@ export default function KunyePage() {
         </div>
 
         <div className="divide-y divide-[rgb(var(--color-border))]">
-          <Row label="Yayın Kuruluşu" value="Shen Medya" />
+          <Row label="Yayın Kuruluşu" value="KSD ORGANİZASYON SANAYİ VE TİCARET LİMİTED ŞİRKETİ" />
+          <Row label="Adres" value="Hurma Mah. 246 Sk. Adalın Park No: 9 İç Kapı No: 2, 07130 Konyaaltı / Antalya" />
+          <Row label="Telefon">
+            <a href="tel:+905393770573" className="text-[rgb(var(--color-brand))] hover:underline inline-flex items-center gap-1">
+              <Phone className="h-3.5 w-3.5" />
+              +90 539 377 05 73
+            </a>
+          </Row>
+          <Row label="Ticaret Sicil" value="Antalya Ticaret Sicili Müdürlüğü — 143098" />
+          <Row label="MERSİS No" value="0590138102400001" />
+          <Row label="Vergi Dairesi / No" value="Antalya Kurumlar — 5901381024" />
+          <Row label="Medya Grubu" value="Shen Medya" />
           <Row label="Platform" value="NaHaber" />
           <Row label="İnternet Adresi">
             <a href="https://nahaber.com" className="text-[rgb(var(--color-brand))] hover:underline inline-flex items-center gap-1">
@@ -57,8 +68,8 @@ export default function KunyePage() {
         <div className="mt-8 rounded-xl bg-[rgb(var(--color-surface))] px-5 py-4">
           <h2 className="mb-2 text-sm font-bold text-[rgb(var(--color-text))]">Hakkımızda</h2>
           <p className="text-sm leading-relaxed text-[rgb(var(--color-muted))]">
-            NaHaber, Shen Medya bünyesinde faaliyet gösteren bağımsız bir dijital haber
-            platformudur. Güncel haberleri, son dakika gelişmelerini ve yerel haberleri
+            NaHaber, KSD Organizasyon Sanayi ve Ticaret Limited Şirketi tarafından işletilen
+            bağımsız bir dijital haber platformudur. Güncel haberleri, son dakika gelişmelerini ve yerel haberleri
             okuyucularına hızlı ve anlaşılır biçimde ulaştırmayı hedeflemektedir. Haber
             üretim sürecinde yardımcı teknolojiler kullanılabilir; yayın kararı ve
             editoryal denetim insan gözetiminde yürütülür.
@@ -81,7 +92,7 @@ export default function KunyePage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-[rgb(var(--color-muted))]">
-          © {new Date().getFullYear()} NaHaber — Shen Medya. Tüm hakları saklıdır.
+          © {new Date().getFullYear()} NaHaber — KSD Organizasyon San. ve Tic. Ltd. Şti. Tüm hakları saklıdır.
         </p>
       </div>
     </div>
