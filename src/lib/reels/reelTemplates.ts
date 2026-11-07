@@ -14,8 +14,11 @@ import type { ReelMusic, ReelStyle } from './reelOptions'
  * - music_only: no voice-over — theme music under on-screen text (photos or muted video)
  */
 export type ReelAudioMode = 'voice_then_video' | 'video_then_voice' | 'video_only' | 'music_only'
-/** captions = the spoken sentence · typewriter = letters typed one by one · ticker = scrolling news band */
-export type ReelTextStyle = 'captions' | 'typewriter' | 'ticker'
+/**
+ * captions = the spoken sentence · typewriter = letters typed one by one · ticker = scrolling news band ·
+ * intro = REELS-16: the headline only for the first 3 s, then the clean original video (the story is in the post text)
+ */
+export type ReelTextStyle = 'captions' | 'typewriter' | 'ticker' | 'intro'
 
 export type ReelTemplateId = 'klasik' | 'sahadan' | 'orijinal' | 'daktilo' | 'sondakika' | 'spor' | 'analiz'
 
@@ -53,9 +56,9 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
   {
     id: 'orijinal',
     label: 'Orijinal Ses',
-    description: 'Seslendirme yok. Videonun kendi sesi; haber alt bantta kayan yazıyla.',
+    description: 'Seslendirme yok. İlk 3 saniye manşet, sonra haberin orijinal videosu yazısız ve net; haber gönderi açıklamasında.',
     audioMode: 'video_only',
-    textStyle: 'ticker',
+    textStyle: 'intro',
     music: 'none',
     needsVideoAudio: true,
   },

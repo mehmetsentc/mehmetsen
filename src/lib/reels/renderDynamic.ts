@@ -47,6 +47,8 @@ const VIDEO_INTRO_MAX_S = 6
 /** REELS-T1: typing speed of the typewriter text (characters per second). */
 const TYPE_CPS = 26
 const TICKER_H = 84
+/** REELS-16: «intro» text style — the headline is up only for these seconds, then the video is clean. */
+export const INTRO_HEAD_S = 3
 const TICKER_PX_S = 210
 const END_S = 2.8
 /** REELS-14: a render that would not finish in time (projected from the first frames). */
@@ -496,9 +498,11 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
       }
     }
     const readText = `${input.headline}. ${input.captions?.trim() || input.summary || ''}`
+    // REELS-16: an «intro» reel without usable sound still runs for the story video's length
+    const videoLen = Math.max(6, Math.min(pm?.duration ?? 6, MAX_REEL_S - END_S) - 0.2)
     const endStart =
-      mode === 'video_only'
-        ? Math.max(6, Math.min(pm?.duration ?? 6, MAX_REEL_S - END_S) - 0.2)
+      mode === 'video_only' || (mode === 'music_only' && textStyle === 'intro' && pm)
+        ? videoLen
         : mode === 'music_only'
           ? readingSeconds(readText)
           : voiceEnd + 0.45 + videoTail
@@ -511,13 +515,14 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     const capStart = spoken ? voiceStart : headRead
     const capSec = spoken ? voiceSec : Math.max(2, endStart - capStart - 0.4)
     const capText = input.captions?.trim() || (spoken ? '' : input.summary?.trim() || '')
-    const capWin = capText && textStyle !== 'ticker' ? captionWindows(captionChunks(capText), capStart, capSec) : []
+    const capWin = capText && textStyle !== 'ticker' && textStyle !== 'intro' ? captionWindows(captionChunks(capText), capStart, capSec) : []
     const sumAt = !spoken
       ? capStart
       : capWin.length > 1
         ? Math.min(voiceStart + 7, Math.max(voiceStart + 3, capWin[0]!.end))
         : voiceStart + Math.max(2.8, voiceSec * 0.45)
-    const textOut = mode === 'voice_then_video' && videoAudio ? voiceEnd + 0.35 : endStart
+    // REELS-16: «intro» — no text (and no dark fade) after the opening headline
+    const textOut = textStyle === 'intro' ? INTRO_HEAD_S : mode === 'voice_then_video' && videoAudio ? voiceEnd + 0.35 : endStart
     const textBottom = textStyle === 'ticker' ? TEXT_BOTTOM - TICKER_H - 36 : TEXT_BOTTOM
     const tl: ReelTimeline = { total, frames, voiceStart, typeStart: 0.3, typeEnd: 0.9, summaryStart: sumAt, endStart }
 
@@ -662,10 +667,12 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
 
       // bottom fade (lighter while the story's own video plays with sound)
       const textK = 1 - span(t, textOut, textOut + 0.5)
+      // REELS-16: «intro» clears the fade completely with the headline (clean original video)
+      const fadeBase = textStyle === 'intro' ? textK : 1
       const g = ctx.createLinearGradient(0, REEL_H * 0.42, 0, REEL_H)
       g.addColorStop(0, 'rgba(0,0,0,0)')
-      g.addColorStop(0.45, `rgba(0,0,0,${0.35 + 0.35 * textK})`)
-      g.addColorStop(1, `rgba(0,0,0,${0.55 + 0.35 * textK})`)
+      g.addColorStop(0.45, `rgba(0,0,0,${(0.35 + 0.35 * textK) * fadeBase})`)
+      g.addColorStop(1, `rgba(0,0,0,${(0.55 + 0.35 * textK) * fadeBase})`)
       ctx.fillStyle = g
       ctx.fillRect(0, REEL_H * 0.42, REEL_W, REEL_H * 0.58)
       const gt = ctx.createLinearGradient(0, 0, 0, SAFE.top + 160)
@@ -687,7 +694,7 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
         ctx.globalAlpha *= textK
         // phase 1: kicker + headline
         // ticker: the headline stays up the whole reel (the band carries the rest)
-        const hOut = textStyle === 'ticker' ? 1 : 1 - span(t, sumAt - 0.25, sumAt + 0.15)
+        const hOut = textStyle === 'ticker' || textStyle === 'intro' ? 1 : 1 - span(t, sumAt - 0.25, sumAt + 0.15)
         if (hOut > 0) {
           ctx.save()
           ctx.globalAlpha *= hOut
@@ -721,7 +728,7 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
           else leftLines(ctx, capNow.lines, capNow.y, capNow.lh, capNow.lines.map(() => 1), 18)
           ctx.restore()
         }
-        const sk = capNow || textStyle === 'ticker' ? 0 : span(t, sumAt, sumAt + 0.5)
+        const sk = capNow || textStyle === 'ticker' || textStyle === 'intro' ? 0 : span(t, sumAt, sumAt + 0.5)
         if (sk > 0) {
           const rw = 520 * sk
           ctx.fillStyle = RED
