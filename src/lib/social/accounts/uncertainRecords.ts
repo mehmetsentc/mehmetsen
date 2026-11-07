@@ -32,7 +32,7 @@ export interface UncertainRecordView extends OpenUncertainRecord {
   newsTitle: string | null
 }
 
-const PLATFORMS: SocialAccountPlatform[] = ['facebook', 'instagram', 'threads', 'youtube']
+const PLATFORMS: SocialAccountPlatform[] = ['facebook', 'instagram', 'threads', 'youtube', 'tiktok']
 
 export async function listUncertainForPanel(now: number): Promise<UncertainRecordView[]> {
   const records = await listOpenUncertain(now)

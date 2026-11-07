@@ -14,7 +14,8 @@ import {
   type SocialAccountStatus,
 } from './types'
 
-const ACCOUNT_ID_RE = /^(facebook|instagram|threads|youtube)_[0-9A-Za-z_-]{1,64}$/
+// TIKTOK-1: TikTok accounts (tiktok_<open_id>) must load too — the id follows EXTERNAL_ID_RE.
+const ACCOUNT_ID_RE = /^(facebook|instagram|threads|youtube|tiktok)_[0-9A-Za-z_-]{1,64}$/
 
 export function isWellFormedAccountId(id: unknown): id is string {
   return typeof id === 'string' && ACCOUNT_ID_RE.test(id)
