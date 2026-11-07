@@ -11,3 +11,15 @@ describe('TIKTOK-1 account id', () => {
     expect(isWellFormedAccountId('snapchat_123')).toBe(false)
   })
 })
+
+import { parsePublishScope } from './publishScope'
+
+describe('TIKTOK-1 publish scope', () => {
+  const base = { geo: { kind: 'any' }, allCategories: true, formats: [] as string[], manualAccess: 'managers' }
+  it('a video-only account (no post/story format) saves its scope without a format', () => {
+    expect(parsePublishScope(base, []).ok).toBe(true)
+  })
+  it('accounts with image formats still need at least one', () => {
+    expect(parsePublishScope(base, ['post', 'story'])).toMatchObject({ ok: false, message: 'En az bir biçim seçin' })
+  })
+})

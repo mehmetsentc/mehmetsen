@@ -111,7 +111,9 @@ export function parsePublishScope(
     : storyGiven ? [] : categoryIds
   if (!storyAllCategories && storyCategoryIds.length === 0) return { ok: false, field: 'storyCategoryIds', message: 'Hikâye için en az bir kategori seçin veya «Tüm kategoriler»' }
   const formats = Array.isArray(r.formats) ? [...new Set(r.formats.filter((f): f is PublishFormat => f === 'post' || f === 'story'))] : []
-  if (formats.length === 0) return { ok: false, field: 'formats', message: 'En az bir biçim seçin' }
+  // Video-only accounts (YouTube, TikTok) have no post/story format: their scope is location/category/access only.
+  const hasImageFormats = supported.some((f) => f === 'post' || f === 'story')
+  if (formats.length === 0 && hasImageFormats) return { ok: false, field: 'formats', message: 'En az bir biçim seçin' }
   const unsupported = formats.find((f) => !supported.includes(f))
   if (unsupported) return { ok: false, field: 'formats', message: `Bu hesap «${unsupported === 'post' ? 'gönderi' : 'hikâye'}» biçimini desteklemiyor` }
   const manualAccess = (MANUAL_ACCESS as readonly string[]).includes(r.manualAccess as string) ? (r.manualAccess as ManualAccess) : 'managers'
