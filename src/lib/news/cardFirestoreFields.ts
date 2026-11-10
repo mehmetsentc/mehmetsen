@@ -26,7 +26,6 @@ export const NEWS_CARD_FIRESTORE_FIELDS = [
   'summary',
   'spot',
   'description',
-  'seoDescription',
   'coverImageUrl',
   'thumbnail',
   'imageUrl',

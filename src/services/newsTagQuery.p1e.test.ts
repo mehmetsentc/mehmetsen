@@ -19,7 +19,7 @@ describe('P1-E tag list query', () => {
     expect(block).toContain('TAG_LIST_LIMIT = 20')
     expect(block).toContain('selectNewsCardFields')
     // FinOps: own tag (publishes do not drop every tag page) and a 3h TTL.
-    expect(block).toContain('revalidate: 3 * 60 * 60')
+    expect(block).toContain('revalidate: 12 * 60 * 60')
     expect(block).toContain("tags: ['posts-by-tag']")
     expect(block).not.toContain("tags: ['news-post']")
   })

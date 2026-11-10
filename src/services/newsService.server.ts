@@ -1201,7 +1201,8 @@ const getPostsByTagCached = unstable_cache(
   // FinOps 3 Oct: no 'news-post' tag — every publish dropped every tag page (~15k
   // tag queries/day, mostly bots). FinOps 8 Oct: 3h (was 1h) — ~7.5k distinct tag reads/day,
   // almost all crawler hits; new stories reach tag pages within 3 hours.
-  { revalidate: 3 * 60 * 60, tags: ['posts-by-tag'] }
+  // FinOps 10 Nov: 12h (was 3h).
+  { revalidate: 12 * 60 * 60, tags: ['posts-by-tag'] }
 )
 
 export async function getPostsByTag(rawTag: string, limitCount = TAG_LIST_LIMIT): Promise<Post[]> {
@@ -1375,7 +1376,8 @@ const getPostsByAuthorIdCached = unstable_cache(
     }
   },
   ['posts-by-author-v1'],
-  { revalidate: 1800, tags: ['author'] }
+  // FinOps 10 Nov: 3h (was 30 min) — ~2.4k author queries/day, mostly bots.
+  { revalidate: 10800, tags: ['author'] }
 )
 
 export async function getPostsByAuthorId(authorId: string, limitCount = 40): Promise<Post[]> {

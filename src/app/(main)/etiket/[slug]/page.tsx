@@ -15,7 +15,9 @@ import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 
 // FinOps 15 Oct: 3h (was 5 min). Tag data is cached 3h anyway (posts-by-tag-v2), so a
 // 5-minute page TTL only re-wrote ISR for long-tail tags (Vercel: writes > reads per path).
-export const revalidate = 10800
+// FinOps 10 Nov: 12h (was 3h). Tag pages are mostly bot traffic; Cloudflare also
+// caches them for 2h at the edge.
+export const revalidate = 43200
 
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.

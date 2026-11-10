@@ -32,10 +32,11 @@ import {
 import { publisherService } from '@/services/publisher/publisherService'
 import { publisherAdInventoryService } from '@/services/publisher/publisherAdInventoryService'
 
-// Published articles stay on the CDN for 3 hours (FinOps 15 Oct, was 1h: /haber/[slug]
-// was the largest ISR write source). Edits and unpublishes still drop the article's
-// `news:{slug}` tag and path, so corrections go live immediately.
-export const revalidate = 10800
+// Published articles stay on the CDN for 24 hours (FinOps 10 Nov, was 3h; 15 Oct was 1h).
+// ISR Writes are Vercel's largest bill line and most come from bots re-walking old
+// articles. Edits and unpublishes still drop the article's `news:{slug}` tag and path,
+// so corrections go live immediately; only the side lists refresh less often.
+export const revalidate = 86400
 
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.

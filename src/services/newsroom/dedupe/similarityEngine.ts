@@ -12,6 +12,7 @@ const SIMILARITY_THRESHOLD = 0.52
 const TITLE_ONLY_THRESHOLD = 0.46
 const LOOKBACK_MS = 48 * 60 * 60 * 1000
 const MAX_CANDIDATES = 80
+const SIMILARITY_FIELDS = ['title', 'description', 'summary'] as const
 
 export interface SimilarityMatch {
   newsId: string
@@ -76,6 +77,10 @@ export async function findSimilarPublishedArticle(
 ): Promise<SimilarityMatch | null> {
   const since = Date.now() - LOOKBACK_MS
 
+  // FinOps 10 Nov: only title/description/summary are compared. Without select()
+  // both queries returned full documents (article HTML included) ~532 times/day,
+  // ~85k full docs/day of Firestore egress for the dedupe check alone.
+
   // Hem yayınlanmış haberler hem de henüz draft'taki haberler kontrol edilir.
   // Sorun: birinci haber draft'tayken ikinci gelirse sadece published kontrolü yakalamıyor.
   const [publishedSnap, draftSnap] = await Promise.all([
@@ -84,6 +89,7 @@ export async function findSimilarPublishedArticle(
       .where('status', '==', 'published')
       .where('createdAt', '>=', since)
       .orderBy('createdAt', 'desc')
+      .select(...SIMILARITY_FIELDS)
       .limit(MAX_CANDIDATES)
       .get(),
     db
@@ -91,6 +97,7 @@ export async function findSimilarPublishedArticle(
       .where('draftStatus', 'in', ['pending_review', 'approved'])
       .where('createdAt', '>=', since)
       .orderBy('createdAt', 'desc')
+      .select(...SIMILARITY_FIELDS)
       .limit(MAX_CANDIDATES)
       .get(),
   ])
