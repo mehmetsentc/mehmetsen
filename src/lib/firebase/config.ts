@@ -1,10 +1,14 @@
 // TODO: Implement in Phase 1 — Firebase app initialization
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { firebaseTargetProblem, SmmTestFirebaseGuardError } from '@/lib/social/testEnvironment'
+import { resolveAuthDomain } from './authDomain'
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain:        resolveAuthDomain(
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    typeof window !== 'undefined' ? window.location.hostname : undefined,
+  ),
   projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

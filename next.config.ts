@@ -205,6 +205,18 @@ const nextConfig: NextConfig = {
     }
     return {
       beforeFiles: [
+        // AUTH-DOMAIN-1: Firebase Auth helper pages served first-party.
+        // With authDomain = www.nahaber.com the Google/Apple redirect returns to
+        // this origin, so Safari/iOS/Chrome third-party storage partitioning no
+        // longer drops the sign-in result (firebaseapp.com was a third party).
+        {
+          source: '/__/auth/:path*',
+          destination: 'https://nahaberapp.firebaseapp.com/__/auth/:path*',
+        },
+        {
+          source: '/__/firebase/:path*',
+          destination: 'https://nahaberapp.firebaseapp.com/__/firebase/:path*',
+        },
         ...cityHomeRewrite('antalya.nahaber.com'),
         ...cityHomeRewrite('canakkale.nahaber.com'),
         ...cityHomeRewrite('antalya.localhost'),
