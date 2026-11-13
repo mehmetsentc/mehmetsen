@@ -36,13 +36,33 @@ function formatTime(ms: number): string {
  * Server-rendered crawl hub for /kategori/son-dakika: plain <a href> links to
  * the newest stories so crawlers find new URLs from one page (SEO-8 P0-2).
  */
-export async function LatestNewsLinkList({ heading = 'Son eklenen haberler' }: { heading?: string }) {
-  let links: LatestNewsLink[] = []
+/** SEO-17: load the links (server). Never throws; empty on any read problem. */
+export async function loadLatestNewsLinks(opts: { citySlug?: string; limit?: number } = {}): Promise<LatestNewsLink[]> {
   try {
-    links = pickLatestNewsLinks(await getNewsSitemapEntries())
+    const entries = await getNewsSitemapEntries()
+    const scoped = opts.citySlug ? entries.filter((e) => e.citySlug === opts.citySlug) : entries
+    return pickLatestNewsLinks(scoped, opts.limit ?? LATEST_NEWS_LINK_LIMIT)
   } catch {
-    links = []
+    return []
   }
+}
+
+export async function LatestNewsLinkList({
+  heading = 'Son eklenen haberler',
+  citySlug,
+  limit = LATEST_NEWS_LINK_LIMIT,
+}: {
+  heading?: string
+  /** SEO-17: only this province's stories (e.g. /yerel/canakkale). */
+  citySlug?: string
+  limit?: number
+}) {
+  const links = await loadLatestNewsLinks({ citySlug, limit })
+  return <LatestNewsLinkListView heading={heading} links={links} />
+}
+
+/** Synchronous view so pages can await the data themselves. */
+export function LatestNewsLinkListView({ heading, links }: { heading: string; links: LatestNewsLink[] }) {
   if (links.length === 0) return null
   return (
     <section

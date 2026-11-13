@@ -65,6 +65,8 @@ export type NewsSitemapEntry = {
   title: string
   /** SEO-10: optional; only used for internal links, never emitted in the XML. */
   categoryId?: string
+  /** SEO-17: optional; feeds the /yerel/{il} SSR link list (never in the XML). */
+  citySlug?: string
 }
 
 export type PgNewsCandidate = {
@@ -101,9 +103,14 @@ function evaluateNewsCandidate(input: {
   const title = cleanTitle(input.title)
   if (!title) return null
   const categoryId = input.post?.categoryId?.trim()
-  return categoryId
-    ? { slug: ev.slug, publishedMs: ev.publishedMs, title, categoryId }
-    : { slug: ev.slug, publishedMs: ev.publishedMs, title }
+  const citySlug = input.post?.citySlug?.trim()
+  return {
+    slug: ev.slug,
+    publishedMs: ev.publishedMs,
+    title,
+    ...(categoryId ? { categoryId } : {}),
+    ...(citySlug ? { citySlug } : {}),
+  }
 }
 
 /**

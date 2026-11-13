@@ -7,6 +7,7 @@ import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
 import { getCityEventById } from '@/services/eventService.server'
 import { CityEventDetailView } from '@/components/city/CityEventDetailView'
+import { buildCityEventJsonLd, cityServicesSchemaLive, jsonLdString } from '@/lib/seo/cityServicesJsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +47,9 @@ export default async function EtkinlikDetailPage({ params }: PageProps) {
   }
 
   const cityName = getCityCategoryName(citySlug)
+  // SEO-16: city hosts render this root route (not /city-site), so the CITY-SERVICES-1
+  // structured data must live here too — it never reached Google after 25 Oct.
+  const jsonLd = cityServicesSchemaLive() ? buildCityEventJsonLd(event) : null
 
   return (
     <CityLayoutClient
@@ -55,6 +59,9 @@ export default async function EtkinlikDetailPage({ params }: PageProps) {
       categories={navPresence.categories}
       hasSpor={navPresence.hasSpor}
     >
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      ) : null}
       <CityEventDetailView event={event} />
     </CityLayoutClient>
   )

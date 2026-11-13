@@ -7,6 +7,8 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
+import { listIndexableReels } from '@/lib/seo/reelWatch.server'
+import { reelWatchPath } from '@/lib/seo/reelWatch'
 import {
   canAppearInVideoSitemap,
   classifyPublicRead,
@@ -134,6 +136,35 @@ export async function GET() {
     }
   } catch (err) {
     console.error('[video-sitemap] error:', err)
+  }
+
+  // REELS-SEO-1: reels on their own watch pages (video = main content). Only
+  // reels whose story is public and indexable; one getAll per 6 h (ISR).
+  try {
+    for (const { reel, post } of await listIndexableReels(200)) {
+      const url = `${base}${reelWatchPath(reel.slug!)}`
+      const title = escapeXml((post.title || reel.headline || 'Haber Videosu').slice(0, 100))
+      const description = escapeXml((post.seoDescription || post.summary || post.title || '').slice(0, 500))
+      const thumbnail = reel.coverUrl || post.coverImageUrl || `${base}/brand/og-default.png`
+      const pubDate = toISODateString(reel.createdAt || post.publishedAt)
+      const duration = reel.seconds && reel.seconds > 0 ? `\n      <video:duration>${Math.round(reel.seconds)}</video:duration>` : ''
+      items += `
+  <url>
+    <loc>${escapeXml(url)}</loc>
+    <video:video>
+      <video:thumbnail_loc>${escapeXml(thumbnail)}</video:thumbnail_loc>
+      <video:title>${title}</video:title>
+      <video:description>${description}</video:description>
+      <video:content_loc>${escapeXml(reel.url)}</video:content_loc>${duration}
+      <video:publication_date>${pubDate}</video:publication_date>
+      <video:uploader info="${base}/hakkimizda">${escapeXml(siteName)}</video:uploader>
+      <video:live>no</video:live>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+  </url>`
+    }
+  } catch (err) {
+    console.error('[video-sitemap] reels error:', err)
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

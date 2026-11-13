@@ -37,6 +37,7 @@ export interface NewsDocument {
   videoUrl?: string
   /** TTS / AI audio reel URL (videoProcessor writes this on news docs). */
   audioUrl?: string
+  reelVideoUrl?: string
   videoEmbedUrl?: string
   hasVideo?: boolean
   thumbnail?: string
@@ -534,6 +535,7 @@ export function newsDocToPost(id: string, data: NewsDocument): Post | null {
     originalTitle: data.originalTitle?.trim() || undefined,
     ingestionSourceId: data.ingestionSourceId?.trim() || undefined,
     audioUrl: data.audioUrl?.trim() || undefined,
+    reelVideoUrl: data.reelVideoUrl?.trim() || undefined,
     audioReady: data.audioReady,
     infographic: normalizeInfographic(data.infographic),
     isLiveBlog: data.isLiveBlog === true,

@@ -179,6 +179,8 @@ export interface Post {
   whatsappCaption?: string
   /** Public URL for AI-generated TTS audio (MP3) stored in Firebase Storage */
   audioUrl?: string
+  /** REELS-SEO-1: our 9:16 reel of this story (watch page /video/{slug}). */
+  reelVideoUrl?: string
   /** Firebase Storage path for the TTS MP3 */
   audioStoragePath?: string
   /** True when TTS audio has been generated successfully */

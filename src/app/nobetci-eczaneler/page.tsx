@@ -12,6 +12,8 @@ import { CityDutyPharmaciesClient } from '@/components/city/CityDutyPharmaciesCl
 import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getDutyPharmaciesServer } from '@/services/dutyPharmacyService.server'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
+import { isDutyListStale } from '@/lib/cityServices/geo'
+import { buildDutyPharmacyItemListJsonLd, cityServicesSchemaLive, jsonLdString } from '@/lib/seo/cityServicesJsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +55,13 @@ export default async function NobetciEczanelerPage() {
     getCityNavPresence(citySlug),
   ])
 
+  // SEO-16: city hosts render this root route (not /city-site), so the CITY-SERVICES-1
+  // structured data must live here too — it never reached Google after 25 Oct.
+  const jsonLd =
+    snapshot && cityServicesSchemaLive() && !isDutyListStale(snapshot)
+      ? buildDutyPharmacyItemListJsonLd(snapshot, cityName)
+      : null
+
   return (
     <CityLayoutClient
       tenantSlug={citySlug}
@@ -61,6 +70,9 @@ export default async function NobetciEczanelerPage() {
       categories={navPresence.categories}
       hasSpor={navPresence.hasSpor}
     >
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      ) : null}
       <CityDutyPharmaciesClient cityName={cityName} snapshot={snapshot} />
     </CityLayoutClient>
   )

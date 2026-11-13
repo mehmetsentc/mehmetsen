@@ -5,6 +5,7 @@ import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { useConsent } from '@/hooks/useConsent'
+import { UtmLandingTracker } from '@/components/layout/UtmLandingTracker'
 
 const ADSENSE_CLIENT = 'ca-pub-2018428956792076'
 
@@ -80,6 +81,7 @@ export function DeferredThirdParty() {
         <>
           <Analytics />
           <SpeedInsights />
+          <UtmLandingTracker />
         </>
       ) : null}
     </>

@@ -7,6 +7,7 @@ import { ROUTES } from '@/constants/routes'
 import { TURKISH_PROVINCES } from '@/constants/cities'
 import type { NewsItem } from '@/types/newsItem'
 import { getYerelCityBridgeLinks } from '@/lib/seo/localDiscoveryExperiment'
+import { LatestNewsLinkListView, loadLatestNewsLinks } from '@/components/category/LatestNewsLinkList'
 
 export const revalidate = 180
 
@@ -108,6 +109,9 @@ export default async function LocalNewsCityPage({ params }: CityPageProps) {
     breaking: true,
   }))
 
+  // SEO-17: crawlable SSR links to this province's newest indexable stories (was 0).
+  const localLinks = await loadLatestNewsLinks({ citySlug, limit: 30 })
+
   // SEO-1D.1: Çanakkale-only bridge to the city site (empty for every other province).
   const cityBridgeLinks = getYerelCityBridgeLinks(citySlug)
 
@@ -134,6 +138,7 @@ export default async function LocalNewsCityPage({ params }: CityPageProps) {
         </nav>
       ) : null}
       <LocalNewsClient breakingItems={breakingItems} initialCitySlug={citySlug} />
+      <LatestNewsLinkListView heading={`${province.name} son haberler`} links={localLinks} />
     </>
   )
 }

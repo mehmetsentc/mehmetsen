@@ -7,6 +7,7 @@ import { CityLayoutClient } from '@/components/city/CityLayoutClient'
 import { getCitySlugFromHeaders } from '@/lib/cityHost'
 import { getCityNavPresence } from '@/services/cityNewsService.server'
 import { loadCityJobDetail } from '@/services/jobDetailPage.server'
+import { buildJobPostingJsonLd, cityServicesSchemaLive, jsonLdString } from '@/lib/seo/cityServicesJsonLd'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,20 @@ export default async function IsIlaniDetailPage({ params }: Props) {
 
   const cityName = getCityCategoryName(citySlug)
   const navPresence = await getCityNavPresence(citySlug)
+  // SEO-16: city hosts render this root route (not /city-site), so the CITY-SERVICES-1
+  // structured data must live here too — it never reached Google after 25 Oct.
+  const jsonLd =
+    cityServicesSchemaLive() && detail.schema
+      ? buildJobPostingJsonLd({
+          id: detail.id,
+          title: detail.title,
+          employer: detail.employer,
+          summary: detail.summary,
+          place: detail.place,
+          cityName: detail.cityName,
+          ...detail.schema,
+        })
+      : null
 
   return (
     <CityLayoutClient
@@ -49,6 +64,9 @@ export default async function IsIlaniDetailPage({ params }: Props) {
       categories={navPresence.categories}
       hasSpor={navPresence.hasSpor}
     >
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      ) : null}
       <CityJobDetail detail={detail} />
     </CityLayoutClient>
   )

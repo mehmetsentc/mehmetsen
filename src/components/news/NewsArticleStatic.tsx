@@ -13,6 +13,7 @@ import { parseArticleContent } from '@/lib/articleBodyUtils'
 import { filterBodyBlocksForArticleDisplay } from '@/lib/articleBlocksFromAi'
 import { planMediaPlacement } from '@/lib/mediaPlacement'
 import { ArticleCoverPlay } from '@/components/news/ArticleCoverPlay'
+import { reelWatchPath } from '@/lib/seo/reelWatch'
 import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
 import { SliderImage } from '@/components/widgets/SliderImage'
 import { ArticleAuthorBox } from '@/components/news/ArticleAuthorBox'
@@ -354,6 +355,15 @@ export function NewsArticleStatic({
           />
         ) : mediaPlacement.hero?.type === 'image' ? (
           <ImageHero item={mediaPlacement.hero} title={coverAlt} />
+        ) : null}
+
+        {/* REELS-SEO-1: crawlable link to the reel's watch page (video = main content there). */}
+        {post.reelVideoUrl && post.slug ? (
+          <p className="mt-3 text-sm" data-testid="article-reel-watch-link">
+            <a href={reelWatchPath(post.slug)} className="font-semibold underline">
+              ▶ Bu haberin videosunu izle
+            </a>
+          </p>
         ) : null}
 
         <NewsArticleBody className={ARTICLE_READER_BODY_CLASS}>

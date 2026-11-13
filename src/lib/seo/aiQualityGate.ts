@@ -14,6 +14,7 @@
 
 import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
 import { countPlainWords } from '@/lib/contentQuality'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 
 /** 15 Oct 2026 00:00 Europe/Istanbul. */
 export const AI_QUALITY_GATE_CUTOFF_MS = Date.parse('2026-10-14T21:00:00.000Z')
@@ -22,6 +23,24 @@ export const AI_QUALITY_FOCUS_CITIES: ReadonlySet<string> = new Set(['canakkale'
 export const AI_QUALITY_MIN_WORDS = 400
 /** Researched stories (≥2 research sources) qualify a little earlier. */
 export const AI_QUALITY_MIN_WORDS_RESEARCHED = 300
+
+/**
+ * SEO-19 (user-approved 13 Nov 2026). SEO-13 made every AI story 450–650 words, so
+ * the 400-word rule let nearly all of them through again. GSC 9 Nov: indexed pages
+ * 20.9k → 17.9k, «Tarandı – dizinde değil» 1.4k → 3.5k, latest examples generic
+ * rewrites everyone publishes (fragman, iOS tanıtımı, yabancı gündem).
+ * From 22 Oct (SEO-13 live) length no longer earns indexing on its own: an AI story
+ * is indexable when it is local (a Turkish province from the content), researched
+ * (≥2 sources), an editor pick / featured, or an analysis / column. Everything else
+ * stays published (homepage, feeds, social) with noindex,follow.
+ * Kill switch for this stricter part only: SEO_AI_STRICT_GATE=off.
+ */
+export const AI_QUALITY_STRICT_FROM_MS = Date.parse('2026-10-21T21:00:00.000Z')
+const PROVINCE_SLUGS: ReadonlySet<string> = new Set(TURKISH_PROVINCES.map((p) => p.slug))
+
+export function isAiStrictGateEnabled(): boolean {
+  return (process.env.SEO_AI_STRICT_GATE ?? '').trim().toLowerCase() !== 'off'
+}
 
 export type AiQualityGateInput = {
   aiEditorId?: string | null
@@ -90,6 +109,10 @@ export function failsAiQualityGate(p: AiQualityGateInput, enabled = isAiQualityG
   if (city && AI_QUALITY_FOCUS_CITIES.has(city)) return false
   if (p.isEditorPick === true || p.featured === true) return false
   if (p.articleFormat === 'analysis' || p.articleFormat === 'column') return false
+  if (publishedMs >= AI_QUALITY_STRICT_FROM_MS && isAiStrictGateEnabled()) {
+    if (city && PROVINCE_SLUGS.has(city)) return false
+    return !((p.seoResearchSourceCount ?? 0) >= 2 && p.seoWordCount >= AI_QUALITY_MIN_WORDS_RESEARCHED)
+  }
   if (p.seoWordCount >= AI_QUALITY_MIN_WORDS) return false
   if ((p.seoResearchSourceCount ?? 0) >= 2 && p.seoWordCount >= AI_QUALITY_MIN_WORDS_RESEARCHED) {
     return false
