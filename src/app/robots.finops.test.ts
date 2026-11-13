@@ -57,9 +57,10 @@ describe('FINOPS-SEO-1 robots', () => {
         }
       }
       const star = rules.find((x) => uas(x).includes('*'))!
-      expect(star.allow).toBe('/')
+      expect([star.allow].flat()).toContain('/')
       expect(star.disallow).not.toContain('/haber/')
-      expect(star.disallow).not.toContain('/etiket/')
+      // FinOps 13 Nov: the tag long tail is off for every crawler (SEO-gated topics stay allowed on www).
+      expect(star.disallow).toContain('/etiket/')
     }
   )
 })

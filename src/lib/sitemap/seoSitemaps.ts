@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { MetadataRoute } from 'next'
+import { unstable_cache } from 'next/cache'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { ROUTES } from '@/constants/routes'
@@ -42,6 +43,46 @@ export async function buildPublishersSitemap(base: string): Promise<string> {
   } catch (err) {
     recordSitemapError('publishers', err instanceof Error ? err.message : 'unknown')
     return urlsetXml([])
+  }
+}
+
+/**
+ * FinOps 13 Nov: tag paths that pass the topic SEO gate, for robots.txt `Allow`
+ * lines. Every other /etiket/ path is disallowed for all crawlers (bots walked
+ * ~12k distinct tag pages/day, each a cold ISR render + Firestore tag query).
+ * Same source and gate as the topics sitemap; cached for a day.
+ */
+const getIndexableTopicPathsCached = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const { getCanonicalPublishedNewsForSitemap } = await import('@/lib/canonical/canonicalEligibility')
+      const rows = await getCanonicalPublishedNewsForSitemap({ limit: 500 })
+      const counts = new Map<string, number>()
+      for (const d of rows) {
+        for (const tag of d.tags ?? []) {
+          const slug = tagToSlug(tag)
+          if (slug) counts.set(slug, (counts.get(slug) ?? 0) + 1)
+        }
+      }
+      const out: string[] = []
+      for (const [slug, count] of counts) {
+        if (evaluateTopicSeo(slug, count).indexable) out.push(ROUTES.TAG(slug))
+      }
+      return out.slice(0, 200)
+    } catch {
+      return []
+    }
+  },
+  ['indexable-topic-paths-v1'],
+  { revalidate: 86400, tags: ['canonical-news'] }
+)
+
+export async function getIndexableTopicPaths(): Promise<string[]> {
+  try {
+    return await getIndexableTopicPathsCached()
+  } catch {
+    // Outside a Next request (tests, scripts) unstable_cache has no store.
+    return []
   }
 }
 

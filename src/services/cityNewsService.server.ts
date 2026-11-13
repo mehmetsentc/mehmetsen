@@ -70,6 +70,13 @@ interface NewsDocument {
  * FinOps 12 Oct: city list reads returned full article docs (body HTML) — the
  * largest egress source. docToNewsItem / newsDocMatchesDistrict only need these.
  */
+/**
+ * FinOps 13 Nov: city list caches 2 min -> 10 min. City hosts render on every request
+ * (tenant comes from the Host header), so these data caches are what stands between
+ * each page view and Firestore. Admin publishes still drop 'city-news' immediately.
+ */
+const CITY_NEWS_REVALIDATE_S = 600
+
 const CITY_NEWS_CARD_FIELDS: string[] = ['title', 'slug', 'description', 'summary', 'coverImageUrl', 'thumbnail', 'categoryId', 'category', 'originalCategoryId', 'status', 'publishedAt', 'citySlug', 'city', 'district', 'districtSlug', 'location', 'tags', 'views', 'likesCount', 'commentsCount', 'isBreaking', 'featured', 'featuredAt', 'localFeatured', 'localFeaturedAt', 'source', 'author', 'authorPhotoURL', 'articleFormat', 'seoTitle', 'videoUrl', 'readingMinutes', 'additionalImages', 'galleryImages']
 
 
@@ -358,7 +365,7 @@ const getCityNewsByCategoryCached = unstable_cache(
     }
   },
   ['city-news-category-v2'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 /**
@@ -437,7 +444,7 @@ const getCityNewsByDistrictCached = unstable_cache(
     }
   },
   ['city-news-district-v3'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 /**
@@ -874,7 +881,7 @@ const getCityHomeFeedCached = unstable_cache(
     )
   },
   ['city-home-feed-v11'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 const getCityDistrictFeedCached = unstable_cache(
@@ -883,7 +890,7 @@ const getCityDistrictFeedCached = unstable_cache(
     return buildCityFeedFromPool(pool, citySlug, deriveRailCategoriesFromPool(pool))
   },
   ['city-district-feed-v4'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 /** National-style homepage feed payload scoped to a city tenant. */
@@ -909,7 +916,7 @@ const getCitySporFeedCached = unstable_cache(
     return buildCityFeedFromPool(pool, citySlug, railSectionIds, bucketCitySectionRails)
   },
   ['city-spor-feed-v4'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 /** Ana Feed layout payload scoped to city spor (+ alt kategoriler). */
@@ -923,7 +930,7 @@ const getCityCategoryFeedCached = unstable_cache(
     return buildCityFeedFromPool(pool, citySlug, [categoryId])
   },
   ['city-category-feed-v4'],
-  { revalidate: 120, tags: ['city-news'] }
+  { revalidate: CITY_NEWS_REVALIDATE_S, tags: ['city-news'] }
 )
 
 /**

@@ -70,7 +70,7 @@ describe('SEO-2C robots sitemap declarations', () => {
     const r = await robots()
     expect(ruleFor(r, 'Googlebot-News')).toEqual({
       userAgent: 'Googlebot-News',
-      allow: ['/haber/', '/kategori/', '/yerel/', '/', '/etiket/', '/cok-okunanlar'],
+      allow: ['/haber/', '/kategori/', '/yerel/', '/', '/cok-okunanlar'],
       disallow: ['/admin/', '/api/', '/ayarlar', '/settings', '/giris', '/login', '/kayit', '/register'],
     })
     expect(ruleFor(r, 'Googlebot-Image')?.allow).toEqual(['/haber/', '/kategori/', '/yerel/', '/', '/images-sitemap.xml'])

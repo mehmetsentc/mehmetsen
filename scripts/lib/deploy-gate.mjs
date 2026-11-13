@@ -6,9 +6,9 @@
 
 import { execSync } from 'node:child_process'
 
-export const MAX_DEPLOYS_PER_DAY = Number(process.env.DEPLOY_MAX_PER_DAY || 2)
+export const MAX_DEPLOYS_PER_DAY = Number(process.env.DEPLOY_MAX_PER_DAY || 1)
 /** FinOps 22 Oct: [force-deploy] no longer unlimited (each deploy resets ISR + caches). */
-export const MAX_FORCE_DEPLOYS_PER_DAY = Number(process.env.FORCE_DEPLOY_MAX_PER_DAY || 4)
+export const MAX_FORCE_DEPLOYS_PER_DAY = Number(process.env.FORCE_DEPLOY_MAX_PER_DAY || 2)
 export const DEPLOY_WINDOW_MS = Number(
   process.env.DEPLOY_WINDOW_MS || 24 * 60 * 60 * 1000,
 )

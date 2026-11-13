@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { headers } from 'next/headers'
 import { getSiteUrl } from '@/lib/seo'
 import { getCitySlugFromHost } from '@/lib/cityHost'
+import { getIndexableTopicPaths } from '@/lib/sitemap/seoSitemaps'
 
 /**
  * robots.txt — host-aware.
@@ -130,7 +131,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         {
           userAgent: '*',
           allow: '/',
-          disallow: commonDisallow,
+          // FinOps 13 Nov: tag long tail is off for every crawler on city hosts.
+          disallow: [...commonDisallow, '/etiket/'],
         },
         {
           userAgent: 'Googlebot-News',
@@ -162,16 +164,19 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   }
 
   // ── National site ─────────────────────────────────────────────────────────
+  const indexableTopicPaths = await getIndexableTopicPaths()
   return {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: commonDisallow,
+        // FinOps 13 Nov: /etiket/ off for all crawlers; topic pages that pass the SEO
+        // gate (same list as sitemap-topics.xml) stay allowed (longest match wins).
+        allow: ['/', ...indexableTopicPaths],
+        disallow: [...commonDisallow, '/etiket/'],
       },
       {
         userAgent: 'Googlebot-News',
-          allow: ['/haber/', '/kategori/', '/yerel/', '/', '/etiket/', '/cok-okunanlar'],
+          allow: ['/haber/', '/kategori/', '/yerel/', '/', '/cok-okunanlar', ...indexableTopicPaths],
           disallow: ['/admin/', '/api/', '/ayarlar', '/settings', '/giris', '/login', '/kayit', '/register'],
       },
       {
