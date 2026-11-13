@@ -358,7 +358,8 @@ export async function getNewsBySlug(slug: string): Promise<Post | null> {
     // article's cache, so each bot/user view re-read Firestore and Postgres
     // (~11k PG lookups/day, ~0.02% hits). Publish/edit/unpublish paths all call
     // revalidatePublishedNews(slug), which drops this article's own tag.
-    { revalidate: 3600, tags: [`news:${normalized}`] }
+    // FinOps 13 Nov: 24h (was 1h), matching the page. Edits/unpublishes drop `news:{slug}`.
+    { revalidate: 86400, tags: [`news:${normalized}`] }
   )()
 }
 
@@ -1148,8 +1149,13 @@ const getSuggestedPostsCached = unstable_cache(
       return []
     }
   },
-  ['suggested-posts-v2'],
-  { revalidate: 600, tags: ['news-post'] }
+  ['suggested-posts-v3'],
+  // FinOps 13 Nov: own tag, 6h. This cache only feeds the article page's related
+  // list, and unstable_cache tags/revalidate attach to the page that reads them:
+  // with 'news-post' every pipeline publish (≤5 min, per instance) marked every
+  // /haber page stale, and Vercel ISR showed ~1.7 renders per article path per 12h
+  // even after the 24h page revalidate.
+  { revalidate: 6 * 60 * 60, tags: ['suggested-posts'] }
 )
 
 export async function getSuggestedPostsServer(

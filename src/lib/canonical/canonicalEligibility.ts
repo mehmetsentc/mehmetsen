@@ -180,8 +180,12 @@ export const getCanonicalNewsBySlugCached = unstable_cache(
   async (slug: string): Promise<Post | null> => {
     return fetchCanonicalNewsBySlug(slug)
   },
-  ['canonical-news-by-slug-v1'],
-  { revalidate: 60, tags: ['news-post', 'canonical-news'] }
+  ['canonical-news-by-slug-v2'],
+  // FinOps 13 Nov: no 'news-post' tag and 1h (was 60 s). It runs inside the article
+  // render, so both attached to every /haber page it touched (pages served
+  // `s-maxage=60`, re-rendered on each later visit). Article edits still drop the
+  // outer news-by-slug cache via `news:{slug}`.
+  { revalidate: 3600, tags: ['canonical-news'] }
 )
 
 /**
