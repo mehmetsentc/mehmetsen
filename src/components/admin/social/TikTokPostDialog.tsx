@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { reelsCall } from './reelsApi'
+import { reelsCall, runReelJob } from './reelsApi'
 import { cn } from '@/lib/utils'
 
 type Account = { accountId: string; displayName: string; selectable: boolean; reason: string | null }
@@ -81,6 +81,23 @@ export function TikTokPostDialog({
   const [result, setResult] = useState<{ ok: boolean; text: string; publishId?: string } | null>(null)
   const [statusText, setStatusText] = useState<string | null>(null)
 
+  const [reloadKey, setReloadKey] = useState(0)
+  const [building, setBuilding] = useState(false)
+  const [buildSec, setBuildSec] = useState(0)
+  const [buildError, setBuildError] = useState<string | null>(null)
+
+  // «Video oluştur»: render (or reuse) the story's NaHaber reel, then reload the dialog data.
+  const buildVideo = async () => {
+    if (building) return
+    setBuilding(true)
+    setBuildError(null)
+    setBuildSec(0)
+    const r = await runReelJob('/api/admin/social/tiktok', { newsId, prepare: true }, (ms) => setBuildSec(Math.round(ms / 1000)))
+    setBuilding(false)
+    if (!r.ok) return setBuildError(r.error)
+    setReloadKey((k) => k + 1)
+  }
+
   useEffect(() => {
     let off = false
     void reelsCall<{ accounts: Account[]; hasVideo: boolean; video?: { url: string; seconds: number | null } | null }>('GET', `/api/admin/social/tiktok?newsId=${encodeURIComponent(newsId)}`).then((r) => {
@@ -93,7 +110,7 @@ export function TikTokPostDialog({
     return () => {
       off = true
     }
-  }, [newsId])
+  }, [newsId, reloadKey])
 
   // Fresh creator info on every account choice (TikTok guideline).
   useEffect(() => {
@@ -184,8 +201,28 @@ export function TikTokPostDialog({
 
   if (loadError) return <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{loadError}</p>
   if (!accounts) return <p className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Yükleniyor…</p>
-  if (!hasVideo) return <p className="text-sm">Bu haberin kayıtlı videosu yok; önce Reels stüdyosunda video oluşturun.</p>
   if (accounts.length === 0) return <p className="text-sm">Bağlı TikTok hesabı yok. Hesaplar ekranından «TikTok hesabı» bağlayın.</p>
+  if (!hasVideo)
+    return (
+      <div className="space-y-2 text-sm">
+        <p>Bu haberin videosu henüz yok.</p>
+        {accounts.some((a) => a.selectable) ? (
+          <button
+            type="button"
+            onClick={() => void buildVideo()}
+            disabled={building}
+            className="inline-flex items-center gap-2 rounded-lg bg-black px-3 py-1.5 font-bold text-white disabled:opacity-60"
+          >
+            {building ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {building ? `Video hazırlanıyor… ${buildSec} sn` : 'Video oluştur'}
+          </button>
+        ) : (
+          <p className="text-xs text-[rgb(var(--color-muted))]">Bu haber için kullanılabilir TikTok hesabı yok: {accounts[0]?.reason ?? 'hesap seçilemiyor'}</p>
+        )}
+        {building ? <p className="text-xs text-[rgb(var(--color-muted))]">Video oluşturma 1–3 dakika sürebilir; pencereyi kapatmayın. Hazır olunca paylaşım ayarları açılır.</p> : null}
+        {buildError ? <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700">Video oluşturulamadı: {buildError}</p> : null}
+      </div>
+    )
 
   const box = 'rounded-lg border border-[rgb(var(--color-border))] p-2'
   return (

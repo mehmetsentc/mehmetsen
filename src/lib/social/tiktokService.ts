@@ -5,13 +5,14 @@
  *   tiktokCreatorInfoFor(actor, id)     → live creator info (nickname, privacy options, limits)
  *   publishTikTokForNews(actor, input)  → ONE post through the shared publish ledger
  *   tiktokPostStatusFor(actor, id, pid) → TikTok processing status of an earlier post
+ *   tiktokPrepareVideo(actor, newsId)   → build (or reuse) the story's NaHaber reel as a background job
  *
  * Rules:
  *   - the actor must be allowed to publish to the account (canPublishToAccount)
  *     and the account must be active
  *   - a province account takes only stories of its own province
  *   - the video is the saved NaHaber reel of the story (reelVideos/{newsId});
- *     nothing is rendered here
+ *     rendered only on the editor's explicit «Video oluştur» (tiktokPrepareVideo)
  *   - the ledger (claimPublish / finishPublish, format `reel`) makes the post
  *     unique per story + account and turns a lost answer into «uncertain»
  *   - nothing is sent without the editor's explicit settings + consent
@@ -31,7 +32,8 @@ import { ownershipKind, type SocialAccount } from './accounts/types'
 import type { TikTokPublishTarget } from './accounts/targetTypes'
 import { queryTikTokCreatorInfo, isTikTokPrivacyLevel, type TikTokCreatorInfo } from './accounts/connect/tiktokOAuth'
 import { fetchTikTokPostStatus, publishTikTokVideo, tiktokText, TIKTOK_FAIL_REASON_TEXT, type TikTokPostSettings } from './tiktokPublish'
-import { REEL_VIDEOS } from '@/lib/reels/reelLibrary'
+import { REEL_VIDEOS, recordReel } from '@/lib/reels/reelLibrary'
+import { reelJobId, startReelJob, type ReelJobView } from '@/lib/reels/reelJobs'
 import { provinceOf } from './automation/types'
 import { buildReelCaption } from './reelPublish'
 import { buildPublicArticleUrl } from './articleUrl'
@@ -99,6 +101,37 @@ async function tiktokTarget(actor: SocialActor, accountId: string): Promise<{ ok
   const r = await resolvePublishTarget(accountId, { expectedPlatform: 'tiktok' })
   if (!r.ok) return { ok: false, status: 409, code: r.code, error: r.message }
   return { ok: true, account: loaded.account, target: r.target as TikTokPublishTarget }
+}
+
+/**
+ * «Video oluştur» in the TikTok dialog: build (or reuse) the story's NaHaber reel in the
+ * background (same build job id as the Meta reels flow, so both share one render) and make
+ * sure it is in the reel library the dialog reads. Only for an editor who has at least one
+ * TikTok account that may take this story — nothing is posted here.
+ */
+export async function tiktokPrepareVideo(actor: SocialActor, newsId: string): Promise<{ ok: true; job: ReelJobView } | { ok: false; status: number; code: string; error: string }> {
+  const r = await tiktokAccountsFor(actor, newsId)
+  if (!r.ok) return { ok: false, status: r.status, code: r.code, error: r.code === 'news_not_published' ? 'Haber yayında değil' : 'Haber bulunamadı' }
+  if (!r.accounts.some((a) => a.selectable)) return { ok: false, status: 404, code: 'not_found', error: 'Bu haber için kullanılabilir TikTok hesabı yok' }
+  const uid = actor.uid
+  const job = await startReelJob({
+    jobId: reelJobId(['build', newsId]),
+    kind: 'build',
+    newsId,
+    by: uid,
+    run: async () => {
+      const { buildReelForNews } = await import('@/lib/reels/reelService')
+      const b = await buildReelForNews(newsId, { by: uid })
+      // A reused render may not be in the library yet (the dialog reads the library).
+      if (!(await loadSavedReel(newsId))) {
+        const d = (await loadNews(newsId)) ?? {}
+        const seconds = typeof (b as { seconds?: unknown }).seconds === 'number' ? ((b as { seconds?: number }).seconds ?? null) : null
+        await recordReel({ newsId, slug: str(d.slug) || null, headline: str(d.title), url: b.url, coverUrl: b.coverUrl ?? null, seconds, persona: null, style: null, media: str((b as { media?: unknown }).media) || null, by: uid })
+      }
+      return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused } }
+    },
+  })
+  return { ok: true, job }
 }
 
 /** Live creator info for the dialog. Shown fresh every time the dialog opens (TikTok guideline). */
