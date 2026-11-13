@@ -25,6 +25,18 @@ export type ReelJobState = { jobId: string; status: 'running' | 'done' | 'failed
 
 /** Poll interval and limit for background reel jobs (server limit 800 s). */
 export const REEL_JOB_POLL_MS = 4000
+/**
+ * FinOps 13 Nov: after the first 40 s poll every 10 s. Each status GET costs two
+ * Firebase Auth lookups, a Neon query and Vercel CPU; /api/admin/social/reels/share
+ * was the most requested path on the site (~8k/day). Video renders take minutes,
+ * so a few seconds' later notice is invisible to the editor.
+ */
+export const REEL_JOB_SLOW_POLL_MS = 10_000
+export const REEL_JOB_FAST_WINDOW_MS = 40_000
+
+export function reelJobPollDelay(elapsedMs: number): number {
+  return elapsedMs < REEL_JOB_FAST_WINDOW_MS ? REEL_JOB_POLL_MS : REEL_JOB_SLOW_POLL_MS
+}
 export const REEL_JOB_MAX_MS = 14 * 60 * 1000
 
 /**
@@ -49,7 +61,7 @@ export async function runReelJob(
   const sep = path.includes('?') ? '&' : '?'
   while (job.status === 'running') {
     if (Date.now() - t0 > REEL_JOB_MAX_MS) return { ok: false, error: 'İş çok uzun sürdü; birkaç dakika sonra sonucu kontrol edin' }
-    await new Promise((r) => setTimeout(r, REEL_JOB_POLL_MS))
+    await new Promise((r) => setTimeout(r, reelJobPollDelay(Date.now() - t0)))
     onTick?.(Date.now() - t0)
     const r = await reelsCall<{ job: ReelJobState }>('GET', `${path}${sep}job=${encodeURIComponent(first.jobId)}`)
     if (!r.ok) {
