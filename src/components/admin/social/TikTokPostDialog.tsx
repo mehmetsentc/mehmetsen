@@ -45,18 +45,20 @@ const BRANDED_URL = 'https://www.tiktok.com/legal/page/global/bc-policy/en'
 export function TikTokPostDialog({
   newsId,
   videoUrl,
-  coverUrl,
-  seconds,
+  coverUrl = null,
+  seconds: secondsProp,
   onFinished,
 }: {
   newsId: string
-  videoUrl: string
-  coverUrl: string | null
-  seconds: number | null
+  /** Omit (news-list shortcut) to use the story's saved reel returned by the API. */
+  videoUrl?: string
+  coverUrl?: string | null
+  seconds?: number | null
   onFinished?: () => void
 }) {
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [hasVideo, setHasVideo] = useState(true)
+  const [savedVideo, setSavedVideo] = useState<{ url: string; seconds: number | null } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [accountId, setAccountId] = useState('')
   const [info, setInfo] = useState<CreatorInfo | null>(null)
@@ -81,11 +83,12 @@ export function TikTokPostDialog({
 
   useEffect(() => {
     let off = false
-    void reelsCall<{ accounts: Account[]; hasVideo: boolean }>('GET', `/api/admin/social/tiktok?newsId=${encodeURIComponent(newsId)}`).then((r) => {
+    void reelsCall<{ accounts: Account[]; hasVideo: boolean; video?: { url: string; seconds: number | null } | null }>('GET', `/api/admin/social/tiktok?newsId=${encodeURIComponent(newsId)}`).then((r) => {
       if (off) return
       if (!r.ok) return setLoadError(r.error)
       setAccounts(r.data.accounts)
       setHasVideo(r.data.hasVideo)
+      setSavedVideo(r.data.video ?? null)
     })
     return () => {
       off = true
@@ -123,6 +126,8 @@ export function TikTokPostDialog({
     if (commercial && brandedContent && privacy === 'SELF_ONLY') setPrivacy('')
   }, [commercial, brandedContent, privacy])
 
+  const previewUrl = videoUrl ?? savedVideo?.url ?? ''
+  const seconds = secondsProp !== undefined ? secondsProp : (savedVideo?.seconds ?? null)
   const tooLong = !!info?.maxVideoPostDurationSec && seconds !== null && seconds > info.maxVideoPostDurationSec
   const blocker = useMemo(() => {
     if (!accountId) return 'TikTok hesabı seçin'
@@ -213,7 +218,7 @@ export function TikTokPostDialog({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
-            <video src={videoUrl} poster={coverUrl ?? undefined} controls playsInline className="w-full rounded-lg bg-black" aria-label="Video önizleme" />
+            <video src={previewUrl} poster={coverUrl ?? undefined} controls playsInline className="w-full rounded-lg bg-black" aria-label="Video önizleme" />
             <label className="block">
               <span className="mb-1 block text-xs font-semibold">Başlık ve etiketler (düzenleyebilirsiniz)</span>
               <textarea value={title} onChange={(e) => setTitle(e.target.value.slice(0, 2200))} rows={7} className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent p-2 text-xs" />

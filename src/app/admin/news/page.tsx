@@ -1,5 +1,6 @@
 'use client'
 
+import { TikTokPostDialog } from '@/components/admin/social/TikTokPostDialog'
 import { useCallback, useEffect, useMemo, useState, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -642,7 +643,8 @@ const POST_PLATFORMS: { key: keyof PlatformFlags; label: string; Icon: React.FC<
 
 /** REELS-3: news video as Reels or video story — pick the format, then the accounts. */
 function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; newsTitle: string; onClose: () => void }) {
-  const [fmt, setFmt] = useState<'reel' | 'video_story'>('reel')
+  const [fmt, setFmt] = useState<'reel' | 'video_story' | 'tiktok'>('reel')
+  const label = { reel: 'Reels', video_story: 'Video hikâye', tiktok: 'TikTok' } as const
   return (
     <div className="space-y-1.5 px-1">
       <div className="flex items-center justify-between">
@@ -652,18 +654,32 @@ function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; news
         </a>
       </div>
       <div className="flex gap-1 text-[11px]">
-        {(['reel', 'video_story'] as const).map((f) => (
+        {(['reel', 'video_story', 'tiktok'] as const).map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setFmt(f)}
-            className={cn('rounded-full border px-2.5 py-0.5 font-bold', fmt === f ? 'border-red-600 bg-red-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]')}
+            className={cn(
+              'rounded-full border px-2.5 py-0.5 font-bold',
+              fmt === f
+                ? f === 'tiktok'
+                  ? 'border-black bg-black text-white'
+                  : 'border-red-600 bg-red-600 text-white'
+                : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]'
+            )}
           >
-            {f === 'reel' ? 'Reels' : 'Video hikâye'}
+            {label[f]}
           </button>
         ))}
       </div>
-      <ManualShareFlow key={fmt} newsId={newsId} newsTitle={newsTitle} mode={fmt} onClose={onClose} compact />
+      {fmt === 'tiktok' ? (
+        // TIKTOK-1 kuralları diyalogun içinde: hesap bilgisi her seçimde, gizlilik varsayılansız, onaysız gönderim yok.
+        <div className="pt-1">
+          <TikTokPostDialog key={newsId} newsId={newsId} />
+        </div>
+      ) : (
+        <ManualShareFlow key={fmt} newsId={newsId} newsTitle={newsTitle} mode={fmt} onClose={onClose} compact />
+      )}
     </div>
   )
 }

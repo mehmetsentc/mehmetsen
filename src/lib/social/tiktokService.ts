@@ -73,7 +73,7 @@ function accountProblem(actor: SocialActor, a: SocialAccount, news: Record<strin
   return null
 }
 
-export async function tiktokAccountsFor(actor: SocialActor, newsId: string): Promise<{ ok: true; accounts: TikTokAccountOption[]; hasVideo: boolean } | { ok: false; status: number; code: string }> {
+export async function tiktokAccountsFor(actor: SocialActor, newsId: string): Promise<{ ok: true; accounts: TikTokAccountOption[]; hasVideo: boolean; video: { url: string; seconds: number | null } | null } | { ok: false; status: number; code: string }> {
   const news = await loadNews(newsId)
   if (!news) return { ok: false, status: 404, code: 'news_not_found' }
   if (str(news.status) !== 'published') return { ok: false, status: 409, code: 'news_not_published' }
@@ -81,6 +81,7 @@ export async function tiktokAccountsFor(actor: SocialActor, newsId: string): Pro
   return {
     ok: true,
     hasVideo: !!reel,
+    video: reel,
     accounts: accounts
       .filter((a) => a.platform === 'tiktok')
       .map((a) => {

@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     return info.ok ? json({ info: info.info, defaultTitle: title }) : json({ error: info.error, code: info.code }, info.status)
   }
   const r = await tiktokAccountsFor(auth.actor, newsId)
-  return r.ok ? json({ accounts: r.accounts, hasVideo: r.hasVideo }) : json({ error: r.code, code: r.code }, r.status)
+  return r.ok ? json({ accounts: r.accounts, hasVideo: r.hasVideo, video: r.video }) : json({ error: r.code, code: r.code }, r.status)
 }
 
 export async function POST(request: Request) {
