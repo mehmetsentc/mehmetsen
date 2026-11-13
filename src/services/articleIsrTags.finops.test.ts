@@ -36,3 +36,12 @@ describe('article ISR page is not invalidated by every publish', () => {
     expect(b).not.toContain("'news-post'")
   })
 })
+
+describe('article load does not nest the pipeline-tagged legacy cache', () => {
+  it('loadNewsBySlug reads Firestore through the uncached loader', () => {
+    const i = svc.indexOf('async function loadNewsBySlug')
+    const body = svc.slice(i, svc.indexOf('export async function getNewsBySlug', i))
+    expect(body).toContain('loadLegacyNewsBySlug(decoded)')
+    expect(body).not.toContain('getLegacyNewsBySlugCached(')
+  })
+})

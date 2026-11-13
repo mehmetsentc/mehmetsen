@@ -272,28 +272,31 @@ async function findByNormalizedSlug(slug: string): Promise<Post | null> {
   return null
 }
 
-export const getLegacyNewsBySlugCached = unstable_cache(
-  async (slug: string): Promise<Post | null> => {
-    try {
-      const snap = await getAdminFirestore()
-        .collection(NEWS_COLLECTION)
-        .where('slug', '==', slug)
-        .limit(1)
-        .get()
+/** Firestore lookup by slug, then id, then normalized slug. Uncached. */
+async function loadLegacyNewsBySlug(slug: string): Promise<Post | null> {
+  try {
+    const snap = await getAdminFirestore()
+      .collection(NEWS_COLLECTION)
+      .where('slug', '==', slug)
+      .limit(1)
+      .get()
 
-      if (!snap.empty) {
-        const doc = snap.docs[0]!
-        return newsDocToPost(doc.id, doc.data() as NewsDocument)
-      }
-    } catch (error) {
-      console.warn('[newsService.server] getLegacyNewsBySlug query failed:', error)
+    if (!snap.empty) {
+      const doc = snap.docs[0]!
+      return newsDocToPost(doc.id, doc.data() as NewsDocument)
     }
+  } catch (error) {
+    console.warn('[newsService.server] getLegacyNewsBySlug query failed:', error)
+  }
 
-    const byId = await getNewsById(slug)
-    if (byId) return byId
+  const byId = await getNewsById(slug)
+  if (byId) return byId
 
-    return findByNormalizedSlug(slug)
-  },
+  return findByNormalizedSlug(slug)
+}
+
+export const getLegacyNewsBySlugCached = unstable_cache(
+  async (slug: string): Promise<Post | null> => loadLegacyNewsBySlug(slug),
   ['legacy-news-by-slug-v1'],
   { revalidate: 300, tags: ['news-post'] }
 )
@@ -341,9 +344,12 @@ async function loadNewsBySlug(slug: string): Promise<Post | null> {
     decoded = decodeURIComponent(normalized).trim()
   } catch {}
 
-  const post = await getLegacyNewsBySlugCached(decoded)
+  // FinOps 13 Nov: uncached here. This runs inside the 24h news-by-slug cache; the
+  // nested legacy cache (5 min, 'news-post') attached that pipeline-busted tag to
+  // every /haber page that read it.
+  const post = await loadLegacyNewsBySlug(decoded)
   if (!post && decoded !== normalized) {
-    return getLegacyNewsBySlugCached(normalized)
+    return loadLegacyNewsBySlug(normalized)
   }
   return post
 }
