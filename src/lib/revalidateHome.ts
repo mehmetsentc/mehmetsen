@@ -36,6 +36,15 @@ export function revalidatePublishedNews(
     if (broadAllowed('news-post', opts?.throttleBroadMs)) revalidateTag('news-post')
     const normalized = slug?.trim()
     if (normalized) revalidateTag(`news:${normalized}`)
+    // FinOps Neon migration, phase 1: mirror this article into news_read_mirror.
+    // Lazy import keeps firebase-admin/Neon out of this module unless the flag is on.
+    if (normalized && process.env.NEWS_PG_MIRROR === '1') {
+      void import('@/services/newsMirror/newsReadMirror')
+        .then((m) => m.scheduleNewsMirror(normalized))
+        .catch(() => {
+          /* best-effort */
+        })
+    }
   } catch {
     /* best-effort */
   }

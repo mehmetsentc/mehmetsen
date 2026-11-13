@@ -108,3 +108,4 @@ export {
   videoLibraryCollections,
   videoLibraryCollectionItems,
 } from './videoLibrary'
+export { newsReadMirror } from './newsReadMirror'
