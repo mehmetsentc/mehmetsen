@@ -87,6 +87,9 @@
     },
     "src/app/api/cron/newsroom/editor-ai-queue/route.ts": {
       "memory": 1024
+    },
+    "src/app/api/cron/news-mirror-reconcile/route.ts": {
+      "memory": 512
     }
   },
   "crons": [
@@ -117,6 +120,10 @@
     {
       "path": "/api/events/sync",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/news-mirror-reconcile",
+      "schedule": "40 * * * *"
     }
   ]
 }
