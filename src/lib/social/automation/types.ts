@@ -115,7 +115,8 @@ export const RULE_LIMITS = {
 const PROVINCE_SLUGS = new Set(TURKISH_PROVINCES.map((p) => p.slug))
 const CATEGORY_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 /** Meta ids are numeric; YouTube channel ids are `UC` + 22 url-safe chars. */
-const ACCOUNT_ID_RE = /^(?:(?:facebook|instagram|threads)_[0-9]{1,30}|youtube_UC[0-9A-Za-z_-]{22})$/
+// TikTok open_id is URL-safe base64-like (e.g. «-000sG3W…_fH7»).
+const ACCOUNT_ID_RE = /^(?:(?:facebook|instagram|threads)_[0-9]{1,30}|youtube_UC[0-9A-Za-z_-]{22}|tiktok_[0-9A-Za-z_-]{1,64})$/
 
 export function isProvinceSlug(slug: string): boolean {
   return PROVINCE_SLUGS.has(slug)
