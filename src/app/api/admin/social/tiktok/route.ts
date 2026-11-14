@@ -77,5 +77,7 @@ export async function POST(request: Request) {
   const settings = parseTikTokSettings(body.settings)
   if (!settings) return json({ error: 'TikTok paylaşım ayarları eksik', code: 'invalid_settings' }, 400)
   const result = await publishTikTokForNews(auth.actor, { newsId, accountId, settings, force: body.force === true })
-  return json({ result, ...(result.success ? {} : { error: result.error }) }, result.success ? 200 : result.ledgerStatus === 'not_claimed' ? 409 : 502)
+  // 422, not 502: Cloudflare replaces an origin 502 with its own HTML page, so the
+  // editor saw «HTTP 502» instead of TikTok's reason (e.g. private-account rule).
+  return json({ result, ...(result.success ? {} : { error: result.error }) }, result.success ? 200 : result.ledgerStatus === 'not_claimed' ? 409 : 422)
 }

@@ -219,7 +219,7 @@ export function TikTokPostDialog({
         ) : (
           <p className="text-xs text-[rgb(var(--color-muted))]">Bu haber için kullanılabilir TikTok hesabı yok: {accounts[0]?.reason ?? 'hesap seçilemiyor'}</p>
         )}
-        {building ? <p className="text-xs text-[rgb(var(--color-muted))]">Video oluşturma 1–3 dakika sürebilir; pencereyi kapatmayın. Hazır olunca paylaşım ayarları açılır.</p> : null}
+        {building ? <p className="text-xs text-[rgb(var(--color-muted))]">Video oluşturma birkaç dakika (genelde 3–5 dk) sürebilir; pencereyi kapatmayın. Hazır olunca paylaşım ayarları açılır.</p> : null}
         {buildError ? <p className="rounded-lg bg-red-50 p-2 text-xs text-red-700">Video oluşturulamadı: {buildError}</p> : null}
       </div>
     )
