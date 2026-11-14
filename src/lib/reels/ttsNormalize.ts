@@ -146,7 +146,7 @@ export function toSpokenTurkish(input: string): string {
     .replace(/[#@][\p{L}\d_]+/gu, ' ')
     .replace(/\p{Extended_Pictographic}|️/gu, ' ')
     .replace(/[“”"«»]/g, '')
-    .replace(/[’`´]/g, "'")
+    .replace(/[’‘`´ʼ′]/g, "'")
   // 2. abbreviations
   for (const [re, w] of ABBREVIATIONS) t = t.replace(re, w)
   // 2b. initials «Y.D.», «A. Yılmaz», «M.K.A.»: the voice reads a lone capital + dot as a
@@ -191,7 +191,11 @@ export function toSpokenTurkish(input: string): string {
   t = t.replace(/(?<!\p{L})([A-ZÇĞİÖŞÜ]{2,}(?:-[A-ZÇĞİÖŞÜ]{2,})?)(?=('\p{L}+)?(?!\p{L}))/gu, (w) =>
     w === 'TL' ? 'lira' : acronym(w),
   )
-  // apostrophe before a suffix is not spoken: «Çanakkale'de» fine for TTS, «Ce He Pe'nin» → «Ce He Pe'nin»
+  // 9b. REELS-17: suffix apostrophe joins the word. Chirp/Neural voices read «Yılmaz'ın»
+  //     as «Yılmaz… ı ı n» (the suffix spelled out after a pause); written Turkish attaches
+  //     the suffix anyway, so the voice hears «Yılmazın», «Kurum'un» → «Kurumun»,
+  //     «Ce He Pe'nin» → «Ce He Penin», «yüzde 15'i» → «yüzde 15i». Screen text is untouched.
+  t = t.replace(/(\p{L}|\d)'(?=\p{L})/gu, '$1')
   // 10. symbols and pauses
   t = t
     .replace(/\s&\s/g, ' ve ')

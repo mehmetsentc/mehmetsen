@@ -31,7 +31,7 @@ describe('REELS-10 Turkish text for TTS', () => {
     expect(s('Prof. Dr. Ayşe Kaya açıkladı.')).toBe('Profesör Doktor Ayşe Kaya açıkladı.')
     expect(s('CHP ve MHP grubu')).toBe('Ce He Pe ve Me He Pe grubu.')
     expect(s('ABD ve NATO')).toBe('A Be De ve Nato.')
-    expect(s('TBMM\'de görüşüldü')).toBe("Te Be Me Me'de görüşüldü.")
+    expect(s('TBMM\'de görüşüldü')).toBe('Te Be Me Mede görüşüldü.')
   })
   it('noise and pauses', () => {
     expect(s('Son dakika 🚨 #deprem https://x.co')).toBe('Son dakika.')
