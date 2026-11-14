@@ -19,7 +19,7 @@ import { isSocialTestMode } from '../testEnvironment'
 import { safeErrorText, socialLog } from '../safeLog'
 import { socialEligibility } from '../eligibility'
 import { loadSocialAccount, setSocialAccountStatus } from '../accounts/accountStore'
-import { targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
+import { automationBlocker, automationNeedsApproval, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
 import { readLedger } from '../accounts/publishLedger'
 import { toPublicSocialAccount } from '../accounts/types'
 import { redactSecrets, writeSocialAudit } from '../accounts/audit'
@@ -240,7 +240,7 @@ export async function processJob(
   // ── Account publishable for this format ──
   const loaded = await loadSocialAccount(job.accountId)
   if (loaded.state !== 'ok') return { status: 'cancelled', code: 'account_missing', message: 'Hesap kaydı yok' }
-  const blocker = targetBlocker(toPublicSocialAccount(loaded.account), job.format, t)
+  const blocker = automationBlocker(toPublicSocialAccount(loaded.account), job.format, t)
   if (blocker) {
     const cancel = blocker === 'status_paused' || blocker === 'status_disabled'
     return { status: cancel ? 'cancelled' : 'failed', code: blocker, message: `Hesap: ${TARGET_BLOCKER_TEXT[blocker]}` }
@@ -251,6 +251,20 @@ export async function processJob(
   if (liveAt !== null && t - liveAt > STALE_AFTER_MS) {
     return { status: 'skipped', code: 'stale', message: 'Haber 12 saatten eski — otomatik paylaşılmadı' }
   }
+  // ── TIKTOK-AUTO-1: approval platforms never publish here — prepare the reel, wait for the editor ──
+  if (automationNeedsApproval(job.platform)) {
+    await prepareApprovalVideo(job.newsId).catch((err) => socialLog('warn', 'cron', 'approval_video_failed', { job: job.id, error: safeErrorText(err).slice(0, 200) }))
+    await writeSocialAudit({
+      actorId: (await import('../publishOneSocial')).AUTOMATION_ACTOR_UID,
+      actorType: 'SYSTEM',
+      action: 'social.automation.awaiting_approval',
+      entityType: 'socialAutomationJob',
+      entityId: job.id,
+      meta: { newsId: job.newsId, accountId: job.accountId, format: job.format, ruleIds: matching.map((r) => r.id) },
+    }).catch(() => undefined)
+    return { status: 'awaiting_approval', code: 'awaiting_approval', message: 'TikTok onayı bekliyor — Kaydedilenler\'den paylaşın' }
+  }
+
   const limits = strictestLimits(matching)
   const quietUntil = quietDeferral(t, limits.quietHours)
   if (quietUntil !== null) {
@@ -354,4 +368,23 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeat | null> {
   } catch {
     return null
   }
+}
+
+/**
+ * Start (or join) the background reel build for an approval job, so the editor finds the
+ * video ready. Same job id as the manual reels / TikTok «Video oluştur» builds → one render.
+ */
+async function prepareApprovalVideo(newsId: string): Promise<void> {
+  const [{ reelJobId, startReelJob }, { AUTOMATION_ACTOR_UID }, { buildAndRecordReel }] = await Promise.all([
+    import('@/lib/reels/reelJobs'),
+    import('../publishOneSocial'),
+    import('../tiktokService'),
+  ])
+  await startReelJob({
+    jobId: reelJobId(['build', newsId]),
+    kind: 'build',
+    newsId,
+    by: AUTOMATION_ACTOR_UID,
+    run: () => buildAndRecordReel(newsId, AUTOMATION_ACTOR_UID),
+  })
 }

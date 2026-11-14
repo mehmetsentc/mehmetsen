@@ -29,6 +29,8 @@ export type SocialAuditAction =
   | 'social.automation.legacy_handoff'
   | 'social.automation.legacy_handback'
   | 'social.automation.publish'
+  | 'social.automation.awaiting_approval'
+  | 'social.automation.approval_dismissed'
   | 'social.eligibility.set'
   | 'social.account.scope'
   | 'social.account.disconnect'

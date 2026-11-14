@@ -60,6 +60,16 @@ vi.mock('@/lib/social/facebookRateLimit', () => ({
 vi.mock('@/lib/social/twitter', () => ({ publishToTwitter: vi.fn(async () => ({ success: false, error: 'x not configured' })) }))
 vi.mock('@/services/newsDraftService', () => ({ ensurePublicNewsSlug: vi.fn(async () => 'antalya-tramvay') }))
 vi.mock('sharp', () => ({ default: () => ({ metadata: async () => ({ width: 1200 }) }) }))
+const reelJobs = vi.hoisted(() => ({ started: [] as string[] }))
+vi.mock('@/lib/reels/reelJobs', () => ({
+  reelJobId: (p: string[]) => p.join('_'),
+  isReelJobId: () => true,
+  readReelJob: async () => null,
+  startReelJob: async (i: { jobId: string }) => {
+    reelJobs.started.push(i.jobId)
+    return { jobId: i.jobId, status: 'running', result: null, error: null, httpStatus: null }
+  },
+}))
 
 import { publishOneSocial } from '../publishOneSocial'
 import { buildEncryptedSecretRecord } from '../accounts/secretStore'
@@ -67,7 +77,7 @@ import { accountIdFor, requiredPermissionsFor, type SocialAccount } from '../acc
 import { withLegacyPublishLock } from '../accounts/legacyLock'
 import { createRule, setRuleEnabled, setLegacyHandoff, listRules } from './ruleStore'
 import { runAutomationTick } from './worker'
-import { claimDueJobs, enqueueJob, JOB_LEASE_MS, recoverExpiredLeases } from './jobs'
+import { claimDueJobs, enqueueJob, JOB_LEASE_MS, listAwaitingApproval, recoverExpiredLeases, resolveApprovalJob } from './jobs'
 import type { AutomationRuleInput } from './types'
 import { istanbulParts } from './limits'
 
@@ -751,5 +761,49 @@ describe('Görev 18 — çalışan ve token gözlemlenebilirliği', () => {
     // Süre değişmedi (yeni bağlanmış anahtar 24 saatten genç → yenileme denenmez, zorlanmaz).
     expect((fs.store.get(`socialAccounts/${IG_ANTALYA.id}`) as { tokenExpiresAt: number }).tokenExpiresAt).toBe(clock + 10 * 86_400_000)
     expect(fs.docs('news').length).toBe(before)
+  })
+})
+
+describe('TIKTOK-AUTO-1 — TikTok onay kuyruğu', () => {
+  const TT = {
+    ...account({ platform: 'threads', externalId: 'ttopen1', connectionMethod: 'threads_oauth' }),
+    id: accountIdFor('tiktok', 'ttopen1'),
+    platform: 'tiktok',
+    connectionMethod: 'tiktok_oauth',
+    grantedPermissions: [...requiredPermissionsFor('tiktok', 'tiktok_oauth')],
+    tiktok: { openId: 'ttopen1' },
+  } as unknown as SocialAccount
+  beforeEach(async () => {
+    delete (TT as unknown as Record<string, unknown>).threads
+    await fs.collection('socialAccounts').doc(TT.id).set({ ...TT })
+    reelJobs.started = []
+  })
+
+  it('TikTok kuralı yalnız reel biçimiyle oluşur', async () => {
+    expect((await createRule(ruleInput({ accountId: TT.id, formats: ['post'] }), 'admin1', T0)).ok).toBe(false)
+    expect((await createRule(ruleInput({ accountId: TT.id, formats: ['reel'] }), 'admin1', T0)).ok).toBe(true)
+  })
+
+  it('eşleşen haber yayımlanmaz, video hazırlanır ve onay bekler; onaylanınca kapanır', async () => {
+    await enabledRule({ accountId: TT.id, formats: ['reel'] })
+    await seedNews('t1')
+    await seedNews('t2', { citySlug: 'ankara', cityName: 'Ankara' })
+    await tick()
+    expect(job('t1', TT.id, 'reel')).toMatchObject({ status: 'awaiting_approval', autoDueAt: null })
+    expect(job('t2', TT.id, 'reel')).toBeUndefined()
+    // TikTok'a hiçbir istek gitmedi; yalnız video derlemesi başlatıldı
+    expect(calls.filter((c) => c.url.includes('tiktok'))).toHaveLength(0)
+    expect(reelJobs.started).toEqual(['build_t1'])
+    // tekrar tick: iş yeniden işlenmez
+    clock += 10 * 60_000
+    await tick()
+    expect(reelJobs.started).toEqual(['build_t1'])
+    const q = await listAwaitingApproval('tiktok')
+    expect(q.map((x) => x.newsId)).toEqual(['t1'])
+    expect(await resolveApprovalJob(q[0].id, { status: 'published', externalPostId: 'p1', code: 'approved' }, clock)).toBe(true)
+    expect(job('t1', TT.id, 'reel')).toMatchObject({ status: 'published', externalPostId: 'p1' })
+    // ikinci kez kapatılamaz
+    expect(await resolveApprovalJob(q[0].id, { status: 'cancelled', code: 'dismissed', message: 'x' }, clock)).toBe(false)
+    expect(await listAwaitingApproval('tiktok')).toHaveLength(0)
   })
 })

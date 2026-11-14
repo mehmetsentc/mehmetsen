@@ -5,6 +5,8 @@
  * GET  ?newsId=&accountId=&info=1        → LIVE creator info + default caption (fetched on every dialog open)
  * GET  ?accountId=&publishId=            → TikTok processing status of a post
  * GET  ?job=                             → poll a «Video oluştur» build job (only its starter)
+ * GET  ?queue=1                         → «TikTok onayı bekliyor» list (automation jobs the user may post)
+ * POST { dismissJobId }                  → skip one approval job
  * POST { newsId, prepare: true }         → «Video oluştur»: build (or reuse) the story reel in the background
  * POST { newsId, accountId, settings, force? } → ONE post through the shared ledger
  *
@@ -23,6 +25,8 @@ import {
   tiktokDefaultTitle,
   tiktokPostStatusFor,
   tiktokPrepareVideo,
+  tiktokApprovalQueue,
+  dismissTikTokApproval,
 } from '@/lib/social/tiktokService'
 
 export const runtime = 'nodejs'
@@ -43,6 +47,9 @@ export async function GET(request: Request) {
   const publishId = url.searchParams.get('publishId')
   const job = url.searchParams.get('job')
 
+  if (url.searchParams.get('queue') === '1') {
+    return json({ items: await tiktokApprovalQueue(auth.actor) })
+  }
   if (job !== null) {
     if (!isReelJobId(job)) return json({ error: 'job geçersiz' }, 400)
     const j = await readReelJob(job)
@@ -67,6 +74,10 @@ export async function POST(request: Request) {
   const auth = await requireActor(request, { mutation: true })
   if ('response' in auth) return auth.response
   const body = await readJsonBody(request)
+  if (typeof body.dismissJobId === 'string') {
+    const d = await dismissTikTokApproval(auth.actor, body.dismissJobId.slice(0, 300))
+    return d.ok ? json({ ok: true }) : json({ error: d.error }, d.status)
+  }
   const newsId = typeof body.newsId === 'string' ? body.newsId.trim() : ''
   const accountId = typeof body.accountId === 'string' ? body.accountId.trim() : ''
   if (!NEWS_RE.test(newsId)) return json({ error: 'newsId gerekli' }, 400)

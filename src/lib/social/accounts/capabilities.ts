@@ -187,6 +187,40 @@ export function targetBlocker(
   return null
 }
 
+/**
+ * TIKTOK-AUTO-1: platforms whose automation never publishes on its own. A matching
+ * story's reel is prepared and the job waits in «TikTok onayı bekliyor» until an
+ * editor opens the TikTok dialog (creator info, privacy, consent) and posts it —
+ * TikTok's Content Sharing Guidelines require the user's express consent per upload.
+ */
+export function automationNeedsApproval(platform: SocialAccountPlatform): boolean {
+  return platform === 'tiktok'
+}
+
+/** Formats an automation rule may use for this account. */
+export function automationFormats(a: CapabilityInput): AutomationFormat[] {
+  if (automationNeedsApproval(a.platform)) return ['reel']
+  return [...supportedFormats(a), ...(supportsReel(a) ? (['reel'] as const) : []), ...(supportsVideoStory(a) ? (['video_story'] as const) : [])]
+}
+
+/**
+ * Automation-side blocker: approval platforms only need a live connection with
+ * publish permission (the format is handled by the approval dialog); every other
+ * platform uses targetBlocker unchanged.
+ */
+export function automationBlocker(
+  a: Parameters<typeof targetBlocker>[0],
+  format: AutomationFormat,
+  now: number,
+): TargetBlocker | null {
+  if (!automationNeedsApproval(a.platform)) return targetBlocker(a, format, now)
+  if (a.status !== 'active') return `status_${a.status}` as TargetBlocker
+  if (a.tokenExpiresAt !== null && a.tokenExpiresAt <= now) return 'token_expired'
+  if (a.publishPermission === 'missing') return 'publish_permission_missing'
+  if (a.publishPermission === 'unverified') return 'publish_permission_unverified'
+  return format === 'reel' ? null : 'format_unsupported'
+}
+
 export const TARGET_BLOCKER_TEXT: Record<TargetBlocker, string> = {
   status_paused: 'duraklatıldı',
   status_needs_reauth: 'yeniden bağlantı gerekli',

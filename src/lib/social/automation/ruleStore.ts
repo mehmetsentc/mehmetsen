@@ -17,7 +17,7 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { loadSocialAccount } from '../accounts/accountStore'
-import { supportedFormats, supportsReel, supportsVideoStory, targetBlocker, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
+import { automationBlocker, automationFormats, TARGET_BLOCKER_TEXT } from '../accounts/capabilities'
 import { normalizeOwnership, ownershipKind, toPublicSocialAccount, type SocialAccount, type SocialAccountPlatform } from '../accounts/types'
 import { writeSocialAudit } from '../accounts/audit'
 import { cancelQueuedForAccount } from './jobs'
@@ -74,7 +74,7 @@ async function accountFor(accountId: string): Promise<SocialAccount | RuleStoreE
 }
 
 function formatProblem(account: SocialAccount, formats: AutomationRuleInput['formats']): RuleStoreError | null {
-  const supported = [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : []), ...(supportsVideoStory(account) ? (['video_story'] as const) : [])]
+  const supported = automationFormats(account)
   const missing = formats.filter((f) => !supported.includes(f))
   if (missing.length === 0) return null
   return {
@@ -147,7 +147,7 @@ export async function setRuleEnabled(
     if ('ok' in account) return account
     const pub = toPublicSocialAccount(account)
     for (const f of before.formats) {
-      const b = targetBlocker(pub, f, now)
+      const b = automationBlocker(pub, f, now)
       if (b) return { ok: false, code: b, message: `Hesap otomatik yayına hazır değil: ${TARGET_BLOCKER_TEXT[b]}`, status: 409 }
     }
   }

@@ -48,6 +48,7 @@ export function TikTokPostDialog({
   coverUrl = null,
   seconds: secondsProp,
   onFinished,
+  defaultAccountId,
 }: {
   newsId: string
   /** Omit (news-list shortcut) to use the story's saved reel returned by the API. */
@@ -55,12 +56,14 @@ export function TikTokPostDialog({
   coverUrl?: string | null
   seconds?: number | null
   onFinished?: () => void
+  /** TIKTOK-AUTO-1: the approval job's account, pre-selected (the editor can still change it). */
+  defaultAccountId?: string
 }) {
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [hasVideo, setHasVideo] = useState(true)
   const [savedVideo, setSavedVideo] = useState<{ url: string; seconds: number | null } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [accountId, setAccountId] = useState('')
+  const [accountId, setAccountId] = useState(defaultAccountId ?? '')
   const [info, setInfo] = useState<CreatorInfo | null>(null)
   const [infoError, setInfoError] = useState<string | null>(null)
   const [infoLoading, setInfoLoading] = useState(false)

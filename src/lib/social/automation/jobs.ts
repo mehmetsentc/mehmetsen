@@ -28,7 +28,8 @@ export const MAX_JOB_ATTEMPTS = 3
 const HISTORY_LIMIT = 10
 const NEWS_ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 
-export type AutomationJobStatus = 'queued' | 'processing' | 'published' | 'failed' | 'cancelled' | 'uncertain' | 'skipped'
+// awaiting_approval (TIKTOK-AUTO-1): reel prepared, waits for an editor to post it from the TikTok dialog.
+export type AutomationJobStatus = 'queued' | 'processing' | 'published' | 'failed' | 'cancelled' | 'uncertain' | 'skipped' | 'awaiting_approval'
 
 export interface AutomationJob {
   id: string
@@ -243,7 +244,7 @@ export async function claimDueJobs(now: number, max: number): Promise<Automation
 
 export type JobOutcome =
   | { status: 'published'; externalPostId: string | null; code: string }
-  | { status: 'failed' | 'cancelled' | 'uncertain' | 'skipped'; code: string; message: string | null }
+  | { status: 'failed' | 'cancelled' | 'uncertain' | 'skipped' | 'awaiting_approval'; code: string; message: string | null }
   | { status: 'queued'; dueAt: number; code: string; message?: string | null; countAttempt?: boolean }
 
 /** Write the outcome — only for the attempt that holds the job (stale workers are ignored). */
@@ -395,4 +396,57 @@ export async function listRecentJobs(input: { since: number; limit: number; acco
     .map((d) => d.data() as AutomationJob)
     .filter((j) => j.kind === AUTOMATION_JOB_KIND && (!input.accountIds || input.accountIds.has(j.accountId)))
     .map(toPublicJob)
+}
+
+// ── TIKTOK-AUTO-1: «TikTok onayı bekliyor» ─────────────────────────────────────
+
+export interface ApprovalJobView {
+  id: string
+  newsId: string
+  accountId: string
+  newsTitle: string
+  citySlug: string | null
+  createdAt: number
+  ruleIds: string[]
+}
+
+/** Jobs waiting for an editor's TikTok approval (two equality filters → no composite index). */
+export async function listAwaitingApproval(platform: SocialAccountPlatform, max = 60): Promise<ApprovalJobView[]> {
+  const snap = await col().where('status', '==', 'awaiting_approval').where('platform', '==', platform).limit(max).get()
+  return snap.docs
+    .map((d) => d.data() as AutomationJob)
+    .filter((j) => j.kind === AUTOMATION_JOB_KIND)
+    .map((j) => ({ id: j.id, newsId: j.newsId, accountId: j.accountId, newsTitle: j.newsTitle, citySlug: j.citySlug, createdAt: j.autoCreatedAt ?? j.createdAt, ruleIds: j.ruleIds ?? [] }))
+    .sort((a, b) => b.createdAt - a.createdAt)
+}
+
+/**
+ * Close an approval job: `published` after the editor posted it (dialog success or the
+ * ledger says it is already there), `cancelled` when the editor skips it. Only a job
+ * still awaiting approval changes; anything else is left as is.
+ */
+export async function resolveApprovalJob(
+  jobId: string,
+  outcome: { status: 'published'; externalPostId: string | null; code: string } | { status: 'cancelled'; code: string; message: string },
+  now: number,
+): Promise<boolean> {
+  const db = getAdminFirestore()
+  const ref = col().doc(jobId)
+  return db.runTransaction(async (tx) => {
+    const s = await tx.get(ref)
+    if (!s.exists) return false
+    const j = s.data() as AutomationJob
+    if (j.kind !== AUTOMATION_JOB_KIND || j.status !== 'awaiting_approval') return false
+    tx.update(ref, {
+      status: outcome.status,
+      autoDueAt: null,
+      autoLeaseUntil: null,
+      errorCode: outcome.status === 'published' ? null : outcome.code,
+      errorMessage: outcome.status === 'published' ? null : outcome.message.slice(0, 300),
+      externalPostId: outcome.status === 'published' ? outcome.externalPostId : j.externalPostId,
+      updatedAt: now,
+      history: withHistory(j, outcome.status, outcome.code, now),
+    })
+    return true
+  })
 }

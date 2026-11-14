@@ -34,6 +34,7 @@ import { queryTikTokCreatorInfo, isTikTokPrivacyLevel, type TikTokCreatorInfo } 
 import { fetchTikTokPostStatus, publishTikTokVideo, tiktokText, TIKTOK_FAIL_REASON_TEXT, type TikTokPostSettings } from './tiktokPublish'
 import { REEL_VIDEOS, recordReel } from '@/lib/reels/reelLibrary'
 import { reelJobId, startReelJob, type ReelJobView } from '@/lib/reels/reelJobs'
+import { jobIdFor, listAwaitingApproval, resolveApprovalJob } from './automation/jobs'
 import { provinceOf } from './automation/types'
 import { buildReelCaption } from './reelPublish'
 import { buildPublicArticleUrl } from './articleUrl'
@@ -103,6 +104,19 @@ async function tiktokTarget(actor: SocialActor, accountId: string): Promise<{ ok
   return { ok: true, account: loaded.account, target: r.target as TikTokPublishTarget }
 }
 
+/** Build (or reuse) the story's NaHaber reel and make sure the reel library lists it. */
+export async function buildAndRecordReel(newsId: string, uid: string): Promise<{ result: unknown }> {
+  const { buildReelForNews } = await import('@/lib/reels/reelService')
+  const b = await buildReelForNews(newsId, { by: uid })
+  // A reused render may not be in the library yet (the dialog reads the library).
+  if (!(await loadSavedReel(newsId))) {
+    const d = (await loadNews(newsId)) ?? {}
+    const seconds = typeof (b as { seconds?: unknown }).seconds === 'number' ? ((b as { seconds?: number }).seconds ?? null) : null
+    await recordReel({ newsId, slug: str(d.slug) || null, headline: str(d.title), url: b.url, coverUrl: b.coverUrl ?? null, seconds, persona: null, style: null, media: str((b as { media?: unknown }).media) || null, by: uid })
+  }
+  return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused } }
+}
+
 /**
  * «Video oluştur» in the TikTok dialog: build (or reuse) the story's NaHaber reel in the
  * background (same build job id as the Meta reels flow, so both share one render) and make
@@ -119,17 +133,7 @@ export async function tiktokPrepareVideo(actor: SocialActor, newsId: string): Pr
     kind: 'build',
     newsId,
     by: uid,
-    run: async () => {
-      const { buildReelForNews } = await import('@/lib/reels/reelService')
-      const b = await buildReelForNews(newsId, { by: uid })
-      // A reused render may not be in the library yet (the dialog reads the library).
-      if (!(await loadSavedReel(newsId))) {
-        const d = (await loadNews(newsId)) ?? {}
-        const seconds = typeof (b as { seconds?: unknown }).seconds === 'number' ? ((b as { seconds?: number }).seconds ?? null) : null
-        await recordReel({ newsId, slug: str(d.slug) || null, headline: str(d.title), url: b.url, coverUrl: b.coverUrl ?? null, seconds, persona: null, style: null, media: str((b as { media?: unknown }).media) || null, by: uid })
-      }
-      return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused } }
-    },
+    run: () => buildAndRecordReel(newsId, uid),
   })
   return { ok: true, job }
 }
@@ -215,6 +219,9 @@ export async function publishTikTokForNews(
     now,
   })
   if (!claim.ok) {
+    if (claim.code === 'already_published') {
+      await resolveApprovalJob(jobIdFor(input.newsId, input.accountId, 'reel'), { status: 'published', externalPostId: claim.externalPostId ?? null, code: 'already_published' }, Date.now()).catch(() => false)
+    }
     return { success: false, code: claim.code, ledgerStatus: 'not_claimed', error: CLAIM_TEXT[claim.code], ...(claim.externalPostId ? { publishId: claim.externalPostId } : {}) }
   }
 
@@ -258,6 +265,10 @@ export async function publishTikTokForNews(
       tiktokStatus: result?.tiktokStatus ?? null,
     },
   })
+  if (outcome.status === 'succeeded') {
+    // TIKTOK-AUTO-1: an automation job waiting for this approval is now done.
+    await resolveApprovalJob(jobIdFor(input.newsId, input.accountId, 'reel'), { status: 'published', externalPostId: publishId, code: 'approved' }, Date.now()).catch(() => false)
+  }
   return {
     success: outcome.status === 'succeeded',
     code: outcome.code,
@@ -286,4 +297,46 @@ export async function tiktokPostStatusFor(
           ? (st.failReason && TIKTOK_FAIL_REASON_TEXT[st.failReason]) || 'TikTok videoyu işleyemedi'
           : 'TikTok videoyu işliyor; profilde görünmesi birkaç dakika sürebilir'
   return { ok: true, status: st.status, text, postIds: st.postIds }
+}
+
+// ── TIKTOK-AUTO-1: «TikTok onayı bekliyor» ─────────────────────────────────────
+
+export interface TikTokApprovalItem {
+  jobId: string
+  newsId: string
+  newsTitle: string
+  accountId: string
+  accountName: string
+  createdAt: number
+  hasVideo: boolean
+}
+
+/** Approval jobs the editor may post (publish permission on the account, story still live). */
+export async function tiktokApprovalQueue(actor: SocialActor): Promise<TikTokApprovalItem[]> {
+  const jobs = await listAwaitingApproval('tiktok')
+  if (jobs.length === 0) return []
+  const accounts = new Map((await listAccountsForActor(actor)).filter((a) => a.platform === 'tiktok' && canPublishToAccount(actor, a.ownership)).map((a) => [a.id, a]))
+  const out: TikTokApprovalItem[] = []
+  for (const j of jobs.slice(0, 30)) {
+    const a = accounts.get(j.accountId)
+    if (!a) continue
+    const [news, reel] = await Promise.all([loadNews(j.newsId), loadSavedReel(j.newsId)])
+    if (!news || str(news.status) !== 'published') {
+      await resolveApprovalJob(j.id, { status: 'cancelled', code: 'news_unpublished', message: 'Haber artık yayında değil' }, Date.now()).catch(() => false)
+      continue
+    }
+    out.push({ jobId: j.id, newsId: j.newsId, newsTitle: str(news.title) || j.newsTitle, accountId: a.id, accountName: a.username ? `${a.displayName} (@${a.username})` : a.displayName, createdAt: j.createdAt, hasVideo: !!reel })
+  }
+  return out
+}
+
+/** «Atla»: the editor decided not to post this story to TikTok. */
+export async function dismissTikTokApproval(actor: SocialActor, jobId: string): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const item = (await listAwaitingApproval('tiktok')).find((j) => j.id === jobId)
+  if (!item) return { ok: false, status: 404, error: 'Onay bekleyen iş bulunamadı' }
+  const loaded = await loadSocialAccount(item.accountId)
+  if (loaded.state !== 'ok' || !canPublishToAccount(actor, loaded.account.ownership)) return { ok: false, status: 403, error: 'Bu hesap için yetkiniz yok' }
+  await resolveApprovalJob(jobId, { status: 'cancelled', code: 'dismissed', message: 'Editör TikTok paylaşımını atladı' }, Date.now())
+  await writeSocialAudit({ actorId: actor.uid, action: 'social.automation.approval_dismissed', entityType: 'socialAutomationJob', entityId: jobId, meta: { newsId: item.newsId, accountId: item.accountId } }).catch(() => undefined)
+  return { ok: true }
 }

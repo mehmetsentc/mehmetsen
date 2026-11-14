@@ -23,6 +23,7 @@ const JOB_TEXT: Record<AutomationJobStatus, string> = {
   cancelled: 'İptal edildi',
   uncertain: 'Sonuç belirsiz',
   skipped: 'Atlandı',
+  awaiting_approval: 'TikTok onayı bekliyor',
 }
 const TRIGGER_TEXT: Record<string, string> = { share: 'Manuel (hesabımda yayımla)', composer: 'Manuel (panel)', automation: 'Otomatik kural', cron: 'Eski otomasyon', uncertain_republish: 'Belirsiz sonuç sonrası', force_reshare_bulk: 'Toplu yeniden paylaşım', api_social: 'API' }
 const fmt = (ms: number | null) => (ms ? new Date(ms).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '—')

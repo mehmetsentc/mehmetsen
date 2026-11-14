@@ -16,7 +16,7 @@ import { auth } from '@/lib/firebase/auth'
 import { DEFAULT_CATEGORIES } from '@/constants/config'
 import { TURKISH_PROVINCES, getDistrictsForProvince } from '@/constants/cities'
 import { cn } from '@/lib/utils'
-import { supportedFormats, supportsReel, supportsVideoStory, targetBlocker, TARGET_BLOCKER_TEXT, type AutomationFormat, type PublishFormat } from '@/lib/social/accounts/capabilities'
+import { automationBlocker, automationFormats, automationNeedsApproval, TARGET_BLOCKER_TEXT, type AutomationFormat, type PublishFormat } from '@/lib/social/accounts/capabilities'
 import type { SocialAccountPublic, SocialAccountPlatform } from '@/lib/social/accounts/types'
 import { summarizeRule } from '@/lib/social/automation/match'
 import { draftRuleFor } from '@/lib/social/automation/drafts'
@@ -67,6 +67,7 @@ const JOB_STATUS_TEXT: Record<AutomationJobStatus, string> = {
   cancelled: 'İptal',
   uncertain: 'Belirsiz — platformda kontrol edin',
   skipped: 'Atlandı',
+  awaiting_approval: 'TikTok onayı bekliyor',
 }
 const JOB_CODE_TEXT: Record<string, string> = {
   rule_disabled: 'kural kapatıldı',
@@ -149,7 +150,7 @@ function WorkerStatus({ beat }: { beat: WorkerBeat | null }) {
 
 /** YouTube kanalları yalnız Shorts (reel) alır; diğer hesaplar gönderiyle başlar. */
 function defaultFormatsFor(accountId: string): AutomationFormat[] {
-  return accountId.startsWith('youtube_') ? ['reel'] : ['post']
+  return accountId.startsWith('youtube_') || accountId.startsWith('tiktok_') ? ['reel'] : ['post']
 }
 
 /**
@@ -183,7 +184,7 @@ function accountLabel(a: SocialAccountPublic | undefined, id: string): string {
 function accountHealth(a: SocialAccountPublic | undefined, formats: AutomationFormat[]): { ok: boolean; text: string } {
   if (!a) return { ok: false, text: 'Hesap kaydı bulunamadı' }
   for (const f of formats) {
-    const b = targetBlocker(a, f, Date.now())
+    const b = automationBlocker(a, f, Date.now())
     if (b) return { ok: false, text: TARGET_BLOCKER_TEXT[b] }
   }
   const expiry = a.tokenExpiresAt ? ` · erişim ${new Date(a.tokenExpiresAt).toLocaleDateString('tr-TR')} tarihine kadar` : a.tokenExpiryVerified ? ' · süre sınırı bildirilmedi (iptal edilebilir)' : ''
@@ -640,7 +641,7 @@ function RuleForm({
   const [provQuery, setProvQuery] = useState('')
 
   const account = accounts.find((a) => a.id === input.accountId)
-  const formatsAllowed: AutomationFormat[] = account ? [...supportedFormats(account), ...(supportsReel(account) ? (['reel'] as const) : []), ...(supportsVideoStory(account) ? (['video_story'] as const) : [])] : []
+  const formatsAllowed: AutomationFormat[] = account ? automationFormats(account) : []
   const set = (patch: Partial<AutomationRuleInput>) => {
     setInput((p) => ({ ...p, ...patch }))
     setPreview(null)
@@ -841,6 +842,9 @@ function RuleForm({
             </label>
           ))}
           <p className="text-xs text-[rgb(var(--color-muted))]">Reels / Video hikâye: haber için Google sesli dikey video otomatik üretilir; Reels akışta, Video hikâye hikâyelerde yayımlanır (Instagram / Facebook).</p>
+          {account && automationNeedsApproval(account.platform) ? (
+            <p className="rounded bg-amber-50 p-1.5 text-xs text-amber-900">TikTok: kurala uyan haberin videosu otomatik hazırlanır ve «TikTok onayı bekliyor» listesine düşer (Reels Stüdyosu → Kaydedilenler). TikTok kuralları gereği her video yalnız sizin onayınızla paylaşılır.</p>
+          ) : null}
         </fieldset>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Günlük en fazla</span>

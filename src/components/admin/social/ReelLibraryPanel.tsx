@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { reelsCall } from './reelsApi'
 import { ManualShareFlow } from './ManualShareFlow'
 import { TikTokPostDialog } from './TikTokPostDialog'
+import { TikTokApprovalQueue } from './TikTokApprovalQueue'
 import { formatCountTr, PLATFORM_TR, type EngagementMetricKey, type EngagementMetrics } from '@/lib/social/engagement/model'
 
 type Engagement = {
@@ -116,6 +117,7 @@ export function ReelLibraryPanel() {
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
+      <TikTokApprovalQueue />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <p className="text-sm font-extrabold">Kaydedilen videolar</p>
         <span className="text-xs text-[rgb(var(--color-muted))]">Haber videoları; sosyal medya sayıları video paylaşımlarından okunur (7 gün boyunca güncellenir).</span>
