@@ -274,7 +274,7 @@ export function summarizeRule(rule: AutomationRuleInput): string {
       content = `Kategori: ${cats} VE öne çıkan (${KIND_TEXT[rule.featuredKind]})`
       break
   }
-  const formats = rule.formats.map((f) => (f === 'post' ? 'gönderi' : 'hikâye')).join(' + ')
+  const formats = rule.formats.map((f) => (f === 'post' ? 'gönderi' : f === 'story' ? 'hikâye' : f === 'reel' ? 'reels' : 'video hikâye')).join(' + ')
   const quiet = rule.quietHours
     ? ` · sessiz saat ${String(rule.quietHours.startHour).padStart(2, '0')}:00–${String(rule.quietHours.endHour).padStart(2, '0')}:00`
     : ''

@@ -16,6 +16,7 @@ export const ASAYIS_CATEGORY_IDS = ['asayis', 'yerel-asayis'] as const
 
 type DraftAccount = {
   id: string
+  platform?: string
   displayName: string
   username: string | null
   ownerKind: string
@@ -28,7 +29,8 @@ export function draftRuleFor(a: DraftAccount, provinceName: (slug: string) => st
     categoryIds: [...ASAYIS_CATEGORY_IDS],
     allCategories: false,
     featuredMode: 'categories_or_featured' as const,
-    formats: ['post' as const],
+    // Video-only platforms (YouTube Shorts, TikTok — TikTok waits for approval) take the reel.
+    formats: a.platform === 'youtube' || a.platform === 'tiktok' ? ['reel' as const] : ['post' as const],
     dailyLimit: 5,
     minIntervalMinutes: 15,
     quietHours: { startHour: 0, endHour: 7 },
