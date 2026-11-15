@@ -3,6 +3,7 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { isGlobalCrawlerEnabled } from '@/services/crawler/enabled'
 import { runCrawlerTick } from '@/services/crawler/workers/tick'
 import { shouldSkipNightTick } from '@/services/crawler/ops/nightCadence'
+import { readCrawlerTickOwner } from '@/services/crawler/ops/tickOwner'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,13 @@ async function handle(request: Request) {
 
   // FinOps: hourly at night (01:00–05:59 TR); ?force=1 bypasses.
   const force = new URL(request.url).searchParams.get('force') === '1'
+  // FinOps: the Railway worker owns the tick while Neon crawler_tick_owner = 'railway'.
+  if (!force && (await readCrawlerTickOwner()) === 'railway') {
+    return NextResponse.json(
+      { enabled: true, skipped: true, reason: 'OWNER_RAILWAY' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
   if (!force && shouldSkipNightTick(new Date())) {
     return NextResponse.json(
       { enabled: true, skipped: true, reason: 'NIGHT_CADENCE' },
