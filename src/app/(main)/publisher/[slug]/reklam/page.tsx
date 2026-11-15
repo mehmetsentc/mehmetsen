@@ -12,7 +12,7 @@ import { formatPriceMinor } from '@/lib/publisher/adInventoryDomain'
 import { AD_FORMAT_LABELS, AD_SALE_STATUS_LABELS } from '@/types/publisherAdInventory'
 import { ROUTES } from '@/constants/routes'
 
-export const revalidate = 300
+export const revalidate = 1800 // FinOps 15 Nov: 300 → 1800
 
 interface Props {
   params: Promise<{ slug: string }>
