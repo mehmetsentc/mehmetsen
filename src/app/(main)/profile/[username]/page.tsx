@@ -3,7 +3,7 @@ import { ProfilePageClient } from '@/components/profile/ProfilePageClient'
 import { getPostsByAuthorId } from '@/services/newsService.server'
 import { getPublicUserByUsername } from '@/services/userService.server'
 
-export const revalidate = 120
+export const revalidate = 600 // FinOps 15 Nov: 120 → 600
 
 function decodeUsername(raw: string): string {
   try {
