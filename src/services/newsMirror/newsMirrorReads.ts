@@ -7,6 +7,7 @@ import { getDb, hasDatabaseUrl } from '@/db'
  *
  * Each surface has its own flag so it can be switched on, measured and switched back
  * without a code change. Callers fall back to Firestore when a mirror read throws.
+ * Live surfaces: sitemap (NEWS_PG_READ_SITEMAP, 15 Nov 2026).
  *
  * Parity rule: a mirror query returns exactly the documents the Firestore query it
  * replaces would return. Firestore range queries on `publishedAt` only match numeric
