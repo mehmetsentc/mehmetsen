@@ -76,8 +76,9 @@ export async function POST(request: Request) {
     seoTitle: '',
     seoDescription: '',
     seoKeywords: [],
-    categoryId: '',
-    category: '',
+    // TOURISM-SRC-1: turizm kaynağından açılan taslak Turizm kategorisiyle gelir.
+    categoryId: prefill.categoryId ?? '',
+    category: prefill.categoryId === 'turizm' ? 'Turizm' : '',
     status: 'draft',
     type: 'news',
     source: prefill.source || 'NaHaber',

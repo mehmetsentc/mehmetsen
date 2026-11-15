@@ -2,6 +2,8 @@ import { decodeForDisplay } from '../extract/htmlEntities'
 import { mediaFromStoredUrls, selectEditorialHandoff } from '../extract/images'
 import { matchCitySlug } from './geoPrefill'
 import type { NewsSourceRecord, RawArticleRecord } from '../types'
+import { isSondakikaCitySource } from '../sondakika/registry'
+import { isTourismSource } from '../tourism/registry'
 
 export function rawArticleDisplay(article: RawArticleRecord) {
   return {
@@ -27,7 +29,10 @@ export function draftPrefillFromRaw(article: RawArticleRecord, source: NewsSourc
     sourceLabel: source?.name || '',
     originalTitle: display.title,
     sourcePublishedAt: article.publishedAt?.getTime() ?? null,
-    citySlug: matchCitySlug(article.city || source?.city),
+    // SONDAKIKA-81: il sayfası kaynağının ili haberin ili değildir.
+    citySlug: matchCitySlug(article.city || (isSondakikaCitySource(source) ? null : source?.city)),
+    // TOURISM-SRC-1: turizm kaynağından elle taslak → kategori ön seçimi.
+    ...(isTourismSource(source) ? { categoryId: 'turizm' } : {}),
     countryCode: article.countryCode,
     aiGenerated: false,
   }

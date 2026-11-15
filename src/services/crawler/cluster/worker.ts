@@ -1,5 +1,7 @@
 import { crawlerTickLimits } from '../enabled'
 import { categoryHintForEvent, isDominantAgenda } from './agenda'
+import { isSondakikaCitySource } from '../sondakika/registry'
+import { isTourismSource } from '../tourism/registry'
 import { clusterTopicFromTitle } from './cheap'
 import { buildEventFingerprint } from './fingerprint'
 import { namedTokensMatch } from './normalize'
@@ -25,6 +27,26 @@ export interface ClusterTickResult {
   aiCalls: number
 }
 
+/**
+ * SONDAKIKA-81: il sayfası kaynağının ili/ilçesi/bölgesi haberin konumu değildir
+ * (Adana sayfası Osmaniye haberi de listeler). Bu kaynaklarda konum yalnız haberden gelir;
+ * diğer kaynaklarda önceki davranış birebir korunur.
+ */
+function geoSource(source: NewsSourceRecord | null | undefined): NewsSourceRecord | null {
+  if (!source || isSondakikaCitySource(source)) return null
+  return source
+}
+
+/**
+ * TOURISM-SRC-1: kümedeki bütün haberler turizm kaynaklarındansa kategori 'turizm'.
+ * Başlıkta "otel/turizm/tatil" geçmeyen sektör haberleri (THY tanıtımı, vize, TUI satış
+ * kanalı...) metin ipucuyla 'gundem'e ya da boşa düşüyordu.
+ */
+export function tourismCategoryHint(sources: Array<NewsSourceRecord | null | undefined>): string | null {
+  if (!sources.length) return null
+  return sources.every((s) => isTourismSource(s)) ? 'turizm' : null
+}
+
 function fingerprintFromArticle(article: RawArticleRecord, source: NewsSourceRecord | null) {
   return buildEventFingerprint({
     title: article.title,
@@ -32,9 +54,9 @@ function fingerprintFromArticle(article: RawArticleRecord, source: NewsSourceRec
     body: article.articleBodyText,
     language: article.language || source?.language,
     countryCode: article.countryCode || source?.countryCode,
-    region: article.region || source?.region,
-    city: article.city || source?.city,
-    district: article.district || source?.district,
+    region: article.region || geoSource(source)?.region,
+    city: article.city || geoSource(source)?.city,
+    district: article.district || geoSource(source)?.district,
     simhash: article.simhash,
     publishedAt: article.publishedAt || article.fetchedAt,
   })
@@ -146,7 +168,7 @@ export async function runClusterTick(opts: {
         representativeArticleId: article.id,
         normalizedTopic: clusterTopicFromTitle(article.title),
         countryCode: fp.countryCode,
-        city: source?.city || article.city,
+        city: geoSource(source)?.city || article.city,
         eventKey: fp.eventKey,
         canonicalTitle: article.title,
         language: fp.language,
@@ -258,7 +280,7 @@ async function recomputeCluster(
       m.source?.geographicScope === 'CITY' ||
       m.source?.geographicScope === 'DISTRICT' ||
       m.source?.sourceType === 'LOCAL' ||
-      Boolean(m.source?.city || m.article.city)
+      Boolean(geoSource(m.source)?.city || m.article.city)
   ).length
   const nationalCount = members.filter(
     (m) => m.source?.geographicScope === 'NATIONAL' || m.source?.sourceType === 'NATIONAL'
@@ -292,8 +314,8 @@ async function recomputeCluster(
     crawlPriority: priority,
     freshnessHours: (now.getTime() - last) / 3600000,
     geographicScope: scope,
-    hasCity: Boolean(cluster.city || members.some((m) => m.article.city || m.source?.city)),
-    hasDistrict: Boolean(cluster.district || members.some((m) => m.article.district || m.source?.district)),
+    hasCity: Boolean(cluster.city || members.some((m) => m.article.city || geoSource(m.source)?.city)),
+    hasDistrict: Boolean(cluster.district || members.some((m) => m.article.district || geoSource(m.source)?.district)),
     localSourceCount: localCount,
     nationalSourceCount: nationalCount,
     countryCount: countries.size || 1,
@@ -369,7 +391,9 @@ async function recomputeCluster(
     if (promoted === 'featured' || promoted === 'ineligible') breakdown.agendaFeatured = 1
   }
   const categoryHint =
-    categoryHintForEvent(canonical.title || cluster.canonicalTitle, uniqueSources.size) || cluster.categoryHint
+    tourismCategoryHint(members.map((m) => m.source)) ||
+    categoryHintForEvent(canonical.title || cluster.canonicalTitle, uniqueSources.size) ||
+    cluster.categoryHint
 
   await store.updateCluster(clusterId, {
     representativeArticleId: canonical.id,
@@ -394,8 +418,8 @@ async function recomputeCluster(
     editorialPriority,
     signatureTokens: [...named].slice(0, 16),
     language: canonical.language || cluster.language,
-    city: cluster.city || canonical.city || members[0]?.source?.city || null,
-    district: cluster.district || canonical.district || members[0]?.source?.district || null,
+    city: cluster.city || canonical.city || geoSource(members[0]?.source)?.city || null,
+    district: cluster.district || canonical.district || geoSource(members[0]?.source)?.district || null,
     primarySelectionScore: primary?.score ?? null,
     primarySelectionReasons: primary?.reasons ?? null,
     publishedNewsId: published.newsId || cluster.publishedNewsId,

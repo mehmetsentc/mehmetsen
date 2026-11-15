@@ -10,6 +10,8 @@ export type CrawlerSourceCategory =
   | 'POLITICS'
   | 'PUBLIC'
   | 'AGENCY'
+  /** TOURISM-SRC-1: turizm/seyahat sektör kaynakları (TR + global). */
+  | 'TOURISM'
 
 export type CrawlPriorityBand = 'BREAKING' | 'HIGH' | 'NORMAL' | 'LOW'
 

@@ -165,9 +165,32 @@ export interface DomainExtractRule {
   stopSelectors?: string[]
   /** Publisher-specific plain-text stop markers (only after a sufficient body). */
   textStopMarkers?: string[]
+  /**
+   * TOURISM-SRC-1: gövdeyi genel temizlikten ÖNCE seç, temizliği yalnız gövdenin içinde yap.
+   * Gövdesi <form> (ASP.NET), "…sidebar…" sınıflı kapsayıcı ya da "widget" sınıflı
+   * <article> içinde olan siteler için; aksi halde genel temizlik gövdeyi de siler.
+   */
+  selectBeforeStrip?: boolean
 }
 
 export const DOMAIN_EXTRACT_RULES: Record<string, DomainExtractRule> = {
+  // TOURISM-SRC-1: genel çıkarıcının gövdeyi bulamadığı / eksik aldığı turizm kaynakları
+  // (15.11.2026 canlı testinde meta-only ya da ~36 kelime dönüyorlardı).
+  'turizmajansi.com': { article: '.content-text', title: 'h1', selectBeforeStrip: true },
+  'tourismtoday.net': { article: '.payload-richtext', title: 'h1', selectBeforeStrip: true },
+  'traveldailynews.com': {
+    article: '.mkdf-post-text-inner',
+    title: 'h1',
+    removeSelectors: ['.m-a-box', '.contact', '.sharedaddy'],
+    selectBeforeStrip: true,
+  },
+  'traveldailynews.asia': {
+    article: '.mkdf-post-text-inner',
+    title: 'h1',
+    removeSelectors: ['.m-a-box', '.contact', '.sharedaddy'],
+    selectBeforeStrip: true,
+  },
+  'simpleflying.com': { article: '.content-block-regular', title: 'h1', selectBeforeStrip: true },
   /**
    * SONDAKIKA-81: gövde `.haber_metni` paragrafları. Sayfa üstündeki
    * "Google algoritmasına bırakmayın", "Abone ol", "Yorum yap" ve reklam
@@ -427,9 +450,27 @@ export function extractWithDomainRule(
 ): { html: string; text: string; title?: string; author?: string } | null {
   const rule = resolveDomainRule(hostname)
   if (!rule?.article) return null
-  const $ = cheerio.load(html)
+  let $ = cheerio.load(html)
+  let el: cheerio.Cheerio<AnyNode>
+  if (rule.selectBeforeStrip) {
+    const root = $(rule.article).first()
+    if (!root.length) return null
+    const titleText = rule.title ? $(rule.title).first().text().trim() : undefined
+    const authorText = rule.author ? $(rule.author).first().text().trim() : undefined
+    // Kökün kendi sınıfı genel seçicilere takılmasın ("payload-richtext" ⊃ "ad-").
+    const rootHtml = $.html(root.clone().removeAttr('class').removeAttr('id'))
+    $ = cheerio.load(`<div data-domain-rule-root="1">${rootHtml}</div>`)
+    stripBoilerplate($, rule.removeSelectors)
+    el = $('[data-domain-rule-root="1"]').first()
+    if (!el.length) return null
+    prepareArticleRoot($, el, rule)
+    const inner = el.html() || ''
+    const text = htmlToPlainText(inner)
+    if (text.length < 120) return null
+    return { html: inner, text, title: titleText, author: authorText }
+  }
   stripBoilerplate($, rule.removeSelectors)
-  const el = $(rule.article).first()
+  el = $(rule.article).first()
   if (!el.length) return null
   prepareArticleRoot($, el, rule)
   const inner = el.html() || ''

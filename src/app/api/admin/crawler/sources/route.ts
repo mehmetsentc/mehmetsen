@@ -8,6 +8,7 @@ import { paginateSlice, parseSourceListQuery, matchesSourceQuery } from '@/servi
 import { PHASE0_SEED_SOURCES } from '@/services/crawler/seedSources'
 import { TURKEY_SOURCE_REGISTRY, turkeyRegistryToInsert } from '@/services/crawler/turkeyRegistry'
 import { sondakikaCitySourceInputs } from '@/services/crawler/sondakika/registry'
+import { tourismSourceInputs } from '@/services/crawler/tourism/registry'
 import type { CrawlerSourceStatus, CrawlerQualityTier } from '@/services/crawler/types'
 import { requirePauseReason } from '@/services/crawler/autoDraft/sourcePauseAudit'
 
@@ -92,6 +93,32 @@ export async function POST(request: Request) {
       unchanged += 1
     }
     return NextResponse.json({ sondakikaCities: { created, activated, unchanged, total: created + activated + unchanged } })
+  }
+
+  // TOURISM-SRC-1: turizm kaynakları (TR + global). Tekrar çalıştırılabilir; yalnız bu seed'in
+  // duraklattıklarını açar, elle duraklatılmış/devre dışı kaynaklara dokunmaz.
+  if (body?.seedTourismSources === true) {
+    const activate = body.activate === true
+    const existing = await store.listSources()
+    const byKey = new Map(existing.filter((s) => s.registryKey).map((s) => [s.registryKey as string, s]))
+    let created = 0
+    let activated = 0
+    let unchanged = 0
+    for (const input of tourismSourceInputs(activate ? 'ACTIVE' : 'PAUSED')) {
+      const current = byKey.get(input.registryKey as string)
+      if (!current) {
+        await store.insertSource(input)
+        created += 1
+        continue
+      }
+      if (activate && current.status === 'PAUSED' && current.lastPauseReason === 'tourism_seed_paused') {
+        await store.updateSource(current.id, { status: 'ACTIVE', lastPauseReason: null })
+        activated += 1
+        continue
+      }
+      unchanged += 1
+    }
+    return NextResponse.json({ tourismSources: { created, activated, unchanged, total: created + activated + unchanged } })
   }
 
   if (body?.approve === true) {
