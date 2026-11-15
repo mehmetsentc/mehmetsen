@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { evaluateUserProfileSeo, robotsFromEligibility } from '@/lib/seo/seoEligibility'
 import ProfilePage from '@/app/(main)/profile/[username]/page'
 
-export const revalidate = 120
+export const revalidate = 600 // FinOps 15 Nov: 120 → 600
 
 export async function generateMetadata({
   params,
