@@ -168,6 +168,16 @@ export interface DomainExtractRule {
 }
 
 export const DOMAIN_EXTRACT_RULES: Record<string, DomainExtractRule> = {
+  /**
+   * SONDAKIKA-81: gövde `.haber_metni` paragrafları. Sayfa üstündeki
+   * "Google algoritmasına bırakmayın", "Abone ol", "Yorum yap" ve reklam
+   * yer tutucuları gövdeye karışmasın.
+   */
+  'sondakika.com': {
+    article: '.haber_metni',
+    title: 'h1',
+    removeSelectors: ['#tb-inpage-general', '.lnkSeo', '.news-tags', 'script', 'style'],
+  },
   // Habertürk: Tailwind CMS — gövde çoğunlukla JSON-LD; DOM yedekleri
   'haberturk.com': {
     article: '.cms-container, .news-wrapper, article',

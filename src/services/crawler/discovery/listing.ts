@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 import type { DiscoveredFeedItem } from '../types'
 import { hostnameOf, normalizeArticleUrl } from '../url/normalize'
+import { isSondakikaHost, parseSondakikaListing } from '../sondakika/listing'
 
 const EXCLUDE_PATH =
   /\/(tag|tags|category|categories|author|authors|page|search|login|signup|register|account|privacy|cookie|terms|contact|about|video|videos|gallery|live)(\/|$)/i
@@ -19,6 +20,9 @@ function looksLikeArticlePath(pathname: string): boolean {
 }
 
 export function parseListingPage(html: string, pageUrl: string): DiscoveredFeedItem[] {
+  // SONDAKIKA-81: il sayfalarında yalnız haber kartları (saat/görsel/özet ile).
+  if (isSondakikaHost(pageUrl)) return parseSondakikaListing(html, pageUrl)
+
   const $ = cheerio.load(html)
   const host = hostnameOf(pageUrl)
   const seen = new Set<string>()

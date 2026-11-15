@@ -1,4 +1,6 @@
 import { crawlerTickLimits, isGlobalCrawlerEnabled } from '../enabled'
+import { resolveRawArticleGeo } from '../sondakika/geo'
+import { SONDAKIKA_DOMAIN } from '../sondakika/registry'
 import { discoverSource } from '../discovery/run'
 import { extractArticleWithFallback, applyPersistExtractionBody } from '../extract/pipeline'
 import { fetchRenderedHtml } from '../extract/browser'
@@ -204,6 +206,7 @@ export async function runCrawlerTick(opts?: {
     sources: sourceMap,
     limit: limits.maxFetchPerTick,
     maxPerSource: limits.maxFetchPerSource,
+    maxPerDomain: new Map([[SONDAKIKA_DOMAIN, limits.maxSondakikaFetchPerTick]]),
   })
   for (const item of pending) {
     if (Date.now() > fetchDeadline) break
@@ -415,6 +418,7 @@ export async function runCrawlerTick(opts?: {
       continue
     }
 
+    const geo = resolveRawArticleGeo(source, extracted)
     const raw = await store.insertRawArticle({
       sourceId: source.id,
       discoveredUrlId: item.id,
@@ -431,9 +435,9 @@ export async function runCrawlerTick(opts?: {
       modifiedAt: extracted.modifiedAt,
       language: extracted.language,
       countryCode: source.countryCode,
-      region: source.region,
-      city: source.city,
-      district: source.district,
+      region: geo.region,
+      city: geo.city,
+      district: geo.district,
       mainImageUrl: images.primary?.status === 'ACCEPTED' ? images.primary.sourceUrl : extracted.mainImageUrl,
       imageUrls: extracted.imageUrls,
       videoUrls: extracted.videoUrls,

@@ -15,6 +15,12 @@ export function pickFairPending(opts: {
   sources: Map<string, NewsSourceRecord>
   limit: number
   maxPerSource: number
+  /**
+   * SONDAKIKA-81: domain başına tur kotası. Tek domain'e ait çok sayıda kaynak
+   * (sondakika.com'un 81 il kaynağı) kaynak-bazlı round-robin'de turun tamamını
+   * almasın diye. Listede olmayan domain'ler sınırsız (önceki davranış).
+   */
+  maxPerDomain?: ReadonlyMap<string, number>
 }): DiscoveredUrlRecord[] {
   const buckets = new Map<string, DiscoveredUrlRecord[]>()
   for (const item of opts.pending) {
@@ -34,6 +40,13 @@ export function pickFairPending(opts: {
   })
 
   const taken = new Map<string, number>()
+  const takenByDomain = new Map<string, number>()
+  const domainOf = (sourceId: string) =>
+    (opts.sources.get(sourceId)?.domain || '').toLowerCase().replace(/^www\./, '')
+  const domainRoom = (sourceId: string) => {
+    const cap = opts.maxPerDomain?.get(domainOf(sourceId))
+    return cap === undefined ? Number.POSITIVE_INFINITY : cap - (takenByDomain.get(domainOf(sourceId)) ?? 0)
+  }
   const out: DiscoveredUrlRecord[] = []
   let progressed = true
   while (out.length < opts.limit && progressed) {
@@ -45,12 +58,20 @@ export function pickFairPending(opts: {
       const quotaThisRound = Math.min(weightFor(band), opts.maxPerSource - already)
       const bucket = buckets.get(sourceId) || []
       let gave = 0
-      while (gave < quotaThisRound && bucket.length && out.length < opts.limit && already + gave < opts.maxPerSource) {
+      while (
+        gave < quotaThisRound &&
+        bucket.length &&
+        out.length < opts.limit &&
+        already + gave < opts.maxPerSource &&
+        domainRoom(sourceId) > 0
+      ) {
         const next = bucket.shift()
         if (!next) break
         out.push(next)
         gave += 1
         progressed = true
+        const d = domainOf(sourceId)
+        if (opts.maxPerDomain?.has(d)) takenByDomain.set(d, (takenByDomain.get(d) ?? 0) + 1)
       }
       if (gave) taken.set(sourceId, already + gave)
     }

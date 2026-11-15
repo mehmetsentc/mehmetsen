@@ -7,6 +7,7 @@ import { DrizzleCrawlerStore } from '@/services/crawler/store/drizzle'
 import { paginateSlice, parseSourceListQuery, matchesSourceQuery } from '@/services/crawler/editorial/query'
 import { PHASE0_SEED_SOURCES } from '@/services/crawler/seedSources'
 import { TURKEY_SOURCE_REGISTRY, turkeyRegistryToInsert } from '@/services/crawler/turkeyRegistry'
+import { sondakikaCitySourceInputs } from '@/services/crawler/sondakika/registry'
 import type { CrawlerSourceStatus, CrawlerQualityTier } from '@/services/crawler/types'
 import { requirePauseReason } from '@/services/crawler/autoDraft/sourcePauseAudit'
 
@@ -64,6 +65,33 @@ export async function POST(request: Request) {
       domains.add(entry.domain.toLowerCase())
     }
     return NextResponse.json({ seeded: created.length, totalRegistry: TURKEY_SOURCE_REGISTRY.length })
+  }
+
+  // SONDAKIKA-81: 81 il sayfası kaynağı. Tekrar çalıştırılabilir (registryKey ile).
+  // activate:true yeni kayıtları ACTIVE açar ve yalnız bu seed'in kendi duraklattıklarını
+  // açar; elle duraklatılmış/devre dışı bırakılmış il kaynaklarına dokunmaz.
+  if (body?.seedSondakikaCities === true) {
+    const activate = body.activate === true
+    const existing = await store.listSources()
+    const byKey = new Map(existing.filter((s) => s.registryKey).map((s) => [s.registryKey as string, s]))
+    let created = 0
+    let activated = 0
+    let unchanged = 0
+    for (const input of sondakikaCitySourceInputs(activate ? 'ACTIVE' : 'PAUSED')) {
+      const current = byKey.get(input.registryKey as string)
+      if (!current) {
+        await store.insertSource(input)
+        created += 1
+        continue
+      }
+      if (activate && current.status === 'PAUSED' && current.lastPauseReason === 'sondakika_81_seed_paused') {
+        await store.updateSource(current.id, { status: 'ACTIVE', lastPauseReason: null })
+        activated += 1
+        continue
+      }
+      unchanged += 1
+    }
+    return NextResponse.json({ sondakikaCities: { created, activated, unchanged, total: created + activated + unchanged } })
   }
 
   if (body?.approve === true) {

@@ -61,6 +61,9 @@ export function crawlerTickLimits() {
     maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
     maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
+    // SONDAKIKA-81: 81 il kaynağı tek domain; tur başına en fazla bu kadar haber çekilir
+    // (20 × 48 tur ≈ 960/gün; sitenin günlük taze yerel haber hacmi ≈ 600-800).
+    maxSondakikaFetchPerTick: clamp(intEnv('NEWS_CRAWLER_SONDAKIKA_MAX_FETCH_PER_TICK', 20), 0, 80),
     maxTickRuntimeMs: clamp(intEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', 240_000), 5_000, 280_000),
     defaultFreshnessHours: clamp(intEnv('NEWS_CRAWLER_FRESHNESS_HOURS', 48), 1, 168),
     maxClusterArticlesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_CLUSTER_ARTICLES_PER_TICK', 80), 1, 160),
