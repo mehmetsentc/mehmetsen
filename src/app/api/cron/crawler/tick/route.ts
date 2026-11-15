@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { isGlobalCrawlerEnabled } from '@/services/crawler/enabled'
 import { runCrawlerTick } from '@/services/crawler/workers/tick'
+import { shouldSkipNightTick } from '@/services/crawler/ops/nightCadence'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,15 @@ async function handle(request: Request) {
         skipped: true,
         reason: 'GLOBAL_CRAWLER_ENABLED=false',
       },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
+
+  // FinOps: hourly at night (01:00–05:59 TR); ?force=1 bypasses.
+  const force = new URL(request.url).searchParams.get('force') === '1'
+  if (!force && shouldSkipNightTick(new Date())) {
+    return NextResponse.json(
+      { enabled: true, skipped: true, reason: 'NIGHT_CADENCE' },
       { headers: { 'Cache-Control': 'no-store' } }
     )
   }
