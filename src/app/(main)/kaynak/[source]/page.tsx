@@ -10,7 +10,7 @@ import { formatPublicSourceLabel } from '@/lib/postUtils'
 import { getCategoryLabel } from '@/lib/newsMapper'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 
-export const revalidate = 300
+export const revalidate = 1800 // FinOps 15 Nov: 300 → 1800
 
 interface Props {
   params: Promise<{ source: string }>
