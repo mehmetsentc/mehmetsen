@@ -23,7 +23,7 @@ import { publisherLayoutService } from '@/services/publisher/publisherLayoutServ
 import { PublisherLayoutRenderer } from '@/components/publisher/PublisherLayoutRenderer'
 import { PublisherProfileClient } from '@/components/publisher/PublisherProfileClient'
 
-export const revalidate = 300
+export const revalidate = 900 // FinOps 15 Nov: 300 → 900 (no on-edit purge; profile changes show within 15 min)
 
 interface Props {
   params: Promise<{ slug: string }>
