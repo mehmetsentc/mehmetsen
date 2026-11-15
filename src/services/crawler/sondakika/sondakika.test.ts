@@ -221,6 +221,8 @@ describe('SONDAKIKA-81 kaynak kaydı', () => {
       'https://www.sondakika.com/kahramanmaras/',
     ])
     expect(sondakikaCitySourceInputs()[0].status).toBe('PAUSED')
+    expect(SONDAKIKA_CITY_PRIORITY).toBe(50) // 30 bandı canlıda sıra bulamıyor
+    expect(inputs.every((i) => i.crawlIntervalSeconds === 6 * 60 * 60)).toBe(true)
   })
 })
 

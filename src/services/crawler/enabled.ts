@@ -57,7 +57,10 @@ export function crawlerTickLimits() {
     // CRAWL-CADENCE-1 (user-approved 2026-10-22): */30 cron, up to 80 fresh
     // fetches per tick (was hourly × 40 ≈ 35 ham haber an hour). The tick stays
     // under 4 minutes so Neon can still suspend in the 26-minute gap.
-    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 25), 1, 160),
+    // SONDAKIKA-81 / TOURISM-SRC-1: 25 → 35. 81 il (6 sa) + 13 turizm (2-4 sa) kaynağı turda
+    // ortalama ~9 keşif ekliyor; mevcut ~92 kaynağın keşif sırası yavaşlamasın diye.
+    // Keşif yalnız liste/RSS isteği; haber çekme kotası (maxFetchPerTick 80) değişmedi.
+    maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 35), 1, 160),
     maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
     maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),

@@ -64,15 +64,16 @@ export function tourismSourceInputs(status: CrawlerSourceStatus = 'PAUSED'): Ins
       language: s.language,
       sourceType: global ? 'INTERNATIONAL' : 'NATIONAL',
       status,
-      // TR sektör yayınları NORMAL, global LOW: mevcut gündem kaynaklarının önüne geçmez.
-      priority: global ? 30 : 50,
+      // Öncelik 50: canlıda 30 bandı hiç sıra bulamıyor (bkz. sondakika/registry.ts).
+      // Kaynak başına yükü uzun aralık sınırlar (TR 2 sa, global 4 sa); fetch bandı global LOW.
+      priority: 50,
       crawlPriority: global ? 'LOW' : 'NORMAL',
       trustTier: 3,
       discoveryMethod: 'RSS',
       rssUrls: [s.rssUrl],
       sitemapUrls: [],
       listingUrls: [],
-      crawlIntervalSeconds: global ? 3600 : 1800,
+      crawlIntervalSeconds: global ? 4 * 60 * 60 : 2 * 60 * 60,
       articleFetchMode: 'HTTP',
       robotsPolicy: 'FOLLOW',
       geographicScope: global ? 'GLOBAL' : 'NATIONAL',

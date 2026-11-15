@@ -33,7 +33,8 @@ describe('minimum-cost crawler switch', () => {
     vi.stubEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', '')
     vi.stubEnv('NEWS_CRAWLER_MAX_TICK_RUNTIME_MS', '')
     const limits = crawlerTickLimits()
-    expect(limits.maxSourcesPerTick).toBe(25)
+    // SONDAKIKA-81 / TOURISM-SRC-1: 25 → 35 (keşif tur süresinin 1/3'üyle zaten sınırlı).
+    expect(limits.maxSourcesPerTick).toBe(35)
     expect(limits.maxFetchPerTick).toBe(80)
     expect(limits.maxTickRuntimeMs).toBe(240_000)
     // CRAWL-CADENCE-1: under the route's 300s maxDuration, far inside the 30-minute gap.

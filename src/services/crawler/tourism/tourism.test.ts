@@ -21,6 +21,8 @@ describe('TOURISM-SRC-1 kaynak kaydı', () => {
     expect(tr.every((i) => i.crawlPriority === 'NORMAL' && i.language === 'tr')).toBe(true)
     expect(global.every((i) => i.crawlPriority === 'LOW' && i.language === 'en' && i.geographicScope === 'GLOBAL')).toBe(true)
     expect(tourismSourceInputs()[0].status).toBe('PAUSED')
+    // 30 bandı canlıda sıra bulamıyor: bütün turizm kaynakları 50
+    expect(inputs.every((i) => i.priority === 50)).toBe(true)
   })
 
   it('canlı testte alınamayan kaynaklar listede yok', () => {

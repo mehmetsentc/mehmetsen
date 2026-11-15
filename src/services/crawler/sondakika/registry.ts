@@ -9,17 +9,19 @@ import type { CrawlerSourceStatus, NewsSourceRecord } from '../types'
  * Neden 81 kaynak: discoverSource kaynak başına en fazla 3 liste URL'si okur ve
  * il bazlı sağlık/zamanlama kaynak başına tutulur.
  *
- * Kadans: il sayfası 30-76 haber tutuyor (en yoğun il ≈ 40 haber/gün), 4 saatte bir
- * okumak hiçbir haberi kaçırmaz ve 30 dk'lık turda ortalama ~10 il sayfası eder.
- * Öncelik LOW (30): mevcut ulusal/yerel kaynakların önüne geçmez.
+ * Kadans: il sayfası 30-76 haber tutuyor (en yoğun il ≈ 40 haber/gün), 6 saatte bir
+ * okumak hiçbir haberi kaçırmaz ve 30 dk'lık turda ortalama ~7 il sayfası eder.
+ * Öncelik 50 (NORMAL bant): canlıda 30 bandındaki kaynaklar hiç sıra bulamıyor
+ * (15.11.2026: 50 bandında 92 kaynağın sırası hep gelmiş, tur 25 kaynak alıyor → 30 bandı
+ * ~88 gündür taranmamış). Fetch tarafında crawlPriority LOW + domain kotası korunur.
  * Haber çekme kotası ayrıca domain bazında sınırlı (SONDAKIKA_DOMAIN / scheduler).
  */
 
 export const SONDAKIKA_DOMAIN = 'sondakika.com'
 export const SONDAKIKA_BASE_URL = 'https://www.sondakika.com'
 export const SONDAKIKA_REGISTRY_PREFIX = 'sondakika-il-'
-export const SONDAKIKA_CITY_CRAWL_INTERVAL_SECONDS = 4 * 60 * 60
-export const SONDAKIKA_CITY_PRIORITY = 30
+export const SONDAKIKA_CITY_CRAWL_INTERVAL_SECONDS = 6 * 60 * 60
+export const SONDAKIKA_CITY_PRIORITY = 50
 
 export function sondakikaCityListingUrl(provinceSlug: string): string {
   return `${SONDAKIKA_BASE_URL}/${provinceSlug}/`
