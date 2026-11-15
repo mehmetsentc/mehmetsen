@@ -48,6 +48,7 @@ describe('FINOPS cost freeze', () => {
       { path: '/api/cron/antalya-nobetci-eczane', schedule: '30 6 * * *' },
       { path: '/api/cron/canakkale-nobetci-eczane', schedule: '0 7 * * *' },
       { path: '/api/events/sync', schedule: '0 21 * * *' },
+      { path: '/api/cron/news-mirror-reconcile', schedule: '40 * * * *' },
     ])
     const worker = readFileSync(join(process.cwd(), 'src/lib/social/automation/worker.ts'), 'utf8')
     expect(worker).not.toContain('generateSocialContent')
