@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./src/*"],
+      "react-hot-toast": ["./src/lib/toast-shim.ts"],
+      "server-only": ["./scripts/worker/shims/empty.ts"],
+      "next/cache": ["./scripts/worker/shims/nextCache.ts"],
+      "next/server": ["./scripts/worker/shims/nextServer.ts"]
+    }
+  }
+}
