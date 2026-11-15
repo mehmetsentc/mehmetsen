@@ -4,7 +4,7 @@ import { getInfluencerPostsCached } from '@/lib/influencerPosts.server'
 import { getSiteUrl } from '@/lib/seo'
 import { ROUTES } from '@/constants/routes'
 
-export const revalidate = 120
+export const revalidate = 600 // FinOps 15 Nov: 120 → 600
 
 export const metadata: Metadata = {
   title: 'Fenomen Haberleri | NaHaber',
