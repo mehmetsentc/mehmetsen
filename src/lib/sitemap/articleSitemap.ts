@@ -28,6 +28,11 @@ import {
 } from '@/lib/canonical/canonicalEligibility'
 import { recordSitemapError, recordSitemapGeneration } from '@/lib/seo/observability'
 import {
+  discoverMirrorMonths,
+  isMirrorReadEnabled,
+  loadMirrorMonthDocs,
+} from '@/services/newsMirror/newsMirrorReads'
+import {
   articleShardPath,
   isClosedMonth,
   isMonthKey,
@@ -97,6 +102,15 @@ export async function loadFirestoreMonthDocs(
   const { startMs, endMs } = monthBoundsUtc(month)
   const upperMs = Math.min(endMs, nowMs + 1)
   if (upperMs <= startMs) return []
+
+  // FinOps Neon phase 2.1: same rows from news_read_mirror (no Firestore reads).
+  if (isMirrorReadEnabled('sitemap')) {
+    try {
+      return await loadMirrorMonthDocs(startMs, upperMs, ARTICLE_SITEMAP_FIRESTORE_FIELDS)
+    } catch (error) {
+      console.warn('[articleSitemap] mirror month read failed, using Firestore:', error)
+    }
+  }
 
   const db = getAdminFirestore()
   const out: FirestoreSitemapCandidate[] = []
@@ -220,6 +234,14 @@ export async function getArticleMonth(
  * strictly before the previous month's start. Cost = 1 read per non-empty month.
  */
 export async function discoverFirestoreMonths(nowMs: number): Promise<MonthKey[]> {
+  if (isMirrorReadEnabled('sitemap')) {
+    try {
+      const months = await discoverMirrorMonths(nowMs + 1)
+      return months.filter((m) => Number(m.slice(0, 4)) >= MIN_DISCOVERY_YEAR).slice(0, MAX_DISCOVERY_STEPS)
+    } catch (error) {
+      console.warn('[articleSitemap] mirror month discovery failed, using Firestore:', error)
+    }
+  }
   const db = getAdminFirestore()
   const months: MonthKey[] = []
   let upperMs = nowMs + 1
