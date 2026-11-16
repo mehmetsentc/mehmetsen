@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { reelsCall, runReelJob } from './reelsApi'
+import { copyText } from './copyText'
 import { cn } from '@/lib/utils'
 
 type Account = { accountId: string; displayName: string; selectable: boolean; reason: string | null }
@@ -79,6 +80,10 @@ export function TikTokPostDialog({
   const [aiGenerated, setAiGenerated] = useState(false)
   const [title, setTitle] = useState('')
   const [consent, setConsent] = useState(false)
+
+  /** TIKTOK-INBOX-CAPTION: null = denenmedi, true/false = kopyalama sonucu */
+  const [copied, setCopied] = useState<boolean | null>(null)
+  const copyCaption = async () => setCopied(await copyText(title.trim()))
 
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; text: string; publishId?: string } | null>(null)
@@ -162,6 +167,9 @@ export function TikTokPostDialog({
 
   const send = async () => {
     if (blocker || sending) return
+    // Taslak modunda açıklama TikTok'a gitmez: tıklamayla aynı anda panoya kopyala
+    // (video yüklemesi uzun sürer; await sonrası tarayıcı pano iznini düşürür).
+    const copyPromise = mode === 'inbox' ? copyText(title.trim()) : Promise.resolve(null)
     setSending(true)
     setResult(null)
     setStatusText(null)
@@ -174,7 +182,16 @@ export function TikTokPostDialog({
     if (!r.ok) return setResult({ ok: false, text: r.error })
     const res = r.data.result
     if (!res.success) return setResult({ ok: false, text: res.error ?? 'TikTok paylaşımı başarısız' })
-    setResult({ ok: true, text: 'TikTok’a gönderildi. İşlenmesi birkaç dakika sürebilir; durum aşağıda güncellenir.', publishId: res.publishId })
+    const didCopy = await copyPromise
+    if (didCopy !== null) setCopied(didCopy)
+    setResult({
+      ok: true,
+      text:
+        mode === 'inbox'
+          ? `Taslak TikTok’a gönderildi. TikTok uygulamasındaki bildirimi açın ve açıklama alanına ${didCopy ? 'panoya kopyalanan açıklamayı yapıştırın' : '«Açıklamayı kopyala» ile kopyaladığınız metni yapıştırın'}.`
+          : 'TikTok’a gönderildi. İşlenmesi birkaç dakika sürebilir; durum aşağıda güncellenir.',
+      publishId: res.publishId,
+    })
     onFinished?.()
   }
 
@@ -271,6 +288,7 @@ export function TikTokPostDialog({
             <span className="mb-1 block text-xs font-semibold">Paylaşım şekli</span>
             <label className="mr-3 inline-flex items-center gap-1.5"><input type="radio" checked={mode === 'direct'} onChange={() => setMode('direct')} /> Doğrudan yayımla</label>
             <label className="inline-flex items-center gap-1.5"><input type="radio" checked={mode === 'inbox'} onChange={() => setMode('inbox')} /> TikTok’a taslak gönder (uygulamadan tamamlanır)</label>
+            {mode === 'inbox' ? <InboxCaptionNote copied={copied} onCopy={() => void copyCaption()} disabled={!title.trim()} /> : null}
           </div>
 
           {mode === 'direct' ? (
@@ -359,7 +377,27 @@ export function TikTokPostDialog({
       ) : null}
 
       {result ? <p className={cn('rounded-lg p-2 text-xs', result.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700')}>{result.text}</p> : null}
+      {result?.ok && mode === 'inbox' ? (
+        <button type="button" onClick={() => void copyCaption()} className="w-full rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-xs font-semibold">
+          {copied ? 'Açıklama kopyalandı — tekrar kopyala' : 'Açıklamayı kopyala'}
+        </button>
+      ) : null}
       {statusText ? <p className="rounded-lg bg-[rgb(var(--color-surface))] p-2 text-xs">Durum: {statusText}</p> : null}
+    </div>
+  )
+}
+
+/** TIKTOK-INBOX-CAPTION: taslak modunda açıklamanın TikTok'a gitmediğini söyler ve kopyalatır. */
+function InboxCaptionNote({ copied, onCopy, disabled }: { copied: boolean | null; onCopy: () => void; disabled: boolean }) {
+  return (
+    <div className="mt-2 space-y-1.5 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900">
+      <p>
+        TikTok taslak yüklemesinde açıklamayı kabul etmiyor; açıklamayı TikTok uygulamasında yapıştırmanız gerekir. «TikTok’ta paylaş»a bastığınızda açıklama panoya da kopyalanır
+        (Mac’ten iPhone’a Evrensel Pano ile geçer).
+      </p>
+      <button type="button" onClick={onCopy} disabled={disabled} className="rounded-md border border-amber-300 bg-white px-2 py-1 font-semibold disabled:opacity-50">
+        {copied === true ? 'Kopyalandı ✓' : copied === false ? 'Kopyalanamadı — metni elle seçin' : 'Açıklamayı kopyala'}
+      </button>
     </div>
   )
 }
