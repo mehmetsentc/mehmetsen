@@ -82,3 +82,33 @@ export function selectNewsCardFields<Q>(query: Selectable<Q>): Q {
   if (typeof query.select !== 'function') return query
   return query.select(...NEWS_CARD_FIRESTORE_FIELDS)
 }
+
+/**
+ * FinOps (17 Nov 2026): day feed (/api/feed/more) used to read full documents (body HTML)
+ * for up to 300 items per Turkey day. Card mask + the extra fields docToNewsItem /
+ * slimNewsItemForFeed read. Without `content`, readingMinutes uses readingTimeMinutes or
+ * the description (same as every other list surface).
+ */
+export const NEWS_DAY_FEED_FIRESTORE_FIELDS = [
+  ...NEWS_CARD_FIRESTORE_FIELDS,
+  'articleFormat',
+  'readingTimeMinutes',
+  'seoTitle',
+  'breaking',
+  'views',
+  'viewsCount',
+  'likesCount',
+  'commentsCount',
+  'commentCount',
+  'sharesCount',
+  'localFeaturedAt',
+  'location',
+  'locationCity',
+  'province',
+  'sourceUrl',
+] as const
+
+export function selectNewsDayFeedFields<Q>(query: Selectable<Q>): Q {
+  if (typeof query.select !== 'function') return query
+  return query.select(...NEWS_DAY_FEED_FIRESTORE_FIELDS)
+}

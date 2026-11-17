@@ -68,7 +68,7 @@ function toEvent(doc: QueryDocumentSnapshot): NaEvent {
  * City etkinlik SSR prefetch — paginates past cancelled ticket stubs, merges
  * annual municipal + Troya docs, returns upcoming-first catalog for HTML seed.
  */
-export async function getCityEventsServer(
+export async function getCityEventsServerUncached(
   citySlug: string,
   timeRange: EventTimeRange = 'upcoming',
   targetCount = CITY_EVENT_FETCH_TARGET
@@ -138,6 +138,30 @@ export async function getCityEventsServer(
     console.warn('[eventService.server] getCityEventsServer failed:', error)
     return []
   }
+}
+
+/**
+ * FinOps (17 Nov 2026): city home (CityAdaptiveHome), /etkinlik and city /etkinlik are
+ * force-dynamic, so every visit re-ran the paginated events scan (≈400 runs/day, ≈60k
+ * Firestore reads/day). Shared data cache across instances, 10 min — same order as the
+ * city news caches. Event edits are not tag-revalidated anywhere today, so freshness
+ * is bounded by this TTL.
+ */
+const CITY_EVENTS_REVALIDATE_S = 600
+
+const getCityEventsServerCached = unstable_cache(
+  (citySlug: string, timeRange: EventTimeRange, targetCount: number) =>
+    getCityEventsServerUncached(citySlug, timeRange, targetCount),
+  ['city-events-server-v1'],
+  { revalidate: CITY_EVENTS_REVALIDATE_S, tags: ['city-events'] }
+)
+
+export async function getCityEventsServer(
+  citySlug: string,
+  timeRange: EventTimeRange = 'upcoming',
+  targetCount = CITY_EVENT_FETCH_TARGET
+): Promise<NaEvent[]> {
+  return getCityEventsServerCached(citySlug, timeRange, targetCount)
 }
 
 /**

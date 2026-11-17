@@ -6,7 +6,16 @@ import { filterPostsByFeedSource, type FeedSource } from '@/lib/feedSource'
 import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtils'
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
-import { NEWS_CARD_FIRESTORE_FIELDS, selectNewsCardFields } from '@/lib/news/cardFirestoreFields'
+import {
+  NEWS_CARD_FIRESTORE_FIELDS,
+  selectNewsCardFields,
+  selectNewsDayFeedFields,
+} from '@/lib/news/cardFirestoreFields'
+import {
+  isMirrorReadEnabled,
+  loadMirrorAuthorDocs,
+  loadMirrorTagDocs,
+} from '@/services/newsMirror/newsMirrorReads'
 import { docToNewsItem, slimNewsItemForFeed, slimNewsItemsForFeed } from '@/lib/newsItemUtils'
 import {
   CATEGORY_STORY_WINDOW_MS,
@@ -937,7 +946,8 @@ async function hasPublishedBefore(beforeMs: number, categoryId?: string): Promis
         .limit(1)
     }
 
-    const snap = await q.get()
+    // FinOps 17 Nov: existence check only — no need to ship the whole document.
+    const snap = await (typeof q.select === 'function' ? q.select('publishedAt') : q).get()
     return !snap.empty
   } catch (error) {
     console.warn('[newsService.server] hasPublishedBefore failed:', error)
@@ -969,7 +979,7 @@ async function fetchPublishedInDay(
       .where('publishedAt', '<', endMs)
       .orderBy('publishedAt', 'desc')
       .limit(DAY_FEED_MAX_ITEMS)
-    const snap = await q.get()
+    const snap = await selectNewsDayFeedFields(q).get()
     return mapAdminDocs(snap.docs)
       .filter((item) =>
         isNationalBreakingEligible({
@@ -996,7 +1006,7 @@ async function fetchPublishedInDay(
       .limit(DAY_FEED_MAX_ITEMS)
   }
 
-  const snap = await q.get()
+  const snap = await selectNewsDayFeedFields(q).get()
   return mapAdminDocs(snap.docs).map(slimNewsItemForFeed)
 }
 
@@ -1062,13 +1072,14 @@ const getOnThisDayNewsCached = unstable_cache(
       // Only show articles from PREVIOUS years — exclude current year
       const startOfCurrentYear = new Date(new Date().getFullYear(), 0, 1).getTime()
 
-      const snap = await db
-        .collection(NEWS_COLLECTION)
-        .where('status', '==', 'published')
-        .where('publishedAt', '<', startOfCurrentYear)
-        .orderBy('publishedAt', 'desc')
-        .limit(300)
-        .get()
+      const snap = await selectNewsDayFeedFields(
+        db
+          .collection(NEWS_COLLECTION)
+          .where('status', '==', 'published')
+          .where('publishedAt', '<', startOfCurrentYear)
+          .orderBy('publishedAt', 'desc')
+          .limit(300)
+      ).get()
 
       return mapAdminDocs(snap.docs).filter((item) => {
         const ts = item.publishedAt ?? item.createdAt
@@ -1187,6 +1198,21 @@ const getPostsByTagCached = unstable_cache(
   async (rawTag: string): Promise<Post[]> => {
     const variants = tagLookupVariants(rawTag).slice(0, 30)
     if (variants.length === 0) return []
+
+    // FinOps Neon phase 2.2 (17 Nov 2026): tag lists from news_read_mirror.
+    if (isMirrorReadEnabled('tagAuthor')) {
+      try {
+        const rows = await loadMirrorTagDocs(variants, TAG_LIST_LIMIT, NEWS_CARD_FIRESTORE_FIELDS)
+        return rows
+          .map((row) => newsDocToPost(row.id, row.data as NewsDocument))
+          .filter((post): post is Post => post !== null)
+          .sort(
+            (a, b) => Date.parse(b.publishedAt ?? b.createdAt) - Date.parse(a.publishedAt ?? a.createdAt)
+          )
+      } catch (mirrorError) {
+        console.warn('[newsService.server] mirror tag read failed, using Firestore:', mirrorError)
+      }
+    }
 
     try {
       const db = getAdminFirestore()
@@ -1350,6 +1376,17 @@ export async function getAuthorByUsername(username: string): Promise<PublicAutho
 /** Published news authored by a user id (for /yazar/[username]). Cached 30 min per author. */
 const getPostsByAuthorIdCached = unstable_cache(
   async (authorId: string, limitCount: number): Promise<Post[]> => {
+    // FinOps Neon phase 2.2 (17 Nov 2026): author lists from news_read_mirror.
+    if (isMirrorReadEnabled('tagAuthor')) {
+      try {
+        const rows = await loadMirrorAuthorDocs(authorId, limitCount, NEWS_CARD_FIRESTORE_FIELDS)
+        return rows
+          .map((row) => newsDocToPost(row.id, row.data as NewsDocument))
+          .filter((post): post is Post => post !== null)
+      } catch (mirrorError) {
+        console.warn('[newsService.server] mirror author read failed, using Firestore:', mirrorError)
+      }
+    }
     try {
       const db = getAdminFirestore()
       const snap = await selectNewsCardFields(
