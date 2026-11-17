@@ -12,7 +12,8 @@ export async function POST(request: Request, { params }: Ctx) {
   const auth = await requireActor(request, { mutation: true })
   if ('response' in auth) return auth.response
   const { id } = await params
-  const r = await startConnection({ actor: auth.actor, platform: null, reconnectAccountId: id, engagement: (await readJsonBody(request)).engagement === true })
+  const body = await readJsonBody(request)
+  const r = await startConnection({ actor: auth.actor, platform: null, reconnectAccountId: id, engagement: body.engagement === true, inbox: body.inbox === true })
   if (!r.ok) return json({ error: r.code, code: r.code }, r.status === 403 ? 404 : r.status)
   return applyCookies(json({ authorizeUrl: r.authorizeUrl }), [r.cookie])
 }

@@ -6,10 +6,12 @@
  * deleted on the platform are marked «platformda silindi» and never shown.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { Check, ExternalLink, Loader2, RefreshCw, X } from 'lucide-react'
+import { Check, EyeOff, ExternalLink, Loader2, RefreshCw, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { socialApi } from '@/components/social/socialClient'
 import { PLATFORM_TR } from '@/lib/social/engagement/model'
+import { AUTO_BLOCK_TR, REPLY_MAX, type AutoBlock, type InboxCategory, type ReplySummary } from '@/lib/social/inbox/model'
+import { ReplyComposer, type DraftView } from './inbox/ReplyComposer'
 import { cn } from '@/lib/utils'
 
 type Status = 'pending' | 'approved' | 'rejected' | 'removed'
@@ -24,6 +26,11 @@ type Row = {
   fetchedAt: number
   status: Status
   permalink: string | null
+  category?: InboxCategory | null
+  draft?: DraftView
+  autoBlock?: AutoBlock | null
+  reply?: ReplySummary | null
+  hidden?: boolean | null
 }
 
 type Recent = {
@@ -90,6 +97,15 @@ export function SocialCommentsModeration() {
     void load(status)
   }
 
+  const hide = async (r: Row, hidden: boolean) => {
+    setBusy(true)
+    const res = await socialApi('/api/admin/social/inbox/comments', { method: 'POST', body: JSON.stringify({ action: hidden ? 'hide' : 'unhide', id: r.id }) })
+    setBusy(false)
+    if (!res.ok) return toast.error(res.code === 'unsupported' ? 'Bu platformda gizleme yok.' : 'Gizlenemedi — hesabın cevap izni olmayabilir.')
+    toast.success(hidden ? 'Yorum platformda gizlendi (NaHaber’de de gösterilmez).' : 'Yorum yeniden görünür.')
+    void load(status)
+  }
+
   const toggle = (id: string) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
   const all = rows ?? []
 
@@ -119,7 +135,8 @@ export function SocialCommentsModeration() {
       <p className="text-xs text-[rgb(var(--color-muted))]">
         Yorumlar, paylaşımdan sonraki 7 gün boyunca ortak çalışanla platformlardan okunur. Onaylanan yorum haberin ve videonun altında, platformu ve kullanıcı adıyla
         «sosyal medyadan» bölümünde görünür. Platformda silinen yorum NaHaber’den de kalkar. Instagram ve Threads yorumları için hesabın «Etkileşim ve yorum izni»
-        vermiş olması gerekir (Hesaplar ekranı).
+        vermiş olması gerekir (Hesaplar ekranı). Yorumlara buradan cevap vermek ve platformda gizlemek için «Mesaj ve cevap izni» gerekir; gönderilen her cevap
+        kayda geçer, otomatik cevap ayarları «Gelen kutusu» sekmesindedir.
       </p>
 
       {status === 'pending' && all.length > 0 ? (
@@ -164,6 +181,25 @@ export function SocialCommentsModeration() {
                 </p>
                 <p className="whitespace-pre-wrap break-words text-[rgb(var(--color-text))]">{r.text}</p>
                 <p className="truncate text-xs text-[rgb(var(--color-muted))]">Haber: {r.newsTitle ?? r.newsId}</p>
+                {status !== 'removed' ? (
+                  <div className="space-y-1.5 border-t border-dashed border-[rgb(var(--color-border))] pt-1.5">
+                    <ReplyComposer
+                      endpoint="/api/admin/social/inbox/comments"
+                      itemId={r.id}
+                      maxLength={REPLY_MAX[r.platform]}
+                      draft={r.draft ?? null}
+                      category={r.category}
+                      autoBlockText={r.autoBlock && r.autoBlock !== 'mode_off' ? AUTO_BLOCK_TR[r.autoBlock] : null}
+                      reply={r.reply}
+                      onDone={() => void load(status)}
+                    />
+                    {r.platform !== 'youtube' ? (
+                      <button type="button" disabled={busy} onClick={() => void hide(r, !r.hidden)} className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-xs disabled:opacity-50">
+                        <EyeOff className="h-3.5 w-3.5" /> {r.hidden ? 'Platformda yeniden göster' : 'Platformda gizle'}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               {status !== 'removed' ? (
                 <div className="flex shrink-0 flex-col gap-1">

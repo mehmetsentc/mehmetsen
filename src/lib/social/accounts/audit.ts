@@ -37,6 +37,11 @@ export type SocialAuditAction =
   | 'social.publish.share'
   | 'social.token.refresh'
   | 'social.comment.moderate'
+  | 'social.inbox.reply'
+  | 'social.inbox.hide'
+  | 'social.inbox.settings'
+  | 'social.inbox.subscribe'
+  | 'social.inbox.uncertain_ack'
   | 'media.project.save'
   | 'media.clip.render'
 
@@ -44,7 +49,7 @@ export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'mediaProject'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null

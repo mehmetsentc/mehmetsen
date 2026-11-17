@@ -409,6 +409,22 @@ service cloud.firestore {
     match /socialComments/{commentId} {
       allow read, write: if false;
     }
+    // Sosyal gelen kutusu (yorum cevapları, DM) — yalnızca Admin SDK
+    match /socialInboxSettings/{accountId} {
+      allow read, write: if false;
+    }
+    match /socialReplies/{replyId} {
+      allow read, write: if false;
+    }
+    match /socialConversations/{conversationId} {
+      allow read, write: if false;
+    }
+    match /socialMessages/{messageId} {
+      allow read, write: if false;
+    }
+    match /socialInboxCounters/{counterId} {
+      allow read, write: if false;
+    }
     match /mediaProjects/{projectId} {
       allow read, write: if false;
     }

@@ -52,6 +52,8 @@ export interface WorkerDeps {
   publish?: Publisher
   /** false skips the engagement read-back (tests of the publish path). */
   engagement?: boolean
+  /** false skips the social inbox step (tests of the publish path). */
+  inbox?: boolean
 }
 
 /**
@@ -83,6 +85,7 @@ export interface TickReport {
   tokens?: { refreshed: number; failed: number; expired: number; skipped: number }
   processed: Array<{ jobId: string; status: string; code: string }>
   engagement?: { refreshed: number; failed: number; dropped: number; seeded: number | null } | null
+  inbox?: { comments: number; conversations: number; autoReplies: number; drafts: number; threadsPublished: number; purged: number } | null
   durationMs: number
 }
 
@@ -152,9 +155,22 @@ export async function runAutomationTick(deps: WorkerDeps = {}): Promise<TickRepo
   }
   report.engagement = engagement
 
+  // Social inbox: queued comments / DMs (drafts, opt-in auto replies), pending Threads replies.
+  let inbox: TickReport['inbox'] = null
+  if (deps.inbox !== false && now() - started < TICK_BUDGET_MS - 45_000) {
+    try {
+      const mod = await import('../inbox/store')
+      inbox = await mod.runInboxTick(now, { deadline: started + TICK_BUDGET_MS - 15_000 })
+    } catch (err) {
+      socialLog('error', 'cron', 'inbox_tick_error', { error: safeErrorText(err).slice(0, 200) })
+    }
+  }
+  report.inbox = inbox
+
   report.durationMs = now() - started
   await writeWorkerHeartbeat({
     engagement,
+    inbox,
     lastRunAt: started,
     durationMs: report.durationMs,
     enabledRules: rules.length,

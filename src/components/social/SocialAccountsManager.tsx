@@ -20,6 +20,7 @@ import { PublishScopeEditor } from './PublishScopeEditor'
 import { CategoryPicker, categoriesText } from './CategoryPicker'
 import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
 import { allEngagementScopes } from '@/lib/social/engagement/model'
+import { allInboxScopes } from '@/lib/social/inbox/model'
 import type { AutomationGeo } from '@/lib/social/automation/types'
 
 const PENDING_SCOPE_KEY = 'nahaber.social.pendingScope'
@@ -71,6 +72,13 @@ function expiryText(a: SocialAccountRow): string {
 /** Optional engagement permissions (counts / insights / comment texts) this account has not granted. */
 function engagementMissing(a: SocialAccountRow): string[] {
   const all = allEngagementScopes(a.platform, a.connectionMethod)
+  const granted = new Set(a.grantedPermissions ?? [])
+  return all.filter((p) => !granted.has(p))
+}
+
+/** Optional inbox permissions (reply to comments, direct messages) this account has not granted. */
+function inboxMissing(a: SocialAccountRow): string[] {
+  const all = allInboxScopes(a.platform, a.connectionMethod)
   const granted = new Set(a.grantedPermissions ?? [])
   return all.filter((p) => !granted.has(p))
 }
@@ -271,10 +279,11 @@ export function SocialAccountsManager({
     }
   }
 
-  const reconnect = async (a: SocialAccountRow, engagement = false) => {
-    setBusy(engagement ? `en:${a.id}` : `re:${a.id}`)
+  const reconnect = async (a: SocialAccountRow, extra: false | 'engagement' | 'inbox' | true = false) => {
+    const kind = extra === true ? 'engagement' : extra
+    setBusy(kind === 'engagement' ? `en:${a.id}` : kind === 'inbox' ? `ib:${a.id}` : `re:${a.id}`)
     try {
-      await go(`/api/social/accounts/${encodeURIComponent(a.id)}/reconnect`, engagement ? { engagement: true } : {})
+      await go(`/api/social/accounts/${encodeURIComponent(a.id)}/reconnect`, kind === 'engagement' ? { engagement: true } : kind === 'inbox' ? { inbox: true } : {})
     } finally {
       setBusy(null)
     }
@@ -678,6 +687,17 @@ export function SocialAccountsManager({
                           className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200"
                         >
                           <MessageCircle className="h-3.5 w-3.5" aria-hidden /> Etkileşim ve yorum izni ver
+                        </button>
+                      )}
+                      {a.connectionMethod !== 'legacy' && inboxMissing(a).length > 0 && (
+                        <button
+                          type="button"
+                          disabled={busy === `ib:${a.id}`}
+                          onClick={() => void reconnect(a, 'inbox')}
+                          title={`Platform girişinde ek izin istenir: ${inboxMissing(a).join(', ')}. Yorumlara panelden cevap${a.platform === 'instagram' || a.platform === 'facebook' ? ' ve özel mesajlar' : ''} için. Yayın izinleri değişmez.`}
+                          className="inline-flex items-center gap-1 rounded-lg border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-800 dark:text-sky-200"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" aria-hidden /> {a.platform === 'instagram' || a.platform === 'facebook' ? 'Mesaj ve cevap izni ver' : 'Yorumlara cevap izni ver'}
                         </button>
                       )}
                       {a.status === 'active' ? (

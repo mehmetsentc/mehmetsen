@@ -95,12 +95,13 @@ function required<T>(step: string, r: GoogleResult<T>): T {
   return r.data
 }
 
-export function buildGoogleAuthorizeUrl(cfg: PlatformOAuthConfig, state: string): string {
+export function buildGoogleAuthorizeUrl(cfg: PlatformOAuthConfig, state: string, extraScopes: readonly string[] = []): string {
   return query(GOOGLE_OAUTH_AUTHORIZE_URL, {
     client_id: cfg.appId,
     redirect_uri: cfg.redirectUri,
     response_type: 'code',
-    scope: YOUTUBE_SCOPES.join(' '),
+    // Optional inbox scope (youtube.force-ssl: reply to comments) only on request.
+    scope: [...new Set([...YOUTUBE_SCOPES, ...extraScopes])].join(' '),
     // Refresh token on every consent (also on «yeniden bağla»).
     access_type: 'offline',
     // consent: always issue a refresh token; select_account: let the user pick the

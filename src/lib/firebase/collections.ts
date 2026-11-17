@@ -135,6 +135,16 @@ export const Collections = {
   SOCIAL_ENGAGEMENT: 'socialEngagement',
   /** Comments read from platforms; pending until an editor approves. Admin SDK only. */
   SOCIAL_COMMENTS: 'socialComments',
+  /** Social inbox: per-account reply / auto-reply settings. Admin SDK only. */
+  SOCIAL_INBOX_SETTINGS: 'socialInboxSettings',
+  /** Social inbox: one record per reply sent from NaHaber (idempotent, audited). Admin SDK only. */
+  SOCIAL_REPLIES: 'socialReplies',
+  /** Social inbox: direct-message conversations (Instagram / Messenger). Admin SDK only. */
+  SOCIAL_CONVERSATIONS: 'socialConversations',
+  /** Social inbox: direct messages (90-day retention). Admin SDK only. */
+  SOCIAL_MESSAGES: 'socialMessages',
+  /** Social inbox: per-account daily auto-reply counters. Admin SDK only. */
+  SOCIAL_INBOX_COUNTERS: 'socialInboxCounters',
   SMM_QUEUE: 'smmQueue',
   SMM_MATRIX: 'smmContentMatrix',
   AUTOMATION_RULES: 'automationRules',

@@ -15,6 +15,7 @@
  */
 import 'server-only'
 import { allEngagementScopes } from '../../engagement/model'
+import { allInboxScopes } from '../../inbox/model'
 import { isTurkishProvinceSlug, normalizeCitySlug } from '@/constants/cities'
 import { verifyCmsSessionToken } from '@/lib/cmsSession'
 import { getAdminFirestore } from '@/lib/firebase/admin'
@@ -128,6 +129,8 @@ export async function startConnection(input: {
   returnTo?: OAuthReturnTo
   /** Also ask for the optional engagement permissions (counts / insights / comments). Never required. */
   engagement?: boolean
+  /** Also ask for the optional inbox permissions (reply to comments, direct messages). Never required. */
+  inbox?: boolean
   now?: number
 }): Promise<StartResult> {
   const now = input.now ?? Date.now()
@@ -178,14 +181,20 @@ export async function startConnection(input: {
     returnTo: input.returnTo ?? (ownershipKind(ownership) === 'user' ? 'profile' : ownershipKind(ownership) === 'publisher' ? 'publisher' : 'admin'),
     now,
   })
-  const extra = input.engagement ? allEngagementScopes(platform, METHOD_FOR_PLATFORM[platform]) : []
+  const method = METHOD_FOR_PLATFORM[platform]
+  const extra = [
+    ...new Set([
+      ...(input.engagement || input.inbox ? allEngagementScopes(platform, method) : []),
+      ...(input.inbox ? allInboxScopes(platform, method) : []),
+    ]),
+  ]
   const authorizeUrl =
     platform === 'facebook'
       ? buildFacebookAuthorizeUrl(cfg, state, !!reconnectAccountId, extra)
       : platform === 'instagram'
         ? buildInstagramAuthorizeUrl(cfg, state, extra)
         : platform === 'youtube'
-          ? buildGoogleAuthorizeUrl(cfg, state)
+          ? buildGoogleAuthorizeUrl(cfg, state, extra)
           : platform === 'tiktok'
             ? buildTikTokAuthorizeUrl(cfg, state)
             : buildThreadsAuthorizeUrl(cfg, state, extra)
@@ -195,7 +204,7 @@ export async function startConnection(input: {
     action: 'social.oauth.start',
     entityType: 'socialOAuth',
     entityId: reconnectAccountId ?? platform,
-    meta: { platform, ownerKind: ownershipKind(ownership), citySlug: ownership.citySlug, publisherId: ownership.publisherId ?? null, reconnect: !!reconnectAccountId, engagement: extra.length > 0 },
+    meta: { platform, ownerKind: ownershipKind(ownership), citySlug: ownership.citySlug, publisherId: ownership.publisherId ?? null, reconnect: !!reconnectAccountId, engagement: !!input.engagement, inbox: !!input.inbox, extraScopes: extra },
   })
   return { ok: true, authorizeUrl, cookie }
 }

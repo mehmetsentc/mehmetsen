@@ -130,7 +130,11 @@ async function refreshOne(row: EngagementQueueRow, now: number): Promise<'ok' | 
     accountName = loaded.account.username ? `@${loaded.account.username}` : loaded.account.displayName
     outcome = await fetchEngagement(resolved.target, loaded.account, row.externalPostId)
   }
-  await writeOutcome(row, outcome, accountName, now)
+  // Social inbox: new comments are queued for drafts / auto-replies only when the account opted in.
+  const inboxQueued = outcome.comments?.length
+    ? await import('../inbox/store').then((m) => m.commentInboxEnabled(row.accountId)).catch(() => false)
+    : false
+  await writeOutcome(row, outcome, accountName, now, inboxQueued)
   const failed = outcome.state === 'account_unavailable' || outcome.state === 'error' || outcome.state === 'post_unavailable'
   if (outcome.state === 'post_unavailable') {
     await queueRef.delete() // the post was removed from the platform — stop asking
@@ -140,7 +144,7 @@ async function refreshOne(row: EngagementQueueRow, now: number): Promise<'ok' | 
   return dropped ? 'dropped' : failed ? 'failed' : 'ok'
 }
 
-async function writeOutcome(row: EngagementQueueRow, o: FetchOutcome, accountName: string | null, now: number): Promise<void> {
+async function writeOutcome(row: EngagementQueueRow, o: FetchOutcome, accountName: string | null, now: number, inboxQueued = false): Promise<void> {
   const engRef = db().collection(ENGAGEMENT).doc(row.newsId)
   // Slug lets the public page (which may carry a canonical id) find this doc. Read once.
   let slug: string | null | undefined
@@ -185,7 +189,7 @@ async function writeOutcome(row: EngagementQueueRow, o: FetchOutcome, accountNam
         status: 'pending',
         permalink,
       }
-      tx.set(newRefs[i], { ...doc })
+      tx.set(newRefs[i], inboxQueued ? { ...doc, inboxState: 'queued', inboxLeaseUntil: null } : { ...doc })
     })
     removedSnaps.forEach((s, i) => {
       if (s.exists) tx.update(removedRefs[i], { status: 'removed', removedAt: now })

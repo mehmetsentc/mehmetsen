@@ -232,7 +232,8 @@ describe('kurallar kapalı teslim edilir', () => {
     expect(publishes()).toHaveLength(0)
     // boşta: kural sorgusu + vadesi gelen iş + süresi dolan kira (3 küçük sorgu), haber taraması yok
     // + 2 token-expiry sorgusu + 1 sosyal etkileşim kuyruğu sorgusu (yalnız vadesi gelen satırlar)
-    expect(fs.reads - readsBefore).toBeLessThanOrEqual(6)
+    // + 2 sosyal gelen kutusu kuyruğu sorgusu (yorum + DM; 30 dakikalık bakım turu ilk çalışmada yapıldı)
+    expect(fs.reads - readsBefore).toBeLessThanOrEqual(8)
     expect(job('n1')).toBeUndefined()
   })
 

@@ -257,3 +257,26 @@ describe('etkileşim izni yalnız istenince', () => {
     )
   })
 })
+
+describe('gelen kutusu kuyruğu', () => {
+  it('yeni yorumlar yalnız hesap taslak/otomatik seçtiyse gelen kutusu kuyruğuna girer', async () => {
+    routes = [
+      [/graph\.instagram\.com\/v21\.0\/m7$/, () => ({ body: { like_count: 1, comments_count: 1 } })],
+      [/graph\.instagram\.com\/v21\.0\/m7\/insights$/, () => ({ body: { data: [] } })],
+      [/graph\.instagram\.com\/v21\.0\/m7\/comments$/, () => ({ body: { data: [{ id: 'c71', text: 'Teşekkürler', timestamp: '2026-05-28T10:00:00+0000', username: 'okur' }] } })],
+      [/graph\.instagram\.com\/v21\.0\/m8$/, () => ({ body: { like_count: 1, comments_count: 1 } })],
+      [/graph\.instagram\.com\/v21\.0\/m8\/insights$/, () => ({ body: { data: [] } })],
+      [/graph\.instagram\.com\/v21\.0\/m8\/comments$/, () => ({ body: { data: [{ id: 'c81', text: 'Merhaba', timestamp: '2026-05-28T10:00:00+0000', username: 'okur' }] } })],
+    ]
+    await fs.collection('socialInboxSettings').doc('instagram_200').set({ commentMode: 'draft' })
+    await publish('n7', 'instagram_200', 'instagram', 'post', 'm7')
+    await tick(T0 + 31 * 60_000)
+    expect(fs.store.get('socialComments/instagram_c71')).toMatchObject({ status: 'pending', inboxState: 'queued' })
+    await fs.collection('socialInboxSettings').doc('instagram_200').set({ commentMode: 'off' })
+    await publish('n8', 'instagram_200', 'instagram', 'post', 'm8', T0 + 40 * 60_000)
+    await tick(T0 + 75 * 60_000)
+    const c81 = fs.store.get('socialComments/instagram_c81') as Record<string, unknown>
+    expect(c81.status).toBe('pending')
+    expect(c81.inboxState).toBeUndefined()
+  })
+})
