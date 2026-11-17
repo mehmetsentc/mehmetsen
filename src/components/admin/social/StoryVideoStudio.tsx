@@ -128,6 +128,7 @@ export function StoryVideoStudio() {
     setBusy(null)
     if (!r.ok) return toast.error(r.error)
     apply(r.data.project, dirty)
+    setDraft((d) => ({ ...d, title: r.data.project.title, seriesLabel: r.data.project.seriesLabel }))
     toast.success(p ? 'Kaydedildi' : 'Proje oluşturuldu — şimdi görüntü ekleyin veya sahneleri planlayın')
   }
 

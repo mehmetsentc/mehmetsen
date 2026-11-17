@@ -20,7 +20,7 @@ import {
   type StoryProject,
   type StoryScene,
 } from './storyProject'
-import { finalArgs, overlayConcat, stillSegmentArgs, videoSegmentArgs, xfadeOffsets } from './storyFfmpeg'
+import { finalArgs, joinArgs, overlayConcat, segmentConcat, stillSegmentArgs, videoSegmentArgs, xfadeOffsets } from './storyFfmpeg'
 import { overlayStates, stateAt } from './storyStates'
 
 const asset = (id: string, kind: 'image' | 'video' = 'image', d: Partial<StoryAsset> = {}): StoryAsset => ({
@@ -92,6 +92,10 @@ describe('parsePlan', () => {
     const p = parsePlan(null, { script: 'Bir. İki. Üç.', topic: '', assets }, nid)
     expect(p.source).toBe('fallback')
     expect(p.scenes.map((s) => s.visual.kind)).toEqual(['asset', 'asset', 'ai'])
+  })
+  it('drops section-name labels the AI invents', () => {
+    const p = parsePlan(JSON.stringify({ scenes: [{ text: 'Bir iki.', label: 'Giriş' }, { text: 'Üç dört.', label: 'Kapanış' }, { text: 'Beş altı.', label: '1871' }] }), { script: '', topic: 't', assets: [] }, nid)
+    expect(p.scenes.map((s) => s.label)).toEqual([null, null, '1871'])
   })
   it('survives fenced / chatty JSON', () => {
     const p = parsePlan('Tabii!\n```json\n{"scenes":[{"text":"Merhaba dünya.","asset":null,"prompt":"a"}]}\n```', { script: '', topic: 't', assets: [] }, nid)
@@ -187,19 +191,27 @@ describe('timeline', () => {
 describe('ffmpeg argv', () => {
   it('builds segments with matching stream parameters', () => {
     const s = stillSegmentArgs({ image: 'i.jpg', output: 'o.mp4', seconds: 3, index: 1 })
-    expect(s.join(' ')).toContain('zoompan')
+    expect(s.join(' ')).toContain('crop=1080:1920')
     expect(s).toContain('anullsrc=channel_layout=stereo:sample_rate=48000')
     const v = videoSegmentArgs({ input: 'v.mp4', output: 'o.mp4', seconds: 3, offsetSec: 2, keepAudio: true, hasAudio: false })
     expect(v.join(' ')).not.toContain('[0:a]') // no audio track → silence
     expect(videoSegmentArgs({ input: 'v.mp4', output: 'o.mp4', seconds: 3, offsetSec: 2, keepAudio: true, hasAudio: true }).join(' ')).toContain('volume=0.18')
   })
-  it('chains xfades and mixes the narration', () => {
-    const f = finalArgs({ segments: ['a', 'b', 'c'], lengths: [3, 3, 3], narration: 'n.wav', overlayList: 'o.txt', output: 'out.mp4', total: 8.2 })
+  it('bakes the cross-fade into each segment head and reads segments sequentially', () => {
+    const first = joinArgs({ prev: null, prevLen: 0, cur: 's0.mp4', curLen: 3, last: false, output: 'j0.mp4' })
+    expect(first).toContain('copy')
+    expect(first[first.indexOf('-t') + 1]).toBe('2.600')
+    const mid = joinArgs({ prev: 's0.mp4', prevLen: 3, cur: 's1.mp4', curLen: 4, last: false, output: 'j1.mp4' })
+    expect(mid[mid.indexOf('-ss') + 1]).toBe('2.600')
+    expect(mid.join(' ')).toContain('xfade=transition=fade:duration=0.4:offset=0,trim=duration=3.600')
+    const last = joinArgs({ prev: 's1.mp4', prevLen: 4, cur: 's2.mp4', curLen: 5, last: true, output: 'j2.mp4' })
+    expect(last.join(' ')).toContain('trim=duration=5.000')
+    const f = finalArgs({ segmentList: 'seg.txt', narration: 'n.wav', overlayList: 'o.txt', output: 'out.mp4', total: 11.2 })
     const fc = f[f.indexOf('-filter_complex') + 1]
-    expect(fc.match(/xfade/g)).toHaveLength(2)
-    expect(fc).toContain('offset=2.600')
-    expect(fc).toContain('[4:v]format=rgba') // overlay input after the narration
+    expect(fc).not.toContain('xfade')
+    expect(f.filter((x) => x === 'concat')).toHaveLength(2)
     expect(fc).toContain('amix=inputs=2')
+    expect(segmentConcat(['/t/a.mp4'])).toContain("file '/t/a.mp4'")
   })
   it('writes a concat list that holds the last state', () => {
     const c = overlayConcat([{ file: '/t/a.png', duration: 1 }, { file: "/t/b'.png", duration: 2 }])

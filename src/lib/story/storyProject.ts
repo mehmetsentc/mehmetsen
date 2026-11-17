@@ -366,7 +366,7 @@ export function planSystemPrompt(): string {
     '- Anlatım metni verildiyse metni DEĞİŞTİRME, yalnızca sahnelere böl. Verilmediyse konudan doğru, kanıtlanmış bilgilerle yaz; uydurma rakam, tarih veya isim kullanma; emin olmadığın bilgiyi yazma.',
     '- Suç, cinayet, kaza gibi hassas konularda: masumiyet karinesine uy («şüpheli», «iddiaya göre»), çocuk ve mağdur kimliği verme, şiddeti ayrıntılı anlatma, kanlı sahne tarif etme.',
     '- Her sahne için 1–3 vurgu kelimesi seç (cümlede geçen kelimeler, aynen yazıldığı gibi).',
-    '- Gerekiyorsa sahneye kısa bir etiket ver (ör. yıl, yer, sayı; en fazla 24 karakter), gerekmiyorsa null.',
+    '- Etiket yalnızca sahnedeki somut bir bilgi olabilir: yıl, yer adı, sayı veya kişi adı (ör. «1871», «Hisarlık», «9 katman»; en fazla 24 karakter). «Giriş», «Kapanış», «Teori», «Bulgular» gibi bölüm adları YAZMA; somut bilgi yoksa null.',
     '- Görüntü seçimi: verilen görüntü listesinden (id ve açıklama) cümleye anlamca uyanı seç. Bir görüntü birden fazla sahnede kullanılabilir ama art arda değil. Uygun görüntü yoksa asset null olsun ve sahne için İngilizce bir çizim tarifi (prompt) yaz: ne görüneceğini somut anlat, gerçek kişi yüzü, marka, logo ve yazı isteme.',
     '- Video görüntüsünde cümleye en uygun anı offsetSec ile belirt (bilinmiyorsa 0).',
     'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, "prompt": string|null, "reason": string}]}',
@@ -406,6 +406,14 @@ function extractJson(raw: string): unknown {
   }
 }
 
+/** Scene labels show facts (year, place, number); section names the AI sometimes invents are dropped. */
+const META_LABEL = /^(giriş|kapanış|sonuç|teori|bulgular?|sorgulama|soru|merak|arka plan|tarih(sel)? (yer|süreç)|arkeoloji|özet|açılış|final|bilgi)$/i
+export function factLabel(v: unknown): string | null {
+  const l = cleanText(v, LABEL_MAX)
+  if (!l || META_LABEL.test(l.toLocaleLowerCase('tr-TR'))) return null
+  return l
+}
+
 export type PlanResult = { title: string | null; caption: string | null; scenes: StoryScene[]; source: 'ai' | 'fallback' }
 
 /**
@@ -440,7 +448,7 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
       id: newId(),
       text,
       highlights: parseHighlights(r.highlights, text),
-      label: cleanText(r.label, LABEL_MAX) || null,
+      label: factLabel(r.label),
       visual,
       keepAudio: false,
       reason: cleanText(r.reason, 160) || null,
