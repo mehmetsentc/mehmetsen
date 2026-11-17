@@ -1175,15 +1175,52 @@ const getSuggestedPostsCached = unstable_cache(
   { revalidate: 6 * 60 * 60, tags: ['suggested-posts'] }
 )
 
+/**
+ * FinOps 17 Nov: in-process copy of the related-posts list for OLD articles. A memo hit
+ * skips unstable_cache, so its 6h revalidate does not attach to the article's ISR page.
+ * Misses go through the shared data cache as before (and refill the memo).
+ */
+const SUGGESTED_MEMO_MS = 24 * 60 * 60 * 1000
+const SUGGESTED_MEMO_MAX = 64
+const suggestedMemo = new Map<string, { at: number; value: Post[] }>()
+
+async function getSuggestedPostsMemo(
+  categoryId: string | null,
+  citySlug: string | null,
+  fetchLimit: number
+): Promise<Post[]> {
+  const key = `${categoryId ?? ''}|${citySlug ?? ''}|${fetchLimit}`
+  const hit = suggestedMemo.get(key)
+  if (hit && Date.now() - hit.at < SUGGESTED_MEMO_MS) return hit.value
+  const value = await getSuggestedPostsCached(categoryId, citySlug, fetchLimit)
+  if (value.length > 0) {
+    if (suggestedMemo.size >= SUGGESTED_MEMO_MAX) {
+      const oldest = suggestedMemo.keys().next().value
+      if (oldest !== undefined) suggestedMemo.delete(oldest)
+    }
+    suggestedMemo.set(key, { at: Date.now(), value })
+  }
+  return value
+}
+
 export async function getSuggestedPostsServer(
   excludeId: string,
-  options?: { categoryId?: string; limit?: number; citySlug?: string; tags?: string[] }
+  options?: {
+    categoryId?: string
+    limit?: number
+    citySlug?: string
+    tags?: string[]
+    /** Old article pages: accept an in-process copy up to 24h old (see getSuggestedPostsMemo). */
+    preferMemo?: boolean
+  }
 ): Promise<Post[]> {
   const limitCount = options?.limit ?? 4
   const categoryId = options?.categoryId?.trim() || null
   const citySlug = options?.citySlug?.trim().toLowerCase() || null
   const fetchLimit = citySlug ? Math.max(limitCount + 20, 30) : limitCount + 5
-  const posts = await getSuggestedPostsCached(categoryId, citySlug, fetchLimit)
+  const posts = options?.preferMemo
+    ? await getSuggestedPostsMemo(categoryId, citySlug, fetchLimit)
+    : await getSuggestedPostsCached(categoryId, citySlug, fetchLimit)
   const ranked = citySlug
     ? rankSuggestedPosts(posts, { categoryId, tags: options?.tags })
     : posts

@@ -38,6 +38,10 @@ import { publisherAdInventoryService } from '@/services/publisher/publisherAdInv
 // so corrections go live immediately; only the side lists refresh less often.
 export const revalidate = 86400
 
+/** FinOps 17 Nov (A6): stories older than this read side lists from in-process copies. */
+const OLD_ARTICLE_AGE_MS = 3 * 24 * 60 * 60 * 1000
+const OLD_ARTICLE_SIDE_LIST_MEMO_MS = 6 * 60 * 60 * 1000
+
 // Without generateStaticParams Next renders this param route on every request
 // (`private, no-store`) and `revalidate` is ignored; `[]` enables on-demand ISR.
 export function generateStaticParams() {
@@ -132,9 +136,17 @@ export default async function NewsDetailPage({ params }: PageProps) {
   const breadcrumbJsonLd = buildNewsBreadcrumbJsonLd(post)
   const videoJsonLd = buildVideoObjectJsonLd(post)
 
+  // FinOps 17 Nov (A6): an old story's page should re-render on its own 24h TTL or on an
+  // edit (`news:{slug}`), not every 30 min because the side lists' caches attach their
+  // shorter revalidate to it. Old stories read the side lists from in-process copies.
+  const publishedMs = Date.parse(post.publishedAt ?? '')
+  const isOldArticle =
+    Number.isFinite(publishedMs) && Date.now() - publishedMs > OLD_ARTICLE_AGE_MS
+
   const relatedPosts = await getSuggestedPostsServer(post.id, {
     categoryId: post.categoryId ?? 'gundem',
     limit: 4,
+    preferMemo: isOldArticle,
   })
 
   const seoContext = await getArticleSeoContext(post)
@@ -142,11 +154,14 @@ export default async function NewsDetailPage({ params }: PageProps) {
   // SEO-10: fresh internal links from the cached news-sitemap window (no extra reads).
   let latestLinks: ReturnType<typeof pickArticleLatestLinks> = []
   try {
-    latestLinks = pickArticleLatestLinks(await getNewsSitemapEntries(), {
+    latestLinks = pickArticleLatestLinks(
+      await getNewsSitemapEntries(isOldArticle ? { maxMemoAgeMs: OLD_ARTICLE_SIDE_LIST_MEMO_MS } : undefined),
+      {
       categoryId: post.categoryId,
       // Skip stories already shown under "Benzer haberler" so the block adds new URLs.
       excludeSlugs: [post.slug ?? '', ...relatedPosts.map((p) => p.slug ?? '')],
-    })
+      }
+    )
   } catch {
     latestLinks = []
   }

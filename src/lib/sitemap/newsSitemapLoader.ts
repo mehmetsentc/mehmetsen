@@ -111,9 +111,18 @@ export function __resetNewsSitemapMemoForTests(): void {
   newsSitemapInflight = null
 }
 
-export async function getNewsSitemapEntries(): Promise<NewsSitemapEntry[]> {
+/**
+ * FinOps 17 Nov: `maxMemoAgeMs` lets the article page of an OLD story accept an older
+ * in-process copy. A memo hit never touches unstable_cache, so the 30-min revalidate of
+ * this cache does not attach to that ISR page (it re-renders on its own 24h TTL or on its
+ * `news:{slug}` tag instead of every 30 min). Sitemap routes keep the 10-min default.
+ */
+export async function getNewsSitemapEntries(
+  options?: { maxMemoAgeMs?: number }
+): Promise<NewsSitemapEntry[]> {
   const now = Date.now()
-  if (newsSitemapMemo && now - newsSitemapMemo.at < NEWS_SITEMAP_MEMO_MS) {
+  const maxAge = Math.max(NEWS_SITEMAP_MEMO_MS, options?.maxMemoAgeMs ?? 0)
+  if (newsSitemapMemo && now - newsSitemapMemo.at < maxAge) {
     return newsSitemapMemo.value
   }
   if (!newsSitemapInflight) {
