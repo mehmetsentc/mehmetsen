@@ -17,6 +17,7 @@ import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
 import { MediaProjectStudio } from './MediaProjectStudio'
+import { StoryVideoStudio } from './StoryVideoStudio'
 import { ReelLibraryPanel } from './ReelLibraryPanel'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
@@ -82,7 +83,7 @@ type ReelResult = {
 }
 type Digest = { id: string; newsIds: string[]; title: string; url: string; caption: string; seconds: number; createdAt: number; lines: string[] }
 type Usage = { month: string; overageApproved: boolean; tiers: Array<{ tier: string; used: number; cap: number }> }
-type Mode = 'single' | 'digest' | 'library' | 'upload' | 'media'
+type Mode = 'single' | 'digest' | 'library' | 'upload' | 'media' | 'story'
 type Tab = 'settings' | 'share' | 'voices'
 
 const INTRO_TEXT: Record<string, [string, string]> = {
@@ -487,6 +488,7 @@ export function ReelsStudio() {
             ['library', 'Kaydedilenler'],
             ['upload', 'Video yükle'],
             ['media', 'Medya projesi'],
+            ['story', 'Konu → Video'],
           ] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={cn('rounded-lg px-3 py-1.5', mode === k ? 'bg-[rgb(var(--color-card))] shadow' : 'text-[rgb(var(--color-muted))]')}>
               {l}
@@ -516,6 +518,10 @@ export function ReelsStudio() {
       ) : mode === 'media' ? (
         <div className="flex min-h-0 flex-1 overflow-auto p-3">
           <MediaProjectStudio />
+        </div>
+      ) : mode === 'story' ? (
+        <div className="flex min-h-0 flex-1 overflow-auto p-3">
+          <StoryVideoStudio />
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-auto p-3 lg:grid-cols-[320px_minmax(0,1fr)_380px] lg:overflow-hidden">

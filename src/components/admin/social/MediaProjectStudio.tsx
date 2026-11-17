@@ -55,7 +55,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
 }
 const input_ = 'w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm'
 
-function RightsForm({ value, onChange }: { value: MediaRights; onChange: (r: MediaRights) => void }) {
+export function RightsForm({ value, onChange }: { value: MediaRights; onChange: (r: MediaRights) => void }) {
   return (
     <div className="space-y-2 rounded-xl border border-[rgb(var(--color-border))] p-3">
       <p className="text-xs font-bold text-[rgb(var(--color-text))]">Kullanım hakkı (zorunlu)</p>

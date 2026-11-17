@@ -44,12 +44,16 @@ export type SocialAuditAction =
   | 'social.inbox.uncertain_ack'
   | 'media.project.save'
   | 'media.clip.render'
+  | 'story.project.save'
+  | 'story.plan'
+  | 'story.images'
+  | 'story.render'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject' | 'storyProject'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null
