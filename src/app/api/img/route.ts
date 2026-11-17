@@ -15,8 +15,24 @@ const ERROR_CACHE = {
   'CDN-Cache-Control': 'public, s-maxage=3600',
 }
 
+/**
+ * FinOps 17 Nov (A9): ≈12–15% of /api/img calls fail, mostly dead or hotlink-blocked
+ * originals that stay that way. Those now answer 404 (Cloudflare caches 404, not 502)
+ * for a day, so a broken card image costs one function call per day per size, not one
+ * per view. Timeouts and upstream 5xx keep the short 1h 502.
+ */
+const PERMANENT_UPSTREAM_STATUSES = new Set([401, 403, 404, 410, 451])
+const PERMANENT_ERROR_CACHE = {
+  'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+  'CDN-Cache-Control': 'public, s-maxage=86400',
+}
+
 function fail(error: string, status: number) {
   return NextResponse.json({ error }, { status, headers: ERROR_CACHE })
+}
+
+function failPermanent(error: string) {
+  return NextResponse.json({ error }, { status: 404, headers: PERMANENT_ERROR_CACHE })
 }
 
 /** Too large to resize here: let the browser load the original instead of a blank card. */
@@ -78,6 +94,9 @@ export async function GET(request: Request) {
   try {
     const upstream = await fetchImage(parsed, 2)
     if (!upstream.ok || !upstream.body) {
+      if (PERMANENT_UPSTREAM_STATUSES.has(upstream.status)) {
+        return failPermanent(`Upstream ${upstream.status}`)
+      }
       return fail(`Upstream ${upstream.status}`, 502)
     }
 
@@ -88,10 +107,10 @@ export async function GET(request: Request) {
 
     const type = upstream.headers.get('content-type') || ''
     if (type && !type.startsWith('image/')) {
-      return fail('Not an image', 415)
+      return failPermanent('Not an image')
     }
     if (type.includes('svg')) {
-      return fail('SVG not allowed', 415)
+      return failPermanent('SVG not allowed')
     }
 
     const buffer = Buffer.from(await upstream.arrayBuffer())
