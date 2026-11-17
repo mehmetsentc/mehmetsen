@@ -77,10 +77,28 @@ export function pickNewsCardFields(data: Record<string, unknown>): Record<string
 
 type Selectable<Q> = Q & { select?: (...fields: string[]) => Q }
 
+/**
+ * FinOps 17 Nov (A4): `description` holds the whole article text on crawler/AI stories
+ * (≈2.5 KB average, the same as `content`; measured on news_read_mirror, last 7 days) and
+ * is ≈70% of every card read's bytes — Firestore egress is the largest Google line.
+ * Cards only show its first 180–400 characters and fall back to `summary` (≈350 B,
+ * present on all but ≈110 of 70k published stories). With NEWS_CARD_SLIM=1 list reads
+ * skip `description` and read `readingTimeMinutes` instead. Off by default; one env var
+ * switches it back.
+ */
+export function isSlimCardEnabled(): boolean {
+  return process.env.NEWS_CARD_SLIM === '1'
+}
+
+export function newsCardFields(): readonly string[] {
+  if (!isSlimCardEnabled()) return NEWS_CARD_FIRESTORE_FIELDS
+  return [...NEWS_CARD_FIRESTORE_FIELDS.filter((f) => f !== 'description'), 'readingTimeMinutes']
+}
+
 /** No-op when the query mock has no select(), same as the feed projection guard. */
 export function selectNewsCardFields<Q>(query: Selectable<Q>): Q {
   if (typeof query.select !== 'function') return query
-  return query.select(...NEWS_CARD_FIRESTORE_FIELDS)
+  return query.select(...newsCardFields())
 }
 
 /**
@@ -108,7 +126,12 @@ export const NEWS_DAY_FEED_FIRESTORE_FIELDS = [
   'sourceUrl',
 ] as const
 
+export function newsDayFeedFields(): readonly string[] {
+  if (!isSlimCardEnabled()) return NEWS_DAY_FEED_FIRESTORE_FIELDS
+  return NEWS_DAY_FEED_FIRESTORE_FIELDS.filter((f) => f !== 'description')
+}
+
 export function selectNewsDayFeedFields<Q>(query: Selectable<Q>): Q {
   if (typeof query.select !== 'function') return query
-  return query.select(...NEWS_DAY_FEED_FIRESTORE_FIELDS)
+  return query.select(...newsDayFeedFields())
 }

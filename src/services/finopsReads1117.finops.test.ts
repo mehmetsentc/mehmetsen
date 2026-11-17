@@ -42,8 +42,8 @@ describe('FinOps 17 Nov: Neon phase 2.2 (tag + author lists)', () => {
       expect(block.indexOf("isMirrorReadEnabled('tagAuthor')")).toBeLessThan(block.indexOf('getAdminFirestore()'))
       expect(block).toMatch(/catch \(mirrorError\)/)
     }
-    expect(tagBlock).toContain('loadMirrorTagDocs(variants, TAG_LIST_LIMIT, NEWS_CARD_FIRESTORE_FIELDS)')
-    expect(authorBlock).toContain('loadMirrorAuthorDocs(authorId, limitCount, NEWS_CARD_FIRESTORE_FIELDS)')
+    expect(tagBlock).toContain('loadMirrorTagDocs(variants, TAG_LIST_LIMIT, newsCardFields())')
+    expect(authorBlock).toContain('loadMirrorAuthorDocs(authorId, limitCount, newsCardFields())')
   })
 
   it('mirror flag is NEWS_PG_READ_TAG_AUTHOR', () => {

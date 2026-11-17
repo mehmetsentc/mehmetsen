@@ -7,7 +7,7 @@ import { isPubliclyVisibleStatus, formatPublicSourceLabel } from '@/lib/postUtil
 import { NEWS_COLLECTION } from '@/lib/newsQueries'
 import { newsDocToPost, type NewsDocument } from '@/lib/newsMapper'
 import {
-  NEWS_CARD_FIRESTORE_FIELDS,
+  newsCardFields,
   selectNewsCardFields,
   selectNewsDayFeedFields,
 } from '@/lib/news/cardFirestoreFields'
@@ -1239,7 +1239,7 @@ const getPostsByTagCached = unstable_cache(
     // FinOps Neon phase 2.2 (17 Nov 2026): tag lists from news_read_mirror.
     if (isMirrorReadEnabled('tagAuthor')) {
       try {
-        const rows = await loadMirrorTagDocs(variants, TAG_LIST_LIMIT, NEWS_CARD_FIRESTORE_FIELDS)
+        const rows = await loadMirrorTagDocs(variants, TAG_LIST_LIMIT, newsCardFields())
         return rows
           .map((row) => newsDocToPost(row.id, row.data as NewsDocument))
           .filter((post): post is Post => post !== null)
@@ -1416,7 +1416,7 @@ const getPostsByAuthorIdCached = unstable_cache(
     // FinOps Neon phase 2.2 (17 Nov 2026): author lists from news_read_mirror.
     if (isMirrorReadEnabled('tagAuthor')) {
       try {
-        const rows = await loadMirrorAuthorDocs(authorId, limitCount, NEWS_CARD_FIRESTORE_FIELDS)
+        const rows = await loadMirrorAuthorDocs(authorId, limitCount, newsCardFields())
         return rows
           .map((row) => newsDocToPost(row.id, row.data as NewsDocument))
           .filter((post): post is Post => post !== null)
@@ -1582,7 +1582,7 @@ type MostReadSelectable<Q> = Q & { select?: (...fields: string[]) => Q }
 /** No-op for query mocks without select(), like selectNewsCardFields. */
 function selectMostReadFields<Q>(query: MostReadSelectable<Q>): Q {
   if (typeof query.select !== 'function') return query
-  return query.select(...NEWS_CARD_FIRESTORE_FIELDS, 'viewsCount', 'views')
+  return query.select(...newsCardFields(), 'viewsCount', 'views')
 }
 
 const getMostReadPostsCached = unstable_cache(

@@ -202,7 +202,12 @@ export function inferPostType(data: NewsDocument): PostType {
     return data.type
   }
   if (data.videoUrl?.trim()) return 'video'
-  if (data.thumbnail?.trim() && !data.description?.trim()) return 'photo'
+  // FinOps 17 Nov (A4): a slim card read omits `description`; judge by summary/spot then.
+  const hasText =
+    data.description !== undefined
+      ? Boolean(data.description?.trim())
+      : Boolean(data.summary?.trim() || data.spot?.trim() || data.content?.trim())
+  if (data.thumbnail?.trim() && !hasText) return 'photo'
   const author = data.author?.trim()
   if (author && author !== 'nahaber' && author !== DEFAULT_SOURCE) return 'user_post'
   return 'news'

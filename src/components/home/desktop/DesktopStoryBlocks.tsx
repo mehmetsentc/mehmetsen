@@ -66,7 +66,8 @@ function estimateReadingMinutes(item: NewsItem): number | null {
     return item.readingMinutes
   }
   const text = item.content ?? item.description ?? ''
-  if (!text) return null
+  // List items carry ≤180 characters of text: too little to estimate a reading time.
+  if (!text || text.length < 400) return null
   const wordCount = text.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length
   const minutes = Math.ceil(wordCount / 200)
   return minutes >= 1 ? minutes : null

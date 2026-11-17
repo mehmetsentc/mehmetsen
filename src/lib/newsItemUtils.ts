@@ -98,7 +98,10 @@ export function docToNewsItem(
     String(raw.spot ?? '').trim() ||
     ''
   const contentRaw = String(raw.content ?? '').trim()
-  const readingSource = contentRaw || descriptionRaw
+  // FinOps 17 Nov (A4): a slim card read has no description/content; a reading time
+  // estimated from the ≈350-char summary would always say "1 dk", so leave it unset.
+  const bodyWasRead = raw.description !== undefined || raw.content !== undefined
+  const readingSource = bodyWasRead ? contentRaw || descriptionRaw : ''
   const readingMinutes =
     typeof raw.readingTimeMinutes === 'number' && raw.readingTimeMinutes > 0
       ? Math.max(1, Math.round(raw.readingTimeMinutes))
