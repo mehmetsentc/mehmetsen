@@ -86,7 +86,7 @@ export function joinArgs(a: { prev: string | null; prevLen: number; cur: string;
   }
   args.push('-ss', f3(Math.max(0, a.prevLen - XF)), '-t', f3(XF), '-i', a.prev, '-i', a.cur)
   const fc =
-    `[0:v]setpts=PTS-STARTPTS[pv];[1:v]setpts=PTS-STARTPTS[cv];[pv][cv]xfade=transition=fade:duration=${XF}:offset=0,trim=duration=${f3(keep)},setpts=PTS-STARTPTS,format=yuv420p[v];` +
+    `[0:v]setpts=PTS-STARTPTS,fps=${FPS}[pv];[1:v]setpts=PTS-STARTPTS,fps=${FPS}[cv];[pv][cv]xfade=transition=fade:duration=${XF}:offset=0,trim=duration=${f3(keep)},setpts=PTS-STARTPTS,format=yuv420p[v];` +
     `[0:a]asetpts=PTS-STARTPTS[pa];[1:a]asetpts=PTS-STARTPTS[ca];[pa][ca]acrossfade=d=${XF}:c1=tri:c2=tri,atrim=duration=${f3(keep)},asetpts=PTS-STARTPTS[a]`
   args.push('-filter_complex', fc, '-map', '[v]', '-map', '[a]', ...segEnc, ...aenc, '-movflags', '+faststart', a.output)
   return args
