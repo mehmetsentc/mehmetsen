@@ -183,7 +183,8 @@ export function contentBox(lum: Float32Array, w: number, h: number): { x0: numbe
   // flat = almost no detail; paper = light, lightly textured (aged paper with stains)
   const blank = (v: number[], allowPaper: boolean) => {
     const { mean, std } = stats(v)
-    return std < 9 || (allowPaper && mean > 185 && std < 18)
+    // near-white edge rows (scan / torn-paper border) are also margin
+    return std < 9 || mean > 215 && std < 30 || (allowPaper && mean > 165 && std < 18)
   }
   let y0 = 0
   let y1 = h
@@ -202,15 +203,25 @@ export function contentBox(lum: Float32Array, w: number, h: number): { x0: numbe
 /** Any image → 1188×2112 JPEG still (flat margins trimmed; cover or blurred fill). */
 export async function composeStill(input: Buffer, outFile: string): Promise<void> {
   const img = await loadImage(input)
-  // find the content box on a small copy
+  // Find the content box on a small, box-averaged copy. Averaging in JS (4×4 blocks of a
+  // 288 px copy) keeps paper texture smooth even where the canvas samples nearest-neighbour
+  // on large downscales (seen on the server: the blank-paper bottom was not detected).
+  const B = 4
   const sw = 72
   const sh = Math.max(8, Math.round((img.height / img.width) * sw))
-  const probe = createCanvas(sw, sh)
+  const probe = createCanvas(sw * B, sh * B)
   const pctx = probe.getContext('2d')
-  pctx.drawImage(img, 0, 0, sw, sh)
-  const px = pctx.getImageData(0, 0, sw, sh).data
+  pctx.imageSmoothingEnabled = true
+  pctx.imageSmoothingQuality = 'high'
+  pctx.drawImage(img, 0, 0, sw * B, sh * B)
+  const px = pctx.getImageData(0, 0, sw * B, sh * B).data
   const lum = new Float32Array(sw * sh)
-  for (let i = 0; i < sw * sh; i++) lum[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]
+  for (let y = 0; y < sh * B; y++) {
+    for (let x = 0; x < sw * B; x++) {
+      const i = (y * sw * B + x) * 4
+      lum[Math.floor(y / B) * sw + Math.floor(x / B)] += (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / (B * B)
+    }
+  }
   const box = contentBox(lum, sw, sh)
   const kx = img.width / sw
   const ky = img.height / sh
@@ -234,7 +245,8 @@ export async function composeStill(input: Buffer, outFile: string): Promise<void
     const s = Math.max(STILL_W / sWidth, STILL_H / sHeight)
     return { w: sWidth * s, h: sHeight * s }
   }
-  if (ar >= target * 0.8 && ar <= target * 1.25) {
+  // up to square-ish pictures fill the frame (sides cropped); real landscape photos get a blurred fill
+  if (ar >= target * 0.8 && ar <= target * 2) {
     const { w, h } = coverRect()
     ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
   } else {

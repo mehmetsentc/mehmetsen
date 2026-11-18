@@ -507,7 +507,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
 
 export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'>): string {
   return hashKey([
-    'story-v2',
+    'story-v3',
     p.style,
     p.seriesLabel,
     p.rights.kind,
