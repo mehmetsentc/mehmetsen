@@ -101,14 +101,27 @@ export function segmentConcat(files: string[]): string {
  * Final assembly. Inputs: joined segments (concat list), narration WAV, overlay concat list.
  * Output: H.264 High / AAC, moov first.
  */
-export function finalArgs(a: { segmentList: string; narration: string; overlayList: string; output: string; total: number }): string[] {
+/** Watermark: the NaHaber mark, faint, drifting slowly around the centre for the whole video (anti re-upload). */
+export const WATERMARK = { width: 300, opacity: 0.22, ampX: 150, ampY: 120, periodX: 13, periodY: 9, liftY: 140 } as const
+
+export function finalArgs(a: { segmentList: string; narration: string; overlayList: string; output: string; total: number; watermark?: string | null }): string[] {
   const args = ['-hide_banner', '-loglevel', 'error', '-y']
   args.push('-f', 'concat', '-safe', '0', '-i', a.segmentList)
   args.push('-i', a.narration)
   args.push('-f', 'concat', '-safe', '0', '-i', a.overlayList)
+  if (a.watermark) args.push('-loop', '1', '-framerate', String(FPS), '-i', a.watermark)
+  const W = WATERMARK
+  const wm = a.watermark
+    ? [
+        `[3:v]scale=${W.width}:-1,format=rgba,colorchannelmixer=aa=${W.opacity}[wm]`,
+        `[base0][wm]overlay=x='(W-w)/2+${W.ampX}*sin(2*PI*t/${W.periodX})':y='(H-h)/2-${W.liftY}+${W.ampY}*sin(2*PI*t/${W.periodY}+1)':shortest=1:format=auto[base]`,
+      ]
+    : ['[base0]null[base]']
   const parts = [
     '[2:v]format=rgba,setpts=PTS-STARTPTS[ovl]',
-    '[0:v]setpts=PTS-STARTPTS[base]',
+    '[0:v]setpts=PTS-STARTPTS[base0]',
+    ...wm,
+    // captions and labels stay above the watermark
     '[base][ovl]overlay=0:0:format=auto:eof_action=pass,format=yuv420p[v]',
     '[1:a]aresample=48000,aformat=channel_layouts=stereo[nar]',
     '[0:a]aresample=48000,aformat=channel_layouts=stereo[bg]',

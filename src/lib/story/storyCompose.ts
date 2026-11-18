@@ -82,6 +82,8 @@ export async function composeStory(o: {
   style: StoryStyle
   seriesLabel: string
   root?: string
+  /** NaHaber watermark drifting around the centre (default on) */
+  watermark?: boolean
   /** stop before the platform function limit (ms, whole composition) */
   budgetMs?: number
   onStep?: (step: string) => void
@@ -127,8 +129,11 @@ export async function composeStory(o: {
   const list = path.join(o.dir, 'overlay.ffconcat')
   await fs.writeFile(list, overlayConcat(states))
   step(`altyazı (${states.length} kare)`)
+  const wmPath = path.join(o.root ?? process.cwd(), 'src/lib/story/watermark.png')
+  const watermark = o.watermark === false ? null : await fs.access(wmPath).then(() => wmPath, () => null)
+  if (o.watermark !== false && !watermark) console.warn('[story] watermark.png bulunamadı; filigransız üretiliyor')
   const file = path.join(o.dir, 'story.mp4')
-  await runFfmpeg(o.ffmpeg, finalArgs({ segmentList: segList, narration, overlayList: list, output: file, total: tl.total }), left())
+  await runFfmpeg(o.ffmpeg, finalArgs({ segmentList: segList, narration, overlayList: list, output: file, total: tl.total, watermark }), left())
   step('birleştirme')
   const cover = path.join(o.dir, 'cover.jpg')
   const coverAt = Math.min(tl.total - 0.1, (tl.scenes[0]?.voiceStart ?? 0) + 1.2)
