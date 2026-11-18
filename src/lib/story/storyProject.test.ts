@@ -233,3 +233,14 @@ describe('storyCaption', () => {
     expect(c).toContain('yapay zekâ')
   })
 })
+
+describe('contentBox (blank paper trim)', () => {
+  it('trims flat bottom and left margins, keeps content', async () => {
+    const { contentBox } = await import('./storyOverlay')
+    const w = 40
+    const h = 80
+    const lum = new Float32Array(w * h)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) lum[y * w + x] = y < 50 && x >= 4 ? ((x * 37 + y * 91) % 200) : 230
+    expect(contentBox(lum, w, h)).toEqual({ x0: 4, y0: 0, x1: 40, y1: 50 })
+  })
+})

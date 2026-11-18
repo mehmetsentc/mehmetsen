@@ -170,31 +170,84 @@ export async function renderOverlayStates(dir: string, input: OverlayInput, root
   return out
 }
 
-/** Any image → 1620×2880 JPEG still for the zoom segment. */
+/**
+ * Content box of an image without flat margins (blank paper, borders): rows / columns
+ * from each edge whose luminance barely varies are trimmed. Image models sometimes
+ * draw the picture in the upper part and leave the rest as empty paper.
+ */
+export function contentBox(lum: Float32Array, w: number, h: number): { x0: number; y0: number; x1: number; y1: number } {
+  const stats = (vals: number[]) => {
+    const m = vals.reduce((a, b) => a + b, 0) / vals.length
+    return { mean: m, std: Math.sqrt(vals.reduce((a, b) => a + (b - m) * (b - m), 0) / vals.length) }
+  }
+  // flat = almost no detail; paper = light, lightly textured (aged paper with stains)
+  const blank = (v: number[], allowPaper: boolean) => {
+    const { mean, std } = stats(v)
+    return std < 9 || (allowPaper && mean > 185 && std < 18)
+  }
+  let y0 = 0
+  let y1 = h
+  let x0 = 0
+  let x1 = w
+  const row = (y: number) => Array.from({ length: x1 - x0 }, (_, i) => lum[y * w + x0 + i])
+  const col = (x: number) => Array.from({ length: y1 - y0 }, (_, i) => lum[(y0 + i) * w + x])
+  // bottom and sides may be empty paper; the top only when it is flat (a light sky is content)
+  while (y1 - y0 > h * 0.5 && blank(row(y1 - 1), true)) y1--
+  while (y1 - y0 > h * 0.5 && blank(row(y0), false)) y0++
+  while (x1 - x0 > w * 0.5 && blank(col(x1 - 1), true)) x1--
+  while (x1 - x0 > w * 0.5 && blank(col(x0), true)) x0++
+  return { x0, y0, x1, y1 }
+}
+
+/** Any image → 1188×2112 JPEG still (flat margins trimmed; cover or blurred fill). */
 export async function composeStill(input: Buffer, outFile: string): Promise<void> {
   const img = await loadImage(input)
+  // find the content box on a small copy
+  const sw = 72
+  const sh = Math.max(8, Math.round((img.height / img.width) * sw))
+  const probe = createCanvas(sw, sh)
+  const pctx = probe.getContext('2d')
+  pctx.drawImage(img, 0, 0, sw, sh)
+  const px = pctx.getImageData(0, 0, sw, sh).data
+  const lum = new Float32Array(sw * sh)
+  for (let i = 0; i < sw * sh; i++) lum[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2]
+  const box = contentBox(lum, sw, sh)
+  const kx = img.width / sw
+  const ky = img.height / sh
+  // a small inset removes the ragged / torn edge of a drawn frame
+  const trimmed = box.x0 > 0 || box.y0 > 0 || box.x1 < sw || box.y1 < sh
+  const inset = trimmed ? 0.015 : 0
+  let sx = box.x0 * kx
+  let sy = box.y0 * ky
+  let sWidth = (box.x1 - box.x0) * kx
+  let sHeight = (box.y1 - box.y0) * ky
+  sx += sWidth * inset
+  sy += sHeight * inset
+  sWidth *= 1 - inset * 2
+  sHeight *= 1 - inset * 2
+
   const canvas = createCanvas(STILL_W, STILL_H)
   const ctx = canvas.getContext('2d')
-  const ar = img.width / img.height
+  const ar = sWidth / sHeight
   const target = STILL_W / STILL_H
-  const cover = (iw: number, ih: number) => {
-    const s = Math.max(STILL_W / iw, STILL_H / ih)
-    return { w: iw * s, h: ih * s }
+  const coverRect = () => {
+    const s = Math.max(STILL_W / sWidth, STILL_H / sHeight)
+    return { w: sWidth * s, h: sHeight * s }
   }
   if (ar >= target * 0.8 && ar <= target * 1.25) {
-    const { w, h } = cover(img.width, img.height)
-    ctx.drawImage(img, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
+    const { w, h } = coverRect()
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
   } else {
-    const { w, h } = cover(img.width, img.height)
+    const { w, h } = coverRect()
     ctx.filter = 'blur(48px) brightness(0.72)'
-    ctx.drawImage(img, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
     ctx.filter = 'none'
-    const s = Math.min(STILL_W / img.width, (STILL_H * 0.62) / img.height)
-    const fw = img.width * s
-    const fh = img.height * s
+    const s = Math.min(STILL_W / sWidth, (STILL_H * 0.62) / sHeight)
+    const fw = sWidth * s
+    const fh = sHeight * s
     // fitted image in the upper-middle part, above the caption band
-    const fy = Math.max(380, (STILL_H * 0.42) - fh / 2)
-    ctx.drawImage(img, (STILL_W - fw) / 2, fy, fw, fh)
+    const fy = Math.max(STILL_H * 0.13, STILL_H * 0.42 - fh / 2)
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - fw) / 2, fy, fw, fh)
   }
   await fs.writeFile(outFile, await canvas.encode('jpeg', 90))
 }

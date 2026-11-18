@@ -475,7 +475,7 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
 // ── AI illustration ──────────────────────────────────────────────────────────
 
 export function illustrationPrompt(scenePrompt: string, style: StoryStyle): string {
-  return `${scenePrompt.trim()}. Style: ${STYLE_THEME[style].imageStyle}. Keep the main subject in the upper two thirds of the frame; leave the lower third calm and uncluttered for captions.`
+  return `${scenePrompt.trim()}. Style: ${STYLE_THEME[style].imageStyle}. Full-bleed artwork that fills the entire vertical frame edge to edge: no border, no frame, no margins, no blank paper areas. Main subject in the upper two thirds; the lower third continues the scene (ground, water, sky or texture) with fewer details so captions stay readable.`
 }
 
 /** FNV-1a 8 hex — stable key for files derived from the inputs. */
@@ -507,7 +507,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
 
 export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'>): string {
   return hashKey([
-    'story-v1',
+    'story-v2',
     p.style,
     p.seriesLabel,
     p.rights.kind,
