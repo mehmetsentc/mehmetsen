@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildTimeline,
   captionChunks,
+  chunkRanges,
+  FRAMES,
+  illustrationPrompt,
+  shotList,
   estimateSeconds,
   imageKeyFor,
   missingImages,
@@ -106,7 +110,7 @@ describe('parsePlan', () => {
 describe('parseScenes', () => {
   const assets = [asset('a1'), asset('v1', 'video', { durationMs: 10_000 })]
   it('keeps a generated image only while the prompt is unchanged', () => {
-    const prev: StoryScene[] = [{ id: 'sc0001', text: 'x y', highlights: [], label: null, keepAudio: false, reason: null, visual: { kind: 'ai', prompt: 'old', imagePath: 'p', imageUrl: 'u', imageKey: 'k', error: null } }]
+    const prev: StoryScene[] = [{ id: 'sc0001', text: 'x y', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'ai', prompt: 'old', imagePath: 'p', imageUrl: 'u', imageKey: 'k', error: null } }]
     const same = parseScenes([{ id: 'sc0001', text: 'x y', visual: { kind: 'ai', prompt: 'old', imagePath: 'HACK' } }], assets, prev)
     expect(same.ok && same.value[0].visual).toMatchObject({ imagePath: 'p', imageKey: 'k' }) // server-owned fields not taken from client
     const changed = parseScenes([{ id: 'sc0001', text: 'x y', visual: { kind: 'ai', prompt: 'new' } }], assets, prev)
@@ -131,8 +135,8 @@ describe('render readiness and keys', () => {
   const base = (): Pick<StoryProject, 'scenes' | 'style' | 'assets' | 'seriesLabel' | 'rights'> => ({
     style: 'paper', seriesLabel: 'NaHaber', rights, assets: [asset('a1')],
     scenes: [
-      { id: 's1', text: 'Bir iki üç.', highlights: [], label: null, keepAudio: false, reason: null, visual: { kind: 'asset', assetId: 'a1', offsetMs: 0 } },
-      { id: 's2', text: 'Dört beş altı.', highlights: [], label: null, keepAudio: false, reason: null, visual: { kind: 'ai', prompt: 'p', imagePath: null, imageUrl: null, imageKey: null, error: null } },
+      { id: 's1', text: 'Bir iki üç.', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'asset', assetId: 'a1', offsetMs: 0 } },
+      { id: 's2', text: 'Dört beş altı.', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'ai', prompt: 'p', imagePath: null, imageUrl: null, imageKey: null, error: null } },
     ],
   })
   it('asks for illustrations first', () => {
@@ -230,8 +234,8 @@ describe('storyCaption', () => {
     const c = storyCaption({
       caption: 'Truva gerçek mi?', title: 't', rights: { kind: 'partner', sourceName: 'DHA', note: null }, assets: [asset('a1')],
       scenes: [
-        { id: 's1', text: 'a', highlights: [], label: null, keepAudio: false, reason: null, visual: { kind: 'asset', assetId: 'a1', offsetMs: 0 } },
-        { id: 's2', text: 'b', highlights: [], label: null, keepAudio: false, reason: null, visual: { kind: 'ai', prompt: 'p', imagePath: 'x', imageUrl: null, imageKey: null, error: null } },
+        { id: 's1', text: 'a', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'asset', assetId: 'a1', offsetMs: 0 } },
+        { id: 's2', text: 'b', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'ai', prompt: 'p', imagePath: 'x', imageUrl: null, imageKey: null, error: null } },
       ],
     })
     expect(c).toContain('Kaynak: DHA')
@@ -247,5 +251,70 @@ describe('contentBox (blank paper trim)', () => {
     const lum = new Float32Array(w * h)
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) lum[y * w + x] = y < 50 && x >= 4 ? ((x * 37 + y * 91) % 200) : 230
     expect(contentBox(lum, w, h)).toEqual({ x0: 4, y0: 0, x1: 40, y1: 50 })
+  })
+})
+
+describe('long videos and formats', () => {
+  it('parses format and target length with defaults', () => {
+    const a = parseMeta({ topic: 'Truva', rights })
+    expect(a.ok && a.value.format).toBe('vertical')
+    expect(a.ok && a.value.targetMin).toBe(1)
+    const b = parseMeta({ topic: 'Truva', rights, format: 'horizontal', targetMin: 10 })
+    expect(b.ok && b.value.format).toBe('horizontal')
+    expect(b.ok && b.value.targetMin).toBe(10)
+  })
+  it('long plans never ask for AI drawings: missing pictures become text cards with a shot-list note', () => {
+    const raw = JSON.stringify({ title: 'T', caption: 'c', scenes: [
+      { text: 'Birinci cümle burada.', asset: 'a1', need: null },
+      { text: 'İkinci cümle burada.', asset: null, prompt: 'x', need: 'Kazı alanı fotoğrafı' },
+      { text: 'Üçüncü cümle burada.', asset: 'a1', offsetSec: 0 },
+    ] })
+    const plan = parsePlan(raw, { script: '', topic: 't', assets: [asset('a1')], targetMin: 5 }, nid)
+    expect(plan.scenes.map((s) => s.visual.kind)).toEqual(['asset', 'card', 'asset'])
+    expect(plan.scenes[1].need).toBe('Kazı alanı fotoğrafı')
+    expect(shotList(plan)).toHaveLength(1)
+  })
+  it('short plans keep AI drawings', () => {
+    const raw = JSON.stringify({ scenes: [{ text: 'Bir cümle.', asset: null, prompt: 'a city' }, { text: 'İki cümle.', asset: null }] })
+    const plan = parsePlan(raw, { script: '', topic: 't', assets: [], targetMin: 1 }, nid)
+    expect(plan.scenes.every((s) => s.visual.kind === 'ai')).toBe(true)
+  })
+  it('renderProblem rejects AI drawings in long videos and uses the target limit', () => {
+    const scenes = [0, 1].map((i) => ({ id: `s${i}aaa`, text: 'Kısa cümle.', highlights: [], label: null, visual: { kind: 'ai' as const, prompt: 'x', imagePath: 'p', imageUrl: 'u', imageKey: imageKeyFor('x', 'paper'), error: null }, keepAudio: false, reason: null, need: null }))
+    expect(renderProblem({ scenes, style: 'paper', assets: [], targetMin: 3 })).toMatch(/AI çizimi/)
+    expect(renderProblem({ scenes, style: 'paper', assets: [], targetMin: 1 })).toBeNull()
+    const cards = scenes.map((s) => ({ ...s, visual: { kind: 'card' as const } }))
+    expect(renderProblem({ scenes: cards, style: 'paper', assets: [], targetMin: 3 })).toBeNull()
+  })
+  it('the render key changes with the format', () => {
+    const p = { scenes: [], style: 'paper' as const, seriesLabel: 'N', rights, assets: [] }
+    expect(renderKeyFor({ ...p, format: 'vertical' })).not.toBe(renderKeyFor({ ...p, format: 'horizontal' }))
+  })
+  it('chunkRanges covers every scene once, in ≈ target-sized parts', () => {
+    const scenes = Array.from({ length: 70 }, () => ({ text: 'Bu bir uzun anlatım cümlesidir ve yaklaşık yedi saniye sürer, belki biraz daha.' }))
+    const r = chunkRanges(scenes, 45)
+    expect(r[0][0]).toBe(0)
+    expect(r[r.length - 1][1]).toBe(70)
+    for (let i = 1; i < r.length; i++) expect(r[i][0]).toBe(r[i - 1][1])
+    expect(r.length).toBeGreaterThan(5)
+  })
+  it('horizontal frame and illustration prompt', () => {
+    expect(FRAMES.horizontal.w).toBe(1920)
+    expect(illustrationPrompt('a ship', 'paper', 'horizontal')).toMatch(/16:9/)
+    expect(illustrationPrompt('a ship', 'paper')).toMatch(/9:16/)
+  })
+})
+
+describe('part slicing', () => {
+  it('parts join back into the whole timeline', async () => {
+    const { sliceTimeline } = await import('./storyCompose')
+    const sc = Array.from({ length: 6 }, (_, i) => ({ text: `Sahne ${i} için kısa bir anlatım cümlesi.`, highlights: [] }))
+    const tl = buildTimeline(sc, [3, 2.5, 4, 3, 2, 3.5])
+    const a = sliceTimeline(tl, 0, 3)
+    const b = sliceTimeline(tl, 3, 6)
+    expect(a.t0).toBe(0)
+    expect(a.t1).toBeCloseTo(b.t0, 6)
+    expect(a.timeline.total + b.timeline.total).toBeCloseTo(tl.total, 6)
+    expect(b.timeline.scenes[0].start).toBeCloseTo(0, 6)
   })
 })

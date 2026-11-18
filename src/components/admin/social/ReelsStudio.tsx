@@ -17,7 +17,7 @@ import { ManualShareFlow } from './ManualShareFlow'
 import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
 import { MediaProjectStudio } from './MediaProjectStudio'
-import { StoryVideoStudio } from './StoryVideoStudio'
+import { StoryStudioPro } from './StoryStudioPro'
 import { ReelLibraryPanel } from './ReelLibraryPanel'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
@@ -521,7 +521,7 @@ export function ReelsStudio() {
         </div>
       ) : mode === 'story' ? (
         <div className="flex min-h-0 flex-1 overflow-auto p-3">
-          <StoryVideoStudio />
+          <StoryStudioPro />
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-auto p-3 lg:grid-cols-[320px_minmax(0,1fr)_380px] lg:overflow-hidden">

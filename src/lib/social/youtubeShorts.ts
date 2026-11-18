@@ -45,7 +45,12 @@ export interface YouTubeShortInput {
   tags: string[]
   /** SOCIAL-SEO-1: where the story happened (YouTube recordingDetails.location). */
   location?: { latitude: number; longitude: number; description?: string }
+  /** STORY-2: a regular (long / horizontal) video, not a Short — larger file, longer upload */
+  long?: boolean
 }
+
+/** Regular YouTube videos from the story studio (10 min at ≤ 5 Mbit/s ≈ 400 MB). */
+export const MAX_LONG_BYTES = 700 * 1024 * 1024
 
 /** YouTube «News & Politics». */
 export const YOUTUBE_NEWS_CATEGORY_ID = '25'
@@ -124,14 +129,15 @@ const DEFINITE_TEXT: Record<string, string> = {
 type FetchFn = typeof fetch
 
 /** Download the reel MP4 from NaHaber Storage. */
-async function downloadVideo(url: string, fetchFn: FetchFn): Promise<Buffer> {
-  const res = await fetchFn(url, { signal: AbortSignal.timeout(60_000) })
+async function downloadVideo(url: string, fetchFn: FetchFn, long = false): Promise<Buffer> {
+  const max = long ? MAX_LONG_BYTES : MAX_SHORT_BYTES
+  const res = await fetchFn(url, { signal: AbortSignal.timeout(long ? 240_000 : 60_000) })
   if (!res.ok) throw new Error(`Reels videosu depodan okunamadı (durum ${res.status})`)
   const len = Number(res.headers.get('content-length') ?? '0')
-  if (len > MAX_SHORT_BYTES) throw new Error('Reels videosu YouTube için çok büyük')
+  if (len > max) throw new Error('Reels videosu YouTube için çok büyük')
   const buf = Buffer.from(await res.arrayBuffer())
   if (buf.length === 0) throw new Error('Reels videosu boş')
-  if (buf.length > MAX_SHORT_BYTES) throw new Error('Reels videosu YouTube için çok büyük')
+  if (buf.length > max) throw new Error('Reels videosu YouTube için çok büyük')
   return buf
 }
 
@@ -162,7 +168,7 @@ export async function publishYouTubeShort(
   // ── 1. MP4 + upload session (nothing reaches YouTube on failure) ──────────
   let bytes: Buffer
   try {
-    bytes = await downloadVideo(input.videoUrl, fetchFn)
+    bytes = await downloadVideo(input.videoUrl, fetchFn, input.long === true)
   } catch (err) {
     socialLog('error', 'youtube', 'short_download', { corr: input.newsId, account: target.accountId, result: 'failed' })
     return { success: false, error: safeErrorText(err).replace(/fetch failed|network|timeout|timed out|aborted/gi, 'bağlantı sorunu') }
@@ -222,7 +228,7 @@ export async function publishYouTubeShort(
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'video/mp4', 'Content-Length': String(bytes.length) },
       body: new Uint8Array(bytes),
-      signal: AbortSignal.timeout(240_000),
+      signal: AbortSignal.timeout(input.long ? 600_000 : 240_000),
     })
   } catch {
     put = null

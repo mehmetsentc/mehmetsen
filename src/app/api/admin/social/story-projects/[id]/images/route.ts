@@ -6,7 +6,7 @@
 import { json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { reelJobId, startReelJob } from '@/lib/reels/reelJobs'
-import { isShortId, missingImages } from '@/lib/story/storyProject'
+import { allowsAiImages, isShortId, missingImages } from '@/lib/story/storyProject'
 import { getStory } from '@/lib/story/storyStore'
 import { pollStoryJob } from '@/lib/story/storyJobRoute'
 
@@ -25,6 +25,8 @@ export async function POST(request: Request, { params }: Ctx) {
   const body = await readJsonBody(request)
   const p = await getStory(id)
   if (!p) return json({ error: 'Proje bulunamadı', code: 'not_found' }, 404)
+  // cost guard: AI drawings only in 1-minute videos; longer ones use the editor's own media
+  if (!allowsAiImages(p)) return json({ error: 'Uzun videolarda AI çizimi kullanılmıyor — kendi fotoğraf / videolarınızı ekleyin', code: 'ai_off_long' }, 409)
   const sceneId = isShortId(body.sceneId) ? body.sceneId : undefined
   const todo = missingImages(p).filter((s) => !sceneId || s.id === sceneId)
   if (!todo.length) return json({ job: null, made: 0, note: 'Üretilecek çizim yok' })

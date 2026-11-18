@@ -12,6 +12,7 @@ import { getAdminFirestore } from '@/lib/firebase/admin'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { libraryVideoMeta } from '@/lib/media/mediaStore'
 import {
+  allowsAiImages,
   EMPTY_RENDER,
   MAX_ASSETS,
   STORY_PROJECTS,
@@ -54,12 +55,15 @@ export async function createStory(uid: string, raw: Record<string, unknown>, now
 export async function getStory(id: string): Promise<StoryProject | null> {
   if (!isStoryId(id)) return null
   const s = await col().doc(id).get()
-  return s.exists ? (s.data() as StoryProject) : null
+  return s.exists ? withDefaults(s.data() as StoryProject) : null
 }
+
+/** Projects saved before formats / lengths existed are vertical 1-minute videos. */
+const withDefaults = (p: StoryProject): StoryProject => ({ ...p, format: p.format ?? 'vertical', targetMin: p.targetMin ?? 1, scenes: p.scenes.map((s) => ({ ...s, need: s.need ?? null })) })
 
 export async function listStories(limit = 30): Promise<StoryProject[]> {
   const snap = await col().orderBy('updatedAt', 'desc').limit(limit).get()
-  return snap.docs.map((d) => d.data() as StoryProject)
+  return snap.docs.map((d) => withDefaults(d.data() as StoryProject))
 }
 
 /** Save meta and / or the scene list (client edits). */
@@ -120,7 +124,7 @@ export async function addAsset(uid: string, id: string, raw: Record<string, unkn
   return { ok: true, value: { project, asset } }
 }
 
-/** Remove an asset; scenes that used it fall back to an AI illustration of their sentence. */
+/** Remove an asset; scenes that used it fall back to an AI illustration (1 min) or a text card. */
 export async function removeAsset(uid: string, id: string, assetId: unknown, now: number): Promise<StoreResult<StoryProject>> {
   if (!isShortId(assetId)) return fail(400, 'invalid_asset', 'Görüntü kimliği geçersiz')
   const ref = col().doc(id)
@@ -129,7 +133,11 @@ export async function removeAsset(uid: string, id: string, assetId: unknown, now
     if (!s.exists) return null
     const cur = s.data() as StoryProject
     const scenes: StoryScene[] = cur.scenes.map((sc) =>
-      sc.visual.kind === 'asset' && sc.visual.assetId === assetId ? { ...sc, keepAudio: false, visual: { kind: 'ai', prompt: sc.text, imagePath: null, imageUrl: null, imageKey: null, error: null } } : sc,
+      sc.visual.kind !== 'asset' || sc.visual.assetId !== assetId
+        ? sc
+        : allowsAiImages(cur)
+          ? { ...sc, keepAudio: false, visual: { kind: 'ai', prompt: sc.text, imagePath: null, imageUrl: null, imageKey: null, error: null } }
+          : { ...sc, keepAudio: false, visual: { kind: 'card' }, need: sc.need || 'Bu cümleyi anlatan bir fotoğraf ya da kısa video ekleyin' },
     )
     const next = { ...cur, assets: cur.assets.filter((a) => a.id !== assetId), scenes, updatedAt: now }
     tx.set(ref, next)
@@ -174,7 +182,7 @@ export async function setSceneImage(id: string, sceneId: string, key: string, r:
     const cur = s.data() as StoryProject
     const i = cur.scenes.findIndex((x) => x.id === sceneId)
     const sc = cur.scenes[i]
-    if (!sc || sc.visual.kind !== 'ai' || imageKeyFor(sc.visual.prompt, cur.style) !== key) return false
+    if (!sc || sc.visual.kind !== 'ai' || imageKeyFor(sc.visual.prompt, cur.style, cur.format) !== key) return false
     const visual = 'error' in r ? { ...sc.visual, error: r.error.slice(0, 200) } : { ...sc.visual, imagePath: r.imagePath, imageUrl: r.imageUrl, imageKey: key, error: null }
     const scenes = [...cur.scenes]
     scenes[i] = { ...sc, visual }

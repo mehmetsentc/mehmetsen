@@ -2,7 +2,7 @@ import 'server-only'
 
 /**
  * STORY-1 — canvas drawing for «Konu → Video»:
- *   - caption overlay states (transparent 1080×1920 PNGs): series pill, «Temsili çizim» /
+ *   - caption overlay states (transparent PNGs, frame-sized): series pill, «Temsili çizim» /
  *     «Kaynak:» note, scene label pop-in, word-by-word captions inside the safe area
  *   - still composition: any photo / AI image → 1620×2880 JPEG (cover when the
  *     aspect is close to 9:16, otherwise fitted over a blurred copy of itself)
@@ -10,8 +10,7 @@ import 'server-only'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { createCanvas, GlobalFonts, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
-import { CAPTION_CENTER_Y, OUT_H, OUT_W, SAFE, STYLE_THEME, type StoryStyle, type StoryTimeline } from './storyProject'
-import { STILL_H, STILL_W } from './storyFfmpeg'
+import { FRAMES, STYLE_THEME, type Frame, type StoryStyle, type StoryTimeline } from './storyProject'
 import { overlayStates, type OverlayState, type SceneMeta } from './storyStates'
 
 export const FONT_CAP = 'NaHaberStoryXB'
@@ -36,18 +35,14 @@ function rr(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: n
   ctx.closePath()
 }
 
-const CAP_SIZE = 58
-const CAP_LH = 74
-const CAP_MAX_W = SAFE.right - SAFE.left - 70
-
-function layoutLines(ctx: SKRSContext2D, words: string[]): number[][] {
+function layoutLines(ctx: SKRSContext2D, words: string[], maxW: number): number[][] {
   const space = ctx.measureText(' ').width
   const lines: number[][] = [[]]
   let w = 0
   words.forEach((word, i) => {
     const ww = ctx.measureText(word).width
     const cur = lines[lines.length - 1]
-    if (cur.length && w + space + ww > CAP_MAX_W) {
+    if (cur.length && w + space + ww > maxW) {
       lines.push([i])
       w = ww
     } else {
@@ -68,22 +63,27 @@ export type OverlayInput = {
   meta: SceneMeta[]
   style: StoryStyle
   seriesLabel: string
+  /** default: vertical 1080×1920 */
+  frame?: Frame
 }
 
 export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: OverlayState | null): void {
-  ctx.clearRect(0, 0, OUT_W, OUT_H)
+  const F = input.frame ?? FRAMES.vertical
+  const OUT_W = F.w
+  const SAFE = F.safe
+  ctx.clearRect(0, 0, F.w, F.h)
   const th = STYLE_THEME[input.style]
   // series pill
   const pill = input.seriesLabel.toLocaleUpperCase('tr-TR').slice(0, 32)
   ctx.font = `30px ${FONT_CAP}`
   const pw = ctx.measureText(pill).width + 48
   ctx.fillStyle = th.pill
-  rr(ctx, OUT_W / 2 - pw / 2, 236, pw, 56, 12)
+  rr(ctx, OUT_W / 2 - pw / 2, F.pillY, pw, 56, 12)
   ctx.fill()
   ctx.fillStyle = th.pillText
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(pill, OUT_W / 2, 265)
+  ctx.fillText(pill, OUT_W / 2, F.pillY + 29)
   if (!st) return
   const meta = input.meta[st.scene]
   // honesty notes
@@ -93,20 +93,20 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
     const text = notes.join(' · ').slice(0, 60)
     const nw = ctx.measureText(text).width + 28
     ctx.fillStyle = 'rgba(0,0,0,0.38)'
-    rr(ctx, OUT_W / 2 - nw / 2, 304, nw, 40, 10)
+    rr(ctx, OUT_W / 2 - nw / 2, F.pillY + 68, nw, 40, 10)
     ctx.fill()
     ctx.fillStyle = 'rgba(255,255,255,0.92)'
-    ctx.fillText(text, OUT_W / 2, 325)
+    ctx.fillText(text, OUT_W / 2, F.pillY + 89)
   }
   // label pop-in
   if (meta?.label && st.pop > 0) {
     const s = 0.82 + 0.18 * backOut(st.pop)
     ctx.save()
     ctx.globalAlpha = Math.min(1, st.pop * 1.6)
-    ctx.font = `52px ${FONT_CAP}`
+    ctx.font = `${F.labelSize}px ${FONT_CAP}`
     const lw = ctx.measureText(meta.label).width + 56
     const cx = SAFE.left + 30 + lw / 2
-    const cy = 440
+    const cy = F.labelY
     ctx.translate(cx, cy)
     ctx.rotate((-4 * Math.PI) / 180)
     ctx.scale(s, s)
@@ -124,16 +124,17 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
   // caption
   if (st.chunk === null) return
   const chunk = input.timeline.scenes[st.scene].chunks[st.chunk]
-  ctx.font = `${CAP_SIZE}px ${FONT_CAP}`
+  const CAP_LH = F.capLineH
+  ctx.font = `${F.capSize}px ${FONT_CAP}`
   ctx.textAlign = 'left'
   const words = chunk.words.map((w) => w.word)
-  const lines = layoutLines(ctx, words).slice(0, 3)
+  const lines = layoutLines(ctx, words, SAFE.right - SAFE.left - 70).slice(0, 3)
   const space = ctx.measureText(' ').width
   const widths = lines.map((ln) => ln.reduce((a, i, k) => a + ctx.measureText(words[i]).width + (k ? space : 0), 0))
   const boxW = Math.max(...widths) + 64
   const boxH = lines.length * CAP_LH + 36
   const cx = (SAFE.left + SAFE.right) / 2
-  const y0 = CAPTION_CENTER_Y - boxH / 2
+  const y0 = F.captionY - boxH / 2
   ctx.fillStyle = th.box
   rr(ctx, cx - boxW / 2, y0, boxW, boxH, 22)
   ctx.fill()
@@ -157,7 +158,8 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
 /** Writes the overlay PNG states into `dir` and returns them for the concat list. */
 export async function renderOverlayStates(dir: string, input: OverlayInput, root = process.cwd()): Promise<Array<{ file: string; duration: number }>> {
   ensureStoryFonts(root)
-  const canvas = createCanvas(OUT_W, OUT_H)
+  const F = input.frame ?? FRAMES.vertical
+  const canvas = createCanvas(F.w, F.h)
   const ctx = canvas.getContext('2d')
   const out: Array<{ file: string; duration: number }> = []
   let i = 0
@@ -200,8 +202,11 @@ export function contentBox(lum: Float32Array, w: number, h: number): { x0: numbe
   return { x0, y0, x1, y1 }
 }
 
-/** Any image → 1188×2112 JPEG still (flat margins trimmed; cover or blurred fill). */
-export async function composeStill(input: Buffer, outFile: string): Promise<void> {
+/** Any image → still JPEG 10 % larger than the frame (flat margins trimmed; cover or blurred fill). */
+export async function composeStill(input: Buffer, outFile: string, frame: Frame = FRAMES.vertical): Promise<void> {
+  const STILL_W = frame.stillW
+  const STILL_H = frame.stillH
+  const vertical = frame.h > frame.w
   const img = await loadImage(input)
   // Find the content box on a small, box-averaged copy. Averaging in JS (4×4 blocks of a
   // 288 px copy) keeps paper texture smooth even where the canvas samples nearest-neighbour
@@ -245,8 +250,9 @@ export async function composeStill(input: Buffer, outFile: string): Promise<void
     const s = Math.max(STILL_W / sWidth, STILL_H / sHeight)
     return { w: sWidth * s, h: sHeight * s }
   }
-  // up to square-ish pictures fill the frame (sides cropped); real landscape photos get a blurred fill
-  if (ar >= target * 0.8 && ar <= target * 2) {
+  // vertical: up to square-ish pictures fill the frame (sides cropped); real landscape photos get a blurred fill.
+  // horizontal: 4:3 … 21:9 fill the frame; portrait photos sit in the middle over a blurred copy.
+  if (vertical ? ar >= target * 0.8 && ar <= target * 2 : ar >= target * 0.72 && ar <= target * 1.35) {
     const { w, h } = coverRect()
     ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
   } else {
@@ -254,14 +260,83 @@ export async function composeStill(input: Buffer, outFile: string): Promise<void
     ctx.filter = 'blur(48px) brightness(0.72)'
     ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - w) / 2, (STILL_H - h) / 2, w, h)
     ctx.filter = 'none'
-    const s = Math.min(STILL_W / sWidth, (STILL_H * 0.62) / sHeight)
+    const s = vertical ? Math.min(STILL_W / sWidth, (STILL_H * 0.62) / sHeight) : Math.min((STILL_W * 0.92) / sWidth, (STILL_H * 0.94) / sHeight)
     const fw = sWidth * s
     const fh = sHeight * s
-    // fitted image in the upper-middle part, above the caption band
-    const fy = Math.max(STILL_H * 0.13, STILL_H * 0.42 - fh / 2)
+    // vertical: fitted image in the upper-middle part, above the caption band; horizontal: centred
+    const fy = vertical ? Math.max(STILL_H * 0.13, STILL_H * 0.42 - fh / 2) : (STILL_H - fh) / 2
     ctx.drawImage(img, sx, sy, sWidth, sHeight, (STILL_W - fw) / 2, fy, fw, fh)
   }
   await fs.writeFile(outFile, await canvas.encode('jpeg', 90))
+}
+
+/**
+ * Free «metin kartı» still for a scene without a photo / video: theme-coloured background,
+ * soft light, a large key word and the project title. The caption runs over it as usual.
+ */
+export async function composeCardStill(o: { word: string; title: string; style: StoryStyle; index: number; outFile: string; frame?: Frame; root?: string }): Promise<void> {
+  ensureStoryFonts(o.root ?? process.cwd())
+  const F = o.frame ?? FRAMES.vertical
+  const W = F.stillW
+  const H = F.stillH
+  const th = STYLE_THEME[o.style]
+  const canvas = createCanvas(W, H)
+  const ctx = canvas.getContext('2d')
+  const BG: Record<StoryStyle, [string, string]> = {
+    paper: ['#3A2A1C', '#1C140D'],
+    doodle: ['#2A2A2A', '#121212'],
+    dark: ['#0F1B2D', '#05080F'],
+    photo: ['#1E1E22', '#0A0A0C'],
+  }
+  const [c0, c1] = BG[o.style]
+  const g = ctx.createLinearGradient(0, 0, W * 0.4, H)
+  g.addColorStop(0, c0)
+  g.addColorStop(1, c1)
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+  // soft light that moves from scene to scene
+  const lx = W * (0.25 + 0.5 * ((o.index * 37) % 100) / 100)
+  const ly = H * (0.22 + 0.3 * ((o.index * 61) % 100) / 100)
+  const rg = ctx.createRadialGradient(lx, ly, 10, lx, ly, Math.max(W, H) * 0.7)
+  rg.addColorStop(0, 'rgba(255,255,255,0.14)')
+  rg.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = rg
+  ctx.fillRect(0, 0, W, H)
+  // fine diagonal lines (texture so the drift is visible)
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)'
+  ctx.lineWidth = 2
+  for (let x = -H; x < W; x += 28) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x + H, H)
+    ctx.stroke()
+  }
+  const vertical = F.h > F.w
+  const cx = W / 2
+  const cy = vertical ? H * 0.4 : H * 0.42
+  const word = o.word.toLocaleUpperCase('tr-TR').slice(0, 40)
+  let size = vertical ? 132 : 150
+  ctx.font = `${size}px ${FONT_CAP}`
+  const maxW = W * 0.78
+  while (size > 56 && ctx.measureText(word).width > maxW) {
+    size -= 6
+    ctx.font = `${size}px ${FONT_CAP}`
+  }
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = th.highlight
+  ctx.fillText(word, cx, cy)
+  // accent bar + title
+  ctx.fillStyle = th.labelBg
+  rr(ctx, cx - 90, cy + size * 0.75, 180, 10, 5)
+  ctx.fill()
+  const title = o.title.slice(0, 70)
+  if (title) {
+    ctx.font = `${vertical ? 40 : 38}px ${FONT_NOTE}`
+    ctx.fillStyle = 'rgba(255,255,255,0.72)'
+    ctx.fillText(title, cx, cy + size * 0.75 + 66)
+  }
+  await fs.writeFile(o.outFile, await canvas.encode('jpeg', 90))
 }
 
 /** Small JPEG (≤ 768 px) for the AI to look at. */

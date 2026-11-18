@@ -16,31 +16,62 @@ import { parseRights, PLATFORM_LIMITS, PLATFORM_NAME, type MediaRights, type Med
 
 export const STORY_PROJECTS = 'storyProjects'
 
-export const MAX_ASSETS = 16
-export const MAX_SCENES = 14
+export const MAX_ASSETS = 80
+export const MAX_SCENES = 120
 export const MIN_SCENES = 2
-export const SCENE_TEXT_MAX = 200
-export const TOPIC_MAX = 600
-export const SCRIPT_MAX = 2000
+export const SCENE_TEXT_MAX = 260
+export const TOPIC_MAX = 1200
+export const SCRIPT_MAX = 12000
+export const NEED_MAX = 200
 export const TITLE_MAX = 120
 export const CAPTION_MAX = 2000
 export const PROMPT_MAX = 600
 export const LABEL_MAX = 28
 export const SERIES_MAX = 32
-/** Facebook Reels publish limit is 90 s; keep a margin. */
+/** Facebook Reels publish limit is 90 s; keep a margin (1-minute videos). */
 export const MAX_TOTAL_S = 88
+
+/** Target lengths. 1 min may use AI illustrations; longer videos use only the editor's own media. */
+export const TARGET_MINUTES = [1, 3, 5, 10] as const
+export type TargetMin = (typeof TARGET_MINUTES)[number]
+export const isTargetMin = (v: unknown): v is TargetMin => typeof v === 'number' && (TARGET_MINUTES as readonly number[]).includes(v)
+/** Upper bound of the rendered length per target (the AI aims at the target itself). */
+export const MAX_SECONDS: Record<TargetMin, number> = { 1: MAX_TOTAL_S, 3: 210, 5: 340, 10: 650 }
+export const allowsAiImages = (p: { targetMin?: TargetMin }) => (p.targetMin ?? 1) === 1
+
+export const STORY_FORMATS = ['vertical', 'horizontal'] as const
+export type StoryFormat = (typeof STORY_FORMATS)[number]
+export const isFormat = (v: unknown): v is StoryFormat => v === 'vertical' || v === 'horizontal'
+
+/** Everything that depends on the frame: size, safe area, caption band, still size. */
+export type Frame = {
+  w: number
+  h: number
+  stillW: number
+  stillH: number
+  safe: { top: number; bottom: number; left: number; right: number }
+  captionY: number
+  capSize: number
+  capLineH: number
+  capChars: number
+  pillY: number
+  labelY: number
+  labelSize: number
+}
+
+export const FRAMES: Record<StoryFormat, Frame> = {
+  // Reels / TikTok / Shorts: header, right action column, bottom caption band are UI
+  vertical: { w: 1080, h: 1920, stillW: 1188, stillH: 2112, safe: { top: 220, bottom: 1500, left: 100, right: 940 }, captionY: 1290, capSize: 58, capLineH: 74, capChars: 48, pillY: 236, labelY: 440, labelSize: 52 },
+  // YouTube: classic lower-third subtitles, YouTube's own controls at the very bottom
+  horizontal: { w: 1920, h: 1080, stillW: 2112, stillH: 1188, safe: { top: 60, bottom: 1000, left: 200, right: 1720 }, captionY: 905, capSize: 50, capLineH: 64, capChars: 64, pillY: 44, labelY: 170, labelSize: 46 },
+}
+export const frameOf = (p: { format?: StoryFormat }) => FRAMES[p.format ?? 'vertical']
 
 export const LEAD = 0.15
 export const GAP = 0.25
 export const XF = 0.4
 export const TAIL = 0.9
 export const FPS = 30
-export const OUT_W = 1080
-export const OUT_H = 1920
-
-/** Reels / TikTok UI: header, right action column, bottom caption band. */
-export const SAFE = { top: 220, bottom: 1500, left: 100, right: 940 } as const
-export const CAPTION_CENTER_Y = 1290
 
 export const STORY_STYLES = ['paper', 'doodle', 'dark', 'photo'] as const
 export type StoryStyle = (typeof STORY_STYLES)[number]
@@ -140,6 +171,8 @@ export interface StoryAsset {
 export type SceneVisual =
   | { kind: 'asset'; assetId: string; offsetMs: number }
   | { kind: 'ai'; prompt: string; imagePath: string | null; imageUrl: string | null; imageKey: string | null; error: string | null }
+  /** Free NaHaber title card (style background + the scene's key words); used while a visual is missing. */
+  | { kind: 'card' }
 
 export interface StoryScene {
   id: string
@@ -151,6 +184,8 @@ export interface StoryScene {
   keepAudio: boolean
   /** Why the AI picked this visual (shown in the timeline). */
   reason: string | null
+  /** Shot list: what photo / video would fit here (Turkish, for the editor to upload). */
+  need: string | null
 }
 
 export type RenderState = {
@@ -165,6 +200,8 @@ export type RenderState = {
 
 export interface StoryProject {
   id: string
+  format: StoryFormat
+  targetMin: TargetMin
   title: string
   topic: string
   script: string
@@ -201,7 +238,7 @@ const bad = <T,>(field: string, message: string): Parsed<T> => ({ ok: false, fie
 
 export const isStyle = (v: unknown): v is StoryStyle => typeof v === 'string' && (STORY_STYLES as readonly string[]).includes(v)
 
-export type StoryMetaInput = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights }
+export type StoryMetaInput = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights; format: StoryFormat; targetMin: TargetMin }
 
 export function parseMeta(raw: Record<string, unknown>, prev?: StoryProject): Parsed<StoryMetaInput> {
   const has = (k: string) => raw[k] !== undefined
@@ -227,6 +264,8 @@ export function parseMeta(raw: Record<string, unknown>, prev?: StoryProject): Pa
       style,
       seriesLabel: (has('seriesLabel') ? cleanText(raw.seriesLabel, SERIES_MAX) : prev?.seriesLabel ?? '') || 'NaHaber',
       rights,
+      format: has('format') && isFormat(raw.format) ? raw.format : prev?.format ?? 'vertical',
+      targetMin: has('targetMin') && isTargetMin(raw.targetMin) ? raw.targetMin : prev?.targetMin ?? 1,
     },
   }
 }
@@ -258,6 +297,8 @@ export function parseScene(raw: unknown, assets: StoryAsset[], prev?: StoryScene
     if (!asset) return bad('scenes.visual', 'Sahnedeki görüntü projede yok')
     const off = typeof v.offsetMs === 'number' && Number.isFinite(v.offsetMs) ? Math.max(0, Math.round(v.offsetMs)) : 0
     visual = { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' ? (asset.durationMs ? Math.min(off, Math.max(0, asset.durationMs - 1000)) : off) : 0 }
+  } else if (v.kind === 'card') {
+    visual = { kind: 'card' }
   } else {
     const prompt = cleanText(v.prompt, PROMPT_MAX) || text
     const pv = prev?.visual.kind === 'ai' ? prev.visual : null
@@ -276,6 +317,7 @@ export function parseScene(raw: unknown, assets: StoryAsset[], prev?: StoryScene
       visual,
       keepAudio: asset?.kind === 'video' ? s.keepAudio === true : false,
       reason: cleanText(s.reason, 160) || null,
+      need: cleanText(s.need, NEED_MAX) || null,
     },
   }
 }
@@ -356,28 +398,48 @@ export function scenesFromScript(script: string, maxLen = 150): string[] {
 
 // ── AI plan ──────────────────────────────────────────────────────────────────
 
-export function planSystemPrompt(): string {
+/** How many scenes / characters the AI should aim at for the target length. */
+export function planBudget(targetMin: TargetMin): { scenes: [number, number]; chars: [number, number]; sceneChars: number } {
+  const sec = targetMin * 60
+  if (targetMin === 1) return { scenes: [6, 12], chars: [380, 820], sceneChars: 120 }
+  // long-form: 1–2 sentences per scene (≈ 7–10 s), ≈ 13.5 characters per second of narration
+  return { scenes: [Math.round(sec / 10), Math.round(sec / 6)], chars: [Math.round(sec * 12), Math.round(sec * 14)], sceneChars: 220 }
+}
+
+export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat } = {}): string {
+  const t = p.targetMin ?? 1
+  const b = planBudget(t)
+  const long = t > 1
+  const where = p.format === 'horizontal' ? 'yatay (16:9) YouTube videosu' : t === 1 ? 'kısa dikey video (Reels/TikTok/Shorts)' : 'dikey uzun video'
   return [
-    'Sen NaHaber için kısa dikey video (Reels/TikTok/Shorts) hazırlayan Türkçe bir video editörüsün.',
+    `Sen NaHaber için ${where} hazırlayan Türkçe bir video editörüsün.`,
     'Görevin: anlatımı sahnelere bölmek ve her sahneye en uygun görüntüyü seçmek.',
     'Kurallar:',
-    '- Her sahne tek kısa cümle (en fazla 120 karakter). Toplam 6–12 sahne, 25–60 saniyelik anlatım.',
-    '- İlk sahne merak uyandıran bir soru ya da çarpıcı bir bilgi olsun. Son sahne net bir kapanış.',
+    `- Hedef süre yaklaşık ${t} dakika: toplam ${b.chars[0]}–${b.chars[1]} karakter anlatım, ${b.scenes[0]}–${b.scenes[1]} sahne. Her sahne en fazla ${b.sceneChars} karakter (${long ? '1–2 cümle' : 'tek kısa cümle'}).`,
+    long
+      ? '- Uzun anlatım düzeni: güçlü bir giriş (merak sorusu), bölümler hâlinde gelişme (her bölüm bir alt başlık gibi akar), ara özetler ve net bir kapanış. Tekrara düşme; her sahne yeni bir bilgi versin.'
+      : '- İlk sahne merak uyandıran bir soru ya da çarpıcı bir bilgi olsun. Son sahne net bir kapanış.',
     '- Anlatım metni verildiyse metni DEĞİŞTİRME, yalnızca sahnelere böl. Verilmediyse konudan doğru, kanıtlanmış bilgilerle yaz; uydurma rakam, tarih veya isim kullanma; emin olmadığın bilgiyi yazma.',
     '- Suç, cinayet, kaza gibi hassas konularda: masumiyet karinesine uy («şüpheli», «iddiaya göre»), çocuk ve mağdur kimliği verme, şiddeti ayrıntılı anlatma, kanlı sahne tarif etme.',
     '- Her sahne için 1–3 vurgu kelimesi seç (cümlede geçen kelimeler, aynen yazıldığı gibi).',
     '- Etiket yalnızca sahnedeki somut bir bilgi olabilir: yıl, yer adı, sayı veya kişi adı (ör. «1871», «Hisarlık», «9 katman»; en fazla 24 karakter). «Giriş», «Kapanış», «Teori», «Bulgular» gibi bölüm adları YAZMA; somut bilgi yoksa null.',
-    '- Görüntü seçimi: verilen görüntü listesinden (id ve açıklama) cümleye anlamca uyanı seç. Bir görüntü birden fazla sahnede kullanılabilir ama art arda değil. Uygun görüntü yoksa asset null olsun ve sahne için İngilizce bir çizim tarifi (prompt) yaz: ne görüneceğini somut anlat, gerçek kişi yüzü, marka, logo ve yazı isteme.',
+    long
+      ? '- Görüntü seçimi: YALNIZCA verilen görüntü listesini kullan (id ve açıklama). Bir görüntü birçok sahnede kullanılabilir; aynı videonun farklı anlarını (offsetSec) farklı sahnelere ver, art arda aynı fotoğrafı mümkünse kullanma. Hiçbir görüntü cümleye uymuyorsa asset null olsun.'
+      : '- Görüntü seçimi: verilen görüntü listesinden (id ve açıklama) cümleye anlamca uyanı seç. Bir görüntü birden fazla sahnede kullanılabilir ama art arda değil. Uygun görüntü yoksa asset null olsun ve sahne için İngilizce bir çizim tarifi (prompt) yaz: ne görüneceğini somut anlat, gerçek kişi yüzü, marka, logo ve yazı isteme.',
+    '- "need": bu sahneye en iyi uyacak görüntüyü editörün çekebileceği / bulabileceği biçimde Türkçe tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «kazı alanında çalışan arkeolog, yakın çekim video 5–10 sn»). Seçtiğin görüntü zaten çok iyi uyuyorsa null.',
     '- Video görüntüsünde cümleye en uygun anı offsetSec ile belirt (bilinmiyorsa 0).',
-    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, "prompt": string|null, "reason": string}]}',
-    '"caption" sosyal medya açıklaması: 1–2 cümle + en fazla 4 hashtag.',
+    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, ' + (long ? '' : '"prompt": string|null, ') + '"need": string|null, "reason": string}]}',
+    '"caption" sosyal medya açıklaması: 1–2 cümle + en fazla 4 hashtag.' + (p.format === 'horizontal' ? ' YouTube açıklaması olarak 3–5 cümlelik kısa özet de olabilir.' : ''),
   ].join('\n')
 }
 
-export function planUserPrompt(p: Pick<StoryProject, 'title' | 'topic' | 'script' | 'assets'>): string {
+export function planUserPrompt(p: Pick<StoryProject, 'title' | 'topic' | 'script' | 'assets'> & { targetMin?: TargetMin }): string {
+  const long = (p.targetMin ?? 1) > 1
   const assets = p.assets.length
     ? p.assets.map((a) => `- id: ${a.id} | ${a.kind === 'video' ? `video${a.durationMs ? ` ${Math.round(a.durationMs / 1000)} sn` : ''}` : 'fotoğraf'} | ${a.description ?? a.name}`).join('\n')
-    : '(görüntü yok — bütün sahneler çizim olacak)'
+    : long
+      ? '(henüz görüntü yok — asset null bırak, her sahne için "need" yaz)'
+      : '(görüntü yok — bütün sahneler çizim olacak)'
   return [
     `Başlık: ${p.title || '-'}`,
     `Konu: ${p.topic || '-'}`,
@@ -386,7 +448,7 @@ export function planUserPrompt(p: Pick<StoryProject, 'title' | 'topic' | 'script
   ].join('\n\n')
 }
 
-type RawPlanScene = { text?: unknown; highlights?: unknown; label?: unknown; asset?: unknown; offsetSec?: unknown; prompt?: unknown; reason?: unknown }
+type RawPlanScene = { text?: unknown; highlights?: unknown; label?: unknown; asset?: unknown; offsetSec?: unknown; prompt?: unknown; reason?: unknown; need?: unknown }
 
 function extractJson(raw: string): unknown {
   const t = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
@@ -421,20 +483,21 @@ export type PlanResult = { title: string | null; caption: string | null; scenes:
  * scene texts drift from the script, the script's own sentences are used and only
  * the AI's visual choices are kept (in order).
  */
-export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | 'topic' | 'assets'>, newId: () => string): PlanResult {
+export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | 'topic' | 'assets'> & { targetMin?: TargetMin }, newId: () => string): PlanResult {
+  const long = (p.targetMin ?? 1) > 1
+  const maxLen = long ? 220 : 150
   const j = raw ? (extractJson(raw) as { title?: unknown; caption?: unknown; scenes?: unknown } | null) : null
   const rawScenes: RawPlanScene[] = j && Array.isArray(j.scenes) ? (j.scenes as RawPlanScene[]).slice(0, MAX_SCENES) : []
   let texts = rawScenes.map((s) => cleanText(s.text, SCENE_TEXT_MAX)).filter(Boolean)
   if (p.script) {
-    const own = scenesFromScript(p.script).slice(0, MAX_SCENES)
+    const own = scenesFromScript(p.script, maxLen).slice(0, MAX_SCENES)
     const joined = (xs: string[]) => xs.join(' ').replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR')
     if (joined(texts) !== joined(own)) texts = own
   }
   if (texts.length === 0) {
     // no usable AI answer and no script: one scene per topic sentence
-    texts = scenesFromScript(p.topic).slice(0, MAX_SCENES)
+    texts = scenesFromScript(p.topic, maxLen).slice(0, MAX_SCENES)
   }
-  const used: string[] = []
   const scenes: StoryScene[] = texts.map((text, i) => {
     const r = rawScenes[i] ?? {}
     const asset = typeof r.asset === 'string' ? p.assets.find((a) => a.id === r.asset) : undefined
@@ -442,8 +505,9 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
     const prompt = cleanText(r.prompt, PROMPT_MAX) || text
     const visual: SceneVisual = asset
       ? { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' && asset.durationMs ? Math.min(offsetMs, Math.max(0, asset.durationMs - 1000)) : 0 }
-      : { kind: 'ai', prompt, imagePath: null, imageUrl: null, imageKey: null, error: null }
-    if (asset) used.push(asset.id)
+      : long
+        ? { kind: 'card' }
+        : { kind: 'ai', prompt, imagePath: null, imageUrl: null, imageKey: null, error: null }
     return {
       id: newId(),
       text,
@@ -452,17 +516,18 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
       visual,
       keepAudio: false,
       reason: cleanText(r.reason, 160) || null,
+      need: cleanText(r.need, NEED_MAX) || (asset ? null : long ? 'Bu cümleyi anlatan bir fotoğraf ya da kısa video ekleyin' : null),
     }
   })
-  // AI gave no visual choices at all: place unused uploads on the first scenes in order.
+  // AI gave no visual choices at all: place the uploads in order (long videos reuse them round-robin).
   if (rawScenes.length === 0 && p.assets.length) {
-    let k = 0
-    for (const s of scenes) {
-      if (k >= p.assets.length) break
-      const a = p.assets[k++]
+    scenes.forEach((s, k) => {
+      if (!long && k >= p.assets.length) return
+      const a = p.assets[k % p.assets.length]
       s.visual = { kind: 'asset', assetId: a.id, offsetMs: 0 }
       s.reason = 'Sırayla yerleştirildi (AI cevabı yoktu)'
-    }
+      s.need = null
+    })
   }
   return {
     title: j ? cleanText(j.title, TITLE_MAX) || null : null,
@@ -472,10 +537,19 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
   }
 }
 
+/** Shot list: the scenes still waiting for a fitting photo / video, with the AI's description. */
+export function shotList(p: Pick<StoryProject, 'scenes'>): Array<{ sceneId: string; index: number; need: string; text: string }> {
+  return p.scenes
+    .map((s, index) => ({ s, index }))
+    .filter(({ s }) => s.visual.kind !== 'asset' && !!s.need)
+    .map(({ s, index }) => ({ sceneId: s.id, index, need: s.need!, text: s.text }))
+}
+
 // ── AI illustration ──────────────────────────────────────────────────────────
 
-export function illustrationPrompt(scenePrompt: string, style: StoryStyle): string {
-  return `${scenePrompt.trim()}. Style: ${STYLE_THEME[style].imageStyle}. Full-bleed artwork that fills the entire vertical frame edge to edge: no border, no frame, no margins, no blank paper areas. Main subject in the upper two thirds; the lower third continues the scene (ground, water, sky or texture) with fewer details so captions stay readable.`
+export function illustrationPrompt(scenePrompt: string, style: StoryStyle, format: StoryFormat = 'vertical'): string {
+  const st = format === 'horizontal' ? STYLE_THEME[style].imageStyle.replace('vertical 9:16', 'horizontal 16:9') : STYLE_THEME[style].imageStyle
+  return `${scenePrompt.trim()}. Style: ${st}. Full-bleed artwork that fills the entire frame edge to edge: no border, no frame, no margins, no blank paper areas. Main subject in the upper two thirds; the lower third continues the scene (ground, water, sky or texture) with fewer details so captions stay readable.`
 }
 
 /** FNV-1a 8 hex — stable key for files derived from the inputs. */
@@ -489,31 +563,64 @@ export function hashKey(parts: unknown[]): string {
   return h.toString(16).padStart(8, '0')
 }
 
-export const imageKeyFor = (prompt: string, style: StoryStyle) => hashKey(['img', prompt, style, 'v1'])
+export const imageKeyFor = (prompt: string, style: StoryStyle, format: StoryFormat = 'vertical') => hashKey(format === 'vertical' ? ['img', prompt, style, 'v1'] : ['img', prompt, style, format, 'v1'])
 
-export function missingImages(p: Pick<StoryProject, 'scenes' | 'style'>): StoryScene[] {
-  return p.scenes.filter((s) => s.visual.kind === 'ai' && (!s.visual.imagePath || s.visual.imageKey !== imageKeyFor(s.visual.prompt, p.style)))
+export function missingImages(p: Pick<StoryProject, 'scenes' | 'style'> & { format?: StoryFormat }): StoryScene[] {
+  return p.scenes.filter((s) => s.visual.kind === 'ai' && (!s.visual.imagePath || s.visual.imageKey !== imageKeyFor(s.visual.prompt, p.style, p.format)))
 }
 
 /** Why the project cannot be rendered yet (null = ready). */
-export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets'>): string | null {
+export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets'> & { targetMin?: TargetMin; format?: StoryFormat }): string | null {
+  const t = p.targetMin ?? 1
   if (p.scenes.length < MIN_SCENES) return `En az ${MIN_SCENES} sahne gerekli — önce sahneleri planlayın`
+  if (!allowsAiImages(p) && p.scenes.some((s) => s.visual.kind === 'ai')) return `${t} dakikalık videoda AI çizimi kullanılmıyor — o sahnelere kendi görüntünüzü ya da metin kartı seçin`
   if (missingImages(p).length) return 'Bazı sahnelerin çizimi yok — önce «Çizimleri üret»'
   for (const s of p.scenes) if (s.visual.kind === 'asset' && !p.assets.some((a) => a.id === (s.visual as { assetId: string }).assetId)) return 'Bir sahnenin görüntüsü silinmiş'
   const est = estimateSeconds(p.scenes)
-  if (est > MAX_TOTAL_S) return `Video yaklaşık ${Math.round(est)} sn olur; en fazla ${MAX_TOTAL_S} sn (sahneleri kısaltın)`
+  const max = MAX_SECONDS[t]
+  if (est > max) return `Video yaklaşık ${Math.round(est)} sn olur; ${t} dakikalık hedefte en fazla ${max} sn (sahneleri kısaltın)`
   return null
 }
 
-export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'>): string {
+export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat }): string {
   return hashKey([
-    'story-v5',
+    'story-v6',
+    p.format ?? 'vertical',
     p.style,
     p.seriesLabel,
     p.rights.kind,
     p.rights.sourceName,
-    p.scenes.map((s) => [s.text, s.highlights, s.label, s.keepAudio, s.visual.kind === 'asset' ? [s.visual.assetId, s.visual.offsetMs, p.assets.find((a) => a.id === (s.visual as { assetId: string }).assetId)?.ref] : [s.visual.imageKey]]),
+    p.scenes.map((s) => [s.text, s.highlights, s.label, s.keepAudio, s.visual.kind === 'asset' ? [s.visual.assetId, s.visual.offsetMs, p.assets.find((a) => a.id === (s.visual as { assetId: string }).assetId)?.ref] : s.visual.kind === 'ai' ? [s.visual.imageKey] : ['card']]),
   ])
+}
+
+/**
+ * Long videos are rendered in parts (each part one serverless job, run in parallel) and
+ * joined without re-encoding. A part holds whole scenes, ≈ 60 s of video.
+ */
+export function chunkRanges(scenes: Pick<StoryScene, 'text'>[], targetSec = 60): Array<[number, number]> {
+  const out: Array<[number, number]> = []
+  let start = 0
+  let acc = 0
+  scenes.forEach((s, i) => {
+    acc += Math.max(1.2, [...s.text].length / 14.5) + LEAD + GAP
+    if (acc >= targetSec && i < scenes.length - 1) {
+      out.push([start, i + 1])
+      start = i + 1
+      acc = 0
+    }
+  })
+  if (start < scenes.length) out.push([start, scenes.length])
+  // a tiny last part (< 15 s) is merged into the previous one
+  if (out.length > 1) {
+    const [a, b] = out[out.length - 1]
+    const tail = scenes.slice(a, b).reduce((x, s) => x + [...s.text].length / 14.5 + LEAD + GAP, 0)
+    if (tail < 15) {
+      out.pop()
+      out[out.length - 1] = [out[out.length - 1][0], b]
+    }
+  }
+  return out
 }
 
 // ── timeline ─────────────────────────────────────────────────────────────────
@@ -569,14 +676,14 @@ export function captionChunks(text: string, highlights: string[], voiceStart: nu
   return chunks
 }
 
-export function buildTimeline(scenes: Pick<StoryScene, 'text' | 'highlights'>[], voiceSec: number[]): StoryTimeline {
+export function buildTimeline(scenes: Pick<StoryScene, 'text' | 'highlights'>[], voiceSec: number[], maxChars = 48): StoryTimeline {
   const lens = segmentLengths(voiceSec)
   let s = 0
   const out: TimedScene[] = scenes.map((sc, i) => {
     const start = s
     const voiceStart = start + LEAD
     s += lens[i] - XF
-    const chunks = captionChunks(sc.text, sc.highlights, voiceStart, voiceSec[i])
+    const chunks = captionChunks(sc.text, sc.highlights, voiceStart, voiceSec[i], maxChars)
     // the last chunk of a scene stays until the next scene's transition ends
     if (chunks.length) chunks[chunks.length - 1].end = start + lens[i] - (i === scenes.length - 1 ? 0 : XF / 2)
     return { index: i, start, length: lens[i], voiceStart, voiceSec: voiceSec[i], chunks, labelAt: start + 0.35 }
@@ -598,18 +705,28 @@ export function storyCaption(p: Pick<StoryProject, 'caption' | 'title' | 'rights
   return [body, src, ai].filter(Boolean).join('\n\n').slice(0, 2200)
 }
 
+/** YouTube upload type: vertical ≤ 3 min goes up as a Short, everything else as a regular video. */
+export function youtubeKind(p: Pick<StoryProject, 'format' | 'render'>): 'short' | 'video' {
+  return (p.format ?? 'vertical') === 'vertical' && (p.render.seconds ?? 0) <= 180 ? 'short' : 'video'
+}
+
 /** Why the rendered video may not go to this platform / format (null = allowed). */
 export function storyShareProblem(p: StoryProject, platform: MediaSharePlatform, format: MediaShareFormat): string | null {
   if (p.render.status !== 'ready' || !p.render.outputUrl || p.render.key !== renderKeyFor(p)) return 'Önce videoyu üretin (son değişiklikler videoda yok)'
   const sec = p.render.seconds ?? 0
+  const foreign = p.rights.kind !== 'owned' && p.scenes.some((s) => s.visual.kind === 'asset')
+  if (platform === 'youtube') {
+    if (format === 'video_story') return 'YouTube video hikâyesi desteklemez'
+    if (youtubeKind(p) === 'short' && sec > 60 && foreign) return 'YouTube: başkasına ait görüntü içeren Short 60 sn’yi geçmemeli'
+    return null
+  }
+  if (p.format === 'horizontal') return `Yatay video yalnızca YouTube’a gider (${PLATFORM_NAME[platform]} dikey video ister)`
   const lim = PLATFORM_LIMITS[platform]
   if (format === 'video_story') {
     if (lim.storyMaxSec === null) return `${PLATFORM_NAME[platform]} video hikâyesi desteklemez`
     if (sec > lim.storyMaxSec) return `${PLATFORM_NAME[platform]} hikâyesi en fazla ${lim.storyMaxSec} sn`
     return null
   }
-  if (sec > lim.reelMaxSec) return `${PLATFORM_NAME[platform]} için en fazla ${lim.reelMaxSec} sn`
-  const foreign = p.rights.kind !== 'owned' && p.scenes.some((s) => s.visual.kind === 'asset')
-  if (platform === 'youtube' && sec > 60 && foreign) return 'YouTube: başkasına ait görüntü içeren Short 60 sn’yi geçmemeli'
+  if (sec > lim.reelMaxSec) return `${PLATFORM_NAME[platform]} için en fazla ${lim.reelMaxSec >= 120 ? `${lim.reelMaxSec / 60} dk` : `${lim.reelMaxSec} sn`}`
   return null
 }

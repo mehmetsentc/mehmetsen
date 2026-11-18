@@ -10,11 +10,12 @@
  * 2. Final pass: xfade chain + caption overlay (PNG sequence with alpha via the
  *    concat demuxer) + narration mixed over the (ducked) original sound.
  */
-import { FPS, OUT_H, OUT_W, XF } from './storyProject'
+import { FPS, FRAMES, XF, type Frame } from './storyProject'
 
 /** Stills are composed 10 % larger than the frame and drift across it (cheap crop, no per-frame scaling). */
-export const STILL_W = 1188
-export const STILL_H = 2112
+export const STILL_W = FRAMES.vertical.stillW
+export const STILL_H = FRAMES.vertical.stillH
+const V = FRAMES.vertical
 
 /** Segments are intermediates: fastest preset at high quality; the final pass sets the delivery encode. */
 const segEnc = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-g', '60']
@@ -25,10 +26,11 @@ const f3 = (n: number) => n.toFixed(3)
  * Slow drift across the 10 %-larger still (direction alternates per scene). A
  * per-frame crop is ~3× cheaper than zoompan, which matters on serverless CPUs.
  */
-export function stillSegmentArgs(a: { image: string; output: string; seconds: number; index: number }): string[] {
+export function stillSegmentArgs(a: { image: string; output: string; seconds: number; index: number; frame?: Frame }): string[] {
+  const F = a.frame ?? V
   const d = Math.max(0.1, a.seconds)
-  const dx = STILL_W - OUT_W
-  const dy = STILL_H - OUT_H
+  const dx = F.stillW - F.w
+  const dy = F.stillH - F.h
   const pattern = a.index % 4
   const x = pattern === 0 ? `${dx}*t/${d.toFixed(3)}` : pattern === 1 ? `${dx}*(1-t/${d.toFixed(3)})` : pattern === 2 ? `${dx / 2}` : `${dx}*t/${d.toFixed(3)}`
   const y = pattern === 2 ? `${dy}*t/${d.toFixed(3)}` : pattern === 3 ? `${dy}*(1-t/${d.toFixed(3)})` : `${dy / 2}`
@@ -36,14 +38,17 @@ export function stillSegmentArgs(a: { image: string; output: string; seconds: nu
     '-hide_banner', '-loglevel', 'error', '-y',
     '-loop', '1', '-framerate', String(FPS), '-t', f3(a.seconds), '-i', a.image,
     '-f', 'lavfi', '-t', f3(a.seconds), '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000',
-    '-filter_complex', `[0:v]scale=${STILL_W}:${STILL_H},setsar=1,crop=${OUT_W}:${OUT_H}:x='${x}':y='${y}',format=yuv420p[v]`,
+    '-filter_complex', `[0:v]scale=${F.stillW}:${F.stillH},setsar=1,crop=${F.w}:${F.h}:x='${x}':y='${y}',format=yuv420p[v]`,
     '-map', '[v]', '-map', '1:a',
     ...segEnc, ...aenc, '-t', f3(a.seconds), '-movflags', '+faststart', a.output,
   ]
 }
 
-/** The editor's video from `offsetSec`, vertical with blurred fill; ducked sound or silence. */
-export function videoSegmentArgs(a: { input: string; output: string; seconds: number; offsetSec: number; keepAudio: boolean; hasAudio: boolean }): string[] {
+/** The editor's video from `offsetSec`, fitted to the frame over a blurred copy; ducked sound or silence. */
+export function videoSegmentArgs(a: { input: string; output: string; seconds: number; offsetSec: number; keepAudio: boolean; hasAudio: boolean; frame?: Frame }): string[] {
+  const F = a.frame ?? V
+  const OUT_W = F.w
+  const OUT_H = F.h
   const t = f3(a.seconds)
   const args = ['-hide_banner', '-loglevel', 'error', '-y', '-ss', f3(a.offsetSec), '-i', a.input, '-f', 'lavfi', '-t', t, '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000']
   const v =
@@ -108,7 +113,13 @@ export function segmentConcat(files: string[]): string {
  */
 export const WATERMARK = { width: 150, opacity: 0.16, margin: 60, periodX: 37, periodY: 53 } as const
 
-export function finalArgs(a: { segmentList: string; narration: string; overlayList: string; output: string; total: number; watermark?: string | null }): string[] {
+/**
+ * `timeOffset`: where this part starts in the whole video (chunked long renders), so the
+ * watermark path continues seamlessly across parts. `part`: intermediate part of a long
+ * video (high quality, bitrate-capped so ten minutes fit the function's /tmp).
+ */
+export function finalArgs(a: { segmentList: string; narration: string; overlayList: string; output: string; total: number; watermark?: string | null; timeOffset?: number; part?: boolean }): string[] {
+  const tt = a.timeOffset ? `(t+${f3(a.timeOffset)})` : 't'
   const args = ['-hide_banner', '-loglevel', 'error', '-y']
   args.push('-f', 'concat', '-safe', '0', '-i', a.segmentList)
   args.push('-i', a.narration)
@@ -118,7 +129,7 @@ export function finalArgs(a: { segmentList: string; narration: string; overlayLi
   const wm = a.watermark
     ? [
         `[3:v]scale=${W.width}:-1,format=rgba,colorchannelmixer=aa=${W.opacity}[wm]`,
-        `[base0][wm]overlay=x='(W-w)/2+((W-w)/2-${W.margin})*sin(2*PI*t/${W.periodX})':y='(H-h)/2+((H-h)/2-${W.margin})*sin(2*PI*t/${W.periodY}+1)':shortest=1:format=auto[base]`,
+        `[base0][wm]overlay=x='(W-w)/2+((W-w)/2-${W.margin})*sin(2*PI*${tt}/${W.periodX})':y='(H-h)/2+((H-h)/2-${W.margin})*sin(2*PI*${tt}/${W.periodY}+1)':shortest=1:format=auto[base]`,
       ]
     : ['[base0]null[base]']
   const parts = [
@@ -135,6 +146,8 @@ export function finalArgs(a: { segmentList: string; narration: string; overlayLi
   ]
   args.push('-filter_complex', parts.join(';'), '-map', '[v]', '-map', '[a]')
   args.push('-c:v', 'libx264', '-preset', 'superfast', '-crf', '21', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-g', '60', '-keyint_min', '60', '-sc_threshold', '0')
+  // long videos: cap the bitrate (10 min ≈ 400 MB at most) and keep identical parameters per part
+  if (a.part) args.push('-maxrate', '5M', '-bufsize', '10M')
   args.push(...aenc, '-t', f3(a.total), '-movflags', '+faststart', a.output)
   return args
 }
@@ -149,4 +162,20 @@ export function overlayConcat(states: Array<{ file: string; duration: number }>)
   // the concat demuxer ignores the last duration unless the file is repeated
   if (states.length) lines.push(`file '${states[states.length - 1].file.replace(/'/g, "'\\''")}'`)
   return lines.join('\n') + '\n'
+}
+
+/**
+ * Joins the parts of a long video without re-encoding the picture. The sound is decoded and
+ * encoded once more so it is continuous across the joins and loudness-normalised as a whole.
+ */
+export function joinPartsArgs(a: { list: string; output: string }): string[] {
+  return [
+    '-hide_banner', '-loglevel', 'error', '-y',
+    '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
+    '-f', 'concat', '-safe', '0', '-i', a.list,
+    '-map', '0:v', '-map', '0:a',
+    '-c:v', 'copy',
+    '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000',
+    ...aenc, '-movflags', '+faststart', a.output,
+  ]
 }

@@ -1,5 +1,6 @@
 /**
  * GET  /api/admin/social/story-projects/{id}/share?format=reel|video_story
+ *      (YouTube: vertical ≤ 3 min goes up as a Short, horizontal / longer as a regular video)
  *      → video-capable accounts with `selectable` + reason (platform duration limits)
  * POST /api/admin/social/story-projects/{id}/share { accountId, format }
  *      → background publish of the rendered video to ONE account through the shared
@@ -16,7 +17,7 @@ import { publishFacebookReel, publishFacebookVideoStory, publishInstagramReel, p
 import { publishYouTubeShort } from '@/lib/social/youtubeShorts'
 import { reelJobId, startReelJob } from '@/lib/reels/reelJobs'
 import type { MediaShareFormat, MediaSharePlatform } from '@/lib/media/mediaProject'
-import { storyCaption, storyLedgerKey, storyShareProblem, type StoryProject } from '@/lib/story/storyProject'
+import { storyCaption, storyLedgerKey, storyShareProblem, youtubeKind, type StoryProject } from '@/lib/story/storyProject'
 import { getStory } from '@/lib/story/storyStore'
 import { pollStoryJob } from '@/lib/story/storyJobRoute'
 
@@ -79,7 +80,11 @@ export async function POST(request: Request, { params }: Ctx) {
         actorUid: uid,
         trigger: 'studio_media',
         publish: (t) => {
-          if (acc.platform === 'youtube') return publishYouTubeShort({ newsId: key, videoUrl: input.videoUrl, title: p.title.slice(0, 95), description: `${caption}\n\n#Shorts`, tags: ['NaHaber'] }, t as YouTubePublishTarget)
+          if (acc.platform === 'youtube') {
+            // vertical ≤ 3 min → Short; horizontal or longer → a regular video
+            const long = youtubeKind(p) === 'video'
+            return publishYouTubeShort({ newsId: key, videoUrl: input.videoUrl, title: p.title.slice(0, 95), description: long ? caption : `${caption}\n\n#Shorts`, tags: ['NaHaber'], long }, t as YouTubePublishTarget)
+          }
           if (acc.platform === 'threads') return publishThreadsVideo(input, t as ThreadsPublishTarget)
           if (format === 'video_story') return acc.platform === 'instagram' ? publishInstagramVideoStory(input, t as InstagramPublishTarget) : publishFacebookVideoStory(input, t as FacebookPublishTarget)
           return acc.platform === 'instagram' ? publishInstagramReel(input, t as InstagramPublishTarget) : publishFacebookReel(input, t as FacebookPublishTarget)

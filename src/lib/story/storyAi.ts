@@ -5,14 +5,14 @@ import 'server-only'
  *   describeImage / describeVideo — one Turkish sentence of what an upload shows,
  *                                    used to match it to a sentence (fast model, vision)
  *   planStory                     — scenes, highlights, labels, visual choice (fast model, JSON)
- *   generateIllustration          — a 9:16 illustration for a scene with no fitting upload
+ *   generateIllustration          — a 9:16 / 16:9 illustration for a scene with no fitting upload
  *                                    (image model, paid: monthly USD budget in Firestore)
  */
 import { FieldValue } from 'firebase-admin/firestore'
 import { geminiFastChat } from '@/lib/ai/providers/geminiChat'
 import { getGeminiApiKey, getGeminiFastModel } from '@/lib/ai/router/policy'
 import { getAdminFirestore } from '@/lib/firebase/admin'
-import { illustrationPrompt, parsePlan, planSystemPrompt, planUserPrompt, type PlanResult, type StoryProject, type StoryStyle } from './storyProject'
+import { illustrationPrompt, parsePlan, planSystemPrompt, planUserPrompt, type PlanResult, type StoryFormat, type StoryProject, type StoryStyle } from './storyProject'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const USAGE = 'storyUsage'
@@ -76,12 +76,13 @@ export async function planStory(p: StoryProject, newId: () => string): Promise<P
     try {
       const r = await geminiFastChat({
         messages: [
-          { role: 'system', content: planSystemPrompt() },
+          { role: 'system', content: planSystemPrompt({ targetMin: p.targetMin, format: p.format }) },
           { role: 'user', content: planUserPrompt(p) },
         ],
         temperature: 0.5,
-        maxTokens: 4000,
-        timeoutMs: 45_000,
+        // long videos: up to ~90 scenes with text, shot-list note and reason each
+        maxTokens: { 1: 4000, 3: 10000, 5: 16000, 10: 30000 }[p.targetMin ?? 1],
+        timeoutMs: (p.targetMin ?? 1) === 1 ? 45_000 : 180_000,
         jsonMode: true,
         telemetry: { agentName: 'story_planner', operation: 'story_plan' },
       })
@@ -140,7 +141,7 @@ function imageModels(): string[] {
 type ImgResp = { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; data?: string } }> }; finishReason?: string }>; promptFeedback?: { blockReason?: string }; error?: { message?: string; status?: string } }
 
 /** One 9:16 illustration; returns image bytes. Charged against the monthly budget. */
-export async function generateIllustration(prompt: string, style: StoryStyle): Promise<{ bytes: Buffer; mime: string; model: string }> {
+export async function generateIllustration(prompt: string, style: StoryStyle, format: StoryFormat = 'vertical'): Promise<{ bytes: Buffer; mime: string; model: string }> {
   const key = getGeminiApiKey()
   if (!key || !storyAiReady().images) throw new Error('Yapay zekâ çizim kapalı')
   const price = imagePriceUsd()
@@ -152,8 +153,8 @@ export async function generateIllustration(prompt: string, style: StoryStyle): P
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: illustrationPrompt(prompt, style) }] }],
-          generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '9:16' } },
+          contents: [{ role: 'user', parts: [{ text: illustrationPrompt(prompt, style, format) }] }],
+          generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: format === 'horizontal' ? '16:9' : '9:16' } },
         }),
         signal: AbortSignal.timeout(90_000),
       })
