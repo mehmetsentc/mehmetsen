@@ -333,3 +333,12 @@ describe('long planning', () => {
     expect(parseLongScript(JSON.stringify({ title: 'T', sections: [{ text: 'x'.repeat(50) }, { text: 'kısa' }] })).sections).toHaveLength(1)
   })
 })
+
+describe('cardWord', () => {
+  it('never repeats the label and avoids filler words', async () => {
+    const { cardWord } = await import('./storyProject')
+    expect(cardWord({ text: 'Hisarlık tepesinde kazı başladı.', highlights: ['Hisarlık'], label: 'Hisarlık' })).toBe('tepesinde')
+    expect(cardWord({ text: 'Gerçekler ve mitler birbirine karıştı.', highlights: [], label: null })).toBe('Gerçekler')
+    expect(cardWord({ text: 'Schliemann 1871’de geldi.', highlights: ['Schliemann'], label: '1871' })).toBe('Schliemann')
+  })
+})

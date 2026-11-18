@@ -23,7 +23,7 @@ import { describeImage, describeVideo, generateIllustration, StoryBudgetError } 
 import { composeStory, runFfmpeg, type ComposeScene } from './storyCompose'
 import { joinPartsArgs } from './storyFfmpeg'
 import { composeCardStill, composeStill } from './storyOverlay'
-import { chunkRanges, frameOf, imageKeyFor, missingImages, renderKeyFor, renderProblem, type StoryAsset, type StoryProject, type StoryScene } from './storyProject'
+import { cardWord, chunkRanges, frameOf, imageKeyFor, missingImages, renderKeyFor, renderProblem, type StoryAsset, type StoryProject, type StoryScene } from './storyProject'
 import { getStory, setAssetDescription, setRender, setSceneImage, storyBucket, uploadBucket } from './storyStore'
 
 const publicUrl = (name: string) => `https://storage.googleapis.com/${storyBucket()}/${name}`
@@ -149,7 +149,7 @@ async function sceneVisual(p: StoryProject, s: StoryScene, i: number, dir: strin
   }
   const f = path.join(dir, `still${i}.jpg`)
   if (s.visual.kind === 'card') {
-    const word = s.label || s.highlights[0] || s.text.split(/\s+/).slice(0, 2).join(' ')
+    const word = cardWord(s)
     await composeCardStill({ word, title: p.title, style: p.style, index: i, outFile: f, frame })
     return { visual: { kind: 'still', file: f }, aiNote: false, source: null }
   }

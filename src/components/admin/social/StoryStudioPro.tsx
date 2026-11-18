@@ -48,6 +48,7 @@ import { RightsForm } from './MediaProjectStudio'
 import type { MediaRights, MediaShareFormat, MediaSharePlatform } from '@/lib/media/mediaProject'
 import {
   allowsAiImages,
+  cardWord,
   estimateSeconds,
   FRAMES,
   MAX_SCENES,
@@ -1088,7 +1089,7 @@ export function StoryStudioPro() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={thumb} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" draggable={false} />
                       ) : s.visual.kind === 'card' ? (
-                        <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 px-1 text-center text-[9px] font-black uppercase text-amber-300">{(s.label || s.highlights[0] || '').slice(0, 14)}</span>
+                        <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 px-1 text-center text-[9px] font-black uppercase text-amber-300">{cardWord(s).slice(0, 14)}</span>
                       ) : null}
                       <span className="absolute left-0.5 top-0.5 rounded bg-black/75 px-1 font-mono text-[9px] font-bold">{i + 1}</span>
                       {s.visual.kind !== 'asset' && s.need ? <span className="absolute right-0.5 top-0.5 rounded bg-amber-500 px-0.5 text-[9px] text-black" title={s.need}>📷</span> : null}
@@ -1130,7 +1131,7 @@ function FramePreview(props: { scene: StoryScene | null; asset: StoryAsset | und
       ) : s?.visual.kind === 'card' ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#3a2a1c] to-[#0e0b08]" style={{ paddingBottom: vertical ? '20%' : '12%' }}>
           <span className="px-4 text-center font-black uppercase" style={{ color: th.highlight, fontSize: (vertical ? 132 : 150) * k }}>
-            {(s.label || s.highlights[0] || s.text.split(/\s+/).slice(0, 2).join(' ')).slice(0, 40)}
+            {cardWord(s).slice(0, 40)}
           </span>
           <span className="mt-1 h-1 w-10 rounded" style={{ background: th.labelBg }} />
           <span className="mt-1 text-white/70" style={{ fontSize: 40 * k }}>

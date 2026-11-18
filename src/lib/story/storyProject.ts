@@ -815,3 +815,13 @@ export function longScenes(script: string): string[] {
   }
   return out.slice(0, MAX_SCENES)
 }
+
+/** The big word of a text card: a highlight that is not the label, else the sentence's longest word. */
+export function cardWord(s: Pick<StoryScene, 'text' | 'highlights' | 'label'>): string {
+  const label = s.label ? normWord(s.label) : null
+  const hl = s.highlights.find((h) => normWord(h) !== label && !(label && label.includes(normWord(h))))
+  if (hl) return hl
+  const words = wordsOf(s.text).map((w) => w.replace(/^[«"“'(\[]+|[»"”')\].,;:!?…]+$/g, '').replace(/['’](?:[a-zçğıöşü]{1,4})$/i, ''))
+  const best = words.filter((w) => [...w].length >= 4 && normWord(w) !== label).sort((a, b) => [...b].length - [...a].length)[0]
+  return best ?? words[0] ?? ''
+}
