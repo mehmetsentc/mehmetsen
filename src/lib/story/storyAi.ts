@@ -12,7 +12,24 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { geminiFastChat } from '@/lib/ai/providers/geminiChat'
 import { getGeminiApiKey, getGeminiFastModel } from '@/lib/ai/router/policy'
 import { getAdminFirestore } from '@/lib/firebase/admin'
-import { illustrationPrompt, parsePlan, planSystemPrompt, planUserPrompt, type PlanResult, type StoryFormat, type StoryProject, type StoryStyle } from './storyProject'
+import {
+  illustrationPrompt,
+  longScenes,
+  longSections,
+  parseLongScript,
+  parsePlan,
+  parseVisuals,
+  planSystemPrompt,
+  planUserPrompt,
+  scriptSystemPrompt,
+  SECTION_CHARS,
+  visualsSystemPrompt,
+  visualsUserPrompt,
+  type PlanResult,
+  type StoryFormat,
+  type StoryProject,
+  type StoryStyle,
+} from './storyProject'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 const USAGE = 'storyUsage'
@@ -70,19 +87,19 @@ export async function describeVideo(frames: Buffer[]): Promise<string> {
 // ── plan ─────────────────────────────────────────────────────────────────────
 
 export async function planStory(p: StoryProject, newId: () => string): Promise<PlanResult & { note: string | null }> {
+  if ((p.targetMin ?? 1) > 1) return planLongStory(p, newId)
   let raw: string | null = null
   let note: string | null = null
   if (storyAiReady().text) {
     try {
       const r = await geminiFastChat({
         messages: [
-          { role: 'system', content: planSystemPrompt({ targetMin: p.targetMin, format: p.format }) },
+          { role: 'system', content: planSystemPrompt({ targetMin: 1, format: p.format }) },
           { role: 'user', content: planUserPrompt(p) },
         ],
         temperature: 0.5,
-        // long videos: up to ~90 scenes with text, shot-list note and reason each
-        maxTokens: { 1: 4000, 3: 10000, 5: 16000, 10: 30000 }[p.targetMin ?? 1],
-        timeoutMs: (p.targetMin ?? 1) === 1 ? 45_000 : 180_000,
+        maxTokens: 4000,
+        timeoutMs: 45_000,
         jsonMode: true,
         telemetry: { agentName: 'story_planner', operation: 'story_plan' },
       })
@@ -94,6 +111,69 @@ export async function planStory(p: StoryProject, newId: () => string): Promise<P
   const plan = parsePlan(raw, p, newId)
   if (plan.source === 'fallback' && !note) note = 'AI cevabı okunamadı; metin cümlelere bölündü'
   return { ...plan, note }
+}
+
+/**
+ * 3 / 5 / 10 minutes: (1) the script in a fixed number of sections — unless the editor wrote
+ * one — then (2) split locally into scenes and (3) the AI picks visuals / shot notes for the
+ * numbered scenes. A single «write N minutes and plan it» call came back ~1 minute long.
+ */
+async function planLongStory(p: StoryProject, newId: () => string): Promise<PlanResult & { note: string | null }> {
+  const t = p.targetMin
+  let note: string | null = null
+  let script = p.script.trim()
+  let title: string | null = null
+  if (!script) {
+    if (!storyAiReady().text) return { title: null, caption: null, scenes: [], source: 'fallback', note: 'AI editör kapalı: uzun video için anlatım metnini kendiniz yazın' }
+    const ask = async (extra: string) =>
+      geminiFastChat({
+        messages: [
+          { role: 'system', content: scriptSystemPrompt(t) },
+          { role: 'user', content: `Konu: ${p.topic || p.title}\nBaşlık: ${p.title || '-'}${extra}` },
+        ],
+        temperature: 0.6,
+        maxTokens: 4000 + longSections(t) * 450,
+        timeoutMs: 150_000,
+        jsonMode: true,
+        telemetry: { agentName: 'story_writer', operation: 'story_script' },
+      }).then((r) => parseLongScript(r.text))
+    try {
+      let s = await ask('')
+      // too short (fewer sections or thin ones): ask once more, saying what was missing
+      const want = longSections(t) * SECTION_CHARS
+      const have = s.sections.join(' ').length
+      if (have < want * 0.75) {
+        const again = await ask(`\n\nÖnceki denemede metin çok kısa kaldı (${have} karakter). Bu kez ${longSections(t)} bölümün HER BİRİ ${SECTION_CHARS - 40}–${SECTION_CHARS + 40} karakter olsun; toplam yaklaşık ${want} karakter.`).catch(() => null)
+        if (again && again.sections.join(' ').length > have) s = again
+      }
+      script = s.sections.join(' ')
+      title = s.title
+      const sec = Math.round(script.length / 14.5)
+      if (script.length < want * 0.6) note = `AI metni hedeften kısa yazdı (~${Math.floor(sec / 60)} dk ${sec % 60} sn); «AI ile planla» ile yeniden deneyin ya da metni «Proje» sekmesinde uzatın`
+    } catch (err) {
+      return { title: null, caption: null, scenes: [], source: 'fallback', note: `AI editör metni yazamadı: ${err instanceof Error ? err.message.slice(0, 120) : 'hata'}` }
+    }
+  }
+  const texts = longScenes(script)
+  let raw: string | null = null
+  try {
+    const r = await geminiFastChat({
+      messages: [
+        { role: 'system', content: visualsSystemPrompt({ format: p.format }) },
+        { role: 'user', content: visualsUserPrompt(texts, p) },
+      ],
+      temperature: 0.4,
+      maxTokens: 2000 + texts.length * 160,
+      timeoutMs: 150_000,
+      jsonMode: true,
+      telemetry: { agentName: 'story_planner', operation: 'story_visuals' },
+    })
+    raw = r.text
+  } catch (err) {
+    note = note ?? `Görüntü seçimi yapılamadı (${err instanceof Error ? err.message.slice(0, 80) : 'hata'}); sahneler metin kartı`
+  }
+  const plan = parseVisuals(raw, texts, p, newId)
+  return { ...plan, title: plan.title ?? title, ...(p.script.trim() ? {} : { script: script.slice(0, 12000) }), note }
 }
 
 // ── illustration (paid) ──────────────────────────────────────────────────────

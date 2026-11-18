@@ -159,13 +159,14 @@ export async function setAssetDescription(id: string, assetId: string, r: { desc
   })
 }
 
-export async function setPlan(uid: string, id: string, plan: { title: string | null; caption: string | null; scenes: StoryScene[] }, now: number): Promise<StoryProject | null> {
+export async function setPlan(uid: string, id: string, plan: { title: string | null; caption: string | null; scenes: StoryScene[]; script?: string }, now: number): Promise<StoryProject | null> {
   const ref = col().doc(id)
   const out = await getAdminFirestore().runTransaction(async (tx) => {
     const s = await tx.get(ref)
     if (!s.exists) return null
     const cur = s.data() as StoryProject
-    const next: StoryProject = { ...cur, scenes: plan.scenes, caption: cur.caption || plan.caption || '', title: cur.title || plan.title || cur.title, plannedAt: now, updatedAt: now }
+    // the AI-written script is kept so the editor can read / change it and plan again
+    const next: StoryProject = { ...cur, scenes: plan.scenes, script: cur.script || plan.script || '', caption: cur.caption || plan.caption || '', title: cur.title || plan.title || cur.title, plannedAt: now, updatedAt: now }
     tx.set(ref, next)
     return next
   })

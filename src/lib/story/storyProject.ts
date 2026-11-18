@@ -36,7 +36,7 @@ export const TARGET_MINUTES = [1, 3, 5, 10] as const
 export type TargetMin = (typeof TARGET_MINUTES)[number]
 export const isTargetMin = (v: unknown): v is TargetMin => typeof v === 'number' && (TARGET_MINUTES as readonly number[]).includes(v)
 /** Upper bound of the rendered length per target (the AI aims at the target itself). */
-export const MAX_SECONDS: Record<TargetMin, number> = { 1: MAX_TOTAL_S, 3: 210, 5: 340, 10: 650 }
+export const MAX_SECONDS: Record<TargetMin, number> = { 1: MAX_TOTAL_S, 3: 240, 5: 380, 10: 720 }
 export const allowsAiImages = (p: { targetMin?: TargetMin }) => (p.targetMin ?? 1) === 1
 
 export const STORY_FORMATS = ['vertical', 'horizontal'] as const
@@ -476,7 +476,7 @@ export function factLabel(v: unknown): string | null {
   return l
 }
 
-export type PlanResult = { title: string | null; caption: string | null; scenes: StoryScene[]; source: 'ai' | 'fallback' }
+export type PlanResult = { title: string | null; caption: string | null; scenes: StoryScene[]; source: 'ai' | 'fallback'; /** script the AI wrote (long videos) */ script?: string }
 
 /**
  * AI answer → scenes. With a user script the AI must not rewrite it: when its
@@ -729,4 +729,89 @@ export function storyShareProblem(p: StoryProject, platform: MediaSharePlatform,
   }
   if (sec > lim.reelMaxSec) return `${PLATFORM_NAME[platform]} için en fazla ${lim.reelMaxSec >= 120 ? `${lim.reelMaxSec / 60} dk` : `${lim.reelMaxSec} sn`}`
   return null
+}
+
+// ── long videos: script first, then visuals per numbered scene ─────────────────
+
+/** Sections the long script is written in (models keep a section count far better than a length). */
+export const longSections = (t: TargetMin) => ({ 1: 3, 3: 7, 5: 11, 10: 20 })[t]
+export const SECTION_CHARS = 360
+
+export function scriptSystemPrompt(t: TargetMin): string {
+  const n = longSections(t)
+  return [
+    `Sen NaHaber için ${t} dakikalık anlatım videosu metni yazan Türkçe bir editörsün.`,
+    `Metni TAM ${n} bölüm olarak yaz. Her bölüm ${SECTION_CHARS - 40}–${SECTION_CHARS + 40} karakter (4–6 cümle), kendi içinde tek bir alt konuyu anlatır.`,
+    'İlk bölüm merak uyandıran bir giriş, son bölüm net bir kapanış olsun; aradaki bölümler kronolojik ya da mantıklı sırayla ilerlesin, tekrar etmesin.',
+    'Doğru, kanıtlanmış bilgi kullan; uydurma rakam, tarih, isim yazma; emin olmadığını yazma. Tartışmalı konularda farklı görüşleri adil aktar.',
+    'Suç, kaza gibi hassas konularda masumiyet karinesine uy, mağdur ve çocuk kimliği verme, şiddeti ayrıntılı anlatma.',
+    'Cümleler seslendirilecek: kısa ve akıcı, kısaltma ve parantez kullanma, sayıları okunur yaz.',
+    'Yalnızca JSON döndür: {"title": string, "sections": [{"heading": string, "text": string}]}',
+  ].join('\n')
+}
+
+export function parseLongScript(raw: string | null): { title: string | null; sections: string[] } {
+  const j = raw ? (extractJson(raw) as { title?: unknown; sections?: unknown } | null) : null
+  const sections = j && Array.isArray(j.sections) ? (j.sections as Array<{ text?: unknown }>).map((s) => cleanText(s?.text, 1500)).filter((s) => s.length > 20) : []
+  return { title: j ? cleanText(j.title, TITLE_MAX) || null : null, sections }
+}
+
+/** Visual choice for already-written, numbered scenes (long videos). */
+export function visualsSystemPrompt(p: { format?: StoryFormat }): string {
+  return [
+    `Sen NaHaber için ${p.format === 'horizontal' ? 'yatay (16:9) YouTube' : 'dikey'} anlatım videosu hazırlayan Türkçe bir video editörüsün.`,
+    'Sahnelerin metni hazır ve numaralı; metni DEĞİŞTİRME. Her sahne için:',
+    '- "highlights": cümlede aynen geçen 1–3 vurgu kelimesi.',
+    '- "label": yalnızca sahnedeki somut bilgi (yıl, yer, sayı, kişi adı; en fazla 24 karakter) ya da null. «Giriş», «Kapanış» gibi bölüm adları yazma.',
+    '- "asset": verilen görüntü listesinden cümleye anlamca uyan id ya da null. Bir görüntü birçok sahnede kullanılabilir; aynı videonun farklı anlarını (offsetSec) kullan, art arda aynı fotoğrafı mümkünse koyma.',
+    '- "need": asset null ise ya da daha iyi bir görüntü gerekiyorsa editörün çekebileceği / bulabileceği görüntüyü Türkçe somut tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «müzedeki seramik, yakın çekim»). İyi uyuyorsa null.',
+    '- "reason": seçimin kısa gerekçesi.',
+    'Yalnızca JSON döndür: {"caption": string, "scenes": [{"i": number, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, "need": string|null, "reason": string}]}',
+    '"caption": 1–2 cümle + en fazla 4 hashtag' + (p.format === 'horizontal' ? '; YouTube için 3–5 cümlelik özet de olabilir.' : '.'),
+  ].join('\n')
+}
+
+export function visualsUserPrompt(texts: string[], p: Pick<StoryProject, 'title' | 'topic' | 'assets'>): string {
+  const assets = p.assets.length
+    ? p.assets.map((a) => `- id: ${a.id} | ${a.kind === 'video' ? `video${a.durationMs ? ` ${Math.round(a.durationMs / 1000)} sn` : ''}` : 'fotoğraf'} | ${a.description ?? a.name}`).join('\n')
+    : '(henüz görüntü yok — asset null, her sahne için "need" yaz)'
+  return [`Başlık: ${p.title || '-'}`, `Konu: ${p.topic || '-'}`, `Görüntüler:\n${assets}`, `Sahneler:\n${texts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`].join('\n\n')
+}
+
+/** Scenes from fixed texts + the AI's per-scene choices (matched by number, never by text). */
+export function parseVisuals(raw: string | null, texts: string[], p: Pick<StoryProject, 'assets'>, newId: () => string): PlanResult {
+  const j = raw ? (extractJson(raw) as { caption?: unknown; scenes?: unknown } | null) : null
+  const rows = j && Array.isArray(j.scenes) ? (j.scenes as Array<RawPlanScene & { i?: unknown }>) : []
+  const byIndex = new Map<number, RawPlanScene>()
+  rows.forEach((r, k) => byIndex.set(typeof r?.i === 'number' ? r.i - 1 : k, r ?? {}))
+  let rr = 0
+  const scenes: StoryScene[] = texts.map((text, i) => {
+    const r = byIndex.get(i) ?? {}
+    let asset = typeof r.asset === 'string' ? p.assets.find((a) => a.id === r.asset) : undefined
+    // no AI answer: spread the uploads over the scenes in order
+    if (!rows.length && p.assets.length) asset = p.assets[rr++ % p.assets.length]
+    const offsetMs = typeof r.offsetSec === 'number' && Number.isFinite(r.offsetSec) ? Math.max(0, Math.round(r.offsetSec * 1000)) : 0
+    return {
+      id: newId(),
+      text,
+      highlights: parseHighlights(r.highlights, text),
+      label: factLabel(r.label),
+      visual: asset ? { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' && asset.durationMs ? Math.min(offsetMs, Math.max(0, asset.durationMs - 1000)) : 0 } : { kind: 'card' },
+      keepAudio: false,
+      reason: cleanText(r.reason, 160) || null,
+      need: cleanText(r.need, NEED_MAX) || (asset ? null : 'Bu cümleyi anlatan bir fotoğraf ya da kısa video ekleyin'),
+    }
+  })
+  return { title: null, caption: j ? cleanText(j.caption, CAPTION_MAX) || null : null, scenes, source: rows.length ? 'ai' : 'fallback' }
+}
+
+/** Long scripts → scenes: one sentence each, very short neighbours joined (≈ 4–12 s per scene). */
+export function longScenes(script: string): string[] {
+  const out: string[] = []
+  for (const s of scenesFromScript(script, 200)) {
+    const last = out[out.length - 1]
+    if (last && (last.length < 60 || s.length < 40) && last.length + s.length + 1 <= 170) out[out.length - 1] = `${last} ${s}`
+    else out.push(s)
+  }
+  return out.slice(0, MAX_SCENES)
 }

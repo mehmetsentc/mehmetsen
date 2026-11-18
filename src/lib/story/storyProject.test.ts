@@ -318,3 +318,18 @@ describe('part slicing', () => {
     expect(b.timeline.scenes[0].start).toBeCloseTo(0, 6)
   })
 })
+
+describe('long planning', () => {
+  it('parseVisuals keeps the texts and matches choices by number', async () => {
+    const { parseVisuals, longScenes, parseLongScript } = await import('./storyProject')
+    const texts = longScenes('Kısa. Bu ikinci cümle biraz daha uzun ve kazı alanında bulunan katmanları ayrıntılı biçimde anlatıyor. Üçüncü cümle de burada yer alıyor ve Schliemann ile başlayan tartışmanın bugüne nasıl geldiğini anlatarak devam ediyor.')
+    expect(texts[0]).toMatch(/^Kısa\. Bu ikinci/)
+    const raw = JSON.stringify({ caption: 'c', scenes: [{ i: 2, asset: 'a1', need: null }, { i: 1, asset: null, need: 'Geniş açı' }] })
+    const plan = parseVisuals(raw, texts, { assets: [asset('a1')] }, nid)
+    expect(plan.scenes.map((s) => s.text)).toEqual(texts)
+    expect(plan.scenes[0].visual.kind).toBe('card')
+    expect(plan.scenes[0].need).toBe('Geniş açı')
+    expect(plan.scenes[1].visual.kind).toBe('asset')
+    expect(parseLongScript(JSON.stringify({ title: 'T', sections: [{ text: 'x'.repeat(50) }, { text: 'kısa' }] })).sections).toHaveLength(1)
+  })
+})

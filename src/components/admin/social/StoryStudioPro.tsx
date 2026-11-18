@@ -303,6 +303,8 @@ export function StoryStudioPro() {
     if (!r.ok) return toast.error(r.error)
     const res = r.job.result as { project?: StoryProject; note?: string | null }
     apply(res.project ?? null)
+    // long videos: the AI-written script is now visible / editable in «Proje»
+    if (res.project) setDraft((d) => ({ ...d, script: res.project!.script, title: res.project!.title, caption: res.project!.caption }))
     if (res.note) toast(res.note, { icon: 'ℹ️' })
     else toast.success(draft.targetMin > 1 ? 'Sahneler hazır — «Çekim listesi»nde hangi görüntülerin eksik olduğunu görün' : 'Sahneler hazır — kontrol edin, istediğinizi değiştirin')
     if (draft.targetMin > 1) setLeft('shots')
