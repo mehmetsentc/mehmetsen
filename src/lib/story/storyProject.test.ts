@@ -214,7 +214,7 @@ describe('ffmpeg argv', () => {
     expect(fc).not.toContain('[wm]')
     const fw = finalArgs({ segmentList: 'seg.txt', narration: 'n.wav', overlayList: 'o.txt', output: 'out.mp4', total: 11.2, watermark: 'wm.png' })
     const fcw = fw[fw.indexOf('-filter_complex') + 1]
-    expect(fcw).toContain('colorchannelmixer=aa=0.22')
+    expect(fcw).toContain('colorchannelmixer=aa=0.16')
     expect(fcw.indexOf('[wm]')).toBeLessThan(fcw.indexOf('[base][ovl]'))
     expect(segmentConcat(['/t/a.mp4'])).toContain("file '/t/a.mp4'")
   })

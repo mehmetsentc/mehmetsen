@@ -101,8 +101,12 @@ export function segmentConcat(files: string[]): string {
  * Final assembly. Inputs: joined segments (concat list), narration WAV, overlay concat list.
  * Output: H.264 High / AAC, moov first.
  */
-/** Watermark: the NaHaber mark, faint, drifting slowly around the centre for the whole video (anti re-upload). */
-export const WATERMARK = { width: 300, opacity: 0.22, ampX: 150, ampY: 120, periodX: 13, periodY: 9, liftY: 140 } as const
+/**
+ * Watermark: a small, faint NaHaber mark drifting slowly over the whole frame for the whole
+ * video (anti re-upload). Two slow, unrelated periods (Lissajous path) so it never parks
+ * in one place and never jumps; it stays under the captions.
+ */
+export const WATERMARK = { width: 150, opacity: 0.16, margin: 60, periodX: 37, periodY: 53 } as const
 
 export function finalArgs(a: { segmentList: string; narration: string; overlayList: string; output: string; total: number; watermark?: string | null }): string[] {
   const args = ['-hide_banner', '-loglevel', 'error', '-y']
@@ -114,7 +118,7 @@ export function finalArgs(a: { segmentList: string; narration: string; overlayLi
   const wm = a.watermark
     ? [
         `[3:v]scale=${W.width}:-1,format=rgba,colorchannelmixer=aa=${W.opacity}[wm]`,
-        `[base0][wm]overlay=x='(W-w)/2+${W.ampX}*sin(2*PI*t/${W.periodX})':y='(H-h)/2-${W.liftY}+${W.ampY}*sin(2*PI*t/${W.periodY}+1)':shortest=1:format=auto[base]`,
+        `[base0][wm]overlay=x='(W-w)/2+((W-w)/2-${W.margin})*sin(2*PI*t/${W.periodX})':y='(H-h)/2+((H-h)/2-${W.margin})*sin(2*PI*t/${W.periodY}+1)':shortest=1:format=auto[base]`,
       ]
     : ['[base0]null[base]']
   const parts = [
