@@ -469,7 +469,21 @@ const LEDGER_TEXT: Record<string, { text: string; tone: string }> = {
   uncertain: { text: 'Belirsiz', tone: 'text-amber-700 dark:text-amber-300' },
 }
 const JOB_TEXT: Record<string, string> = { queued: 'Sırada', processing: 'İşleniyor', published: 'Yayımlandı', failed: 'Başarısız', cancelled: 'İptal edildi', uncertain: 'Sonuç belirsiz', skipped: 'Atlandı', awaiting_approval: 'Onay bekliyor' }
-const TRIGGER_TEXT: Record<string, string> = { share: 'Manuel', composer: 'Manuel (panel)', automation: 'Otomatik kural', cron: 'Eski otomasyon', uncertain_republish: 'Belirsiz sonrası', force_reshare_bulk: 'Toplu yeniden paylaşım', api_social: 'API' }
+const TRIGGER_TEXT: Record<string, string> = {
+  share: 'Manuel',
+  composer: 'Manuel (panel)',
+  after: 'Haber yayımlanınca',
+  automation: 'Otomatik kural',
+  cron: 'Eski otomasyon',
+  studio: 'Reels stüdyosu',
+  studio_media: 'Video Stüdyosu',
+  studio_digest: 'Video Stüdyosu (özet)',
+  tiktok_dialog: 'TikTok onayı',
+  uncertain_republish: 'Belirsiz sonrası',
+  force_reshare_bulk: 'Toplu yeniden paylaşım',
+  api_social: 'API',
+  api: 'API',
+}
 
 /** Lazily loaded on tab open, for THIS account only; a late answer for another account is dropped. */
 function HistoryTab({ account }: { account: SocialAccountRow }) {
@@ -516,6 +530,7 @@ function HistoryTab({ account }: { account: SocialAccountRow }) {
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-[rgb(var(--color-muted))]">Sayılar bu hesabın son {data.records.length} yayın kaydından hesaplanır (sunucu hesap başına en yeni 30 kaydı döndürür).</p>
       <dl className="grid grid-cols-3 gap-2 text-center">
         {(
           [

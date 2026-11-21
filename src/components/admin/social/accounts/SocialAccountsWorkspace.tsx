@@ -235,6 +235,23 @@ export function SocialAccountsWorkspace() {
         ) : null
       }
     >
+      {/* The admin header is hidden below md: repeat the title and primary action on phones. */}
+      <div className="space-y-3 md:hidden">
+        <div>
+          <h1 className="text-xl font-bold text-[rgb(var(--color-text))]">Sosyal hesaplar</h1>
+          <p className="text-sm text-[rgb(var(--color-muted))]">Tüm hesaplarını tek yerden yönet</p>
+        </div>
+        {canAdd && !wizardOpen && (
+          <button
+            type="button"
+            onClick={() => setWizardOpen(true)}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-[rgb(var(--color-brand))] px-4 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" aria-hidden /> Yeni hesap ekle
+          </button>
+        )}
+      </div>
+
       <SocialAdminNav />
 
       {/* Existing connect flow: result banner, Facebook page choice, «Yeni hesap ekle» wizard (OAuth). */}
@@ -252,7 +269,7 @@ export function SocialAccountsWorkspace() {
 
       {/* Summary cards (whole authorised set) */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4" aria-label="Hesap özeti">
-        <SummaryCard label="Toplam hesap" value={summary.total} loading={loading} icon={<Users className="h-5 w-5" aria-hidden />} tone="brand" pressed={!filters.status && !filters.automation && !!active} onClick={() => cardFilter('total')} hint="Durum ve otomasyon filtresini kaldır" />
+        <SummaryCard label="Toplam hesap" value={summary.total} loading={loading} icon={<Users className="h-5 w-5" aria-hidden />} tone="brand" pressed={false} onClick={() => cardFilter('total')} hint="Durum ve otomasyon filtresini kaldır" />
         <SummaryCard label="Yayına hazır" value={summary.ready} loading={loading} icon={<CheckCircle2 className="h-5 w-5" aria-hidden />} tone="ok" pressed={filters.status === 'ready_any'} onClick={() => cardFilter('ready')} hint="Yalnız yayına hazır hesapları göster" />
         <SummaryCard label="İşlem gerekli" value={summary.attention} loading={loading} icon={<AlertTriangle className="h-5 w-5" aria-hidden />} tone="warn" pressed={filters.status === 'attention'} onClick={() => cardFilter('attention')} hint="Yeniden bağlantı, doğrulanmamış izin veya süresi dolmak üzere olan hesaplar" />
         <SummaryCard label="Otomasyon açık" value={summary.automationOn} loading={loading} icon={<Settings2 className="h-5 w-5" aria-hidden />} tone="ok" pressed={filters.automation === 'on'} onClick={() => cardFilter('automation')} hint="En az bir açık kuralı olan hesaplar" />
