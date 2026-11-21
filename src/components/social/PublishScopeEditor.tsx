@@ -6,7 +6,7 @@
  * and (b) automation rules, which have their own triggers, limits, quiet
  * hours and on/off switch.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -17,6 +17,8 @@ import type { PublishFormat } from '@/lib/social/accounts/capabilities'
 import { socialApi, type SocialAccountRow } from './socialClient'
 import { CategoryPicker } from './CategoryPicker'
 import { contentScopeLabel } from '@/lib/social/accounts/publishScope'
+import { sameDraft } from '@/lib/social/accounts/accountListView'
+import { cn } from '@/lib/utils'
 
 const GEO_KINDS: Array<[AutomationGeo['kind'], string]> = [
   ['provinces', 'Belirli il(ler)'],
@@ -117,6 +119,8 @@ export function PublishScopeEditor({
   onSaved,
   onClose,
   automationHref,
+  embedded = false,
+  onDirtyChange,
 }: {
   account: SocialAccountRow & { publishScope: AccountPublishScope }
   /** Provinces the user may choose (il yöneticisi: own il only). */
@@ -127,6 +131,10 @@ export function PublishScopeEditor({
   onSaved: () => void
   onClose: () => void
   automationHref: string
+  /** Inside the accounts detail panel: no outer frame / duplicate title. */
+  embedded?: boolean
+  /** Reports whether the form differs from the saved scope (unsaved-changes warning). */
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const init = account.publishScope
   const [geo, setGeo] = useState<AutomationGeo>(() => {
@@ -142,6 +150,24 @@ export function PublishScopeEditor({
   const [formats, setFormats] = useState<PublishFormat[]>(init.formats)
   const [manualAccess, setManualAccess] = useState(init.manualAccess)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const draft = { geo, storyGeo, allCategories, categoryIds, storyAllCategories, storyCategoryIds, formats, manualAccess }
+  const saved = {
+    geo: init.geo,
+    storyGeo: init.storyGeo,
+    allCategories: init.allCategories,
+    categoryIds: init.categoryIds,
+    storyAllCategories: init.storyAllCategories ?? true,
+    storyCategoryIds: init.storyCategoryIds ?? [],
+    formats: init.formats,
+    manualAccess: init.manualAccess,
+  }
+  // Opening the editor writes nothing; «Kaydet» is enabled only when something changed.
+  const dirty = !sameDraft(draft, saved)
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
   const isCorporate = account.ownerKind === 'central' || account.ownerKind === 'province'
   const allowedKinds = useMemo(
     () => GEO_KINDS.filter(([k]) => provinceChoices.length >= 81 || account.ownerKind !== 'province' || k === 'provinces' || k === 'districts'),
@@ -149,25 +175,31 @@ export function PublishScopeEditor({
   )
 
   const save = async () => {
+    // One request at a time: a second click while saving is ignored.
+    if (savingRef.current || !dirty) return
+    savingRef.current = true
     setSaving(true)
     const r = await socialApi<{ publishScope: AccountPublishScope }>(`/api/social/accounts/${encodeURIComponent(account.id)}`, {
       method: 'PATCH',
-      body: JSON.stringify({ action: 'scope', scope: { geo, storyGeo, allCategories, categoryIds, storyAllCategories, storyCategoryIds, formats, manualAccess } }),
+      body: JSON.stringify({ action: 'scope', scope: draft }),
     })
+    savingRef.current = false
     setSaving(false)
+    // On error the form keeps every value the user entered.
     if (!r.ok) {
       toast.error(r.error)
       return
     }
     toast.success('Yayın kapsamı kaydedildi.')
+    onDirtyChange?.(false)
     onSaved()
   }
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
   return (
-    <div className="space-y-4 rounded-xl border border-blue-300 p-3 text-sm dark:border-blue-800" aria-label="Yayın kapsamı ve izinler">
-      <div className="flex items-start justify-between gap-2">
+    <div className={cn('space-y-4 text-sm', !embedded && 'rounded-xl border border-blue-300 p-3 dark:border-blue-800')} aria-label="Yayın kapsamı ve izinler">
+      <div className={cn('flex items-start justify-between gap-2', embedded && 'sr-only')}>
         <div>
           <h3 className="font-bold">Yayın kapsamı ve izinler — {account.displayName}</h3>
           <p className="text-xs text-[rgb(var(--color-muted))]">
@@ -274,13 +306,20 @@ export function PublishScopeEditor({
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <button type="button" disabled={saving} onClick={() => void save()} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white disabled:opacity-50">
-          {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} Kaydet
+      <div className={cn('flex flex-wrap items-center gap-2', embedded && 'sticky bottom-0 -mx-1 border-t border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-1 py-2')}>
+        <button
+          type="button"
+          disabled={saving || !dirty}
+          aria-disabled={saving || !dirty}
+          onClick={() => void save()}
+          className={cn('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-white disabled:opacity-50', embedded ? 'bg-[rgb(var(--color-brand))]' : 'bg-blue-600')}
+        >
+          {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {embedded ? 'Değişiklikleri kaydet' : 'Kaydet'}
         </button>
         <button type="button" onClick={onClose} className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5">
           Vazgeç
         </button>
+        {embedded && <span className="text-xs text-[rgb(var(--color-muted))]" aria-live="polite">{saving ? 'Kaydediliyor…' : dirty ? 'Kaydedilmemiş değişiklik var' : 'Değişiklik yok'}</span>}
       </div>
     </div>
   )

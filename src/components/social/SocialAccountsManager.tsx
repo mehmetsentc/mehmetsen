@@ -111,13 +111,33 @@ function Pill({ tone, children }: { tone: 'ok' | 'warn' | 'bad' | 'muted'; child
   )
 }
 
+/** Account the platform login just returned to (opens its «Yayın kapsamı» for review; nothing is saved yet). */
+export type ReturnedAccount = { id: string; district: string | null; prefill: ScopePrefill | null }
+
 export function SocialAccountsManager({
   mode = 'self',
   ownerFilter,
+  connectOnly = false,
+  me: meProp,
+  wizardOpen: wizardOpenProp,
+  onWizardOpenChange,
+  onAccountReturned,
+  onAccountsChanged,
 }: {
   /** self = profile / publisher pages; admin = central / il panel. */
   mode?: 'self' | 'admin'
   ownerFilter?: (a: SocialAccountRow) => boolean
+  /**
+   * Admin «Sosyal hesaplar» workspace: render only the connect flow (result
+   * banner, Facebook page choice, «Yeni hesap ekle» wizard). The workspace owns
+   * the list, so this mode fetches nothing but `/api/social/me` (or uses `me`).
+   */
+  connectOnly?: boolean
+  me?: SocialMe | null
+  wizardOpen?: boolean
+  onWizardOpenChange?: (open: boolean) => void
+  onAccountReturned?: (a: ReturnedAccount) => void
+  onAccountsChanged?: () => void
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -138,7 +158,12 @@ export function SocialAccountsManager({
   const [pagesNext, setPagesNext] = useState<number | null>(null)
   const [pagesError, setPagesError] = useState<string | null>(null)
   const [selectedPage, setSelectedPage] = useState('')
-  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardOpenState, setWizardOpenState] = useState(false)
+  const wizardOpen = wizardOpenProp ?? wizardOpenState
+  const setWizardOpen = (open: boolean) => {
+    setWizardOpenState(open)
+    onWizardOpenChange?.(open)
+  }
   const [districtSlug, setDistrictSlug] = useState('')
   const [scopeFor, setScopeFor] = useState<{ id: string; district: string | null; prefill?: ScopePrefill | null } | null>(null)
   const [contentKind, setContentKind] = useState<ContentKindChoice>('general')
@@ -150,6 +175,20 @@ export function SocialAccountsManager({
   const [fStatus, setFStatus] = useState('')
 
   const load = useCallback(async () => {
+    if (connectOnly) {
+      // The workspace loads accounts + rules once; only the user's roles are needed here.
+      if (meProp) {
+        setMe(meProp)
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      const m = await socialApi<SocialMe>('/api/social/me')
+      if (!m.ok) setError(m.status === 401 ? 'Sosyal hesaplar için giriş yapın.' : m.error)
+      else setMe(m.data)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     const [m, a, r] = await Promise.all([
@@ -162,19 +201,33 @@ export function SocialAccountsManager({
     if (a.ok) setAccounts(a.data.accounts)
     if (r.ok) setRules(r.data.rules ?? [])
     setLoading(false)
-  }, [])
+  }, [connectOnly, meProp])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  /** After a change: the workspace reloads its own list; the classic view reloads itself. */
+  const refresh = useCallback(() => {
+    if (connectOnly) onAccountsChanged?.()
+    else void load()
+  }, [connectOnly, load, onAccountsChanged])
+
+  const openScopeFor = useCallback(
+    (x: { id: string; district: string | null; prefill?: ScopePrefill | null }) => {
+      if (connectOnly) onAccountReturned?.({ id: x.id, district: x.district, prefill: x.prefill ?? null })
+      else setScopeFor(x)
+    },
+    [connectOnly, onAccountReturned],
+  )
 
   // OAuth dönüşü (bağlandı) → 6. adım: yeni / yenilenen hesabın yayın kapsamı.
   const returnedAccount = searchParams.get('account')
   useEffect(() => {
     if (!returnedAccount || (resultCode !== 'connected' && resultCode !== 'connected_needs_attention')) return
     const { district, prefill } = readPending()
-    setScopeFor({ id: returnedAccount, district, prefill })
-  }, [returnedAccount, resultCode])
+    openScopeFor({ id: returnedAccount, district, prefill })
+  }, [returnedAccount, resultCode, openScopeFor])
 
   const ownerChoices = useMemo<OwnerChoice[]>(() => {
     if (!me) return []
@@ -304,7 +357,7 @@ export function SocialAccountsManager({
       return
     }
     toast.success(action === 'pause' ? 'Hesap duraklatıldı (yayın ve otomasyon durur).' : 'Hesap etkinleştirildi.')
-    void load()
+    refresh()
   }
 
   const disconnect = async (a: SocialAccountRow) => {
@@ -345,8 +398,9 @@ export function SocialAccountsManager({
     toast.success(r.data.status === 'active' ? 'Facebook sayfası bağlandı.' : RESULT_MESSAGES.connected_needs_attention.text)
     const { district, prefill } = readPending()
     clearQuery()
-    await load()
-    setScopeFor({ id: r.data.accountId, district, prefill })
+    if (connectOnly) onAccountsChanged?.()
+    else await load()
+    openScopeFor({ id: r.data.accountId, district, prefill })
   }
 
   const shown = useMemo(
@@ -371,6 +425,7 @@ export function SocialAccountsManager({
   const ownerChoice = ownerChoices.find((c) => c.key === ownerKey)
 
   if (loading) {
+    if (connectOnly) return null
     return (
       <p className="flex items-center gap-2 py-6 text-sm text-[rgb(var(--color-muted))]">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Hesaplar yükleniyor…
@@ -436,7 +491,7 @@ export function SocialAccountsManager({
         </div>
       )}
 
-      {ownerChoices.length > 0 && !wizardOpen && (
+      {!connectOnly && ownerChoices.length > 0 && !wizardOpen && (
         <button type="button" onClick={() => setWizardOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
           <Plus className="h-4 w-4" aria-hidden /> Yeni hesap ekle
         </button>
@@ -614,7 +669,7 @@ export function SocialAccountsManager({
         </form>
       )}
 
-      {accounts.length > 1 && (
+      {!connectOnly && accounts.length > 1 && (
         <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="Hesap filtreleri">
           <select value={fPlatform} onChange={(e) => setFPlatform(e.target.value)} className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1">
             <option value="">Tüm platformlar</option>
@@ -647,7 +702,7 @@ export function SocialAccountsManager({
         </div>
       )}
 
-      {shown.length === 0 ? (
+      {connectOnly ? null : shown.length === 0 ? (
         <p className="rounded-lg bg-[rgb(var(--color-surface))] px-3 py-6 text-center text-sm text-[rgb(var(--color-muted))]">Henüz bağlı hesap yok.</p>
       ) : (
         <ul className="divide-y divide-[rgb(var(--color-border))]" aria-label="Sosyal hesaplar">
