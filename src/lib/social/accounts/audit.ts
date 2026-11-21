@@ -16,6 +16,7 @@ export type SocialAuditAction =
   | 'social.account.status'
   | 'social.account.connect'
   | 'social.account.disconnect'
+  | 'social.account.delete'
   | 'social.oauth.start'
   | 'social.oauth.callback'
   | 'social.publish'

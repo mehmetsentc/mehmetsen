@@ -156,6 +156,55 @@ export async function disconnectAccountForActor(actor: SocialActor, accountId: s
   return { ok: true as const, rulesDisabled: rules.length, jobsCancelled: cancelled }
 }
 
+/**
+ * «Hesabı listeden sil» — removes the record of an account whose connection was
+ * ALREADY removed (status `disabled`: token deleted, rules closed, queued jobs
+ * cancelled by disconnect). Two explicit steps on purpose: an active account is
+ * refused, so a single click can never cut a working connection AND erase it.
+ *  - account document deleted (secret document deleted again, idempotent)
+ *  - its (already closed) automation rules deleted
+ *  - publish ledger / history and audit records are KEPT
+ * Reconnecting the same external account later creates a fresh record.
+ */
+export async function deleteDisconnectedAccountForActor(actor: SocialActor, accountId: string) {
+  const a = await accountForActor(actor, accountId, 'manage')
+  if ('ok' in a) return a
+  if (a.connectionMethod === 'legacy') return err(409, 'legacy', 'Eski bağlantı bu panelden silinemez')
+  if (a.status !== 'disabled') return err(409, 'disconnect_first', 'Önce bağlantıyı kaldırın; yalnız bağlantısı kaldırılmış hesap listeden silinebilir')
+  const db = getAdminFirestore()
+  const accRef = db.collection(Collections.SOCIAL_ACCOUNTS).doc(a.id)
+  const secRef = db.collection(Collections.SOCIAL_ACCOUNT_SECRETS).doc(a.id)
+  const deleted = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(accRef)
+    if (!snap.exists) return false
+    // Re-check inside the transaction: a reconnect in between makes it active again.
+    if ((snap.data() as { status?: string }).status !== 'disabled') return null
+    tx.delete(secRef)
+    tx.delete(accRef)
+    return true
+  })
+  if (deleted === null) return err(409, 'disconnect_first', 'Hesap bu arada yeniden bağlanmış; silinmedi')
+  if (!deleted) return err(404, 'not_found', 'Hesap bulunamadı')
+  const now = Date.now()
+  const rules = (await listRules()).filter((r) => r.accountId === a.id)
+  let rulesDeleted = 0
+  for (const r of rules) {
+    if (r.enabled) await setRuleEnabled(r.id, false, actor.uid, now).catch(() => undefined)
+    const d = await deleteRule(r.id, actor.uid).catch(() => null)
+    if (d?.ok) rulesDeleted++
+  }
+  const { cancelQueuedForAccount } = await import('./automation/jobs')
+  const cancelled = await cancelQueuedForAccount(a.id, 'account_deleted', now).catch(() => 0)
+  await writeSocialAudit({
+    actorId: actor.uid,
+    action: 'social.account.delete',
+    entityType: 'socialAccount',
+    entityId: a.id,
+    meta: { platform: a.platform, rulesDeleted, jobsCancelled: cancelled },
+  })
+  return { ok: true as const, rulesDeleted, jobsCancelled: cancelled }
+}
+
 // ── Rules ───────────────────────────────────────────────────────────────────
 
 export async function rulesForActor(actor: SocialActor) {

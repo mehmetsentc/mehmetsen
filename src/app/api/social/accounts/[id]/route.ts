@@ -2,7 +2,7 @@
 import { requireActor } from '@/lib/social/accounts/connect/actorRoute'
 import { json, readJsonBody } from '@/lib/social/accounts/connect/routeHelpers'
 import { changeAccountStatus } from '@/lib/social/accounts/connect/flows'
-import { disconnectAccountForActor, setPublishScopeForActor } from '@/lib/social/actorSocial'
+import { deleteDisconnectedAccountForActor, disconnectAccountForActor, setPublishScopeForActor } from '@/lib/social/actorSocial'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,11 +24,20 @@ export async function PATCH(request: Request, { params }: Ctx) {
   return json({ status: r.status })
 }
 
-/** DELETE /api/social/accounts/[id] — «Bağlantıyı kaldır» (token + platform profile data removed; history kept). */
+/**
+ * DELETE /api/social/accounts/[id] — «Bağlantıyı kaldır» (token + platform profile data removed; history kept).
+ * DELETE /api/social/accounts/[id]?remove=1 — «Hesabı listeden sil»: only for an account whose
+ * connection is already removed (status disabled); deletes the record and its closed rules, keeps history.
+ */
 export async function DELETE(request: Request, { params }: Ctx) {
   const auth = await requireActor(request, { mutation: true })
   if ('response' in auth) return auth.response
   const { id } = await params
+  if (new URL(request.url).searchParams.get('remove') === '1') {
+    const d = await deleteDisconnectedAccountForActor(auth.actor, id)
+    if (!d.ok) return json({ error: d.message, code: d.code }, d.status)
+    return json({ deleted: true, rulesDeleted: d.rulesDeleted, jobsCancelled: d.jobsCancelled })
+  }
   const r = await disconnectAccountForActor(auth.actor, id)
   if (!r.ok) return json({ error: r.message, code: r.code }, r.status)
   return json({ disconnected: true, rulesDisabled: r.rulesDisabled, jobsCancelled: r.jobsCancelled })

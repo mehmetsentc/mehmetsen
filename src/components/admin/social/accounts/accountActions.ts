@@ -83,3 +83,23 @@ export async function disconnectAccount(a: SocialAccountRow): Promise<boolean> {
   toast.success('Bağlantı kaldırıldı; erişim anahtarı silindi.')
   return true
 }
+
+/**
+ * «Hesabı listeden sil» — only for an account whose connection is already
+ * removed. Deletes the record and its closed rules; publish history is kept.
+ */
+export async function deleteDisconnectedAccount(a: SocialAccountRow): Promise<boolean> {
+  if (
+    !window.confirm(
+      `«${a.displayName}» kaydı listeden kalıcı olarak silinsin mi?\n\nHesabın kaydı ve kapalı otomasyon kuralları silinir; bu işlem geri alınamaz. Paylaşım geçmişi ve denetim kayıtları korunur. Aynı hesabı daha sonra «Yeni hesap ekle» ile yeniden bağlayabilirsiniz.`,
+    )
+  )
+    return false
+  const r = await socialApi<{ deleted: boolean }>(`/api/social/accounts/${encodeURIComponent(a.id)}?remove=1`, { method: 'DELETE' })
+  if (!r.ok) {
+    toast.error(r.code === 'disconnect_first' ? 'Önce bağlantıyı kaldırın; yalnız bağlantısı kaldırılmış hesap silinebilir.' : r.error)
+    return false
+  }
+  toast.success('Hesap listeden silindi.')
+  return true
+}

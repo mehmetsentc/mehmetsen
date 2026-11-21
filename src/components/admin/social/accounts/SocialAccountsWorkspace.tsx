@@ -46,7 +46,7 @@ import { AccountAvatar, AutomationPill, PLATFORM_NAME, PlatformLabel, StatePill,
 import { startReconnect } from './accountActions'
 
 type View = AccountView<SocialAccountRow>
-type Selected = { id: string; tab: DetailTab; returned: { district: string | null; prefill: ReturnedAccount['prefill'] } | null; nonce: number }
+type Selected = { id: string; tab: DetailTab; danger?: boolean; returned: { district: string | null; prefill: ReturnedAccount['prefill'] } | null; nonce: number }
 
 const categoryNames = (ids: string[]) => ids.map((id) => CATEGORY_NAME.get(id) ?? id)
 
@@ -149,13 +149,13 @@ export function SocialAccountsWorkspace() {
 
   const canLeave = () => confirmDiscard(dirtyRef.current, (m) => window.confirm(m))
 
-  const openAccount = (id: string, tab: DetailTab = 'general', opener?: HTMLElement | null) => {
-    if (selected?.id === id && selected.tab === tab) return
+  const openAccount = (id: string, tab: DetailTab = 'general', opener?: HTMLElement | null, danger = false) => {
+    if (selected?.id === id && selected.tab === tab && !danger) return
     // Any switch (other account, or another tab via the row menu) remounts the panel → ask first.
     if (selected && !canLeave()) return
     dirtyRef.current = false
     if (opener) openerRef.current = opener
-    setSelected((s) => ({ id, tab, returned: null, nonce: (s?.nonce ?? 0) + 1 }))
+    setSelected((s) => ({ id, tab, danger, returned: null, nonce: (s?.nonce ?? 0) + 1 }))
   }
 
   const closePanel = useCallback(() => {
@@ -421,6 +421,7 @@ export function SocialAccountsWorkspace() {
               me={me}
               overlay={false}
               initialTab={selected.tab}
+              focusDanger={!!selected.danger}
               returned={selected.returned}
               onRequestClose={closePanel}
               onDirtyChange={onDirtyChange}
@@ -441,6 +442,7 @@ export function SocialAccountsWorkspace() {
             me={me}
             overlay
             initialTab={selected.tab}
+            focusDanger={!!selected.danger}
             returned={selected.returned}
             onRequestClose={closePanel}
             onDirtyChange={onDirtyChange}
@@ -520,7 +522,7 @@ function ReconnectButton({ a, compact }: { a: SocialAccountRow; compact?: boolea
 
 const showReconnect = (v: View) => v.state === 'reconnect' && v.account.canManage && v.account.connectionMethod !== 'legacy'
 
-function AccountTable({ rows, selectedId, sort, onSort, onOpen, compact }: { rows: View[]; selectedId: string | null; sort: { key: SortKey; dir: 'asc' | 'desc' }; onSort: (k: Exclude<SortKey, 'default'>) => void; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null) => void; compact: boolean }) {
+function AccountTable({ rows, selectedId, sort, onSort, onOpen, compact }: { rows: View[]; selectedId: string | null; sort: { key: SortKey; dir: 'asc' | 'desc' }; onSort: (k: Exclude<SortKey, 'default'>) => void; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null, danger?: boolean) => void; compact: boolean }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
       <table className="w-full table-fixed border-collapse text-sm">
@@ -620,7 +622,7 @@ function AccountTable({ rows, selectedId, sort, onSort, onOpen, compact }: { row
   )
 }
 
-function AccountCard({ v, selected, onOpen }: { v: View; selected: boolean; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null) => void }) {
+function AccountCard({ v, selected, onOpen }: { v: View; selected: boolean; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null, danger?: boolean) => void }) {
   const a = v.account
   const sc = scopeSummary(a, provinceName, categoryNames)
   return (
@@ -662,7 +664,7 @@ function AccountCard({ v, selected, onOpen }: { v: View; selected: boolean; onOp
 }
 
 /** «⋯» menu: shortcuts into the detail tabs (actions themselves live in the panel). */
-function RowMenu({ v, onOpen }: { v: View; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null) => void }) {
+function RowMenu({ v, onOpen }: { v: View; onOpen: (id: string, tab?: DetailTab, opener?: HTMLElement | null, danger?: boolean) => void }) {
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -734,6 +736,20 @@ function RowMenu({ v, onOpen }: { v: View; onOpen: (id: string, tab?: DetailTab,
           <Link role="menuitem" tabIndex={-1} href={`/admin/social/automation?account=${encodeURIComponent(a.id)}`} className="block border-t border-[rgb(var(--color-border))] px-3 py-2 hover:bg-[rgb(var(--color-surface))] focus:bg-[rgb(var(--color-surface))] focus:outline-none">
             Otomasyon sayfasında aç
           </Link>
+          {a.canManage && a.connectionMethod !== 'legacy' && (
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => {
+                setOpen(false)
+                onOpen(a.id, 'general', btnRef.current, true)
+              }}
+              className="block w-full border-t border-[rgb(var(--color-border))] px-3 py-2 text-left font-semibold text-red-700 hover:bg-red-50 focus:bg-red-50 focus:outline-none dark:text-red-300 dark:hover:bg-red-950/40 dark:focus:bg-red-950/40"
+            >
+              {a.status === 'disabled' ? 'Hesabı listeden sil…' : 'Bağlantıyı kaldır…'}
+            </button>
+          )}
         </div>
       )}
     </div>

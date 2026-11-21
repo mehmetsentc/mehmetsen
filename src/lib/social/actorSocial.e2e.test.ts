@@ -438,6 +438,31 @@ describe('Görev 17 — habere göre hedef hesaplar ve yayın kapsamı', () => {
     expect(fs.store.get(`socialPublishRecords/n9__${U1_IG.id}__post`)).toMatchObject({ externalPostId: 'p1' })
     expect(fs.docs('cmsAuditLogs').some((d) => d.data.action === 'social.account.disconnect')).toBe(true)
   })
+
+  it('«Hesabı listeden sil»: yalnız bağlantısı kaldırılmış hesap silinir; kayıt + kapalı kurallar gider, geçmiş kalır; başkası silemez', async () => {
+    const { DELETE } = await import('@/app/api/social/accounts/[id]/route')
+    const call = (uid: string, id: string, remove = false) =>
+      DELETE(req(`/api/social/accounts/${id}${remove ? '?remove=1' : ''}`, uid, { method: 'DELETE' }), { params: Promise.resolve({ id }) })
+    await fs.collection('socialPublishRecords').doc(`n9__${U1_IG.id}__post`).set({ newsId: 'n9', accountId: U1_IG.id, status: 'succeeded', externalPostId: 'p1' })
+    await fs.collection('socialAutomationRules').doc('r_00000000000000a1').set({ accountId: U1_IG.id, enabled: false, name: 'k', ownership: { ownerUid: 'u1' } })
+    // Etkin hesap tek adımda silinemez: önce bağlantı kaldırılmalı.
+    const active = await call('u1', U1_IG.id, true)
+    expect(active.status).toBe(409)
+    expect((await active.json()).code).toBe('disconnect_first')
+    expect(fs.store.has(`socialAccounts/${U1_IG.id}`)).toBe(true)
+    expect((await call('u1', U1_IG.id)).status).toBe(200)
+    // Başkası silemez (varlığı sızdırmadan 404).
+    expect((await call('u2', U1_IG.id, true)).status).toBe(404)
+    expect(fs.store.has(`socialAccounts/${U1_IG.id}`)).toBe(true)
+    const ok = await call('u1', U1_IG.id, true)
+    expect(ok.status).toBe(200)
+    expect(fs.store.has(`socialAccounts/${U1_IG.id}`)).toBe(false)
+    expect(fs.store.has(`socialAccountSecrets/${U1_IG.id}`)).toBe(false)
+    expect(fs.store.has('socialAutomationRules/r_00000000000000a1')).toBe(false)
+    expect(fs.store.get(`socialPublishRecords/n9__${U1_IG.id}__post`)).toMatchObject({ externalPostId: 'p1' })
+    expect(fs.docs('cmsAuditLogs').some((d) => d.data.action === 'social.account.delete' && d.data.entityId === U1_IG.id)).toBe(true)
+    expect((await call('u1', U1_IG.id, true)).status).toBe(404)
+  })
 })
 
 

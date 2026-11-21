@@ -20,7 +20,7 @@ import { TARGET_BLOCKER_TEXT, type TargetBlocker } from '@/lib/social/accounts/c
 import { confirmDiscard, createLatestGuard, type AccountState } from '@/lib/social/accounts/accountListView'
 import type { AutomationGeo } from '@/lib/social/automation/types'
 import type { AutomationJobPublic } from '@/lib/social/automation/jobs'
-import { checkConnection, disconnectAccount, engagementMissing, inboxMissing, setAccountStatus, startReconnect } from './accountActions'
+import { checkConnection, deleteDisconnectedAccount, disconnectAccount, engagementMissing, inboxMissing, setAccountStatus, startReconnect } from './accountActions'
 import { AccountAvatar, AutomationPill, PlatformLabel, StatePill, expiryText, fmtDate, ownershipText, provinceName } from './accountUi'
 
 export type DetailTab = 'general' | 'scope' | 'automation' | 'history'
@@ -97,6 +97,7 @@ export function AccountDetailPanel({
   me,
   overlay,
   initialTab,
+  focusDanger = false,
   returned,
   onRequestClose,
   onDirtyChange,
@@ -109,6 +110,8 @@ export function AccountDetailPanel({
   /** Drawer over the list (narrow screens) vs docked beside it. */
   overlay: boolean
   initialTab: DetailTab
+  /** Opened from the row menu's «Bağlantıyı kaldır / sil»: scroll to «Tehlikeli işlemler». */
+  focusDanger?: boolean
   /** Set right after a platform login returned this account: scope editor opens with the wizard's prefill (unsaved). */
   returned: { district: string | null; prefill: ScopePrefill } | null
   onRequestClose: () => void
@@ -123,6 +126,7 @@ export function AccountDetailPanel({
   const headingId = useId()
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const closeRef = useRef<HTMLButtonElement | null>(null)
+  const dangerRef = useRef<HTMLElement | null>(null)
   const a = account
   const legacy = a.connectionMethod === 'legacy'
   const publisherNames = useMemo(() => Object.fromEntries((me?.publishers ?? []).map((p) => [p.id, p.name])), [me])
@@ -132,8 +136,11 @@ export function AccountDetailPanel({
   )
 
   useEffect(() => {
-    closeRef.current?.focus()
-  }, [])
+    if (focusDanger && dangerRef.current) {
+      dangerRef.current.scrollIntoView({ block: 'center' })
+      dangerRef.current.focus()
+    } else closeRef.current?.focus()
+  }, [focusDanger])
 
   const reportDirty = useCallback(
     (d: boolean) => {
@@ -351,13 +358,33 @@ export function AccountDetailPanel({
               <p className="mt-2 text-xs text-[rgb(var(--color-muted))]">Erişim anahtarları sunucuda şifreli saklanır ve hiçbir ekranda gösterilmez.</p>
             </details>
 
-            {a.canManage && !legacy && a.status !== 'disabled' && (
-              <section className="rounded-xl border border-red-200 p-3 dark:border-red-900" aria-label="Tehlikeli işlemler">
+            {a.canManage && !legacy && (
+              <section
+                ref={dangerRef}
+                tabIndex={-1}
+                className="rounded-xl border border-red-200 p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 dark:border-red-900"
+                aria-label="Tehlikeli işlemler"
+              >
                 <h3 className="text-sm font-bold text-red-800 dark:text-red-200">Tehlikeli işlemler</h3>
-                <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">Erişim anahtarı ve platform profil bilgileri silinir, otomasyon kuralları kapatılır. Paylaşım geçmişi korunur.</p>
-                <button type="button" disabled={!!busy} onClick={() => void run('dc', () => disconnectAccount(a))} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40">
-                  Bağlantıyı kaldır
-                </button>
+                {a.status !== 'disabled' ? (
+                  <>
+                    <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+                      1. adım — <b>Bağlantıyı kaldır</b>: erişim anahtarı ve platform profil bilgileri silinir, otomasyon kuralları kapatılır, bekleyen işler iptal edilir. Paylaşım geçmişi korunur. Kaldırdıktan sonra hesabı listeden tamamen silebilirsiniz.
+                    </p>
+                    <button type="button" disabled={!!busy} onClick={() => void run('dc', () => disconnectAccount(a))} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40">
+                      Bağlantıyı kaldır
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-2 text-xs text-[rgb(var(--color-muted))]">
+                      Bu hesabın bağlantısı kaldırıldı. <b>Hesabı listeden sil</b>: kayıt ve kapalı otomasyon kuralları kalıcı olarak silinir. Paylaşım geçmişi ve denetim kayıtları korunur. Aynı hesap daha sonra yeniden bağlanabilir.
+                    </p>
+                    <button type="button" disabled={!!busy} onClick={() => void run('rm', () => deleteDisconnectedAccount(a))} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                      Hesabı listeden sil
+                    </button>
+                  </>
+                )}
               </section>
             )}
           </>
