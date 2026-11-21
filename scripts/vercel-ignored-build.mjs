@@ -5,7 +5,9 @@
  * Exit 0 = SKIP build | Exit 1 = PROCEED (Vercel inverts usual Unix meaning).
  *
  * Policy (local-first batch deploy):
- * 1. FORCE_DEPLOY=1 or [hotfix] → always build.
+ * 1. FORCE_DEPLOY=1 or [hotfix-urgent] → always build.
+ *    [hotfix] → build while < HOTFIX_MAX_PER_DAY (default 6; unlimited until FinOps 21 Nov)
+ *    READY prod deploys in the last 24h.
  *    [force-deploy] → build while < FORCE_DEPLOY_MAX_PER_DAY (default 2; 4 until FinOps 13 Nov) READY prod
  *    deploys in the last 24h (FinOps 22 Oct: ~20 force-deploys in 6 days reset ISR +
  *    in-process caches each time; Vercel ISR writes and Firestore reads doubled).
@@ -18,7 +20,9 @@
 import {
   MAX_DEPLOYS_PER_DAY,
   MAX_FORCE_DEPLOYS_PER_DAY,
+  MAX_HOTFIX_DEPLOYS_PER_DAY,
   isHotfix,
+  isUrgentHotfix,
   changedFiles,
   getCommitMessage,
   getRecentDeployCount,
@@ -50,8 +54,28 @@ async function main() {
     proceed('FORCE_DEPLOY env')
   }
 
+  if (isUrgentHotfix(message)) {
+    proceed('[hotfix-urgent] (production is down)')
+  }
+
+  // Gate / vercel.json updates must land even if the daily quota is already used.
+  if (touchesDeployGate(files) && hasDeployTag(message)) {
+    proceed('deploy-gate files changed')
+  }
+
   if (isHotfix(message)) {
-    proceed('[hotfix] (production-breaking fix)')
+    const recent = await getRecentDeployCount({ excludeHead: true })
+    console.log(
+      `[deploy-gate] [hotfix] recent prod deploys=${recent.count}/${MAX_HOTFIX_DEPLOYS_PER_DAY} (${recent.source})`,
+    )
+    if (recent.count < MAX_HOTFIX_DEPLOYS_PER_DAY) {
+      proceed(`[hotfix] within daily cap (${recent.count + 1}/${MAX_HOTFIX_DEPLOYS_PER_DAY})`)
+    }
+    skip(
+      `[hotfix] cap: ${recent.count} prod deploys in last 24h (max ${MAX_HOTFIX_DEPLOYS_PER_DAY}). ` +
+        'Production keeps running the previous deploy. If production is down, push again with ' +
+        '[hotfix-urgent] (always builds); otherwise batch this into the next deploy.',
+    )
   }
 
   if (isForceDeploy(message)) {
@@ -66,11 +90,6 @@ async function main() {
       `[force-deploy] cap: ${recent.count} prod deploys in last 24h (max ${MAX_FORCE_DEPLOYS_PER_DAY}). ` +
         'Batch changes into the next deploy, or use [hotfix] only if production is broken.',
     )
-  }
-
-  // Gate / vercel.json updates must land even if the daily quota is already used.
-  if (touchesDeployGate(files) && hasDeployTag(message)) {
-    proceed('deploy-gate files changed')
   }
 
   if (!isAppRelevant(files)) {

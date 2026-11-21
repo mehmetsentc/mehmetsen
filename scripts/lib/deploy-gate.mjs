@@ -9,6 +9,14 @@ import { execSync } from 'node:child_process'
 export const MAX_DEPLOYS_PER_DAY = Number(process.env.DEPLOY_MAX_PER_DAY || 1)
 /** FinOps 22 Oct: [force-deploy] no longer unlimited (each deploy resets ISR + caches). */
 export const MAX_FORCE_DEPLOYS_PER_DAY = Number(process.env.FORCE_DEPLOY_MAX_PER_DAY || 2)
+/**
+ * FinOps 21 Nov: [hotfix] was unlimited and became the everyday tag (13 production
+ * deploys on 17–20 Nov). Each deploy resets ISR + in-process caches: Vercel ISR Writes
+ * went from ≈$1.5 to ≈$2.2/day and builds cost up to $0.7/day. [hotfix] now builds while
+ * fewer than HOTFIX_MAX_PER_DAY (default 6) production deploys happened in the last 24h.
+ * [hotfix-urgent] (production is down) and FORCE_DEPLOY=1 always build.
+ */
+export const MAX_HOTFIX_DEPLOYS_PER_DAY = Number(process.env.HOTFIX_MAX_PER_DAY || 6)
 export const DEPLOY_WINDOW_MS = Number(
   process.env.DEPLOY_WINDOW_MS || 24 * 60 * 60 * 1000,
 )
@@ -50,8 +58,18 @@ export function isHotfix(message = getCommitMessage()) {
   return /\[hotfix\]/i.test(message)
 }
 
+/** Production is down: always build, no daily cap. */
+export function isUrgentHotfix(message = getCommitMessage()) {
+  return /\[hotfix-urgent\]/i.test(message)
+}
+
 export function hasDeployTag(message = getCommitMessage()) {
-  return /\[deploy\]/i.test(message) || /\[force-deploy\]/i.test(message) || /\[hotfix\]/i.test(message)
+  return (
+    /\[deploy\]/i.test(message) ||
+    /\[force-deploy\]/i.test(message) ||
+    /\[hotfix\]/i.test(message) ||
+    /\[hotfix-urgent\]/i.test(message)
+  )
 }
 
 export function changedFiles(range = 'HEAD~1..HEAD') {
@@ -134,7 +152,7 @@ export function countGitDeployCommits({
     return out
       .split('\n')
       .map((s) => s.trim())
-      .filter((s) => /\[deploy\]|\[force-deploy\]|\[hotfix\]/i.test(s))
+      .filter((s) => /\[deploy\]|\[force-deploy\]|\[hotfix\]|\[hotfix-urgent\]/i.test(s))
       .length
   } catch {
     return 0
