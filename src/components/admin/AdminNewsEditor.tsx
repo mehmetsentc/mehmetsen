@@ -102,6 +102,9 @@ interface ProfessionalAiResult {
   secondaryEditorSlug?: string | null
   suggestedCitySlug?: string | null
   suggestedDistrictSlug?: string | null
+  geoConfidence?: 'high' | 'medium' | 'low' | null
+  geoLikelyNational?: boolean
+  geoReplacedFormCity?: string | null
   suggestedCountrySlug?: string | null
   error?: string
 }
@@ -752,8 +755,15 @@ export function AdminNewsEditor({
         if (!data.categoryId?.trim() || data.categoryId === 'gundem') {
           setCategoryId('dunya')
         }
+      } else if (data.geoLikelyNational) {
+        // GÖREV 43: metin birden çok ili anlatıyor → il haberi değil
+        setCitySlug('')
+        setDistrictSlug('')
       } else {
-        if (data.suggestedCitySlug?.trim()) setCitySlug(data.suggestedCitySlug.trim())
+        if (data.suggestedCitySlug?.trim()) {
+          if (data.suggestedCitySlug.trim() !== citySlug) setDistrictSlug('')
+          setCitySlug(data.suggestedCitySlug.trim())
+        }
         if (data.suggestedDistrictSlug?.trim()) setDistrictSlug(data.suggestedDistrictSlug.trim())
       }
       if (data.aiEditorId?.trim() && isAutoEditor) {
@@ -859,8 +869,11 @@ export function AdminNewsEditor({
             ? data.readingTimeMinutes
             : estimateReadingTimeMinutes(`${nextTitle} ${nextSpot} ${nextContent}`),
         aiEditorId: data.aiEditorId || (isAutoEditor ? null : aiEditorId) || null,
-        citySlug: data.suggestedCitySlug?.trim() || citySlug,
-        districtSlug: data.suggestedDistrictSlug?.trim() || districtSlug,
+        citySlug: data.geoLikelyNational ? '' : data.suggestedCitySlug?.trim() || citySlug,
+        districtSlug: data.geoLikelyNational
+          ? ''
+          : data.suggestedDistrictSlug?.trim() ||
+            (data.suggestedCitySlug?.trim() && data.suggestedCitySlug.trim() !== citySlug ? '' : districtSlug),
         countrySlug: data.suggestedCountrySlug?.trim() || countrySlug,
         aiResearchSources: Array.isArray(data.researchSources) ? data.researchSources : [],
         status: nextStatus,

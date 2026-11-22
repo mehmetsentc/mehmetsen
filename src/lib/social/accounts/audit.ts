@@ -49,6 +49,8 @@ export type SocialAuditAction =
   | 'story.plan'
   | 'story.images'
   | 'story.render'
+  | 'social.agent.backfill'
+  | 'social.agent.settings'
 
 export interface SocialAuditEntry {
   actorId: string

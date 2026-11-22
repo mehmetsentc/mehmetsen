@@ -315,6 +315,8 @@ export function extractDistrictSlugFromText(text: string): string | null {
     (a, b) => b[1].length - a[1].length || b[0].length - a[0].length
   )
   for (const [slug, name] of entries) {
+    // GÖREV 43: «Merkez Bankası», «merkez ilçe» → Düzce/Merkez değildir.
+    if (slug === 'merkez') continue
     const nameNorm = normalizeTrAscii(name)
     if (nameNorm.length < 4 && slug.length < 4) continue
     if (AMBIGUOUS_SHORT_DISTRICT_SLUGS.has(slug)) {

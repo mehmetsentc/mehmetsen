@@ -161,6 +161,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/social/shares', label: 'Hesaplara Paylaş', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: ListTodo, requiredPermissions: ['social:view'], countKey: 'smmQueue' },
       { href: '/admin/social/automation', label: 'Otomasyon Kuralları', icon: Zap, requiredPermissions: ['social:view'] },
+      { href: '/admin/social/agent', label: 'Vekil Editör', icon: Bot, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/smm', label: 'İl SMM Ajanları', icon: Bot, requiredPermissions: ['social:view'], exact: true },
     ],
   },

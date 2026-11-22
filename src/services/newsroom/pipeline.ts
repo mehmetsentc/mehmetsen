@@ -81,6 +81,7 @@ import {
 } from '@/services/newsroom/dedupe/storyLibraryService'
 import { factChecker } from '@/services/newsroom/factChecker'
 import { geoEngine, extractCityFromText, hasExplicitPlaceEvidence } from '@/services/newsroom/geoEngine'
+import { resolveSourceContentGeo, sourceGeoOverride } from '@/lib/geo/sourceContentGeo'
 import { resolveCountryFromText } from '@/constants/countries'
 import { shouldStripSuggestedCityForCategory } from '@/lib/news/neverLocalVerticals'
 import { fetchArticleEnrichment } from '@/services/rss/articleFetcher'
@@ -862,6 +863,39 @@ export async function processNewsroomArticle(
         if (!deepseekKey && !geminiKey) {
           console.warn(`[newsroom/pipeline] İngilizce içerik, AI key yok → atlandı: ${workingInput.sourceUrl}`)
           return { outcome: 'skipped', skipReason: 'ai_unavailable' }
+        }
+      }
+    }
+
+    // ── GÖREV 43: kaynak gazetenin ili ≠ haberin ili ─────────────────────────
+    // forcedCitySlug çoğu zaman kaynağın (gazetenin) ilidir. Editör yönlendirmesi
+    // ve yazar talimatı bu ile göre kurulunca model haberi yanlış ile yazıyor,
+    // sonraki geo adımı da yeniden yazılmış metni kanıt sayıyordu. Editoryal kilit
+    // (lockForcedGeo) yoksa, özgün metinden yüksek güvenle bulunan il önce gelir.
+    if (!workingInput.lockForcedGeo) {
+      const contentGeo = resolveSourceContentGeo({
+        title: workingInput.originalTitle,
+        summary: workingInput.originalSummary,
+        body: workingInput.originalContent,
+      })
+      const publisherSlug = workingInput.forcedCitySlug?.trim()
+        ? normalizeCitySlug(workingInput.forcedCitySlug)
+        : ''
+      const override = sourceGeoOverride(publisherSlug, contentGeo)
+      if (override) {
+        console.log(
+          `[newsroom/pipeline] geo kaynak→içerik ${publisherSlug || '-'} → ${override.forcedCitySlug || 'ulusal'} (${contentGeo.method})`
+        )
+        workingInput = { ...workingInput, ...override }
+        // Ham Haberler girdisinde yerel/ulusal masa kaynak iline göre seçiliyordu;
+        // içerik ulusalsa «yerel» önyargısı kategoriyi Yerel Haber'e çekmesin.
+        if (workingInput.editorId === 'local-news' || workingInput.editorId === 'national-news') {
+          const local = Boolean(override.forcedCitySlug)
+          workingInput = {
+            ...workingInput,
+            editorId: local ? 'local-news' : 'national-news',
+            editorType: local ? 'local' : 'national',
+          }
         }
       }
     }

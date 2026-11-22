@@ -25,6 +25,7 @@ import { manualTargetCheck } from './accounts/manualTargets'
 import { parsePublishScope, readPublishScope } from './accounts/publishScope'
 import type { AutomationRuleInput } from './automation/types'
 import type { SocialPublishResult } from './types'
+import { decisionsFromPublish, recordShareDecisions } from '@/lib/social/agent/store'
 
 type Err = { ok: false; status: number; code: string; message: string }
 const err = (status: number, code: string, message: string): Err => ({ ok: false, status, code, message })
@@ -376,6 +377,19 @@ export async function shareForActor(
     entityId: a.id,
     meta: { newsId: input.newsId, format: input.format, result: res?.ledgerStatus ?? (r.skipped ? 'skipped' : 'unknown'), code: res?.code ?? null },
   })
+  // GÖREV 43 B1: başarılı elle paylaşım → vekil editörün öğrenme kaydı
+  if (res?.success && (input.format === 'post' || input.format === 'story')) {
+    await recordShareDecisions(
+      decisionsFromPublish({
+        newsId: input.newsId,
+        news: data,
+        result: { [input.format]: { [platform]: { success: true, accountId: a.id } } },
+        actorUid: actor.uid,
+        at: now(),
+        source: 'composer',
+      })
+    )
+  }
   if (r.skipped) return err(409, 'skipped', r.reason ?? 'Paylaşım yapılmadı')
   if (!res) return { ok: false, status: 202, code: 'no_result', message: 'Platform sonucu alınamadı — platformda kontrol edin; otomatik tekrar yapılmadı', ledgerStatus: 'uncertain' }
   if (res.success && res.platformId) {

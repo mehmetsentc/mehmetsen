@@ -428,5 +428,21 @@ service cloud.firestore {
     match /mediaProjects/{projectId} {
       allow read, write: if false;
     }
+    // GÖREV 43 — yalnızca sunucu (Admin SDK)
+    match /aiFieldCorrections/{id} {
+      allow read, write: if false;
+    }
+    match /socialDecisionLog/{id} {
+      allow read, write: if false;
+    }
+    match /socialAgentSettings/{id} {
+      allow read, write: if false;
+    }
+    match /socialAgentProfiles/{id} {
+      allow read, write: if false;
+    }
+    match /socialAgentShadowRuns/{id} {
+      allow read, write: if false;
+    }
   }
 }

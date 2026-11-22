@@ -44,6 +44,7 @@ import {
   persistableDistributionFields,
   resolveDistributionFields,
 } from '@/lib/news/distributionMeta'
+import { recordAiFieldCorrections } from '@/lib/ai/feedback/aiFieldCorrections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -604,6 +605,14 @@ export async function PUT(request: Request, context: RouteContext) {
 
       await newsRef.update(update)
 
+      // GÖREV 43: AI haberinde il / ilçe / kategori düzeltmesi → ölçüm + öğrenme kaydı
+      await recordAiFieldCorrections(db, {
+        newsId: id,
+        prev: prevData as Record<string, unknown> | undefined,
+        update: update as Record<string, unknown>,
+        uid: auth.uid,
+      })
+
       // Hesap bazlı otomasyon: iş kaydı yanıt dönmeden kalıcı yazılır (yayın olayı kaydı);
       // after() yalnızca hemen başlatır — kaybolursa 5 dakikalık çalışan işler.
       {
@@ -687,6 +696,14 @@ export async function PUT(request: Request, context: RouteContext) {
         contentScopeOf({ ...draftSnap.data(), ...draftUpdate })
       )
       if (draftRightDenied) return draftRightDenied
+
+      // GÖREV 43: Onay bekleyen AI taslağında konum/kategori düzeltmesi
+      await recordAiFieldCorrections(db, {
+        newsId: id,
+        prev: draftSnap.data() as Record<string, unknown> | undefined,
+        update: draftUpdate as Record<string, unknown>,
+        uid: auth.uid,
+      })
 
       // Öne Çıkan → otomatik yayına al (UI status=published gönderir; featured da yeterli)
       const shouldPublish =

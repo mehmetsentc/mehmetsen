@@ -15,6 +15,7 @@ import { isNewsroomAuthorized } from '@/lib/newsroomAuth'
 import { testModeAutomationBlock } from '@/lib/social/testEnvironment'
 import { safeErrorText } from '@/lib/social/safeLog'
 import { runAutomationTick } from '@/lib/social/automation/worker'
+import { runAgentShadowTick } from '@/lib/social/agent/tick'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,17 @@ async function handle(request: Request) {
     console.log(
       `[cron/social-automation] recovered=${report.recovered} scanned=${report.reconcile?.scanned ?? 0} enqueued=${report.reconcile?.enqueued ?? 0} processed=${report.processed.map((p) => `${p.status}:${p.code}`).join(',') || '-'} tokens=${report.tokens ? `${report.tokens.refreshed}/${report.tokens.failed}/${report.tokens.expired}` : '-'} ms=${report.durationMs}`,
     )
-    return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } })
+    // GÖREV 43 B2: vekil editör gölge modu (yayım yok; bayrakla kapalı)
+    let agent: Awaited<ReturnType<typeof runAgentShadowTick>> | null = null
+    try {
+      agent = await runAgentShadowTick()
+      if (agent.enabled && (agent.ran.length || agent.evaluated || agent.errors.length)) {
+        console.log(`[cron/social-automation] agent ran=${agent.ran.length} evaluated=${agent.evaluated} errors=${agent.errors.length}`)
+      }
+    } catch (err) {
+      console.error('[cron/social-automation] agent:', safeErrorText(err))
+    }
+    return NextResponse.json({ ...report, agent }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     console.error('[cron/social-automation] fatal:', safeErrorText(err))
     return NextResponse.json({ error: 'automation tick failed' }, { status: 500 })

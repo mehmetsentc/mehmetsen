@@ -348,12 +348,12 @@ export function enrichGeo(
   // Tags are noisy (gol, club names) — never extract geography from tags alone
   const rewrittenHay =
     `${rewritten.title} ${rewritten.description || ''} ${rewritten.summary || ''}`.trim()
-  // Prefer union of original evidence + rewrite so Bingöl in body is not lost
-  // when AI/source left a wrong capital, and rewrite still has the place.
-  const evidenceHay = [opts?.evidenceText, rewrittenHay]
-    .filter((s) => Boolean(s && String(s).trim()))
-    .join('\n')
-    .trim() || rewrittenHay
+  // GÖREV 43: özgün kaynak metin verildiyse konum kanıtı YALNIZCA odur.
+  // Önceden kaynak + yeniden yazım birleşimi kullanılıyordu; model talimattaki
+  // ili (kaynak gazetenin ili) metne yazınca bu «kanıt» sayılıyor ve başka ilin
+  // haberi yanlış ile düşüyordu. Kaynak verilmeyen çağrılar eskisi gibi çalışır.
+  const sourceEvidence = opts?.evidenceText?.trim() || ''
+  const evidenceHay = sourceEvidence || rewrittenHay
   const categoryId = opts?.categoryId || rewritten.categoryId || ''
 
   // Strongest signal: "Bingöl'ün Genç ilçesinde"

@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import { safeErrorText } from '@/lib/social/safeLog'
 import { singleCoverPayload } from '@/lib/social/imagePolicy'
 import { verifyCmsToken } from '@/lib/cmsAuthServer'
+import { decisionsFromPublish, recordShareDecisions } from '@/lib/social/agent/store'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { FieldValue, DocumentSnapshot } from 'firebase-admin/firestore'
@@ -391,6 +392,33 @@ export async function POST(request: Request) {
         },
         { status: 500 },
       )
+    }
+
+    // GÖREV 43 B1: editörün başarılı elle paylaşımları vekil editörün öğrenme kaydına
+    if (actor) {
+      try {
+        const okIds = [...new Set(results.filter((r) => r.ok && !r.skipped).map((r) => r.newsId))]
+        for (const nid of okIds) {
+          const snap = await db.collection(Collections.NEWS).doc(nid).get()
+          const at = Date.now()
+          await recordShareDecisions(
+            results
+              .filter((r) => r.newsId === nid)
+              .flatMap((r) =>
+                decisionsFromPublish({
+                  newsId: nid,
+                  news: snap.exists ? (snap.data() as Record<string, unknown>) : null,
+                  result: r as unknown as Parameters<typeof decisionsFromPublish>[0]['result'],
+                  actorUid: actor!.uid,
+                  at,
+                  source: 'composer',
+                })
+              )
+          )
+        }
+      } catch (err) {
+        console.warn('[force-reshare] decision_log', err instanceof Error ? err.name : 'error')
+      }
     }
 
     const succeeded = results.filter(r => r.ok).length

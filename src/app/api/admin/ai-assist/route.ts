@@ -21,6 +21,8 @@ import {
   shouldStripSuggestedCityForCategory,
 } from '@/lib/news/neverLocalVerticals'
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
+import { resolveSourceContentGeo, sourceGeoOverride } from '@/lib/geo/sourceContentGeo'
+import { isScopeRestricted } from '@/lib/cms/rbacScope'
 import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 import { resolveDistributionFields } from '@/lib/news/distributionMeta'
 
@@ -402,6 +404,26 @@ export async function POST(request: Request) {
       ? body.articleFormat
       : 'standard'
 
+  // GÖREV 43: il/ilçe önce yapıştırılan özgün metinden bulunur. Formdaki il
+  // (personelin kapsam ili, önceki haberden kalan değer) metinle çelişiyorsa ve
+  // metin yüksek güvenliyse yönlendirme ve öneri metne göre yapılır.
+  // Kapsamlı (il/ilçe) personelin formu kendi kapsamında kalır; sunucu kapsam
+  // dışı ile kaydı zaten reddeder — öneri yine eski yoldan gelir.
+  const contentGeo =
+    !isScopeRestricted(auth.scope) &&
+    (mode === 'publish-ready' || mode === 'create' || mode === 'rewrite')
+      ? resolveSourceContentGeo({
+          title: input.split('\n').find((line) => line.trim()) ?? '',
+          body: input,
+        })
+      : null
+  const formCity = body.citySlug?.trim() || ''
+  const geoOverride = contentGeo ? sourceGeoOverride(formCity, contentGeo) : null
+  const routeCitySlug = geoOverride ? geoOverride.forcedCitySlug ?? null : formCity || null
+  const routeDistrictSlug = geoOverride
+    ? contentGeo?.districtSlug ?? null
+    : body.districtSlug || null
+
   try {
     let personaMeta: {
       aiEditorId: string
@@ -431,8 +453,8 @@ export async function POST(request: Request) {
         routeMeta = await routeEditorial({
           preferredAiEditorId: autoRoute ? null : selectedAiEditorId || null,
           categoryId: body.categoryId || null,
-          citySlug: body.citySlug || null,
-          districtSlug: body.districtSlug || null,
+          citySlug: routeCitySlug,
+          districtSlug: routeDistrictSlug,
           isBreaking: body.isBreaking === true,
           articleFormat,
           text: input,
@@ -459,7 +481,7 @@ export async function POST(request: Request) {
         sourceBody: input,
         categoryId: routeMeta?.categoryId || body.categoryId || undefined,
         province: provinceName,
-        district: routeMeta?.districtSlug || body.districtSlug || undefined,
+        district: routeMeta?.districtSlug || routeDistrictSlug || undefined,
         extraUserNotes:
           mode === 'publish-ready'
             ? 'CMS formundan tek tuşla yayıma hazır, net ve olgusal haber üret.'
@@ -706,8 +728,23 @@ export async function POST(request: Request) {
         routeConfidence: personaMeta?.routeConfidence ?? null,
         routeReason: personaMeta?.routeReason ?? null,
         secondaryEditorSlug: personaMeta?.secondaryEditorSlug ?? null,
-        suggestedCitySlug: stripCity ? null : personaMeta?.suggestedCitySlug ?? null,
-        suggestedDistrictSlug: stripCity ? null : personaMeta?.suggestedDistrictSlug ?? null,
+        suggestedCitySlug: stripCity || contentGeo?.likelyNational
+          ? null
+          : (contentGeo?.confidence === 'high' ? contentGeo.citySlug : null) ??
+            personaMeta?.suggestedCitySlug ??
+            null,
+        suggestedDistrictSlug: stripCity || contentGeo?.likelyNational
+          ? null
+          : (contentGeo?.confidence === 'high' ? contentGeo.districtSlug : null) ??
+            personaMeta?.suggestedDistrictSlug ??
+            null,
+        geoConfidence: stripCity ? null : contentGeo?.confidence ?? null,
+        geoMethod: contentGeo?.method ?? null,
+        geoLikelyNational: contentGeo?.likelyNational ?? false,
+        geoReplacedFormCity:
+          !stripCity && geoOverride && formCity && geoOverride.forcedCitySlug !== formCity
+            ? formCity
+            : null,
         suggestedCountrySlug:
           personaMeta?.suggestedCountrySlug ?? countryFromText?.slug ?? null,
         articleFormat,
