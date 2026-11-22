@@ -19,9 +19,12 @@ service firebase.storage {
         && userRole() in ['admin', 'super_admin', 'managing_editor', 'editor'];
     }
 
+    // Haber videosu 200 MB'a kadar; görseller 50 MB.
     function isValidPostMedia() {
-      return request.resource.size < 50 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*|video/.*');
+      return (request.resource.contentType.matches('video/.*')
+          && request.resource.size < 200 * 1024 * 1024)
+        || (request.resource.contentType.matches('image/.*')
+          && request.resource.size < 50 * 1024 * 1024);
     }
 
     function isValidAvatar() {

@@ -12,6 +12,10 @@ import { auth } from '@/lib/firebase/auth'
 import { isDirectImageUrl, scrapeVideoUrl } from '@/lib/adminVideoScrapeClient'
 import { isEmbedPlayerUrl } from '@/lib/videoEmbed'
 
+/** Haber videosu en çok 200 MB (storage.rules ile aynı); görseller 50 MB. */
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024
+
 /**
  * Video preview with CORS-error fallback.
  * External URLs (third-party news sites) may be blocked by the browser due to CORS.
@@ -205,8 +209,8 @@ export function EditMediaSection({
         toast.error('Sadece görsel (JPG, PNG, WebP, GIF) veya video (MP4, WebM) desteklenir')
         return
       }
-      if (selected.some((file) => file.size > 50 * 1024 * 1024)) {
-        toast.error('Maksimum dosya boyutu 50MB')
+      if (selected.some((file) => file.size > (file.type.startsWith('video/') ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES))) {
+        toast.error('Maksimum dosya boyutu: video 200 MB, görsel 50 MB')
         return
       }
       if (selected.length > 1 && selected.some((file) => file.type.startsWith('video/'))) {

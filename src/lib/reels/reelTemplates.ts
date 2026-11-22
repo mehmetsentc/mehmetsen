@@ -16,11 +16,12 @@ import type { ReelMusic, ReelStyle } from './reelOptions'
 export type ReelAudioMode = 'voice_then_video' | 'video_then_voice' | 'video_only' | 'music_only'
 /**
  * captions = the spoken sentence · typewriter = letters typed one by one · ticker = scrolling news band ·
- * intro = REELS-16: the headline only for the first 3 s, then the clean original video (the story is in the post text)
+ * intro = REELS-16: the headline only for the first 3 s, then the clean original video (the story is in the post text) ·
+ * clean = REELS-T2: no text at all — full-frame picture with only the faint drifting NaHaber watermark, no end card
  */
-export type ReelTextStyle = 'captions' | 'typewriter' | 'ticker' | 'intro'
+export type ReelTextStyle = 'captions' | 'typewriter' | 'ticker' | 'intro' | 'clean'
 
-export type ReelTemplateId = 'klasik' | 'sahadan' | 'orijinal' | 'daktilo' | 'sondakika' | 'spor' | 'analiz'
+export type ReelTemplateId = 'klasik' | 'sahadan' | 'orijinal' | 'daktilo' | 'sondakika' | 'spor' | 'analiz' | 'temiz' | 'temiz_orijinal'
 
 export type ReelTemplate = {
   id: ReelTemplateId
@@ -98,6 +99,24 @@ export const REEL_TEMPLATES: ReelTemplate[] = [
     music: 'sakin',
     needsVideoAudio: false,
   },
+  {
+    id: 'temiz',
+    label: 'Temiz · Seslendirmeli',
+    description: 'Ekranda hiç yazı yok, yalnız NaHaber filigranı. Spiker haberi video üzerinde anlatır, ardından videonun kendi sesi.',
+    audioMode: 'voice_then_video',
+    textStyle: 'clean',
+    music: 'none',
+    needsVideoAudio: false,
+  },
+  {
+    id: 'temiz_orijinal',
+    label: 'Temiz · Orijinal Ses',
+    description: 'Seslendirme ve yazı yok. Videonun tamamı orijinal sesiyle, yalnız NaHaber filigranıyla.',
+    audioMode: 'video_only',
+    textStyle: 'clean',
+    music: 'none',
+    needsVideoAudio: true,
+  },
 ]
 
 const BY_ID = new Map(REEL_TEMPLATES.map((t) => [t.id, t]))
@@ -132,6 +151,7 @@ export function recommendTemplate(s: { breaking?: boolean; style?: ReelStyle | n
 export function fallbackTemplate(id: ReelTemplateId): ReelTemplateId {
   if (id === 'sahadan' || id === 'spor') return 'klasik'
   if (id === 'orijinal') return 'daktilo'
+  // temiz_orijinal stays clean and without voice-over (photos, no text) when there is no video
   return id
 }
 

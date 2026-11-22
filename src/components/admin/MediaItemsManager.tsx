@@ -58,7 +58,9 @@ interface MediaItemsManagerProps {
   articleTitle?: string
 }
 
-const MAX_FILE_BYTES = 50 * 1024 * 1024
+/** Video 200 MB, görsel 50 MB (storage.rules ile aynı). */
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024
 
 // ── Component ───────────────────────────────────────────────────────────
 export function MediaItemsManager({
@@ -112,9 +114,9 @@ export function MediaItemsManager({
     async (files: FileList | File[]) => {
       const list = Array.from(files)
       if (list.length === 0) return
-      const tooBig = list.find((f) => f.size > MAX_FILE_BYTES)
+      const tooBig = list.find((f) => f.size > (f.type.startsWith('video/') ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES))
       if (tooBig) {
-        toast.error(`${tooBig.name}: 50MB sınırını aşıyor`)
+        toast.error(`${tooBig.name}: ${tooBig.type.startsWith('video/') ? '200 MB' : '50 MB'} sınırını aşıyor`)
         return
       }
 
@@ -488,7 +490,7 @@ export function MediaItemsManager({
             )}
           </button>
           <p className="mt-1.5 text-[10px] text-[rgb(var(--color-muted))]">
-            JPG/PNG/WebP/GIF/MP4/WebM · max 50MB · çoklu seçim
+            JPG/PNG/WebP/GIF · max 50MB · MP4/WebM · max 200MB · çoklu seçim
           </p>
         </div>
 

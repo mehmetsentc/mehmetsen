@@ -209,7 +209,7 @@ function MusicPreview({ name }: { name: string }) {
 
 // ── REELS-T1: template picker ───────────────────────────────────────────────
 const TEMPLATE_GLYPH: Record<ReelTemplateId, string> = {
-  klasik: '🎙️', sahadan: '🎥', orijinal: '🔊', daktilo: '⌨️', sondakika: '⚡', spor: '🏟️', analiz: '📊',
+  klasik: '🎙️', sahadan: '🎥', orijinal: '🔊', daktilo: '⌨️', sondakika: '⚡', spor: '🏟️', analiz: '📊', temiz: '💧', temiz_orijinal: '🎞️',
 }
 
 function TemplatePicker({ value, onChange, suggested }: { value: 'auto' | 'none' | ReelTemplateId; onChange: (v: 'auto' | 'none' | ReelTemplateId) => void; suggested: ReelTemplateId }) {
@@ -256,7 +256,7 @@ function TemplatePicker({ value, onChange, suggested }: { value: 'auto' | 'none'
         </button>
       </div>
       {REEL_TEMPLATES.some((t) => t.needsVideoAudio) ? (
-        <p className="text-[10px] text-[rgb(var(--color-muted))]">Sahadan, Spor ve Orijinal Ses haberin sesli videosunu ister; video sesi yoksa en yakın şablonla üretilir (Klasik / Daktilo).</p>
+        <p className="text-[10px] text-[rgb(var(--color-muted))]">Sahadan, Spor ve Orijinal Ses haberin sesli videosunu ister; video sesi yoksa en yakın şablonla üretilir (Klasik / Daktilo). Temiz şablonlarda ekranda yazı olmaz, yalnız NaHaber filigranı bulunur; videosuz haberde fotoğraflardan yazısız üretilir.</p>
       ) : null}
     </Section>
   )

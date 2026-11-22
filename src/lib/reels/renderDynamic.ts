@@ -28,6 +28,7 @@ import {
 import type { ReelInput, ReelResult } from './renderReel'
 import { summaryOptions } from './headlineCard'
 import { sentencesOf } from './director'
+import { WATERMARK as STORY_WATERMARK } from '@/lib/story/storyFfmpeg'
 
 /** REELS-9: text is never cut — the size steps down until the whole headline fits. */
 const HEAD_SIZES = [76, 68, 60, 54, 48, 44]
@@ -409,6 +410,37 @@ function endCard(ctx: SKRSContext2D, brand: Brand, et: number, outro: ReelOutro)
   }
 }
 
+/**
+ * REELS-T2: the same faint NaHaber watermark as «Konu → Video» (STORY: WATERMARK) — small,
+ * drifting slowly over the whole frame on a Lissajous path so it never parks or jumps.
+ */
+async function loadWatermark(root: string): Promise<Image | null> {
+  try {
+    return await loadImage(await fs.readFile(path.join(root, 'src/lib/reels/assets/brand/watermark.png')))
+  } catch {
+    console.warn('[reels] watermark.png bulunamadı; filigransız üretiliyor')
+    return null
+  }
+}
+
+export function watermarkPos(t: number, w: number, h: number): { x: number; y: number } {
+  const W = STORY_WATERMARK
+  return {
+    x: (REEL_W - w) / 2 + ((REEL_W - w) / 2 - W.margin) * Math.sin((2 * Math.PI * t) / W.periodX),
+    y: (REEL_H - h) / 2 + ((REEL_H - h) / 2 - W.margin) * Math.sin((2 * Math.PI * t) / W.periodY + 1),
+  }
+}
+
+function drawWatermark(ctx: SKRSContext2D, img: Image, t: number): void {
+  const w = STORY_WATERMARK.width
+  const h = Math.round((img.height / img.width) * w)
+  const { x, y } = watermarkPos(t, w, h)
+  ctx.save()
+  ctx.globalAlpha = STORY_WATERMARK.opacity
+  ctx.drawImage(img, x, y, w, h)
+  ctx.restore()
+}
+
 function spawnDynamicEncoder(ffmpeg: string, a: { voice: string; bed: string | null; fx: string; media: string | null; filter: string; total: number; out: string }) {
   const enc = spawn(ffmpeg, [
     '-v', 'error', '-y',
@@ -460,6 +492,9 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     // REELS-T1: the template decides how the sound runs; unusable choices fall back safely
     let mode: ReelAudioMode = input.audioMode ?? 'voice_then_video'
     const textStyle: ReelTextStyle = input.textStyle ?? 'captions'
+    // REELS-T2: «clean» — no text, no bands, no end card; only the drifting NaHaber watermark
+    const clean = textStyle === 'clean'
+    const endS = clean ? 0 : END_S
     const hasVoiceWav = !!input.voiceWav && input.voiceWav.length > 44
     if (!hasVoiceWav && (mode === 'voice_then_video' || mode === 'video_then_voice')) mode = 'music_only'
     const pm = input.media.kind === 'video' ? await probeMedia(ffmpeg, input.media.path) : null
@@ -475,7 +510,7 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
       }
     }
     const voiceSec = mode === 'voice_then_video' || mode === 'video_then_voice' ? wavSeconds(input.voiceWav!) : 0
-    if (mode === 'video_then_voice') introLen = Math.max(2, Math.min(introLen, MAX_REEL_S - END_S - 0.9 - voiceSec))
+    if (mode === 'video_then_voice') introLen = Math.max(2, Math.min(introLen, MAX_REEL_S - endS - 0.9 - voiceSec))
     const voiceStart = mode === 'video_then_voice' ? introLen + 0.2 : 0.45
     const voiceEnd = voiceStart + voiceSec
     // the story's own video sound
@@ -484,14 +519,15 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     if (mode === 'voice_then_video' && pm) {
       // only real sound: an audio stream that is not silent after the voice-over
       if (pm.hasAudio && pm.duration - voiceEnd >= 2) {
-        const tail = Math.min(VIDEO_AUDIO_MAX_S, pm.duration - voiceEnd - 0.15)
+        // REELS-T2: a clean reel plays the rest of the whole video after the voice-over
+        const tail = clean ? pm.duration - voiceEnd - 0.5 : Math.min(VIDEO_AUDIO_MAX_S, pm.duration - voiceEnd - 0.15)
         if (await audible(voiceEnd, tail)) {
           videoAudio = true
           videoTail = tail
         }
       }
       // REELS-13: keep the whole reel under the Facebook Reels limit (the story video's tail gives way first)
-      videoTail = Math.max(0, Math.min(videoTail, MAX_REEL_S - END_S - 0.45 - voiceEnd))
+      videoTail = Math.max(0, Math.min(videoTail, MAX_REEL_S - endS - 0.45 - voiceEnd))
       if (videoTail < 2) {
         videoAudio = false
         videoTail = 0
@@ -499,14 +535,14 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     }
     const readText = `${input.headline}. ${input.captions?.trim() || input.summary || ''}`
     // REELS-16: an «intro» reel without usable sound still runs for the story video's length
-    const videoLen = Math.max(6, Math.min(pm?.duration ?? 6, MAX_REEL_S - END_S) - 0.2)
+    const videoLen = Math.max(6, Math.min(pm?.duration ?? 6, MAX_REEL_S - endS) - 0.2)
     const endStart =
-      mode === 'video_only' || (mode === 'music_only' && textStyle === 'intro' && pm)
+      mode === 'video_only' || (mode === 'music_only' && (textStyle === 'intro' || clean) && pm)
         ? videoLen
         : mode === 'music_only'
           ? readingSeconds(readText)
           : voiceEnd + 0.45 + videoTail
-    const total = endStart + END_S
+    const total = endStart + endS
     const frames = Math.ceil(total * REEL_FPS)
     // REELS-13: captions follow the voice; the headline stays for the opening sentence (3–7 s).
     // REELS-T1: without a voice-over the captions are paced for reading after the headline.
@@ -583,14 +619,17 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     // no intro sting / whoosh at the start (editor's call) — the voice opens the reel
     const outroClip = await load(outro === 'follow' ? 'outro-follow.wav' : outro === 'short' ? 'outro-short.wav' : 'outro-soft.wav')
     const silent = { sampleRate: outroClip.sampleRate, data: new Float32Array(0) }
+    // REELS-T2: a clean reel has no text, so no whoosh / click / outro sting either
     const fx = buildFxTrack(
-      {
-        intro: silent,
-        outro: await load(outro === 'follow' ? 'outro-follow.wav' : outro === 'short' ? 'outro-short.wav' : 'outro-soft.wav'),
-        click: await load('click.wav'),
-        whooshUp: await load('whoosh-up.wav'),
-        whooshDown: await load('whoosh-down.wav'),
-      },
+      clean
+        ? { intro: silent, outro: silent, click: silent, whooshUp: silent, whooshDown: silent }
+        : {
+            intro: silent,
+            outro: await load(outro === 'follow' ? 'outro-follow.wav' : outro === 'short' ? 'outro-short.wav' : 'outro-soft.wav'),
+            click: await load('click.wav'),
+            whooshUp: await load('whoosh-up.wav'),
+            whooshDown: await load('whoosh-down.wav'),
+          },
       { total, summaryStart: sumAt, endStart },
       textStyle === 'typewriter' ? typeClicks(head.join(' ').length, 0.45, caps, capCps) : [],
       [],
@@ -611,6 +650,7 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     })
 
     const brand = await loadBrand(root)
+    const watermark = clean ? await loadWatermark(root) : null
     // REELS-9: every photo of the story, shown in turn with a soft cross-fade
     const slides: Slide[] = []
     if (input.media.kind === 'image') {
@@ -665,6 +705,11 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
       }
       else brandBackground(ctx, brand, t, p, accent, input.category)
 
+      if (clean) {
+        if (watermark) drawWatermark(ctx, watermark, t)
+        await enc.frame(canvas.data())
+        continue
+      }
       // bottom fade (lighter while the story's own video plays with sound)
       const textK = 1 - span(t, textOut, textOut + 0.5)
       // REELS-16: «intro» clears the fade completely with the headline (clean original video)
@@ -784,7 +829,6 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
       ctx.fillRect(0, 0, REEL_W, 6)
       ctx.fillStyle = RED
       ctx.fillRect(0, 0, REEL_W * clamp01(t / endStart), 6)
-
       endCard(ctx, brand, t - endStart, outro)
       await enc.frame(canvas.data())
     }
