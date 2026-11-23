@@ -98,7 +98,8 @@ export const STYLE_THEME: Record<StoryStyle, StyleTheme> = {
     hint: 'Hareketli büyük başlıklar, ses efektleri, müzik; düz vektör çizimler',
     imageStyle:
       'bold flat vector explainer illustration, clean geometric shapes, simple characters, vivid red, yellow and blue accents on a deep navy background, motion-graphics news style, high contrast, vertical 9:16 composition, no text, no letters, no logos',
-    box: 'rgba(0,0,0,0)',
+    // captions must stay readable over light illustrations (canlı test: asansör sahnesi)
+    box: 'rgba(8,12,28,0.74)',
     text: '#FFFFFF',
     dim: 'rgba(255,255,255,0.55)',
     highlight: '#FFC400',
@@ -633,7 +634,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
 
 export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat; voice?: StoryVoice; music?: StoryMusic; sfx?: boolean }): string {
   return hashKey([
-    'story-v7',
+    'story-v8',
     p.voice?.name ?? null,
     p.voice?.rate ?? null,
     p.music ?? 'none',
