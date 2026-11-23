@@ -132,6 +132,15 @@ export function VideoEditor({ start, onExit }: { start: EditorStart; onExit: () 
   useEffect(() => {
     if (fresh && p?.render.outputUrl) setShowVideo(true)
   }, [fresh, p?.render.outputUrl])
+  // choosing a scene shows that scene's frame (not the rendered video)
+  const firstSel = useRef(true)
+  useEffect(() => {
+    if (firstSel.current) {
+      firstSel.current = false
+      return
+    }
+    setShowVideo(false)
+  }, [sel])
 
   const unsaved = S.dirty || S.metaDirty
   const exit = () => {
