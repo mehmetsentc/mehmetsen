@@ -488,7 +488,7 @@ export function ReelsStudio() {
             ['library', 'Kaydedilenler'],
             ['upload', 'Video yükle'],
             ['media', 'Medya projesi'],
-            ['story', 'Konu → Video'],
+            ['story', 'Metinden Video'],
           ] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setMode(k)} className={cn('rounded-lg px-3 py-1.5', mode === k ? 'bg-[rgb(var(--color-card))] shadow' : 'text-[rgb(var(--color-muted))]')}>
               {l}

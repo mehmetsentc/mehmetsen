@@ -59,7 +59,7 @@ export async function getStory(id: string): Promise<StoryProject | null> {
 }
 
 /** Projects saved before formats / lengths existed are vertical 1-minute videos. */
-const withDefaults = (p: StoryProject): StoryProject => ({ ...p, format: p.format ?? 'vertical', targetMin: p.targetMin ?? 1, scenes: p.scenes.map((s) => ({ ...s, need: s.need ?? null })) })
+const withDefaults = (p: StoryProject): StoryProject => ({ ...p, format: p.format ?? 'vertical', targetMin: p.targetMin ?? 1, voice: p.voice ?? { name: null, rate: null }, music: p.music ?? 'none', sfx: p.sfx ?? false, scenes: p.scenes.map((s) => ({ ...s, need: s.need ?? null, headline: s.headline ?? null, sub: s.sub ?? null })) })
 
 export async function listStories(limit = 30): Promise<StoryProject[]> {
   const snap = await col().orderBy('updatedAt', 'desc').limit(limit).get()

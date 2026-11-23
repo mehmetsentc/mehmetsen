@@ -5,7 +5,7 @@
  */
 import { FPS, type StoryTimeline } from './storyProject'
 
-export type SceneMeta = { label: string | null; aiNote: boolean; source: string | null }
+export type SceneMeta = { label: string | null; aiNote: boolean; source: string | null; /** GÖREV 45 «Bilgi animasyonu» */ headline?: string | null; sub?: string | null }
 
 export type OverlayState = {
   scene: number

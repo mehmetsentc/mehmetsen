@@ -94,7 +94,7 @@ export async function planStory(p: StoryProject, newId: () => string): Promise<P
     try {
       const r = await geminiFastChat({
         messages: [
-          { role: 'system', content: planSystemPrompt({ targetMin: 1, format: p.format }) },
+          { role: 'system', content: planSystemPrompt({ targetMin: 1, format: p.format, style: p.style }) },
           { role: 'user', content: planUserPrompt(p) },
         ],
         temperature: 0.5,
@@ -159,7 +159,7 @@ async function planLongStory(p: StoryProject, newId: () => string): Promise<Plan
   try {
     const r = await geminiFastChat({
       messages: [
-        { role: 'system', content: visualsSystemPrompt({ format: p.format }) },
+        { role: 'system', content: visualsSystemPrompt({ format: p.format, style: p.style }) },
         { role: 'user', content: visualsUserPrompt(texts, p) },
       ],
       temperature: 0.4,

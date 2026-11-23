@@ -87,9 +87,21 @@ export async function generateImages(projectId: string, onlySceneId?: string): P
   const todo = missingImages(p).filter((s) => !onlySceneId || s.id === onlySceneId)
   const out = { made: 0, failed: 0, budgetStop: false, errors: [] as string[] }
   const bucket = getAdminStorage().bucket(storyBucket())
+  // GÖREV 45: scenes of one section share a prompt → one image (also reuses a finished one in the project)
+  const made = new Map<string, { imagePath: string; imageUrl: string }>()
+  for (const sc of p.scenes) {
+    if (sc.visual.kind === 'ai' && sc.visual.imagePath && sc.visual.imageUrl && sc.visual.imageKey === imageKeyFor(sc.visual.prompt, p.style, p.format)) {
+      made.set(sc.visual.imageKey, { imagePath: sc.visual.imagePath, imageUrl: sc.visual.imageUrl })
+    }
+  }
   for (const s of todo) {
     if (s.visual.kind !== 'ai') continue
     const key = imageKeyFor(s.visual.prompt, p.style, p.format)
+    const again = made.get(key)
+    if (again) {
+      await setSceneImage(projectId, s.id, key, again)
+      continue
+    }
     try {
       const img = await generateIllustration(s.visual.prompt, p.style, p.format)
       const ext = img.mime.includes('jpeg') || img.mime.includes('jpg') ? 'jpg' : img.mime.includes('webp') ? 'webp' : 'png'
@@ -97,6 +109,7 @@ export async function generateImages(projectId: string, onlySceneId?: string): P
       await bucket.file(name).save(img.bytes, { resumable: false, metadata: { contentType: img.mime, cacheControl: 'public, max-age=31536000' } })
       await bucket.file(name).makePublic()
       await setSceneImage(projectId, s.id, key, { imagePath: name, imageUrl: publicUrl(name) })
+      made.set(key, { imagePath: name, imageUrl: publicUrl(name) })
       out.made++
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Çizim üretilemedi'
@@ -117,11 +130,19 @@ export type StoryRenderOutput = { outputUrl: string; coverUrl: string | null; se
 /** Long videos (and anything over ~100 s) are rendered in parallel parts. */
 export const usesParts = (p: Pick<StoryProject, 'targetMin'>) => (p.targetMin ?? 1) > 1
 
-async function voiceChoice() {
-  // the studio's default voice and speed (Reels → Sesler)
+async function voiceChoice(p: Pick<StoryProject, 'voice'>) {
+  // GÖREV 45: the project's own narrator first, else the studio default (Reels → Sesler)
   const vs = await getReelVoiceSettings().catch(() => null)
-  return { voice: vs?.defaultVoice ?? null, rate: vs?.rate ?? null }
+  return { voice: p.voice?.name ?? vs?.defaultVoice ?? null, rate: p.voice?.rate ?? vs?.rate ?? null }
 }
+
+const sceneMeta = (s: StoryScene, v: { aiNote: boolean; source: string | null } | null) => ({
+  label: s.label,
+  aiNote: v?.aiNote ?? false,
+  source: v?.source ?? null,
+  headline: s.headline ?? null,
+  sub: s.sub ?? null,
+})
 
 /** One scene's picture as a local still / video file (downloads cached per job in `videos`). */
 async function sceneVisual(p: StoryProject, s: StoryScene, i: number, dir: string, videos: Map<string, string>, onStep?: (s: string) => void): Promise<{ visual: NonNullable<ComposeScene['visual']>; aiNote: boolean; source: string | null }> {
@@ -148,12 +169,14 @@ async function sceneVisual(p: StoryProject, s: StoryScene, i: number, dir: strin
     return { visual: { kind: 'video', file: f, offsetSec: s.visual.offsetMs / 1000, keepAudio: s.keepAudio }, aiNote: false, source }
   }
   const f = path.join(dir, `still${i}.jpg`)
-  if (s.visual.kind === 'card') {
+  // GÖREV 45: an AI section whose illustration is missing (budget / error) becomes a text card
+  const aiMissing = s.visual.kind === 'ai' && (!s.visual.imagePath || s.visual.imageKey !== imageKeyFor(s.visual.prompt, p.style, p.format))
+  if (s.visual.kind === 'card' || aiMissing) {
     const word = cardWord(s)
     await composeCardStill({ word, title: p.title, style: p.style, index: i, outFile: f, frame })
     return { visual: { kind: 'still', file: f }, aiNote: false, source: null }
   }
-  const [buf] = await bucket.file(s.visual.imagePath!).download()
+  const [buf] = await bucket.file((s.visual as { imagePath: string }).imagePath).download()
   await composeStill(buf, f, frame)
   return { visual: { kind: 'still', file: f }, aiNote: true, source: null }
 }
@@ -184,7 +207,7 @@ export async function renderStory(projectId: string, onStep?: (s: string) => voi
     const scenes: ComposeScene[] = []
     const videoFiles = new Map<string, string>()
     const engines = new Set<string>()
-    const vc = await voiceChoice()
+    const vc = await voiceChoice(p)
     for (let i = 0; i < p.scenes.length; i++) {
       const s = p.scenes[i]
       onStep?.(`ses ${i + 1}/${p.scenes.length}`)
@@ -193,9 +216,9 @@ export async function renderStory(projectId: string, onStep?: (s: string) => voi
       const wav = path.join(dir, `voice${i}.wav`)
       await fs.writeFile(wav, voice.wav)
       const v = await sceneVisual(p, s, i, dir, videoFiles, onStep)
-      scenes.push({ text: s.text, highlights: s.highlights, meta: { label: s.label, aiNote: v.aiNote, source: v.source }, voiceWav: wav, voiceSec: wavSeconds(voice.wav), visual: v.visual })
+      scenes.push({ text: s.text, highlights: s.highlights, meta: sceneMeta(s, v), voiceWav: wav, voiceSec: wavSeconds(voice.wav), visual: v.visual })
     }
-    const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), budgetMs: 600_000, onStep })
+    const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), budgetMs: 600_000, onStep, audio: { sfx: p.sfx === true, music: p.music ?? 'none' } })
     onStep?.('yükleniyor')
     const outputUrl = await uploadPublic(r.file, mp4, 'video/mp4')
     const coverUrl = r.cover ? await uploadPublic(r.cover, jpg, 'image/jpeg').catch(() => null) : null
@@ -249,7 +272,7 @@ export async function prepareLongRender(projectId: string): Promise<WorkPlan> {
   const existing = await readPlan(p.id, key)
   if (existing) return existing
   const bucket = getAdminStorage().bucket(storyBucket())
-  const vc = await voiceChoice()
+  const vc = await voiceChoice(p)
   const voiceSec: number[] = new Array(p.scenes.length).fill(0)
   const engines = new Set<string>()
   let next = 0
@@ -296,9 +319,9 @@ export async function renderLongPart(projectId: string, k: number, onStep?: (s: 
         await bucket.file(`${workDir(p.id, key)}/voice${i}.wav`).download({ destination: voiceWav })
       }
       const v = needed ? await sceneVisual(p, s, i, dir, videos, onStep) : null
-      scenes.push({ text: s.text, highlights: s.highlights, meta: { label: s.label, aiNote: v?.aiNote ?? false, source: v?.source ?? null }, voiceWav, voiceSec: plan.voiceSec[i], visual: v?.visual ?? null })
+      scenes.push({ text: s.text, highlights: s.highlights, meta: sceneMeta(s, v), voiceWav, voiceSec: plan.voiceSec[i], visual: v?.visual ?? null })
     }
-    const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), range: { from, to }, budgetMs: 700_000, onStep })
+    const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), range: { from, to }, budgetMs: 700_000, onStep, audio: { sfx: p.sfx === true, music: p.music ?? 'none' } })
     for (const f of videos.values()) await fs.rm(f, { force: true }).catch(() => undefined)
     if (r.cover) await uploadPublic(r.cover, `${workDir(p.id, key)}/cover.jpg`, 'image/jpeg').catch(() => undefined)
     // the part goes up last: its presence marks it done

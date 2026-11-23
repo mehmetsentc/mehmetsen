@@ -31,13 +31,14 @@ export const SERIES_MAX = 32
 /** Facebook Reels publish limit is 90 s; keep a margin (1-minute videos). */
 export const MAX_TOTAL_S = 88
 
-/** Target lengths. 1 min may use AI illustrations; longer videos use only the editor's own media. */
+/** Target lengths. Sections without the editor's own media get an AI illustration (budget-guarded) in every length. */
 export const TARGET_MINUTES = [1, 3, 5, 10] as const
 export type TargetMin = (typeof TARGET_MINUTES)[number]
 export const isTargetMin = (v: unknown): v is TargetMin => typeof v === 'number' && (TARGET_MINUTES as readonly number[]).includes(v)
 /** Upper bound of the rendered length per target (the AI aims at the target itself). */
 export const MAX_SECONDS: Record<TargetMin, number> = { 1: MAX_TOTAL_S, 3: 240, 5: 380, 10: 720 }
-export const allowsAiImages = (p: { targetMin?: TargetMin }) => (p.targetMin ?? 1) === 1
+// GÖREV 45: AI illustrations fill every section without an upload, in every length (monthly budget guards the cost).
+export const allowsAiImages = (_p?: { targetMin?: TargetMin }) => true
 
 export const STORY_FORMATS = ['vertical', 'horizontal'] as const
 export type StoryFormat = (typeof STORY_FORMATS)[number]
@@ -73,7 +74,7 @@ export const XF = 0.4
 export const TAIL = 0.9
 export const FPS = 30
 
-export const STORY_STYLES = ['paper', 'doodle', 'dark', 'photo'] as const
+export const STORY_STYLES = ['animasyon', 'paper', 'doodle', 'dark', 'photo'] as const
 export type StoryStyle = (typeof STORY_STYLES)[number]
 
 export type StyleTheme = {
@@ -92,6 +93,20 @@ export type StyleTheme = {
 }
 
 export const STYLE_THEME: Record<StoryStyle, StyleTheme> = {
+  animasyon: {
+    label: 'Bilgi animasyonu',
+    hint: 'Hareketli büyük başlıklar, ses efektleri, müzik; düz vektör çizimler',
+    imageStyle:
+      'bold flat vector explainer illustration, clean geometric shapes, simple characters, vivid red, yellow and blue accents on a deep navy background, motion-graphics news style, high contrast, vertical 9:16 composition, no text, no letters, no logos',
+    box: 'rgba(0,0,0,0)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#FFC400',
+    pill: 'rgba(227,6,19,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#E30613',
+    labelText: '#FFFFFF',
+  },
   paper: {
     label: 'Kâğıt dokulu tarih',
     hint: 'Eski kâğıt, mürekkep çizgi, sıcak toprak renkleri',
@@ -186,6 +201,9 @@ export interface StoryScene {
   reason: string | null
   /** Shot list: what photo / video would fit here (Turkish, for the editor to upload). */
   need: string | null
+  /** GÖREV 45 «Bilgi animasyonu»: big animated headline (2–5 words) and its small sub line. */
+  headline?: string | null
+  sub?: string | null
 }
 
 export type RenderState = {
@@ -196,6 +214,25 @@ export type RenderState = {
   seconds: number | null
   error: string | null
   renderedAt: number | null
+}
+
+/** GÖREV 45: background music (existing licensed beds in src/lib/reels/assets/audio/broadcast). */
+export const STORY_MUSIC = ['none', 'sondakika', 'kurumsal', 'enerjik', 'modern', 'sakin', 'akustik', 'lofi'] as const
+export type StoryMusic = (typeof STORY_MUSIC)[number]
+export const MUSIC_LABEL: Record<StoryMusic, string> = { none: 'Müzik yok', sondakika: 'Son dakika', kurumsal: 'Kurumsal', enerjik: 'Enerjik', modern: 'Modern', sakin: 'Sakin', akustik: 'Akustik', lofi: 'Lo-fi' }
+export const isMusic = (v: unknown): v is StoryMusic => typeof v === 'string' && (STORY_MUSIC as readonly string[]).includes(v)
+export const HEADLINE_MAX = 40
+export const SUB_MAX = 48
+
+/** Narrator: a Google voice name (Chirp3-HD = professional) and speed; null = studio default (Reels → Sesler). */
+export type StoryVoice = { name: string | null; rate: number | null }
+const VOICE_NAME_RE = /^tr-TR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+){1,3}$/
+export function parseVoice(v: unknown): StoryVoice {
+  const r = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const name = typeof r.name === 'string' && r.name.length <= 64 && VOICE_NAME_RE.test(r.name) ? r.name : null
+  const n = Number(r.rate)
+  const rate = r.rate == null || !Number.isFinite(n) ? null : Math.min(1.5, Math.max(0.75, Math.round(n * 100) / 100))
+  return { name, rate }
 }
 
 export interface StoryProject {
@@ -209,6 +246,11 @@ export interface StoryProject {
   style: StoryStyle
   seriesLabel: string
   rights: MediaRights
+  /** GÖREV 45 */
+  voice?: StoryVoice
+  music?: StoryMusic
+  /** sound effects on scene changes and headline pops */
+  sfx?: boolean
   assets: StoryAsset[]
   scenes: StoryScene[]
   plannedAt: number | null
@@ -238,7 +280,7 @@ const bad = <T,>(field: string, message: string): Parsed<T> => ({ ok: false, fie
 
 export const isStyle = (v: unknown): v is StoryStyle => typeof v === 'string' && (STORY_STYLES as readonly string[]).includes(v)
 
-export type StoryMetaInput = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights; format: StoryFormat; targetMin: TargetMin }
+export type StoryMetaInput = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights; format: StoryFormat; targetMin: TargetMin; voice: StoryVoice; music: StoryMusic; sfx: boolean }
 
 export function parseMeta(raw: Record<string, unknown>, prev?: StoryProject): Parsed<StoryMetaInput> {
   const has = (k: string) => raw[k] !== undefined
@@ -266,6 +308,9 @@ export function parseMeta(raw: Record<string, unknown>, prev?: StoryProject): Pa
       rights,
       format: has('format') && isFormat(raw.format) ? raw.format : prev?.format ?? 'vertical',
       targetMin: has('targetMin') && isTargetMin(raw.targetMin) ? raw.targetMin : prev?.targetMin ?? 1,
+      voice: has('voice') ? parseVoice(raw.voice) : prev?.voice ?? { name: null, rate: null },
+      music: has('music') && isMusic(raw.music) ? raw.music : prev?.music ?? (style === 'animasyon' ? 'sondakika' : 'none'),
+      sfx: has('sfx') ? raw.sfx === true : prev?.sfx ?? style === 'animasyon',
     },
   }
 }
@@ -318,6 +363,8 @@ export function parseScene(raw: unknown, assets: StoryAsset[], prev?: StoryScene
       keepAudio: asset?.kind === 'video' ? s.keepAudio === true : false,
       reason: cleanText(s.reason, 160) || null,
       need: cleanText(s.need, NEED_MAX) || null,
+      headline: cleanText(s.headline, HEADLINE_MAX) || null,
+      sub: cleanText(s.sub, SUB_MAX) || null,
     },
   }
 }
@@ -406,7 +453,7 @@ export function planBudget(targetMin: TargetMin): { scenes: [number, number]; ch
   return { scenes: [Math.round(sec / 10), Math.round(sec / 6)], chars: [Math.round(sec * 12), Math.round(sec * 14)], sceneChars: 220 }
 }
 
-export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat } = {}): string {
+export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat; style?: StoryStyle } = {}): string {
   const t = p.targetMin ?? 1
   const b = planBudget(t)
   const long = t > 1
@@ -424,11 +471,14 @@ export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryForma
     '- Her sahne için 1–3 vurgu kelimesi seç (cümlede geçen kelimeler, aynen yazıldığı gibi).',
     '- Etiket yalnızca sahnedeki somut bir bilgi olabilir: yıl, yer adı, sayı veya kişi adı (ör. «1871», «Hisarlık», «9 katman»; en fazla 24 karakter). «Giriş», «Kapanış», «Teori», «Bulgular» gibi bölüm adları YAZMA; somut bilgi yoksa null.',
     long
-      ? '- Görüntü seçimi: YALNIZCA verilen görüntü listesini kullan (id ve açıklama). Bir görüntü birçok sahnede kullanılabilir; aynı videonun farklı anlarını (offsetSec) farklı sahnelere ver, art arda aynı fotoğrafı mümkünse kullanma. Hiçbir görüntü cümleye uymuyorsa asset null olsun.'
+      ? '- Görüntü seçimi: önce verilen görüntü listesini kullan (id ve açıklama). Bir görüntü birçok sahnede kullanılabilir; aynı videonun farklı anlarını (offsetSec) farklı sahnelere ver. Hiçbir görüntü cümleye uymuyorsa asset null olsun ve İngilizce bir çizim tarifi (prompt) yaz. Maliyet için: aynı bölümdeki ardışık sahnelerde AYNI prompt metnini aynen tekrar kullan (aynı çizim yeniden kullanılır); bütün videoda en fazla 12 farklı prompt olsun. Gerçek kişi yüzü, marka, logo ve yazı isteme.'
       : '- Görüntü seçimi: verilen görüntü listesinden (id ve açıklama) cümleye anlamca uyanı seç. Bir görüntü birden fazla sahnede kullanılabilir ama art arda değil. Uygun görüntü yoksa asset null olsun ve sahne için İngilizce bir çizim tarifi (prompt) yaz: ne görüneceğini somut anlat, gerçek kişi yüzü, marka, logo ve yazı isteme.',
     '- "need": bu sahneye en iyi uyacak görüntüyü editörün çekebileceği / bulabileceği biçimde Türkçe tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «kazı alanında çalışan arkeolog, yakın çekim video 5–10 sn»). Seçtiğin görüntü zaten çok iyi uyuyorsa null.',
     '- Video görüntüsünde cümleye en uygun anı offsetSec ile belirt (bilinmiyorsa 0).',
-    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, ' + (long ? '' : '"prompt": string|null, ') + '"need": string|null, "reason": string}]}',
+    ...(p.style === 'animasyon'
+      ? ['- Her sahne için ekranda büyük harfle hareketli çıkacak bir başlık yaz ("headline", 2–5 kelime, en fazla 36 karakter, ör. «SAKIN KOŞMAYIN!», «ARAMA SÜRÜYOR», «112\'Yİ ARAYIN») ve isteğe bağlı kısa alt satır ("sub", en fazla 44 karakter, ör. «KAÇARSANIZ AV GİBİ GÖRÜNÜRSÜNÜZ»). Başlık cümlenin özünü verir; abartı, «ŞOK», «SKANDAL» yok.']
+      : []),
+    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, ' + (p.style === 'animasyon' ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
     '"caption" sosyal medya açıklaması: 1–2 cümle + en fazla 4 hashtag.' + (p.format === 'horizontal' ? ' YouTube açıklaması olarak 3–5 cümlelik kısa özet de olabilir.' : ''),
   ].join('\n')
 }
@@ -438,7 +488,7 @@ export function planUserPrompt(p: Pick<StoryProject, 'title' | 'topic' | 'script
   const assets = p.assets.length
     ? p.assets.map((a) => `- id: ${a.id} | ${a.kind === 'video' ? `video${a.durationMs ? ` ${Math.round(a.durationMs / 1000)} sn` : ''}` : 'fotoğraf'} | ${a.description ?? a.name}`).join('\n')
     : long
-      ? '(henüz görüntü yok — asset null bırak, her sahne için "need" yaz)'
+      ? '(henüz görüntü yok — asset null bırak; her sahne için çizim tarifi (prompt) ve "need" yaz)'
       : '(görüntü yok — bütün sahneler çizim olacak)'
   return [
     `Başlık: ${p.title || '-'}`,
@@ -448,7 +498,7 @@ export function planUserPrompt(p: Pick<StoryProject, 'title' | 'topic' | 'script
   ].join('\n\n')
 }
 
-type RawPlanScene = { text?: unknown; highlights?: unknown; label?: unknown; asset?: unknown; offsetSec?: unknown; prompt?: unknown; reason?: unknown; need?: unknown }
+type RawPlanScene = { text?: unknown; highlights?: unknown; label?: unknown; asset?: unknown; offsetSec?: unknown; prompt?: unknown; reason?: unknown; need?: unknown; headline?: unknown; sub?: unknown }
 
 function extractJson(raw: string): unknown {
   const t = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
@@ -505,9 +555,7 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
     const prompt = cleanText(r.prompt, PROMPT_MAX) || text
     const visual: SceneVisual = asset
       ? { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' && asset.durationMs ? Math.min(offsetMs, Math.max(0, asset.durationMs - 1000)) : 0 }
-      : long
-        ? { kind: 'card' }
-        : { kind: 'ai', prompt, imagePath: null, imageUrl: null, imageKey: null, error: null }
+      : { kind: 'ai', prompt, imagePath: null, imageUrl: null, imageKey: null, error: null }
     return {
       id: newId(),
       text,
@@ -517,6 +565,8 @@ export function parsePlan(raw: string | null, p: Pick<StoryProject, 'script' | '
       keepAudio: false,
       reason: cleanText(r.reason, 160) || null,
       need: cleanText(r.need, NEED_MAX) || (asset ? null : long ? 'Bu cümleyi anlatan bir fotoğraf ya da kısa video ekleyin' : null),
+      headline: cleanText(r.headline, HEADLINE_MAX) || null,
+      sub: cleanText(r.sub, SUB_MAX) || null,
     }
   })
   // AI gave no visual choices at all: place the uploads in order (long videos reuse them round-robin).
@@ -573,8 +623,7 @@ export function missingImages(p: Pick<StoryProject, 'scenes' | 'style'> & { form
 export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets'> & { targetMin?: TargetMin; format?: StoryFormat }): string | null {
   const t = p.targetMin ?? 1
   if (p.scenes.length < MIN_SCENES) return `En az ${MIN_SCENES} sahne gerekli — önce sahneleri planlayın`
-  if (!allowsAiImages(p) && p.scenes.some((s) => s.visual.kind === 'ai')) return `${t} dakikalık videoda AI çizimi kullanılmıyor — o sahnelere kendi görüntünüzü ya da metin kartı seçin`
-  if (missingImages(p).length) return 'Bazı sahnelerin çizimi yok — önce «Çizimleri üret»'
+  // GÖREV 45: a section whose AI illustration is missing (budget, error) is rendered as a text card.
   for (const s of p.scenes) if (s.visual.kind === 'asset' && !p.assets.some((a) => a.id === (s.visual as { assetId: string }).assetId)) return 'Bir sahnenin görüntüsü silinmiş'
   const est = estimateSeconds(p.scenes)
   const max = MAX_SECONDS[t]
@@ -582,15 +631,19 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
   return null
 }
 
-export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat }): string {
+export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat; voice?: StoryVoice; music?: StoryMusic; sfx?: boolean }): string {
   return hashKey([
-    'story-v6',
+    'story-v7',
+    p.voice?.name ?? null,
+    p.voice?.rate ?? null,
+    p.music ?? 'none',
+    p.sfx === true,
     p.format ?? 'vertical',
     p.style,
     p.seriesLabel,
     p.rights.kind,
     p.rights.sourceName,
-    p.scenes.map((s) => [s.text, s.highlights, s.label, s.keepAudio, s.visual.kind === 'asset' ? [s.visual.assetId, s.visual.offsetMs, p.assets.find((a) => a.id === (s.visual as { assetId: string }).assetId)?.ref] : s.visual.kind === 'ai' ? [s.visual.imageKey] : ['card']]),
+    p.scenes.map((s) => [s.text, s.highlights, s.label, s.headline ?? null, s.sub ?? null, s.keepAudio, s.visual.kind === 'asset' ? [s.visual.assetId, s.visual.offsetMs, p.assets.find((a) => a.id === (s.visual as { assetId: string }).assetId)?.ref] : s.visual.kind === 'ai' && s.visual.imagePath && s.visual.imageKey === imageKeyFor(s.visual.prompt, p.style, p.format) ? [s.visual.imageKey] : ['card']]),
   ])
 }
 
@@ -757,16 +810,20 @@ export function parseLongScript(raw: string | null): { title: string | null; sec
 }
 
 /** Visual choice for already-written, numbered scenes (long videos). */
-export function visualsSystemPrompt(p: { format?: StoryFormat }): string {
+export function visualsSystemPrompt(p: { format?: StoryFormat; style?: StoryStyle }): string {
   return [
     `Sen NaHaber için ${p.format === 'horizontal' ? 'yatay (16:9) YouTube' : 'dikey'} anlatım videosu hazırlayan Türkçe bir video editörüsün.`,
     'Sahnelerin metni hazır ve numaralı; metni DEĞİŞTİRME. Her sahne için:',
     '- "highlights": cümlede aynen geçen 1–3 vurgu kelimesi.',
     '- "label": yalnızca sahnedeki somut bilgi (yıl, yer, sayı, kişi adı; en fazla 24 karakter) ya da null. «Giriş», «Kapanış» gibi bölüm adları yazma.',
     '- "asset": verilen görüntü listesinden cümleye anlamca uyan id ya da null. Bir görüntü birçok sahnede kullanılabilir; aynı videonun farklı anlarını (offsetSec) kullan, art arda aynı fotoğrafı mümkünse koyma.',
+    '- "prompt": asset null ise o sahne için İngilizce çizim tarifi (ne görüneceğini somut anlat; gerçek kişi yüzü, marka, logo, yazı isteme). Maliyet için aynı bölümdeki ardışık sahnelerde AYNI prompt metnini aynen tekrar kullan; bütün videoda en fazla 12 farklı prompt. asset seçildiyse null.',
     '- "need": asset null ise ya da daha iyi bir görüntü gerekiyorsa editörün çekebileceği / bulabileceği görüntüyü Türkçe somut tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «müzedeki seramik, yakın çekim»). İyi uyuyorsa null.',
     '- "reason": seçimin kısa gerekçesi.',
-    'Yalnızca JSON döndür: {"caption": string, "scenes": [{"i": number, "highlights": string[], "label": string|null, "asset": string|null, "offsetSec": number, "need": string|null, "reason": string}]}',
+    ...(p.style === 'animasyon'
+      ? ['- "headline": ekranda büyük harfle hareketli çıkacak 2–5 kelimelik başlık (en fazla 36 karakter, cümlenin özü; «ŞOK», «SKANDAL» yok). "sub": isteğe bağlı kısa alt satır (en fazla 44 karakter) ya da null.']
+      : []),
+    'Yalnızca JSON döndür: {"caption": string, "scenes": [{"i": number, "highlights": string[], "label": string|null, ' + (p.style === 'animasyon' ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
     '"caption": 1–2 cümle + en fazla 4 hashtag' + (p.format === 'horizontal' ? '; YouTube için 3–5 cümlelik özet de olabilir.' : '.'),
   ].join('\n')
 }
@@ -791,15 +848,23 @@ export function parseVisuals(raw: string | null, texts: string[], p: Pick<StoryP
     // no AI answer: spread the uploads over the scenes in order
     if (!rows.length && p.assets.length) asset = p.assets[rr++ % p.assets.length]
     const offsetMs = typeof r.offsetSec === 'number' && Number.isFinite(r.offsetSec) ? Math.max(0, Math.round(r.offsetSec * 1000)) : 0
+    // GÖREV 45: a section without an upload gets the AI's illustration prompt (identical prompts share one image)
+    const prompt = cleanText(r.prompt, PROMPT_MAX)
     return {
       id: newId(),
       text,
       highlights: parseHighlights(r.highlights, text),
       label: factLabel(r.label),
-      visual: asset ? { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' && asset.durationMs ? Math.min(offsetMs, Math.max(0, asset.durationMs - 1000)) : 0 } : { kind: 'card' },
+      visual: asset
+        ? { kind: 'asset', assetId: asset.id, offsetMs: asset.kind === 'video' && asset.durationMs ? Math.min(offsetMs, Math.max(0, asset.durationMs - 1000)) : 0 }
+        : prompt
+          ? { kind: 'ai', prompt, imagePath: null, imageUrl: null, imageKey: null, error: null }
+          : { kind: 'card' },
       keepAudio: false,
       reason: cleanText(r.reason, 160) || null,
       need: cleanText(r.need, NEED_MAX) || (asset ? null : 'Bu cümleyi anlatan bir fotoğraf ya da kısa video ekleyin'),
+      headline: cleanText(r.headline, HEADLINE_MAX) || null,
+      sub: cleanText(r.sub, SUB_MAX) || null,
     }
   })
   return { title: null, caption: j ? cleanText(j.caption, CAPTION_MAX) || null : null, scenes, source: rows.length ? 'ai' : 'fallback' }

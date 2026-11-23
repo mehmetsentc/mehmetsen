@@ -11,6 +11,8 @@ import { buildTimeline, FRAMES, segmentLengths, type Frame, type StoryStyle, typ
 import { finalArgs, joinArgs, overlayConcat, segmentConcat, stillSegmentArgs, videoSegmentArgs } from './storyFfmpeg'
 import { renderOverlayStates } from './storyOverlay'
 import type { SceneMeta } from './storyStates'
+import { bedPath, buildFxWav, extrasMixArgs, fxEvents } from './storyAudio'
+import type { StoryMusic } from './storyProject'
 
 export type ComposeScene = {
   text: string
@@ -108,6 +110,8 @@ export async function composeStory(o: {
   watermark?: boolean
   /** stop before the platform function limit (ms, whole composition) */
   budgetMs?: number
+  /** GÖREV 45: sound effects and a ducked music bed */
+  audio?: { sfx: boolean; music: StoryMusic }
   onStep?: (step: string) => void
 }): Promise<ComposeResult> {
   const t0 = Date.now()
@@ -164,6 +168,20 @@ export async function composeStory(o: {
   })
   await runFfmpeg(o.ffmpeg, narrationArgs(wavs, tl.scenes.map((s) => s.voiceStart), tl.total, narration, !part), left())
   step('seslendirme')
+  let mixed = narration
+  const bed = bedPath(o.root ?? process.cwd(), o.audio?.music)
+  if (o.audio?.sfx || bed) {
+    const fx = o.audio?.sfx ? path.join(o.dir, 'fx.wav') : null
+    if (fx) {
+      const pops = o.scenes.slice(from, to).map((s) => !!(s.meta.headline || s.meta.label))
+      await fs.writeFile(fx, await buildFxWav(fxEvents(tl, pops), tl.total, o.root ?? process.cwd()))
+    }
+    const bedOk = bed ? await fs.access(bed).then(() => bed, () => null) : null
+    if (bed && !bedOk) console.warn('[story] müzik dosyası bulunamadı:', path.basename(bed))
+    mixed = path.join(o.dir, 'mix.wav')
+    await runFfmpeg(o.ffmpeg, extrasMixArgs({ narration, fx, bed: bedOk, bedOffset: T0, total: tl.total, output: mixed }), left())
+    step('efekt ve müzik')
+  }
   const ovDir = path.join(o.dir, 'ov')
   await fs.mkdir(ovDir, { recursive: true })
   const states = await renderOverlayStates(ovDir, { timeline: tl, meta: o.scenes.slice(from, to).map((s) => s.meta), style: o.style, seriesLabel: o.seriesLabel, frame: F }, o.root)
@@ -174,7 +192,7 @@ export async function composeStory(o: {
   const watermark = o.watermark === false ? null : await fs.access(wmPath).then(() => wmPath, () => null)
   if (o.watermark !== false && !watermark) console.warn('[story] watermark.png bulunamadı; filigransız üretiliyor')
   const file = path.join(o.dir, part ? `part${from}.mp4` : 'story.mp4')
-  await runFfmpeg(o.ffmpeg, finalArgs({ segmentList: segList, narration, overlayList: list, output: file, total: tl.total, watermark, timeOffset: T0, part: !!o.range }), left())
+  await runFfmpeg(o.ffmpeg, finalArgs({ segmentList: segList, narration: mixed, overlayList: list, output: file, total: tl.total, watermark, timeOffset: T0, part: !!o.range }), left())
   step('birleştirme')
   for (const sgm of segs) await fs.rm(sgm, { force: true }).catch(() => undefined)
   await fs.rm(ovDir, { recursive: true, force: true }).catch(() => undefined)

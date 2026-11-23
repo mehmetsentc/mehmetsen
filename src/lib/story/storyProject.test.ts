@@ -11,6 +11,8 @@ import {
   imageKeyFor,
   missingImages,
   parseMeta,
+  parseVoice,
+  planSystemPrompt,
   parsePlan,
   parseScenes,
   renderKeyFor,
@@ -139,13 +141,16 @@ describe('render readiness and keys', () => {
       { id: 's2', text: 'Dört beş altı.', highlights: [], label: null, keepAudio: false, reason: null, need: null, visual: { kind: 'ai', prompt: 'p', imagePath: null, imageUrl: null, imageKey: null, error: null } },
     ],
   })
-  it('asks for illustrations first', () => {
+  it('missing illustrations do not block rendering (Görev 45: they become text cards)', () => {
     const p = base()
     expect(missingImages(p)).toHaveLength(1)
-    expect(renderProblem(p)).toMatch(/çizim/)
+    expect(renderProblem(p)).toBeNull()
+    const k0 = renderKeyFor(p)
     const s = p.scenes[1].visual
     if (s.kind === 'ai') Object.assign(s, { imagePath: 'x', imageKey: imageKeyFor('p', 'paper') })
     expect(renderProblem(p)).toBeNull()
+    // the generated image changes the render key (card → illustration)
+    expect(renderKeyFor(p)).not.toBe(k0)
     // a style change makes the illustration stale
     expect(missingImages({ ...p, style: 'dark' })).toHaveLength(1)
   })
@@ -263,14 +268,14 @@ describe('long videos and formats', () => {
     expect(b.ok && b.value.format).toBe('horizontal')
     expect(b.ok && b.value.targetMin).toBe(10)
   })
-  it('long plans never ask for AI drawings: missing pictures become text cards with a shot-list note', () => {
+  it('long plans: sections without an upload get the AI prompt (Görev 45), a shot-list note stays', () => {
     const raw = JSON.stringify({ title: 'T', caption: 'c', scenes: [
       { text: 'Birinci cümle burada.', asset: 'a1', need: null },
       { text: 'İkinci cümle burada.', asset: null, prompt: 'x', need: 'Kazı alanı fotoğrafı' },
       { text: 'Üçüncü cümle burada.', asset: 'a1', offsetSec: 0 },
     ] })
     const plan = parsePlan(raw, { script: '', topic: 't', assets: [asset('a1')], targetMin: 5 }, nid)
-    expect(plan.scenes.map((s) => s.visual.kind)).toEqual(['asset', 'card', 'asset'])
+    expect(plan.scenes.map((s) => s.visual.kind)).toEqual(['asset', 'ai', 'asset'])
     expect(plan.scenes[1].need).toBe('Kazı alanı fotoğrafı')
     expect(shotList(plan)).toHaveLength(1)
   })
@@ -279,9 +284,9 @@ describe('long videos and formats', () => {
     const plan = parsePlan(raw, { script: '', topic: 't', assets: [], targetMin: 1 }, nid)
     expect(plan.scenes.every((s) => s.visual.kind === 'ai')).toBe(true)
   })
-  it('renderProblem rejects AI drawings in long videos and uses the target limit', () => {
+  it('renderProblem allows AI illustrations in every length (Görev 45)', () => {
     const scenes = [0, 1].map((i) => ({ id: `s${i}aaa`, text: 'Kısa cümle.', highlights: [], label: null, visual: { kind: 'ai' as const, prompt: 'x', imagePath: 'p', imageUrl: 'u', imageKey: imageKeyFor('x', 'paper'), error: null }, keepAudio: false, reason: null, need: null }))
-    expect(renderProblem({ scenes, style: 'paper', assets: [], targetMin: 3 })).toMatch(/AI çizimi/)
+    expect(renderProblem({ scenes, style: 'paper', assets: [], targetMin: 3 })).toBeNull()
     expect(renderProblem({ scenes, style: 'paper', assets: [], targetMin: 1 })).toBeNull()
     const cards = scenes.map((s) => ({ ...s, visual: { kind: 'card' as const } }))
     expect(renderProblem({ scenes: cards, style: 'paper', assets: [], targetMin: 3 })).toBeNull()
@@ -340,5 +345,32 @@ describe('cardWord', () => {
     expect(cardWord({ text: 'Hisarlık tepesinde kazı başladı.', highlights: ['Hisarlık'], label: 'Hisarlık' })).toBe('tepesinde')
     expect(cardWord({ text: 'Gerçekler ve mitler birbirine karıştı.', highlights: [], label: null })).toBe('Gerçekler')
     expect(cardWord({ text: 'Schliemann 1871’de geldi.', highlights: ['Schliemann'], label: '1871' })).toBe('Schliemann')
+  })
+})
+
+describe('Görev 45 — Bilgi animasyonu, ses, müzik', () => {
+  it('meta: voice / music / sfx defaults follow the style and are validated', () => {
+    const r = parseMeta({ topic: 'x', rights, style: 'animasyon' })
+    expect(r.ok && r.value.music).toBe('sondakika')
+    expect(r.ok && r.value.sfx).toBe(true)
+    const q = parseMeta({ topic: 'x', rights, style: 'paper', voice: { name: 'tr-TR-Chirp3-HD-Charon', rate: 3 }, music: 'yok-boyle' })
+    expect(q.ok && q.value.voice).toEqual({ name: 'tr-TR-Chirp3-HD-Charon', rate: 1.5 })
+    expect(q.ok && q.value.music).toBe('none')
+    expect(parseVoice({ name: 'evil; rm -rf' }).name).toBeNull()
+  })
+  it('headline / sub are parsed from the plan and change the render key', () => {
+    const raw = JSON.stringify({ scenes: [{ text: 'Sakın koşmayın.', headline: 'SAKIN KOŞMAYIN!', sub: 'AV GİBİ GÖRÜNÜRSÜNÜZ', asset: null, prompt: 'a lion' }, { text: 'Geri çekilin.', asset: null }] })
+    const plan = parsePlan(raw, { script: '', topic: 't', assets: [], targetMin: 1 }, nid)
+    expect(plan.scenes[0].headline).toBe('SAKIN KOŞMAYIN!')
+    expect(plan.scenes[0].sub).toBe('AV GİBİ GÖRÜNÜRSÜNÜZ')
+    const p = { scenes: plan.scenes, style: 'animasyon' as const, seriesLabel: 'N', rights, assets: [] }
+    const k = renderKeyFor(p)
+    expect(renderKeyFor({ ...p, scenes: plan.scenes.map((s, i) => (i ? s : { ...s, headline: 'BAŞKA' })) })).not.toBe(k)
+    expect(renderKeyFor({ ...p, music: 'lofi' })).not.toBe(k)
+    expect(renderKeyFor({ ...p, voice: { name: 'tr-TR-Chirp3-HD-Kore', rate: null } })).not.toBe(k)
+  })
+  it('the plan prompt asks for headlines only in the animation style', () => {
+    expect(planSystemPrompt({ style: 'animasyon' })).toMatch(/headline/)
+    expect(planSystemPrompt({ style: 'paper' })).not.toMatch(/headline/)
   })
 })

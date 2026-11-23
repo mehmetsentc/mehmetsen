@@ -15,6 +15,7 @@ import { overlayStates, type OverlayState, type SceneMeta } from './storyStates'
 
 export const FONT_CAP = 'NaHaberStoryXB'
 export const FONT_NOTE = 'NaHaberStoryMD'
+export const FONT_DISPLAY = 'NaHaberStoryDisplay'
 let fontsReady = false
 
 export function ensureStoryFonts(root: string): void {
@@ -22,6 +23,7 @@ export function ensureStoryFonts(root: string): void {
   const dir = path.join(root, 'src/lib/reels/assets/fonts')
   GlobalFonts.registerFromPath(path.join(dir, 'Inter-ExtraBold.ttf'), FONT_CAP)
   GlobalFonts.registerFromPath(path.join(dir, 'Inter-Medium.ttf'), FONT_NOTE)
+  GlobalFonts.registerFromPath(path.join(dir, 'Anton-Regular.ttf'), FONT_DISPLAY)
   fontsReady = true
 }
 
@@ -98,6 +100,8 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
     ctx.fillStyle = 'rgba(255,255,255,0.92)'
     ctx.fillText(text, OUT_W / 2, F.pillY + 89)
   }
+  // GÖREV 45 «Bilgi animasyonu»: big headline banner + sub line pop in with the label
+  if (input.style === 'animasyon' && meta?.headline && st.pop > 0) drawHeadline(ctx, F, meta, st.scene, st.pop)
   // label pop-in
   if (meta?.label && st.pop > 0) {
     const s = 0.82 + 0.18 * backOut(st.pop)
@@ -153,6 +157,67 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
       x += ctx.measureText(w.word).width + space
     })
   })
+}
+
+/** Headline colours rotate per scene (NaHaber red, green, blue, orange, purple). */
+export const HEADLINE_COLORS = ['#E30613', '#16A34A', '#2563EB', '#EA580C', '#7C3AED']
+
+function fitFont(ctx: SKRSContext2D, text: string, family: string, start: number, min: number, maxW: number): number {
+  let size = start
+  ctx.font = `${size}px ${family}`
+  while (size > min && ctx.measureText(text).width > maxW) {
+    size -= 4
+    ctx.font = `${size}px ${family}`
+  }
+  return size
+}
+
+/** Big tilted headline banner (Anton) with a yellow sub line; scale/alpha from the pop progress. */
+export function drawHeadline(ctx: SKRSContext2D, F: Frame, meta: SceneMeta, scene: number, pop: number): void {
+  const vertical = F.h > F.w
+  const head = (meta.headline ?? '').toLocaleUpperCase('tr-TR')
+  const maxW = (F.safe.right - F.safe.left) * (vertical ? 1.02 : 0.8)
+  const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 104 : 96, 56, maxW - 60)
+  const tw = ctx.measureText(head).width
+  const bw = tw + 60
+  const bh = size * 1.32
+  const cx = (F.safe.left + F.safe.right) / 2
+  const cy = vertical ? F.safe.top + 352 : F.safe.top + 250
+  const s = 0.6 + 0.4 * backOut(pop)
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, pop * 1.8)
+  ctx.translate(cx, cy)
+  ctx.rotate((-2 * Math.PI) / 180)
+  ctx.scale(s, s)
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'
+  rr(ctx, -bw / 2 + 8, -bh / 2 + 10, bw, bh, 16)
+  ctx.fill()
+  ctx.fillStyle = HEADLINE_COLORS[scene % HEADLINE_COLORS.length]
+  rr(ctx, -bw / 2, -bh / 2, bw, bh, 16)
+  ctx.fill()
+  ctx.fillStyle = '#FFFFFF'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(head, 0, size * 0.04)
+  ctx.restore()
+  const sub = (meta.sub ?? '').toLocaleUpperCase('tr-TR')
+  if (!sub || pop < 0.35) return
+  const sp = Math.min(1, (pop - 0.35) / 0.65)
+  const ss = fitFont(ctx, sub, FONT_CAP, vertical ? 40 : 36, 26, maxW - 40)
+  const sw = ctx.measureText(sub).width + 40
+  const sh = ss * 1.6
+  ctx.save()
+  ctx.globalAlpha = sp
+  ctx.translate(cx, cy + bh / 2 + sh / 2 + 22)
+  ctx.scale(0.8 + 0.2 * backOut(sp), 0.8 + 0.2 * backOut(sp))
+  ctx.fillStyle = '#FFC400'
+  rr(ctx, -sw / 2, -sh / 2, sw, sh, 10)
+  ctx.fill()
+  ctx.fillStyle = '#141414'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(sub, 0, 1)
+  ctx.restore()
 }
 
 /** Writes the overlay PNG states into `dir` and returns them for the concat list. */
@@ -283,6 +348,7 @@ export async function composeCardStill(o: { word: string; title: string; style: 
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
   const BG: Record<StoryStyle, [string, string]> = {
+    animasyon: ['#16203F', '#0B1020'],
     paper: ['#3A2A1C', '#1C140D'],
     doodle: ['#2A2A2A', '#121212'],
     dark: ['#0F1B2D', '#05080F'],

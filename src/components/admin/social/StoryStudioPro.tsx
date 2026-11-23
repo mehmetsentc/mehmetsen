@@ -54,18 +54,22 @@ import {
   MAX_SCENES,
   MAX_SECONDS,
   missingImages,
+  MUSIC_LABEL,
   renderKeyFor,
   renderProblem,
   shotList,
+  STORY_MUSIC,
   STORY_STYLES,
   STYLE_THEME,
   TARGET_MINUTES,
   type SceneVisual,
   type StoryAsset,
   type StoryFormat,
+  type StoryMusic,
   type StoryProject,
   type StoryScene,
   type StoryStyle,
+  type StoryVoice,
   type TargetMin,
 } from '@/lib/story/storyProject'
 
@@ -73,11 +77,14 @@ const API = '/api/admin/social/story-projects'
 type Usage = { month: string; usd: number; images: number; budget: number; price: number } | null
 type ShareAccount = { accountId: string; platform: MediaSharePlatform; displayName: string; username: string | null; selectable: boolean; reason: string | null }
 type ShareRow = { accountId: string; label: string; state: 'sending' | 'ok' | 'failed' | 'uncertain'; text: string }
-type Draft = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights; format: StoryFormat; targetMin: TargetMin }
+type Draft = { title: string; topic: string; script: string; caption: string; style: StoryStyle; seriesLabel: string; rights: MediaRights; format: StoryFormat; targetMin: TargetMin; voice: StoryVoice; music: StoryMusic; sfx: boolean }
+type VoiceRow = { name: string; gender: string; tier: string }
 type LeftTab = 'media' | 'shots' | 'settings'
 
 const emptyRights: MediaRights = { kind: 'owned', sourceName: null, note: null }
-const emptyDraft: Draft = { title: '', topic: '', script: '', caption: '', style: 'paper', seriesLabel: 'NaHaber', rights: emptyRights, format: 'vertical', targetMin: 1 }
+const emptyDraft: Draft = { title: '', topic: '', script: '', caption: '', style: 'animasyon', seriesLabel: 'NaHaber', rights: emptyRights, format: 'vertical', targetMin: 1, voice: { name: null, rate: null }, music: 'sondakika', sfx: true }
+/** Professional (HD) voices first; the names stay Google's. */
+const voiceLabel = (v: VoiceRow) => `${v.tier === 'chirp' ? '★ Profesyonel HD · ' : v.tier === 'wavenet' || v.tier === 'neural2' ? 'Doğal · ' : 'Standart · '}${v.name.replace('tr-TR-', '').replace('Chirp3-HD-', '')} (${v.gender === 'MALE' ? 'erkek' : v.gender === 'FEMALE' ? 'kadın' : '—'})`
 const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(16).padStart(2, '0')).join('')
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const sceneLen = (s: Pick<StoryScene, 'text'>) => Math.max(1.6, [...s.text].length / 14.5 + 0.4)
@@ -133,9 +140,32 @@ export function StoryStudioPro() {
     void loadList()
   }, [loadList])
 
+  // GÖREV 45: narrator voices (Google catalogue; listing is free) + a short sample
+  const [voices, setVoices] = useState<VoiceRow[]>([])
+  const [studioVoice, setStudioVoice] = useState<string | null>(null)
+  useEffect(() => {
+    void reelsCall<{ voices: VoiceRow[]; effective?: { voice: string } }>('GET', '/api/admin/social/reels/voices').then((r) => {
+      if (!r.ok) return
+      const order = (v: VoiceRow) => (v.tier === 'chirp' ? 0 : v.tier === 'neural2' || v.tier === 'wavenet' ? 1 : 2)
+      setVoices([...r.data.voices].sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name)))
+      setStudioVoice(r.data.effective?.voice ?? null)
+    })
+  }, [])
+  const [sampling, setSampling] = useState(false)
+  const playSample = async () => {
+    const voice = draft.voice.name ?? studioVoice
+    if (!voice) return toast.error('Önce bir ses seçin')
+    setSampling(true)
+    const r = await reelsCall<{ audio?: string }>('POST', '/api/admin/social/reels/preview', { voice, rate: draft.voice.rate ?? undefined, text: (scenes[0]?.text || draft.title || '').slice(0, 200) || undefined })
+    setSampling(false)
+    if (!r.ok) return toast.error(r.error)
+    if (!r.data.audio) return toast.error('Ses örneği alınamadı')
+    void new Audio(r.data.audio).play().catch(() => toast.error('Tarayıcı sesi çalamadı'))
+  }
+
   const open = useCallback((proj: StoryProject | null) => {
     setP(proj)
-    setDraft(proj ? { title: proj.title, topic: proj.topic, script: proj.script, caption: proj.caption, style: proj.style, seriesLabel: proj.seriesLabel, rights: proj.rights, format: proj.format ?? 'vertical', targetMin: proj.targetMin ?? 1 } : emptyDraft)
+    setDraft(proj ? { title: proj.title, topic: proj.topic, script: proj.script, caption: proj.caption, style: proj.style, seriesLabel: proj.seriesLabel, rights: proj.rights, format: proj.format ?? 'vertical', targetMin: proj.targetMin ?? 1, voice: proj.voice ?? { name: null, rate: null }, music: proj.music ?? 'none', sfx: proj.sfx ?? false } : emptyDraft)
     setScenes(proj?.scenes ?? [])
     setSel(proj?.scenes[0]?.id ?? null)
     setDirty(false)
@@ -407,6 +437,20 @@ export function StoryStudioPro() {
   const render = async () => {
     if (!p) return
     if (!(await saveAll())) return
+    // GÖREV 45: sections without a photo / video get their AI illustration first (monthly budget guarded);
+    // anything the budget does not cover is rendered as a text card.
+    if (missing.length && ai?.images) {
+      setBusy('images')
+      setProgress({ text: `Görüntüsü olmayan ${missing.length} bölüm için AI görsel üretiliyor…`, pct: null })
+      const ir = await runReelJob(`${API}/${p.id}/images`, {}, (ms) => setProgress({ text: `AI görseller üretiliyor… ${Math.round(ms / 1000)} sn`, pct: null }))
+      setBusy(null)
+      if (!ir.ok) toast.error(`AI görsel: ${ir.error} — eksik bölümler metin kartı olacak`, { duration: 7000 })
+      else {
+        const res = ir.job.result as { made?: number; failed?: number; budgetStop?: boolean; errors?: string[]; project?: StoryProject } | null
+        if (res?.project) apply(res.project)
+        if (res?.failed) toast.error(`${res.failed} görsel üretilemedi${res.budgetStop ? ' (aylık bütçe doldu)' : ''}; o bölümler metin kartı olacak`, { duration: 7000 })
+      }
+    }
     const url = `${API}/${p.id}/render`
     setBusy('render')
     const t0 = Date.now()
@@ -589,6 +633,44 @@ export function StoryStudioPro() {
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-1" role="group" aria-label="Seslendirme">
+          <select
+            value={draft.voice.name ?? ''}
+            onChange={(e) => setD({ voice: { ...draft.voice, name: e.target.value || null } })}
+            className="max-w-[230px] rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs"
+            aria-label="Spiker sesi"
+            title="Seslendirme sesi (★ = profesyonel HD)"
+          >
+            <option value="">Stüdyo varsayılanı{studioVoice ? ` (${studioVoice.replace('tr-TR-', '')})` : ''}</option>
+            {voices.map((v) => (
+              <option key={v.name} value={v.name}>
+                {voiceLabel(v)}
+              </option>
+            ))}
+          </select>
+          <select value={String(draft.voice.rate ?? '')} onChange={(e) => setD({ voice: { ...draft.voice, rate: e.target.value ? Number(e.target.value) : null } })} className="rounded-lg border border-white/10 bg-black/30 px-1 py-1.5 text-xs" aria-label="Konuşma hızı">
+            <option value="">Hız</option>
+            {[0.9, 1, 1.05, 1.1, 1.15, 1.2].map((r) => (
+              <option key={r} value={r}>
+                {r.toFixed(2)}×
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => void playSample()} disabled={sampling} className="rounded-lg bg-white/10 px-2 py-1.5 text-xs hover:bg-white/15" title="Sesi dinle">
+            {sampling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '▶'}
+          </button>
+        </div>
+        <select value={draft.music} onChange={(e) => setD({ music: e.target.value as StoryMusic })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs" aria-label="Müzik">
+          {STORY_MUSIC.map((m) => (
+            <option key={m} value={m}>
+              ♫ {MUSIC_LABEL[m]}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1 text-xs" title="Sahne geçişlerinde ve başlık çıkışında ses efekti">
+          <input type="checkbox" checked={draft.sfx} onChange={(e) => setD({ sfx: e.target.checked })} />
+          Efektler
+        </label>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {metaDirty || dirty || !p ? (
@@ -743,7 +825,7 @@ export function StoryStudioPro() {
                     <li>• Geniş açı (yer, bina) + yakın çekim (ayrıntı, belge, nesne) karışık olsun; aynı açıdan çok kare gerekmez.</li>
                     <li>• Gündüz, net, sabit çekim; videoda 5 sn sakin başlangıç bırakın. Yazı / tabela varsa okunur çekin.</li>
                     <li>• Kişi yüzleri için izin alın; çocuk ve mağdur yüzü kullanmayın.</li>
-                    {draft.targetMin > 1 ? <li className="text-amber-300">• Bu uzunlukta AI çizimi yok (maliyet yok): görüntüsü olmayan sahne metin kartı olur.</li> : null}
+                    <li className="text-amber-300">• Görüntü eklemediğiniz bölümlere «Videoyu üret» sırasında AI görsel üretilir (aylık bütçe içinde; aynı bölümdeki sahneler aynı görseli paylaşır).</li>
                   </ul>
                   {scenes.length ? (
                     <div className="mt-2">
@@ -954,6 +1036,18 @@ export function StoryStudioPro() {
                   <input value={cur.label ?? ''} onChange={(e) => patchScene(cur.id, (x) => ({ ...x, label: e.target.value || null }))} maxLength={28} className={field} placeholder="ör. 1871" />
                 </label>
               </div>
+              {draft.style === 'animasyon' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <Label>Hareketli başlık</Label>
+                    <input value={cur.headline ?? ''} onChange={(e) => patchScene(cur.id, (x) => ({ ...x, headline: e.target.value || null }))} maxLength={40} className={field} placeholder="ör. SAKIN KOŞMAYIN!" />
+                  </label>
+                  <label className="block">
+                    <Label>Alt satır</Label>
+                    <input value={cur.sub ?? ''} onChange={(e) => patchScene(cur.id, (x) => ({ ...x, sub: e.target.value || null }))} maxLength={48} className={field} placeholder="ör. KAÇARSANIZ AV GİBİ GÖRÜNÜRSÜNÜZ" />
+                  </label>
+                </div>
+              ) : null}
               <label className="block">
                 <Label>Görüntü</Label>
                 <select value={cur.visual.kind === 'asset' ? cur.visual.assetId : cur.visual.kind} onChange={(e) => setVisualKind(cur, e.target.value)} className={field}>
