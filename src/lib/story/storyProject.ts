@@ -860,7 +860,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
 
 export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat; voice?: StoryVoice; music?: StoryMusic; sfx?: boolean }): string {
   return hashKey([
-    'story-v9-outro',
+    'story-v10-outro-logo',
     p.voice?.name ?? null,
     p.voice?.rate ?? null,
     p.music ?? 'none',

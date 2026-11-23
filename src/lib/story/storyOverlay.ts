@@ -550,8 +550,9 @@ export async function composeOutroStill(o: { style: StoryStyle; outFile: string;
   try {
     const logo = await loadImage(await fs.readFile(path.join(root, 'src/lib/reels/assets/brand/logo-mark.png')))
     ctx.drawImage(logo, W / 2 - logoSize / 2, cy - logoSize / 2 - (vertical ? 120 : 90), logoSize, logoSize)
-  } catch {
+  } catch (err) {
     // no logo file: the card still carries the address
+    console.warn('[story] kapanış logosu okunamadı', err instanceof Error ? err.message : err)
   }
   const accent = th.colors?.[0] ?? '#E30613'
   ctx.textAlign = 'center'
