@@ -75,6 +75,8 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
   const SAFE = F.safe
   ctx.clearRect(0, 0, F.w, F.h)
   const th = STYLE_THEME[input.style]
+  // GÖREV 46: the closing «nahaber.com» card carries its own branding — nothing on top
+  if (st && input.meta[st.scene]?.outro) return
   // series pill
   const pill = input.seriesLabel.toLocaleUpperCase('tr-TR').slice(0, 32)
   ctx.font = `30px ${FONT_CAP}`
@@ -89,10 +91,10 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
   if (!st) return
   const meta = input.meta[st.scene]
   // honesty notes
-  const notes = [meta?.aiNote ? 'Temsili çizim' : null, meta?.source ? `Kaynak: ${meta.source}` : null].filter(Boolean) as string[]
+  const notes = [meta?.aiNote ? 'Temsili çizim' : null, meta?.source ? `Kaynak: ${meta.source}` : null, th.note ?? null].filter(Boolean) as string[]
   if (notes.length) {
     ctx.font = `26px ${FONT_NOTE}`
-    const text = notes.join(' · ').slice(0, 60)
+    const text = notes.join(' · ').slice(0, 80)
     const nw = ctx.measureText(text).width + 28
     ctx.fillStyle = 'rgba(0,0,0,0.38)'
     rr(ctx, OUT_W / 2 - nw / 2, F.pillY + 68, nw, 40, 10)
@@ -101,9 +103,10 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
     ctx.fillText(text, OUT_W / 2, F.pillY + 89)
   }
   // GÖREV 45 «Bilgi animasyonu»: big headline banner + sub line pop in with the label
-  if (input.style === 'animasyon' && meta?.headline && st.pop > 0) drawHeadline(ctx, F, meta, st.scene, st.pop)
+  if (th.variant && meta?.headline && st.pop > 0) drawHeadline(ctx, F, meta, st.scene, st.pop, input.style)
   // label pop-in
-  if (meta?.label && st.pop > 0) {
+  // the news look already shows the label in its red tag
+  if (meta?.label && st.pop > 0 && th.variant !== 'lower') {
     const s = 0.82 + 0.18 * backOut(st.pop)
     ctx.save()
     ctx.globalAlpha = Math.min(1, st.pop * 1.6)
@@ -159,7 +162,7 @@ export function drawOverlay(ctx: SKRSContext2D, input: OverlayInput, st: Overlay
   })
 }
 
-/** Headline colours rotate per scene (NaHaber red, green, blue, orange, purple). */
+/** Headline colours rotate per scene (palette of the video type). */
 export const HEADLINE_COLORS = ['#E30613', '#16A34A', '#2563EB', '#EA580C', '#7C3AED']
 
 function fitFont(ctx: SKRSContext2D, text: string, family: string, start: number, min: number, maxW: number): number {
@@ -172,52 +175,397 @@ function fitFont(ctx: SKRSContext2D, text: string, family: string, start: number
   return size
 }
 
-/** Big tilted headline banner (Anton) with a yellow sub line; scale/alpha from the pop progress. */
-export function drawHeadline(ctx: SKRSContext2D, F: Frame, meta: SceneMeta, scene: number, pop: number): void {
-  const vertical = F.h > F.w
-  const head = (meta.headline ?? '').toLocaleUpperCase('tr-TR')
-  const maxW = (F.safe.right - F.safe.left) * (vertical ? 1.02 : 0.8)
-  const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 104 : 96, 56, maxW - 60)
-  const tw = ctx.measureText(head).width
-  const bw = tw + 60
-  const bh = size * 1.32
-  const cx = (F.safe.left + F.safe.right) / 2
-  const cy = vertical ? F.safe.top + 352 : F.safe.top + 250
-  const s = 0.6 + 0.4 * backOut(pop)
-  ctx.save()
-  ctx.globalAlpha = Math.min(1, pop * 1.8)
-  ctx.translate(cx, cy)
-  ctx.rotate((-2 * Math.PI) / 180)
-  ctx.scale(s, s)
-  ctx.fillStyle = 'rgba(0,0,0,0.35)'
-  rr(ctx, -bw / 2 + 8, -bh / 2 + 10, bw, bh, 16)
-  ctx.fill()
-  ctx.fillStyle = HEADLINE_COLORS[scene % HEADLINE_COLORS.length]
-  rr(ctx, -bw / 2, -bh / 2, bw, bh, 16)
-  ctx.fill()
-  ctx.fillStyle = '#FFFFFF'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(head, 0, size * 0.04)
-  ctx.restore()
-  const sub = (meta.sub ?? '').toLocaleUpperCase('tr-TR')
-  if (!sub || pop < 0.35) return
-  const sp = Math.min(1, (pop - 0.35) / 0.65)
-  const ss = fitFont(ctx, sub, FONT_CAP, vertical ? 40 : 36, 26, maxW - 40)
+/** Sub line under the headline (a small pill), shared by most variants. */
+function drawSub(ctx: SKRSContext2D, sub: string, x: number, y: number, maxW: number, size: number, bg: string, fg: string, p: number, align: 'center' | 'left' = 'center'): void {
+  if (!sub || p <= 0) return
+  const ss = fitFont(ctx, sub, FONT_CAP, size, 24, maxW - 40)
   const sw = ctx.measureText(sub).width + 40
   const sh = ss * 1.6
   ctx.save()
-  ctx.globalAlpha = sp
-  ctx.translate(cx, cy + bh / 2 + sh / 2 + 22)
-  ctx.scale(0.8 + 0.2 * backOut(sp), 0.8 + 0.2 * backOut(sp))
-  ctx.fillStyle = '#FFC400'
+  ctx.globalAlpha = Math.min(1, p)
+  const cx = align === 'center' ? x : x + sw / 2
+  ctx.translate(cx, y + sh / 2)
+  const k = 0.8 + 0.2 * backOut(Math.min(1, p))
+  ctx.scale(k, k)
+  ctx.fillStyle = bg
   rr(ctx, -sw / 2, -sh / 2, sw, sh, 10)
   ctx.fill()
-  ctx.fillStyle = '#141414'
+  ctx.fillStyle = fg
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(sub, 0, 1)
   ctx.restore()
+}
+
+/**
+ * GÖREV 45/46 — animated headline in the look of the video type. `pop` 0..1 is the pop-in
+ * progress (quantized states). Every variant stays inside the safe area, above the captions.
+ */
+export function drawHeadline(ctx: SKRSContext2D, F: Frame, meta: SceneMeta, scene: number, pop: number, style: StoryStyle = 'animasyon'): void {
+  const th = STYLE_THEME[style]
+  const variant = th.variant ?? 'banner'
+  const colors = th.colors?.length ? th.colors : HEADLINE_COLORS
+  const col = colors[scene % colors.length]
+  const vertical = F.h > F.w
+  const head = (meta.headline ?? '').toLocaleUpperCase('tr-TR')
+  const sub = (meta.sub ?? '').toLocaleUpperCase('tr-TR')
+  const left = F.safe.left
+  const right = F.safe.right
+  const maxW = (right - left) * (vertical ? 1.02 : 0.8)
+  const cx = (left + right) / 2
+  const cy = vertical ? F.safe.top + 352 : F.safe.top + 250
+  const subP = (pop - 0.35) / 0.65
+  const e = backOut(pop)
+  ctx.save()
+  ctx.textBaseline = 'middle'
+  switch (variant) {
+    case 'lower': {
+      // news: red «tag» + white bar sliding in from the left (lower-third look, top of frame)
+      const tag = (meta.label || 'SON DAKİKA').toLocaleUpperCase('tr-TR').slice(0, 18)
+      ctx.font = `34px ${FONT_CAP}`
+      const tagW = ctx.measureText(tag).width + 36
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 84 : 78, 48, maxW - 40)
+      const tw = ctx.measureText(head).width + 48
+      const barH = size * 1.3
+      const x0 = left - 20 - (1 - Math.min(1, pop * 1.4)) * (tw + 200)
+      const y = cy - barH / 2
+      ctx.globalAlpha = Math.min(1, pop * 2)
+      ctx.fillStyle = col
+      ctx.fillRect(x0, y - 50, tagW, 50)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = `34px ${FONT_CAP}`
+      ctx.textAlign = 'left'
+      ctx.fillText(tag, x0 + 18, y - 24)
+      ctx.fillStyle = 'rgba(255,255,255,0.97)'
+      ctx.fillRect(x0, y, tw, barH)
+      ctx.fillStyle = col
+      ctx.fillRect(x0, y + barH - 8, tw, 8)
+      ctx.fillStyle = '#0B0B0F'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, x0 + 24, y + barH / 2)
+      ctx.restore()
+      drawSub(ctx, sub, x0 + 0, y + barH + 16, maxW, vertical ? 36 : 32, '#111111', '#FFFFFF', subP, 'left')
+      return
+    }
+    case 'cinema': {
+      // documentary: no box, letter-spaced title fading up with thin gold rules
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 76 : 72, 44, maxW - 80)
+      ctx.globalAlpha = Math.min(1, pop)
+      ctx.translate(0, (1 - pop) * 24)
+      ctx.fillStyle = '#F7F2E8'
+      ctx.textAlign = 'center'
+      ctx.shadowColor = 'rgba(0,0,0,0.8)'
+      ctx.shadowBlur = 18
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, cx, cy)
+      ctx.shadowBlur = 0
+      const w = Math.min(maxW, ctx.measureText(head).width) * Math.min(1, pop * 1.2)
+      ctx.fillStyle = col
+      ctx.fillRect(cx - w / 2, cy - size * 0.78, w, 3)
+      ctx.fillRect(cx - w / 2, cy + size * 0.72, w, 3)
+      if (sub && subP > 0) {
+        ctx.globalAlpha = Math.min(1, subP)
+        ctx.font = `${vertical ? 34 : 30}px ${FONT_NOTE}`
+        ctx.fillStyle = col
+        ctx.fillText(sub, cx, cy + size * 0.72 + 44)
+      }
+      ctx.restore()
+      return
+    }
+    case 'sport': {
+      // sport: skewed neon slab slamming in, dark text, second colour edge
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 110 : 100, 56, maxW - 80)
+      const tw = ctx.measureText(head).width + 80
+      const bh = size * 1.25
+      const k = 1 + 0.5 * (1 - Math.min(1, pop * 1.5))
+      ctx.globalAlpha = Math.min(1, pop * 2)
+      ctx.translate(cx, cy)
+      ctx.scale(k, k)
+      ctx.transform(1, 0, -0.22, 1, 0, 0)
+      ctx.fillStyle = colors[(scene + 1) % colors.length]
+      ctx.fillRect(-tw / 2 + 14, -bh / 2 + 14, tw, bh)
+      ctx.fillStyle = col
+      ctx.fillRect(-tw / 2, -bh / 2, tw, bh)
+      ctx.fillStyle = '#0A0A0A'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 28, maxW, vertical ? 40 : 36, '#0A0A0A', col, subP)
+      return
+    }
+    case 'glam': {
+      // magazine: rounded gradient pill with a little wobble and sparkles
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 96 : 88, 52, maxW - 80)
+      const tw = ctx.measureText(head).width + 90
+      const bh = size * 1.35
+      ctx.globalAlpha = Math.min(1, pop * 1.8)
+      ctx.translate(cx, cy)
+      ctx.rotate(((-3 + 5 * Math.sin(pop * Math.PI)) * Math.PI) / 180)
+      ctx.scale(0.6 + 0.4 * e, 0.6 + 0.4 * e)
+      const g = ctx.createLinearGradient(-tw / 2, 0, tw / 2, 0)
+      g.addColorStop(0, colors[0])
+      g.addColorStop(1, colors[1 % colors.length])
+      ctx.fillStyle = g
+      rr(ctx, -tw / 2, -bh / 2, tw, bh, bh / 2)
+      ctx.fill()
+      ctx.fillStyle = '#FFFFFF'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.font = `${Math.round(size * 0.55)}px ${FONT_CAP}`
+      ctx.fillStyle = colors[2 % colors.length]
+      ctx.fillText('✦', tw / 2 - 10, -bh / 2 + 6)
+      ctx.fillText('✦', -tw / 2 + 18, bh / 2 - 4)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 24, maxW, vertical ? 38 : 34, '#FFFFFF', colors[0], subP)
+      return
+    }
+    case 'fact': {
+      // interesting facts: «BİLİYOR MUYDUNUZ?» tag + sticky card with a number badge
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 92 : 84, 50, maxW - 150)
+      const tw = ctx.measureText(head).width + 140
+      const bh = size * 1.4
+      ctx.globalAlpha = Math.min(1, pop * 1.8)
+      ctx.translate(cx, cy)
+      ctx.rotate((-2.5 * Math.PI) / 180)
+      ctx.scale(0.6 + 0.4 * e, 0.6 + 0.4 * e)
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'
+      rr(ctx, -tw / 2 + 10, -bh / 2 + 12, tw, bh, 14)
+      ctx.fill()
+      ctx.fillStyle = col
+      rr(ctx, -tw / 2, -bh / 2, tw, bh, 14)
+      ctx.fill()
+      ctx.fillStyle = '#111111'
+      ctx.beginPath()
+      ctx.arc(-tw / 2 + 58, 0, bh * 0.34, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = col
+      ctx.textAlign = 'center'
+      ctx.font = `${Math.round(bh * 0.42)}px ${FONT_DISPLAY}`
+      ctx.fillText(String(scene + 1), -tw / 2 + 58, 2)
+      ctx.fillStyle = '#111111'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 40, size * 0.04)
+      ctx.font = `30px ${FONT_CAP}`
+      ctx.fillStyle = '#FFFFFF'
+      ctx.textAlign = 'left'
+      ctx.fillText('BİLİYOR MUYDUNUZ?', -tw / 2, -bh / 2 - 28)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 26, maxW, vertical ? 38 : 34, '#FFFFFF', '#111111', subP)
+      return
+    }
+    case 'care': {
+      // health: calm white card with a coloured «+» and side bar, soft fade-up
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 84 : 78, 46, maxW - 160)
+      const tw = ctx.measureText(head).width + 150
+      const bh = size * 1.45
+      ctx.globalAlpha = Math.min(1, pop * 1.5)
+      ctx.translate(cx, cy + (1 - pop) * 30)
+      ctx.fillStyle = 'rgba(255,255,255,0.96)'
+      rr(ctx, -tw / 2, -bh / 2, tw, bh, 24)
+      ctx.fill()
+      ctx.fillStyle = col
+      rr(ctx, -tw / 2, -bh / 2, 16, bh, 8)
+      ctx.fill()
+      const px = -tw / 2 + 64
+      ctx.fillRect(px - 8, -26, 16, 52)
+      ctx.fillRect(px - 26, -8, 52, 16)
+      ctx.fillStyle = '#0B3B3A'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 40, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 22, maxW, vertical ? 36 : 32, col, '#FFFFFF', subP)
+      return
+    }
+    case 'tech': {
+      // technology: dark glass box with neon outline and corner brackets
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 90 : 82, 50, maxW - 80)
+      const tw = ctx.measureText(head).width + 80
+      const bh = size * 1.35
+      ctx.globalAlpha = Math.min(1, pop * 1.6)
+      ctx.translate(cx, cy)
+      ctx.scale(0.8 + 0.2 * e, 0.8 + 0.2 * e)
+      ctx.fillStyle = 'rgba(3,7,18,0.82)'
+      ctx.fillRect(-tw / 2, -bh / 2, tw, bh)
+      ctx.shadowColor = col
+      ctx.shadowBlur = 24
+      ctx.strokeStyle = col
+      ctx.lineWidth = 4
+      ctx.strokeRect(-tw / 2, -bh / 2, tw, bh)
+      ctx.shadowBlur = 0
+      ctx.lineWidth = 8
+      ctx.strokeStyle = colors[1 % colors.length]
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        ctx.beginPath()
+        ctx.moveTo((sx * tw) / 2, (sy * bh) / 2 - sy * 30)
+        ctx.lineTo((sx * tw) / 2, (sy * bh) / 2)
+        ctx.lineTo((sx * tw) / 2 - sx * 30, (sy * bh) / 2)
+        ctx.stroke()
+      }
+      ctx.fillStyle = '#E0F7FF'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 24, maxW, vertical ? 36 : 32, col, '#03121A', subP)
+      return
+    }
+    case 'market': {
+      // economy: ticker bar with an up/down arrow (red when the text speaks of a fall)
+      const down = /DÜŞ|GERİLE|AZAL|KAYIP|ZARAR|İNDİ|DÜŞÜŞ|EKSİ/.test(head)
+      const c = down ? colors[1 % colors.length] : colors[0]
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 88 : 80, 48, maxW - 150)
+      const tw = ctx.measureText(head).width + 140
+      const bh = size * 1.3
+      const x0 = cx - tw / 2 + (1 - Math.min(1, pop * 1.4)) * 300
+      ctx.globalAlpha = Math.min(1, pop * 2)
+      ctx.fillStyle = '#0F172A'
+      ctx.fillRect(x0, cy - bh / 2, tw, bh)
+      ctx.fillStyle = c
+      ctx.fillRect(x0, cy - bh / 2, 110, bh)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.beginPath()
+      const ax = x0 + 55
+      if (down) {
+        ctx.moveTo(ax - 28, cy - 14)
+        ctx.lineTo(ax + 28, cy - 14)
+        ctx.lineTo(ax, cy + 24)
+      } else {
+        ctx.moveTo(ax - 28, cy + 14)
+        ctx.lineTo(ax + 28, cy + 14)
+        ctx.lineTo(ax, cy - 24)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.textAlign = 'left'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, x0 + 136, cy + size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 22, maxW, vertical ? 36 : 32, c, '#FFFFFF', subP)
+      return
+    }
+    case 'postcard': {
+      // travel: tilted cream postcard with a stamp-coloured frame
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 90 : 84, 50, maxW - 100)
+      const tw = ctx.measureText(head).width + 100
+      const bh = size * 1.5
+      ctx.globalAlpha = Math.min(1, pop * 1.8)
+      ctx.translate(cx, cy)
+      ctx.rotate(((scene % 2 ? 3 : -3) * Math.PI) / 180)
+      ctx.scale(0.6 + 0.4 * e, 0.6 + 0.4 * e)
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'
+      ctx.fillRect(-tw / 2 + 10, -bh / 2 + 12, tw, bh)
+      ctx.fillStyle = '#FFF7E8'
+      ctx.fillRect(-tw / 2, -bh / 2, tw, bh)
+      ctx.strokeStyle = col
+      ctx.lineWidth = 10
+      ctx.setLineDash([22, 12])
+      ctx.strokeRect(-tw / 2 + 14, -bh / 2 + 14, tw - 28, bh - 28)
+      ctx.setLineDash([])
+      ctx.fillStyle = '#3A1D0A'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 26, maxW, vertical ? 38 : 34, col, '#FFFFFF', subP)
+      return
+    }
+    case 'chronicle': {
+      // history: ink-red stamp with the year / label above and a parchment strip
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 88 : 80, 48, maxW - 80)
+      const tw = ctx.measureText(head).width + 80
+      const bh = size * 1.35
+      ctx.globalAlpha = Math.min(1, pop * 1.6)
+      ctx.translate(cx, cy)
+      ctx.scale(0.85 + 0.15 * e, 0.85 + 0.15 * e)
+      ctx.fillStyle = '#F2E6CC'
+      ctx.fillRect(-tw / 2, -bh / 2, tw, bh)
+      ctx.strokeStyle = col
+      ctx.lineWidth = 6
+      ctx.strokeRect(-tw / 2 + 10, -bh / 2 + 10, tw - 20, bh - 20)
+      ctx.fillStyle = '#3A2A1C'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 22, maxW, vertical ? 36 : 32, col, '#F6EEDC', subP)
+      return
+    }
+    default: {
+      // «Bilgilendirme»: big tilted banner, colour per scene, yellow sub line
+      const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 104 : 96, 56, maxW - 60)
+      const bw = ctx.measureText(head).width + 60
+      const bh = size * 1.32
+      const s = 0.6 + 0.4 * e
+      ctx.globalAlpha = Math.min(1, pop * 1.8)
+      ctx.translate(cx, cy)
+      ctx.rotate((-2 * Math.PI) / 180)
+      ctx.scale(s, s)
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'
+      rr(ctx, -bw / 2 + 8, -bh / 2 + 10, bw, bh, 16)
+      ctx.fill()
+      ctx.fillStyle = col
+      rr(ctx, -bw / 2, -bh / 2, bw, bh, 16)
+      ctx.fill()
+      ctx.fillStyle = '#FFFFFF'
+      ctx.textAlign = 'center'
+      ctx.font = `${size}px ${FONT_DISPLAY}`
+      ctx.fillText(head, 0, size * 0.04)
+      ctx.restore()
+      drawSub(ctx, sub, cx, cy + bh / 2 + 22, maxW, vertical ? 40 : 36, '#FFC400', '#141414', subP)
+      return
+    }
+  }
+}
+
+/**
+ * GÖREV 46 — closing card of every video: NaHaber mark, «nahaber.com», a small line, in the
+ * colours of the video type. Still 10 % larger than the frame (drifts like the other stills).
+ */
+export async function composeOutroStill(o: { style: StoryStyle; outFile: string; frame?: Frame; root?: string }): Promise<void> {
+  const root = o.root ?? process.cwd()
+  ensureStoryFonts(root)
+  const F = o.frame ?? FRAMES.vertical
+  const W = F.stillW
+  const H = F.stillH
+  const th = STYLE_THEME[o.style]
+  const [c0, c1] = th.cardBg ?? ['#16203F', '#0B1020']
+  const canvas = createCanvas(W, H)
+  const ctx = canvas.getContext('2d')
+  const g = ctx.createLinearGradient(0, 0, W * 0.3, H)
+  g.addColorStop(0, c0)
+  g.addColorStop(1, c1)
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+  const rg = ctx.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.42, Math.max(W, H) * 0.6)
+  rg.addColorStop(0, 'rgba(255,255,255,0.16)')
+  rg.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = rg
+  ctx.fillRect(0, 0, W, H)
+  const vertical = F.h > F.w
+  const logoSize = vertical ? 300 : 260
+  const cy = vertical ? H * 0.4 : H * 0.36
+  try {
+    const logo = await loadImage(await fs.readFile(path.join(root, 'src/lib/reels/assets/brand/logo-mark.png')))
+    ctx.drawImage(logo, W / 2 - logoSize / 2, cy - logoSize / 2 - (vertical ? 120 : 90), logoSize, logoSize)
+  } catch {
+    // no logo file: the card still carries the address
+  }
+  const accent = th.colors?.[0] ?? '#E30613'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = '#FFFFFF'
+  ctx.font = `${vertical ? 150 : 140}px ${FONT_DISPLAY}`
+  ctx.fillText('nahaber.com', W / 2, cy + (vertical ? 170 : 130))
+  ctx.fillStyle = accent
+  rr(ctx, W / 2 - 110, cy + (vertical ? 270 : 220), 220, 12, 6)
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,0.82)'
+  ctx.font = `${vertical ? 46 : 42}px ${FONT_NOTE}`
+  ctx.fillText('Haberin devamı ve daha fazlası için', W / 2, cy + (vertical ? 350 : 290))
+  await fs.writeFile(o.outFile, await canvas.encode('jpeg', 90))
 }
 
 /** Writes the overlay PNG states into `dir` and returns them for the concat list. */
@@ -347,14 +695,14 @@ export async function composeCardStill(o: { word: string; title: string; style: 
   const th = STYLE_THEME[o.style]
   const canvas = createCanvas(W, H)
   const ctx = canvas.getContext('2d')
-  const BG: Record<StoryStyle, [string, string]> = {
+  const BG: Partial<Record<StoryStyle, [string, string]>> = {
     animasyon: ['#16203F', '#0B1020'],
     paper: ['#3A2A1C', '#1C140D'],
     doodle: ['#2A2A2A', '#121212'],
     dark: ['#0F1B2D', '#05080F'],
     photo: ['#1E1E22', '#0A0A0C'],
   }
-  const [c0, c1] = BG[o.style]
+  const [c0, c1] = th.cardBg ?? BG[o.style] ?? ['#16203F', '#0B1020']
   const g = ctx.createLinearGradient(0, 0, W * 0.4, H)
   g.addColorStop(0, c0)
   g.addColorStop(1, c1)

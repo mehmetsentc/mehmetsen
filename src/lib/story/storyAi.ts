@@ -128,7 +128,7 @@ async function planLongStory(p: StoryProject, newId: () => string): Promise<Plan
     const ask = async (extra: string) =>
       geminiFastChat({
         messages: [
-          { role: 'system', content: scriptSystemPrompt(t) },
+          { role: 'system', content: scriptSystemPrompt(t, p.style) },
           { role: 'user', content: `Konu: ${p.topic || p.title}\nBaşlık: ${p.title || '-'}${extra}` },
         ],
         temperature: 0.6,

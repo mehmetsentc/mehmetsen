@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
-import { extrasMixArgs, fxEvents, readPcm16Wav, resample, synthPop, FX_RATE } from './storyAudio'
+import { extrasMixArgs, fxEvents, readPcm16Wav, resample, silentWav, synthPop, FX_RATE } from './storyAudio'
 
 function wav(samples: number[], rate = 44100): Buffer {
   const b = Buffer.alloc(44 + samples.length * 2)
@@ -30,6 +30,16 @@ describe('storyAudio (Görev 45)', () => {
     expect(ev.filter((e) => e.sound.startsWith('whoosh'))).toHaveLength(2)
     expect(ev.filter((e) => e.sound === 'pop').map((e) => e.at)).toEqual([0.4])
     expect(ev.some((e) => e.sound === 'ding')).toBe(true)
+  })
+  it('closing card: outro sting instead of a whoosh, no pop', () => {
+    const tl = { total: 12, scenes: [{ start: 0, labelAt: 0.4 }, { start: 9, labelAt: 9.4 }] } as never
+    const ev = fxEvents(tl, [true, false], 1)
+    expect(ev.filter((e) => e.sound === 'outro').map((e) => e.at)).toEqual([9])
+    expect(ev.filter((e) => e.at === 9 && e.sound.startsWith('whoosh'))).toHaveLength(0)
+  })
+  it('silent WAV has the right length', () => {
+    const w = readPcm16Wav(silentWav(2, 24000))
+    expect(w.samples.length).toBe(48000)
   })
   it('mix argv: ducked bed continues from the part offset; no bed → narration key is consumed', () => {
     const a = extrasMixArgs({ narration: 'n.wav', fx: 'fx.wav', bed: 'bed.m4a', bedOffset: 45.5, total: 30, output: 'o.wav' })

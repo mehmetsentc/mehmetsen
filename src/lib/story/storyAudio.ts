@@ -85,12 +85,17 @@ export function synthDing(): Float32Array {
   return out
 }
 
-export type FxEvent = { at: number; sound: 'whoosh' | 'whoosh2' | 'pop' | 'ding'; gain: number }
+export type FxEvent = { at: number; sound: 'whoosh' | 'whoosh2' | 'pop' | 'ding' | 'outro'; gain: number }
 
 /** Where the effects go: a whoosh on every scene change, a pop when a headline / label pops in. */
-export function fxEvents(tl: StoryTimeline, pops: boolean[]): FxEvent[] {
+export function fxEvents(tl: StoryTimeline, pops: boolean[], outroIndex = -1): FxEvent[] {
   const out: FxEvent[] = []
   tl.scenes.forEach((s, k) => {
+    // GÖREV 46: the closing «nahaber.com» card gets the brand outro sting instead of a whoosh
+    if (k === outroIndex) {
+      out.push({ at: Math.max(0, s.start), sound: 'outro', gain: 0.8 })
+      return
+    }
     out.push({ at: Math.max(0, s.start), sound: k % 2 ? 'whoosh2' : 'whoosh', gain: 0.5 })
     if (pops[k]) out.push({ at: Math.max(0, s.labelAt), sound: 'pop', gain: 0.9 })
   })
@@ -110,6 +115,7 @@ export async function buildFxWav(events: FxEvent[], total: number, root: string)
     whoosh2: await load('whoosh-down.wav'),
     pop: synthPop(),
     ding: synthDing(),
+    outro: await load('outro-soft.wav').catch(() => synthDing()),
   }
   const n = Math.max(1, Math.round(total * FX_RATE))
   const mix = new Float32Array(n)
@@ -175,4 +181,24 @@ export function extrasMixArgs(a: { narration: string; fx: string | null; bed: st
   parts.push(`${mixIn.join('')}amix=inputs=${mixIn.length}:duration=first:normalize=0,alimiter=limit=0.95,apad,atrim=duration=${t}[out]`)
   args.push('-filter_complex', parts.join(';'), '-map', '[out]', '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', a.output)
   return args
+}
+
+/** Silent mono PCM16 WAV (the closing card has no narration but needs a voice track). */
+export function silentWav(seconds: number, rate = 24000): Buffer {
+  const n = Math.max(1, Math.round(seconds * rate))
+  const b = Buffer.alloc(44 + n * 2)
+  b.write('RIFF', 0, 'ascii')
+  b.writeUInt32LE(36 + n * 2, 4)
+  b.write('WAVE', 8, 'ascii')
+  b.write('fmt ', 12, 'ascii')
+  b.writeUInt32LE(16, 16)
+  b.writeUInt16LE(1, 20)
+  b.writeUInt16LE(1, 22)
+  b.writeUInt32LE(rate, 24)
+  b.writeUInt32LE(rate * 2, 28)
+  b.writeUInt16LE(2, 32)
+  b.writeUInt16LE(16, 34)
+  b.write('data', 36, 'ascii')
+  b.writeUInt32LE(n * 2, 40)
+  return b
 }

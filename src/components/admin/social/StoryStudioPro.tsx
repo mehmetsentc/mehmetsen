@@ -51,6 +51,7 @@ import {
   cardWord,
   estimateSeconds,
   FRAMES,
+  hasHeadline,
   MAX_SCENES,
   MAX_SECONDS,
   missingImages,
@@ -82,7 +83,7 @@ type VoiceRow = { name: string; gender: string; tier: string }
 type LeftTab = 'media' | 'shots' | 'settings'
 
 const emptyRights: MediaRights = { kind: 'owned', sourceName: null, note: null }
-const emptyDraft: Draft = { title: '', topic: '', script: '', caption: '', style: 'animasyon', seriesLabel: 'NaHaber', rights: emptyRights, format: 'vertical', targetMin: 1, voice: { name: null, rate: null }, music: 'sondakika', sfx: true }
+const emptyDraft: Draft = { title: '', topic: '', script: '', caption: '', style: 'animasyon', seriesLabel: 'NaHaber', rights: emptyRights, format: 'vertical', targetMin: 1, voice: { name: 'tr-TR-Chirp3-HD-Algieba', rate: 1.05 }, music: 'modern', sfx: true }
 /** Professional (HD) voices first; the names stay Google's. */
 const voiceLabel = (v: VoiceRow) => `${v.tier === 'chirp' ? '★ Profesyonel HD · ' : v.tier === 'wavenet' || v.tier === 'neural2' ? 'Doğal · ' : 'Standart · '}${v.name.replace('tr-TR-', '').replace('Chirp3-HD-', '')} (${v.gender === 'MALE' ? 'erkek' : v.gender === 'FEMALE' ? 'kadın' : '—'})`
 const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(16).padStart(2, '0')).join('')
@@ -195,6 +196,12 @@ export function StoryStudioPro() {
   const setD = (patch: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...patch }))
     setMetaDirty(true)
+  }
+  /** GÖREV 46: a video type brings its own narrator, music and effects (all still changeable). */
+  const changeStyle = (style: StoryStyle) => {
+    const d = STYLE_THEME[style].defaults
+    setD(d ? { style, music: d.music, sfx: d.sfx, voice: { name: d.voice, rate: d.rate } } : { style })
+    if (d) toast.success(`${STYLE_THEME[style].label}: ses, müzik ve efektler bu türe göre ayarlandı`)
   }
 
   // ── save ───────────────────────────────────────────────────────────────────
@@ -626,12 +633,21 @@ export function StoryStudioPro() {
             </button>
           ))}
         </div>
-        <select value={draft.style} onChange={(e) => setD({ style: e.target.value as StoryStyle })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs" aria-label="Stil" title={th.hint}>
-          {STORY_STYLES.map((s) => (
-            <option key={s} value={s}>
-              {STYLE_THEME[s].label}
-            </option>
-          ))}
+        <select value={draft.style} onChange={(e) => changeStyle(e.target.value as StoryStyle)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs font-bold" aria-label="Video türü" title={th.hint}>
+          <optgroup label="Video türü (hareketli başlık, ses, müzik)">
+            {STORY_STYLES.filter((s) => STYLE_THEME[s].genre).map((s) => (
+              <option key={s} value={s}>
+                🎬 {STYLE_THEME[s].label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Sade çizim görünümü">
+            {STORY_STYLES.filter((s) => !STYLE_THEME[s].genre).map((s) => (
+              <option key={s} value={s}>
+                {STYLE_THEME[s].label}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <div className="flex items-center gap-1" role="group" aria-label="Seslendirme">
           <select
@@ -1036,7 +1052,7 @@ export function StoryStudioPro() {
                   <input value={cur.label ?? ''} onChange={(e) => patchScene(cur.id, (x) => ({ ...x, label: e.target.value || null }))} maxLength={28} className={field} placeholder="ör. 1871" />
                 </label>
               </div>
-              {draft.style === 'animasyon' ? (
+              {hasHeadline(draft.style) ? (
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
                     <Label>Hareketli başlık</Label>

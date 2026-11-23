@@ -74,12 +74,26 @@ export const XF = 0.4
 export const TAIL = 0.9
 export const FPS = 30
 
-export const STORY_STYLES = ['animasyon', 'paper', 'doodle', 'dark', 'photo'] as const
+/** GÖREV 46: video types (genres) first, then the earlier illustration looks. */
+export const STORY_STYLES = ['animasyon', 'haber', 'belgesel', 'spor', 'magazin', 'ilginc', 'saglik', 'teknoloji', 'ekonomi', 'gezi', 'tarih', 'paper', 'doodle', 'dark', 'photo'] as const
 export type StoryStyle = (typeof STORY_STYLES)[number]
+
+/** How the animated headline looks (null: no headline, the earlier calm looks). */
+export type HeadlineVariant = 'banner' | 'lower' | 'cinema' | 'sport' | 'glam' | 'fact' | 'care' | 'tech' | 'market' | 'postcard' | 'chronicle'
 
 export type StyleTheme = {
   label: string
   hint: string
+  /** GÖREV 46 — video type: animated headline look, palette, AI writing tone, defaults, card background */
+  variant?: HeadlineVariant | null
+  colors?: string[]
+  tone?: string
+  defaults?: { music: StoryMusic; sfx: boolean; voice: string | null; rate: number | null }
+  cardBg?: [string, string]
+  /** permanent on-screen note (e.g. health: «Bilgilendirme amaçlıdır») */
+  note?: string | null
+  /** true: a «Video türü» (genre); false: an illustration look only */
+  genre?: boolean
   /** Appended to every AI illustration prompt (English: image models follow it best). */
   imageStyle: string
   box: string
@@ -94,8 +108,14 @@ export type StyleTheme = {
 
 export const STYLE_THEME: Record<StoryStyle, StyleTheme> = {
   animasyon: {
-    label: 'Bilgi animasyonu',
+    label: 'Bilgilendirme',
     hint: 'Hareketli büyük başlıklar, ses efektleri, müzik; düz vektör çizimler',
+    genre: true,
+    variant: 'banner',
+    colors: ['#E30613', '#16A34A', '#2563EB', '#EA580C', '#7C3AED'],
+    tone: 'Bilgilendirici, net ve sakin: «ne yapmalı / nasıl olur» sorusunu adım adım cevapla; her sahne tek bir öğüt ya da bilgi versin.',
+    defaults: { music: 'modern', sfx: true, voice: 'tr-TR-Chirp3-HD-Algieba', rate: 1.05 },
+    cardBg: ['#16203F', '#0B1020'],
     imageStyle:
       'bold flat vector explainer illustration, clean geometric shapes, simple characters, vivid red, yellow and blue accents on a deep navy background, motion-graphics news style, high contrast, vertical 9:16 composition, no text, no letters, no logos',
     // captions must stay readable over light illustrations (canlı test: asansör sahnesi)
@@ -107,6 +127,207 @@ export const STYLE_THEME: Record<StoryStyle, StyleTheme> = {
     pillText: '#FFFFFF',
     labelBg: '#E30613',
     labelText: '#FFFFFF',
+  },
+  haber: {
+    label: 'Haber',
+    hint: 'Son dakika bandı, alt yazı şeridi, ciddi haber dili',
+    genre: true,
+    variant: 'lower',
+    colors: ['#E30613'],
+    tone: 'Haber spikeri dili: 5N1K, en yeni gelişme başta, tarafsız ve ölçülü; kesinleşmemiş bilgiyi «iddia», «açıklamaya göre» diye aktar; yorum ve abartı yok.',
+    defaults: { music: 'sondakika', sfx: true, voice: 'tr-TR-Chirp3-HD-Charon', rate: 1.05 },
+    cardBg: ['#1A0A0C', '#07070A'],
+    imageStyle:
+      'photo-realistic news documentary scene, natural light, press photography look, cinematic depth of field, vertical 9:16 composition, no text, no letters, no logos, no identifiable real people',
+    box: 'rgba(10,10,14,0.80)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#FFD400',
+    pill: 'rgba(227,6,19,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#111111',
+    labelText: '#FFD400',
+  },
+  belgesel: {
+    label: 'Belgesel',
+    hint: 'Sinematik, yavaş tempo, zarif başlıklar, sakin anlatıcı',
+    genre: true,
+    variant: 'cinema',
+    colors: ['#E8C27A'],
+    tone: 'Belgesel anlatıcısı: sakin, betimleyici ve merak uyandıran; yer, zaman ve insan hikâyesiyle anlat; cümleler akıcı ve görsel; kesin bilgi ve tarih kullan.',
+    defaults: { music: 'sakin', sfx: false, voice: 'tr-TR-Chirp3-HD-Enceladus', rate: 0.95 },
+    cardBg: ['#1B1712', '#050505'],
+    imageStyle:
+      'cinematic documentary still, epic wide shot, golden hour light, film grain, rich natural colors, National-Geographic-like photography, vertical 9:16 composition, no text, no letters, no logos, no identifiable real people',
+    box: 'rgba(0,0,0,0.55)',
+    text: '#F7F2E8',
+    dim: 'rgba(247,242,232,0.5)',
+    highlight: '#E8C27A',
+    pill: 'rgba(0,0,0,0.55)',
+    pillText: '#E8C27A',
+    labelBg: 'rgba(0,0,0,0.6)',
+    labelText: '#E8C27A',
+  },
+  spor: {
+    label: 'Spor',
+    hint: 'Eğik neon şeritler, hızlı tempo, enerjik spiker',
+    genre: true,
+    variant: 'sport',
+    colors: ['#C6FF00', '#00E5FF', '#FF3D00'],
+    tone: 'Enerjik spor spikeri: kısa ve vurucu cümleler, skor, dakika, istatistik ve oyuncu adıyla anlat; heyecanlı ama doğru; tahmini rakam uydurma.',
+    defaults: { music: 'enerjik', sfx: true, voice: 'tr-TR-Chirp3-HD-Alnilam', rate: 1.12 },
+    cardBg: ['#06281A', '#020A06'],
+    imageStyle:
+      'dynamic sports action illustration, motion blur, stadium floodlights, bold diagonal composition, saturated green and neon accents, vertical 9:16 composition, no text, no letters, no logos, no club badges, no identifiable real players',
+    box: 'rgba(0,0,0,0.70)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.5)',
+    highlight: '#C6FF00',
+    pill: 'rgba(198,255,0,0.95)',
+    pillText: '#0A0A0A',
+    labelBg: '#C6FF00',
+    labelText: '#0A0A0A',
+  },
+  magazin: {
+    label: 'Magazin',
+    hint: 'Pembe-mor parıltılı başlıklar, eğlenceli ve akıcı dil',
+    genre: true,
+    variant: 'glam',
+    colors: ['#FF2D87', '#A855F7', '#F59E0B'],
+    tone: 'Magazin sunucusu: samimi, eğlenceli ve akıcı; merak uyandıran girişler; özel hayatı ve iddiaları kesinmiş gibi sunma, kaynağını söyle; hakaret ve aşağılama yok.',
+    defaults: { music: 'modern', sfx: true, voice: 'tr-TR-Chirp3-HD-Despina', rate: 1.08 },
+    cardBg: ['#3B0A2E', '#12030E'],
+    imageStyle:
+      'glossy pop magazine illustration, glamorous lights and bokeh, pink and purple neon glow, fashion editorial mood, vertical 9:16 composition, no text, no letters, no logos, no identifiable real people',
+    box: 'rgba(30,6,24,0.72)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#FFD1E8',
+    pill: 'rgba(255,45,135,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#A855F7',
+    labelText: '#FFFFFF',
+  },
+  ilginc: {
+    label: 'İlginç bilgiler',
+    hint: '«Biliyor muydunuz?» kartları, numaralı bilgiler, renkli',
+    genre: true,
+    variant: 'fact',
+    colors: ['#FFD60A', '#00C2FF', '#FF6B6B', '#7CFC00'],
+    tone: 'Merak uyandıran bilgi kanalı: «Biliyor muydunuz?» havasında, her sahnede tek ve şaşırtıcı ama DOĞRULANMIŞ bir bilgi; numaralı sırayla ilerle; abartma, efsaneyi gerçek gibi sunma.',
+    defaults: { music: 'lofi', sfx: true, voice: 'tr-TR-Chirp3-HD-Achird', rate: 1.05 },
+    cardBg: ['#102A43', '#06121F'],
+    imageStyle:
+      'playful colorful flat illustration, quirky details, bright cyan, yellow and coral palette, curiosity explainer style, vertical 9:16 composition, no text, no letters, no logos',
+    box: 'rgba(6,18,31,0.74)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#FFD60A',
+    pill: 'rgba(0,194,255,0.95)',
+    pillText: '#06121F',
+    labelBg: '#FFD60A',
+    labelText: '#111111',
+  },
+  saglik: {
+    label: 'Sağlık anlatımı',
+    hint: 'Sakin turkuaz kartlar, güven veren ses, «hekiminize danışın» notu',
+    genre: true,
+    variant: 'care',
+    colors: ['#0EA5A4', '#22C55E', '#3B82F6'],
+    tone: 'Sağlık anlatımı: sakin, güven veren ve sade; yalnızca genel kabul görmüş, güvenilir kaynaklarla uyumlu bilgi; teşhis, ilaç adı ve doz önerme; korkutma; gerektiğinde «belirtiler sürerse hekime başvurun» de.',
+    defaults: { music: 'akustik', sfx: false, voice: 'tr-TR-Chirp3-HD-Callirrhoe', rate: 1.0 },
+    cardBg: ['#0B3B3A', '#04161A'],
+    note: 'Bilgilendirme amaçlıdır · Hekiminize danışın',
+    imageStyle:
+      'soft clean medical illustration, calm teal and white palette, friendly simple characters, gentle lighting, health education style, vertical 9:16 composition, no text, no letters, no logos, no gore, no needles close-up',
+    box: 'rgba(4,22,26,0.72)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#5EEAD4',
+    pill: 'rgba(14,165,164,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#0EA5A4',
+    labelText: '#FFFFFF',
+  },
+  teknoloji: {
+    label: 'Teknoloji',
+    hint: 'Neon çerçeveli başlıklar, fütüristik görseller',
+    genre: true,
+    variant: 'tech',
+    colors: ['#22D3EE', '#A78BFA'],
+    tone: 'Teknoloji editörü: anlaşılır ve meraklı; teknik terimi bir cümleyle açıkla; ürün ve şirket adını doğru yaz; reklam dili kullanma.',
+    defaults: { music: 'modern', sfx: true, voice: 'tr-TR-Chirp3-HD-Algenib', rate: 1.08 },
+    cardBg: ['#0A1630', '#030712'],
+    imageStyle:
+      'futuristic 3D isometric tech illustration, glowing cyan and violet neon, dark background, clean circuits and devices, vertical 9:16 composition, no text, no letters, no logos, no brand products',
+    box: 'rgba(3,7,18,0.74)',
+    text: '#E0F7FF',
+    dim: 'rgba(224,247,255,0.5)',
+    highlight: '#22D3EE',
+    pill: 'rgba(34,211,238,0.95)',
+    pillText: '#03121A',
+    labelBg: '#A78BFA',
+    labelText: '#0B0620',
+  },
+  ekonomi: {
+    label: 'Ekonomi',
+    hint: 'Borsa şeridi, yeşil/kırmızı oklar, sade grafikler',
+    genre: true,
+    variant: 'market',
+    colors: ['#16A34A', '#DC2626'],
+    tone: 'Ekonomi muhabiri: sade ve sayılarla; oran, tutar ve tarihleri doğru ver; «vatandaşa etkisi» ile bağla; yatırım tavsiyesi verme.',
+    defaults: { music: 'kurumsal', sfx: true, voice: 'tr-TR-Chirp3-HD-Charon', rate: 1.05 },
+    cardBg: ['#0B1F17', '#030907'],
+    imageStyle:
+      'clean economic infographic illustration, charts, coins and city skyline, green and white palette with red accents, flat corporate style, vertical 9:16 composition, no text, no letters, no logos',
+    box: 'rgba(3,9,7,0.74)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#4ADE80',
+    pill: 'rgba(22,163,74,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#0F172A',
+    labelText: '#4ADE80',
+  },
+  gezi: {
+    label: 'Gezi / Şehir',
+    hint: 'Kartpostal başlıklar, sıcak renkler, keyifli anlatım',
+    genre: true,
+    variant: 'postcard',
+    colors: ['#F97316', '#0EA5E9', '#EAB308'],
+    tone: 'Gezi rehberi: sıcak ve davetkâr; yer, tat, rota ve küçük ipuçlarıyla anlat; güncel olmayabilecek fiyat ve saat verme.',
+    defaults: { music: 'akustik', sfx: true, voice: 'tr-TR-Chirp3-HD-Autonoe', rate: 1.02 },
+    cardBg: ['#3A1D0A', '#120803'],
+    imageStyle:
+      'warm travel illustration, sunny golden light, picturesque streets and landscapes, watercolor-like texture, vertical 9:16 composition, no text, no letters, no logos',
+    box: 'rgba(18,8,3,0.68)',
+    text: '#FFFFFF',
+    dim: 'rgba(255,255,255,0.55)',
+    highlight: '#FDBA74',
+    pill: 'rgba(249,115,22,0.95)',
+    pillText: '#FFFFFF',
+    labelBg: '#0EA5E9',
+    labelText: '#FFFFFF',
+  },
+  tarih: {
+    label: 'Tarih',
+    hint: 'Eski kâğıt dokusu, yıl damgaları, anlatıcı ses',
+    genre: true,
+    variant: 'chronicle',
+    colors: ['#B4432F'],
+    tone: 'Tarih anlatıcısı: kronolojik, yıl ve yer bilgisiyle; olayları sebep-sonuç bağıyla anlat; efsane ile belgelenmiş bilgiyi ayır.',
+    defaults: { music: 'sakin', sfx: false, voice: 'tr-TR-Chirp3-HD-Enceladus', rate: 0.98 },
+    cardBg: ['#3A2A1C', '#1C140D'],
+    imageStyle:
+      'hand-drawn historical illustration on aged textured paper, ink outlines, muted earthy palette (ochre, sepia, teal), storybook history style, vertical 9:16 composition, no text, no letters, no logos',
+    box: 'rgba(30,24,18,0.78)',
+    text: '#FAF6EC',
+    dim: 'rgba(250,246,236,0.45)',
+    highlight: '#F2B84B',
+    pill: 'rgba(40,32,25,0.92)',
+    pillText: '#F2B84B',
+    labelBg: '#B4432F',
+    labelText: '#F6EEDC',
   },
   paper: {
     label: 'Kâğıt dokulu tarih',
@@ -222,6 +443,10 @@ export const STORY_MUSIC = ['none', 'sondakika', 'kurumsal', 'enerjik', 'modern'
 export type StoryMusic = (typeof STORY_MUSIC)[number]
 export const MUSIC_LABEL: Record<StoryMusic, string> = { none: 'Müzik yok', sondakika: 'Son dakika', kurumsal: 'Kurumsal', enerjik: 'Enerjik', modern: 'Modern', sakin: 'Sakin', akustik: 'Akustik', lofi: 'Lo-fi' }
 export const isMusic = (v: unknown): v is StoryMusic => typeof v === 'string' && (STORY_MUSIC as readonly string[]).includes(v)
+/** GÖREV 46: the style draws animated headlines (genres) — the AI writes headline / sub for it. */
+export const hasHeadline = (style: StoryStyle | undefined): boolean => !!(style && STYLE_THEME[style]?.variant)
+/** Closing card «nahaber.com» length (s) appended to every video. */
+export const OUTRO_S = 2.6
 export const HEADLINE_MAX = 40
 export const SUB_MAX = 48
 
@@ -309,9 +534,9 @@ export function parseMeta(raw: Record<string, unknown>, prev?: StoryProject): Pa
       rights,
       format: has('format') && isFormat(raw.format) ? raw.format : prev?.format ?? 'vertical',
       targetMin: has('targetMin') && isTargetMin(raw.targetMin) ? raw.targetMin : prev?.targetMin ?? 1,
-      voice: has('voice') ? parseVoice(raw.voice) : prev?.voice ?? { name: null, rate: null },
-      music: has('music') && isMusic(raw.music) ? raw.music : prev?.music ?? (style === 'animasyon' ? 'sondakika' : 'none'),
-      sfx: has('sfx') ? raw.sfx === true : prev?.sfx ?? style === 'animasyon',
+      voice: has('voice') ? parseVoice(raw.voice) : prev?.voice ?? { name: STYLE_THEME[style].defaults?.voice ?? null, rate: STYLE_THEME[style].defaults?.rate ?? null },
+      music: has('music') && isMusic(raw.music) ? raw.music : prev?.music ?? STYLE_THEME[style].defaults?.music ?? 'none',
+      sfx: has('sfx') ? raw.sfx === true : prev?.sfx ?? STYLE_THEME[style].defaults?.sfx ?? false,
     },
   }
 }
@@ -476,10 +701,11 @@ export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryForma
       : '- Görüntü seçimi: verilen görüntü listesinden (id ve açıklama) cümleye anlamca uyanı seç. Bir görüntü birden fazla sahnede kullanılabilir ama art arda değil. Uygun görüntü yoksa asset null olsun ve sahne için İngilizce bir çizim tarifi (prompt) yaz: ne görüneceğini somut anlat, gerçek kişi yüzü, marka, logo ve yazı isteme.',
     '- "need": bu sahneye en iyi uyacak görüntüyü editörün çekebileceği / bulabileceği biçimde Türkçe tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «kazı alanında çalışan arkeolog, yakın çekim video 5–10 sn»). Seçtiğin görüntü zaten çok iyi uyuyorsa null.',
     '- Video görüntüsünde cümleye en uygun anı offsetSec ile belirt (bilinmiyorsa 0).',
-    ...(p.style === 'animasyon'
+    ...(p.style && STYLE_THEME[p.style].tone ? [`- Anlatım tonu (${STYLE_THEME[p.style].label}): ${STYLE_THEME[p.style].tone}`] : []),
+    ...(hasHeadline(p.style)
       ? ['- Her sahne için ekranda büyük harfle hareketli çıkacak bir başlık yaz ("headline", 2–5 kelime, en fazla 36 karakter, ör. «SAKIN KOŞMAYIN!», «ARAMA SÜRÜYOR», «112\'Yİ ARAYIN») ve isteğe bağlı kısa alt satır ("sub", en fazla 44 karakter, ör. «KAÇARSANIZ AV GİBİ GÖRÜNÜRSÜNÜZ»). Başlık cümlenin özünü verir; abartı, «ŞOK», «SKANDAL» yok.']
       : []),
-    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, ' + (p.style === 'animasyon' ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
+    'Yalnızca JSON döndür: {"title": string, "caption": string, "scenes": [{"text": string, "highlights": string[], "label": string|null, ' + (hasHeadline(p.style) ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
     '"caption" sosyal medya açıklaması: 1–2 cümle + en fazla 4 hashtag.' + (p.format === 'horizontal' ? ' YouTube açıklaması olarak 3–5 cümlelik kısa özet de olabilir.' : ''),
   ].join('\n')
 }
@@ -626,7 +852,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
   if (p.scenes.length < MIN_SCENES) return `En az ${MIN_SCENES} sahne gerekli — önce sahneleri planlayın`
   // GÖREV 45: a section whose AI illustration is missing (budget, error) is rendered as a text card.
   for (const s of p.scenes) if (s.visual.kind === 'asset' && !p.assets.some((a) => a.id === (s.visual as { assetId: string }).assetId)) return 'Bir sahnenin görüntüsü silinmiş'
-  const est = estimateSeconds(p.scenes)
+  const est = estimateSeconds(p.scenes) + OUTRO_S
   const max = MAX_SECONDS[t]
   if (est > max) return `Video yaklaşık ${Math.round(est)} sn olur; ${t} dakikalık hedefte en fazla ${max} sn (sahneleri kısaltın)`
   return null
@@ -634,7 +860,7 @@ export function renderProblem(p: Pick<StoryProject, 'scenes' | 'style' | 'assets
 
 export function renderKeyFor(p: Pick<StoryProject, 'scenes' | 'style' | 'seriesLabel' | 'rights' | 'assets'> & { format?: StoryFormat; voice?: StoryVoice; music?: StoryMusic; sfx?: boolean }): string {
   return hashKey([
-    'story-v8',
+    'story-v9-outro',
     p.voice?.name ?? null,
     p.voice?.rate ?? null,
     p.music ?? 'none',
@@ -791,10 +1017,12 @@ export function storyShareProblem(p: StoryProject, platform: MediaSharePlatform,
 export const longSections = (t: TargetMin) => ({ 1: 3, 3: 7, 5: 11, 10: 20 })[t]
 export const SECTION_CHARS = 360
 
-export function scriptSystemPrompt(t: TargetMin): string {
+export function scriptSystemPrompt(t: TargetMin, style?: StoryStyle): string {
   const n = longSections(t)
+  const tone = style ? STYLE_THEME[style].tone : null
   return [
     `Sen NaHaber için ${t} dakikalık anlatım videosu metni yazan Türkçe bir editörsün.`,
+    ...(tone ? [`Video türü: ${STYLE_THEME[style!].label}. Ton: ${tone}`] : []),
     `Metni TAM ${n} bölüm olarak yaz. Her bölüm ${SECTION_CHARS - 40}–${SECTION_CHARS + 40} karakter (4–6 cümle), kendi içinde tek bir alt konuyu anlatır.`,
     'İlk bölüm merak uyandıran bir giriş, son bölüm net bir kapanış olsun; aradaki bölümler kronolojik ya da mantıklı sırayla ilerlesin, tekrar etmesin.',
     'Doğru, kanıtlanmış bilgi kullan; uydurma rakam, tarih, isim yazma; emin olmadığını yazma. Tartışmalı konularda farklı görüşleri adil aktar.',
@@ -821,10 +1049,11 @@ export function visualsSystemPrompt(p: { format?: StoryFormat; style?: StoryStyl
     '- "prompt": asset null ise o sahne için İngilizce çizim tarifi (ne görüneceğini somut anlat; gerçek kişi yüzü, marka, logo, yazı isteme). Maliyet için aynı bölümdeki ardışık sahnelerde AYNI prompt metnini aynen tekrar kullan; bütün videoda en fazla 12 farklı prompt. asset seçildiyse null.',
     '- "need": asset null ise ya da daha iyi bir görüntü gerekiyorsa editörün çekebileceği / bulabileceği görüntüyü Türkçe somut tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «müzedeki seramik, yakın çekim»). İyi uyuyorsa null.',
     '- "reason": seçimin kısa gerekçesi.',
-    ...(p.style === 'animasyon'
+    ...(p.style && STYLE_THEME[p.style].tone ? [`- Ton (${STYLE_THEME[p.style].label}): başlık ve alt satır bu tona uysun.`] : []),
+    ...(hasHeadline(p.style)
       ? ['- "headline": ekranda büyük harfle hareketli çıkacak 2–5 kelimelik başlık (en fazla 36 karakter, cümlenin özü; «ŞOK», «SKANDAL» yok). "sub": isteğe bağlı kısa alt satır (en fazla 44 karakter) ya da null.']
       : []),
-    'Yalnızca JSON döndür: {"caption": string, "scenes": [{"i": number, "highlights": string[], "label": string|null, ' + (p.style === 'animasyon' ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
+    'Yalnızca JSON döndür: {"caption": string, "scenes": [{"i": number, "highlights": string[], "label": string|null, ' + (hasHeadline(p.style) ? '"headline": string|null, "sub": string|null, ' : '') + '"asset": string|null, "offsetSec": number, "prompt": string|null, "need": string|null, "reason": string}]}',
     '"caption": 1–2 cümle + en fazla 4 hashtag' + (p.format === 'horizontal' ? '; YouTube için 3–5 cümlelik özet de olabilir.' : '.'),
   ].join('\n')
 }

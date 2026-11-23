@@ -13,6 +13,12 @@ import {
   parseMeta,
   parseVoice,
   planSystemPrompt,
+  scriptSystemPrompt,
+  hasHeadline,
+  OUTRO_S,
+  STORY_MUSIC,
+  STORY_STYLES,
+  STYLE_THEME,
   parsePlan,
   parseScenes,
   renderKeyFor,
@@ -351,7 +357,8 @@ describe('cardWord', () => {
 describe('Görev 45 — Bilgi animasyonu, ses, müzik', () => {
   it('meta: voice / music / sfx defaults follow the style and are validated', () => {
     const r = parseMeta({ topic: 'x', rights, style: 'animasyon' })
-    expect(r.ok && r.value.music).toBe('sondakika')
+    expect(r.ok && r.value.music).toBe('modern')
+    expect(r.ok && r.value.voice.name).toBe('tr-TR-Chirp3-HD-Algieba')
     expect(r.ok && r.value.sfx).toBe(true)
     const q = parseMeta({ topic: 'x', rights, style: 'paper', voice: { name: 'tr-TR-Chirp3-HD-Charon', rate: 3 }, music: 'yok-boyle' })
     expect(q.ok && q.value.voice).toEqual({ name: 'tr-TR-Chirp3-HD-Charon', rate: 1.5 })
@@ -372,5 +379,39 @@ describe('Görev 45 — Bilgi animasyonu, ses, müzik', () => {
   it('the plan prompt asks for headlines only in the animation style', () => {
     expect(planSystemPrompt({ style: 'animasyon' })).toMatch(/headline/)
     expect(planSystemPrompt({ style: 'paper' })).not.toMatch(/headline/)
+  })
+})
+
+describe('Görev 46 — video türleri ve nahaber.com kapanışı', () => {
+  const genres = STORY_STYLES.filter((s) => STYLE_THEME[s].genre)
+  it('en az 10 tür; her birinin başlık görünümü, tonu, varsayılanları ve kart rengi var', () => {
+    expect(genres.length).toBeGreaterThanOrEqual(10)
+    for (const g of genres) {
+      const t = STYLE_THEME[g]
+      expect(t.variant, g).toBeTruthy()
+      expect(t.tone?.length, g).toBeGreaterThan(30)
+      expect(STORY_MUSIC, g).toContain(t.defaults!.music)
+      expect(parseVoice({ name: t.defaults!.voice }).name, g).toBe(t.defaults!.voice)
+      expect(t.cardBg, g).toHaveLength(2)
+      expect(t.imageStyle, g).toMatch(/no text/)
+    }
+    // türler birbirinden farklı görünür
+    expect(new Set(genres.map((g) => STYLE_THEME[g].variant)).size).toBe(genres.length)
+  })
+  it('sağlık türü kalıcı uyarı taşır; sade görünümlerde başlık yok', () => {
+    expect(STYLE_THEME.saglik.note).toMatch(/Hekiminize danışın/)
+    expect(hasHeadline('paper')).toBe(false)
+    expect(hasHeadline('haber')).toBe(true)
+  })
+  it('AI talimatı türün tonunu ve başlığı ister', () => {
+    const sp = planSystemPrompt({ style: 'spor' })
+    expect(sp).toMatch(/Spor/)
+    expect(sp).toMatch(/headline/)
+    expect(scriptSystemPrompt(3, 'belgesel')).toMatch(/Belgesel/)
+  })
+  it('kapanış kartı süre hesabına girer', () => {
+    const scenes = Array.from({ length: 2 }, (_, i) => ({ id: `s${i}aaa`, text: 'Kısa cümle.', highlights: [], label: null, visual: { kind: 'card' as const }, keepAudio: false, reason: null, need: null }))
+    expect(OUTRO_S).toBeGreaterThan(2)
+    expect(renderProblem({ scenes, style: 'haber', assets: [], targetMin: 1 })).toBeNull()
   })
 })

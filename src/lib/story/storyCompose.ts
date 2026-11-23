@@ -173,8 +173,9 @@ export async function composeStory(o: {
   if (o.audio?.sfx || bed) {
     const fx = o.audio?.sfx ? path.join(o.dir, 'fx.wav') : null
     if (fx) {
-      const pops = o.scenes.slice(from, to).map((s) => !!(s.meta.headline || s.meta.label))
-      await fs.writeFile(fx, await buildFxWav(fxEvents(tl, pops), tl.total, o.root ?? process.cwd()))
+      const part = o.scenes.slice(from, to)
+      const pops = part.map((s) => !s.meta.outro && !!(s.meta.headline || s.meta.label))
+      await fs.writeFile(fx, await buildFxWav(fxEvents(tl, pops, part.findIndex((s) => s.meta.outro)), tl.total, o.root ?? process.cwd()))
     }
     const bedOk = bed ? await fs.access(bed).then(() => bed, () => null) : null
     if (bed && !bedOk) console.warn('[story] müzik dosyası bulunamadı:', path.basename(bed))

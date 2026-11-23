@@ -22,8 +22,9 @@ import { wavSeconds } from '@/lib/reels/audio'
 import { describeImage, describeVideo, generateIllustration, StoryBudgetError } from './storyAi'
 import { composeStory, runFfmpeg, type ComposeScene } from './storyCompose'
 import { joinPartsArgs } from './storyFfmpeg'
-import { composeCardStill, composeStill } from './storyOverlay'
-import { cardWord, chunkRanges, frameOf, imageKeyFor, missingImages, renderKeyFor, renderProblem, type StoryAsset, type StoryProject, type StoryScene } from './storyProject'
+import { composeCardStill, composeOutroStill, composeStill } from './storyOverlay'
+import { silentWav } from './storyAudio'
+import { cardWord, chunkRanges, frameOf, imageKeyFor, missingImages, OUTRO_S, renderKeyFor, renderProblem, type StoryAsset, type StoryProject, type StoryScene } from './storyProject'
 import { getStory, setAssetDescription, setRender, setSceneImage, storyBucket, uploadBucket } from './storyStore'
 
 const publicUrl = (name: string) => `https://storage.googleapis.com/${storyBucket()}/${name}`
@@ -136,6 +137,15 @@ async function voiceChoice(p: Pick<StoryProject, 'voice'>) {
   return { voice: p.voice?.name ?? vs?.defaultVoice ?? null, rate: p.voice?.rate ?? vs?.rate ?? null }
 }
 
+/** GÖREV 46: every video ends with the «nahaber.com» closing card (silent; the outro sting plays over it). */
+async function outroScene(p: StoryProject, dir: string): Promise<ComposeScene> {
+  const still = path.join(dir, 'outro.jpg')
+  await composeOutroStill({ style: p.style, outFile: still, frame: frameOf(p) })
+  const wav = path.join(dir, 'outro.wav')
+  await fs.writeFile(wav, silentWav(OUTRO_S))
+  return { text: '', highlights: [], meta: { label: null, aiNote: false, source: null, outro: true }, voiceWav: wav, voiceSec: OUTRO_S, visual: { kind: 'still', file: still } }
+}
+
 const sceneMeta = (s: StoryScene, v: { aiNote: boolean; source: string | null } | null) => ({
   label: s.label,
   aiNote: v?.aiNote ?? false,
@@ -218,6 +228,7 @@ export async function renderStory(projectId: string, onStep?: (s: string) => voi
       const v = await sceneVisual(p, s, i, dir, videoFiles, onStep)
       scenes.push({ text: s.text, highlights: s.highlights, meta: sceneMeta(s, v), voiceWav: wav, voiceSec: wavSeconds(voice.wav), visual: v.visual })
     }
+    scenes.push(await outroScene(p, dir))
     const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), budgetMs: 600_000, onStep, audio: { sfx: p.sfx === true, music: p.music ?? 'none' } })
     onStep?.('yükleniyor')
     const outputUrl = await uploadPublic(r.file, mp4, 'video/mp4')
@@ -302,7 +313,10 @@ export async function renderLongPart(projectId: string, k: number, onStep?: (s: 
   if (!plan) throw new Error('Önce hazırlık adımı çalışmalı')
   const range = plan.ranges[k]
   if (!range) throw new Error('Parça bulunamadı')
-  const [from, to] = range
+  const [from, to0] = range
+  // the closing card belongs to the last part
+  const last = k === plan.ranges.length - 1
+  const to = last ? to0 + 1 : to0
   const bucket = getAdminStorage().bucket(storyBucket())
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), `story-part${k}-`))
   try {
@@ -321,6 +335,8 @@ export async function renderLongPart(projectId: string, k: number, onStep?: (s: 
       const v = needed ? await sceneVisual(p, s, i, dir, videos, onStep) : null
       scenes.push({ text: s.text, highlights: s.highlights, meta: sceneMeta(s, v), voiceWav, voiceSec: plan.voiceSec[i], visual: v?.visual ?? null })
     }
+    if (last) scenes.push(await outroScene(p, dir))
+    else scenes.push({ text: '', highlights: [], meta: { label: null, aiNote: false, source: null, outro: true }, voiceWav: null, voiceSec: OUTRO_S, visual: null })
     const r = await composeStory({ ffmpeg, dir, scenes, style: p.style, seriesLabel: p.seriesLabel, frame: frameOf(p), range: { from, to }, budgetMs: 700_000, onStep, audio: { sfx: p.sfx === true, music: p.music ?? 'none' } })
     for (const f of videos.values()) await fs.rm(f, { force: true }).catch(() => undefined)
     if (r.cover) await uploadPublic(r.cover, `${workDir(p.id, key)}/cover.jpg`, 'image/jpeg').catch(() => undefined)
