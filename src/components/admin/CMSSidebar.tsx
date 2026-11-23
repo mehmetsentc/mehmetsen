@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Send, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Send, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -85,6 +85,8 @@ function revealSoon(selector: string) {
   )
 }
 const COLLAPSE_KEY = 'cms_nav_collapsed_groups'
+/** VIDEO-MERKEZI: the whole sidebar folds to the 72 px icon rail (remembered per browser). */
+const RAIL_KEY = 'cms_nav_rail'
 
 interface NavItem {
   href: string
@@ -147,7 +149,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Medya Merkezi',
     items: [
       { href: '/admin/videos', label: 'Video Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
-      { href: '/admin/social/reels', label: 'Reels Stüdyosu', icon: Clapperboard, requiredPermissions: ['social:view'], matches: ['/admin/media-studio/reels'] },
+      { href: '/admin/video', label: 'Video Merkezi', icon: Clapperboard, requiredPermissions: ['social:view'], matches: ['/admin/video', '/admin/media-studio/reels', '/admin/social/reels'] },
     ],
   },
   {
@@ -353,6 +355,23 @@ export function CMSSidebar() {
   const search = searchParams.toString()
   const { can, loading: authLoading, user } = useCmsAuth()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [rail, setRail] = useState(false)
+  useEffect(() => {
+    try {
+      setRail(localStorage.getItem(RAIL_KEY) === '1')
+    } catch {
+      // storage unavailable: full sidebar
+    }
+  }, [])
+  const toggleRail = () =>
+    setRail((v) => {
+      try {
+        localStorage.setItem(RAIL_KEY, v ? '0' : '1')
+      } catch {
+        // ignore
+      }
+      return !v
+    })
   const [counts, setCounts] = useState<Partial<Record<NonNullable<NavItem['countKey']>, number>>>({})
 
   useEffect(() => {
@@ -475,7 +494,7 @@ export function CMSSidebar() {
 
   // ADMIN-UX-1: 1024–1279 px (tablet yatay / küçük laptop) → 72 px ikon çubuğu; 1280+ tam sidebar
   return (
-    <aside className="flex h-screen w-[72px] shrink-0 flex-col overflow-hidden bg-[rgb(var(--admin-sidebar))] text-white supports-[height:100dvh]:h-[100dvh] xl:w-[248px]">
+    <aside data-rail={rail ? '1' : undefined} className={cn('cms-sidebar flex h-screen w-[72px] shrink-0 flex-col overflow-hidden bg-[rgb(var(--admin-sidebar))] text-white transition-[width] duration-200 supports-[height:100dvh]:h-[100dvh]', !rail && 'xl:w-[248px]')}>
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-4 max-xl:justify-center max-xl:px-0">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--color-brand))] shadow-sm">
           <Radio className="h-5 w-5 text-white" />
@@ -532,6 +551,17 @@ export function CMSSidebar() {
       </nav>
 
       <div className="border-t border-white/[0.06] px-2.5 py-3">
+        <button
+          type="button"
+          onClick={toggleRail}
+          title={rail ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          aria-label={rail ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          aria-pressed={rail}
+          className="mb-1 hidden w-full items-center gap-3 rounded-[10px] px-3 py-2 text-xs text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white max-xl:justify-center xl:flex"
+        >
+          {rail ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+          <span className="max-xl:hidden">{rail ? 'Menüyü genişlet' : 'Menüyü daralt'}</span>
+        </button>
         <Link
           href="/"
           title="Uygulamaya Dön"

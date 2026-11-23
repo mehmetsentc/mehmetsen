@@ -109,7 +109,8 @@ function Label({ children }: { children: React.ReactNode }) {
 
 type NewsHit = { newsId: string; title: string; category: string; city: string | null; imageUrl: string | null; hasVideo: boolean }
 
-export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNewsConsumed }: { initialNewsId?: string | null; initialStyle?: StoryStyle | null; onNewsConsumed?: () => void } = {}) {
+/** VIDEO-MERKEZI: all state + actions of the «Metinden Video» studio, shared by the old and the new (CapCut-style) layout. */
+export function useStoryStudio({ initialNewsId = null, initialStyle = null, onNewsConsumed }: { initialNewsId?: string | null; initialStyle?: StoryStyle | null; onNewsConsumed?: () => void } = {}) {
   const [list, setList] = useState<StoryProject[] | null>(null)
   const [ai, setAi] = useState<{ text: boolean; images: boolean } | null>(null)
   const [usage, setUsage] = useState<Usage>(null)
@@ -356,7 +357,7 @@ export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNe
     setNewsHits(r.ok ? r.data.items.slice(0, 20) : [])
     if (!r.ok) toast.error(r.error)
   }
-  const fromNews = async (newsId: string, styleOverride?: StoryStyle | null) => {
+  const fromNews = async (newsId: string, styleOverride?: StoryStyle | null, shape?: { format?: StoryFormat; targetMin?: TargetMin }) => {
     if ((dirty || metaDirty) && !confirm('Kaydedilmemiş değişiklikler var. Haberden yeni proje açılsın mı?')) return
     setBusy('news')
     setProgress({ text: 'Haber alınıyor (metin, fotoğraflar, video)…', pct: null })
@@ -366,8 +367,8 @@ export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNe
       const r = await reelsCall<{ project: StoryProject }>('POST', API, {
         fromNewsId: newsId,
         style: st,
-        format: draft.format,
-        targetMin: draft.targetMin,
+        format: shape?.format ?? draft.format,
+        targetMin: shape?.targetMin ?? draft.targetMin,
         voice: def ? { name: def.voice, rate: def.rate } : draft.voice,
         music: def ? def.music : draft.music,
         sfx: def ? def.sfx : draft.sfx,
@@ -692,6 +693,13 @@ export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNe
     setD({ targetMin: t })
   }
 
+  return { list, setList, ai, setAi, usage, setUsage, p, setP, draft, setDraft, metaDirty, setMetaDirty, scenes, setScenes, dirty, setDirty, sel, setSel, busy, setBusy, progress, setProgress, uploads, setUploads, left, setLeft, dropHot, setDropHot, drag, setDrag, zoom, setZoom, fileRef, loadList, voices, setVoices, studioVoice, setStudioVoice, sampling, setSampling, playSample, open, apply, reload, setD, changeStyle, saveMeta, saveScenes, saveAll, watchDescribe, uploadImages, addVideo, newsQ, setNewsQ, newsHits, setNewsHits, searchNews, fromNews, consumedNews, removeAsset, redescribe, plan, patchScene, assignAsset, setVisualKind, moveScene, nudge, addScene, deleteScene, live, missing, problem, fresh, makeImages, render, shareFmt, setShareFmt, accounts, setAccounts, caption, setCaption, picked, setPicked, rows, setRows, share, timing, total, maxSec, selIdx, cur, assetOf, thumbOf, useCount, shots, covered, F, vertical, th, pxPerSec, changeTarget }
+}
+
+export type StoryStudio = ReturnType<typeof useStoryStudio>
+
+export function StoryStudioPro(props: { initialNewsId?: string | null; initialStyle?: StoryStyle | null; onNewsConsumed?: () => void } = {}) {
+  const { list, setList, ai, setAi, usage, setUsage, p, setP, draft, setDraft, metaDirty, setMetaDirty, scenes, setScenes, dirty, setDirty, sel, setSel, busy, setBusy, progress, setProgress, uploads, setUploads, left, setLeft, dropHot, setDropHot, drag, setDrag, zoom, setZoom, fileRef, loadList, voices, setVoices, studioVoice, setStudioVoice, sampling, setSampling, playSample, open, apply, reload, setD, changeStyle, saveMeta, saveScenes, saveAll, watchDescribe, uploadImages, addVideo, newsQ, setNewsQ, newsHits, setNewsHits, searchNews, fromNews, consumedNews, removeAsset, redescribe, plan, patchScene, assignAsset, setVisualKind, moveScene, nudge, addScene, deleteScene, live, missing, problem, fresh, makeImages, render, shareFmt, setShareFmt, accounts, setAccounts, caption, setCaption, picked, setPicked, rows, setRows, share, timing, total, maxSec, selIdx, cur, assetOf, thumbOf, useCount, shots, covered, F, vertical, th, pxPerSec, changeTarget } = useStoryStudio(props)
   // ── render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex w-full min-w-0 flex-col gap-3 rounded-3xl bg-[#0d0f13] p-3 text-zinc-100">
@@ -1356,11 +1364,11 @@ export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNe
  * The selected scene in the real frame: picture placement (cover / blurred fill like the
  * renderer), the safe area, series pill, label, caption band and the watermark's size.
  */
-function FramePreview(props: { scene: StoryScene | null; asset: StoryAsset | undefined; thumb: string | null; format: StoryFormat; style: StoryStyle; series: string; title: string }) {
+export function FramePreview(props: { scene: StoryScene | null; asset: StoryAsset | undefined; thumb: string | null; format: StoryFormat; style: StoryStyle; series: string; title: string; width?: number }) {
   const F = FRAMES[props.format]
   const vertical = props.format === 'vertical'
   const th = STYLE_THEME[props.style]
-  const W = vertical ? 300 : 560
+  const W = props.width ?? (vertical ? 300 : 560)
   const k = W / F.w
   const H = F.h * k
   const s = props.scene

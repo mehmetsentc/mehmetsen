@@ -653,7 +653,7 @@ function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; news
           <a href={`/admin/media-studio/reels?newsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-blue-700 underline dark:text-blue-300">
             Stüdyoda önizle
           </a>
-          <a href={`/admin/media-studio/reels?storyNewsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-violet-700 underline dark:text-violet-300">
+          <a href={`/admin/video?news=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-violet-700 underline dark:text-violet-300">
             Metinden video
           </a>
         </span>

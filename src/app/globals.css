@@ -6240,3 +6240,21 @@ html[data-feed-overlay-chrome='1'] .mobile-top-chrome.feed-overlay-sat > header 
     font-size: max(16px, var(--fs-md, 1rem));
   }
 }
+
+
+/* VIDEO-MERKEZI: CMS sidebar folded to the icon rail by the user (same look as the < xl rail). */
+@media (min-width: 1280px) {
+  .cms-sidebar[data-rail] { width: 72px; }
+  .cms-sidebar[data-rail] .max-xl\:hidden { display: none; }
+  .cms-sidebar[data-rail] .max-xl\:block { display: block; }
+  .cms-sidebar[data-rail] .max-xl\:justify-center { justify-content: center; }
+  .cms-sidebar[data-rail] .max-xl\:px-0 { padding-left: 0; padding-right: 0; }
+  .cms-sidebar[data-rail] .max-xl\:px-1 { padding-left: .25rem; padding-right: .25rem; }
+  .cms-sidebar[data-rail] .max-xl\:px-2 { padding-left: .5rem; padding-right: .5rem; }
+  .cms-sidebar[data-rail] .max-xl\:py-2\.5 { padding-top: .625rem; padding-bottom: .625rem; }
+  .cms-sidebar[data-rail] .max-xl\:absolute { position: absolute; }
+  .cms-sidebar[data-rail] .max-xl\:right-1 { right: .25rem; }
+  .cms-sidebar[data-rail] .max-xl\:top-0\.5 { top: .125rem; }
+  .cms-sidebar[data-rail] .max-xl\:text-\[9px\] { font-size: 9px; }
+  .cms-sidebar[data-rail] .max-xl\:sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+}

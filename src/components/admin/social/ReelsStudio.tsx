@@ -351,6 +351,15 @@ export function ReelsStudio() {
   }, [loadNews, loadPersonas, loadUsage, loadVoices])
 
   // HABERDEN-VIDEO: ?storyNewsId=…&style=… from the news list «Metinden video»
+  // VIDEO-MERKEZI: ?mode=upload|digest|library|media|story opens that tab (Video Merkezi kartları)
+  useEffect(() => {
+    try {
+      const m = new URLSearchParams(window.location.search).get('mode')
+      if (m === 'upload' || m === 'digest' || m === 'library' || m === 'media' || m === 'story' || m === 'single') setMode(m)
+    } catch {
+      // ignore
+    }
+  }, [])
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search)
@@ -499,6 +508,7 @@ export function ReelsStudio() {
       <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2.5">
         <Clapperboard className="h-5 w-5 text-red-600" />
         <h2 className="text-base font-extrabold">Reels Stüdyosu</h2>
+        <a href="/admin/video" className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-extrabold text-white">Yeni Video Merkezi →</a>
         <div className="flex rounded-xl bg-[rgb(var(--color-surface))] p-1 text-xs font-bold">
           {([
             ['single', 'Tek haber'],
