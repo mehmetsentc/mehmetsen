@@ -178,9 +178,15 @@ export default function CrawlerDashboardPage() {
         <>
           <p className="text-sm text-[rgb(var(--color-muted))]">
             Durum:{' '}
-            <strong>{data?.enabled ? 'Haber toplama açık' : 'Haber toplama kapalı'}</strong>
-            {data?.aiDispatchEnabled ? ' · Otomatik AI yazımı AÇIK' : ' · Otomatik AI yazımı kapalı'}
-            {data?.postgres === false ? ' · Veritabanı bağlı değil' : null}
+            {data ? (
+              <>
+                <strong>{data.enabled ? 'Haber toplama açık' : 'Haber toplama kapalı'}</strong>
+                {data.aiDispatchEnabled ? ' · Otomatik AI yazımı AÇIK' : ' · Otomatik AI yazımı kapalı'}
+                {data.postgres === false ? ' · Veritabanı bağlı değil' : null}
+              </>
+            ) : (
+              <strong>Yükleniyor…</strong>
+            )}
           </p>
           {data?.rebuild24h ? (
             <section className="rounded-2xl border border-[rgb(var(--color-border))] p-4 text-sm">

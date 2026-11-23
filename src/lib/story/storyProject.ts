@@ -392,8 +392,11 @@ export type AssetKind = 'image' | 'video'
 export interface StoryAsset {
   id: string
   kind: AssetKind
-  /** image: Firebase Storage path the editor uploaded; video: Video Kütüphanesi item id. */
-  source: 'upload' | 'library'
+  /**
+   * image: Firebase Storage path the editor uploaded; video: Video Kütüphanesi item id.
+   * news: an https URL of the news item's own photo / video file (Haberden video).
+   */
+  source: 'upload' | 'library' | 'news'
   ref: string
   /** Preview URL for the studio (not used by the renderer). */
   previewUrl: string | null
@@ -477,6 +480,8 @@ export interface StoryProject {
   music?: StoryMusic
   /** sound effects on scene changes and headline pops */
   sfx?: boolean
+  /** HABERDEN-VIDEO: the news item the project was prepared from */
+  newsId?: string | null
   assets: StoryAsset[]
   scenes: StoryScene[]
   plannedAt: number | null

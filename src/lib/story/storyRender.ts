@@ -44,6 +44,33 @@ async function uploadBytes(p: string): Promise<Buffer> {
   return buf
 }
 
+/** HABERDEN-VIDEO: the news item's own photo (https), size-capped. */
+async function newsImageBytes(url: string): Promise<Buffer> {
+  if (!/^https:\/\//i.test(url)) throw new Error('Haber görseli adresi geçersiz')
+  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+  if (!res.ok) throw new Error(`Haber görseli indirilemedi (HTTP ${res.status})`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (!buf.byteLength || buf.byteLength > 50 * 1024 * 1024) throw new Error('Haber görseli okunamadı')
+  return buf
+}
+
+const assetImageBytes = (a: StoryAsset) => (a.source === 'news' ? newsImageBytes(a.ref) : uploadBytes(a.ref))
+
+/** HABERDEN-VIDEO: the news item's own video file → local MP4 (HLS converted; YouTube never). */
+async function newsVideoFile(asset: StoryAsset): Promise<string> {
+  const { prepareSourceVideo } = await import('@/lib/reels/sourceVideo')
+  const url = asset.ref
+  const r = await prepareSourceVideo({
+    url,
+    origin: /firebasestorage|storage\.googleapis\.com|nahaber\.com|r2\.dev/i.test(url) ? 'nahaber' : 'external',
+    hls: /\.m3u8(\?|$)/i.test(url),
+    tag: `story_${asset.id}`,
+    storeKey: `story_${asset.id}`,
+  })
+  if (!r.ok) throw new Error('Haberin videosu indirilemedi')
+  return r.path
+}
+
 function frameAt(ffmpeg: string, input: string, sec: number): Promise<Buffer | null> {
   return new Promise((resolve) => {
     const child = spawn(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-ss', sec.toFixed(2), '-i', input, '-frames:v', '1', '-vf', 'scale=640:-2', '-f', 'image2', '-c:v', 'mjpeg', 'pipe:1'], { shell: false, stdio: ['ignore', 'pipe', 'ignore'] })
@@ -63,9 +90,9 @@ export async function describeAsset(projectId: string, asset: StoryAsset): Promi
   try {
     let text: string
     if (asset.kind === 'image') {
-      text = await describeImage(await uploadBytes(asset.ref))
+      text = await describeImage(await assetImageBytes(asset))
     } else {
-      const src = await libraryVideoForReel(asset.ref)
+      const src = asset.source === 'news' ? { url: await newsVideoFile(asset) } : await libraryVideoForReel(asset.ref)
       if ('error' in src) throw new Error(src.error)
       const ffmpeg = await resolveFfmpegPath()
       const d = asset.durationMs ? asset.durationMs / 1000 : 8
@@ -164,10 +191,15 @@ async function sceneVisual(p: StoryProject, s: StoryScene, i: number, dir: strin
     const source = p.rights.kind !== 'owned' ? p.rights.sourceName : null
     if (asset.kind === 'image') {
       const f = path.join(dir, `still${i}.jpg`)
-      await composeStill(await uploadBytes(asset.ref), f, frame)
+      await composeStill(await assetImageBytes(asset), f, frame)
       return { visual: { kind: 'still', file: f }, aiNote: false, source }
     }
     let f = videos.get(asset.ref)
+    if (!f && asset.source === 'news') {
+      onStep?.('haberin videosu indiriliyor')
+      f = await newsVideoFile(asset)
+      videos.set(asset.ref, f)
+    }
     if (!f) {
       const src = await libraryVideoForReel(asset.ref)
       if ('error' in src) throw new Error(src.error)

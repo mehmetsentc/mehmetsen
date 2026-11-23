@@ -18,6 +18,7 @@ import { ReelsVoiceLibrary } from './ReelsVoiceLibrary'
 import { ReelsVideoPicker, type PickedVideo } from './ReelsVideoPicker'
 import { MediaProjectStudio } from './MediaProjectStudio'
 import { StoryStudioPro } from './StoryStudioPro'
+import { STORY_STYLES, STYLE_THEME, type StoryStyle } from '@/lib/story/storyProject'
 import { ReelLibraryPanel } from './ReelLibraryPanel'
 import { GENDER_TEXT, reelsCall, reelsJob, voiceLabel, type VoicesResponse } from './reelsApi'
 import { REEL_TEMPLATES, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplateId } from '@/lib/reels/reelTemplates'
@@ -292,6 +293,9 @@ export function ReelsStudio() {
   const [template, setTemplate] = useState<'auto' | 'none' | ReelTemplateId>('auto')
   // REELS-T1 «Video yükle»: the user's own / library video as the reel media
   const [ownVideo, setOwnVideo] = useState<PickedVideo | null>(null)
+  // HABERDEN-VIDEO: «Tek haber» → «Metinden Video» with the chosen video type
+  const [storyStyle, setStoryStyle] = useState<StoryStyle>('haber')
+  const [storyNews, setStoryNews] = useState<{ newsId: string; style: StoryStyle } | null>(null)
   const single = mode === 'single' || mode === 'upload'
   const [result, setResult] = useState<ReelResult | null>(null)
   const [busy, setBusy] = useState<null | 'plan' | 'render' | 'approve' | 'digest'>(null)
@@ -345,6 +349,20 @@ export function ReelsStudio() {
     })
     return () => unsub()
   }, [loadNews, loadPersonas, loadUsage, loadVoices])
+
+  // HABERDEN-VIDEO: ?storyNewsId=…&style=… from the news list «Metinden video»
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search)
+      const id = q.get('storyNewsId')
+      if (!id) return
+      const st = q.get('style')
+      setStoryNews({ newsId: id, style: st && (STORY_STYLES as readonly string[]).includes(st) ? (st as StoryStyle) : 'haber' })
+      setMode('story')
+    } catch {
+      // ignore
+    }
+  }, [])
 
   // ?newsId= from the news list «Stüdyoda önizle»
   useEffect(() => {
@@ -521,7 +539,7 @@ export function ReelsStudio() {
         </div>
       ) : mode === 'story' ? (
         <div className="flex min-h-0 flex-1 overflow-auto p-3">
-          <StoryStudioPro />
+          <StoryStudioPro initialNewsId={storyNews?.newsId ?? null} initialStyle={storyNews?.style ?? null} onNewsConsumed={() => setStoryNews(null)} />
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-auto p-3 lg:grid-cols-[320px_minmax(0,1fr)_380px] lg:overflow-hidden">
@@ -714,6 +732,30 @@ export function ReelsStudio() {
               ) : null}
             </div>
             {error ? <p className="max-w-xl rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</p> : null}
+
+            {mode === 'single' && picked ? (
+              <div className="flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] px-3 py-2 text-xs">
+                <span className="font-bold">Metinden Video tarzında:</span>
+                <select value={storyStyle} onChange={(e) => setStoryStyle(e.target.value as StoryStyle)} className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-2 py-1">
+                  {STORY_STYLES.map((st) => (
+                    <option key={st} value={st}>
+                      {STYLE_THEME[st].label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStoryNews({ newsId: picked.newsId, style: storyStyle })
+                    setMode('story')
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 font-extrabold text-white"
+                >
+                  <Clapperboard className="h-3.5 w-3.5" /> Bu haberden hazırla
+                </button>
+                <span className="w-full text-[10px] text-[rgb(var(--color-muted))]">Haberin metni, fotoğrafları ve videosu Metinden Video stüdyosuna alınır; AI anlatımı bu türde yazar, sahneleri dizer. Video nahaber.com kapanışıyla biter.</span>
+              </div>
+            ) : null}
 
             {single && picked && picked.imageUrl && !picked.mediaOk ? (
               <div className="max-w-xl rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">

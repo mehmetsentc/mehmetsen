@@ -43,7 +43,7 @@ import { auth } from '@/lib/firebase/auth'
 import { storage } from '@/lib/firebase/storage'
 import { cn } from '@/lib/utils'
 import { reelsCall, runReelJob } from './reelsApi'
-import { ReelsVideoPicker } from './ReelsVideoPicker'
+import { ReelsVideoPicker, uploadVideoToLibrary } from './ReelsVideoPicker'
 import { RightsForm } from './MediaProjectStudio'
 import type { MediaRights, MediaShareFormat, MediaSharePlatform } from '@/lib/media/mediaProject'
 import {
@@ -107,7 +107,9 @@ function Label({ children }: { children: React.ReactNode }) {
   return <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-zinc-400">{children}</span>
 }
 
-export function StoryStudioPro() {
+type NewsHit = { newsId: string; title: string; category: string; city: string | null; imageUrl: string | null; hasVideo: boolean }
+
+export function StoryStudioPro({ initialNewsId = null, initialStyle = null, onNewsConsumed }: { initialNewsId?: string | null; initialStyle?: StoryStyle | null; onNewsConsumed?: () => void } = {}) {
   const [list, setList] = useState<StoryProject[] | null>(null)
   const [ai, setAi] = useState<{ text: boolean; images: boolean } | null>(null)
   const [usage, setUsage] = useState<Usage>(null)
@@ -265,8 +267,35 @@ export function StoryStudioPro() {
     const uid = auth.currentUser?.uid
     if (!uid) return toast.error('Oturum bulunamadı; sayfayı yenileyin')
     const arr = Array.from(files)
-    const vids = arr.filter((f) => f.type.startsWith('video/'))
-    if (vids.length) toast(`Videoları önce Video Kütüphanesi'ne yükleyin, sonra «Kütüphaneden video» ile ekleyin (${vids.length} video atlandı)`, { icon: '🎬', duration: 6000 })
+    const vids = arr.filter((f) => f.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name))
+    // HABERDEN-VIDEO: device videos go to the Video Kütüphanesi first, then into the project
+    for (const file of vids) {
+      if (file.size > 200 * 1024 * 1024) {
+        toast.error(`${file.name}: 200 MB sınırını aşıyor`)
+        continue
+      }
+      setUploads((u) => ({ ...u, [file.name]: 0 }))
+      try {
+        const v = await uploadVideoToLibrary(file)
+        if (!v) toast(`${file.name} kütüphanede zaten var — «Video ekle» listesinden seçin`, { icon: 'ℹ️' })
+        else {
+          const r = await reelsCall<{ project: StoryProject; job: { jobId: string } }>('POST', `${API}/${proj!.id}/assets`, { action: 'add', kind: 'video', videoItemId: v.id })
+          if (!r.ok) toast.error(`${file.name}: ${r.error}`)
+          else {
+            apply(r.data.project, true)
+            void watchDescribe(proj!.id, r.data.job)
+          }
+        }
+      } catch (e) {
+        toast.error(`${file.name}: ${e instanceof Error ? e.message.slice(0, 100) : 'yüklenemedi'}`)
+      } finally {
+        setUploads((u) => {
+          const n = { ...u }
+          delete n[file.name]
+          return n
+        })
+      }
+    }
     const imgs = arr.filter((f) => f.type.startsWith('image/'))
     // two at a time: quick, without saturating the editor's connection
     let next = 0
@@ -306,13 +335,84 @@ export function StoryStudioPro() {
   }
 
   const addVideo = async (v: { id: string; title: string } | null) => {
-    if (!p || !v) return
-    const r = await reelsCall<{ project: StoryProject; job: { jobId: string } }>('POST', `${API}/${p.id}/assets`, { action: 'add', kind: 'video', videoItemId: v.id })
+    if (!v) return
+    let proj = p
+    if (!proj) {
+      proj = await saveMeta()
+      if (!proj) return
+    }
+    const r = await reelsCall<{ project: StoryProject; job: { jobId: string } }>('POST', `${API}/${proj.id}/assets`, { action: 'add', kind: 'video', videoItemId: v.id })
     if (!r.ok) return toast.error(r.error)
     apply(r.data.project, true)
     toast.success('Video eklendi; AI izliyor…')
-    void watchDescribe(p.id, r.data.job)
+    void watchDescribe(proj.id, r.data.job)
   }
+
+  // ── HABERDEN-VIDEO: any news item → a project ready to render ──────────────
+  const [newsQ, setNewsQ] = useState('')
+  const [newsHits, setNewsHits] = useState<NewsHit[] | null>(null)
+  const searchNews = async (q: string) => {
+    const r = await reelsCall<{ items: NewsHit[] }>('GET', `/api/admin/social/reels/news?q=${encodeURIComponent(q)}`)
+    setNewsHits(r.ok ? r.data.items.slice(0, 20) : [])
+    if (!r.ok) toast.error(r.error)
+  }
+  const fromNews = async (newsId: string, styleOverride?: StoryStyle | null) => {
+    if ((dirty || metaDirty) && !confirm('Kaydedilmemiş değişiklikler var. Haberden yeni proje açılsın mı?')) return
+    setBusy('news')
+    setProgress({ text: 'Haber alınıyor (metin, fotoğraflar, video)…', pct: null })
+    try {
+      const st = styleOverride ?? draft.style
+      const def = styleOverride ? STYLE_THEME[styleOverride].defaults : null
+      const r = await reelsCall<{ project: StoryProject }>('POST', API, {
+        fromNewsId: newsId,
+        style: st,
+        format: draft.format,
+        targetMin: draft.targetMin,
+        voice: def ? { name: def.voice, rate: def.rate } : draft.voice,
+        music: def ? def.music : draft.music,
+        sfx: def ? def.sfx : draft.sfx,
+        seriesLabel: draft.seriesLabel,
+      })
+      if (!r.ok) return toast.error(r.error)
+      const proj = r.data.project
+      open(proj)
+      apply(proj)
+      // AI looks at every photo / the video, then writes the narration and matches the visuals
+      setProgress({ text: `AI haberin ${proj.assets.length} görüntüsünü inceliyor…`, pct: null })
+      const jobs = await Promise.all(
+        proj.assets.map((a) => reelsCall<{ job: { jobId: string } }>('POST', `${API}/${proj.id}/assets`, { action: 'describe', assetId: a.id }).then((x) => (x.ok ? x.data.job : null))),
+      )
+      for (let i = 0; i < 30 && jobs.some(Boolean); i++) {
+        await new Promise((res) => setTimeout(res, i < 4 ? 3000 : 6000))
+        const st = await Promise.all(jobs.map((j) => (j ? reelsCall<{ job: { status: string } }>('GET', `${API}/${proj.id}/assets?job=${encodeURIComponent(j.jobId)}`).then((x) => (x.ok ? x.data.job.status : 'failed')) : Promise.resolve('done'))))
+        if (st.every((x) => x !== 'running')) break
+      }
+      setProgress({ text: 'AI editör anlatımı ve sahneleri hazırlıyor…', pct: null })
+      const pl = await runReelJob(`${API}/${proj.id}/plan`, {}, (ms) => setProgress({ text: `AI editör çalışıyor… ${Math.round(ms / 1000)} sn`, pct: null }))
+      if (!pl.ok) {
+        await reload(proj.id)
+        return toast.error(`Haber yüklendi; plan hazırlanamadı: ${pl.error}. «AI ile planla» ile tekrar deneyin.`)
+      }
+      const res = pl.job.result as { project?: StoryProject; note?: string | null }
+      if (res.project) {
+        open(res.project)
+        apply(res.project)
+      }
+      setLeft('media')
+      toast.success('Haberden video hazır — sahneleri kontrol edip «Videoyu üret»e basın', { duration: 6000 })
+    } finally {
+      setBusy(null)
+      setProgress(null)
+    }
+  }
+  const consumedNews = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialNewsId || consumedNews.current === initialNewsId || list === null) return
+    consumedNews.current = initialNewsId
+    onNewsConsumed?.()
+    void fromNews(initialNewsId, initialStyle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNewsId, list])
 
   const removeAsset = async (assetId: string) => {
     if (!p || !confirm(`Bu görüntü projeden çıkarılsın mı? Kullanan sahneler ${allowsAiImages(draft) ? 'AI çizimine' : 'metin kartına'} döner.`)) return
@@ -751,7 +851,7 @@ export function StoryStudioPro() {
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {left === 'media' ? (
               <div className="space-y-3">
-                <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => void uploadImages(e.target.files).finally(() => { if (fileRef.current) fileRef.current.value = '' })} />
+                <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v" multiple hidden onChange={(e) => void uploadImages(e.target.files).finally(() => { if (fileRef.current) fileRef.current.value = '' })} />
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
@@ -770,8 +870,8 @@ export function StoryStudioPro() {
                   className={cn('flex w-full flex-col items-center gap-1 rounded-xl border-2 border-dashed px-3 py-5 text-center text-xs transition', dropHot ? 'border-red-500 bg-red-500/10' : 'border-white/15 hover:border-white/30')}
                 >
                   <Upload className="h-5 w-5 text-zinc-400" />
-                  <span className="font-bold">Fotoğrafları sürükleyin veya seçin</span>
-                  <span className="text-[10px] text-zinc-500">çoklu seçim · her biri ≤ 50 MB · AI her birini inceler</span>
+                  <span className="font-bold">Fotoğraf veya video sürükleyin / bilgisayardan seçin</span>
+                  <span className="text-[10px] text-zinc-500">çoklu seçim · fotoğraf ≤ 50 MB · video ≤ 200 MB · AI her birini inceler</span>
                 </button>
                 {Object.entries(uploads).map(([n, v]) => (
                   <div key={n} className="text-[11px]">
@@ -784,14 +884,12 @@ export function StoryStudioPro() {
                     </div>
                   </div>
                 ))}
-                {p ? (
-                  <details className="rounded-xl border border-white/10 p-2 text-xs [&_*]:text-zinc-100">
-                    <summary className="cursor-pointer font-bold">🎬 Kütüphaneden video ekle</summary>
-                    <div className="mt-2 rounded-lg bg-white p-1 text-zinc-900 [&_*]:!text-zinc-900">
-                      <ReelsVideoPicker value={null} onChange={(v) => void addVideo(v)} />
-                    </div>
-                  </details>
-                ) : null}
+                <details className="rounded-xl border border-white/10 p-2 text-xs [&_*]:text-zinc-100">
+                  <summary className="cursor-pointer font-bold">🎬 Video ekle — bilgisayardan yükle veya kütüphaneden seç</summary>
+                  <div className="mt-2 rounded-lg bg-white p-1 text-zinc-900 [&_*]:!text-zinc-900">
+                    <ReelsVideoPicker value={null} onChange={(v) => void addVideo(v)} />
+                  </div>
+                </details>
                 <p className="text-[10px] text-zinc-500">Bir görüntüyü zaman çizelgesindeki sahneye sürükleyip bırakın. Aynı görüntü birden çok sahnede kullanılabilir.</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(p?.assets ?? []).map((a) => (
@@ -882,6 +980,44 @@ export function StoryStudioPro() {
               </div>
             ) : (
               <div className="space-y-3 text-xs">
+                <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-2">
+                  <Label>Haberden video</Label>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void searchNews(newsQ)
+                    }}
+                    className="flex gap-1"
+                  >
+                    <input value={newsQ} onChange={(e) => setNewsQ(e.target.value)} className={field} placeholder="Haber başlığında ara (boş = son haberler)" />
+                    <button type="submit" className={cn(btn, 'bg-white/10 text-zinc-100 hover:bg-white/20')}>Ara</button>
+                  </form>
+                  <span className="mt-1 block text-[10px] text-zinc-500">Seçtiğiniz haberin metni, fotoğrafları ve videosu yukarıdaki tür / ses / müzik ayarıyla projeye alınır; AI anlatımı yazar ve sahneleri dizer.</span>
+                  {newsHits ? (
+                    newsHits.length ? (
+                      <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto pr-1">
+                        {newsHits.map((n) => (
+                          <li key={n.newsId}>
+                            <button type="button" disabled={!!busy} onClick={() => void fromNews(n.newsId)} className="flex w-full items-center gap-2 rounded-lg border border-white/10 p-1.5 text-left hover:border-red-500 disabled:opacity-50">
+                              {n.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={n.imageUrl} alt="" className="h-9 w-12 shrink-0 rounded object-cover" />
+                              ) : (
+                                <span className="h-9 w-12 shrink-0 rounded bg-white/10" />
+                              )}
+                              <span className="min-w-0 flex-1">
+                                <span className="line-clamp-2 text-[11px] font-bold">{n.title}</span>
+                                <span className="block text-[10px] text-zinc-500">{[n.category, n.city, n.hasVideo ? 'videolu' : null].filter(Boolean).join(' · ')}</span>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-zinc-500">Haber bulunamadı.</p>
+                    )
+                  ) : null}
+                </div>
                 <label className="block">
                   <Label>Konu</Label>
                   <textarea value={draft.topic} onChange={(e) => setD({ topic: e.target.value })} rows={3} maxLength={1200} className={field} placeholder="ör. Truva Atı gerçek miydi? Troya kazıları ve efsane" />

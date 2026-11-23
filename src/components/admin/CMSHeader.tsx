@@ -17,6 +17,23 @@ import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
 import { AdminSectionTabs } from '@/components/admin/AdminSectionTabs'
 import { countVisiblePendingApprovals, isDuplicateNewsData } from '@/services/adminNewsService'
 
+/** Firestore createdAt can be a number, ISO string, Timestamp or missing; never throw. */
+function toIsoTime(v: unknown): string {
+  let d: Date | null = null
+  if (typeof v === 'number' || typeof v === 'string') d = new Date(v)
+  else if (v && typeof (v as { toDate?: () => Date }).toDate === 'function') d = (v as { toDate: () => Date }).toDate()
+  else if (v && typeof (v as { seconds?: number }).seconds === 'number') d = new Date((v as { seconds: number }).seconds * 1000)
+  if (!d || Number.isNaN(d.getTime())) d = new Date()
+  return d.toISOString()
+}
+
+function safeDistance(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return formatDistanceToNow(d, { locale: tr, addSuffix: true })
+}
+
+
 const SEEN_KEY = 'cms_notif_seen_at'
 
 const NOTIF_ICONS: Record<CmsNotification['type'], string> = {
@@ -58,10 +75,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
           })
           .map((doc) => {
           const d = doc.data()
-          const createdAt =
-            typeof d.createdAt === 'number'
-              ? new Date(d.createdAt).toISOString()
-              : ((d.createdAt as string) ?? new Date().toISOString())
+          const createdAt = toIsoTime(d.createdAt)
           return {
             id: doc.id,
             type: 'article_submitted' as const,
@@ -105,7 +119,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
                 <p className="text-xs font-semibold text-[rgb(var(--color-text))]">{notif.title}</p>
                 <p className="mt-0.5 line-clamp-1 text-xs text-[rgb(var(--color-muted))]">{notif.message}</p>
                 <p className="mt-1 text-[10px] text-[rgb(var(--color-muted))]">
-                  {formatDistanceToNow(new Date(notif.createdAt), { locale: tr, addSuffix: true })}
+                  {safeDistance(notif.createdAt)}
                 </p>
               </div>
             </Link>

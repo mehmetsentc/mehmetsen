@@ -492,9 +492,10 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     // REELS-T1: the template decides how the sound runs; unusable choices fall back safely
     let mode: ReelAudioMode = input.audioMode ?? 'voice_then_video'
     const textStyle: ReelTextStyle = input.textStyle ?? 'captions'
-    // REELS-T2: «clean» — no text, no bands, no end card; only the drifting NaHaber watermark
+    // REELS-T2: «clean» — no text, no bands; only the drifting NaHaber watermark.
+    // OUTRO-ALL: every reel (clean included) closes with the nahaber.com end card.
     const clean = textStyle === 'clean'
-    const endS = clean ? 0 : END_S
+    const endS = END_S
     const hasVoiceWav = !!input.voiceWav && input.voiceWav.length > 44
     if (!hasVoiceWav && (mode === 'voice_then_video' || mode === 'video_then_voice')) mode = 'music_only'
     const pm = input.media.kind === 'video' ? await probeMedia(ffmpeg, input.media.path) : null
@@ -619,10 +620,10 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
     // no intro sting / whoosh at the start (editor's call) — the voice opens the reel
     const outroClip = await load(outro === 'follow' ? 'outro-follow.wav' : outro === 'short' ? 'outro-short.wav' : 'outro-soft.wav')
     const silent = { sampleRate: outroClip.sampleRate, data: new Float32Array(0) }
-    // REELS-T2: a clean reel has no text, so no whoosh / click / outro sting either
+    // REELS-T2: a clean reel has no text, so no whoosh / click — only the closing sting
     const fx = buildFxTrack(
       clean
-        ? { intro: silent, outro: silent, click: silent, whooshUp: silent, whooshDown: silent }
+        ? { intro: silent, outro: outroClip, click: silent, whooshUp: silent, whooshDown: silent }
         : {
             intro: silent,
             outro: await load(outro === 'follow' ? 'outro-follow.wav' : outro === 'short' ? 'outro-short.wav' : 'outro-soft.wav'),
@@ -706,7 +707,8 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
       else brandBackground(ctx, brand, t, p, accent, input.category)
 
       if (clean) {
-        if (watermark) drawWatermark(ctx, watermark, t)
+        if (watermark && t < endStart) drawWatermark(ctx, watermark, t)
+        endCard(ctx, brand, t - endStart, outro)
         await enc.frame(canvas.data())
         continue
       }

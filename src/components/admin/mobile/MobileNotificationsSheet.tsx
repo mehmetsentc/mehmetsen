@@ -95,7 +95,7 @@ export function MobileNotificationsSheet() {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">{n.title}</p>
                 <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-[rgb(var(--color-text))]">{n.message}</p>
                 <p className="mt-1 text-[11px] text-[rgb(var(--color-muted))]">
-                  {formatDistanceToNow(new Date(n.createdAt), { locale: tr, addSuffix: true })}
+                  {Number.isNaN(new Date(n.createdAt).getTime()) ? '' : formatDistanceToNow(new Date(n.createdAt), { locale: tr, addSuffix: true })}
                 </p>
               </Link>
             ))}

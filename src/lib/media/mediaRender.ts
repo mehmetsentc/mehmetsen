@@ -20,6 +20,8 @@ import { MAX_SOURCE_BYTES } from '@/lib/reels/sourceVideo'
 import { FONT_MD, FONT_XB, ensureFonts, resolveFfmpegPath, roundRectPath } from '@/lib/reels/reelTheme'
 import { wrapLines } from '@/lib/reels/timeline'
 import { clipFfmpegArgs, OUT_H, OUT_W, type ClipOptions } from './mediaProject'
+import { composeOutroStill } from '@/lib/story/storyOverlay'
+import { FRAMES } from '@/lib/story/storyProject'
 
 const BUCKET = process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebasestorage.app`
 const DOWNLOAD_TIMEOUT_MS = 120_000
@@ -59,6 +61,30 @@ async function download(url: string, out: string): Promise<void> {
   if (buf.byteLength > MAX_SOURCE_BYTES) throw new Error('Kaynak video 200 MB sınırını aşıyor')
   if (buf.byteLength === 0) throw new Error('Kaynak video boş')
   await fs.writeFile(out, buf)
+}
+
+/** Size + audio presence from the ffmpeg banner (no ffprobe in the bundle). */
+function probeVideo(bin: string, src: string): Promise<{ width: number; height: number; hasAudio: boolean }> {
+  return new Promise((resolve) => {
+    const p = spawn(bin, ['-hide_banner', '-i', src], { shell: false, stdio: ['ignore', 'ignore', 'pipe'] })
+    let err = ''
+    const timer = setTimeout(() => p.kill('SIGKILL'), 20_000)
+    p.stderr.on('data', (d: Buffer) => {
+      if (err.length < 20000) err += d.toString()
+    })
+    p.on('close', () => {
+      clearTimeout(timer)
+      const m = err.match(/Video:.*?(\d{2,5})x(\d{2,5})/)
+      const rot = /rotate\s*:\s*-?(90|270)|rotation of -?(90|270)/.test(err)
+      const w = m ? Number(m[1]) : 0
+      const h = m ? Number(m[2]) : 0
+      resolve({ width: rot ? h : w, height: rot ? w : h, hasAudio: /Stream #\d+:\d+.*Audio:/.test(err) })
+    })
+    p.on('error', () => {
+      clearTimeout(timer)
+      resolve({ width: 0, height: 0, hasAudio: false })
+    })
+  })
 }
 
 function run(bin: string, args: string[], timeoutMs: number): Promise<void> {
@@ -168,7 +194,19 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
     const pngPath = png ? path.join(dir, 'overlay.png') : null
     if (png && pngPath) await fs.writeFile(pngPath, png)
     const ffmpeg = await resolveFfmpegPath()
-    await run(ffmpeg, clipFfmpegArgs({ input: inPath, overlay: pngPath, output: outPath, startMs: input.startMs, endMs: input.endMs, options: input.options }), FFMPEG_TIMEOUT_MS)
+    // OUTRO-ALL: every clip closes with the nahaber.com card (shape follows the clip)
+    const info = await probeVideo(ffmpeg, inPath)
+    const portrait = input.options.frame === 'vertical' || info.height > info.width
+    const outroPath = path.join(dir, 'outro.jpg')
+    let outro: { image: string; sting: string | null; hasAudio: boolean } | null = null
+    try {
+      await composeOutroStill({ style: 'haber', outFile: outroPath, frame: portrait ? FRAMES.vertical : FRAMES.horizontal })
+      const sting = path.join(process.cwd(), 'src/lib/reels/assets/audio/broadcast/outro-soft.wav')
+      outro = { image: outroPath, sting: (await fs.stat(sting).then(() => true).catch(() => false)) ? sting : null, hasAudio: info.hasAudio }
+    } catch (err) {
+      console.warn('[media-render] kapanış kartı hazırlanamadı', err instanceof Error ? err.message : err)
+    }
+    await run(ffmpeg, clipFfmpegArgs({ input: inPath, overlay: pngPath, output: outPath, startMs: input.startMs, endMs: input.endMs, options: input.options, outro }), FFMPEG_TIMEOUT_MS)
     // Cover: a frame one second in (or the middle of a very short clip).
     await run(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', Math.min(1, seconds / 2).toFixed(2), '-i', outPath, '-frames:v', '1', '-q:v', '3', jpgPath], 60_000).catch(() => undefined)
 

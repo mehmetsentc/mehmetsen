@@ -62,7 +62,7 @@ export function crawlerTickLimits() {
     // Keşif yalnız liste/RSS isteği; haber çekme kotası (maxFetchPerTick 80) değişmedi.
     maxSourcesPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_SOURCES_PER_TICK', 35), 1, 160),
     maxFetchPerTick: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_TICK', 80), 1, 160),
-    maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 4), 1, 20),
+    maxFetchPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_FETCH_PER_SOURCE', 6), 1, 20),
     maxDiscoverUrlsPerSource: clamp(intEnv('NEWS_CRAWLER_MAX_DISCOVER_URLS', 40), 5, 200),
     // SONDAKIKA-81: 81 il kaynağı tek domain; tur başına en fazla bu kadar haber çekilir
     // (20 × 48 tur ≈ 960/gün; sitenin günlük taze yerel haber hacmi ≈ 600-800).

@@ -43,6 +43,35 @@ function mimeOf(file: File): string {
 
 const dur = (ms: number | null) => (ms && ms > 0 ? `${Math.floor(ms / 60000)}:${String(Math.round(ms / 1000) % 60).padStart(2, '0')}` : '—')
 
+/**
+ * Device video → Video Kütüphanesi (NaHaber's own content, OWNED). Returns the library
+ * item, or null when the very same file was imported before (the list already has it).
+ */
+export async function uploadVideoToLibrary(file: File): Promise<PickedVideo | null> {
+  const mimeType = mimeOf(file)
+  const init = await fetch('/api/admin/videos/library', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify({ action: 'upload-init', filename: file.name, mimeType, fileSizeBytes: file.size, contentHash: await sha256Hex(file) }),
+  })
+  const ib = (await init.json()) as { outcome?: string; itemId?: string; uploadUrl?: string | null; error?: string; item?: Item }
+  if (!init.ok) throw new Error(ib.error || 'Yükleme başlatılamadı')
+  if (ib.outcome === 'ALREADY_IMPORTED') {
+    return ib.item ? { id: ib.item.id, title: ib.item.title || file.name, poster: ib.item.posterPublicUrl ?? null, durationMs: ib.item.durationMs ?? null } : ib.itemId ? { id: ib.itemId, title: file.name, poster: null, durationMs: null } : null
+  }
+  if (!ib.uploadUrl || !ib.itemId) throw new Error('Yükleme adresi alınamadı')
+  const put = await fetch(ib.uploadUrl, { method: 'PUT', headers: { 'Content-Type': mimeType }, body: file })
+  if (!put.ok) throw new Error('Dosya yüklenemedi (ağ / CORS)')
+  const done = await fetch('/api/admin/videos/library', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify({ action: 'upload-complete', id: ib.itemId }),
+  })
+  const db = (await done.json()) as { error?: string; item?: Item }
+  if (!done.ok) throw new Error(db.error || 'Yükleme tamamlanamadı')
+  return db.item ? { id: db.item.id, title: db.item.title || file.name, poster: db.item.posterPublicUrl ?? null, durationMs: db.item.durationMs ?? null } : { id: ib.itemId, title: file.name, poster: null, durationMs: null }
+}
+
 export function ReelsVideoPicker({ value, onChange }: { value: PickedVideo | null; onChange: (v: PickedVideo | null) => void }) {
   const [items, setItems] = useState<Item[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -70,28 +99,8 @@ export function ReelsVideoPicker({ value, onChange }: { value: PickedVideo | nul
     setError(null)
     setUploading(file.name)
     try {
-      const mimeType = mimeOf(file)
-      const init = await fetch('/api/admin/videos/library', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-        body: JSON.stringify({ action: 'upload-init', filename: file.name, mimeType, fileSizeBytes: file.size, contentHash: await sha256Hex(file) }),
-      })
-      const ib = (await init.json()) as { outcome?: string; itemId?: string; uploadUrl?: string | null; error?: string; item?: Item }
-      if (!init.ok) throw new Error(ib.error || 'Yükleme başlatılamadı')
-      if (ib.outcome !== 'ALREADY_IMPORTED') {
-        if (!ib.uploadUrl || !ib.itemId) throw new Error('Yükleme adresi alınamadı')
-        const put = await fetch(ib.uploadUrl, { method: 'PUT', headers: { 'Content-Type': mimeType }, body: file })
-        if (!put.ok) throw new Error('Dosya yüklenemedi (ağ / CORS)')
-        const done = await fetch('/api/admin/videos/library', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ action: 'upload-complete', id: ib.itemId }),
-        })
-        const db = (await done.json()) as { error?: string; item?: Item }
-        if (!done.ok) throw new Error(db.error || 'Yükleme tamamlanamadı')
-        if (db.item) onChange({ id: db.item.id, title: db.item.title || file.name, poster: db.item.posterPublicUrl ?? null, durationMs: db.item.durationMs ?? null })
-        else onChange({ id: ib.itemId, title: file.name, poster: null, durationMs: null })
-      }
+      const v = await uploadVideoToLibrary(file)
+      if (v) onChange(v)
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Yükleme başarısız')

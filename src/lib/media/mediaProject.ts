@@ -169,7 +169,7 @@ export function parseClipInput(raw: unknown, durationMs: number | null, prev?: M
 
 /** Deterministic key of everything that changes the rendered file (FNV-1a, 8 hex). */
 export function clipRenderKey(videoItemId: string, clip: Pick<MediaClip, 'startMs' | 'endMs' | 'title' | 'options'>, sourceLabel: string | null): string {
-  const s = JSON.stringify([videoItemId, clip.startMs, clip.endMs, clip.options.frame, clip.options.showTitle ? clip.title : '', clip.options.showLogo, clip.options.showSource ? sourceLabel ?? '' : '', clip.options.mute, 'v1'])
+  const s = JSON.stringify([videoItemId, clip.startMs, clip.endMs, clip.options.frame, clip.options.showTitle ? clip.title : '', clip.options.showLogo, clip.options.showSource ? sourceLabel ?? '' : '', clip.options.mute, 'v2-outro'])
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i)
@@ -244,7 +244,18 @@ export const OUT_H = 1920
  * Output: H.264 High, yuv420p, 30 fps fixed, 2 s closed GOP, AAC 128 k 48 kHz
  * stereo, moov atom first — inside every platform's API requirements.
  */
-export function clipFfmpegArgs(a: { input: string; overlay: string | null; output: string; startMs: number; endMs: number; options: ClipOptions }): string[] {
+/** OUTRO-ALL: the nahaber.com closing card appended to every clip. */
+export const CLIP_OUTRO_S = 2.6
+export interface ClipOutro {
+  /** Still image (JPEG/PNG) of the closing card; scaled to the clip's size. */
+  image: string
+  /** Short closing sting (WAV) or null for silence. */
+  sting: string | null
+  /** Whether the source has an audio stream (else silence is generated). */
+  hasAudio: boolean
+}
+
+export function clipFfmpegArgs(a: { input: string; overlay: string | null; output: string; startMs: number; endMs: number; options: ClipOptions; outro?: ClipOutro | null }): string[] {
   const ss = (a.startMs / 1000).toFixed(3)
   const t = ((a.endMs - a.startMs) / 1000).toFixed(3)
   const args = ['-hide_banner', '-loglevel', 'error', '-y', '-ss', ss, '-t', t, '-i', a.input]
@@ -263,8 +274,31 @@ export function clipFfmpegArgs(a: { input: string; overlay: string | null; outpu
     // As filmed: only bounded to the platforms' 1920 px maximum width, even dimensions.
     filter = `[0:v]fps=30,scale='min(1920,iw)':-2:force_divisible_by=2,format=yuv420p[v]`
   }
+  const enc = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-profile:v', 'high', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-r', '30']
+  if (a.outro) {
+    // main part ends in [vm]; the card is scaled to the same size and concatenated with its sting
+    const o = a.outro
+    const S = CLIP_OUTRO_S.toFixed(2)
+    const oi = overlay ? 2 : 1
+    args.push('-loop', '1', '-framerate', '30', '-t', S, '-i', o.image)
+    const si = o.sting ? oi + 1 : -1
+    if (o.sting) args.push('-i', o.sting)
+    const fmtA = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo'
+    const mainA = o.hasAudio && !a.options.mute ? `[0:a]${fmtA},apad,atrim=0:${t},asetpts=N/SR/TB[am]` : `anullsrc=r=48000:cl=stereo,atrim=0:${t}[am]`
+    const outA = o.sting ? `[${si}:a]${fmtA},apad,atrim=0:${S},afade=t=out:st=${(CLIP_OUTRO_S - 0.4).toFixed(2)}:d=0.4,asetpts=N/SR/TB[ao]` : `anullsrc=r=48000:cl=stereo,atrim=0:${S}[ao]`
+    const vf =
+      filter.replace(/\[v\]$/, '[vm0]') +
+      `;[vm0]trim=duration=${t},setpts=PTS-STARTPTS,setsar=1[vmt]` +
+      `;[${oi}:v]fps=30,format=yuv420p[oimg];[oimg][vmt]scale2ref=w=iw:h=ih[os][vmr]` +
+      `;[os]setsar=1,fade=t=in:st=0:d=0.35[ov]` +
+      `;${mainA};${outA};[vmr][am][ov][ao]concat=n=2:v=1:a=1[v][a]`
+    args.push('-filter_complex', vf, '-map', '[v]', '-map', '[a]')
+    args.push(...enc)
+    args.push('-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', a.output)
+    return args
+  }
   args.push('-filter_complex', filter, '-map', '[v]', '-map', '0:a?')
-  args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-profile:v', 'high', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-r', '30')
+  args.push(...enc)
   if (a.options.mute) args.push('-af', 'volume=0')
   args.push('-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2', '-shortest', '-movflags', '+faststart', a.output)
   return args

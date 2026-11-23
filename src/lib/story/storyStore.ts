@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { libraryVideoMeta } from '@/lib/media/mediaStore'
+import { Collections } from '@/lib/firebase/collections'
 import {
   allowsAiImages,
   EMPTY_RENDER,
@@ -223,4 +224,37 @@ async function audit(uid: string, what: string, p: StoryProject) {
     entityId: p.id,
     meta: { what, style: p.style, rightsKind: p.rights.kind, sourceName: p.rights.sourceName, assets: p.assets.length, scenes: p.scenes.length },
   })
+}
+
+
+/**
+ * HABERDEN-VIDEO: a «Metinden Video» project prepared from a published news item —
+ * the headline and text become the topic (AI writes the narration in the chosen style),
+ * the news item's own photos and video file become the project's media.
+ */
+export async function createStoryFromNews(uid: string, newsId: unknown, raw: Record<string, unknown>, now: number): Promise<StoreResult<StoryProject>> {
+  if (typeof newsId !== 'string' || !/^[A-Za-z0-9_-]{1,120}$/.test(newsId)) return fail(400, 'invalid_news', 'Haber kimliği geçersiz')
+  const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
+  if (!snap.exists) return fail(404, 'news_not_found', 'Haber bulunamadı')
+  const d = snap.data() as Record<string, unknown>
+  const { newsStoryDraft } = await import('./storyFromNews')
+  const draft = newsStoryDraft(d)
+  if (!draft.title) return fail(400, 'news_empty', 'Haberin başlığı yok')
+  const m = parseMeta({
+    ...raw,
+    title: draft.title,
+    topic: draft.topic,
+    script: '',
+    caption: typeof raw.caption === 'string' && raw.caption.trim() ? raw.caption : draft.caption,
+    rights: { kind: 'owned', sourceName: null, note: `NaHaber haberi ${newsId}` },
+  })
+  if (!m.ok) return fail(400, 'invalid', m.message, m.field)
+  const assets: StoryAsset[] = [
+    ...draft.photos.map((url, i): StoryAsset => ({ id: shortId(), kind: 'image', source: 'news', ref: url, previewUrl: url, name: i === 0 ? 'Haber görseli' : `Haber görseli ${i + 1}`, durationMs: null, description: null, describeError: null, addedAt: now })),
+    ...(draft.video ? [{ id: shortId(), kind: 'video' as const, source: 'news' as const, ref: draft.video, previewUrl: draft.photos[0] ?? null, name: 'Haberin videosu', durationMs: null, description: null, describeError: null, addedAt: now }] : []),
+  ].slice(0, MAX_ASSETS)
+  const p: StoryProject = { id: `st${randomBytes(8).toString('hex')}`, ...m.value, newsId, assets, scenes: [], plannedAt: null, render: { ...EMPTY_RENDER }, createdBy: uid, createdAt: now, updatedAt: now }
+  await col().doc(p.id).set(p)
+  await audit(uid, 'create_from_news', p)
+  return { ok: true, value: p }
 }

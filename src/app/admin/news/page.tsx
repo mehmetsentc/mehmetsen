@@ -649,9 +649,14 @@ function ReelsPopoverBody({ newsId, newsTitle, onClose }: { newsId: string; news
     <div className="space-y-1.5 px-1">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-muted))]">Haber videosu — biçim ve hesaplar</p>
-        <a href={`/admin/media-studio/reels?newsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-blue-700 underline dark:text-blue-300">
-          Stüdyoda önizle
-        </a>
+        <span className="flex gap-2">
+          <a href={`/admin/media-studio/reels?newsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-blue-700 underline dark:text-blue-300">
+            Stüdyoda önizle
+          </a>
+          <a href={`/admin/media-studio/reels?storyNewsId=${encodeURIComponent(newsId)}`} className="text-[11px] font-semibold text-violet-700 underline dark:text-violet-300">
+            Metinden video
+          </a>
+        </span>
       </div>
       <div className="flex gap-1 text-[11px]">
         {(['reel', 'video_story', 'tiktok'] as const).map((f) => (
