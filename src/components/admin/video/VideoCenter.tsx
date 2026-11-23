@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { reelsCall } from '@/components/admin/social/reelsApi'
 import { VideoEditor, type EditorStart } from './VideoEditor'
+import { ReelsStudio } from '@/components/admin/social/ReelsStudio'
 import { renderKeyFor, STORY_STYLES, STYLE_THEME, TARGET_MINUTES, type StoryFormat, type StoryProject, type StoryStyle, type TargetMin } from '@/lib/story/storyProject'
 
 const API = '/api/admin/social/story-projects'
@@ -35,7 +36,7 @@ export function VideoCenter() {
   const params = useSearchParams()
   const router = useRouter()
   const [editor, setEditor] = useState<EditorStart | null>(null)
-  const [view, setView] = useState<'hub' | 'start'>('hub')
+  const [view, setView] = useState<'hub' | 'start' | 'upload' | 'digest'>('hub')
   const [src, setSrc] = useState<'news' | 'text'>('news')
   const [presetNews, setPresetNews] = useState<string | null>(null)
 
@@ -52,7 +53,7 @@ export function VideoCenter() {
     } else if (st === 'news' || st === 'text') {
       setSrc(st)
       setView('start')
-    }
+    } else if (st === 'upload' || st === 'digest') setView(st)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -73,11 +74,17 @@ export function VideoCenter() {
   }
 
   if (editor) return <VideoEditor start={editor} onExit={exitEditor} />
-  if (view === 'start') return <StartView src={src} setSrc={setSrc} presetNews={presetNews} onBack={() => setView('hub')} onGo={(s) => setEditor(s)} />
-  return <Hub projects={projects} onStart={(s) => { setSrc(s); setView('start') }} onOpen={(id) => setEditor({ kind: 'project', id })} />
+  if (view === 'upload' || view === 'digest')
+    return (
+      <div className="p-3 lg:p-4">
+        <ReelsStudio key={view} lockedMode={view} onBack={() => setView('hub')} />
+      </div>
+    )
+  if (view === 'start') return <StartView src={src} setSrc={setSrc} presetNews={presetNews} onBack={() => setView('hub')} onGo={(s) => setEditor(s)} onUpload={() => setView('upload')} />
+  return <Hub projects={projects} onStart={(s) => (s === 'upload' || s === 'digest' ? setView(s) : (setSrc(s), setView('start')))} onOpen={(id) => setEditor({ kind: 'project', id })} />
 }
 
-function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'text') => void; onOpen: (id: string) => void }) {
+function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'text' | 'upload' | 'digest') => void; onOpen: (id: string) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const list = useMemo(
@@ -117,16 +124,16 @@ function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'te
             <span className="text-base font-extrabold text-[rgb(var(--color-text))]">Metinden video</span>
             <span className="text-[13px] leading-relaxed text-[rgb(var(--color-muted))]">Bir konu ya da hazır metin yaz; belgesel, bilgi, sağlık… 1–10 dk.</span>
           </button>
-          <Link href="/admin/media-studio/reels?mode=upload" className={cn(startCard, 'border-[rgb(var(--color-border))]')}>
+          <button type="button" onClick={() => props.onStart('upload')} className={cn(startCard, 'border-[rgb(var(--color-border))]')}>
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"><Upload className="h-5 w-5" /></span>
             <span className="text-base font-extrabold text-[rgb(var(--color-text))]">Kendi videonu yükle</span>
             <span className="text-[13px] leading-relaxed text-[rgb(var(--color-muted))]">Bilgisayardan videoyu yükle; manşet, seslendirme ya da sade filigran şablonu seç.</span>
-          </Link>
-          <Link href="/admin/media-studio/reels?mode=digest" className={cn(startCard, 'border-[rgb(var(--color-border))]')}>
+          </button>
+          <button type="button" onClick={() => props.onStart('digest')} className={cn(startCard, 'border-[rgb(var(--color-border))]')}>
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><ListVideo className="h-5 w-5" /></span>
             <span className="text-base font-extrabold text-[rgb(var(--color-text))]">Günün bülteni</span>
             <span className="text-[13px] leading-relaxed text-[rgb(var(--color-muted))]">2–7 haberi seç, tek videoda öne çıkanlar.</span>
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -188,7 +195,7 @@ function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'te
   )
 }
 
-function StartView(props: { src: 'news' | 'text'; setSrc: (s: 'news' | 'text') => void; presetNews: string | null; onBack: () => void; onGo: (s: EditorStart) => void }) {
+function StartView(props: { src: 'news' | 'text'; setSrc: (s: 'news' | 'text') => void; presetNews: string | null; onBack: () => void; onGo: (s: EditorStart) => void; onUpload: () => void }) {
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<NewsHit[] | null>(null)
   const [newsId, setNewsId] = useState<string | null>(props.presetNews)
@@ -255,7 +262,7 @@ function StartView(props: { src: 'news' | 'text'; setSrc: (s: 'news' | 'text') =
           <div role="tablist" className="inline-flex gap-1 self-start rounded-xl bg-[rgb(var(--color-surface))] p-1">
             <button type="button" role="tab" aria-selected={props.src === 'news'} onClick={() => props.setSrc('news')} className={seg(props.src === 'news')}>Haber</button>
             <button type="button" role="tab" aria-selected={props.src === 'text'} onClick={() => props.setSrc('text')} className={seg(props.src === 'text')}>Metin</button>
-            <Link href="/admin/media-studio/reels?mode=upload" className={seg(false)}>Kendi videom</Link>
+            <button type="button" role="tab" aria-selected={false} onClick={props.onUpload} className={seg(false)}>Kendi videom</button>
           </div>
           {props.src === 'news' ? (
             <>

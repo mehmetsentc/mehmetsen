@@ -10,7 +10,7 @@
  * Each pane scrolls on its own; the page itself does not scroll on desktop.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, Clapperboard, Download, Film, Image as ImageIcon, Loader2, Pause, Play, RefreshCw, Search, Send, Sparkles, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Check, Clapperboard, Download, Film, Image as ImageIcon, Loader2, Pause, Play, RefreshCw, Search, Send, Sparkles, X } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
 import { cn } from '@/lib/utils'
 import { ManualShareFlow } from './ManualShareFlow'
@@ -264,8 +264,12 @@ function TemplatePicker({ value, onChange, suggested }: { value: 'auto' | 'none'
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
-export function ReelsStudio() {
-  const [mode, setMode] = useState<Mode>('single')
+/**
+ * VIDEO-MERKEZI: `lockedMode` shows one flow (Video Merkezi «Kendi videonu yükle» / «Günün bülteni»)
+ * without the old tab bar; `onBack` returns to Video Merkezi.
+ */
+export function ReelsStudio({ lockedMode, onBack }: { lockedMode?: 'upload' | 'digest'; onBack?: () => void } = {}) {
+  const [mode, setMode] = useState<Mode>(lockedMode ?? 'single')
   const [tab, setTab] = useState<Tab>('settings')
   const [ready, setReady] = useState(false)
 
@@ -355,6 +359,7 @@ export function ReelsStudio() {
   useEffect(() => {
     try {
       const m = new URLSearchParams(window.location.search).get('mode')
+      if (lockedMode) return
       if (m === 'upload' || m === 'digest' || m === 'library' || m === 'media' || m === 'story' || m === 'single') setMode(m)
     } catch {
       // ignore
@@ -364,7 +369,7 @@ export function ReelsStudio() {
     try {
       const q = new URLSearchParams(window.location.search)
       const id = q.get('storyNewsId')
-      if (!id) return
+      if (!id || lockedMode) return
       const st = q.get('style')
       setStoryNews({ newsId: id, style: st && (STORY_STYLES as readonly string[]).includes(st) ? (st as StoryStyle) : 'haber' })
       setMode('story')
@@ -506,10 +511,24 @@ export function ReelsStudio() {
     <div className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
       {/* top bar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-4 py-2.5">
-        <Clapperboard className="h-5 w-5 text-red-600" />
-        <h2 className="text-base font-extrabold">Reels Stüdyosu</h2>
-        <a href="/admin/video" className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-extrabold text-white">Yeni Video Merkezi →</a>
-        <div className="flex rounded-xl bg-[rgb(var(--color-surface))] p-1 text-xs font-bold">
+        {lockedMode ? (
+          <>
+            <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))]">
+              <ArrowLeft className="h-4 w-4" /> Video Merkezi
+            </button>
+            <h2 className="text-base font-extrabold">{lockedMode === 'upload' ? 'Kendi videonu yükle' : 'Günün bülteni'}</h2>
+            <span className="text-xs text-[rgb(var(--color-muted))]">
+              {lockedMode === 'upload' ? '1 Videoyu yükle · 2 Haberi seç · 3 Şablonu seç ve üret · 4 Paylaş' : '1 Haberleri seç (2–7) · 2 Sırala · 3 Üret · 4 Paylaş'}
+            </span>
+          </>
+        ) : (
+          <>
+            <Clapperboard className="h-5 w-5 text-red-600" />
+            <h2 className="text-base font-extrabold">Reels Stüdyosu</h2>
+            <a href="/admin/video" className="rounded-lg bg-red-600 px-2.5 py-1 text-[11px] font-extrabold text-white">Yeni Video Merkezi →</a>
+          </>
+        )}
+        <div className={cn('flex rounded-xl bg-[rgb(var(--color-surface))] p-1 text-xs font-bold', lockedMode && 'hidden')}>
           {([
             ['single', 'Tek haber'],
             ['digest', 'Günün Öne Çıkanları'],
@@ -556,8 +575,14 @@ export function ReelsStudio() {
           {/* LEFT — news */}
           <section className="flex min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]">
             <div className="space-y-2 border-b border-[rgb(var(--color-border))] p-3">
+              {mode === 'upload' ? (
+                <div className="space-y-1.5 rounded-xl border border-red-200 bg-red-50/40 p-2 dark:border-red-900 dark:bg-red-950/20">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wide text-red-700 dark:text-red-300">1 · Video {ownVideo ? `· ${ownVideo.title}` : ''}</p>
+                  <ReelsVideoPicker value={ownVideo} onChange={setOwnVideo} />
+                </div>
+              ) : null}
               <p className="text-[11px] font-extrabold uppercase tracking-wide text-[rgb(var(--color-muted))]">
-                1 · {mode === 'digest' ? `Haberleri seç (2–7) · ${selected.length} seçili` : 'Haber seç'}
+                {mode === 'digest' ? `1 · Haberleri seç (2–7) · ${selected.length} seçili` : mode === 'upload' ? '2 · Haber seç (başlık ve metin buradan gelir)' : '1 · Haber seç'}
               </p>
               <div className="flex items-center gap-2 rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5">
                 <Search className="h-4 w-4 text-[rgb(var(--color-muted))]" />
@@ -802,10 +827,9 @@ export function ReelsStudio() {
               {tab === 'settings' && single ? (
                 <>
                   {mode === 'upload' ? (
-                    <Section title="Video" hint={ownVideo ? 'seçildi' : 'haberin videosu yerine'}>
-                      <ReelsVideoPicker value={ownVideo} onChange={setOwnVideo} />
-                      <p className="text-[10px] text-[rgb(var(--color-muted))]">Soldan haberi seçin (başlık ve metin oradan gelir), burada videoyu seçin. «Orijinal Ses» şablonu seslendirmesiz, videonun kendi sesiyle üretir.</p>
-                    </Section>
+                    <p className="mx-4 mt-3 rounded-lg bg-[rgb(var(--color-surface))] px-3 py-2 text-[11px] text-[rgb(var(--color-muted))]">
+                      Video solda seçili{ownVideo ? `: ${ownVideo.title}` : ' değil'}. «Orijinal Ses» ve «Temiz» şablonlar seslendirmesiz, videonun kendi sesiyle üretir; hepsi nahaber.com kapanışıyla biter.
+                    </p>
                   ) : null}
                   <TemplatePicker value={template} onChange={setTemplate} suggested={suggestedTpl} />
                   {!tplVoice ? (
