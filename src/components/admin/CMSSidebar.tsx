@@ -159,6 +159,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/social/overview', label: 'Genel Bakış', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/social/network', label: 'İl Ağı', icon: Map, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/social/accounts', label: 'Hesaplar', icon: Users, requiredPermissions: ['social:view'], exact: true },
+      { href: '/admin/hesap-merkezi', label: 'Hesap Merkezi', icon: Inbox, requiredPermissions: ['roles:manage'] },
       { href: '/admin/social', label: 'Paylaşım Masası', icon: Send, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/social/shares', label: 'Hesaplara Paylaş', icon: Share2, requiredPermissions: ['social:view'], exact: true },
       { href: '/admin/smm/queue', label: 'Paylaşım Kuyruğu', icon: ListTodo, requiredPermissions: ['social:view'], countKey: 'smmQueue' },
