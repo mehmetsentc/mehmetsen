@@ -37,6 +37,8 @@ export type ReelCoverInput = {
   /** Image bytes (a video's frame is grabbed by the caller). */
   image?: Buffer | null
   variant?: ReelCoverVariant
+  /** BRAND-CITY-1: il vurgu rengi */
+  accent?: string | null
 }
 
 /** Grid crop band (centre 3:4). */
@@ -132,13 +134,13 @@ export async function renderReelCover(input: ReelCoverInput, opts: { root?: stri
   if (variant === 'foto') {
     // REELS-8: same card as the post / image story (photo full-bleed, headline + summary)
     const { renderHeadlineCard } = await import('./headlineCard')
-    return renderHeadlineCard({ headline: input.headline, summary: input.summary, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image }, 'story', opts)
+    return renderHeadlineCard({ headline: input.headline, summary: input.summary, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image, accent: input.accent }, 'story', opts)
   }
   if (variant === 'bulten') {
     const { renderBulletinCard } = await import('./bulletinCard')
-    return renderBulletinCard({ headline: input.headline, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image, summary: input.summary }, 'story', opts)
+    return renderBulletinCard({ headline: input.headline, category: input.category, place: input.place, style: input.style, breaking: input.breaking, image: input.image, summary: input.summary, accent: input.accent }, 'story', opts)
   }
-  const accent = input.breaking ? RED : STYLE_ACCENT[input.style ?? 'haber']
+  const accent = input.breaking ? RED : input.accent ?? STYLE_ACCENT[input.style ?? 'haber']
   const cat = (input.breaking ? 'SON DAKİKA' : input.category).toLocaleUpperCase('tr-TR')
   const placeLabel = input.place ? input.place.toLocaleUpperCase('tr-TR') : null
   let img: Image | null = null

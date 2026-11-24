@@ -1,3 +1,4 @@
+import { parseCityBranding, type CityBranding } from './cityBranding'
 /**
  * REELS-2 — pure voice selection rules for the Reels studio (no I/O).
  * Precedence: per-reel choice > category voice > studio default > env > tr-TR-Standard-D.
@@ -27,6 +28,8 @@ export type ReelVoiceSettings = {
   /** Always use the story's own image / video (default true). */
   alwaysUseMedia?: boolean
   personas?: unknown[]
+  /** BRAND-CITY-1: il / kategori ses-renk-müzik profili */
+  cityBranding?: CityBranding
   updatedAt?: number | null
   updatedBy?: string | null
 }
@@ -71,6 +74,7 @@ export function parseVoiceSettings(raw: unknown): ReelVoiceSettings {
     alwaysUseMedia: r.alwaysUseMedia !== false,
     geminiMonthlyUsd: Math.min(200, Math.max(0, Number.isFinite(Number(r.geminiMonthlyUsd)) ? Number(r.geminiMonthlyUsd) : 10)),
     personas: Array.isArray(r.personas) ? r.personas.slice(0, 12) : undefined,
+    cityBranding: parseCityBranding(r.cityBranding),
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : null,
     updatedBy: typeof r.updatedBy === 'string' ? r.updatedBy : null,
   }

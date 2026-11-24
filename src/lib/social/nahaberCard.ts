@@ -47,6 +47,18 @@ function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : ''
 }
 
+async function cardAccent(d: Record<string, unknown>, breaking: boolean): Promise<string | null> {
+  try {
+    const { getReelVoiceSettings } = await import('@/lib/reels/voiceSettings')
+    const { cityAccentFor, citySlugOf } = await import('@/lib/reels/cityBranding')
+    const { TURKISH_PROVINCES } = await import('@/constants/cities')
+    const s = await getReelVoiceSettings()
+    return cityAccentFor(s.cityBranding, citySlugOf(d, TURKISH_PROVINCES), breaking)
+  } catch {
+    return null
+  }
+}
+
 export async function nahaberThemeCard(
   newsId: string,
   imageUrl: string,
@@ -80,6 +92,8 @@ export async function nahaberThemeCard(
         place: str(d.city) || null,
         breaking,
         image: await fetchImage(imageUrl),
+        // BRAND-CITY-1: il vurgu rengi (stüdyo ayar belgesi; 60 sn önbellekli)
+        accent: await cardAccent(d, breaking),
       },
       kind,
       { root },

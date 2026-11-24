@@ -47,6 +47,8 @@ export type ReelInput = {
   audioMode?: import('./reelTemplates').ReelAudioMode
   /** REELS-T1: captions | typewriter | ticker (dynamic layout). */
   textStyle?: import('./reelTemplates').ReelTextStyle
+  /** BRAND-CITY-1: il vurgu rengi (son dakikada yok sayılır). */
+  accent?: string | null
 }
 
 export type ReelResult = { mp4: Buffer; seconds: number; timeline: ReelTimeline }
@@ -74,7 +76,7 @@ export async function renderReel(input: ReelInput, opts: { root?: string; budget
   const outro: ReelOutro = input.outro ?? 'logo'
   const music = resolveMusic(input.music, style, input.breaking)
   const introS = INTRO_SECONDS[intro]
-  const accent = input.breaking ? RED : STYLE_ACCENT[style]
+  const accent = input.breaking ? RED : input.accent ?? STYLE_ACCENT[style]
   const work = await fs.mkdtemp(path.join(os.tmpdir(), 'reel-'))
   try {
     const voiceSec = wavSeconds(input.voiceWav)

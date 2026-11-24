@@ -25,6 +25,8 @@ export type HeadlineCardInput = {
   style?: ReelStyle
   breaking?: boolean
   image?: Buffer | null
+  /** BRAND-CITY-1: il vurgu rengi → kategori kutusu bu renkle dolar */
+  accent?: string | null
 }
 
 export type Geo = {
@@ -54,13 +56,13 @@ function logo(ctx: SKRSContext2D, brand: Brand, x: number, y: number, k: number)
 }
 
 /** Outlined category box, red SON DAKİKA box, thin rule to the right. */
-function tagRow(ctx: SKRSContext2D, cat: string, breaking: boolean, x: number, y: number, h: number, ruleEnd: number): void {
+function tagRow(ctx: SKRSContext2D, cat: string, breaking: boolean, x: number, y: number, h: number, ruleEnd: number, accent: string | null = null): void {
   ctx.font = `${Math.round(h * 0.5)}px ${FONT_XB}`
   ctx.textBaseline = 'middle'
   const pad = Math.round(h * 0.36)
   let cx = x
   const cw = ctx.measureText(cat).width + pad * 2
-  ctx.fillStyle = 'rgba(7,21,48,0.35)'
+  ctx.fillStyle = accent ?? 'rgba(7,21,48,0.35)'
   ctx.fillRect(cx, y, cw, h)
   ctx.strokeStyle = WHITE
   ctx.lineWidth = 3
@@ -174,7 +176,7 @@ export async function renderHeadlineCard(input: HeadlineCardInput, format: Headl
   ctx.fillStyle = NAVY
   ctx.fillRect(0, 0, g.W, g.H)
   if (img) drawCover(ctx, img, 0, 0, g.W, g.H, 1.0, 0.5, 0.4)
-  else brandBackground(ctx, brand, 0, 0, RED, input.category)
+  else brandBackground(ctx, brand, 0, 0, breaking ? RED : input.accent ?? RED, input.category)
   // legibility: soft top shade for the logo, deep bottom shade for the text
   const gt = ctx.createLinearGradient(0, 0, 0, g.logoY + 260)
   gt.addColorStop(0, 'rgba(0,0,0,0.45)')
@@ -190,7 +192,7 @@ export async function renderHeadlineCard(input: HeadlineCardInput, format: Headl
   ctx.fillRect(0, fadeTop, g.W, g.H - fadeTop)
 
   logo(ctx, brand, g.x, g.logoY, g.logo)
-  tagRow(ctx, cat, breaking, g.x, top, g.tagH, g.x + g.textW)
+  tagRow(ctx, cat, breaking, g.x, top, g.tagH, g.x + g.textW, breaking ? null : input.accent ?? null)
 
   ctx.save()
   ctx.font = `${L.headSize}px ${FONT_XB}`

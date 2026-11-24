@@ -24,6 +24,8 @@ export type BulletinCardInput = {
   breaking?: boolean
   image?: Buffer | null
   dateLabel?: string | null
+  /** BRAND-CITY-1: il vurgu rengi */
+  accent?: string | null
 }
 
 type Geo = { W: number; H: number; x: number; right: number; logoY: number; bottom: number; head: number[]; sum: number; band: number }
@@ -109,7 +111,7 @@ export async function renderBulletinCard(input: BulletinCardInput, format: Bulle
   ensureFonts(root)
   const brand = await loadBrand(root)
   const g = GEO[format]
-  const accent = input.breaking ? RED : STYLE_ACCENT[input.style ?? 'haber']
+  const accent = input.breaking ? RED : input.accent ?? STYLE_ACCENT[input.style ?? 'haber']
   const cat = (input.breaking ? 'SON DAKİKA' : input.category).toLocaleUpperCase('tr-TR')
   let img: Image | null = null
   if (input.image) img = await loadImage(input.image).catch(() => null)

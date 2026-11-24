@@ -16,10 +16,16 @@ function doc() {
   return getAdminFirestore().collection(Collections.MEDIA_STUDIO_SETTINGS).doc(DOC_ID)
 }
 
+let settingsCache: { at: number; value: ReelVoiceSettings } | null = null
+const SETTINGS_TTL_MS = 60_000
+
 export async function getReelVoiceSettings(): Promise<ReelVoiceSettings> {
+  if (settingsCache && Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.value
   try {
     const s = await doc().get()
-    return parseVoiceSettings(s.exists ? s.data() : null)
+    const value = parseVoiceSettings(s.exists ? s.data() : null)
+    settingsCache = { at: Date.now(), value }
+    return value
   } catch (err) {
     console.warn('[reels] voice settings unreadable, using defaults:', err instanceof Error ? err.message : err)
     return parseVoiceSettings(null)
@@ -33,6 +39,7 @@ export async function saveReelVoiceSettings(raw: unknown, uid: string): Promise<
   const parsed = parseVoiceSettings({ ...cur, ...patch })
   const next = { ...parsed, updatedAt: Date.now(), updatedBy: uid }
   await doc().set(JSON.parse(JSON.stringify(next)))
+  settingsCache = null
   return next
 }
 

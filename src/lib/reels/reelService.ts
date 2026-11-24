@@ -30,6 +30,8 @@ import { synthesizeReelVoiceEx } from './voice'
 import { fallbackTemplate, isReelTemplateId, recommendTemplate, reelTemplate, templateHasVoice, type ReelTemplate, type ReelTemplateId } from './reelTemplates'
 import { clampRate, isValidVoiceName } from './voiceRules'
 import { getReelVoiceSettings } from './voiceSettings'
+import { cityAccentFor, citySlugOf, resolveCityBranding } from './cityBranding'
+import { TURKISH_PROVINCES } from '@/constants/cities'
 import { articleBlocksToPlainText, type ArticleBlock } from '@/lib/articleBlocks'
 import { stripHtmlToNewsPlainText } from '@/lib/stripHtmlToNewsPlainText'
 import { NEWS_BODY_MAX, NEWS_SCRIPT_MAX } from './director'
@@ -93,6 +95,8 @@ export type ReelSource = {
   mediaBasis: string
   breaking: boolean
   postType: string | null
+  /** BRAND-CITY-1: haberin ili (ses/renk/müzik profili). */
+  citySlug?: string | null
 }
 
 /**
@@ -140,6 +144,7 @@ export function reelSourceFromDoc(d: Record<string, unknown>, policy: { alwaysUs
     mediaBasis: verdict.ok ? verdict.basis : approval?.by ? 'studio_approved' : policy.alwaysUseMedia && (videoUrl || extractImageUrl(d)) ? 'studio_policy' : verdict.code,
     breaking: d.isBreaking === true || categoryId === 'son-dakika',
     postType: str(d.postType) || null,
+    citySlug: citySlugOf(d, TURKISH_PROVINCES),
   }
 }
 
@@ -199,6 +204,8 @@ export type ReelBuildResult = {
   coverUrl?: string | null
   /** REELS-T1: the template the reel was made with. */
   template?: ReelTemplateId
+  /** BRAND-CITY-1 */
+  branding?: ReelPlan['branding']
 }
 
 export type ReelPlan = {
@@ -212,6 +219,10 @@ export type ReelPlan = {
   voice: string
   rate: number
   gemini: { style: string; voice: string; budgetUsd: number } | null
+  /** BRAND-CITY-1: il vurgu rengi (null = stil rengi) */
+  accent: string | null
+  /** BRAND-CITY-1: sesin ve müziğin nereden geldiği */
+  branding?: { voice: 'city' | 'group' | 'style'; music: 'group' | 'city' | 'default'; accent: 'city' | 'default' }
   note?: string
 }
 
@@ -258,10 +269,20 @@ export async function planReel(src: ReelSource, opts: ReelBuildOptions = {}, one
           reelsEditorLlm(),
           { oneSentence },
         )
-  const persona = personaFor(personas, dir.style, opts.personaId)
+  const stylePersona = personaFor(personas, dir.style, opts.personaId)
+  // BRAND-CITY-1: haberin iline göre sunucu / müzik / renk (stüdyoda elle seçilen sunucu önce gelir)
+  const branded = resolveCityBranding({
+    branding: settings.cityBranding,
+    citySlug: src.citySlug,
+    cityName: src.place,
+    style: dir.style,
+    breaking: src.breaking,
+    persona: stylePersona,
+  })
+  const persona = opts.personaId ? stylePersona : branded.persona
   const intro = isReelIntro(opts.intro) ? opts.intro : isReelIntro(settings.intro) ? settings.intro : 'soft'
   const outro = isReelOutro(opts.outro) ? opts.outro : isReelOutro(settings.outro) ? settings.outro : 'logo'
-  const music = isReelMusic(opts.music) ? opts.music : isReelMusic(settings.music) ? settings.music : 'auto'
+  const music = isReelMusic(opts.music) ? opts.music : branded.music ?? (isReelMusic(settings.music) ? settings.music : 'auto')
   return {
     style: dir.style,
     persona,
@@ -275,6 +296,8 @@ export async function planReel(src: ReelSource, opts: ReelBuildOptions = {}, one
     gemini: settings.geminiEnabled && persona.useGemini && persona.geminiStyle
       ? { style: persona.geminiStyle, voice: persona.geminiVoice, budgetUsd: settings.geminiMonthlyUsd ?? 10 }
       : null,
+    accent: branded.accent,
+    branding: branded.source,
     ...('note' in dir && dir.note ? { note: dir.note } : {}),
   }
 }
@@ -354,7 +377,7 @@ export async function resolveReelMedia(src: ReelSource, tag: string, storeKey: s
 
 function optionsHash(p: ReelPlan): string {
   return createHash('sha1')
-    .update(JSON.stringify([p.voiceText, p.voice, p.rate, p.persona.id, p.persona.showCard, p.intro, p.outro, p.music, p.style, !!p.gemini]))
+    .update(JSON.stringify([p.voiceText, p.voice, p.rate, p.persona.id, p.persona.showCard, p.intro, p.outro, p.music, p.style, !!p.gemini, ...(p.accent ? [p.accent, p.persona.name] : [])]))
     .digest('hex')
     .slice(0, 16)
 }
@@ -378,7 +401,7 @@ async function videoFrameJpeg(src: string): Promise<Buffer | null> {
 }
 
 /** Render + store the cover; returns its public URL (null on failure — the reel still ships). */
-async function saveReelCover(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant, media?: ReelMedia | null): Promise<string | null> {
+async function saveReelCover(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant, media?: ReelMedia | null, accent: string | null = null): Promise<string | null> {
   try {
     let image: Buffer | null = null
     if (media?.kind === 'image') image = media.data
@@ -388,9 +411,9 @@ async function saveReelCover(newsId: string, src: ReelSource, style: ReelStyle, 
       else if (src.videoUrl) image = await videoFrameJpeg(src.videoUrl)
     }
     const { renderReelCover } = await import('./reelCover')
-    const jpg = await renderReelCover({ headline: src.headline, summary: src.summary, category: src.category, place: src.place, style, breaking: src.breaking, image, variant })
+    const jpg = await renderReelCover({ headline: src.headline, summary: src.summary, category: src.category, place: src.place, style, breaking: src.breaking, image, variant, accent })
     const file = getAdminStorage().bucket(BUCKET).file(reelCoverStoragePath(newsId))
-    await file.save(jpg, { resumable: false, metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=86400', metadata: { variant } } })
+    await file.save(jpg, { resumable: false, metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=86400', metadata: { variant, accent: accent ?? '' } } })
     await file.makePublic()
     let gen: string | number = Date.now()
     try {
@@ -407,19 +430,20 @@ async function saveReelCover(newsId: string, src: ReelSource, style: ReelStyle, 
 }
 
 /** Existing cover URL, or a fresh one (older reels had none). */
-async function coverFor(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant): Promise<{ url: string | null; created: boolean }> {
+async function coverFor(newsId: string, src: ReelSource, style: ReelStyle, variant: CoverVariant, accent: string | null = null): Promise<{ url: string | null; created: boolean }> {
   const file = getAdminStorage().bucket(BUCKET).file(reelCoverStoragePath(newsId))
   try {
     const [exists] = await file.exists()
     if (exists) {
       const [m] = await file.getMetadata()
-      const v = ((m.metadata ?? {}) as Record<string, string>).variant
-      if (!v || v === variant) return { url: `https://storage.googleapis.com/${BUCKET}/${reelCoverStoragePath(newsId)}?v=${encodeURIComponent(String(m.generation ?? ''))}`, created: false }
+      const md = (m.metadata ?? {}) as Record<string, string>
+      const v = md.variant
+      if ((!v || v === variant) && (md.accent ?? '') === (accent ?? '')) return { url: `https://storage.googleapis.com/${BUCKET}/${reelCoverStoragePath(newsId)}?v=${encodeURIComponent(String(m.generation ?? ''))}`, created: false }
     }
   } catch {
     // fall through and render
   }
-  return { url: await saveReelCover(newsId, src, style, variant), created: true }
+  return { url: await saveReelCover(newsId, src, style, variant, null, accent), created: true }
 }
 
 type CoverVariant = 'foto' | 'manset' | 'panel' | 'bulten'
@@ -450,6 +474,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   const coverVariant: CoverVariant = isCoverVariant(opts.cover) ? opts.cover : isCoverVariant(settings.cover) ? settings.cover : 'foto'
   const layout: Layout = isLayout(opts.layout) ? opts.layout : isLayout(settings.layout) ? settings.layout : 'dinamik'
   const slug = str(d.slug) || null
+  const cityAccent = cityAccentFor(settings.cityBranding, src.citySlug, src.breaking)
   const record = (url: string, coverUrl: string | null, m: { seconds?: number | null; persona?: string | null; style?: string | null; media?: string | null }) =>
     recordReel({ newsId, slug, headline: src.headline, url, coverUrl, seconds: m.seconds ?? null, persona: m.persona ?? null, style: m.style ?? null, media: m.media ?? null, by: opts.by ?? null })
       .catch((err) => console.warn('[reels] library record failed:', err instanceof Error ? err.message : err))
@@ -465,7 +490,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     // A reel rendered from photos while the story has a usable video is rebuilt with the video.
     if (exists && meta && !needsVideoRebuild(src, m) && m.scriptVersion === REEL_SCRIPT_VERSION) {
       const url = reelPublicUrl(newsId, meta.generation ?? null)
-      const cover = await coverFor(newsId, src, styleOf(m.style), coverVariant)
+      const cover = await coverFor(newsId, src, styleOf(m.style), coverVariant, cityAccent)
       if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: m.persona, style: m.style, media: m.media })
       return { newsId, url, coverUrl: cover.url, reused: true, media: (m.media as 'image') ?? 'image', mediaBasis: m.mediaBasis ?? '', ...(m.seconds ? { seconds: Number(m.seconds) } : {}), ...(m.voice ? { voice: m.voice } : {}) }
     }
@@ -490,6 +515,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     rate: plan.rate,
     style: plan.style,
     persona: { id: plan.persona.id, name: plan.persona.name, title: plan.persona.title },
+    ...(plan.branding ? { branding: plan.branding } : {}),
     editor: plan.editor,
     intro: plan.intro,
     outro: plan.outro,
@@ -508,7 +534,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       const m = (meta.metadata ?? {}) as Record<string, string>
       if (m.optionsHash === hash && !needsVideoRebuild(src, m) && m.scriptVersion === REEL_SCRIPT_VERSION) {
         const url = reelPublicUrl(newsId, meta.generation ?? null)
-        const cover = await coverFor(newsId, src, plan.style, coverVariant)
+        const cover = await coverFor(newsId, src, plan.style, coverVariant, plan.accent)
         if (cover.created) await record(url, cover.url, { seconds: m.seconds ? Number(m.seconds) : null, persona: plan.persona.id, style: plan.style, media: m.media })
         return { ...base, url, coverUrl: cover.url, reused: true, media: (m.media as 'image') ?? 'image', ...(m.seconds ? { seconds: Number(m.seconds) } : {}) }
       }
@@ -541,6 +567,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       layout: tpl ? ('dinamik' as const) : layout,
       // REELS-13: the spoken script as on-screen captions (sentence by sentence)
       captions: plan.voiceText,
+      accent: plan.accent,
       ...(tpl ? { audioMode: tpl.audioMode, textStyle: tpl.textStyle } : {}),
     })
     // REELS-14: a video reel that cannot finish inside the background job (800 s)
@@ -586,7 +613,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
       // keep the timestamp
     }
     const url = reelPublicUrl(newsId, gen)
-    const coverUrl = await saveReelCover(newsId, src, plan.style, coverVariant, media)
+    const coverUrl = await saveReelCover(newsId, src, plan.style, coverVariant, media, plan.accent)
     await record(url, coverUrl, { seconds: r.seconds, persona: plan.persona.id, style: plan.style, media: media.kind })
     const note = [spoken.note, videoFallback ? 'Haberin videosu zamanında işlenemedi; Reels fotoğraflarla üretildi.' : null].filter(Boolean).join(' ')
     return { ...base, url, coverUrl, reused: false, seconds: r.seconds, media: media.kind, engine: spoken.engine, ...(note ? { note } : {}) }

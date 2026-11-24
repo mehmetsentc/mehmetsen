@@ -486,7 +486,7 @@ export async function renderDynamic(input: ReelInput, opts: { root?: string; bud
   const style: ReelStyle = input.style ?? 'haber'
   const outro: ReelOutro = input.outro ?? 'logo'
   const music = resolveMusic(input.music, style, input.breaking)
-  const accent = input.breaking ? RED : STYLE_ACCENT[style]
+  const accent = input.breaking ? RED : input.accent ?? STYLE_ACCENT[style]
   const work = await fs.mkdtemp(path.join(os.tmpdir(), 'reeld-'))
   try {
     // REELS-T1: the template decides how the sound runs; unusable choices fall back safely

@@ -41,6 +41,7 @@ export type SocialAuditAction =
   | 'social.inbox.reply'
   | 'social.inbox.hide'
   | 'social.inbox.settings'
+  | 'social.branding.update'
   | 'social.inbox.subscribe'
   | 'social.inbox.uncertain_ack'
   | 'media.project.save'
