@@ -164,7 +164,12 @@ export interface EditRenderOutput {
   reused: boolean
 }
 
-export async function renderEditProject(p: EditProject, key: string, onStep?: (s: string) => void): Promise<EditRenderOutput> {
+export interface EditRenderOptions {
+  /** REKLAM STÜDYOSU: katmanları kendi stilleriyle çizer (yoksa KURGU yazı stilleri) */
+  drawText?: (t: TextItem, W: number, H: number, file: string, root: string) => Promise<void>
+}
+
+export async function renderEditProject(p: EditProject, key: string, onStep?: (s: string) => void, opts: EditRenderOptions = {}): Promise<EditRenderOutput> {
   const bucket = getAdminStorage().bucket(BUCKET)
   const mp4Name = editOutputPath(p.id, key, 'mp4')
   const jpgName = editOutputPath(p.id, key, 'jpg')
@@ -199,7 +204,7 @@ export async function renderEditProject(p: EditProject, key: string, onStep?: (s
     for (const t of p.texts) {
       if (t.startMs >= tl.total) continue
       const png = path.join(dir, `text_${t.id}.png`)
-      await drawTextPng(t, W, H, png, root)
+      await (opts.drawText ?? drawTextPng)(t, W, H, png, root)
       texts.push({ item: t, png })
     }
 

@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Send, PanelLeftClose, PanelLeftOpen, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Megaphone, Send, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -150,6 +150,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/videos', label: 'Video Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/video', label: 'Video Merkezi', icon: Clapperboard, requiredPermissions: ['social:view'], matches: ['/admin/video', '/admin/media-studio/reels', '/admin/social/reels'] },
+      { href: '/admin/reklam-studyosu', label: 'Reklam Stüdyosu', icon: Megaphone, requiredPermissions: ['social:view'] },
     ],
   },
   {

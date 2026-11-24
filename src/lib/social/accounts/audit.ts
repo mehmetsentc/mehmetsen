@@ -50,6 +50,10 @@ export type SocialAuditAction =
   | 'media.news.restore'
   | 'video.edit.save'
   | 'video.edit.render'
+  | 'ads.project.save'
+  | 'ads.project.delete'
+  | 'ads.voice'
+  | 'ads.render'
   | 'story.project.save'
   | 'story.plan'
   | 'story.images'
@@ -66,7 +70,7 @@ export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject' | 'storyProject' | 'editProject' | 'accountCenter'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject' | 'storyProject' | 'editProject' | 'adProject' | 'accountCenter'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null

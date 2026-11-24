@@ -93,7 +93,13 @@ export function editFfmpegArgs(a: BuildInput): string[] {
   }
   let n = a.clips.length
   const textIdx = a.texts.map(() => n++)
-  for (const t of a.texts) args.push('-loop', '1', '-framerate', '30', '-t', sec(total), '-i', t.png)
+  // each text PNG is read only for its own window (was: the whole video per text → slow with many texts)
+  const win = (t: { item: TextItem }) => {
+    const from = Math.max(0, Math.min(t.item.startMs, total))
+    const to = Math.max(from + 40, Math.min(t.item.endMs, total))
+    return { from, to }
+  }
+  for (const t of a.texts) args.push('-loop', '1', '-framerate', '30', '-t', sec(win(t).to - win(t).from), '-i', t.png)
   const audioIdx = a.audio.map(() => n++)
   for (const x of a.audio) {
     if (x.loop) args.push('-stream_loop', '-1')
@@ -167,9 +173,11 @@ export function editFfmpegArgs(a: BuildInput): string[] {
 
   // 3. texts in their time window
   a.texts.forEach((t, k) => {
-    const from = (t.item.startMs / 1000).toFixed(3)
-    const to = (Math.min(t.item.endMs, total) / 1000).toFixed(3)
-    f.push(`[${pv}][${textIdx[k]}:v]overlay=0:0:enable='between(t,${from},${to})'[tv${k}]`)
+    const w = win(t)
+    const from = (w.from / 1000).toFixed(3)
+    const to = (w.to / 1000).toFixed(3)
+    f.push(`[${textIdx[k]}:v]setpts=PTS-STARTPTS+${from}/TB[tx${k}]`)
+    f.push(`[${pv}][tx${k}]overlay=0:0:eof_action=pass:enable='between(t,${from},${to})'[tv${k}]`)
     pv = `tv${k}`
   })
   f.push(`[${pv}]format=yuv420p,setsar=1[main]`)
