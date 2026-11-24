@@ -19,7 +19,8 @@ import { libraryVideoForReel } from '@/lib/reels/libraryVideo'
 import { MAX_SOURCE_BYTES } from '@/lib/reels/sourceVideo'
 import { FONT_MD, FONT_XB, ensureFonts, resolveFfmpegPath, roundRectPath } from '@/lib/reels/reelTheme'
 import { wrapLines } from '@/lib/reels/timeline'
-import { clipFfmpegArgs, OUT_H, OUT_W, type ClipOptions } from './mediaProject'
+import { clipSeconds, OUT_H, OUT_W, type ClipOptions, type MsRange } from './mediaProject'
+import { clipEditArgs, frameSize } from './clipEdit'
 import { composeOutroStill } from '@/lib/story/storyOverlay'
 import { FRAMES } from '@/lib/story/storyProject'
 
@@ -34,6 +35,8 @@ export interface ClipRenderInput {
   videoItemId: string
   startMs: number
   endMs: number
+  /** VIDEO-KES: ranges removed from inside the clip */
+  cuts?: MsRange[]
   title: string
   sourceLabel: string | null
   options: ClipOptions
@@ -173,7 +176,7 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
   const bucket = getAdminStorage().bucket(BUCKET)
   const mp4Name = clipStoragePath(input.projectId, input.clipId, input.renderKey, 'mp4')
   const jpgName = clipStoragePath(input.projectId, input.clipId, input.renderKey, 'jpg')
-  const seconds = (input.endMs - input.startMs) / 1000
+  const seconds = clipSeconds(input)
 
   const [exists] = await bucket.file(mp4Name).exists().catch(() => [false] as [boolean])
   if (exists) {
@@ -190,23 +193,30 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
     const outPath = path.join(dir, 'out.mp4')
     const jpgPath = path.join(dir, 'cover.jpg')
     await download(src.url, inPath)
-    const png = input.options.frame === 'vertical' ? await renderOverlayPng({ title: input.title, sourceLabel: input.sourceLabel, options: input.options }) : null
+    const png = input.options.frame === 'vertical' && input.options.fit !== 'crop' ? await renderOverlayPng({ title: input.title, sourceLabel: input.sourceLabel, options: input.options }) : null
     const pngPath = png ? path.join(dir, 'overlay.png') : null
     if (png && pngPath) await fs.writeFile(pngPath, png)
     const ffmpeg = await resolveFfmpegPath()
     // OUTRO-ALL: every clip closes with the nahaber.com card (shape follows the clip)
     const info = await probeVideo(ffmpeg, inPath)
-    const portrait = input.options.frame === 'vertical' || info.height > info.width
+    const fr = input.options.frame
+    const portrait = fr === 'vertical' || fr === 'portrait45' || (fr === 'original' && info.height > info.width)
     const outroPath = path.join(dir, 'outro.jpg')
     let outro: { image: string; sting: string | null; hasAudio: boolean } | null = null
     try {
-      await composeOutroStill({ style: 'haber', outFile: outroPath, frame: portrait ? FRAMES.vertical : FRAMES.horizontal })
+      // the card is drawn at the clip's own shape (1:1, 4:5 … are not stretched)
+      const dims = frameSize(input.options) ?? (info.width && info.height ? [info.width, info.height] : portrait ? [1080, 1920] : [1920, 1080])
+      const base = dims[1] > dims[0] ? FRAMES.vertical : FRAMES.horizontal
+      const k = Math.max(1, 1080 / Math.min(dims[0], dims[1]))
+      const cw = Math.round(dims[0] * k)
+      const ch = Math.round(dims[1] * k)
+      await composeOutroStill({ style: 'haber', outFile: outroPath, frame: { ...base, w: cw, h: ch, stillW: cw, stillH: ch } })
       const sting = path.join(process.cwd(), 'src/lib/reels/assets/audio/broadcast/outro-soft.wav')
       outro = { image: outroPath, sting: (await fs.stat(sting).then(() => true).catch(() => false)) ? sting : null, hasAudio: info.hasAudio }
     } catch (err) {
       console.warn('[media-render] kapanış kartı hazırlanamadı', err instanceof Error ? err.message : err)
     }
-    await run(ffmpeg, clipFfmpegArgs({ input: inPath, overlay: pngPath, output: outPath, startMs: input.startMs, endMs: input.endMs, options: input.options, outro }), FFMPEG_TIMEOUT_MS)
+    await run(ffmpeg, clipEditArgs({ input: inPath, overlay: pngPath, output: outPath, startMs: input.startMs, endMs: input.endMs, cuts: input.cuts, options: input.options, outro, hasAudio: info.hasAudio }), FFMPEG_TIMEOUT_MS)
     // Cover: a frame one second in (or the middle of a very short clip).
     await run(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', Math.min(1, seconds / 2).toFixed(2), '-i', outPath, '-frames:v', '1', '-q:v', '3', jpgPath], 60_000).catch(() => undefined)
 

@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: Ctx) {
     run: async () => {
       const { renderClip } = await import('@/lib/media/mediaRender')
       try {
-        const out = await renderClip({ projectId: id, clipId: clip.id, renderKey, videoItemId: p.videoItemId, startMs: clip.startMs, endMs: clip.endMs, title: clip.title, sourceLabel: label, options: clip.options })
+        const out = await renderClip({ projectId: id, clipId: clip.id, renderKey, videoItemId: p.videoItemId, startMs: clip.startMs, endMs: clip.endMs, cuts: clip.cuts, title: clip.title, sourceLabel: label, options: clip.options })
         const stored = await setClipRendered(id, clip.id, renderKey, out, Date.now())
         await writeSocialAudit({ actorId: uid, action: 'media.clip.render', entityType: 'mediaProject', entityId: id, meta: { clipId: clip.id, seconds: out.seconds, reused: out.reused, stored } })
         return { result: { ...out, stored } }

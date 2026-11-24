@@ -18,8 +18,14 @@
 export const MEDIA_PROJECTS = 'mediaProjects'
 
 export const CLIP_MIN_MS = 3_000
-/** Longest clip: YouTube Shorts limit and the studio's render budget. */
+/** Longest clip (kept time, after removed ranges): YouTube Shorts limit and the studio's render budget. */
 export const CLIP_MAX_MS = 180_000
+/** VIDEO-KES: a clip's range may span more of a long video when middle parts are removed. */
+export const RANGE_MAX_MS = 30 * 60_000
+export const MAX_CUTS = 10
+/** Smallest removed range / smallest piece kept between removed ranges. */
+export const CUT_MIN_MS = 300
+export const MAX_MB_RANGE = [5, 500] as const
 export const MAX_CLIPS = 12
 export const TITLE_MAX = 140
 export const CAPTION_MAX = 2000
@@ -48,10 +54,26 @@ export interface MediaRights {
   note: string | null
 }
 
-export type ClipFrame = 'original' | 'vertical'
+/**
+ * VIDEO-KES: output shape. 'vertical' 9:16, 'square' 1:1, 'portrait45' 4:5, 'landscape' 16:9;
+ * 'original' keeps the filmed shape.
+ */
+export type ClipFrame = 'original' | 'vertical' | 'square' | 'portrait45' | 'landscape'
+export const CLIP_FRAMES: ClipFrame[] = ['vertical', 'square', 'portrait45', 'landscape', 'original']
+/** 'blur': the whole picture over a blurred copy of itself; 'crop': fill the frame (cropX / cropY choose the part kept). */
+export type ClipFit = 'blur' | 'crop'
+export type ClipQuality = 'auto' | '720'
 
 export interface ClipOptions {
   frame: ClipFrame
+  /** VIDEO-KES (optional; absent = 'blur', centre, full quality, no size cap) */
+  fit?: ClipFit
+  /** 0 = left / top, 1 = right / bottom, 0.5 = centre (crop only) */
+  cropX?: number
+  cropY?: number
+  quality?: ClipQuality
+  /** Target file size cap in MB (null = quality-based) */
+  maxMb?: number | null
   /** Title band text over the video (vertical frame only). */
   showTitle: boolean
   showLogo: boolean
@@ -62,12 +84,18 @@ export interface ClipOptions {
 export const DEFAULT_CLIP_OPTIONS: ClipOptions = { frame: 'vertical', showTitle: true, showLogo: true, showSource: true, mute: false }
 
 export type ClipStatus = 'draft' | 'ready' | 'failed'
+export interface MsRange {
+  startMs: number
+  endMs: number
+}
 
 export interface MediaClip {
   id: string
   name: string
   startMs: number
   endMs: number
+  /** VIDEO-KES: ranges removed from inside [startMs, endMs]; the rest is joined. */
+  cuts?: MsRange[]
   title: string
   options: ClipOptions
   status: ClipStatus
@@ -128,16 +156,51 @@ export function parseRights(raw: unknown): Parsed<MediaRights> {
 
 export function parseClipOptions(raw: unknown): ClipOptions {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const frame: ClipFrame = o.frame === 'original' ? 'original' : 'vertical'
+  const frame: ClipFrame = (CLIP_FRAMES as unknown[]).includes(o.frame) ? (o.frame as ClipFrame) : 'vertical'
   const flag = (k: keyof ClipOptions, d: boolean) => (typeof o[k] === 'boolean' ? (o[k] as boolean) : d)
-  return {
+  const fit: ClipFit = frame !== 'original' && o.fit === 'crop' ? 'crop' : 'blur'
+  // Title / logo / source band: only the NaHaber 9:16 layout (whole picture over its blurred copy).
+  const layout = frame === 'vertical' && fit === 'blur'
+  const out: ClipOptions = {
     frame,
-    // «Orijinal haliyle»: nothing is drawn on the video.
-    showTitle: frame === 'original' ? false : flag('showTitle', DEFAULT_CLIP_OPTIONS.showTitle),
-    showLogo: frame === 'original' ? false : flag('showLogo', DEFAULT_CLIP_OPTIONS.showLogo),
-    showSource: frame === 'original' ? false : flag('showSource', DEFAULT_CLIP_OPTIONS.showSource),
+    showTitle: layout ? flag('showTitle', DEFAULT_CLIP_OPTIONS.showTitle) : false,
+    showLogo: layout ? flag('showLogo', DEFAULT_CLIP_OPTIONS.showLogo) : false,
+    showSource: layout ? flag('showSource', DEFAULT_CLIP_OPTIONS.showSource) : false,
     mute: flag('mute', false),
   }
+  // VIDEO-KES extras are stored only when they differ from the defaults (older clips keep their render key).
+  if (fit === 'crop') {
+    out.fit = 'crop'
+    const pos = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(1, Math.max(0, v)) * 100) / 100 : 0.5)
+    const x = pos(o.cropX)
+    const y = pos(o.cropY)
+    if (x !== 0.5) out.cropX = x
+    if (y !== 0.5) out.cropY = y
+  }
+  if (o.quality === '720') out.quality = '720'
+  if (typeof o.maxMb === 'number' && Number.isFinite(o.maxMb)) out.maxMb = Math.round(Math.min(MAX_MB_RANGE[1], Math.max(MAX_MB_RANGE[0], o.maxMb)))
+  return out
+}
+
+/** VIDEO-KES: the parts of [startMs, endMs] that stay (removed ranges taken out), in order. */
+export function keptRanges(c: Pick<MediaClip, 'startMs' | 'endMs' | 'cuts'>): MsRange[] {
+  const cuts = [...(c.cuts ?? [])].sort((a, b) => a.startMs - b.startMs)
+  const out: MsRange[] = []
+  let at = c.startMs
+  for (const x of cuts) {
+    const a = Math.max(at, x.startMs)
+    const b = Math.min(c.endMs, x.endMs)
+    if (b <= a) continue
+    if (a - at >= CUT_MIN_MS) out.push({ startMs: at, endMs: a })
+    at = b
+  }
+  if (c.endMs - at >= CUT_MIN_MS || !out.length) out.push({ startMs: at, endMs: Math.max(at, c.endMs) })
+  return out
+}
+
+/** Seconds of video a clip yields (without the closing card). */
+export function clipSeconds(c: Pick<MediaClip, 'startMs' | 'endMs' | 'cuts'>): number {
+  return keptRanges(c).reduce((n, r) => n + (r.endMs - r.startMs), 0) / 1000
 }
 
 /** One clip from client input; `durationMs` (when known) bounds the range. Render fields are server-owned. */
@@ -149,16 +212,37 @@ export function parseClipInput(raw: unknown, durationMs: number | null, prev?: M
   const endMs = typeof c.endMs === 'number' && Number.isFinite(c.endMs) ? Math.round(c.endMs) : NaN
   if (!(startMs >= 0) || !(endMs > startMs)) return bad('clips.range', 'Bölümün başlangıç ve bitişi geçersiz')
   if (durationMs && endMs > durationMs + 250) return bad('clips.range', 'Bölüm videonun süresini aşıyor')
-  const len = endMs - startMs
-  if (len < CLIP_MIN_MS) return bad('clips.range', 'Bölüm en az 3 saniye olmalı')
-  if (len > CLIP_MAX_MS) return bad('clips.range', 'Bölüm en fazla 3 dakika olabilir')
+  if (endMs - startMs > RANGE_MAX_MS) return bad('clips.range', 'Bölümün aralığı en fazla 30 dakika olabilir')
+  const end = durationMs ? Math.min(endMs, durationMs) : endMs
+  // removed ranges: inside the clip, merged, at most MAX_CUTS
+  const rawCuts = Array.isArray(c.cuts) ? c.cuts : []
+  if (rawCuts.length > MAX_CUTS) return bad('clips.cuts', `Bir bölümden en fazla ${MAX_CUTS} aralık çıkarılabilir`)
+  const cuts: MsRange[] = []
+  for (const r of rawCuts) {
+    const o = (r && typeof r === 'object' ? r : {}) as Record<string, unknown>
+    const a = typeof o.startMs === 'number' && Number.isFinite(o.startMs) ? Math.round(o.startMs) : NaN
+    const b = typeof o.endMs === 'number' && Number.isFinite(o.endMs) ? Math.round(o.endMs) : NaN
+    if (!(a >= startMs) || !(b <= end) || b - a < CUT_MIN_MS) return bad('clips.cuts', 'Çıkarılan aralık bölümün içinde ve en az 0,3 sn olmalı')
+    cuts.push({ startMs: a, endMs: b })
+  }
+  cuts.sort((x, y) => x.startMs - y.startMs)
+  const merged: MsRange[] = []
+  for (const x of cuts) {
+    const last = merged[merged.length - 1]
+    if (last && x.startMs <= last.endMs) last.endMs = Math.max(last.endMs, x.endMs)
+    else merged.push({ ...x })
+  }
+  const kept = clipSeconds({ startMs, endMs: end, cuts: merged }) * 1000
+  if (kept < CLIP_MIN_MS) return bad('clips.range', 'Bölüm (çıkarılanlardan sonra) en az 3 saniye olmalı')
+  if (kept > CLIP_MAX_MS) return bad('clips.range', 'Bölüm (çıkarılanlardan sonra) en fazla 3 dakika olabilir')
   return {
     ok: true,
     value: {
       id,
       name: text(c.name, 80) || prev?.name || 'Bölüm',
       startMs,
-      endMs: durationMs ? Math.min(endMs, durationMs) : endMs,
+      endMs: end,
+      ...(merged.length ? { cuts: merged } : {}),
       title: text(c.title, TITLE_MAX),
       options: parseClipOptions(c.options),
     },
@@ -168,8 +252,12 @@ export function parseClipInput(raw: unknown, durationMs: number | null, prev?: M
 // ── render identity ──────────────────────────────────────────────────────────
 
 /** Deterministic key of everything that changes the rendered file (FNV-1a, 8 hex). */
-export function clipRenderKey(videoItemId: string, clip: Pick<MediaClip, 'startMs' | 'endMs' | 'title' | 'options'>, sourceLabel: string | null): string {
-  const s = JSON.stringify([videoItemId, clip.startMs, clip.endMs, clip.options.frame, clip.options.showTitle ? clip.title : '', clip.options.showLogo, clip.options.showSource ? sourceLabel ?? '' : '', clip.options.mute, 'v2-outro'])
+export function clipRenderKey(videoItemId: string, clip: Pick<MediaClip, 'startMs' | 'endMs' | 'title' | 'options' | 'cuts'>, sourceLabel: string | null): string {
+  const o = clip.options
+  const base: unknown[] = [videoItemId, clip.startMs, clip.endMs, o.frame, o.showTitle ? clip.title : '', o.showLogo, o.showSource ? sourceLabel ?? '' : '', o.mute, 'v2-outro']
+  // VIDEO-KES: only present when used, so clips made before keep their key (and their file)
+  const extra = [clip.cuts?.length ? clip.cuts.map((c) => [c.startMs, c.endMs]) : null, o.fit === 'crop' ? ['crop', o.cropX ?? 0.5, o.cropY ?? 0.5] : null, o.quality === '720' ? '720' : null, o.maxMb ?? null]
+  const s = JSON.stringify(extra.some((x) => x !== null) ? [...base, 'kes1', ...extra] : base)
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i)
@@ -203,10 +291,10 @@ export const PLATFORM_LIMITS: Record<MediaSharePlatform, { reelMaxSec: number; s
 }
 
 /** Why this clip may not go to this platform/format (null = allowed). */
-export function shareProblem(p: Pick<MediaProject, 'rights'>, clip: Pick<MediaClip, 'startMs' | 'endMs' | 'status' | 'outputUrl'>, platform: MediaSharePlatform, format: MediaShareFormat): string | null {
+export function shareProblem(p: Pick<MediaProject, 'rights'>, clip: Pick<MediaClip, 'startMs' | 'endMs' | 'status' | 'outputUrl' | 'cuts'>, platform: MediaSharePlatform, format: MediaShareFormat): string | null {
   if (p.rights.kind === 'found_online') return 'Bu videonun paylaşım izni yok («İnternetten bulundu»). Sahibinden izin alın veya kendi videonuzu kullanın.'
   if (clip.status !== 'ready' || !clip.outputUrl) return 'Önce bu bölümü üretin'
-  const sec = (clip.endMs - clip.startMs) / 1000
+  const sec = clipSeconds(clip)
   const lim = PLATFORM_LIMITS[platform]
   if (format === 'video_story') {
     if (lim.storyMaxSec === null) return `${PLATFORM_NAME[platform]} video hikâyesi desteklemez`

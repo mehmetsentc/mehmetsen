@@ -148,7 +148,7 @@ function PlatformLimits({ ms, rights }: { ms: number; rights: RightsKind }) {
   )
 }
 
-function SharePanel({ project, clip }: { project: MediaProject; clip: MediaClip }) {
+export function SharePanel({ project, clip }: { project: MediaProject; clip: MediaClip }) {
   const [format, setFormat] = useState<MediaShareFormat>('reel')
   const [accounts, setAccounts] = useState<ShareAccount[] | null>(null)
   const [sel, setSel] = useState<string[]>([])
@@ -250,7 +250,7 @@ function SharePanel({ project, clip }: { project: MediaProject; clip: MediaClip 
   )
 }
 
-function NewProject({ onCreated, onCancel }: { onCreated: (p: MediaProject) => void; onCancel: () => void }) {
+export function NewProject({ onCreated, onCancel }: { onCreated: (p: MediaProject) => void; onCancel: () => void }) {
   const [video, setVideo] = useState<PickedVideo | null>(null)
   const [title, setTitle] = useState('')
   const [rights, setRights] = useState<MediaRights>({ kind: 'owned', sourceName: null, note: null })
@@ -364,7 +364,7 @@ export function MediaProjectStudio() {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title: draft.title, caption: draft.caption, rights: draft.rights, linkedNewsId: draft.linkedNewsId, clips: draft.clips.map((c) => ({ id: c.id, name: c.name, startMs: c.startMs, endMs: c.endMs, title: c.title, options: c.options })) }),
+      body: JSON.stringify({ title: draft.title, caption: draft.caption, rights: draft.rights, linkedNewsId: draft.linkedNewsId, clips: draft.clips.map((c) => ({ id: c.id, name: c.name, startMs: c.startMs, endMs: c.endMs, cuts: c.cuts ?? [], title: c.title, options: c.options })) }),
     }).catch(() => null)
     const body = res ? ((await res.json().catch(() => null)) as { project?: MediaProject; error?: string } | null) : null
     setBusy(null)

@@ -14,7 +14,7 @@ describe('Video Merkezi (sunucu tarafı ilk çizim)', () => {
   it('giriş ekranı: dört başlangıç kartı ve eski stüdyo bağlantısı', async () => {
     const { VideoCenter } = await import('./VideoCenter')
     const html = renderToString(createElement(VideoCenter))
-    for (const t of ['Video Merkezi', 'Haberden video', 'Metinden video', 'Kendi videonu yükle', 'Günün bülteni', 'Son projeler', 'Eski stüdyo']) expect(html).toContain(t)
+    for (const t of ['Video Merkezi', 'Haberden video', 'Metinden video', 'Kendi videonu yükle', 'Günün bülteni', 'Video kes ve böl', 'Son projeler', 'Eski stüdyo']) expect(html).toContain(t)
     expect(html).toContain('/admin/media-studio/reels')
   })
   it('düzenleyici: araç şeridi, önizleme, ayrıntılar ve zaman çizelgesi', async () => {

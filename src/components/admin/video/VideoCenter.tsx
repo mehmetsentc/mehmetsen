@@ -7,12 +7,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ArrowRight, FileText, Film, ListVideo, Loader2, Newspaper, Search, Upload } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, Film, ListVideo, Loader2, Newspaper, Scissors, Search, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { reelsCall } from '@/components/admin/social/reelsApi'
 import { VideoEditor, type EditorStart } from './VideoEditor'
 import { ReelsStudio } from '@/components/admin/social/ReelsStudio'
+import { VideoCutHome } from './VideoCutEditor'
 import { renderKeyFor, STORY_STYLES, STYLE_THEME, TARGET_MINUTES, type StoryFormat, type StoryProject, type StoryStyle, type TargetMin } from '@/lib/story/storyProject'
 
 const API = '/api/admin/social/story-projects'
@@ -36,7 +37,7 @@ export function VideoCenter() {
   const params = useSearchParams()
   const router = useRouter()
   const [editor, setEditor] = useState<EditorStart | null>(null)
-  const [view, setView] = useState<'hub' | 'start' | 'upload' | 'digest'>('hub')
+  const [view, setView] = useState<'hub' | 'start' | 'upload' | 'digest' | 'cut'>('hub')
   const [src, setSrc] = useState<'news' | 'text'>('news')
   const [presetNews, setPresetNews] = useState<string | null>(null)
 
@@ -53,7 +54,7 @@ export function VideoCenter() {
     } else if (st === 'news' || st === 'text') {
       setSrc(st)
       setView('start')
-    } else if (st === 'upload' || st === 'digest') setView(st)
+    } else if (st === 'upload' || st === 'digest' || st === 'cut') setView(st)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -74,6 +75,7 @@ export function VideoCenter() {
   }
 
   if (editor) return <VideoEditor start={editor} onExit={exitEditor} />
+  if (view === 'cut') return <VideoCutHome onBack={() => setView('hub')} />
   if (view === 'upload' || view === 'digest')
     return (
       <div className="p-3 lg:p-4">
@@ -81,10 +83,10 @@ export function VideoCenter() {
       </div>
     )
   if (view === 'start') return <StartView src={src} setSrc={setSrc} presetNews={presetNews} onBack={() => setView('hub')} onGo={(s) => setEditor(s)} onUpload={() => setView('upload')} />
-  return <Hub projects={projects} onStart={(s) => (s === 'upload' || s === 'digest' ? setView(s) : (setSrc(s), setView('start')))} onOpen={(id) => setEditor({ kind: 'project', id })} />
+  return <Hub projects={projects} onStart={(s) => (s === 'upload' || s === 'digest' || s === 'cut' ? setView(s) : (setSrc(s), setView('start')))} onOpen={(id) => setEditor({ kind: 'project', id })} />
 }
 
-function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'text' | 'upload' | 'digest') => void; onOpen: (id: string) => void }) {
+function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'text' | 'upload' | 'digest' | 'cut') => void; onOpen: (id: string) => void }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [q, setQ] = useState('')
   const list = useMemo(
@@ -133,6 +135,11 @@ function Hub(props: { projects: StoryProject[] | null; onStart: (s: 'news' | 'te
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"><ListVideo className="h-5 w-5" /></span>
             <span className="text-base font-extrabold text-[rgb(var(--color-text))]">Günün bülteni</span>
             <span className="text-[13px] leading-relaxed text-[rgb(var(--color-muted))]">2–7 haberi seç, tek videoda öne çıkanlar.</span>
+          </button>
+          <button type="button" onClick={() => props.onStart('cut')} className={cn(startCard, 'border-[rgb(var(--color-border))]')}>
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><Scissors className="h-5 w-5" /></span>
+            <span className="text-base font-extrabold text-[rgb(var(--color-text))]">Video kes ve böl</span>
+            <span className="text-[13px] leading-relaxed text-[rgb(var(--color-muted))]">Uzun videoyu kısalt, böl, ortasından parça çıkar; 9:16, 1:1, 16:9 ve dosya boyutu.</span>
           </button>
         </div>
       </section>
