@@ -428,6 +428,10 @@ service cloud.firestore {
     match /mediaProjects/{projectId} {
       allow read, write: if false;
     }
+    // KURGU — yalnızca sunucu (Admin SDK)
+    match /editProjects/{projectId} {
+      allow read, write: if false;
+    }
     // GÖREV 43 — yalnızca sunucu (Admin SDK)
     match /aiFieldCorrections/{id} {
       allow read, write: if false;

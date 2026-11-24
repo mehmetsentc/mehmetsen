@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
     '/api/admin/social/media-projects/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*', './src/lib/reels/assets/audio/broadcast/outro-soft.wav', './node_modules/ffmpeg-static/ffmpeg'],
     // STORY-1: «Konu → Video» (ffmpeg + caption fonts; asset reading uses ffmpeg for video frames).
     '/api/admin/social/story-projects/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/audio/broadcast/*', './src/lib/reels/assets/brand/logo-mark.png', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    // KURGU — CapCut-style editor: export needs fonts, brand/closing, music beds, ffmpeg; create/assets probe durations
+    '/api/admin/video/projects': ['./node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/video/projects/[id]/assets': ['./node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/video/projects/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*', './src/lib/reels/assets/audio/broadcast/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/social/story-projects/[id]/assets': ['./src/lib/reels/assets/fonts/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/reels/music/[name]': ['./src/lib/reels/assets/audio/broadcast/bed-*.m4a'],
     // REELS-6: post / image-story cards in the NaHaber theme (fonts + logo only).

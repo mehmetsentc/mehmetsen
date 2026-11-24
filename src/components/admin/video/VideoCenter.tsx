@@ -3,6 +3,8 @@
 /**
  * VIDEO-MERKEZI — tek giriş: «Ne üretmek istiyorsun?» → Başlat → Düzenle (odak modu) → Paylaş.
  * Eski Reels Stüdyosu /admin/media-studio/reels adresinde yedek olarak duruyor.
+ * KURGU: ana sayfa CapCut düzeninde (KurguHome); kurgu projeleri KurguEditor’da (?e=<id>).
+ * Eski Video Merkezi ana sayfası ?eski=1, eski kes/böl ?start=cut.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -14,6 +16,9 @@ import { reelsCall } from '@/components/admin/social/reelsApi'
 import { VideoEditor, type EditorStart } from './VideoEditor'
 import { ReelsStudio } from '@/components/admin/social/ReelsStudio'
 import { VideoCutHome } from './VideoCutEditor'
+import { KurguEditor, KURGU_API } from './KurguEditor'
+import { KurguHome } from './KurguHome'
+import type { EditProject } from '@/lib/edit/editProject'
 import { renderKeyFor, STORY_STYLES, STYLE_THEME, TARGET_MINUTES, type StoryFormat, type StoryProject, type StoryStyle, type TargetMin } from '@/lib/story/storyProject'
 
 const API = '/api/admin/social/story-projects'
@@ -41,6 +46,8 @@ export function VideoCenter() {
   const [src, setSrc] = useState<'news' | 'text'>('news')
   const [presetNews, setPresetNews] = useState<string | null>(null)
   const [editNews, setEditNews] = useState<string | null>(null)
+  const [kurgu, setKurgu] = useState<{ id: string; media?: 'device' | 'library' } | null>(null)
+  const legacyHub = params.get('eski') === '1'
 
   // deep links: ?news=<id> (Haberler listesi) · ?p=<projectId> · ?start=news|text
   useEffect(() => {
@@ -48,10 +55,19 @@ export function VideoCenter() {
     const pid = params.get('p')
     const st = params.get('start')
     const ev = params.get('editNewsVideo')
+    const e = params.get('e')
     if (ev) {
-      setEditNews(ev)
-      setView('cut')
-    } else if (pid) setEditor({ kind: 'project', id: pid })
+      // «Videoyu düzenle» on a news item → its own video in the CapCut editor (original kept, restorable)
+      void reelsCall<{ project: EditProject }>('POST', KURGU_API, { fromNewsVideo: ev }).then((r) => {
+        if (r.ok) setKurgu({ id: r.data.project.id })
+        else {
+          toast.error(r.error)
+          setEditNews(ev)
+          setView('cut')
+        }
+      })
+    } else if (e) setKurgu({ id: e })
+    else if (pid) setEditor({ kind: 'project', id: pid })
     else if (news) {
       setPresetNews(news)
       setSrc('news')
@@ -70,8 +86,8 @@ export function VideoCenter() {
     if (!r.ok) toast.error(r.error)
   }, [])
   useEffect(() => {
-    if (!editor) void load()
-  }, [editor, load])
+    if (!editor && legacyHub) void load()
+  }, [editor, load, legacyHub])
 
   const exitEditor = () => {
     setEditor(null)
@@ -79,6 +95,7 @@ export function VideoCenter() {
     router.replace('/admin/video')
   }
 
+  if (kurgu) return <KurguEditor key={kurgu.id} projectId={kurgu.id} initialMedia={kurgu.media} onExit={() => (setKurgu(null), setView('hub'), router.replace('/admin/video'))} />
   if (editor) return <VideoEditor start={editor} onExit={exitEditor} />
   if (view === 'cut') return <VideoCutHome initialNewsId={editNews} onBack={() => (setEditNews(null), setView('hub'))} />
   if (view === 'upload' || view === 'digest')
@@ -88,6 +105,14 @@ export function VideoCenter() {
       </div>
     )
   if (view === 'start') return <StartView src={src} setSrc={setSrc} presetNews={presetNews} onBack={() => setView('hub')} onGo={(s) => setEditor(s)} onUpload={() => setView('upload')} />
+  if (!legacyHub)
+    return (
+      <KurguHome
+        onOpenEdit={(id, opts) => (setKurgu({ id, media: opts?.media }), router.replace(`/admin/video?e=${id}`))}
+        onOpenStory={(id) => setEditor({ kind: 'project', id })}
+        onStart={(s) => (s === 'digest' ? setView('digest') : (setSrc(s), setView('start')))}
+      />
+    )
   return <Hub projects={projects} onStart={(s) => (s === 'upload' || s === 'digest' || s === 'cut' ? setView(s) : (setSrc(s), setView('start')))} onOpen={(id) => setEditor({ kind: 'project', id })} />
 }
 
