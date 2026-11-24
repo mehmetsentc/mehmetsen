@@ -16,6 +16,7 @@ import { testModeAutomationBlock } from '@/lib/social/testEnvironment'
 import { safeErrorText } from '@/lib/social/safeLog'
 import { runAutomationTick } from '@/lib/social/automation/worker'
 import { runAgentShadowTick } from '@/lib/social/agent/tick'
+import { runAccountCenterTick } from '@/lib/accountCenter/store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,7 +48,17 @@ async function handle(request: Request) {
     } catch (err) {
       console.error('[cron/social-automation] agent:', safeErrorText(err))
     }
-    return NextResponse.json({ ...report, agent }, { headers: { 'Cache-Control': 'no-store' } })
+    // Hesap Merkezi otomatik cevap: ACCOUNT_CENTER_AUTO_REPLY=on olmadan hiçbir şey okumaz/yazmaz.
+    let accountCenter: Awaited<ReturnType<typeof runAccountCenterTick>> | null = null
+    try {
+      accountCenter = await runAccountCenterTick(Date.now, { deadline: Date.now() + 60_000 })
+      if (accountCenter.enabled) {
+        console.log(`[cron/social-automation] account-center evaluated=${accountCenter.evaluated} replied=${accountCenter.replied} errors=${accountCenter.errors}`)
+      }
+    } catch (err) {
+      console.error('[cron/social-automation] account-center:', safeErrorText(err))
+    }
+    return NextResponse.json({ ...report, agent, accountCenter }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     console.error('[cron/social-automation] fatal:', safeErrorText(err))
     return NextResponse.json({ error: 'automation tick failed' }, { status: 500 })

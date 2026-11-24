@@ -51,12 +51,17 @@ export type SocialAuditAction =
   | 'story.render'
   | 'social.agent.backfill'
   | 'social.agent.settings'
+  | 'account_center.account.add'
+  | 'account_center.account.remove'
+  | 'account_center.reply'
+  | 'account_center.hide'
+  | 'account_center.settings'
 
 export interface SocialAuditEntry {
   actorId: string
   actorType?: 'HUMAN' | 'SYSTEM'
   action: SocialAuditAction
-  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject' | 'storyProject'
+  entityType: 'socialAccount' | 'socialConfig' | 'socialOAuth' | 'socialAutomationRule' | 'socialAutomationJob' | 'news' | 'socialComment' | 'socialConversation' | 'mediaProject' | 'storyProject' | 'accountCenter'
   entityId: string
   before?: Record<string, unknown> | null
   after?: Record<string, unknown> | null
