@@ -10,6 +10,7 @@ import { wavSeconds } from '@/lib/reels/audio'
 import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
 import { adjustGeminiUsd, estimateGeminiUsd, reserveGeminiUsd, GeminiBudgetError } from '@/lib/reels/ttsQuota'
 import { getReelVoiceSettings } from '@/lib/reels/voiceSettings'
+import { pronunciationPrompt } from '@/lib/reels/pronunciation'
 import { AD_VOICES, voicePrompt, type AdTone, type AdVoiceId } from './adModel'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
@@ -46,7 +47,7 @@ export async function synthesizeAdVoice(script: string, voice: AdVoiceId, tone: 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        input: { text: input, prompt: voicePrompt(voice, tone, speed) },
+        input: { text: input, prompt: voicePrompt(voice, tone, speed) + pronunciationPrompt(input) },
         voice: { languageCode: 'tr-TR', name: AD_VOICES[voice].gemini, modelName: AD_TTS_MODEL },
         audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 },
       }),

@@ -8,6 +8,7 @@ import 'server-only'
 import { adjustGeminiUsd, estimateGeminiUsd, refundTtsChars, reserveGeminiUsd, reserveTtsChars } from './ttsQuota'
 import { wavSeconds } from './audio'
 import { toSpokenTurkish } from './ttsNormalize'
+import { pronunciationPrompt, toPronunciationSsml } from './pronunciation'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 
@@ -43,11 +44,25 @@ export async function synthesizeReelVoice(
 }
 
 async function callGoogleTts(key: string, input: string, voice: string, rate: number, signal?: AbortSignal): Promise<Buffer> {
+  // TELAFFUZ: «Batman» gibi yer adları SSML <phoneme> ile; ses SSML'i kabul etmezse düz metinle bir kez daha
+  const ssml = toPronunciationSsml(input)
+  if (ssml) {
+    try {
+      return await requestGoogleTts(key, { ssml }, voice, rate, signal)
+    } catch (err) {
+      if (signal?.aborted) throw err
+      console.warn('[reels] SSML telaffuz reddedildi, düz metin:', err instanceof Error ? err.message.slice(0, 120) : err)
+    }
+  }
+  return requestGoogleTts(key, { text: input }, voice, rate, signal)
+}
+
+async function requestGoogleTts(key: string, payload: { text: string } | { ssml: string }, voice: string, rate: number, signal?: AbortSignal): Promise<Buffer> {
   const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      input: { text: input },
+      input: payload,
       voice: { languageCode: 'tr-TR', name: voice },
       audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000, speakingRate: rate },
     }),
@@ -83,7 +98,7 @@ export async function synthesizeReelVoiceEx(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          input: { text: input, prompt: choice.gemini.style.slice(0, 400) },
+          input: { text: input, prompt: choice.gemini.style.slice(0, 400) + pronunciationPrompt(input) },
           voice: { languageCode: 'tr-TR', name: choice.gemini.voice, modelName: choice.gemini.model ?? 'gemini-2.5-flash-tts' },
           audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 },
         }),

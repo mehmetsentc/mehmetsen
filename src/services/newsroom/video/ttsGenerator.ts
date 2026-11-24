@@ -13,6 +13,7 @@
 import { getAdminStorage } from '@/lib/firebase/admin'
 import { refundTtsChars, reserveTtsChars, TtsQuotaError, type TtsReservation } from '@/lib/reels/ttsQuota'
 import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
+import { toPronunciationSsml } from '@/lib/reels/pronunciation'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 
@@ -58,11 +59,12 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
 
   try {
     // 1. Call Google TTS API
-    const ttsRes = await fetch(`${TTS_ENDPOINT}?key=${apiKey}`, {
+    // TELAFFUZ: «Batman» gibi yer adları SSML <phoneme> ile; reddedilirse düz metin
+    const call = (input: { text: string } | { ssml: string }) => fetch(`${TTS_ENDPOINT}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        input: { text },
+        input,
         voice: {
           languageCode: 'tr-TR',
           name: VOICE_NAME,
@@ -75,6 +77,9 @@ export async function generateTtsAudio(voiceText: string, videoId: string): Prom
         },
       }),
     })
+    const ssml = toPronunciationSsml(text)
+    let ttsRes = await call(ssml ? { ssml } : { text })
+    if (!ttsRes.ok && ssml) ttsRes = await call({ text })
 
     if (!ttsRes.ok) {
       const errText = await ttsRes.text()
