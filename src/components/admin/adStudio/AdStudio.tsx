@@ -38,6 +38,7 @@ import {
   splitScript,
   textWindowEnd,
   timeScenes,
+  usesOwnMusic,
   voiceIsCurrent,
   type AdKind,
   type AdLook,
@@ -327,7 +328,7 @@ function VideoStep({ ad, patch, takeServer }: StepProps & { takeServer: (a: AdPr
           {m.kind === 'video' ? <Clapperboard className="h-5 w-5 text-orange-600" /> : <ImageIcon className="h-5 w-5 text-orange-600" />}
           <div className="min-w-[140px] flex-1">
             <div className="truncate text-sm font-bold">{m.name}</div>
-            <div className="text-[12px] text-[rgb(var(--color-muted))]">{m.kind === 'video' ? `Video · ${mmss(m.durationMs ?? 0)}` : 'Görsel'} · kullanılan {sec(m.outMs - m.inMs)}</div>
+            <div className="text-[12px] text-[rgb(var(--color-muted))]">{m.kind === 'video' ? `Video · ${mmss(m.durationMs ?? 0)}${m.hasAudio ? ' · kendi müziği/sesi var' : ' · sessiz'}` : 'Görsel'} · kullanılan {sec(m.outMs - m.inMs)}</div>
           </div>
           {m.kind === 'video' && (
             <label className="text-[12px]">
@@ -408,7 +409,12 @@ function TemplateStep({ ad, patch }: StepProps) {
       </div>
       <div className="space-y-2">
         <H hint="Seslendirme konuşurken müzik otomatik kısılır.">Fon müziği</H>
-        <div className="flex flex-wrap gap-2">
+        {usesOwnMusic(ad) && (
+          <p className="rounded-lg bg-orange-50 px-3 py-2 text-[13px] text-orange-900">
+            Videonun kendi müziği kullanılıyor — üzerine fon müziği <b>eklenmez</b>. Kendi müziğimizi kullanmak için «Videonun kendi sesi»ni <b>Kapalı</b> yapın.
+          </p>
+        )}
+        <div className={cn('flex flex-wrap gap-2', usesOwnMusic(ad) && 'pointer-events-none opacity-40')}>
           {AD_MUSIC.map((m) => (
             <span key={m} className="inline-flex items-center gap-1">
               <button type="button" onClick={() => patch({ music: m })} className={chip(ad.music === m)}>

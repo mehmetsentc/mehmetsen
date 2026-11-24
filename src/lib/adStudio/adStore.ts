@@ -97,7 +97,7 @@ export function ownAdUploadUrl(url: unknown, uid: string, id: string): url is st
   }
 }
 
-async function probeDurationMs(url: string): Promise<number | null> {
+async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: boolean } | null> {
   try {
     const { spawn } = await import('node:child_process')
     const mod = (await import('ffmpeg-static')) as unknown as { default?: string | null } | string
@@ -113,7 +113,7 @@ async function probeDurationMs(url: string): Promise<number | null> {
       p.on('close', () => {
         clearTimeout(timer)
         const m = err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/)
-        resolve(m ? Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000) : null)
+        resolve(m ? { durationMs: Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000), hasAudio: /Stream #\d+:\d+[^\n]*: Audio:/.test(err) } : null)
       })
       p.on('error', () => (clearTimeout(timer), resolve(null)))
     })
@@ -137,13 +137,25 @@ export async function addAdMedia(uid: string, id: string, raw: Record<string, un
   let m: AdMedia
   if (raw.type === 'video') {
     if (!decodeURIComponent(new URL(url).pathname).includes('news-videos/')) return fail(400, 'invalid_url', 'Video yeri geçersiz')
-    const durationMs = await probeDurationMs(url)
-    if (durationMs === null) return fail(422, 'video_unreadable', 'Video okunamadı (bozuk ya da desteklenmeyen biçim)')
-    m = { id: newItemId(), kind: 'video', url, name, durationMs, inMs: 0, outMs: Math.min(durationMs, AD_LIMITS.totalMs) }
+    const probed = await probeMedia(url)
+    if (probed === null) return fail(422, 'video_unreadable', 'Video okunamadı (bozuk ya da desteklenmeyen biçim)')
+    const { durationMs, hasAudio } = probed
+    m = { id: newItemId(), kind: 'video', url, name, durationMs, inMs: 0, outMs: Math.min(durationMs, AD_LIMITS.totalMs), hasAudio }
   } else {
     m = { id: newItemId(), kind: 'image', url, name, durationMs: null, inMs: 0, outMs: AD_LIMITS.imageMs }
   }
-  return patchAdRaw(uid, id, (cur) => (cur.media.length >= AD_LIMITS.media ? null : { ...cur, media: [...cur.media, m], updatedAt: now }), 'media')
+  return patchAdRaw(
+    uid,
+    id,
+    (cur) => {
+      if (cur.media.length >= AD_LIMITS.media) return null
+      const next = { ...cur, media: [...cur.media, m], updatedAt: now }
+      // videonun kendi müziği var: bizim müziğimiz eklenmez, video sesi kapalıysa açılır
+      if (m.hasAudio) return { ...next, music: 'yok' as const, videoSound: cur.videoSound === 'kapali' ? ('kisik' as const) : cur.videoSound }
+      return next
+    },
+    'media',
+  )
 }
 
 async function patchAdRaw(uid: string, id: string, fn: (cur: AdProject) => AdProject | null, what: string): Promise<StoreResult<AdProject>> {

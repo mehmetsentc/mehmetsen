@@ -126,6 +126,8 @@ export interface AdMedia {
   durationMs: number | null
   inMs: number
   outMs: number
+  /** videonun kendi ses izi var mı (müzik / ortam sesi) — yüklemede ffmpeg ile okunur */
+  hasAudio?: boolean
 }
 export interface AdScene {
   id: string
@@ -452,7 +454,12 @@ export function adRenderProblem(ad: AdProject): string | null {
 }
 
 export function adRenderKey(ad: AdProject): string {
-  return fnv(JSON.stringify(['ad1', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
+  return fnv(JSON.stringify(['ad1', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, usesOwnMusic(ad) ? 'own' : ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
+}
+
+/** Videonun kendi sesi (müziği) kullanılıyorsa bizim fon müziğimiz eklenmez. */
+export function usesOwnMusic(ad: Pick<AdProject, 'media' | 'videoSound'>): boolean {
+  return ad.videoSound !== 'kapali' && ad.media.some((m) => m.kind === 'video' && m.hasAudio === true)
 }
 
 // ── KURGU'ya derleme ─────────────────────────────────────────────────────────
@@ -473,7 +480,8 @@ export function ribbonFor(ad: AdProject): Deco | null {
 export function compileAd(ad: AdProject): { project: EditProject; overlays: Map<string, AdOverlay> } {
   const look = AD_LOOK_INFO[ad.look]
   const assets: EditAsset[] = ad.media.map((m) => ({ id: `m_${m.id}`, kind: m.kind, source: 'upload', url: m.url, name: m.name, durationMs: m.durationMs, posterUrl: null, addedAt: ad.createdAt }))
-  const own = ad.videoSound === 'kapali' ? 0 : ad.videoSound === 'kisik' ? (ad.voiceOn ? 0.18 : 0.35) : 1
+  // kısık: seslendirme varken videonun müziği konuşmanın altında kalır
+  const own = ad.videoSound === 'kapali' ? 0 : ad.videoSound === 'kisik' ? (ad.voiceOn ? 0.25 : 0.5) : 1
   const clips: VideoClip[] = ad.media.map((m, i) => ({
     id: `c_${m.id}`,
     assetId: `m_${m.id}`,
@@ -527,7 +535,7 @@ export function compileAd(ad: AdProject): { project: EditProject; overlays: Map<
     assets.push({ id: 'voice', kind: 'audio', source: 'tts', url: ad.voice.url, name: 'Seslendirme', durationMs: ad.voice.durationMs, posterUrl: null, addedAt: ad.voice.createdAt })
     audio.push({ id: 'a_voice', kind: 'voice', assetId: 'voice', music: null, text: null, startMs: ad.voiceStartMs, endMs: ad.voiceStartMs + ad.voice.durationMs, volume: 1, fade: false })
   }
-  const bed = AD_MUSIC_INFO[ad.music].bed
+  const bed = usesOwnMusic(ad) ? null : AD_MUSIC_INFO[ad.music].bed
   if (bed) audio.push({ id: 'a_music', kind: 'music', assetId: null, music: bed, text: null, startMs: 0, endMs: null, volume: ad.voiceOn ? 0.14 : 0.42, fade: true })
 
   const project: EditProject = {

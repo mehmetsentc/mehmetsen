@@ -88,4 +88,12 @@ describe('reklam modeli', () => {
     expect(Object.keys(AD_VOICES)).toHaveLength(4)
     expect(voicePrompt('kaan', 'etkileyici', 0.9)).toMatch(/Turkish/)
   })
+
+  it('videonun kendi müziği varsa bizim müziğimiz eklenmez', () => {
+    const own = sample({ media: [{ ...sample().media[0]!, hasAudio: true }], music: 'sinematik' })
+    expect(compileAd(own).project.audio.some((a) => a.kind === 'music')).toBe(false)
+    expect(compileAd({ ...own, videoSound: 'kapali' }).project.audio.some((a) => a.kind === 'music')).toBe(true)
+    expect(compileAd(sample({ music: 'sinematik' })).project.audio.some((a) => a.kind === 'music')).toBe(true)
+    expect(adRenderKey(own)).not.toBe(adRenderKey({ ...own, videoSound: 'kapali' }))
+  })
 })
