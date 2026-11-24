@@ -222,6 +222,13 @@ export const NETWORK_RE = /(fetch failed|network|timeout|timed out|aborted|ECONN
  * accepted the post → uncertain, never auto-retried.
  */
 export const SERVER_SIDE_RE = /\(HTTP 5\d\d\b|, kod (1|2)(\/|\))/
+/**
+ * PlatformApiError of a step BEFORE the publish call (container creation, container
+ * status, upload start / upload). Nothing can have been posted yet, so even a 5xx /
+ * kod 1-2 there is a definite failure — never «uncertain» (which would block the
+ * account for this news until an operator acknowledges it).
+ */
+export const PRE_PUBLISH_STEP_RE = /(?:^|\s)(?:kapsayıcı|kapsayıcısı|durumu|öğe|başlatma|yükleme) reddedildi \(HTTP/
 
 /**
  * failed  = the platform clearly rejected or we never sent the publish call
@@ -235,7 +242,10 @@ export function classifyOutcome(result: SocialPublishResult | null, threw: boole
   if (threw || !result) return { status: 'uncertain', code: 'exception' }
   if (result.success) return result.platformId ? { status: 'succeeded', code: 'published' } : { status: 'uncertain', code: 'no_platform_id' }
   if (NETWORK_RE.test(result.error ?? '')) return { status: 'uncertain', code: 'transport_error' }
-  if (SERVER_SIDE_RE.test(result.error ?? '')) return { status: 'uncertain', code: 'platform_server_error' }
+  if (SERVER_SIDE_RE.test(result.error ?? '')) {
+    if (PRE_PUBLISH_STEP_RE.test(result.error ?? '')) return { status: 'failed', code: 'platform_server_error_before_publish' }
+    return { status: 'uncertain', code: 'platform_server_error' }
+  }
   return { status: 'failed', code: 'platform_rejected' }
 }
 

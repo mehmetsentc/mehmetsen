@@ -12,7 +12,7 @@
  *      neden · dış gönderi kimliği). Only definite failures can be retried, and
  *      only those the operator ticks. Uncertain results go to their own flow.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, RotateCcw, Send } from 'lucide-react'
 import { auth } from '@/lib/firebase/auth'
@@ -211,10 +211,20 @@ export function ManualShareFlow({
   const count = targetCount(effective)
   const labels = selectedLabels(effective, options)
 
+  // a double click must never start a second publish run (it would hit the first run's
+  // ledger lock and show a false «Önceki deneme sürüyor» failure)
+  const sendingRef = useRef(false)
   const send = async (sel: TargetSelection) => {
+    if (sendingRef.current) return
+    sendingRef.current = true
     setStage('sending')
     const names = new Map(options.map((o) => [o.accountId, o.username ? `${o.displayName} (@${o.username})` : o.displayName]))
-    const r = await sendManualShare({ newsId, mode, targets: sel, names }, (done, total) => setProgress({ done, total }))
+    let r: ManualShareResult
+    try {
+      r = await sendManualShare({ newsId, mode, targets: sel, names }, (done, total) => setProgress({ done, total }))
+    } finally {
+      sendingRef.current = false
+    }
     setProgress(null)
     setResult(r)
     setRetry([])

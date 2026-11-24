@@ -383,6 +383,14 @@ describe('legacy (Onyeditivi) ortak yayın kilidi', () => {
     expect(classifyOutcome({ success: false, error: 'Facebook fotoğraf paylaşımı reddedildi (HTTP 503)' }, false)).toMatchObject({ status: 'uncertain' })
     expect(classifyOutcome({ success: false, error: 'Facebook fotoğraf paylaşımı reddedildi (HTTP 400, kod 1)' }, false)).toMatchObject({ status: 'uncertain' })
     expect(classifyOutcome({ success: false, error: 'Facebook fotoğraf paylaşımı reddedildi (HTTP 400, kod 100/33)' }, false)).toMatchObject({ status: 'failed' })
+    // a server error BEFORE the publish call (container / status / upload) posted nothing → failed
+    expect(classifyOutcome({ success: false, error: 'Instagram reels kapsayıcısı reddedildi (HTTP 500, kod 2)' }, false)).toMatchObject({ status: 'failed', code: 'platform_server_error_before_publish' })
+    expect(classifyOutcome({ success: false, error: 'Instagram reels durumu reddedildi (HTTP 400, kod 2)' }, false)).toMatchObject({ status: 'failed' })
+    expect(classifyOutcome({ success: false, error: 'Facebook reels yükleme reddedildi (HTTP 503)' }, false)).toMatchObject({ status: 'failed' })
+    expect(classifyOutcome({ success: false, error: 'Instagram kaydırmalı kapsayıcı reddedildi (HTTP 500, kod 1)' }, false)).toMatchObject({ status: 'failed' })
+    // the publish call itself stays uncertain
+    expect(classifyOutcome({ success: false, error: 'Instagram reels yayınlama reddedildi (HTTP 500, kod 2)' }, false)).toMatchObject({ status: 'uncertain' })
+    expect(classifyOutcome({ success: false, error: 'Threads video yayınlama reddedildi (HTTP 503)' }, false)).toMatchObject({ status: 'uncertain' })
     expect(classifyOutcome({ success: false, error: 'Facebook fotoğraf paylaşımı reddedildi (HTTP 400, kod 190/463)' }, false)).toMatchObject({ status: 'failed' })
   })
 })

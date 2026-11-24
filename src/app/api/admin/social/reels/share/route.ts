@@ -78,7 +78,18 @@ export async function POST(request: Request) {
   }
   const target = r.options.find((o) => o.accountId === accountId)
   if (!target || !VIDEO_PLATFORMS.has(target.platform)) return json({ error: 'Bu hesap bu haber için kullanılamaz', code: 'not_found' }, 404)
-  if (!target.selectable) return json({ error: target.reason ?? 'Hesap seçilemez', code: target.code }, 409)
+  if (!target.selectable) {
+    // REELS-JOIN (24 Kas): the same user pressed «Paylaş» again (double click, menu reopened)
+    // while this account's publish is still running → follow that run instead of reporting
+    // a false «Önceki deneme sürüyor» failure. Nothing is published twice (ledger lock).
+    if (body.async === true && target.code === 'uncertain_previous_attempt') {
+      const running = await readReelJob(reelJobId(['share', newsId, target.accountId, format]))
+      if (running && running.status === 'running' && running.by === auth.actor.uid) {
+        return json({ job: { jobId: running.jobId, status: running.status, result: null, error: null, httpStatus: null }, joined: true }, 202)
+      }
+    }
+    return json({ error: target.reason ?? 'Hesap seçilemez', code: target.code }, 409)
+  }
   if (body.async === true) {
     // REELS-12: publish in the background (Instagram video processing alone can take ~2 min)
     const uid = auth.actor.uid

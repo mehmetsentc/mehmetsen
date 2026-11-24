@@ -52,7 +52,15 @@ const nextConfig: NextConfig = {
     '/api/admin/social/publish-records/[id]/republish': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
     '/api/social/share': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
     '/api/cron/social': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
-    '/api/admin/news/[id]': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*'],
+    // REELS-ENOENT (24 Kas): these routes start automation jobs right after the response
+    // (after()), and a reel job renders the video there — it needs the whole reel kit
+    // (closing sting audio, music beds, ffmpeg), not only fonts/logo.
+    '/api/admin/news/[id]': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/news': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/news/[id]/approve': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/news-drafts/[id]/approve': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/admin/news-queue/[id]/approve': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
+    '/api/social/eligibility': ['./src/lib/reels/assets/**/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
   },
   htmlLimitedBots: HTML_LIMITED_BOTS,
   compress: true,
