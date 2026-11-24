@@ -45,7 +45,7 @@ type Draft = MediaProject
 
 /** Rough output size for the estimate shown beside the size cap (H.264 at our settings). */
 function estimateMb(c: MediaClip): number {
-  const s = clipSeconds(c) + 2.6
+  const s = clipSeconds(c) + (c.options.outro === false ? 0 : 2.6)
   if (c.options.maxMb) return Math.min(c.options.maxMb, s * 0.9)
   const mbps = c.options.quality === '720' ? 2.2 : c.options.frame === 'original' ? 5 : 4.2
   return (s * mbps) / 8
@@ -69,10 +69,23 @@ async function patchProject(id: string, body: Record<string, unknown>): Promise<
 
 // ── list / new ───────────────────────────────────────────────────────────────
 
-export function VideoCutHome({ onBack }: { onBack: () => void }) {
+export function VideoCutHome({ onBack, initialNewsId = null }: { onBack: () => void; initialNewsId?: string | null }) {
   const [projects, setProjects] = useState<MediaProject[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [newsBusy, setNewsBusy] = useState(false)
+  // HABER-VIDEO: «Videoyu düzenle» in the news editor → the news video's cutting project
+  const startedNews = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialNewsId || startedNews.current === initialNewsId) return
+    startedNews.current = initialNewsId
+    setNewsBusy(true)
+    void reelsCall<{ project: MediaProject }>('POST', API, { fromNewsId: initialNewsId }).then((r) => {
+      setNewsBusy(false)
+      if (r.ok) setOpenId(r.data.project.id)
+      else toast.error(r.error, { duration: 8000 })
+    })
+  }, [initialNewsId])
   const load = useCallback(async () => {
     const r = await reelsCall<{ projects: MediaProject[] }>('GET', API)
     setProjects(r.ok ? r.data.projects : [])
@@ -83,6 +96,12 @@ export function VideoCutHome({ onBack }: { onBack: () => void }) {
   }, [openId, load])
 
   if (openId) return <VideoCutEditor projectId={openId} onExit={() => setOpenId(null)} />
+  if (newsBusy)
+    return (
+      <div className="flex items-center justify-center gap-2 p-16 text-sm text-[rgb(var(--color-muted))]">
+        <Loader2 className="h-5 w-5 animate-spin" /> Haberin videosu açılıyor…
+      </div>
+    )
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 p-6 lg:p-8">
       <header className="flex flex-wrap items-center gap-4">
@@ -296,6 +315,23 @@ export function VideoCutEditor({ projectId, onExit }: { projectId: string; onExi
     onExit()
   }
 
+  // ── HABER-VIDEO: show the edit on the news page / put the original back ──
+  const newsCall = async (body: Record<string, unknown>, okText: string) => {
+    if (!d) return
+    setBusy('news')
+    const r = await reelsCall<{ project: MediaProject }>('POST', `${API}/${d.id}/news`, body)
+    setBusy(null)
+    if (!r.ok) return toast.error(r.error)
+    open(r.data.project, sel)
+    toast.success(okText, { duration: 9000 })
+  }
+  const applyNews = () =>
+    clip &&
+    confirm(`«${clip.name}» (${t(clipSeconds(clip) * 1000)}) haberin videosunun yerine geçecek. Orijinal video yedekte kalır, «Orijinale dön» ile geri alınabilir. Devam edilsin mi?`) &&
+    void newsCall({ action: 'apply', clipId: clip.id }, 'Haberin videosu güncellendi. Haber düzenleme sekmesi açıksa sayfayı yenileyin; yoksa kaydederken eski video geri yazılır.')
+  const restoreNews = () =>
+    confirm('Haber sayfası orijinal videoya dönsün mü?') && void newsCall({ action: 'restore' }, 'Haber orijinal videoya döndü. Haber düzenleme sekmesi açıksa sayfayı yenileyin.')
+
   // ── timeline geometry ──
   const total = durationMs ?? 1
   const pct = (ms: number) => `${(Math.min(total, Math.max(0, ms)) / total) * 100}%`
@@ -345,6 +381,30 @@ export function VideoCutEditor({ projectId, onExit }: { projectId: string; onExi
           </button>
         </div>
       </header>
+      {d.sourceKind === 'news' && d.linkedNewsId ? (
+        <div className="mx-2 -mt-1 flex flex-wrap items-center gap-3 rounded-lg border border-blue-900 bg-[#0F1A2E] px-3 py-2 text-xs text-blue-200">
+          <span>
+            Bu, <a className="font-bold underline" href={`/admin/news/${encodeURIComponent(d.linkedNewsId)}`} target="_blank" rel="noreferrer">haberin</a> kendi videosu.{' '}
+            {d.newsApplied ? (
+              <>
+                Haberde şu an <b>«{d.clips.find((c) => c.id === d.newsApplied?.clipId)?.name ?? 'düzenlenmiş parça'}»</b> gösteriliyor ({new Date(d.newsApplied.at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}).
+              </>
+            ) : (
+              'Haberde şu an orijinal video gösteriliyor.'
+            )}
+          </span>
+          <span className="ml-auto flex gap-2">
+            <button type="button" onClick={applyNews} disabled={!clip || clip.status !== 'ready' || dirty || !!busy} title={!clip || clip.status !== 'ready' ? 'Önce bu parçayı üretin' : undefined} className="rounded-md bg-blue-600 px-3 py-1 font-bold text-white disabled:opacity-40">
+              {busy === 'news' ? 'Uygulanıyor…' : 'Seçili parçayı habere uygula'}
+            </button>
+            {d.newsApplied ? (
+              <button type="button" onClick={restoreNews} disabled={!!busy} className="rounded-md border border-blue-700 px-3 py-1 font-bold disabled:opacity-40">
+                Orijinale dön
+              </button>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
       {busy?.startsWith('render') ? (
         <div className="mx-2 -mt-1 flex items-center gap-3 rounded-lg bg-[#1A1B1E] px-3 py-2 text-xs text-zinc-300">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-red-400" /> «{d.clips.find((c) => `render:${c.id}` === busy)?.name}» üretiliyor (uzun parçalarda 1–5 dk)…
@@ -418,7 +478,7 @@ export function VideoCutEditor({ projectId, onExit }: { projectId: string; onExi
                   <div>
                     <span className={lbl}>Süre</span>
                     <p className={cn('rounded-lg px-2.5 py-1.5 text-[13px] font-bold', prob ? 'bg-red-500/10 text-red-300' : 'bg-[#0E0F11] text-white')}>
-                      {t(kept * 1000)} <span className="font-normal text-zinc-500">+ 2,6 sn kapanış</span>
+                      {t(kept * 1000)} {clip.options.outro !== false ? <span className="font-normal text-zinc-500">+ 2,6 sn kapanış</span> : null}
                     </p>
                   </div>
                 </div>
@@ -496,6 +556,12 @@ export function VideoCutEditor({ projectId, onExit }: { projectId: string; onExi
                 <label className="flex items-center gap-2 text-[13px]">
                   <input type="checkbox" checked={clip.options.mute} onChange={(e) => setOpt({ mute: e.target.checked })} className="accent-red-500" /> Sesi kapat
                 </label>
+                {d.sourceKind === 'news' ? (
+                  <label className="flex items-center gap-2 text-[13px]">
+                    <input type="checkbox" checked={clip.options.outro !== false} onChange={(e) => setOpt({ outro: e.target.checked ? undefined : false })} className="accent-red-500" /> nahaber.com kapanış kartı
+                    <span className="text-[11px] text-zinc-500">(haber sayfası için kapalı önerilir; sosyal medya sürümünde açın)</span>
+                  </label>
+                ) : null}
                 <div className="flex gap-2 border-t border-[#26272B] pt-3">
                   <button type="button" onClick={duplicate} className={ghost}><Copy className="h-3.5 w-3.5" /> Kopyala</button>
                   <button type="button" onClick={removePart} className={ghost}><Trash2 className="h-3.5 w-3.5" /> Parçayı sil</button>

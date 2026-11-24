@@ -40,13 +40,18 @@ export function VideoCenter() {
   const [view, setView] = useState<'hub' | 'start' | 'upload' | 'digest' | 'cut'>('hub')
   const [src, setSrc] = useState<'news' | 'text'>('news')
   const [presetNews, setPresetNews] = useState<string | null>(null)
+  const [editNews, setEditNews] = useState<string | null>(null)
 
   // deep links: ?news=<id> (Haberler listesi) · ?p=<projectId> · ?start=news|text
   useEffect(() => {
     const news = params.get('news')
     const pid = params.get('p')
     const st = params.get('start')
-    if (pid) setEditor({ kind: 'project', id: pid })
+    const ev = params.get('editNewsVideo')
+    if (ev) {
+      setEditNews(ev)
+      setView('cut')
+    } else if (pid) setEditor({ kind: 'project', id: pid })
     else if (news) {
       setPresetNews(news)
       setSrc('news')
@@ -75,7 +80,7 @@ export function VideoCenter() {
   }
 
   if (editor) return <VideoEditor start={editor} onExit={exitEditor} />
-  if (view === 'cut') return <VideoCutHome onBack={() => setView('hub')} />
+  if (view === 'cut') return <VideoCutHome initialNewsId={editNews} onBack={() => (setEditNews(null), setView('hub'))} />
   if (view === 'upload' || view === 'digest')
     return (
       <div className="p-3 lg:p-4">

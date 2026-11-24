@@ -139,6 +139,8 @@ export async function updateProject(actorUid: string, id: string, raw: Record<st
     for (const c of raw.clips) {
       const parsed = parseClipInput(c, p.durationMs, prev.get((c as { id?: string })?.id ?? ''))
       if (!parsed.ok) return fail(400, 'invalid_clip', parsed.message, parsed.field)
+      // every video ends with the nahaber.com card — except a news item's own video shown on nahaber.com
+      if (p.sourceKind !== 'news') delete parsed.value.options.outro
       if (seen.has(parsed.value.id)) return fail(400, 'duplicate_clip', 'Aynı bölüm iki kez', 'clips')
       seen.add(parsed.value.id)
       next.push(clipAfterEdit(parsed.value, prev.get(parsed.value.id), p.videoItemId, label))
@@ -205,4 +207,153 @@ async function audit(actorUid: string, what: 'create' | 'update' | 'delete', p: 
     // No caption or rights note text: kind, source name and counts only.
     meta: { what, videoItemId: p.videoItemId, rightsKind: p.rights.kind, sourceName: p.rights.sourceName, clips: p.clips.length, linkedNewsId: p.linkedNewsId },
   })
+}
+
+
+// ── HABER-VIDEO: a news item's own uploaded video ──────────────────────────────
+
+const NEWS_CLIP_MAX_MS = 180_000
+
+/** Duration of a remote video from the ffmpeg banner (no download); null when it cannot be read. */
+async function probeDurationMs(url: string): Promise<number | null> {
+  try {
+    const { spawn } = await import('node:child_process')
+    const mod = (await import('ffmpeg-static')) as unknown as { default?: string | null } | string
+    const bin = process.env.FFMPEG_PATH || (typeof mod === 'string' ? mod : mod.default)
+    if (!bin) return null
+    return await new Promise((resolve) => {
+      const p = spawn(bin, ['-hide_banner', '-i', url], { stdio: ['ignore', 'ignore', 'pipe'] })
+      let err = ''
+      const timer = setTimeout(() => p.kill('SIGKILL'), 20_000)
+      p.stderr!.on('data', (d) => {
+        if (err.length < 20_000) err += String(d)
+      })
+      p.on('close', () => {
+        clearTimeout(timer)
+        const m = err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/)
+        resolve(m ? Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000) : null)
+      })
+      p.on('error', () => {
+        clearTimeout(timer)
+        resolve(null)
+      })
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Open (or create) the cutting project for a news item's own video. The project is always
+ * built on the ORIGINAL file (kept in `videoOriginalUrl` once an edit was applied), so
+ * reopening never edits an already edited version.
+ */
+export async function projectForNewsVideo(actorUid: string, newsId: unknown, now: number): Promise<StoreResult<MediaProject>> {
+  if (typeof newsId !== 'string' || !NEWS_ID_RE.test(newsId)) return fail(400, 'invalid_news', 'Haber kimliği geçersiz')
+  const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
+  if (!snap.exists) return fail(404, 'news_not_found', 'Haber bulunamadı — yeni haberse önce kaydedin')
+  const d = snap.data() as Record<string, unknown>
+  const { resolveNewsVideo } = await import('@/lib/social/newsVideo')
+  const v = resolveNewsVideo(d)
+  const stored = typeof d.videoOriginalUrl === 'string' && d.videoOriginalUrl ? d.videoOriginalUrl : null
+  if (!stored && v.kind !== 'file') {
+    return fail(409, 'no_video_file', v.kind === 'youtube' || v.kind === 'embed' ? 'Bu haberin videosu bir bağlantı (YouTube / oynatıcı); dosyası bizde olmadığı için düzenlenemez' : 'Haberde kayıtlı video yok — videoyu yükleyip haberi kaydedin')
+  }
+  const original = stored ?? (v.kind === 'file' ? v.url : '')
+  const existing = await col().where('linkedNewsId', '==', newsId).limit(10).get()
+  const found = existing.docs.map((x) => x.data() as MediaProject).find((p) => p.sourceKind === 'news' && p.sourceFileUrl === original)
+  if (found) return { ok: true, value: found }
+
+  const dur = await probeDurationMs(original)
+  const title = (typeof d.title === 'string' ? d.title : 'Haber videosu').trim().slice(0, TITLE_MAX) || 'Haber videosu'
+  const id = `mp${randomBytes(8).toString('hex')}`
+  const rights = { kind: 'owned' as const, sourceName: null, note: null }
+  const end = dur ? Math.min(dur, NEWS_CLIP_MAX_MS) : 30_000
+  // haber sayfası için: orijinal biçim, kapanış kartı yok (ayarlardan açılabilir)
+  const first = parseClipInput({ id: newClipId(), name: 'Haber videosu', startMs: 0, endMs: end, title, options: { frame: 'original', outro: false } }, dur)
+  const videoItemId = `news_${newsId}`.slice(0, 64)
+  const poster = [d.thumbnail, d.coverImageUrl, d.imageUrl].find((x): x is string => typeof x === 'string' && /^https:\/\//.test(x)) ?? null
+  const p: MediaProject = {
+    id,
+    title,
+    caption: '',
+    videoItemId,
+    videoTitle: title,
+    sourceUrl: original,
+    durationMs: dur,
+    posterUrl: poster,
+    rights,
+    linkedNewsId: newsId,
+    sourceKind: 'news',
+    sourceFileUrl: original,
+    newsApplied: null,
+    clips: first.ok ? [clipAfterEdit(first.value, undefined, videoItemId, null)] : [],
+    createdBy: actorUid,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await col().doc(id).set(p)
+  await audit(actorUid, 'create', p)
+  return { ok: true, value: p }
+}
+
+/** Replace the news page video with a rendered clip (the original is kept), or put the original back. */
+export async function applyToNews(actorUid: string, id: string, raw: Record<string, unknown>, now: number): Promise<StoreResult<{ project: MediaProject; newsVideoUrl: string; slug: string | null }>> {
+  const p = await getProject(id)
+  if (!p) return fail(404, 'not_found', 'Proje bulunamadı')
+  if (p.sourceKind !== 'news' || !p.linkedNewsId || !p.sourceFileUrl) return fail(409, 'not_news_video', 'Bu proje bir haberin videosundan açılmadı')
+  const restore = raw.action === 'restore'
+  const clip = restore ? null : p.clips.find((c) => c.id === raw.clipId)
+  if (!restore && (!clip || clip.status !== 'ready' || !clip.outputUrl)) return fail(409, 'clip_not_ready', 'Önce bu parçayı üretin')
+  const newsRef = getAdminFirestore().collection(Collections.NEWS).doc(p.linkedNewsId)
+  const original = p.sourceFileUrl
+  const target = restore ? original : clip!.outputUrl!
+  const out = await getAdminFirestore().runTransaction(async (tx) => {
+    const s = await tx.get(newsRef)
+    if (!s.exists) return null
+    const d = s.data() as Record<string, unknown>
+    // first edit: keep the page's video fields exactly as they were (restored as-is)
+    const backup = (d.videoOriginal && typeof d.videoOriginal === 'object' ? d.videoOriginal : null) as Record<string, unknown> | null
+    const orig = backup ?? { videoUrl: d.videoUrl ?? null, playbackUrl: d.playbackUrl ?? null, mediaItems: d.mediaItems ?? null }
+    let patch: Record<string, unknown>
+    if (restore) {
+      if (!backup) {
+        tx.update(col().doc(p.id), { newsApplied: null, updatedAt: now })
+        return { slug: typeof d.slug === 'string' ? d.slug : null, noop: true }
+      }
+      patch = { videoUrl: backup.videoUrl ?? '', playbackUrl: backup.playbackUrl ?? null, mediaItems: backup.mediaItems ?? [], videoOriginal: null, videoOriginalUrl: null, videoEdit: null, updatedAt: now }
+    } else {
+      const origItems = Array.isArray(orig.mediaItems) ? (orig.mediaItems as Array<Record<string, unknown>>) : []
+      let replaced = false
+      const items = origItems.map((m) => {
+        if (!replaced && m && String(m.type ?? '').toLowerCase() === 'video') {
+          replaced = true
+          return { ...m, url: target }
+        }
+        return m
+      })
+      patch = {
+        videoUrl: target,
+        ...(orig.playbackUrl ? { playbackUrl: target } : {}),
+        ...(origItems.length ? { mediaItems: items } : {}),
+        videoOriginal: orig,
+        videoOriginalUrl: original,
+        videoEdit: { projectId: p.id, clipId: clip!.id, at: now, by: actorUid },
+        updatedAt: now,
+      }
+    }
+    tx.update(newsRef, patch)
+    tx.update(col().doc(p.id), { newsApplied: restore ? null : { clipId: clip!.id, url: target, at: now, by: actorUid }, updatedAt: now })
+    return { slug: typeof d.slug === 'string' ? d.slug : null, noop: false }
+  })
+  if (!out) return fail(404, 'news_not_found', 'Haber bulunamadı')
+  await writeSocialAudit({
+    actorId: actorUid,
+    action: restore ? 'media.news.restore' : 'media.news.apply',
+    entityType: 'news',
+    entityId: p.linkedNewsId,
+    meta: { projectId: p.id, clipId: clip?.id ?? null },
+  })
+  const fresh = await getProject(p.id)
+  return { ok: true, value: { project: fresh ?? p, newsVideoUrl: target, slug: out.slug } }
 }

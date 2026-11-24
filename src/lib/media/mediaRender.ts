@@ -37,6 +37,8 @@ export interface ClipRenderInput {
   endMs: number
   /** VIDEO-KES: ranges removed from inside the clip */
   cuts?: MsRange[]
+  /** HABER-VIDEO: the news item's own video file (instead of a library item) */
+  sourceFileUrl?: string | null
   title: string
   sourceLabel: string | null
   options: ClipOptions
@@ -184,7 +186,7 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
     return { outputUrl: publicUrl(mp4Name), coverUrl: jpg ? publicUrl(jpgName) : null, seconds, reused: true }
   }
 
-  const src = await libraryVideoForReel(input.videoItemId)
+  const src = input.sourceFileUrl ? { url: input.sourceFileUrl } : await libraryVideoForReel(input.videoItemId)
   if ('error' in src) throw new Error(src.error)
 
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'media-'))
@@ -192,7 +194,20 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
     const inPath = path.join(dir, 'source')
     const outPath = path.join(dir, 'out.mp4')
     const jpgPath = path.join(dir, 'cover.jpg')
-    await download(src.url, inPath)
+    if (input.sourceFileUrl) {
+      // HABER-VIDEO: NaHaber storage / external MP4 or HLS → local MP4 (≤ 200 MB, time-boxed)
+      const { prepareSourceVideo } = await import('@/lib/reels/sourceVideo')
+      const url = input.sourceFileUrl
+      const v = await prepareSourceVideo({
+        url,
+        origin: /firebasestorage|storage\.googleapis\.com|nahaber\.com|r2\.dev/i.test(url) ? 'nahaber' : 'external',
+        hls: /\.m3u8(\?|$)/i.test(url),
+        tag: `media_${input.projectId}`,
+      })
+      if (!v.ok) throw new Error('Haberin videosu indirilemedi')
+      await fs.copyFile(v.path, inPath)
+      await fs.rm(v.path, { force: true }).catch(() => undefined)
+    } else await download(src.url, inPath)
     const png = input.options.frame === 'vertical' && input.options.fit !== 'crop' ? await renderOverlayPng({ title: input.title, sourceLabel: input.sourceLabel, options: input.options }) : null
     const pngPath = png ? path.join(dir, 'overlay.png') : null
     if (png && pngPath) await fs.writeFile(pngPath, png)
@@ -203,7 +218,7 @@ export async function renderClip(input: ClipRenderInput): Promise<ClipRenderOutp
     const portrait = fr === 'vertical' || fr === 'portrait45' || (fr === 'original' && info.height > info.width)
     const outroPath = path.join(dir, 'outro.jpg')
     let outro: { image: string; sting: string | null; hasAudio: boolean } | null = null
-    try {
+    if (input.options.outro !== false) try {
       // the card is drawn at the clip's own shape (1:1, 4:5 … are not stretched)
       const dims = frameSize(input.options) ?? (info.width && info.height ? [info.width, info.height] : portrait ? [1080, 1920] : [1920, 1080])
       const base = dims[1] > dims[0] ? FRAMES.vertical : FRAMES.horizontal

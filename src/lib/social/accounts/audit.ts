@@ -45,6 +45,8 @@ export type SocialAuditAction =
   | 'social.inbox.uncertain_ack'
   | 'media.project.save'
   | 'media.clip.render'
+  | 'media.news.apply'
+  | 'media.news.restore'
   | 'story.project.save'
   | 'story.plan'
   | 'story.images'

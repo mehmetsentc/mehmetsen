@@ -74,6 +74,8 @@ export interface ClipOptions {
   quality?: ClipQuality
   /** Target file size cap in MB (null = quality-based) */
   maxMb?: number | null
+  /** HABER-VIDEO: false = no nahaber.com closing card (only for a news item's own video shown on nahaber.com) */
+  outro?: false
   /** Title band text over the video (vertical frame only). */
   showTitle: boolean
   showLogo: boolean
@@ -121,6 +123,12 @@ export interface MediaProject {
   rights: MediaRights
   /** Optional: a NaHaber news item this media belongs to (adds the article link to captions). */
   linkedNewsId: string | null
+  /** HABER-VIDEO: 'news' = the source is the news item's own uploaded video file (not a library item). */
+  sourceKind?: 'library' | 'news'
+  /** HABER-VIDEO: the news video file the project was made from (the original, never the edited one). */
+  sourceFileUrl?: string | null
+  /** HABER-VIDEO: the clip currently shown on the news page instead of the original. */
+  newsApplied?: { clipId: string; url: string; at: number; by: string } | null
   clips: MediaClip[]
   createdBy: string
   createdAt: number
@@ -178,6 +186,7 @@ export function parseClipOptions(raw: unknown): ClipOptions {
     if (y !== 0.5) out.cropY = y
   }
   if (o.quality === '720') out.quality = '720'
+  if (o.outro === false) out.outro = false
   if (typeof o.maxMb === 'number' && Number.isFinite(o.maxMb)) out.maxMb = Math.round(Math.min(MAX_MB_RANGE[1], Math.max(MAX_MB_RANGE[0], o.maxMb)))
   return out
 }
@@ -256,7 +265,7 @@ export function clipRenderKey(videoItemId: string, clip: Pick<MediaClip, 'startM
   const o = clip.options
   const base: unknown[] = [videoItemId, clip.startMs, clip.endMs, o.frame, o.showTitle ? clip.title : '', o.showLogo, o.showSource ? sourceLabel ?? '' : '', o.mute, 'v2-outro']
   // VIDEO-KES: only present when used, so clips made before keep their key (and their file)
-  const extra = [clip.cuts?.length ? clip.cuts.map((c) => [c.startMs, c.endMs]) : null, o.fit === 'crop' ? ['crop', o.cropX ?? 0.5, o.cropY ?? 0.5] : null, o.quality === '720' ? '720' : null, o.maxMb ?? null]
+  const extra = [clip.cuts?.length ? clip.cuts.map((c) => [c.startMs, c.endMs]) : null, o.fit === 'crop' ? ['crop', o.cropX ?? 0.5, o.cropY ?? 0.5] : null, o.quality === '720' ? '720' : null, o.maxMb ?? null, o.outro === false ? 'no-outro' : null]
   const s = JSON.stringify(extra.some((x) => x !== null) ? [...base, 'kes1', ...extra] : base)
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {

@@ -617,6 +617,17 @@ export function EditMediaSection({
             </div>
           </div>
         )}
+        {videoUrl && !isYouTube && postId ? (
+          <a
+            href={`/admin/video?editNewsVideo=${encodeURIComponent(postId)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 py-2.5 text-sm font-bold text-red-700 transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+            title="Haberin kayıtlı videosunu kes, böl, boyutunu değiştir; sonucu habere uygula (orijinal yedekte kalır)"
+          >
+            <Video className="h-4 w-4" /> Videoyu düzenle — kes, böl, boyut
+          </a>
+        ) : null}
 
         <button
           type="button"
