@@ -1,3 +1,4 @@
+import { ROLE_FIDELITY_RULES } from './roleGuard'
 import type { AiEditorDocument, AiPromptType } from '@/types/aiEditor'
 import { getActivePrompt } from './aiEditorService'
 import {
@@ -52,7 +53,8 @@ HABER BİÇİMİ (bu editörün tarzıyla birlikte uygula):
 ${NAHABER_HEADLINE_STYLE}
 - Ters piramit gazete haberi yaz; okul kompozisyonu (giriş-gelişme-sonuç) YAZMA
 - UZUNLUK (bu kural yukarıdaki eski uzunluk talimatlarını ezer): content gövdesi ${TARGET_NEWS_BODY_WORDS_MIN}-${TARGET_NEWS_BODY_WORDS_MAX} kelime hedef, EN AZ ${SEO_INDEXABLE_BODY_WORDS} kelime.
-- Uzunluğu yalnızca doğrulanabilir bilgiyle kur: kaynaktaki tüm olgular, resmi açıklama ve rakamlar, araştırma kaynaklarındaki ilgili arka plan, aynı konudaki önceki gelişmeler, olayın kimi nasıl etkilediği ve sırada ne olduğu.
+- Uzunluğu yalnızca doğrulanabilir bilgiyle kur: kaynaktaki tüm olgular, resmi açıklama ve rakamlar, sana verilen araştırma notları ve ilgili haberlerdeki arka plan, olayın kimi nasıl etkilediği ve sırada ne olduğu. Kendi hafızandan bilgi ekleme.
+${ROLE_FIDELITY_RULES}
 - Doldurma, tekrar, genel bilgi paragrafı, ahlak dersi ve uydurma YASAK. Doğrulanmış bilgi ${SEO_INDEXABLE_BODY_WORDS} kelimeye yetmiyorsa kısa yaz (asgari ~${MIN_NEWS_BODY_WORDS}); uydurmak kısa yazmaktan her zaman kötüdür.
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari kelime sınırına yakın en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Bakanlıktan Açıklama", "Soruşturma Başlatıldı", "Vatandaşlar Ne Diyor"); jenerik ders kitabı başlığı ("Sonuç", "Önemi", "Genel Değerlendirme", "Biyolojik Çeşitlilik…" vb.) YASAK

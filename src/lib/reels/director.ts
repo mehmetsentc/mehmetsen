@@ -4,6 +4,7 @@
  * the persona's style and may refine the style. Every LLM script is checked: every
  * number must exist in the source, length is bounded — otherwise the rule script is used.
  */
+import { guardRoles } from '@/lib/ai/editorial/roleGuard'
 import { formatTrDate } from '@/lib/ai/editorial/followUp'
 import type { ReelStyle } from './reelOptions'
 import type { ReelPersona } from './personas'
@@ -69,7 +70,7 @@ export function directorPrompt(i: DirectorInput, persona: ReelPersona, oneSenten
       'KULAK İÇİN YAZ: kısa cümleler (en fazla 15-18 kelime), her cümlede tek bilgi; nefes yerlerine virgül koy; ' +
       'kısaltma, parantez, eğik çizgi, tırnak kullanma ("Dr." değil "Doktor", "vb." değil "ve benzeri"); ' +
       'en önemli bilgiyi cümlenin sonuna yerleştir (Türkçede vurgu yüklemden hemen öncedir); ünlem ve büyük harfle vurgu yok; ' +
-      'özne ve yüklem net olsun, iç içe yan cümle kurma; kişi adını ilk geçtiği yerde unvanıyla söyle. ' +
+      'özne ve yüklem net olsun, iç içe yan cümle kurma; kişi adını ilk geçtiği yerde haber metnindeki unvanıyla söyle; haber metninde unvan yoksa yalnızca adını söyle, kendi bildiğin unvanı ekleme (bilgin eski olabilir). ' +
       (oneSentence
         ? 'tek cümle, en fazla 120 karakter. '
         : 'PROFESYONEL HABER ANLATIMI: tarafsız, güvenilir bir haber sunucusunun 40-60 saniyelik anlatımı; ' +
@@ -110,8 +111,9 @@ export async function directReel(
     const j = JSON.parse(raw.replace(/^```(?:json)?|```$/g, '').trim()) as { style?: string; script?: string }
     const raw0 = typeof j.script === 'string' ? j.script.replace(/\s+/g, ' ').trim() : ''
     // A slightly long script is cut at the last whole sentence instead of being thrown away.
-    const script = opts.oneSentence ? raw0 : trimToSentences(raw0, NEWS_SCRIPT_MAX)
     const source = `${i.title} ${i.summary} ${i.body ?? ''}`
+    // AI-ROLE-1: kaynakta olmayan / eski unvan seslendirmeye girmez
+    const script = guardRoles(opts.oneSentence ? raw0 : trimToSentences(raw0, NEWS_SCRIPT_MAX), source).text
     let problem = scriptProblem(script, source, opts.oneSentence ? 140 : NEWS_SCRIPT_MAX)
     // A story with real body text must get a real news piece, not a one-liner.
     if (!problem && !opts.oneSentence && (i.body ?? '').length >= 300 && script.length < NEWS_SCRIPT_MIN) problem = 'too_short_for_story'

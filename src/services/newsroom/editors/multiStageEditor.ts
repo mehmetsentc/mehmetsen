@@ -14,6 +14,7 @@ import { writeArticle } from './stage1_contentWriter'
 import { quickFactCheck } from './stage2_factChecker'
 import { classifyArticle, type CategoryResult } from './stage3_categoryEditor'
 import { gateKeep } from './stage4_gateKeeper'
+import { describeRoleFixes, guardArticleRoles } from '@/lib/ai/editorial/roleGuard'
 import type { AiRewriteResult } from '@/services/aiNewsEditor'
 import type { GenerationReason } from '@/lib/ai/usage/generationReason'
 import { recordAiRequestUsage } from '@/lib/ai/usage/telemetry'
@@ -107,6 +108,26 @@ export async function runMultiStageEditor(input: MultiStageInput): Promise<Multi
     temperature: input.temperature,
     editorialContext: input.editorialContext,
   })
+
+  // ── AI-ROLE-1: kişi unvanları kaynağa göre (model eski unvan ekleyebiliyor) ──
+  if (written.aiWritten) {
+    const roleSource = [input.originalTitle, input.originalSummary, input.originalContent].join('\n')
+    const guarded = guardArticleRoles(
+      {
+        title: written.title,
+        spot: written.spot,
+        summary: written.summary,
+        content: written.content,
+        seoTitle: written.seoTitle,
+        seoDescription: written.seoDescription,
+      },
+      roleSource
+    )
+    if (guarded.fixes.length > 0) {
+      Object.assign(written, guarded.fields)
+      console.warn(`[multiStage] unvan düzeltildi (${guarded.fixes.length}): ${describeRoleFixes(guarded.fixes)}`)
+    }
+  }
 
   // ── Stage 2: Fact Checker ────────────────────────────────────────────────────
   const factCheck = quickFactCheck({

@@ -68,6 +68,7 @@ export interface WriterInput {
 
 /** Ortak güvenlik — persona ile birleşir, makale şişirme YOK */
 const HARD_RULES = `MUTLAK KURALLAR:
+- Kişilerin unvanı, partisi, kulübü ve kurumu YALNIZCA kaynaktan; kendi bilgin eski olabilir, kaynakta unvan yoksa yalnızca adını yaz, kaynak "eski" diyorsa koru
 - Kaynakta OLMAYAN bilgi, rakam, alıntı, yasa adı uydurma
 - Ajans/gazete adını imza gibi kullanma; ama bilginin SAHİBİNİ metinde belirt (kurum, yetkili, açıklama, belge: "… Valiliği açıkladı", "… yaptığı açıklamada")
 - Kaynağın cümlelerini aynen kopyalama; kendi cümlelerinle yaz. Doğrudan alıntıyı yalnızca kaynakta tırnak içindeyse kullan
@@ -93,12 +94,12 @@ ${NAHABER_HEADLINE_STYLE}
 HABER BİÇİMİ (zorunlu):
 - Ters piramit: en önemli bilgi başta (kim, ne, nerede, ne zaman) — manşette çarpıcı olgu, spotta ayrıntı
 - spot: 2-4 cümle lider; content spot'u tekrarlama
-- content: 450-650 kelime hedef, en az 400 (Google'a açık kalma eşiği). Uzunluğu kaynaktaki olgular, resmi veriler, araştırma kaynaklarındaki ilgili arka plan ve önceki gelişmelerle kur. Doğrulanmış bilgi yetmiyorsa kısa yaz (asgari ~220). Uzunluk için uydurma/doldurma YASAK
+- content: 450-650 kelime hedef, en az 400 (Google'a açık kalma eşiği). Uzunluğu kaynaktaki olgular, resmi veriler ve yalnızca kaynakta ya da sana verilen ilgili haberlerde yazan önceki gelişmelerle kur; kendi hafızandan bilgi ekleme. Doğrulanmış bilgi yetmiyorsa kısa yaz (asgari ~220). Uzunluk için uydurma/doldurma YASAK
 - Gövdede EN AZ 2, mümkünse 3-4 tane ## alt başlık ZORUNLU (yalnızca asgari ~220 kelimeye yakın en kısa haberlerde en az 1 yeterli)
 - Alt başlıklar olay-özgü ve somut olsun (ör. "Ceza Tutarı", "Resmi Açıklama", "Vatandaşlar Ne Diyor"); jenerik ders kitabı / ansiklopedi başlığı YASAK: "Sonuç", "Giriş", "Gelişme", "Önemi", "Biyolojik Çeşitliliğin Korunması", "Genel Değerlendirme" ve benzeri
 - Her ## başlıktan sonra en az 1 dolu paragraf gelsin; başlığı yazıp boş bırakma
 - YASAK: uzun genel bilgi paragrafları, ahlak dersi, "bu nedenle vatandaşların…" nutukları
-- Kaynak inceyse arka planı yalnızca doğrulanabilir ve olayla doğrudan ilgili bilgiyle ekle (önceki karar, resmi veri, aynı konudaki önceki gelişme, araştırma kaynakları); bu da yetmiyorsa kısa yaz
+- Kaynak inceyse arka planı yalnızca kaynakta ve sana verilen ilgili haberlerde yazan bilgiyle ekle; kişi ve kurumlar hakkında kendi hafızandaki bilgi (unvan, parti, görev, memleket) güncel olmayabilir, ekleme; yetmiyorsa kısa yaz
 - Okurun arama niyetine cevap ver: ne oldu, nerede, ne zaman, kimi etkiliyor, sırada ne var — yalnızca kaynakta olanla
 
 ALANLAR:

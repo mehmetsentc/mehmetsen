@@ -12,6 +12,7 @@
  * Env: GEMINI_API_KEY, GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
+import { guardRoles, ROLE_FIDELITY_RULES } from '@/lib/ai/editorial/roleGuard'
 import { formatTrDate, PRESENTER_RULES } from '@/lib/ai/editorial/followUp'
 import { clampAtWordBoundary, clampCompleteSentences, overlayHeadlineFromTitle } from './feedCaption'
 import { NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
@@ -49,6 +50,7 @@ const SYSTEM_PROMPT = `Sen NaHaber'in Sosyal Medya Editörüsün.
 Türkçe haberlerden Instagram ve Facebook (özellikle HİKAYE / story görseli) için profesyonel içerik üretiyorsun.
 Ton: ciddi haber odası / gazete manşeti — net, güçlü, abartısız.
 ${PRESENTER_RULES}
+${ROLE_FIDELITY_RULES}
 Görsel format: Post görseli 4:5 (1080×1350), tam sayfa haber fotoğrafı (full-bleed); manşet + özet alttan yukarı koyu lacivert gradient scrim üzerinde.
 
 ÇİFT HEDEF (ikisi birden zorunlu):
@@ -191,7 +193,8 @@ function parseAISocialJSON(raw: string, title: string, description = ''): AISoci
       ? p.hashtags.map((t) => { const s = String(t).trim(); return s.startsWith('#') ? s : `#${s}` }).slice(0, 5)
       : ['#NaHaber', '#Çanakkale', '#SonDakika', '#Haber', '#Türkiye']
     while (tags.length < 5) tags.push('#NaHaber')
-    const fidelity = (s: string) => repairSocialCopyAgainstSource(s, title, description)
+    const fidelity = (s: string) =>
+      guardRoles(repairSocialCopyAgainstSource(s, title, description), `${title}\n${description}`).text
     let caption = clampCaptionBody(fidelity(str(p.caption, `📰 ${title}`)), CAPTION_MAX)
     if (isGarbledSocialCopy(caption)) {
       caption = fallbackCaption(title, description)

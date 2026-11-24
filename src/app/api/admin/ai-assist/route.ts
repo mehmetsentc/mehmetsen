@@ -25,6 +25,8 @@ import { resolveSourceContentGeo, sourceGeoOverride } from '@/lib/geo/sourceCont
 import { isScopeRestricted } from '@/lib/cms/rbacScope'
 import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
 import { resolveDistributionFields } from '@/lib/news/distributionMeta'
+import { describeRoleFixes, guardRoles, ROLE_FIDELITY_RULES, type RoleFix } from '@/lib/ai/editorial/roleGuard'
+import { formatTrDate } from '@/lib/ai/editorial/followUp'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -135,8 +137,8 @@ Kurallar:
 - summary en fazla 280 karakter olsun.
 - content KAPSAMLI ve BİLGİLENDİRİCİ olsun:
   * En az 4-6 bölüm (## H2) yaz; her bölüm 2-3 tam paragraf içersin
-  * Haberin arka planını, önemini ve bağlamını açıkla
-  * Konuyla ilgili genel bilgileri, tarihi bağlamı ve önemi ekle
+  * Haberin arka planını, önemini ve bağlamını yalnızca ham metin ve canlı araştırma notlarındaki bilgilerle açıkla
+  * Kendi genel bilgini güncel olgu gibi ekleme: kişilerin unvanı, partisi, görevi ve kurumlar hakkındaki bilgin eski olabilir
   * Okuyucuya haberin neden önemli olduğunu anlat
   * Kapak görseli veya manşet açıklamasını content'e ekleme
 - content markdown yapısı ZORUNLU:
@@ -150,7 +152,7 @@ Kurallar:
   * Token sınırına yaklaşırsan yeni H2 açma; son cümleyi tamamlayıp bitir.
   * Aynı paragrafı veya spot cümlesini content içinde iki kez yazma
   * İlk satır doğrudan ## ile başlayan ilk bölüm olsun (giriş/spot paragrafı content'te olmasın)
-- Ham metindeki spesifik iddiaları (alıntı, sayı, tarih) olduğu gibi koru; genel bağlam ve arka plan bilgisini zenginleştirerek ekle.
+- Ham metindeki spesifik iddiaları (alıntı, sayı, tarih, kişi unvanı) olduğu gibi koru; arka planı yalnızca ham metin ve canlı araştırma notlarından ekle.
 - CANLI ARAŞTIRMA NOTLARI varsa bu notlardaki bilgileri öncelikli olarak kullan ve içeriğe entegre et.
 - KATEGORİ / KONUM (KESİN):
   * teknoloji, otomobil, sağlık, yaşam, gastronomi, magazin, bilim → ULUSAL kategori; ASLA yerel-haber / yerel-teknoloji / yerel-otomobil.
@@ -583,7 +585,33 @@ export async function POST(request: Request) {
             .filter(Boolean)
             .join('\n')
         : userMessage
-    const parsed = await callAi(systemPrompt, enrichedUserMessage, deadlineMs)
+    const writesNews = mode === 'create' || mode === 'rewrite' || mode === 'publish-ready'
+    const finalSystemPrompt = writesNews
+      ? `${systemPrompt}\n\nBUGÜN: ${formatTrDate(Date.now(), true)} (Europe/Istanbul)\n${ROLE_FIDELITY_RULES}`
+      : systemPrompt
+    const parsed = await callAi(finalSystemPrompt, enrichedUserMessage, deadlineMs)
+
+    // AI-ROLE-1: yeniden yazımda kişi unvanları ham metne (ve canlı araştırma notuna) göre denetlenir.
+    // "create" modunda kaynak metin yok (yalnızca konu), orada yalnızca talimat geçerli.
+    const roleFixes: RoleFix[] = []
+    if (mode === 'rewrite' || mode === 'publish-ready') {
+      const roleSource = [userMessage, research?.brief ?? ''].join('\n')
+      for (const key of [
+        'title', 'spot', 'summary', 'content', 'seoTitle', 'seoDescription',
+        'socialHeadline', 'socialStorySummary', 'socialCaption', 'pushTitle', 'pushText',
+      ]) {
+        const v = parsed[key]
+        if (typeof v !== 'string' || !v) continue
+        const r = guardRoles(v, roleSource)
+        if (r.fixes.length) {
+          parsed[key] = r.text
+          roleFixes.push(...r.fixes)
+        }
+      }
+      if (roleFixes.length) {
+        console.warn(`[ai-assist] unvan düzeltildi (${roleFixes.length}): ${describeRoleFixes(roleFixes)}`)
+      }
+    }
 
     if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
       const title = stripAiHtmlLeak(String(parsed.title ?? ''))
