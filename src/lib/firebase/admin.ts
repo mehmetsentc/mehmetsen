@@ -116,4 +116,17 @@ export function getAdminStorage(): Storage {
   return adminStorage
 }
 
+/**
+ * Sunucu hizmet hesabının Google Cloud erişim anahtarı (cloud-platform kapsamı).
+ * Yalnız sunucu içi API çağrıları için; tarayıcıya ya da loglara yazılmaz.
+ */
+export async function getAdminAccessToken(): Promise<string | null> {
+  try {
+    const t = await getAdminApp().options.credential?.getAccessToken()
+    return t?.access_token ?? null
+  } catch {
+    return null
+  }
+}
+
 export { Collections }

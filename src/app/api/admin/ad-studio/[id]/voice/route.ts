@@ -14,7 +14,13 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function POST(request: Request, { params }: Ctx) {
   const auth = await requireAccountManager(request, { mutation: true })
   if ('response' in auth) return auth.response
-  const r = await generateAdVoice(auth.ctx.uid, (await params).id, Date.now())
+  let r: Awaited<ReturnType<typeof generateAdVoice>>
+  try {
+    r = await generateAdVoice(auth.ctx.uid, (await params).id, Date.now())
+  } catch (err) {
+    console.error('[ad-studio] ses hatası', err instanceof Error ? err.message.slice(0, 200) : err)
+    return json({ error: 'Ses üretilirken beklenmeyen hata oluştu', code: 'voice_error' }, 500)
+  }
   if (!r.ok) return json({ error: r.error, code: r.code }, r.status)
   return json({ ad: r.value })
 }

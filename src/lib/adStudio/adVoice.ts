@@ -11,13 +11,13 @@ import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
 import { adjustGeminiUsd, estimateGeminiUsd, reserveGeminiUsd, GeminiBudgetError } from '@/lib/reels/ttsQuota'
 import { getReelVoiceSettings } from '@/lib/reels/voiceSettings'
 import { pronunciationPrompt } from '@/lib/reels/pronunciation'
+import { GeminiTtsUnavailable, synthesizeGeminiTts } from '@/lib/reels/geminiTts'
 import { AD_VOICES, voicePrompt, type AdTone, type AdVoiceId } from './adModel'
 
-const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
 export const AD_TTS_MODEL = 'gemini-2.5-flash-tts'
 
 export class AdVoiceError extends Error {
-  constructor(message: string, public readonly status = 502) {
+  constructor(message: string, public readonly status = 422) {
     super(message)
     this.name = 'AdVoiceError'
   }
@@ -28,9 +28,7 @@ export function adSpokenText(script: string): string {
   return toSpokenTurkish(script.replace(/\s+/g, ' ').replace(/…/g, '...').trim()).slice(0, 1500)
 }
 
-export async function synthesizeAdVoice(script: string, voice: AdVoiceId, tone: AdTone, speed: number, signal?: AbortSignal): Promise<{ wav: Buffer; seconds: number; usd: number }> {
-  const key = process.env.GOOGLE_TTS_API_KEY?.trim()
-  if (!key) throw new AdVoiceError('Profesyonel ses servisi bu ortamda yapılandırılmamış (GOOGLE_TTS_API_KEY yok)', 503)
+export async function synthesizeAdVoice(script: string, voice: AdVoiceId, tone: AdTone, speed: number, signal?: AbortSignal): Promise<{ wav: Buffer; seconds: number; usd: number; via: string }> {
   const input = adSpokenText(script)
   if (input.length < 3) throw new AdVoiceError('Seslendirilecek metin boş', 400)
   const settings = await getReelVoiceSettings()
@@ -43,30 +41,15 @@ export async function synthesizeAdVoice(script: string, voice: AdVoiceId, tone: 
     throw err
   }
   try {
-    const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(key)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        input: { text: input, prompt: voicePrompt(voice, tone, speed) + pronunciationPrompt(input) },
-        voice: { languageCode: 'tr-TR', name: AD_VOICES[voice].gemini, modelName: AD_TTS_MODEL },
-        audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 },
-      }),
-      signal,
-    })
-    if (!res.ok) {
-      const body = (await res.text()).slice(0, 200).replace(/key=[^&\s"]+/g, 'key=***')
-      throw new AdVoiceError(`Profesyonel ses üretilemedi (HTTP ${res.status}) ${body}`)
-    }
-    const json = (await res.json()) as { audioContent?: string }
-    if (!json.audioContent) throw new AdVoiceError('Ses servisi boş yanıt döndü')
-    const wav = Buffer.from(json.audioContent, 'base64')
+    const { wav, via } = await synthesizeGeminiTts({ text: input, prompt: voicePrompt(voice, tone, speed) + pronunciationPrompt(input), voice: AD_VOICES[voice].gemini, model: AD_TTS_MODEL, signal })
     const seconds = wavSeconds(wav)
     const usd = (seconds * 25 * 10) / 1e6 + ((input.length / 4 + 60) * 0.5) / 1e6
     await adjustGeminiUsd(reservation, usd)
-    return { wav, seconds, usd }
+    return { wav, seconds, usd, via }
   } catch (err) {
     await adjustGeminiUsd(reservation, 0)
-    if (err instanceof AdVoiceError) throw err
-    throw new AdVoiceError(err instanceof Error && err.name === 'TimeoutError' ? 'Ses servisi zaman aşımına uğradı' : 'Profesyonel ses üretilemedi')
+    // 422: 502/504 Cloudflare tarafından kendi hata sayfasıyla değiştirilir, mesaj kaybolur
+    if (err instanceof GeminiTtsUnavailable) throw new AdVoiceError(err.message, 422)
+    throw new AdVoiceError(err instanceof Error && err.name === 'TimeoutError' ? 'Ses servisi zaman aşımına uğradı' : 'Profesyonel ses üretilemedi', 422)
   }
 }

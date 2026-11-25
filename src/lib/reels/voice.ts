@@ -94,20 +94,9 @@ export async function synthesizeReelVoiceEx(
     let reservation: { month: string; usd: number } | null = null
     try {
       reservation = await reserveGeminiUsd(estimateGeminiUsd(input), choice.gemini.budgetUsd)
-      const res = await fetch(`${TTS_ENDPOINT}?key=${encodeURIComponent(key)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          input: { text: input, prompt: choice.gemini.style.slice(0, 400) + pronunciationPrompt(input) },
-          voice: { languageCode: 'tr-TR', name: choice.gemini.voice, modelName: choice.gemini.model ?? 'gemini-2.5-flash-tts' },
-          audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 },
-        }),
-        signal,
-      })
-      if (!res.ok) throw new Error(`Gemini TTS ${res.status}: ${(await res.text()).slice(0, 160)}`)
-      const json = (await res.json()) as { audioContent?: string }
-      if (!json.audioContent) throw new Error('Gemini TTS returned no audio')
-      const wav = Buffer.from(json.audioContent, 'base64')
+      // hizmet hesabı → API anahtarı → Gemini API (lib/reels/geminiTts)
+      const { synthesizeGeminiTts } = await import('./geminiTts')
+      const { wav } = await synthesizeGeminiTts({ text: input, prompt: choice.gemini.style.slice(0, 400) + pronunciationPrompt(input), voice: choice.gemini.voice, model: choice.gemini.model, signal })
       const sec = wavSeconds(wav)
       await adjustGeminiUsd(reservation, (sec * 25 * 10) / 1e6 + ((input.length / 4 + 60) * 0.5) / 1e6)
       return { wav, engine: 'gemini' }
