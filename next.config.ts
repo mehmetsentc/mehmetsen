@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
     // REKLAM STÜDYOSU: firma reklamı (logosuz) — reklam fontları, yazı fontları, müzik yatakları, ffmpeg
     '/api/admin/ad-studio/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/adStudio/fonts/*', './src/lib/reels/assets/audio/broadcast/bed-*.m4a', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/ad-studio/[id]/media': ['./node_modules/ffmpeg-static/ffmpeg'],
+    // seslendirmeyi videoya uydurma (atempo)
+    '/api/admin/ad-studio/[id]/voice': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/video/projects/[id]/render': ['./src/lib/reels/assets/fonts/*', './src/lib/reels/assets/brand/*', './src/lib/reels/assets/audio/broadcast/*', './src/lib/story/watermark.png', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/admin/social/story-projects/[id]/assets': ['./src/lib/reels/assets/fonts/*', './node_modules/ffmpeg-static/ffmpeg'],
     '/api/reels/music/[name]': ['./src/lib/reels/assets/audio/broadcast/bed-*.m4a'],
