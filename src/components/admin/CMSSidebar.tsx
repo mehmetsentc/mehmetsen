@@ -150,6 +150,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/videos', label: 'Video Kütüphanesi', icon: Video, requiredPermissions: ['video:read'] },
       { href: '/admin/video', label: 'Video Merkezi', icon: Clapperboard, requiredPermissions: ['social:view'], matches: ['/admin/video', '/admin/media-studio/reels', '/admin/social/reels'] },
+      // Banner reklamları: ekle / düzenle / kaldır, alanlara (slot) göre süz. Newsroom OS menüsünde kaybolmuştu.
+      { href: '/admin/ads', label: 'Reklam Banner Alanları', icon: LayoutGrid, requiredPermissions: ['seo:edit'] },
       { href: '/admin/reklam-studyosu', label: 'Reklam Stüdyosu', icon: Megaphone, requiredPermissions: ['social:view'] },
     ],
   },
