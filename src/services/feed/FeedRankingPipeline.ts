@@ -438,6 +438,36 @@ export class FeedRankingPipeline {
   }
 
   /** 9-step ranking pipeline ensuring all published news flow through algorithm. */
+  /**
+   * VIDEO-RANK-1 — rank a fixed video pool (/video) with the same scorer as
+   * Feed V2: NFRank when live, otherwise the V1 scoring + diversity engine.
+   * Seen items are not dropped here — the video page lists every video and
+   * only pushes already-watched ones down on the client.
+   */
+  async rankVideoPool(input: {
+    userId: string | null
+    rows: FeedCandidateRow[]
+    sessionIntent?: NfSessionIntent
+  }): Promise<{ ranked: FeedCandidateRow[]; rankingVersion: string }> {
+    if (!input.rows.length) return { ranked: [], rankingVersion: FEED_RANKING_VERSION }
+    const ops = await getFeedAlgorithmOps()
+    let ctx: FeedUserContext = await feedUserContextService.load(input.userId)
+    if (ctx.isSynthetic) ctx = { ...ctx, explicitInterests: [], behavioralInterests: new Map(), followedPublisherIds: new Set() }
+    const limit = input.rows.length
+    const none = new Set<string>()
+    if (ops.liveEnabled) {
+      const ranked = nfRankEngine.compose(input.rows, ctx, 'personal', limit, input.sessionIntent ?? emptySessionIntent(), {
+        seenArticles: none,
+        seenClusters: none,
+        coldStart: false,
+        boostTopics: ops.boostTopics,
+      })
+      return { ranked, rankingVersion: NFRANK_VERSION }
+    }
+    const scored = feedScoringService.scoreAll(input.rows, ctx, 'personal', none, none)
+    return { ranked: feedDiversityEngine.rerank(scored, 'personal', limit), rankingVersion: FEED_RANKING_VERSION }
+  }
+
   async run(input: RankingPipelineInput): Promise<RankingPipelineResult> {
     const ops = await getFeedAlgorithmOps()
     const resolved: RankingPipelineInput = {

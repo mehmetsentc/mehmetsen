@@ -19,6 +19,7 @@ import {
 import { sanitizeFeedVideoUrl } from '@/lib/videoFeed/feedCardVideo'
 import { attachReelVideoRows, loadReelVideoIndex } from '@/lib/reels/reelLibrary'
 import { arrangeVideoAware } from '@/lib/feed/videoAwareOrder'
+import { buildVideoFeedOrder, isVideoTabMatch } from '@/lib/videoFeed/rankedVideoFeed'
 import { publicFeedAuthor } from '@/lib/seo/publicAuthorIdentity'
 import { publicArticleSocialCounts } from '@/lib/feed/articleEngagement'
 import type {
@@ -267,6 +268,17 @@ async function attachReelVideos<T extends FeedCandidateRow | ScoredFeedCandidate
     return rows
   }
 }
+
+/** VIDEO-RANK-1: one /video page — ranked ids (first page hydrated) + the rest as a queue. */
+export interface VideoFeedPageDto {
+  items: FeedItemDto[]
+  queue: string[]
+  total: number
+  rankingVersion: string | null
+}
+
+const VIDEO_FEED_PAGE_MAX = 24
+const VIDEO_FEED_RECENT_POOL = 160
 
 export class FeedService {
   async getFeed(ctx: FeedRequestContext, opts?: { debug?: boolean }): Promise<FeedPageDto> {
@@ -674,6 +686,76 @@ export class FeedService {
         },
       ])
       throw err
+    }
+  }
+
+  /**
+   * VIDEO-RANK-1 — /video: every video Feed V2 can play (NaHaber reels from
+   * the reel index + stories with their own playable video), ranked for this
+   * reader with the Feed V2 scorer. Nothing is dropped: items the ranker
+   * leaves out (cluster twins, out-of-scope local) follow, newest first.
+   * With `ids` it only hydrates the next queued page in the given order.
+   */
+  async getVideoFeed(ctx: {
+    userId: string | null
+    category?: string | null
+    limit?: number
+    ids?: string[] | null
+  }): Promise<VideoFeedPageDto> {
+    const limit = Math.min(Math.max(ctx.limit ?? 12, 4), VIDEO_FEED_PAGE_MAX)
+    const hydrate = async (rows: FeedCandidateRow[]): Promise<FeedItemDto[]> => {
+      if (!rows.length) return []
+      const [socialMap, enriched] = await Promise.all([
+        loadSocialState(ctx.userId, rows.map((r) => r.articleId)),
+        enrichPublisherSlugs(rows),
+      ])
+      return enriched
+        .map((r) => toDto(r, socialMap.get(r.articleId)))
+        .filter((item) => Boolean(item.video))
+    }
+
+    if (ctx.ids?.length) {
+      const ids = ctx.ids.slice(0, VIDEO_FEED_PAGE_MAX)
+      const rows = await attachReelVideos(await feedCandidateService.fetchByIds(ids))
+      const byId = new Map(rows.map((r) => [r.articleId, r]))
+      const ordered = ids.map((id) => byId.get(id)).filter((r): r is FeedCandidateRow => Boolean(r))
+      return { items: await hydrate(ordered), queue: [], total: ordered.length, rankingVersion: null }
+    }
+
+    const category = ctx.category?.trim().toLowerCase() || null
+    const categoryIds = category ? resolveCategoryFilterIds(category) : null
+    const reelIndex = await loadReelVideoIndex()
+    const reelIds = [...reelIndex.keys()].filter((k) => !k.startsWith('slug:'))
+    const [reelRows, recentRows] = await Promise.all([
+      reelIds.length ? feedCandidateService.fetchByIds(reelIds).catch(() => []) : Promise.resolve([]),
+      feedCandidateService
+        .fetchRecent({
+          limit: VIDEO_FEED_RECENT_POOL,
+          cursor: null,
+          userId: ctx.userId,
+          surface: 'video',
+        })
+        .catch(() => [] as FeedCandidateRow[]),
+    ])
+    const pool = attachReelVideoRows([...reelRows, ...recentRows], reelIndex)
+      .map((r) => ({ ...r, video: sanitizeFeedVideoUrl(r.video) }))
+      .filter((r) => Boolean(r.video))
+      .filter((r) => isVideoTabMatch(r, category, categoryIds))
+
+    const sessionIntent = await loadSessionIntent(ctx.userId)
+    const order = await buildVideoFeedOrder(pool, (rows) =>
+      feedRankingPipeline.rankVideoPool({ userId: ctx.userId, rows, sessionIntent })
+    )
+    const byId = new Map(pool.map((r) => [r.articleId, r]))
+    const firstRows = order.ids
+      .slice(0, limit)
+      .map((id) => byId.get(id))
+      .filter((r): r is FeedCandidateRow => Boolean(r))
+    return {
+      items: await hydrate(firstRows),
+      queue: order.ids.slice(limit),
+      total: order.ids.length,
+      rankingVersion: order.rankingVersion,
     }
   }
 }

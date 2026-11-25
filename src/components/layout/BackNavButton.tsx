@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Home } from 'lucide-react'
 import { ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
 import { isGlobalNavV2EnabledClient } from '@/lib/feed/featureFlagClient'
 import { usePlatformLayout } from '@/hooks/usePlatformLayout'
+import { isNewspaperDesktopVideo } from '@/lib/feed/reader/shellChrome'
 
 const HIDDEN_PREFIXES = [
   ROUTES.LOGIN,
@@ -29,7 +31,8 @@ function resolveFallback(pathname: string): string {
   }
   if (pathname.startsWith('/haber/') || pathname.startsWith('/post/')) return ROUTES.FEED
   if (pathname === ROUTES.REELS || pathname.startsWith(`${ROUTES.REELS}?`)) return ROUTES.FEED
-  if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}?`)) return ROUTES.FEED
+  // Header “Video” sekmesinden gelinir — geri dönüş ana sayfa (gazete).
+  if (pathname === ROUTES.VIDEO || pathname.startsWith(`${ROUTES.VIDEO}/`)) return ROUTES.HOME
   if (pathname.startsWith('/settings')) return ROUTES.SETTINGS
   return ROUTES.FEED
 }
@@ -112,7 +115,9 @@ export function GlobalBackNav() {
 
   // Newspaper desktop has masthead; only immersive routes keep a floating control.
   if (hidden || !isImmersive) return null
-  if (isPublicVideo && isDesktop) return null
+  // Masaüstü /video yalnızca gazete düzeninde (geri alma anahtarı) masthead'e sahip;
+  // varsayılan tam ekran oynatıcıda geri + ana sayfa denetimi gerekir.
+  if (isPublicVideo && isNewspaperDesktopVideo(pathname, isDesktop)) return null
   if (globalNavV2 && isFeedV2) return null
 
   return (
@@ -123,9 +128,20 @@ export function GlobalBackNav() {
       <BackNavButton
         tone={isImmersive ? 'dark' : 'auto'}
         fallbackHref={
-          isFeedV2 ? ROUTES.HOME : isImmersive ? ROUTES.FEED : undefined
+          isFeedV2 || isPublicVideo ? ROUTES.HOME : isImmersive ? ROUTES.FEED : undefined
         }
       />
+      {isPublicVideo ? (
+        <Link
+          href={ROUTES.HOME}
+          aria-label="Ana sayfa"
+          title="Ana sayfa"
+          className="back-nav-btn back-nav-btn--dark back-nav-home"
+          data-testid="video-home-link"
+        >
+          <Home className="h-5 w-5" strokeWidth={2.25} />
+        </Link>
+      ) : null}
     </div>
   )
 }
