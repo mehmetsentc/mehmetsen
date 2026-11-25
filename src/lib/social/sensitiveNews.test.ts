@@ -58,3 +58,37 @@ describe('hassasiyet düzeyi', () => {
     expect(automationSensitivityBlock(3, 'post')).toBe('sensitive_blocked')
   })
 })
+
+describe('yöntem ifadeleri (DSÖ / RTÜK)', () => {
+  it('yöntem ve ölüm birlikteyse yalnız «hayatını kaybetti» kalır', () => {
+    expect(neutralizeSocialText('Genç adam kendini tabancayla vurarak intihar etti')).toBe('Genç adam hayatını kaybetti')
+    expect(neutralizeSocialText('Kadın evinde kendini asarak yaşamına son verdi.')).toBe('Kadın evinde hayatını kaybetti.')
+    expect(neutralizeSocialText('KENDİNİ KÖPRÜDEN ATARAK İNTİHAR ETTİ')).toBe('HAYATINI KAYBETTİ')
+    expect(neutralizeSocialText('Öğrenci canına kıydı')).toBe('Öğrenci hayatını kaybetti')
+  })
+  it('ölüm bilgisi yoksa olgu korunur, yöntem çıkar', () => {
+    expect(neutralizeSocialText('Polis memuru kendini av tüfeğiyle vurdu, hastaneye kaldırıldı')).toBe('Polis memuru intihar girişiminde bulundu, hastaneye kaldırıldı')
+    expect(neutralizeSocialText('Kendini balkondan attı')).toBe('İntihar girişiminde bulundu')
+    expect(neutralizeSocialText('Genç kız intihara teşebbüs etti')).toBe('Genç kız intihar girişiminde bulundu')
+    expect(neutralizeSocialText('intihar salgını uyarısı')).toBe('intihar vakalarındaki artış uyarısı')
+  })
+  it('mecaz ve başka anlamlar değişmez', () => {
+    expect(neutralizeSocialText('Kendini savunmak için hırsızı vurdu')).toBe('Kendini savunmak için hırsızı vurdu')
+    expect(neutralizeSocialText('Yağmur başlayınca kendini dışarı attı')).toBe('Yağmur başlayınca kendini dışarı attı')
+    expect(neutralizeSocialText('Kendini işine verdi')).toBe('Kendini işine verdi')
+  })
+})
+
+describe('elle paylaşım: düzey 3', () => {
+  it('intihar haberinde video engellenir, gönderiye yardım satırı bir kez eklenir', async () => {
+    const { manualVideoBlocked, withHelpLine, HELP_LINE_TEXT } = await import('./sensitiveNews')
+    const suicide = { title: 'Genç adam evinde hayatını kaybetti', content: 'Polis intihar olasılığı üzerinde duruyor.' }
+    const crash = { title: 'Kazada 2 kişi hayatını kaybetti', content: 'Otomobil devrildi.' }
+    expect(manualVideoBlocked(suicide)).toBe(true)
+    expect(manualVideoBlocked(crash)).toBe(false)
+    const c = withHelpLine('📰 Haber', suicide)
+    expect(c.endsWith(HELP_LINE_TEXT)).toBe(true)
+    expect(withHelpLine(c, suicide)).toBe(c)
+    expect(withHelpLine('📰 Haber', crash)).toBe('📰 Haber')
+  })
+})

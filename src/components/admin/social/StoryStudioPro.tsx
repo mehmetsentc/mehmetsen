@@ -203,8 +203,10 @@ export function useStoryStudio({ initialNewsId = null, initialStyle = null, onNe
   /** GÖREV 46: a video type brings its own narrator, music and effects (all still changeable). */
   const changeStyle = (style: StoryStyle) => {
     const d = STYLE_THEME[style].defaults
-    setD(d ? { style, music: d.music, sfx: d.sfx, voice: { name: d.voice, rate: d.rate } } : { style })
-    if (d) toast.success(`${STYLE_THEME[style].label}: ses, müzik ve efektler bu türe göre ayarlandı`)
+    // HASSAS-VIDEO: ağır haberde (ölüm / ağır şiddet) müzik ve efekt kapalı, tempo sakin kalır
+    const grave = p?.gravity === 'agir'
+    setD(d ? { style, music: grave ? 'none' : d.music, sfx: grave ? false : d.sfx, voice: { name: d.voice, rate: grave ? 0.95 : d.rate } } : { style })
+    if (d) toast.success(grave ? `${STYLE_THEME[style].label}: ses bu türe göre ayarlandı; ağır haber olduğu için müzik ve efekt kapalı kaldı` : `${STYLE_THEME[style].label}: ses, müzik ve efektler bu türe göre ayarlandı`)
   }
 
   // ── save ───────────────────────────────────────────────────────────────────
@@ -378,6 +380,7 @@ export function useStoryStudio({ initialNewsId = null, initialStyle = null, onNe
       const proj = r.data.project
       open(proj)
       apply(proj)
+      if (proj.gravity === 'agir') toast('Ağır haber (ölüm / ağır şiddet): sakin sunuş — müzik ve efekt kapalı, tempo yavaş, «SON DAKİKA» etiketi yok')
       // AI looks at every photo / the video, then writes the narration and matches the visuals
       setProgress({ text: `AI haberin ${proj.assets.length} görüntüsünü inceliyor…`, pct: null })
       const jobs = await Promise.all(

@@ -221,7 +221,8 @@ export function drawHeadline(ctx: SKRSContext2D, F: Frame, meta: SceneMeta, scen
   switch (variant) {
     case 'lower': {
       // news: red «tag» + white bar sliding in from the left (lower-third look, top of frame)
-      const tag = (meta.label || 'SON DAKİKA').toLocaleUpperCase('tr-TR').slice(0, 18)
+      // HASSAS-VIDEO: «SON DAKİKA» yalnız gerçek son dakikada (AI ya da editör etiketi); varsayılan «HABER»
+      const tag = (meta.label || 'HABER').toLocaleUpperCase('tr-TR').slice(0, 18)
       ctx.font = `34px ${FONT_CAP}`
       const tagW = ctx.measureText(tag).width + 36
       const size = fitFont(ctx, head, FONT_DISPLAY, vertical ? 84 : 78, 48, maxW - 40)

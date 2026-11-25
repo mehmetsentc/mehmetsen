@@ -22,6 +22,7 @@ import { Collections } from '@/lib/firebase/collections'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
 import { isClipId, mediaCaption, mediaLedgerKey, shareProblem, type MediaClip, type MediaProject, type MediaShareFormat, type MediaSharePlatform } from '@/lib/media/mediaProject'
 import { getProject } from '@/lib/media/mediaStore'
+import { manualVideoBlocked, SENSITIVE_VIDEO_BLOCK_MESSAGE } from '@/lib/social/sensitiveNews'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -77,6 +78,8 @@ export async function POST(request: Request, { params }: Ctx) {
   let articleUrl: string | null = null
   if (p.linkedNewsId) {
     const n = await getAdminFirestore().collection(Collections.NEWS).doc(p.linkedNewsId).get()
+    // HASSAS-VIDEO: düzey 3 haberin videosu (intihar, çocuk mağdur, istismar) paylaşılmaz
+    if (n.exists && manualVideoBlocked(n.data() as Record<string, unknown>)) return json({ error: SENSITIVE_VIDEO_BLOCK_MESSAGE, code: 'sensitive_blocked' }, 422)
     if (n.exists) articleUrl = withSocialUtm(buildPublicArticleUrl(p.linkedNewsId, n.data() as Record<string, unknown>), { platform: acc.platform, format, accountId: acc.accountId }) ?? null
   }
   const key = mediaLedgerKey(p.id, clip.id)

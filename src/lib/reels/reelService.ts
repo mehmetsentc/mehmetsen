@@ -461,6 +461,15 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   if (!snap.exists) throw new Error('reels: news not found')
   const d = snap.data() as Record<string, unknown>
   if (str(d.status) !== 'published') throw new Error('reels: news is not published')
+  {
+    // HASSAS-VIDEO: elle de olsa düzey 3 haberden Reels / video üretilmez
+    const { manualVideoBlocked, SENSITIVE_VIDEO_BLOCK_MESSAGE } = await import('@/lib/social/sensitiveNews')
+    if (manualVideoBlocked(d)) {
+      const e = new Error(SENSITIVE_VIDEO_BLOCK_MESSAGE)
+      e.name = 'SensitiveBlockedError'
+      throw e
+    }
+  }
   const settings = await getReelVoiceSettings()
   let src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')

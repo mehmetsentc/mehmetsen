@@ -130,7 +130,7 @@ export const STYLE_THEME: Record<StoryStyle, StyleTheme> = {
   },
   haber: {
     label: 'Haber',
-    hint: 'Son dakika bandı, alt yazı şeridi, ciddi haber dili',
+    hint: 'Haber bandı, alt yazı şeridi, ciddi haber dili',
     genre: true,
     variant: 'lower',
     colors: ['#E30613'],
@@ -482,6 +482,11 @@ export interface StoryProject {
   sfx?: boolean
   /** HABERDEN-VIDEO: the news item the project was prepared from */
   newsId?: string | null
+  /**
+   * HASSAS-VIDEO: «agir» = ölümlü kaza, cinayet, silahlı saldırı gibi ağır haber (hassasiyet düzeyi 2).
+   * Sakin sunuş: müzik ve efekt yok, yavaş tempo, «SON DAKİKA» etiketi yok.
+   */
+  gravity?: 'agir' | null
   assets: StoryAsset[]
   scenes: StoryScene[]
   plannedAt: number | null
@@ -684,7 +689,19 @@ export function planBudget(targetMin: TargetMin): { scenes: [number, number]; ch
   return { scenes: [Math.round(sec / 10), Math.round(sec / 6)], chars: [Math.round(sec * 12), Math.round(sec * 14)], sceneChars: 220 }
 }
 
-export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat; style?: StoryStyle } = {}): string {
+/**
+ * HASSAS-VIDEO: haber etiği (DSÖ intihar habercilik rehberi, RTÜK 6112 m.8, Basın Meslek İlkeleri m.9, 13).
+ * Her video planına ve metnine eklenir; sonuç ayrıca `safeStoryText` sözlüğünden geçer.
+ */
+export const VIDEO_ETHICS_RULES = [
+  '- Haber etiği: ölüm için «hayatını kaybetti» de. İntihar, kendine zarar verme ve şiddetin YÖNTEMİNİ (silah, ip, ilaç, yükseklik, yer) asla anlatma; olay yerini, bedeni, kanı ve yakınların acısını betimleme.',
+  '- Şüpheliyi yargı kararı olmadan suçlu ilan etme («şüpheli», «iddiaya göre»); çocuk ve mağdur kimliği verme. Cinayeti kıskançlık, öfke ya da namusla açıklama.',
+  '- «Dehşet», «kan donduran», «vahşet», «şok», «skandal» gibi duygu kelimeleri ve ünlem kullanma.',
+]
+export const NEWS_PRESENTER_RULE = '- Bu bir haber videosu: ajans spikeri gibi anlat. İlk sahne en yeni ve en önemli olgu ve kaynağı olsun; merak sorusu, retorik soru, selamlama yok. Sade, kısa, düz cümleler.'
+export const GRAVE_NEWS_RULE = '- AĞIR HABER (ölüm / ağır şiddet): sakin, ölçülü ve saygılı anlat; olayı tek cümlede ver, sonra resmî açıklama ve süreç. Ekran başlıklarında «SON DAKİKA», ünlem ve büyük duygu yok.'
+
+export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat; style?: StoryStyle; news?: boolean; gravity?: 'agir' | null } = {}): string {
   const t = p.targetMin ?? 1
   const b = planBudget(t)
   const long = t > 1
@@ -694,9 +711,13 @@ export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryForma
     'Görevin: anlatımı sahnelere bölmek ve her sahneye en uygun görüntüyü seçmek.',
     'Kurallar:',
     `- Hedef süre yaklaşık ${t} dakika: toplam ${b.chars[0]}–${b.chars[1]} karakter anlatım, ${b.scenes[0]}–${b.scenes[1]} sahne. Her sahne en fazla ${b.sceneChars} karakter (${long ? '1–2 cümle' : 'tek kısa cümle'}).`,
-    long
-      ? '- Uzun anlatım düzeni: güçlü bir giriş (merak sorusu), bölümler hâlinde gelişme (her bölüm bir alt başlık gibi akar), ara özetler ve net bir kapanış. Tekrara düşme; her sahne yeni bir bilgi versin.'
-      : '- İlk sahne merak uyandıran bir soru ya da çarpıcı bir bilgi olsun. Son sahne net bir kapanış.',
+    p.news
+      ? NEWS_PRESENTER_RULE
+      : long
+        ? '- Uzun anlatım düzeni: güçlü bir giriş (merak sorusu), bölümler hâlinde gelişme (her bölüm bir alt başlık gibi akar), ara özetler ve net bir kapanış. Tekrara düşme; her sahne yeni bir bilgi versin.'
+        : '- İlk sahne merak uyandıran bir soru ya da çarpıcı bir bilgi olsun. Son sahne net bir kapanış.',
+    ...VIDEO_ETHICS_RULES,
+    ...(p.gravity === 'agir' ? [GRAVE_NEWS_RULE] : []),
     '- Anlatım metni verildiyse metni DEĞİŞTİRME, yalnızca sahnelere böl. Verilmediyse konudan doğru, kanıtlanmış bilgilerle yaz; uydurma rakam, tarih veya isim kullanma; emin olmadığın bilgiyi yazma.',
     '- Suç, cinayet, kaza gibi hassas konularda: masumiyet karinesine uy («şüpheli», «iddiaya göre»), çocuk ve mağdur kimliği verme, şiddeti ayrıntılı anlatma, kanlı sahne tarif etme.',
     '- Her sahne için 1–3 vurgu kelimesi seç (cümlede geçen kelimeler, aynen yazıldığı gibi).',
@@ -1022,7 +1043,7 @@ export function storyShareProblem(p: StoryProject, platform: MediaSharePlatform,
 export const longSections = (t: TargetMin) => ({ 1: 3, 3: 7, 5: 11, 10: 20 })[t]
 export const SECTION_CHARS = 360
 
-export function scriptSystemPrompt(t: TargetMin, style?: StoryStyle): string {
+export function scriptSystemPrompt(t: TargetMin, style?: StoryStyle, opts: { news?: boolean; gravity?: 'agir' | null } = {}): string {
   const n = longSections(t)
   const tone = style ? STYLE_THEME[style].tone : null
   return [
@@ -1032,6 +1053,9 @@ export function scriptSystemPrompt(t: TargetMin, style?: StoryStyle): string {
     'İlk bölüm merak uyandıran bir giriş, son bölüm net bir kapanış olsun; aradaki bölümler kronolojik ya da mantıklı sırayla ilerlesin, tekrar etmesin.',
     'Doğru, kanıtlanmış bilgi kullan; uydurma rakam, tarih, isim yazma; emin olmadığını yazma. Tartışmalı konularda farklı görüşleri adil aktar.',
     'Suç, kaza gibi hassas konularda masumiyet karinesine uy, mağdur ve çocuk kimliği verme, şiddeti ayrıntılı anlatma.',
+    ...VIDEO_ETHICS_RULES.map((r) => r.slice(2)),
+    ...(opts.news ? [NEWS_PRESENTER_RULE.slice(2)] : []),
+    ...(opts.gravity === 'agir' ? [GRAVE_NEWS_RULE.slice(2)] : []),
     'Cümleler seslendirilecek: kısa ve akıcı, kısaltma ve parantez kullanma, sayıları okunur yaz.',
     'Yalnızca JSON döndür: {"title": string, "sections": [{"heading": string, "text": string}]}',
   ].join('\n')
@@ -1055,6 +1079,7 @@ export function visualsSystemPrompt(p: { format?: StoryFormat; style?: StoryStyl
     '- "need": asset null ise ya da daha iyi bir görüntü gerekiyorsa editörün çekebileceği / bulabileceği görüntüyü Türkçe somut tarif et (ör. «Hisarlık tepesinin geniş açı fotoğrafı, gündüz», «müzedeki seramik, yakın çekim»). İyi uyuyorsa null.',
     '- "reason": seçimin kısa gerekçesi.',
     ...(p.style && STYLE_THEME[p.style].tone ? [`- Ton (${STYLE_THEME[p.style].label}): başlık ve alt satır bu tona uysun.`] : []),
+    ...VIDEO_ETHICS_RULES,
     ...(hasHeadline(p.style)
       ? ['- "headline": ekranda büyük harfle hareketli çıkacak 2–5 kelimelik başlık (en fazla 36 karakter, cümlenin özü; «ŞOK», «SKANDAL» yok). "sub": isteğe bağlı kısa alt satır (en fazla 44 karakter) ya da null.']
       : []),

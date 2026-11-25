@@ -46,6 +46,7 @@ import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { loadSocialAccount } from '@/lib/social/accounts/accountStore'
 import { attachAccountNames, shareOutcome } from '@/lib/social/shareResponse'
 import { imageModeProblem, parseImageMode } from '@/lib/social/accounts/capabilities'
+import { withHelpLine } from '@/lib/social/sensitiveNews'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -587,7 +588,8 @@ export async function POST(request: Request) {
     const payload: SocialPublishPayload = {
       newsId: id,
       title,
-      description: socialContent.caption,
+      // HASSAS-VIDEO: intihar haberinde açıklamanın sonuna yardım satırı (DSÖ)
+      description: withHelpLine(socialContent.caption, data),
       imageUrl: imagePayload.imageUrl,
       ...(imagePayload.imageUrls ? { imageUrls: imagePayload.imageUrls } : {}),
       articleUrl,

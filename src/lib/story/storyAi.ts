@@ -86,6 +86,9 @@ export async function describeVideo(frames: Buffer[]): Promise<string> {
 
 // ── plan ─────────────────────────────────────────────────────────────────────
 
+/** Haberden hazırlanan ya da «Haber» türündeki video: spiker kuralları geçerli. */
+const isNewsStory = (p: Pick<StoryProject, 'newsId' | 'style'>): boolean => !!p.newsId || p.style === 'haber'
+
 export async function planStory(p: StoryProject, newId: () => string): Promise<PlanResult & { note: string | null }> {
   if ((p.targetMin ?? 1) > 1) return planLongStory(p, newId)
   let raw: string | null = null
@@ -94,7 +97,7 @@ export async function planStory(p: StoryProject, newId: () => string): Promise<P
     try {
       const r = await geminiFastChat({
         messages: [
-          { role: 'system', content: planSystemPrompt({ targetMin: 1, format: p.format, style: p.style }) },
+          { role: 'system', content: planSystemPrompt({ targetMin: 1, format: p.format, style: p.style, news: isNewsStory(p), gravity: p.gravity ?? null }) },
           { role: 'user', content: planUserPrompt(p) },
         ],
         temperature: 0.5,
@@ -128,7 +131,7 @@ async function planLongStory(p: StoryProject, newId: () => string): Promise<Plan
     const ask = async (extra: string) =>
       geminiFastChat({
         messages: [
-          { role: 'system', content: scriptSystemPrompt(t, p.style) },
+          { role: 'system', content: scriptSystemPrompt(t, p.style, { news: isNewsStory(p), gravity: p.gravity ?? null }) },
           { role: 'user', content: `Konu: ${p.topic || p.title}\nBaşlık: ${p.title || '-'}${extra}` },
         ],
         temperature: 0.6,

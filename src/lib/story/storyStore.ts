@@ -29,6 +29,7 @@ import {
   type StoryProject,
   type StoryScene,
 } from './storyProject'
+import { GRAVE_DEFAULTS, STORY_SENSITIVE_BLOCK_MESSAGE, gravityFor, safeStoryScenes, safeStoryText } from './storySafety'
 
 const col = () => getAdminFirestore().collection(STORY_PROJECTS)
 
@@ -47,7 +48,7 @@ export function isOwnUploadPath(p: unknown, uid: string, projectId: string): p i
 export async function createStory(uid: string, raw: Record<string, unknown>, now: number): Promise<StoreResult<StoryProject>> {
   const m = parseMeta(raw)
   if (!m.ok) return fail(400, 'invalid', m.message, m.field)
-  const p: StoryProject = { id: `st${randomBytes(8).toString('hex')}`, ...m.value, assets: [], scenes: [], plannedAt: null, render: { ...EMPTY_RENDER }, createdBy: uid, createdAt: now, updatedAt: now }
+  const p: StoryProject = { id: `st${randomBytes(8).toString('hex')}`, ...safeMetaText(m.value), assets: [], scenes: [], plannedAt: null, render: { ...EMPTY_RENDER }, createdBy: uid, createdAt: now, updatedAt: now }
   await col().doc(p.id).set(p)
   await audit(uid, 'create', p)
   return { ok: true, value: p }
@@ -60,7 +61,18 @@ export async function getStory(id: string): Promise<StoryProject | null> {
 }
 
 /** Projects saved before formats / lengths existed are vertical 1-minute videos. */
-const withDefaults = (p: StoryProject): StoryProject => ({ ...p, format: p.format ?? 'vertical', targetMin: p.targetMin ?? 1, voice: p.voice ?? { name: null, rate: null }, music: p.music ?? 'none', sfx: p.sfx ?? false, scenes: p.scenes.map((s) => ({ ...s, need: s.need ?? null, headline: s.headline ?? null, sub: s.sub ?? null })) })
+/** HASSAS-VIDEO: başlık, konu, anlatım metni ve açıklama nötr haber dilinde saklanır. */
+function safeMetaText<T extends { title?: string; topic?: string; script?: string; caption?: string }>(m: T): T {
+  return {
+    ...m,
+    ...(typeof m.title === 'string' ? { title: safeStoryText(m.title) } : {}),
+    ...(typeof m.topic === 'string' ? { topic: safeStoryText(m.topic) } : {}),
+    ...(typeof m.script === 'string' ? { script: safeStoryText(m.script) } : {}),
+    ...(typeof m.caption === 'string' ? { caption: safeStoryText(m.caption) } : {}),
+  }
+}
+
+const withDefaults = (p: StoryProject): StoryProject => ({ ...p, gravity: p.gravity ?? null, format: p.format ?? 'vertical', targetMin: p.targetMin ?? 1, voice: p.voice ?? { name: null, rate: null }, music: p.music ?? 'none', sfx: p.sfx ?? false, scenes: p.scenes.map((s) => ({ ...s, need: s.need ?? null, headline: s.headline ?? null, sub: s.sub ?? null })) })
 
 export async function listStories(limit = 30): Promise<StoryProject[]> {
   const snap = await col().orderBy('updatedAt', 'desc').limit(limit).get()
@@ -77,9 +89,9 @@ export async function updateStory(uid: string, id: string, raw: Record<string, u
   if (raw.scenes !== undefined) {
     const s = parseScenes(raw.scenes, p.assets, p.scenes)
     if (!s.ok) return fail(400, 'invalid_scenes', s.message, s.field)
-    scenes = s.value
+    scenes = safeStoryScenes(s.value, p.gravity ?? null)
   }
-  const next: StoryProject = { ...p, ...m.value, scenes, updatedAt: now }
+  const next: StoryProject = { ...p, ...safeMetaText(m.value), scenes, updatedAt: now }
   await col().doc(id).set(next)
   await audit(uid, 'update', next)
   return { ok: true, value: next }
@@ -167,7 +179,15 @@ export async function setPlan(uid: string, id: string, plan: { title: string | n
     if (!s.exists) return null
     const cur = s.data() as StoryProject
     // the AI-written script is kept so the editor can read / change it and plan again
-    const next: StoryProject = { ...cur, scenes: plan.scenes, script: cur.script || plan.script || '', caption: cur.caption || plan.caption || '', title: cur.title || plan.title || cur.title, plannedAt: now, updatedAt: now }
+    const next: StoryProject = {
+      ...cur,
+      scenes: safeStoryScenes(plan.scenes, cur.gravity ?? null),
+      script: safeStoryText(cur.script || plan.script || ''),
+      caption: safeStoryText(cur.caption || plan.caption || ''),
+      title: safeStoryText(cur.title || plan.title || cur.title),
+      plannedAt: now,
+      updatedAt: now,
+    }
     tx.set(ref, next)
     return next
   })
@@ -240,6 +260,11 @@ export async function createStoryFromNews(uid: string, newsId: unknown, raw: Rec
   const { newsStoryDraft } = await import('./storyFromNews')
   const draft = newsStoryDraft(d)
   if (!draft.title) return fail(400, 'news_empty', 'Haberin başlığı yok')
+  // HASSAS-VIDEO: intihar / çocuk mağdur / istismar haberinden video yok; ölüm ve ağır şiddet «ağır haber» kipinde
+  const { sensitivityFromDoc } = await import('@/lib/social/sensitiveNews')
+  const sens = sensitivityFromDoc(d)
+  if (sens.level >= 3) return fail(422, 'sensitive_blocked', STORY_SENSITIVE_BLOCK_MESSAGE)
+  const gravity = gravityFor(sens.level)
   const m = parseMeta({
     ...raw,
     title: draft.title,
@@ -253,7 +278,15 @@ export async function createStoryFromNews(uid: string, newsId: unknown, raw: Rec
     ...draft.photos.map((url, i): StoryAsset => ({ id: shortId(), kind: 'image', source: 'news', ref: url, previewUrl: url, name: i === 0 ? 'Haber görseli' : `Haber görseli ${i + 1}`, durationMs: null, description: null, describeError: null, addedAt: now })),
     ...(draft.video ? [{ id: shortId(), kind: 'video' as const, source: 'news' as const, ref: draft.video, previewUrl: draft.photos[0] ?? null, name: 'Haberin videosu', durationMs: null, description: null, describeError: null, addedAt: now }] : []),
   ].slice(0, MAX_ASSETS)
-  const p: StoryProject = { id: `st${randomBytes(8).toString('hex')}`, ...m.value, newsId, assets, scenes: [], plannedAt: null, render: { ...EMPTY_RENDER }, createdBy: uid, createdAt: now, updatedAt: now }
+  const meta = safeMetaText(m.value)
+  const grave =
+    gravity === 'agir'
+      ? { music: GRAVE_DEFAULTS.music, sfx: GRAVE_DEFAULTS.sfx, voice: { name: meta.voice?.name ?? null, rate: GRAVE_DEFAULTS.rate } }
+      : sens.level === 1
+        ? // «ciddi» haber (yaralı kaza, gözaltı, yangın): efekt yok, son dakika müziği yerine sakin yatak
+          { sfx: false, ...(meta.music === 'sondakika' ? { music: 'kurumsal' as const } : {}) }
+        : {}
+  const p: StoryProject = { id: `st${randomBytes(8).toString('hex')}`, ...meta, ...grave, gravity, newsId, assets, scenes: [], plannedAt: null, render: { ...EMPTY_RENDER }, createdBy: uid, createdAt: now, updatedAt: now }
   await col().doc(p.id).set(p)
   await audit(uid, 'create_from_news', p)
   return { ok: true, value: p }

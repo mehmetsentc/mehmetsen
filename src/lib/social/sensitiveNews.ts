@@ -26,6 +26,12 @@ const E = '(?![\\p{L}\\p{N}])'
 type Rule = [RegExp, string]
 
 /**
+ * «kendini» ile yöntem fiili arasında yalnız araç / yer bildiren kelimeler (tabancayla, evinde,
+ * av tüfeğiyle). «kendini savunmak için vurdu» gibi başka anlamlar eşleşmez.
+ */
+const MID = '(?:(?:av\\s+)?\\S+(?:yla|yle|la|le|nda|nde|da|de|ta|te)\\s+){0,2}'
+
+/**
  * Sıra önemlidir: uzun kalıplar önce. Kalıplar KÜÇÜK HARF metin üzerinde
  * eşleşir (tr-TR küçültme uzunluğu korur), değiştirme özgün metne uygulanır.
  */
@@ -35,6 +41,18 @@ const WORDING: Rule[] = [
   [new RegExp(`${B}ölü\\s+sayısı${E}`, 'gu'), 'hayatını kaybedenlerin sayısı'],
   // «2 ölü», «2 ölü 3 yaralı»
   [new RegExp(`${B}(\\d+)\\s+ölü${E}`, 'gu'), '$1 kişi hayatını kaybetti'],
+  // YÖNTEM (DSÖ / RTÜK): intihar ve kendine zarar verme yöntemi hiçbir yüzeyde anlatılmaz.
+  // «kendini tabancayla vurarak intihar etti» → «hayatını kaybetti»
+  [new RegExp(`${B}kendini\\s+${MID}(?:vurarak|asarak|yakarak|bıçaklayarak|zehirleyerek|(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+atarak)\\s+(?:intihar\\s+etti(ler)?|yaşamına\\s+son\\s+verdi|hayatına\\s+son\\s+verdi)${E}`, 'gu'), 'hayatını kaybetti'],
+  [new RegExp(`${B}(?:yaşamına|hayatına)\\s+son\\s+verdi(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
+  [new RegExp(`${B}canına\\s+kıydı(lar)?${E}`, 'gu'), 'hayatını kaybetti'],
+  // ölüm bilgisi yoksa olgu korunur, yöntem çıkar: «kendini vurdu» → «intihar girişiminde bulundu»
+  [new RegExp(`${B}kendini\\s+${MID}(?:vurdu|astı|yaktı|bıçakladı|zehirledi)${E}`, 'gu'), 'intihar girişiminde bulundu'],
+  // «kendini attı» yalnız yer bildiren kalıpta (mecaz «kendini dışarı attı» değişmez)
+  [new RegExp(`${B}kendini\\s+(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+attı${E}`, 'gu'), 'intihar girişiminde bulundu'],
+  [new RegExp(`${B}intihara\\s+teşebbüs\\s+etti(ler)?${E}`, 'gu'), 'intihar girişiminde bulundu'],
+  [new RegExp(`${B}başarısız\\s+(?:bir\\s+)?intihar\\s+(?:girişimi|teşebbüsü)${E}`, 'gu'), 'intihar girişimi'],
+  [new RegExp(`${B}intihar\\s+(?:salgını|dalgası)${E}`, 'gu'), 'intihar vakalarındaki artış'],
   [new RegExp(`${B}intihar\\s+etti(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
   [new RegExp(`${B}can\\s+verdi(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
   [new RegExp(`${B}öldüler${E}`, 'gu'), 'hayatını kaybetti'],
@@ -212,6 +230,28 @@ export function automationSensitivityBlock(level: SensitivityLevel, format: stri
   if (level >= 3) return 'sensitive_blocked'
   if (level === 2 && format !== 'post') return 'sensitive_format'
   return null
+}
+
+/**
+ * HASSAS-VIDEO: elle paylaşımda da düzey 3 (intihar, çocuk mağdur, istismar) haberinden VİDEO
+ * (Reels, hikâye videosu, TikTok, YouTube) üretilmez ve paylaşılmaz. DSÖ: intihar haberinde video,
+ * ses ve olay yeri görüntüsü kullanılmaz; platformlar bu içeriği kaldırır.
+ */
+export const SENSITIVE_VIDEO_BLOCK_MESSAGE =
+  'Bu haber hassas (intihar, çocuk mağdur ya da istismar): DSÖ ve RTÜK ilkeleri gereği video, Reels ve hikâye videosu üretilmez. Yalnızca metin ve güvenli görselle, yardım satırıyla paylaşılabilir.'
+
+export function manualVideoBlocked(d: Record<string, unknown>): boolean {
+  return sensitivityFromDoc(d).level >= 3
+}
+
+/** Düzey 3 haber elle gönderi olarak paylaşılırsa açıklamanın sonuna eklenen yardım satırı. */
+export const HELP_LINE_TEXT = 'Kendinizi zor durumda hissediyorsanız yalnız değilsiniz. Acil durumda 112\'yi, sosyal destek için ALO 183\'ü arayabilirsiniz.'
+
+/** Açıklamaya yardım satırını bir kez ekler (düzey 3 intihar haberleri). */
+export function withHelpLine(caption: string, d: Record<string, unknown>): string {
+  const s = sensitivityFromDoc(d)
+  if (s.level < 3 || !s.reasons.includes('intihar') || caption.includes('ALO 183')) return caption
+  return `${caption.trimEnd()}\n\n${HELP_LINE_TEXT}`
 }
 
 export const SENSITIVE_BLOCK_TEXT: Record<'sensitive_blocked' | 'sensitive_format', string> = {
