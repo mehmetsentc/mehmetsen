@@ -246,7 +246,8 @@ export async function processJob(
   const problem = contentProblem(data)
   if (problem) return { status: 'skipped', code: problem, message: CONTENT_PROBLEM_TEXT[problem] ?? problem }
   // SOCIAL-SENS-1: hassas haber — intihar / çocuk mağdur otomatik paylaşılmaz; ölüm / ağır şiddette Reels-hikâye yok.
-  const sensitive = automationSensitivityBlock(sensitivityFromDoc(data).level, job.format)
+  // Onaylı platformlar (TikTok) atlanmaz: editör onaylar, video kurallara göre (ağır haber kipi) hazırlanır.
+  const sensitive = automationNeedsApproval(job.platform) ? null : automationSensitivityBlock(sensitivityFromDoc(data).level, job.format)
   if (sensitive) return { status: 'skipped', code: sensitive, message: SENSITIVE_BLOCK_TEXT[sensitive] }
 
   // ── A rule still enabled for this account+format AND matching right now ──
