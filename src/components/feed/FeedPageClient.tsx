@@ -10,9 +10,14 @@ import { AdSlotProvider } from '@/context/AdSlotContext'
 import { useScrollHeaderConfig } from '@/context/ScrollHeaderContext'
 import { useHomeFeedLiveUpdates } from '@/hooks/useHomeFeedLiveUpdates'
 import type { HomeFeedInitialData } from '@/types/newsItem'
+import { isEuroHomeEnabled } from '@/lib/euroHome'
 
 const DesktopHomeFeed = dynamic(
   () => import('@/components/home/desktop/DesktopHomeFeed').then((m) => m.DesktopHomeFeed),
+  { ssr: false, loading: () => <DesktopFeedPlaceholder /> }
+)
+const EuroHomeDesktop = dynamic(
+  () => import('@/components/home/euro/EuroHomeDesktop').then((m) => m.EuroHomeDesktop),
   { ssr: false, loading: () => <DesktopFeedPlaceholder /> }
 )
 const DesktopNewspaperShell = dynamic(
@@ -74,6 +79,8 @@ function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
   const activeTab: FeedTab = searchParams.get('tab') === 'trend' ? 'trend' : 'home'
   const liveFeedData = useHomeFeedLiveUpdates(homeFeedData)
   const desktopReady = useDesktopFeedReady()
+  // EURO-HOME: masaüstü Euronews düzeni (?eski=1 → eski gazete düzeni)
+  const euroHome = isEuroHomeEnabled(searchParams.toString())
 
   return (
     <>
@@ -87,9 +94,13 @@ function FeedPageBody({ homeFeedData }: FeedPageClientProps) {
           <div className="hidden lg:block" data-testid="desktop-home-newspaper">
             {desktopReady ? (
               <AdSlotProvider page="home">
-                <DesktopNewspaperShell>
-                  <DesktopHomeFeed data={liveFeedData} />
-                </DesktopNewspaperShell>
+                {euroHome ? (
+                  <EuroHomeDesktop data={liveFeedData} />
+                ) : (
+                  <DesktopNewspaperShell>
+                    <DesktopHomeFeed data={liveFeedData} />
+                  </DesktopNewspaperShell>
+                )}
               </AdSlotProvider>
             ) : (
               <DesktopFeedPlaceholder />

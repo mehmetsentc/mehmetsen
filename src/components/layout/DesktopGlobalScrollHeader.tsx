@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { DesktopScrollHeader } from '@/components/home/desktop/DesktopScrollHeader'
 import { CityDesktopNewspaperHeader } from '@/components/city/CityDesktopNewspaperHeader'
 import { CityTenantProvider } from '@/store/cityTenantContext'
 import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { readLocalCityTenant } from '@/lib/tenant'
-import { isProfileSurface, ROUTES } from '@/constants/routes'
+import { isHomePathname, isProfileSurface, ROUTES } from '@/constants/routes'
+import { isEuroHomeEnabled } from '@/lib/euroHome'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
   if (pathname === ROUTES.REELS || pathname === '/video' || pathname.startsWith('/video/')) {
@@ -41,7 +42,14 @@ export function DesktopGlobalScrollHeader({
       ? { slug: provinceSlug, displayName: cityName, provinceSlug }
       : null)
 
+  const [legacyHome, setLegacyHome] = useState(false)
+  useEffect(() => {
+    setLegacyHome(!isEuroHomeEnabled(window.location.search))
+  }, [pathname])
+
   if (!shouldShowGlobalScrollHeader(pathname)) return null
+  // EURO-HOME: ulusal ana sayfa kendi (Euronews düzeni) başlığını çizer; ?eski=1 eski başlık
+  if (!resolvedTenant && isHomePathname(pathname) && !legacyHome) return null
 
   if (resolvedTenant) {
     return (
