@@ -250,7 +250,7 @@ export function EuroHeader({ subcategories }: { subcategories?: EuroSubTab[] }) 
         </div>
         {megaItem ? <MegaMenu item={megaItem} onEnter={() => later(() => undefined, 0)} onLeave={() => later(() => setMega(null), 220)} /> : null}
         {subcategories && subcategories.length > 0 ? (
-          <nav aria-label="Alt kategoriler" className="mx-auto flex max-w-[1280px] flex-wrap gap-x-5 gap-y-1 px-6 pb-2.5 pl-[150px] text-[13px] font-bold">
+          <nav aria-label="Alt kategoriler" className="mx-auto flex max-w-[1280px] flex-wrap gap-x-5 gap-y-1 pb-2.5 pl-[176px] pr-6 pt-1 text-[13px] font-bold">
             {subcategories.map((t) => (
               <Link key={t.id} prefetch={false} href={t.href} aria-current={t.active ? 'page' : undefined} className={cn('hover:underline', t.active ? 'text-[rgb(var(--color-brand))]' : 'text-[#1d4ed8]')}>
                 {t.name}
