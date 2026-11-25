@@ -462,13 +462,10 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   const d = snap.data() as Record<string, unknown>
   if (str(d.status) !== 'published') throw new Error('reels: news is not published')
   {
-    // HASSAS-VIDEO: elle de olsa düzey 3 haberden Reels / video üretilmez
-    const { manualVideoBlocked, SENSITIVE_VIDEO_BLOCK_MESSAGE } = await import('@/lib/social/sensitiveNews')
-    if (manualVideoBlocked(d)) {
-      const e = new Error(SENSITIVE_VIDEO_BLOCK_MESSAGE)
-      e.name = 'SensitiveBlockedError'
-      throw e
-    }
+    // HASSAS-VIDEO: ölüm / ağır şiddet / intihar haberinde müzik yok (editör stüdyoda açıkça seçmediyse);
+    // metin zaten nötr dilden geçiyor. Paylaşım engellenmez.
+    const { isGraveNews } = await import('@/lib/social/sensitiveNews')
+    if (isGraveNews(d) && !isReelMusic(opts.music)) opts = { ...opts, music: 'none' }
   }
   const settings = await getReelVoiceSettings()
   let src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })

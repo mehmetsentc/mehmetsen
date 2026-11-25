@@ -380,7 +380,7 @@ export function useStoryStudio({ initialNewsId = null, initialStyle = null, onNe
       const proj = r.data.project
       open(proj)
       apply(proj)
-      if (proj.gravity === 'agir') toast('Ağır haber (ölüm / ağır şiddet): sakin sunuş — müzik ve efekt kapalı, tempo yavaş, «SON DAKİKA» etiketi yok')
+      if (proj.gravity === 'agir') toast('Hassas haber: video kurallara göre hazırlanıyor — nötr dil, yöntem ve olay yeri anlatılmaz, müzik ve efekt kapalı, sakin tempo, «SON DAKİKA» etiketi yok', { icon: 'ℹ️', duration: 8000 })
       // AI looks at every photo / the video, then writes the narration and matches the visuals
       setProgress({ text: `AI haberin ${proj.assets.length} görüntüsünü inceliyor…`, pct: null })
       const jobs = await Promise.all(

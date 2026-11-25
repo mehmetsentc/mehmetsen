@@ -29,7 +29,7 @@ import {
   type StoryProject,
   type StoryScene,
 } from './storyProject'
-import { GRAVE_DEFAULTS, STORY_SENSITIVE_BLOCK_MESSAGE, gravityFor, safeStoryScenes, safeStoryText } from './storySafety'
+import { GRAVE_DEFAULTS, gravityFor, safeStoryScenes, safeStoryText } from './storySafety'
 
 const col = () => getAdminFirestore().collection(STORY_PROJECTS)
 
@@ -263,7 +263,6 @@ export async function createStoryFromNews(uid: string, newsId: unknown, raw: Rec
   // HASSAS-VIDEO: intihar / çocuk mağdur / istismar haberinden video yok; ölüm ve ağır şiddet «ağır haber» kipinde
   const { sensitivityFromDoc } = await import('@/lib/social/sensitiveNews')
   const sens = sensitivityFromDoc(d)
-  if (sens.level >= 3) return fail(422, 'sensitive_blocked', STORY_SENSITIVE_BLOCK_MESSAGE)
   const gravity = gravityFor(sens.level)
   const m = parseMeta({
     ...raw,

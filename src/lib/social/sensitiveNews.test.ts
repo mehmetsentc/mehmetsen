@@ -80,12 +80,16 @@ describe('yöntem ifadeleri (DSÖ / RTÜK)', () => {
 })
 
 describe('elle paylaşım: düzey 3', () => {
-  it('intihar haberinde video engellenir, gönderiye yardım satırı bir kez eklenir', async () => {
-    const { manualVideoBlocked, withHelpLine, HELP_LINE_TEXT } = await import('./sensitiveNews')
+  it('paylaşım engellenmez: bilgi notu; gönderiye yardım satırı bir kez eklenir', async () => {
+    const { sensitiveShareNotice, isGraveNews, withHelpLine, HELP_LINE_TEXT } = await import('./sensitiveNews')
     const suicide = { title: 'Genç adam evinde hayatını kaybetti', content: 'Polis intihar olasılığı üzerinde duruyor.' }
     const crash = { title: 'Kazada 2 kişi hayatını kaybetti', content: 'Otomobil devrildi.' }
-    expect(manualVideoBlocked(suicide)).toBe(true)
-    expect(manualVideoBlocked(crash)).toBe(false)
+    expect(sensitiveShareNotice(suicide)).toMatch(/kurallarına göre hazırlandı/)
+    expect(sensitiveShareNotice(suicide)).toMatch(/yardım satırı/)
+    expect(sensitiveShareNotice(crash)).toMatch(/müziksiz/)
+    expect(sensitiveShareNotice({ title: 'Belediye yeni parkı açtı' })).toBeNull()
+    expect(isGraveNews(suicide)).toBe(true)
+    expect(isGraveNews(crash)).toBe(true)
     const c = withHelpLine('📰 Haber', suicide)
     expect(c.endsWith(HELP_LINE_TEXT)).toBe(true)
     expect(withHelpLine(c, suicide)).toBe(c)

@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[reels] render failed', newsId, message)
-    const status = err instanceof Error && err.name === 'TtsQuotaError' ? 429 : err instanceof Error && err.name === 'SensitiveBlockedError' ? 422 : message.includes('not found') || message.includes('bulunamadı') ? 404 : message.includes('hakkı') || message.includes('geçersiz') || message.includes('hazır değil') ? 400 : 500
+    const status = err instanceof Error && err.name === 'TtsQuotaError' ? 429 : message.includes('not found') || message.includes('bulunamadı') ? 404 : message.includes('hakkı') || message.includes('geçersiz') || message.includes('hazır değil') ? 400 : 500
     return json({ error: message, ...(status === 429 ? { code: 'tts_free_tier_reached' } : {}) }, status)
   }
 }

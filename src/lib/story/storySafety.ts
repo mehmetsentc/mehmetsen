@@ -5,8 +5,7 @@
  * İÇİNDEKİ seslendirme ve ekran yazısı geçmiyordu. Platformlar (Meta, YouTube, TikTok) videodaki
  * konuşmayı ve yazıyı da değerlendirdiği için kural burada da deterministik uygulanır:
  *  - anlatım, başlık, alt satır, etiket, açıklama nötr dil sözlüğünden geçer (yöntem ifadeleri çıkar)
- *  - hassasiyet düzeyi 3 (intihar, çocuk mağdur, istismar) haberinden video üretilmez
- *  - düzey 2 (ölüm, ağır şiddet) «ağır haber» kipinde: müzik ve efekt yok, tempo 0,95, «SON DAKİKA» yok
+ *  - düzey 2–3 (ölüm, ağır şiddet, intihar, çocuk mağdur, istismar) «ağır haber» kipinde: müzik ve efekt yok, tempo 0,95, «SON DAKİKA» yok
  * Dayanak: DSÖ intihar habercilik rehberi (2023), RTÜK 6112 m.8 ve 13.11.2019 intihar haberi önerileri.
  */
 import { neutralizeSocialText, type SensitivityLevel } from '@/lib/social/sensitiveNews'
@@ -17,11 +16,9 @@ export type StoryGravity = 'agir' | null
 /** Ağır haber sunuşu: müzik ve efekt kapalı, sakin tempo. */
 export const GRAVE_DEFAULTS: { music: StoryMusic; sfx: boolean; rate: number } = { music: 'none', sfx: false, rate: 0.95 }
 
-export const STORY_SENSITIVE_BLOCK_MESSAGE =
-  'Bu haber hassas (intihar, çocuk mağdur ya da istismar). DSÖ ve RTÜK ilkeleri gereği haberden video üretilmez; yalnızca metin ve güvenli görselle paylaşılabilir.'
-
+/** Düzey 2 (ölüm, ağır şiddet) ve 3 (intihar, çocuk mağdur, istismar): ağır haber kipi. Video engellenmez. */
 export function gravityFor(level: SensitivityLevel): StoryGravity {
-  return level === 2 ? 'agir' : null
+  return level >= 2 ? 'agir' : null
 }
 
 /** Seslendirme ve ekran yazısı için nötr haber dili (bağlantı ve özel adlara dokunmaz). */

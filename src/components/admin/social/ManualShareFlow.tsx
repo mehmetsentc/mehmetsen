@@ -29,7 +29,7 @@ import {
   type TargetRowLike,
 } from '@/lib/social/shareResultText'
 import { showShareToast } from '@/lib/social/shareToast'
-import { runReelJob } from './reelsApi'
+import { reelsCall, runReelJob } from './reelsApi'
 import {
   ComposerTargetPicker,
   EMPTY_TARGETS,
@@ -52,6 +52,8 @@ export type ManualShareResult = {
   overall: ShareOverall | 'error'
   rows: TargetRowLike[]
   message: string | null
+  /** HASSAS-VIDEO: hassas haber bilgi notu (paylaşımı durdurmaz) */
+  notice?: string | null
 }
 
 const CODE_TEXT: Record<string, string> = {
@@ -81,6 +83,7 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   onProgress?.(0, list.length + 1)
   const prep = await runReelJob('/api/admin/social/reels/share', { newsId: input.newsId, format: input.mode, prepare: true })
   if (!prep.ok) return { ok: false, status: prep.status ?? 500, overall: 'error', rows: [], message: `Video hazırlanamadı: ${prep.error}` }
+  const notice = (prep.job.result as { notice?: string | null } | null)?.notice ?? null
   let i = 1
   for (const t of list) {
     onProgress?.(i++, list.length + 1)
@@ -98,7 +101,7 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   }
   onProgress?.(list.length, list.length)
   const overall = overallShareState(rows.map(rowAsResult))
-  return { ok: overall === 'published' || overall === 'partial', status: 200, overall, rows, message: null }
+  return { ok: overall === 'published' || overall === 'partial', status: 200, overall, rows, message: null, notice }
 }
 
 /**
@@ -207,6 +210,15 @@ export function ManualShareFlow({
   const [result, setResult] = useState<ManualShareResult | null>(null)
   const [retry, setRetry] = useState<string[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  // HASSAS-VIDEO: hassas haber notu onay ekranında gösterilir; editör onaylayınca paylaşım sürer
+  const [notice, setNotice] = useState<string | null>(null)
+  const toConfirm = () => {
+    setStage('confirm')
+    setNotice(null)
+    void reelsCall<{ notice: string | null }>('GET', `/api/admin/social/reels/share?newsId=${encodeURIComponent(newsId)}&notice=1`).then((r) => {
+      if (r.ok) setNotice(r.data.notice)
+    })
+  }
   const effective: TargetSelection = mode === 'post' || mode === 'reel' ? targets : { ...targets, threads: [] }
   const count = targetCount(effective)
   const labels = selectedLabels(effective, options)
@@ -254,7 +266,7 @@ export function ManualShareFlow({
             <button
               type="button"
               disabled={count === 0}
-              onClick={() => setStage('confirm')}
+              onClick={toConfirm}
               className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 font-bold text-white disabled:opacity-40"
             >
               {count === 0 ? 'Hesap seçin' : `Devam — ${count} hedef`}
@@ -283,10 +295,15 @@ export function ManualShareFlow({
               ))}
             </ul>
           </div>
+          {notice ? (
+            <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+              {notice} Onaylarsanız paylaşım yapılır.
+            </p>
+          ) : null}
           <p className="text-[11px] text-[rgb(var(--color-muted))]">Her hesap ayrı yayımlanır; bir hesabın hatası diğerlerini etkilemez. Bu haber bir hesapta zaten yayımlandıysa o hesaba tekrar gönderilmez.</p>
           <div className="flex gap-1.5">
             <button type="button" onClick={() => void send(effective)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 font-bold text-white">
-              <Send className="h-3 w-3" aria-hidden /> {count} hesapta paylaş
+              <Send className="h-3 w-3" aria-hidden /> {notice ? `Onayla ve ${count} hesapta paylaş` : `${count} hesapta paylaş`}
             </button>
             <button type="button" onClick={() => setStage('pick')} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1.5 font-bold text-[rgb(var(--color-muted))]">
               Geri

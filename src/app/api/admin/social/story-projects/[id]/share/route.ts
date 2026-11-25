@@ -20,9 +20,6 @@ import type { MediaShareFormat, MediaSharePlatform } from '@/lib/media/mediaProj
 import { storyCaption, storyLedgerKey, storyShareProblem, youtubeKind, type StoryProject } from '@/lib/story/storyProject'
 import { getStory } from '@/lib/story/storyStore'
 import { pollStoryJob } from '@/lib/story/storyJobRoute'
-import { manualVideoBlocked, SENSITIVE_VIDEO_BLOCK_MESSAGE } from '@/lib/social/sensitiveNews'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-import { Collections } from '@/lib/firebase/collections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,11 +57,6 @@ export async function POST(request: Request, { params }: Ctx) {
   const format = fmtOf(body.format)
   const p = await getStory(id)
   if (!p) return json({ error: 'Proje bulunamadı', code: 'not_found' }, 404)
-  if (p.newsId) {
-    // HASSAS-VIDEO: düzey 3 haberden hazırlanmış (kural öncesi) video da paylaşılmaz
-    const n = await getAdminFirestore().collection(Collections.NEWS).doc(p.newsId).get()
-    if (n.exists && manualVideoBlocked(n.data() as Record<string, unknown>)) return json({ error: SENSITIVE_VIDEO_BLOCK_MESSAGE, code: 'sensitive_blocked' }, 422)
-  }
   const acc = (await accountsFor(auth.ctx, p, format)).find((a) => a.accountId === body.accountId)
   if (!acc) return json({ error: 'Bu hesap bu biçim için kullanılamaz', code: 'account_unavailable' }, 409)
   if (!acc.selectable) return json({ error: acc.reason, code: 'not_allowed' }, 409)

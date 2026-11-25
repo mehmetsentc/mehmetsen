@@ -26,6 +26,7 @@ describe('HASSAS-VIDEO: seslendirme ve ekran yazısı', () => {
   })
   it('düzey → kip ve ağır haber varsayılanları', () => {
     expect(gravityFor(2)).toBe('agir')
+    expect(gravityFor(3)).toBe('agir')
     expect(gravityFor(1)).toBeNull()
     expect(GRAVE_DEFAULTS).toEqual({ music: 'none', sfx: false, rate: 0.95 })
   })

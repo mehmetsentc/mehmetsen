@@ -14,6 +14,8 @@ import type { VideoFormat } from '@/lib/social/accounts/capabilities'
 import { manualTargetsForNews } from '@/lib/social/accounts/manualTargets'
 import { publishOneSocial } from '@/lib/social/publishOneSocial'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { getAdminFirestore } from '@/lib/firebase/admin'
+import { Collections } from '@/lib/firebase/collections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,6 +32,14 @@ export async function GET(request: Request) {
   const auth = await requireActor(request, { mutation: false })
   if ('response' in auth) return auth.response
   const url = new URL(request.url)
+  // HASSAS-VIDEO: onay ekranındaki bilgi notu (?newsId=&notice=1) — paylaşımı engellemez
+  if (url.searchParams.get('notice') === '1') {
+    const id = url.searchParams.get('newsId') ?? ''
+    if (!NEWS_RE.test(id)) return json({ error: 'newsId gerekli' }, 400)
+    const snap = await getAdminFirestore().collection(Collections.NEWS).doc(id).get()
+    const { sensitiveShareNotice } = await import('@/lib/social/sensitiveNews')
+    return json({ notice: snap.exists ? sensitiveShareNotice(snap.data() as Record<string, unknown>, 'before') : null })
+  }
   // REELS-12: poll a background build / share (?job=…); only the user who started it
   const job = url.searchParams.get('job')
   if (job !== null) {
@@ -71,7 +81,10 @@ export async function POST(request: Request) {
       run: async () => {
         const { buildReelForNews } = await import('@/lib/reels/reelService')
         const b = await buildReelForNews(newsId, { by: uid })
-        return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused } }
+        // HASSAS-VIDEO: hassas haberde paylaşım sürer; editöre yalnız bilgi notu gider
+        const [{ sensitiveShareNotice }, snap] = await Promise.all([import('@/lib/social/sensitiveNews'), getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()])
+        const notice = snap.exists ? sensitiveShareNotice(snap.data() as Record<string, unknown>) : null
+        return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused, notice } }
       },
     })
     return json({ job }, 202)

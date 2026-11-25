@@ -233,15 +233,24 @@ export function automationSensitivityBlock(level: SensitivityLevel, format: stri
 }
 
 /**
- * HASSAS-VIDEO: elle paylaşımda da düzey 3 (intihar, çocuk mağdur, istismar) haberinden VİDEO
- * (Reels, hikâye videosu, TikTok, YouTube) üretilmez ve paylaşılmaz. DSÖ: intihar haberinde video,
- * ses ve olay yeri görüntüsü kullanılmaz; platformlar bu içeriği kaldırır.
+ * HASSAS-VIDEO: elle paylaşım ENGELLENMEZ (kullanıcı kararı, 25.11.2026). Hassas haberde video
+ * kurallara göre hazırlanır (nötr dil, yöntem yok, müzik yok, sakin sunuş) ve editöre bilgi verilir.
  */
-export const SENSITIVE_VIDEO_BLOCK_MESSAGE =
-  'Bu haber hassas (intihar, çocuk mağdur ya da istismar): DSÖ ve RTÜK ilkeleri gereği video, Reels ve hikâye videosu üretilmez. Yalnızca metin ve güvenli görselle, yardım satırıyla paylaşılabilir.'
+export function isGraveNews(d: Record<string, unknown>): boolean {
+  return sensitivityFromDoc(d).level >= 2
+}
 
-export function manualVideoBlocked(d: Record<string, unknown>): boolean {
-  return sensitivityFromDoc(d).level >= 3
+/**
+ * Bilgi notu (engel değil). null = normal haber.
+ * when 'before': onay ekranında («hazırlanacak»), 'after': paylaşım sonrası («hazırlandı»).
+ */
+export function sensitiveShareNotice(d: Record<string, unknown>, when: 'before' | 'after' = 'after'): string | null {
+  const s = sensitivityFromDoc(d)
+  const v = when === 'before' ? 'hazırlanacak' : 'hazırlandı'
+  if (s.level >= 3)
+    return `Hassas haber (${s.reasons.join(', ')}): paylaşım DSÖ ve RTÜK kurallarına göre ${v} — nötr dil, yöntem ve olay yeri anlatılmaz, müzik yok, sakin sunuş${s.reasons.includes('intihar') ? '; gönderi açıklamasına yardım satırı eklenir' : ''}. Platformlar yine de uyarı ekranı ya da yaş sınırı koyabilir.`
+  if (s.level === 2) return `Ağır haber (ölüm / ağır şiddet): video müziksiz, sakin sunuşla ve nötr dille ${v}.`
+  return null
 }
 
 /** Düzey 3 haber elle gönderi olarak paylaşılırsa açıklamanın sonuna eklenen yardım satırı. */
