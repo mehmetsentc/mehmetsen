@@ -553,7 +553,7 @@ export function NewsArticleStatic({
           )}
         </NewsArticleBody>
       </NewsArticleCard>
-      <ArticleDesktopRail latestLinks={latestLinks} />
+      <ArticleDesktopRail latestLinks={latestLinks} relatedPosts={relatedPosts} />
       </div>
 
       {/* Feed V2–aligned end recommendations (rails → related fallback). */}

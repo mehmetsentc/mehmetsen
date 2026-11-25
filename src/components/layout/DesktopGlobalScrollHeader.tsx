@@ -45,7 +45,10 @@ export function DesktopGlobalScrollHeader({
 
   const [legacyHome, setLegacyHome] = useState(false)
   useEffect(() => {
-    setLegacyHome(!isEuroHomeEnabled(window.location.search))
+    const legacy = !isEuroHomeEnabled(window.location.search)
+    setLegacyHome(legacy)
+    // EURO-DESK: ?eski=1 → sayfa gövdeleri de eski gazete görünümüne döner.
+    document.getElementById('main-content')?.classList.toggle('euro-desk', !legacy && !resolvedTenant)
   }, [pathname])
 
   if (!shouldShowGlobalScrollHeader(pathname)) return null

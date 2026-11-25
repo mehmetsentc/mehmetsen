@@ -170,7 +170,7 @@ const LayoutShell = memo(function LayoutShell({
               className={cn(
                 'content-main',
                 variant === 'wide' && 'content-main-wide',
-                variant === 'newspaper' && 'content-main-newspaper desktop-newspaper',
+                variant === 'newspaper' && 'content-main-newspaper desktop-newspaper euro-desk',
                 variant === 'reels' && 'content-main-reels',
                 variant === 'messages' && 'content-main-messages'
               )}
