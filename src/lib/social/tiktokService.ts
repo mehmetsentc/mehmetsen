@@ -134,6 +134,7 @@ export async function tiktokPrepareVideo(actor: SocialActor, newsId: string): Pr
     newsId,
     by: uid,
     run: () => buildAndRecordReel(newsId, uid),
+    remote: { handler: 'reels.buildAndRecord', args: { newsId, uid } },
   })
   return { ok: true, job }
 }

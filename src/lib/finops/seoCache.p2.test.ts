@@ -95,6 +95,7 @@ describe('P2 cron does not fan out to a deployment host', () => {
       { path: '/api/cron/canakkale-nobetci-eczane', schedule: '0 7 * * *' },
       { path: '/api/events/sync', schedule: '0 21 * * *' },
       { path: '/api/cron/news-mirror-reconcile', schedule: '40 * * * *' },
+      { path: '/api/cron/reel-jobs-sweep', schedule: '*/5 * * * *' },
     ])
     expect(vercel.crons.every((c) => c.path.startsWith('/api/'))).toBe(true)
     const social = readFileSync(join(process.cwd(), 'src/app/api/cron/social-automation/route.ts'), 'utf8')

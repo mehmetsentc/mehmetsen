@@ -6,6 +6,7 @@
 import { json, readJsonBody, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
 import { clipRenderKey, isClipId, mediaLedgerKey, sourceLabelFor } from '@/lib/media/mediaProject'
 import { getProject, setClipRendered } from '@/lib/media/mediaStore'
 
@@ -43,19 +44,8 @@ export async function POST(request: Request, { params }: Ctx) {
     kind: 'render',
     newsId: mediaLedgerKey(id, clip.id),
     by: uid,
-    run: async () => {
-      const { renderClip } = await import('@/lib/media/mediaRender')
-      try {
-        const out = await renderClip({ projectId: id, clipId: clip.id, renderKey, videoItemId: p.videoItemId, startMs: clip.startMs, endMs: clip.endMs, cuts: clip.cuts, sourceFileUrl: p.sourceKind === 'news' ? (p.sourceFileUrl ?? null) : null, title: clip.title, sourceLabel: label, options: clip.options })
-        const stored = await setClipRendered(id, clip.id, renderKey, out, Date.now())
-        await writeSocialAudit({ actorId: uid, action: 'media.clip.render', entityType: 'mediaProject', entityId: id, meta: { clipId: clip.id, seconds: out.seconds, reused: out.reused, stored } })
-        return { result: { ...out, stored } }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Video üretilemedi'
-        await setClipRendered(id, clip.id, renderKey, { error: message }, Date.now()).catch(() => undefined)
-        throw err
-      }
-    },
+    run: () => runReelJobHandler('media.render', { id, clipId: clip.id, renderKey, uid }),
+    remote: { handler: 'media.render', args: { id, clipId: clip.id, renderKey, uid } },
   })
   return json({ job }, 202)
 }

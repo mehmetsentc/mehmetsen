@@ -9,6 +9,7 @@ import { buildReelForNews, reelsEnabled } from '@/lib/reels/reelService'
 import { reelVoiceConfig } from '@/lib/reels/voice'
 import { clampRate, isValidVoiceName } from '@/lib/reels/voiceRules'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
       newsId,
       by: auth.ctx.uid,
       // same body as the synchronous answer: { result }
-      run: async () => ({ result: { result: await buildReelForNews(newsId, buildOpts) } }),
+      run: () => runReelJobHandler('reels.render', { newsId, opts: buildOpts }),
+      remote: { handler: 'reels.render', args: { newsId, opts: buildOpts } },
     })
     return json({ job }, 202)
   }

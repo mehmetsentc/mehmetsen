@@ -6,6 +6,7 @@
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
 import { renderKeyFor, renderProblem } from '@/lib/edit/editProject'
 import { getEditProject, setEditRendered } from '@/lib/edit/editStore'
 
@@ -41,19 +42,8 @@ export async function POST(request: Request, { params }: Ctx) {
     kind: 'render',
     newsId: `edit_${id}`,
     by: uid,
-    run: async () => {
-      const { renderEditProject } = await import('@/lib/edit/editRender')
-      try {
-        const out = await renderEditProject(p, key)
-        const stored = await setEditRendered(id, key, out, Date.now())
-        await writeSocialAudit({ actorId: uid, action: 'video.edit.render', entityType: 'editProject', entityId: id, meta: { seconds: out.seconds, reused: out.reused, stored, clips: p.clips.length } })
-        return { result: { ...out, stored } }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Video üretilemedi'
-        await setEditRendered(id, key, { error: message }, Date.now()).catch(() => undefined)
-        throw err
-      }
-    },
+    run: () => runReelJobHandler('edit.render', { id, key, uid }),
+    remote: { handler: 'edit.render', args: { id, key, uid } },
   })
   return json({ job }, 202)
 }

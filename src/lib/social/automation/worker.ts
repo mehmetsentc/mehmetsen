@@ -401,5 +401,6 @@ async function prepareApprovalVideo(newsId: string): Promise<void> {
     newsId,
     by: AUTOMATION_ACTOR_UID,
     run: () => buildAndRecordReel(newsId, AUTOMATION_ACTOR_UID),
+    remote: { handler: 'reels.buildAndRecord', args: { newsId, uid: AUTOMATION_ACTOR_UID } },
   })
 }

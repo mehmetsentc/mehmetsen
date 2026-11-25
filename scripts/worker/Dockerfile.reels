@@ -1,0 +1,17 @@
+# FinOps (25 Nov 2026): Railway reel / video render worker (always-on service).
+# Same code as the Vercel render routes (src/lib/reels/reelJobHandlers.ts).
+# Native modules: @napi-rs/canvas and sharp come as prebuilt linux packages from the
+# lockfile; ffmpeg is the same ffmpeg-static binary Vercel uses (its install script only).
+FROM node:22-slim
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates fontconfig && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
+ && node node_modules/ffmpeg-static/install.js \
+ && test -x node_modules/ffmpeg-static/ffmpeg
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts/worker ./scripts/worker
+RUN npx --no-install tsx --tsconfig scripts/worker/tsconfig.json scripts/worker/reel-worker.ts --check
+CMD ["npx", "--no-install", "tsx", "--tsconfig", "scripts/worker/tsconfig.json", "scripts/worker/reel-worker.ts"]

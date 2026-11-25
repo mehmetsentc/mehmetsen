@@ -14,6 +14,7 @@ import type { VideoFormat } from '@/lib/social/accounts/capabilities'
 import { manualTargetsForNews } from '@/lib/social/accounts/manualTargets'
 import { publishOneSocial } from '@/lib/social/publishOneSocial'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 
@@ -78,14 +79,9 @@ export async function POST(request: Request) {
       kind: 'build',
       newsId,
       by: uid,
-      run: async () => {
-        const { buildReelForNews } = await import('@/lib/reels/reelService')
-        const b = await buildReelForNews(newsId, { by: uid })
-        // HASSAS-VIDEO: hassas haberde paylaşım sürer; editöre yalnız bilgi notu gider
-        const [{ sensitiveShareNotice }, snap] = await Promise.all([import('@/lib/social/sensitiveNews'), getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()])
-        const notice = snap.exists ? sensitiveShareNotice(snap.data() as Record<string, unknown>) : null
-        return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused, notice } }
-      },
+      // HASSAS-VIDEO: hassas haberde paylaşım sürer; editöre yalnız bilgi notu gider (handler)
+      run: () => runReelJobHandler('reels.prepare', { newsId, uid }),
+      remote: { handler: 'reels.prepare', args: { newsId, uid } },
     })
     return json({ job }, 202)
   }

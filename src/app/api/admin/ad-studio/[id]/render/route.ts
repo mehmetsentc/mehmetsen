@@ -6,6 +6,7 @@
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
+import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
 import { adRenderKey, adRenderProblem, compileAd, duckUnderVoice } from '@/lib/adStudio/adModel'
 import { getAd, setAdRendered } from '@/lib/adStudio/adStore'
 
@@ -41,30 +42,8 @@ export async function POST(request: Request, { params }: Ctx) {
     kind: 'render',
     newsId: `ad_${id}`,
     by: uid,
-    run: async () => {
-      const [{ renderEditProject }, { drawAdOverlay }] = await Promise.all([import('@/lib/edit/editRender'), import('@/lib/adStudio/adText')])
-      const { project, overlays } = compileAd(ad)
-      try {
-        const out = await renderEditProject(project, key, undefined, {
-          fitSource: true,
-          // reklam: yeniden kodlamada kayıp az olsun (CRF 21 → 17, aynı hız, ~%75 daha yüksek bit hızı)
-          crf: 17,
-          duckUnderVoice: duckUnderVoice(ad),
-          drawText: async (t, W, H, file, root) => {
-            const o = overlays.get(t.id)
-            if (!o) throw new Error('Reklam katmanı bulunamadı')
-            await drawAdOverlay(o, W, H, file, root)
-          },
-        })
-        const stored = await setAdRendered(id, key, out, Date.now())
-        await writeSocialAudit({ actorId: uid, action: 'ads.render', entityType: 'adProject', entityId: id, meta: { seconds: out.seconds, reused: out.reused, stored, look: ad.look, kind: ad.kind, voice: ad.voiceOn ? ad.voiceId : null } })
-        return { result: { ...out, stored } }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Reklam videosu üretilemedi'
-        await setAdRendered(id, key, { error: message }, Date.now()).catch(() => undefined)
-        throw err
-      }
-    },
+    run: () => runReelJobHandler('ad.render', { id, key, uid }),
+    remote: { handler: 'ad.render', args: { id, key, uid } },
   })
   return json({ job }, 202)
 }
