@@ -6,7 +6,7 @@
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
-import { adRenderKey, adRenderProblem, compileAd } from '@/lib/adStudio/adModel'
+import { adRenderKey, adRenderProblem, compileAd, duckUnderVoice } from '@/lib/adStudio/adModel'
 import { getAd, setAdRendered } from '@/lib/adStudio/adStore'
 
 export const runtime = 'nodejs'
@@ -47,6 +47,7 @@ export async function POST(request: Request, { params }: Ctx) {
       try {
         const out = await renderEditProject(project, key, undefined, {
           fitSource: true,
+          duckUnderVoice: duckUnderVoice(ad),
           drawText: async (t, W, H, file, root) => {
             const o = overlays.get(t.id)
             if (!o) throw new Error('Reklam katmanı bulunamadı')

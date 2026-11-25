@@ -172,6 +172,8 @@ export interface EditRenderOptions {
    * büyütmek kalite katmaz, yalnız süreyi uzatır (576×1024 kaynak → 720×1280, ~2,2 kat az piksel).
    */
   fitSource?: boolean
+  /** klibin kendi sesi seslendirme konuşurken kısılır */
+  duckUnderVoice?: boolean
 }
 
 /** kısa kenarı `short` olacak şekilde tuvali küçültür (çift sayılar) */
@@ -321,7 +323,7 @@ export async function renderEditProject(p: EditProject, key: string, onStep?: (s
     const out = path.join(dir, 'out.mp4')
     const jpg = path.join(dir, 'cover.jpg')
     onStep?.('video birleştiriliyor')
-    await run(ffmpeg, editFfmpegArgs({ W, H, clips, texts, audio, outro, output: out }), FFMPEG_TIMEOUT_MS)
+    await run(ffmpeg, editFfmpegArgs({ W, H, clips, texts, audio, outro, output: out, duckUnderVoice: opts.duckUnderVoice }), FFMPEG_TIMEOUT_MS)
     await run(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', Math.min(1, tl.total / 2000).toFixed(2), '-i', out, '-frames:v', '1', '-q:v', '3', jpg], 60_000).catch(() => '')
 
     onStep?.('yükleniyor')

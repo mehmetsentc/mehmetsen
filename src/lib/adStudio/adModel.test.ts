@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AD_LOOKS, AD_LOOK_INFO, AD_VOICES, adRenderKey, adRenderProblem, adTotalMs, applyAdPatch, compileAd, defaultAd, splitScript, timeScenes, voiceHash, voicePrompt, type AdProject } from './adModel'
+import { duckUnderVoice, fitKey, fitTarget, AD_LOOKS, AD_LOOK_INFO, AD_VOICES, adRenderKey, adRenderProblem, adTotalMs, applyAdPatch, compileAd, defaultAd, splitScript, timeScenes, voiceHash, voicePrompt, type AdProject } from './adModel'
 
 const OZTURK = 'Biga’dan doğan, nesilden nesile uzanan bir güven ve kalite hikâyesi… Öztürk Temper Cam, yılların tecrübesi, güçlü üretim altyapısı ve kaliteli hizmet anlayışıyla cam sektöründe sizlere hizmet vermeye devam ediyor. Dünden bugüne değişmeyen kalite anlayışımızı, gelişen teknoloji ve modern üretim teknikleriyle birleştiriyoruz. Öztürk Temper Cam! Kalitenin nesiller boyu değişmeyen adresi!'
 
@@ -43,7 +43,7 @@ describe('reklam modeli', () => {
   it('seslendirme güncel değilse video üretilmez', () => {
     const ad = sample()
     expect(adRenderProblem(ad)).toMatch(/Seslendirmeyi oluştur/)
-    const voiced = { ...ad, voice: { url: 'https://x/v.wav', durationMs: 50_000, hash: voiceHash(ad), voice: ad.voiceId, tone: ad.tone, speed: ad.speed, chars: 1, createdAt: 1 } }
+    const voiced = { ...ad, voice: { url: 'https://x/v.wav', durationMs: 50_000, hash: voiceHash(ad), voice: ad.voiceId, tone: ad.tone, speed: ad.speed, chars: 1, createdAt: 1, fitKey: fitKey(ad) } }
     expect(adRenderProblem(voiced)).toBeNull()
     expect(adRenderProblem({ ...voiced, voiceId: 'selin' })).toMatch(/Seslendirmeyi oluştur/)
     expect(adRenderProblem({ ...ad, voiceOn: false })).toBeNull()
@@ -60,7 +60,9 @@ describe('reklam modeli', () => {
 
   it('video sesi: kapalı / kısık / olduğu gibi', () => {
     expect(compileAd(sample({ videoSound: 'kapali' })).project.clips[0]!.mute).toBe(true)
-    expect(compileAd(sample({ videoSound: 'kisik' })).project.clips[0]!.volume).toBeLessThan(0.4)
+    expect(compileAd(sample({ videoSound: 'kisik' })).project.clips[0]!.volume).toBe(1)
+    expect(duckUnderVoice(sample({ videoSound: 'kisik', voice: { url: 'x', durationMs: 1, hash: 'h', voice: 'kaan', tone: 'sakin', speed: 1, chars: 1, createdAt: 1 } }))).toBe(true)
+    expect(duckUnderVoice(sample({ videoSound: 'acik' }))).toBe(false)
     expect(compileAd(sample({ videoSound: 'acik' })).project.clips[0]!.volume).toBe(1)
   })
 
@@ -95,5 +97,17 @@ describe('reklam modeli', () => {
     expect(compileAd({ ...own, videoSound: 'kapali' }).project.audio.some((a) => a.kind === 'music')).toBe(true)
     expect(compileAd(sample({ music: 'sinematik' })).project.audio.some((a) => a.kind === 'music')).toBe(true)
     expect(adRenderKey(own)).not.toBe(adRenderKey({ ...own, videoSound: 'kapali' }))
+  })
+
+  it('seslendirme video süresine uydurulur: hedef aralık ve süre değişince ücretsiz yeniden uydurma', () => {
+    const ad = sample()
+    const t = fitTarget(ad)!
+    expect(t.startMs).toBe(ad.voiceStartMs)
+    expect(t.endMs).toBe(79_000 - ad.card.durationMs - 800)
+    const voiced = { ...ad, voice: { url: 'u', durationMs: 1, hash: voiceHash(ad), voice: ad.voiceId, tone: ad.tone, speed: ad.speed, chars: 1, createdAt: 1, fitKey: fitKey(ad) } }
+    expect(adRenderProblem(voiced)).toBeNull()
+    const shorter = { ...voiced, media: [{ ...voiced.media[0]!, outMs: 60_000 }] }
+    expect(adRenderProblem(shorter)).toMatch(/videoya uydur/)
+    expect(fitTarget({ ...ad, fitToVideo: false })).toBeNull()
   })
 })

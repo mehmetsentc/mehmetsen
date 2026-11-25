@@ -39,7 +39,9 @@ import {
   textWindowEnd,
   timeScenes,
   usesOwnMusic,
+  fitTarget,
   voiceIsCurrent,
+  voiceTextCurrent,
   type AdKind,
   type AdLook,
   type AdProject,
@@ -620,6 +622,8 @@ function VoiceStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => 
   const [sample, setSample] = useState<string | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
   const current = voiceIsCurrent(ad)
+  const textOk = voiceTextCurrent(ad)
+  const target = fitTarget(ad)
   const estUsd = (Math.max(1, ad.script.length / 14) * 25 * 9) / 1e6
   const listen = async (voice: (typeof AD_VOICE_IDS)[number]) => {
     const k = `${voice}-${ad.tone}`
@@ -687,19 +691,31 @@ function VoiceStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => 
               <input type="range" min={0.85} max={1.15} step={0.05} value={ad.speed} onChange={(e) => patch({ speed: Number(e.target.value) })} className="w-full" />
             </label>
             <label className="text-sm font-semibold">
-              Ses başlangıcı: {sec(ad.voiceStartMs)}
-              <input type="range" min={0} max={5000} step={100} value={ad.voiceStartMs} onChange={(e) => patch({ voiceStartMs: Number(e.target.value) })} className="w-full" />
+              Seslendirme başlangıcı: {sec(ad.voiceStartMs)}
+              <input type="range" min={0} max={6000} step={100} value={ad.voiceStartMs} onChange={(e) => patch({ voiceStartMs: Number(e.target.value) })} className="w-full" />
             </label>
           </div>
+          <label className="flex items-start gap-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-950">
+            <input type="checkbox" className="mt-0.5" checked={ad.fitToVideo} onChange={(e) => patch({ fitToVideo: e.target.checked })} />
+            <span>
+              <b>Seslendirmeyi video süresine uydur</b> (önerilen) — ses hızı %90–112 arasında ayarlanır, kalan süre cümle aralarına dağıtılır; ses ve yazılar videonun sonuna (firma kartına) kadar sürer.
+              {target && <span className="block text-[12px] text-orange-800">Konuşma: {mmss(target.startMs)} → {mmss(target.endMs)} ({sec(target.endMs - target.startMs)})</span>}
+              {ad.fitToVideo && !target && <span className="block text-[12px] text-orange-800">Önce video ekleyin.</span>}
+            </span>
+          </label>
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[rgb(var(--color-border))] p-3">
             <button type="button" disabled={busy || !ad.script.trim()} onClick={() => void generate()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-bold text-white disabled:opacity-50">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} {current ? 'Seslendirme güncel' : ad.voice ? 'Seslendirmeyi yenile' : 'Seslendirmeyi oluştur'}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} {current ? 'Seslendirme güncel' : textOk ? 'Sesi videoya uydur (ücretsiz)' : ad.voice ? 'Seslendirmeyi yenile' : 'Seslendirmeyi oluştur'}
             </button>
             <span className="text-[12px] text-[rgb(var(--color-muted))]">Tahmini maliyet ≈ {estUsd < 0.01 ? '0,01 $ altı' : `${estUsd.toFixed(2).replace('.', ',')} $`} · aynı metin tekrar ücretlendirilmez</span>
             {ad.voice && (
               <div className="w-full space-y-1">
                 <div className={cn('text-[12px] font-semibold', current ? 'text-green-700' : 'text-orange-700')}>
-                  {current ? `Hazır · ${sec(ad.voice.durationMs)} · ${AD_VOICES[ad.voice.voice].name}, ${AD_TONE_INFO[ad.voice.tone].label}` : 'Metin ya da ses seçimi değişti — yenileyin'}
+                  {current
+                    ? `Hazır · ${sec(ad.voice.durationMs)} · ${AD_VOICES[ad.voice.voice].name}, ${AD_TONE_INFO[ad.voice.tone].label}${ad.voice.tempo && ad.voice.rawDurationMs ? ` · videoya uyduruldu: hız %${Math.round(ad.voice.tempo * 100)}, cümle aralarına +${sec(ad.voice.addedPauseMs ?? 0)}` : ''}`
+                    : textOk
+                      ? 'Video süresi ya da başlangıç değişti — «Sesi videoya uydur» (ücretsiz)'
+                      : 'Metin ya da ses seçimi değişti — yenileyin'}
                 </div>
                 <audio controls src={ad.voice.url} className="w-full" />
               </div>

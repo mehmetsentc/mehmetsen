@@ -25,6 +25,8 @@ export interface BuildInput {
   audio: Array<{ item: AudioItem; path: string; loop: boolean }>
   outro: { image: string; sting: string | null } | null
   output: string
+  /** klibin kendi sesi seslendirme konuşurken kısılır (sidechain) */
+  duckUnderVoice?: boolean
 }
 
 const sec = (ms: number) => (ms / 1000).toFixed(3)
@@ -185,6 +187,7 @@ export function editFfmpegArgs(a: BuildInput): string[] {
 
   // 4. music + voice-over over the clips' own sound
   const mixIn = [`[${pa}]`]
+  const duckK = a.duckUnderVoice ? a.audio.findIndex((x) => x.item.kind === 'voice') : -1
   a.audio.forEach((x, k) => {
     const it = x.item
     const end = Math.min(total, it.endMs ?? total)
@@ -192,7 +195,14 @@ export function editFfmpegArgs(a: BuildInput): string[] {
     const fx = [FMT_A, `atrim=0:${len.toFixed(3)}`, 'asetpts=N/SR/TB', `volume=${it.volume}`]
     if (it.fade) fx.push(`afade=t=in:st=0:d=${Math.min(1, len / 4).toFixed(2)}`, `afade=t=out:st=${Math.max(0, len - Math.min(1.5, len / 3)).toFixed(3)}:d=${Math.min(1.5, len / 3).toFixed(2)}`)
     if (it.startMs > 0) fx.push(`adelay=${it.startMs}|${it.startMs}`)
-    f.push(`[${audioIdx[k]}:a]${fx.join(',')}[m${k}]`)
+    if (k === duckK) {
+      // seslendirme hem karışıma hem «kısma» denetimine gider: konuşurken videonun sesi ~ −12 dB
+      // apad: seslendirme bitince denetim sessiz kalır (yoksa çıktı seslendirmeyle birlikte kesilir)
+      f.push(`[${audioIdx[k]}:a]${fx.join(',')},asplit=2[m${k}][scr${k}]`)
+      f.push(`[scr${k}]apad[sc${k}]`)
+      f.push(`[${pa}][sc${k}]sidechaincompress=threshold=0.025:ratio=8:attack=60:release=800:makeup=1[duck]`)
+      mixIn[0] = '[duck]'
+    } else f.push(`[${audioIdx[k]}:a]${fx.join(',')}[m${k}]`)
     mixIn.push(`[m${k}]`)
   })
   if (a.audio.length) f.push(`${mixIn.join('')}amix=inputs=${mixIn.length}:duration=first:normalize=0,atrim=0:${(total / 1000).toFixed(3)}[mix]`)

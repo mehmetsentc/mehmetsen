@@ -109,7 +109,7 @@ export const AD_MUSIC_INFO: Record<AdMusic, { label: string; bed: MusicPreset | 
   sakin: { label: 'Sakin', bed: 'sakin' },
   yok: { label: 'Müzik yok', bed: null },
 }
-export const VIDEO_SOUND_LABEL: Record<VideoSound, string> = { kapali: 'Kapalı', kisik: 'Kısık', acik: 'Olduğu gibi' }
+export const VIDEO_SOUND_LABEL: Record<VideoSound, string> = { kapali: 'Kapalı', kisik: 'Konuşurken kısılır', acik: 'Hep olduğu gibi' }
 
 /** Gemini-TTS stil yönergesi (İngilizce yönerge en tutarlı sonucu verir; metin Türkçe okunur). */
 export function voicePrompt(voice: AdVoiceId, tone: AdTone, speed: number): string {
@@ -157,6 +157,12 @@ export interface AdVoiceState {
   createdAt: number
   /** konuşma başı/sonu ve duraklamalar (yazıları sese eşlemek için) */
   timing?: { speechStartMs: number; speechEndMs: number; pauses: Array<{ at: number; len: number }> }
+  /** videoya uydurma: hangi hedefe göre (fitKey), ham ses, uygulanan hız ve eklenen duraklama */
+  fitKey?: string
+  rawUrl?: string
+  rawDurationMs?: number
+  tempo?: number
+  addedPauseMs?: number
 }
 export interface AdProject {
   id: string
@@ -179,6 +185,8 @@ export interface AdProject {
   tone: AdTone
   speed: number
   voiceStartMs: number
+  /** seslendirme video süresine otomatik uydurulur (hız + cümle araları) */
+  fitToVideo: boolean
   voice: AdVoiceState | null
   music: AdMusic
   videoSound: VideoSound
@@ -216,7 +224,8 @@ export function defaultAd(id: string, uid: string, now: number, kind: AdKind = '
     voiceId: k.voice,
     tone: k.tone,
     speed: 1,
-    voiceStartMs: 600,
+    voiceStartMs: 1500,
+    fitToVideo: true,
     voice: null,
     music: look.music,
     videoSound: 'kisik',
@@ -293,6 +302,7 @@ export function applyAdPatch(cur: AdProject, raw: Record<string, unknown>, now: 
     n.tone = raw.tone
   }
   if ('speed' in raw) n.speed = Math.round((num(raw.speed, 0.8, 1.2) ?? cur.speed) * 100) / 100
+  if ('fitToVideo' in raw) n.fitToVideo = raw.fitToVideo === true
   if ('voiceStartMs' in raw) n.voiceStartMs = Math.round(num(raw.voiceStartMs, 0, 60_000) ?? cur.voiceStartMs)
   if ('music' in raw) {
     if (!isOneOf(AD_MUSIC, raw.music)) return { ok: false, error: 'Müzik geçersiz' }
@@ -442,7 +452,20 @@ export function fnv(s: string): string {
   return ((h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0')).slice(0, 16)
 }
 export const voiceHash = (ad: Pick<AdProject, 'script' | 'voiceId' | 'tone' | 'speed'>) => fnv(voiceHashInput(ad))
-export const voiceIsCurrent = (ad: AdProject) => !!ad.voice && ad.voice.hash === voiceHash(ad)
+/** Seslendirmenin videoda kaplayacağı aralık: başlangıç gecikmesinden firma kartının 0,8 sn öncesine. */
+export function fitTarget(ad: Pick<AdProject, 'media' | 'look' | 'card' | 'voiceStartMs' | 'fitToVideo'>): { startMs: number; endMs: number } | null {
+  if (!ad.fitToVideo || !ad.media.length) return null
+  const end = textWindowEnd(ad) - 800
+  return end - ad.voiceStartMs >= 3000 ? { startMs: ad.voiceStartMs, endMs: end } : null
+}
+export const fitKey = (ad: Pick<AdProject, 'media' | 'look' | 'card' | 'voiceStartMs' | 'fitToVideo'>): string => {
+  const t = fitTarget(ad)
+  return t ? `fit-${t.endMs - t.startMs}` : 'off'
+}
+/** metin + ses aynı mı (yeni ücretli ses gerekmez) */
+export const voiceTextCurrent = (ad: AdProject) => !!ad.voice && ad.voice.hash === voiceHash(ad)
+/** ses hem metne hem video süresine göre güncel mi */
+export const voiceIsCurrent = (ad: AdProject) => voiceTextCurrent(ad) && (ad.voice!.fitKey ?? 'off') === fitKey(ad)
 
 export function adRenderProblem(ad: AdProject): string | null {
   if (!ad.media.length) return 'Önce reklam videosunu ya da görselini ekleyin'
@@ -450,13 +473,14 @@ export function adRenderProblem(ad: AdProject): string | null {
   if (total < 1500) return 'Reklam en az 1,5 saniye olmalı'
   if (total > AD_LIMITS.totalMs) return 'Reklam en fazla 3 dakika olabilir'
   if (ad.voiceOn && !ad.script.trim()) return 'Seslendirme açık ama reklam metni boş'
-  if (ad.voiceOn && !voiceIsCurrent(ad)) return 'Metin ya da ses seçimi değişti — önce «Seslendirmeyi oluştur»'
+  if (ad.voiceOn && !voiceTextCurrent(ad)) return 'Metin ya da ses seçimi değişti — önce «Seslendirmeyi oluştur»'
+  if (ad.voiceOn && !voiceIsCurrent(ad)) return 'Video süresi değişti — «Ses» adımında «Sesi videoya uydur» (ücretsiz)'
   if (ad.card.enabled && !ad.card.name.trim()) return 'Kapanış kartı için firma adını yazın (ya da kartı kapatın)'
   return null
 }
 
 export function adRenderKey(ad: AdProject): string {
-  return fnv(JSON.stringify(['ad1', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, usesOwnMusic(ad) ? 'own' : ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
+  return fnv(JSON.stringify(['ad2', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, usesOwnMusic(ad) ? 'own' : ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
 }
 
 /** Videonun kendi sesi (müziği) kullanılıyorsa bizim fon müziğimiz eklenmez. */
@@ -479,11 +503,15 @@ export function ribbonFor(ad: AdProject): Deco | null {
   return k ? { kind: 'ribbon', text: k, bg: ad.accent, fg: '#ffffff' } : null
 }
 
+/** videonun kendi sesi konuşma sırasında kısılsın mı */
+export const duckUnderVoice = (ad: Pick<AdProject, 'voiceOn' | 'voice' | 'videoSound'>): boolean => ad.voiceOn && !!ad.voice && ad.videoSound === 'kisik'
+
 export function compileAd(ad: AdProject): { project: EditProject; overlays: Map<string, AdOverlay> } {
   const look = AD_LOOK_INFO[ad.look]
   const assets: EditAsset[] = ad.media.map((m) => ({ id: `m_${m.id}`, kind: m.kind, source: 'upload', url: m.url, name: m.name, durationMs: m.durationMs, posterUrl: null, addedAt: ad.createdAt }))
   // kısık: seslendirme varken videonun müziği konuşmanın altında kalır
-  const own = ad.videoSound === 'kapali' ? 0 : ad.videoSound === 'kisik' ? (ad.voiceOn ? 0.25 : 0.5) : 1
+  // kısık: videonun sesi tam, seslendirme konuşurken otomatik kısılır (ffmpeg sidechain, duck)
+  const own = ad.videoSound === 'kapali' ? 0 : 1
   const clips: VideoClip[] = ad.media.map((m, i) => ({
     id: `c_${m.id}`,
     assetId: `m_${m.id}`,

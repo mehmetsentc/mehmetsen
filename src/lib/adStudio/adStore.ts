@@ -20,6 +20,8 @@ import {
   textWindowEnd,
   voiceHash,
   voiceIsCurrent,
+  fitKey,
+  fitTarget,
   withAdDefaults,
   type AdMedia,
   type AdProject,
@@ -182,7 +184,7 @@ export async function generateAdVoice(uid: string, id: string, now: number): Pro
   if (!ad) return fail(404, 'not_found', 'Reklam bulunamadı')
   if (!ad.script.trim()) return fail(400, 'empty_script', 'Önce reklam metnini yazın')
   const hash = voiceHash(ad)
-  if (ad.voice && ad.voice.hash === hash) return { ok: true, value: ad }
+  if (voiceIsCurrent(ad)) return { ok: true, value: ad }
   const name = `ads/${id}/voice-${hash}.wav`
   const bucket = getAdminStorage().bucket(BUCKET)
   const file = bucket.file(name)
@@ -209,22 +211,41 @@ export async function generateAdVoice(uid: string, id: string, now: number): Pro
       throw err
     }
   }
-  const url = `https://storage.googleapis.com/${BUCKET}/${name}`
+  const rawUrl = `https://storage.googleapis.com/${BUCKET}/${name}`
+  const rawDurationMs = durationMs
+  // VİDEOYA UYDUR: hız (%90–112) + cümle aralarına duraklama; ücretsiz, ham ses saklı kalır
+  let url = rawUrl
+  let tempo = 1
+  let addedPauseMs = 0
+  const fk = fitKey(ad)
+  const target = fitTarget(ad)
+  if (target) {
+    const { fitVoiceToVideo } = await import('./adFitServer')
+    const fitted = await fitVoiceToVideo(wavBuf, target.endMs - target.startMs)
+    const fname = `ads/${id}/voice-${hash}-${fk}.wav`
+    await bucket.file(fname).save(fitted.wav, { resumable: false, metadata: { contentType: 'audio/wav', cacheControl: 'public, max-age=86400' } })
+    await bucket.file(fname).makePublic()
+    url = `https://storage.googleapis.com/${BUCKET}/${fname}`
+    wavBuf = fitted.wav
+    durationMs = fitted.durationMs
+    tempo = fitted.tempo
+    addedPauseMs = fitted.addedPauseMs
+  }
   const timing = await voiceTiming(wavBuf)
   const r = await patchAdRaw(
     uid,
     id,
     (cur) => {
-      if (voiceHash(cur) !== hash) return null
-      const voice = { url, durationMs, hash, voice: cur.voiceId, tone: cur.tone, speed: cur.speed, chars: cur.script.length, createdAt: now, ...(timing ? { timing } : {}) }
+      if (voiceHash(cur) !== hash || fitKey(cur) !== fk) return null
+      const voice = { url, durationMs, hash, voice: cur.voiceId, tone: cur.tone, speed: cur.speed, chars: cur.script.length, createdAt: now, fitKey: fk, rawUrl, rawDurationMs, tempo: Math.round(tempo * 1000) / 1000, addedPauseMs, ...(timing ? { timing } : {}) }
       // yazılar sesle birlikte otomatik eşlenir (kullanıcının düzenlediği yazı metinleri korunur)
       const next = { ...cur, voice, updatedAt: now }
       return timing ? { ...next, scenes: alignFor(next, timing) } : next
     },
     'voice',
   )
-  if (!r.ok) return fail(409, 'changed', 'Metin seslendirme sırasında değişti; tekrar deneyin')
-  await audit(uid, 'ads.voice', r.value, { voice: ad.voiceId, tone: ad.tone, seconds: Math.round(durationMs / 100) / 10, usd: Math.round(usd * 10000) / 10000, reused: exists })
+  if (!r.ok) return fail(409, 'changed', 'Metin ya da video seslendirme sırasında değişti; tekrar deneyin')
+  await audit(uid, 'ads.voice', r.value, { voice: ad.voiceId, tone: ad.tone, seconds: Math.round(durationMs / 100) / 10, usd: Math.round(usd * 10000) / 10000, reused: exists, fit: fk, tempo })
   return r
 }
 
@@ -248,7 +269,7 @@ function alignFor(ad: AdProject, t: VoiceTiming) {
 export async function alignAdScenes(uid: string, id: string, now: number): Promise<StoreResult<AdProject>> {
   const ad = await getAd(id)
   if (!ad) return fail(404, 'not_found', 'Reklam bulunamadı')
-  if (!ad.voice || !voiceIsCurrent(ad)) return fail(409, 'no_voice', 'Önce «Seslendirmeyi oluştur»')
+  if (!ad.voice || !voiceIsCurrent(ad)) return fail(409, 'no_voice', 'Önce «Ses» adımında seslendirmeyi oluşturun / videoya uydurun')
   let timing = ad.voice.timing ?? null
   if (!timing) {
     const name = decodeURIComponent(new URL(ad.voice.url).pathname).replace(`/${BUCKET}/`, '')
