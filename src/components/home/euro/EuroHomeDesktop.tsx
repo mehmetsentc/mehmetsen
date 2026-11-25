@@ -269,7 +269,7 @@ function EuroHeader() {
 // ── sayfa ────────────────────────────────────────────────────────────────────
 export function EuroHomeDesktop({ data }: { data: HomeFeedInitialData }) {
   const rails = useMergedCategoryRails(data.categoryRails, LAZY_RAILS, 800, HOME_CATEGORY_PORTAL_FETCH)
-  const [videoRef, videoSeen] = useInView<HTMLElement>()
+  const [videoRef, videoSeen] = useInView<HTMLDivElement>()
 
   const L = useMemo(() => {
     const pick = makePicker()
@@ -414,7 +414,9 @@ export function EuroHomeDesktop({ data }: { data: HomeFeedInitialData }) {
           </section>
         ) : null}
 
-        <section ref={videoRef} className={cn('flex flex-col gap-5 rounded-lg bg-[#101826] px-7 pb-6 pt-7 text-white', videos.length < 3 && 'hidden')} aria-label="NaHaber Video">
+        {/* gözcü her zaman görünür: gizli (display:none) bölüm hiç «görünmez», video hiç yüklenmezdi */}
+        <div ref={videoRef} aria-hidden className="-my-6 h-0" />
+        <section className={cn('flex flex-col gap-5 rounded-lg bg-[#101826] px-7 pb-6 pt-7 text-white', videos.length < 3 && 'hidden')} aria-label="NaHaber Video">
           <H2 dark extra={<span className="text-[13px] text-[#b7c0cc]">Reels · Shorts · haber videoları</span>}>NaHaber Video</H2>
           <div className="grid grid-cols-3 gap-5">
             {videos.map((v) => (

@@ -2592,6 +2592,12 @@
     .desktop-newspaper article h3 {
       font-family: var(--font-serif-display, Georgia, 'Times New Roman', serif);
     }
+    /* EURO-HOME: Euronews düzeninde başlıklar sans (Inter) */
+    .desktop-newspaper .euro-home h1,
+    .desktop-newspaper .euro-home h2,
+    .desktop-newspaper .euro-home h3 {
+      font-family: var(--font-inter, Inter, system-ui, sans-serif);
+    }
   }
 
   /* Mobile: clear Dinle FAB + floating bottom nav so last lines stay readable.
