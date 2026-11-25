@@ -47,6 +47,8 @@ export async function POST(request: Request, { params }: Ctx) {
       try {
         const out = await renderEditProject(project, key, undefined, {
           fitSource: true,
+          // reklam: yeniden kodlamada kayıp az olsun (CRF 21 → 17, aynı hız, ~%75 daha yüksek bit hızı)
+          crf: 17,
           duckUnderVoice: duckUnderVoice(ad),
           drawText: async (t, W, H, file, root) => {
             const o = overlays.get(t.id)

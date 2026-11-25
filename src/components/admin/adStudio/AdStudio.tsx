@@ -47,6 +47,7 @@ import {
   type AdProject,
   type AdScene,
   type AdTextStyle,
+  isLowResMedia,
 } from '@/lib/adStudio/adModel'
 
 const API = '/api/admin/ad-studio'
@@ -330,7 +331,12 @@ function VideoStep({ ad, patch, takeServer }: StepProps & { takeServer: (a: AdPr
           {m.kind === 'video' ? <Clapperboard className="h-5 w-5 text-orange-600" /> : <ImageIcon className="h-5 w-5 text-orange-600" />}
           <div className="min-w-[140px] flex-1">
             <div className="truncate text-sm font-bold">{m.name}</div>
-            <div className="text-[12px] text-[rgb(var(--color-muted))]">{m.kind === 'video' ? `Video · ${mmss(m.durationMs ?? 0)}${m.hasAudio ? ' · kendi müziği/sesi var' : ' · sessiz'}` : 'Görsel'} · kullanılan {sec(m.outMs - m.inMs)}</div>
+            <div className="text-[12px] text-[rgb(var(--color-muted))]">{m.kind === 'video' ? `Video · ${mmss(m.durationMs ?? 0)}${m.width && m.height ? ` · ${m.width}×${m.height}` : ''}${m.hasAudio ? ' · kendi müziği/sesi var' : ' · sessiz'}` : 'Görsel'} · kullanılan {sec(m.outMs - m.inMs)}</div>
+            {isLowResMedia(m) && (
+              <div className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[12px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                Bu video düşük çözünürlüklü ({m.width}×{m.height}). Büyük olasılıkla WhatsApp vb. ile sıkıştırılmış bir kopya; reklam en fazla bu kalitede olur. Telefondaki orijinal videoyu (AirDrop, kablo, Google Drive ya da WhatsApp&apos;ta «belge» olarak) yükleyin.
+              </div>
+            )}
           </div>
           {m.kind === 'video' && (
             <label className="text-[12px]">

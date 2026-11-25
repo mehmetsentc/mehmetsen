@@ -15,6 +15,36 @@ export interface BuildClip {
   kind: 'video' | 'image'
   path: string
   hasAudio: boolean
+  /** HDR kaynak (iPhone HLG / PQ): SDR'ye çevrilmezse renkler soluk, gri görünür */
+  hdr?: HdrKind
+}
+
+export type HdrKind = 'hlg' | 'pq' | null
+
+/** ffmpeg -i çıktısından HDR aktarım eğrisi (iPhone: HLG = arib-std-b67; PQ = smpte2084). */
+export function hdrKindOf(ffmpegInfo: string): HdrKind {
+  const v = ffmpegInfo.match(/Stream #\d+:\d+[^\n]*Video:[^\n]*/)?.[0] ?? ''
+  if (/arib-std-b67/.test(v)) return 'hlg'
+  if (/smpte2084/.test(v)) return 'pq'
+  return null
+}
+
+/**
+ * HDR → SDR (BT.709). HLG SDR ile geriye uyumlu: doğrudan dönüşüm doğru renk verir ve hızlıdır.
+ * PQ için ton eşleme gerekir (hable).
+ */
+export function hdrToSdrFilters(hdr: HdrKind): string[] {
+  if (hdr === 'hlg') return ['zscale=tin=arib-std-b67:pin=bt2020:min=bt2020nc:t=bt709:p=bt709:m=bt709:r=tv', 'format=yuv420p']
+  if (hdr === 'pq')
+    return [
+      'zscale=tin=smpte2084:pin=bt2020:min=bt2020nc:t=linear:npl=100',
+      'format=gbrpf32le',
+      'zscale=p=bt709',
+      'tonemap=tonemap=hable:desat=0',
+      'zscale=t=bt709:m=bt709:r=tv',
+      'format=yuv420p',
+    ]
+  return []
 }
 export interface BuildInput {
   W: number
@@ -27,6 +57,8 @@ export interface BuildInput {
   output: string
   /** klibin kendi sesi seslendirme konuşurken kısılır (sidechain) */
   duckUnderVoice?: boolean
+  /** H.264 CRF (düşük = daha kaliteli, daha büyük dosya). Varsayılan 21. */
+  crf?: number
 }
 
 const sec = (ms: number) => (ms / 1000).toFixed(3)
@@ -119,7 +151,7 @@ export function editFfmpegArgs(a: BuildInput): string[] {
   a.clips.forEach((bc, i) => {
     const c = bc.clip
     const D = clipMs(c) / 1000
-    const pre: string[] = []
+    const pre: string[] = bc.kind === 'video' ? hdrToSdrFilters(bc.hdr ?? null) : []
     if (c.crop) pre.push(`crop=iw*${c.crop.w}:ih*${c.crop.h}:iw*${c.crop.x}:ih*${c.crop.y}`)
     if (c.flipH) pre.push('hflip')
     pre.push(bc.kind === 'video' && Math.abs(c.speed - 1) > 0.001 ? `setpts=(PTS-STARTPTS)/${c.speed}` : 'setpts=PTS-STARTPTS')
@@ -131,7 +163,7 @@ export function editFfmpegArgs(a: BuildInput): string[] {
     }
     const s = c.scale
     const mode = c.fit === 'cover' ? 'increase' : 'decrease'
-    const fg = `scale=w=${Math.round(W * s)}:h=${Math.round(H * s)}:force_original_aspect_ratio=${mode}:force_divisible_by=2`
+    const fg = `scale=w=${Math.round(W * s)}:h=${Math.round(H * s)}:force_original_aspect_ratio=${mode}:force_divisible_by=2:flags=lanczos`
     if (c.fit === 'blur') {
       f.push(`[${i}:v]${pre.join(',')},split=2[cf${i}][cb${i}]`)
       f.push(`[cb${i}]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=24:2,eq=brightness=-0.08,format=yuv420p[bg${i}]`)
@@ -223,7 +255,7 @@ export function editFfmpegArgs(a: BuildInput): string[] {
   }
 
   args.push('-filter_complex', f.join(';'), '-map', '[v]', '-map', '[a]')
-  args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-profile:v', 'high', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-r', '30')
+  args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(a.crf ?? 21), '-profile:v', 'high', '-g', '60', '-keyint_min', '60', '-sc_threshold', '0', '-r', '30')
   args.push('-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', a.output)
   return args
 }

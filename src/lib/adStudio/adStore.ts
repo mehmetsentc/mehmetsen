@@ -25,6 +25,7 @@ import {
   withAdDefaults,
   type AdMedia,
   type AdProject,
+  probeSize,
 } from './adModel'
 import { alignScenes, analyzeVoice, type VoiceTiming } from './adAlign'
 
@@ -103,7 +104,7 @@ export function ownAdUploadUrl(url: unknown, uid: string, id: string): url is st
   }
 }
 
-async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: boolean } | null> {
+async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: boolean; width?: number; height?: number } | null> {
   try {
     const { spawn } = await import('node:child_process')
     const mod = (await import('ffmpeg-static')) as unknown as { default?: string | null } | string
@@ -119,7 +120,7 @@ async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: 
       p.on('close', () => {
         clearTimeout(timer)
         const m = err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/)
-        resolve(m ? { durationMs: Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000), hasAudio: /Stream #\d+:\d+[^\n]*: Audio:/.test(err) } : null)
+        resolve(m ? { durationMs: Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000), hasAudio: /Stream #\d+:\d+[^\n]*: Audio:/.test(err), ...probeSize(err) } : null)
       })
       p.on('error', () => (clearTimeout(timer), resolve(null)))
     })
@@ -145,8 +146,8 @@ export async function addAdMedia(uid: string, id: string, raw: Record<string, un
     if (!decodeURIComponent(new URL(url).pathname).includes('news-videos/')) return fail(400, 'invalid_url', 'Video yeri geçersiz')
     const probed = await probeMedia(url)
     if (probed === null) return fail(422, 'video_unreadable', 'Video okunamadı (bozuk ya da desteklenmeyen biçim)')
-    const { durationMs, hasAudio } = probed
-    m = { id: newItemId(), kind: 'video', url, name, durationMs, inMs: 0, outMs: Math.min(durationMs, AD_LIMITS.totalMs), hasAudio }
+    const { durationMs, hasAudio, width, height } = probed
+    m = { id: newItemId(), kind: 'video', url, name, durationMs, inMs: 0, outMs: Math.min(durationMs, AD_LIMITS.totalMs), hasAudio, ...(width && height ? { width, height } : {}) }
   } else {
     m = { id: newItemId(), kind: 'image', url, name, durationMs: null, inMs: 0, outMs: AD_LIMITS.imageMs }
   }

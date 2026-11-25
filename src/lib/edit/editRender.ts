@@ -18,7 +18,7 @@ import { wrapLines } from '@/lib/reels/timeline'
 import { composeOutroStill } from '@/lib/story/storyOverlay'
 import { FRAMES } from '@/lib/story/storyProject'
 import { canvasSize, timeline, type EditAsset, type EditProject, type TextItem } from './editProject'
-import { editFfmpegArgs, type BuildClip } from './editFfmpeg'
+import { editFfmpegArgs, hdrKindOf, type BuildClip, type HdrKind } from './editFfmpeg'
 
 const BUCKET = process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebasestorage.app`
 const FFMPEG_TIMEOUT_MS = 600_000
@@ -54,7 +54,7 @@ function run(bin: string, args: string[], timeoutMs: number): Promise<string> {
 }
 
 /** Size + audio presence from the ffmpeg banner. */
-async function probe(bin: string, file: string): Promise<{ w: number; h: number; hasAudio: boolean }> {
+async function probe(bin: string, file: string): Promise<{ w: number; h: number; hasAudio: boolean; hdr: HdrKind }> {
   const err = await new Promise<string>((resolve) => {
     const p = spawn(bin, ['-hide_banner', '-i', file], { shell: false, stdio: ['ignore', 'ignore', 'pipe'] })
     let e = ''
@@ -69,7 +69,21 @@ async function probe(bin: string, file: string): Promise<{ w: number; h: number;
   const rot = /rotate\s*:\s*-?(90|270)|rotation of -?(90|270)/.test(err)
   const w = m ? Number(m[1]) : 0
   const h = m ? Number(m[2]) : 0
-  return { w: rot ? h : w, h: rot ? w : h, hasAudio: /Stream #\d+:\d+.*Audio:/.test(err) }
+  return { w: rot ? h : w, h: rot ? w : h, hasAudio: /Stream #\d+:\d+.*Audio:/.test(err), hdr: hdrKindOf(err) }
+}
+
+/** ffmpeg ikilisinde zscale (zimg) var mı — HDR → SDR dönüşümü için; yoksa dönüşüm atlanır, render bozulmaz. */
+let zscaleCache: Promise<boolean> | null = null
+function hasZscale(bin: string): Promise<boolean> {
+  zscaleCache ??= new Promise<boolean>((resolve) => {
+    const p = spawn(bin, ['-hide_banner', '-filters'], { shell: false, stdio: ['ignore', 'pipe', 'ignore'] })
+    let o = ''
+    p.stdout.on('data', (d: Buffer) => (o += d.toString()))
+    const t = setTimeout(() => p.kill('SIGKILL'), 15_000)
+    p.on('close', () => (clearTimeout(t), resolve(/\bzscale\b/.test(o))))
+    p.on('error', () => (clearTimeout(t), resolve(false)))
+  })
+  return zscaleCache
 }
 
 async function fetchTo(url: string, out: string): Promise<void> {
@@ -174,6 +188,8 @@ export interface EditRenderOptions {
   fitSource?: boolean
   /** klibin kendi sesi seslendirme konuşurken kısılır */
   duckUnderVoice?: boolean
+  /** H.264 CRF; reklamlar 17 ile daha yüksek kalitede kodlanır */
+  crf?: number
 }
 
 /** kısa kenarı `short` olacak şekilde tuvali küçültür (çift sayılar) */
@@ -262,7 +278,7 @@ export async function renderEditProject(p: EditProject, key: string, onStep?: (s
   try {
     // 1. media (each asset once)
     const files = new Map<string, string>()
-    const info = new Map<string, { w: number; h: number; hasAudio: boolean }>()
+    const info = new Map<string, { w: number; h: number; hasAudio: boolean; hdr: HdrKind }>()
     const used = new Set([...p.clips.map((c) => c.assetId), ...p.audio.map((a) => a.assetId).filter((x): x is string => !!x)])
     let i = 0
     for (const a of p.assets) {
@@ -316,14 +332,16 @@ export async function renderEditProject(p: EditProject, key: string, onStep?: (s
     }
 
     // 5. render
+    const canTonemap = [...info.values()].some((x) => x.hdr) ? await hasZscale(ffmpeg) : false
+    if (!canTonemap && [...info.values()].some((x) => x.hdr)) console.warn('[edit-render] HDR kaynak var ama ffmpeg zscale içermiyor; renk dönüşümü atlandı')
     const clips: BuildClip[] = p.clips.map((c) => {
       const a = p.assets.find((x) => x.id === c.assetId)!
-      return { clip: c, kind: a.kind === 'image' ? 'image' : 'video', path: files.get(a.id)!, hasAudio: !!info.get(a.id)?.hasAudio }
+      return { clip: c, kind: a.kind === 'image' ? 'image' : 'video', path: files.get(a.id)!, hasAudio: !!info.get(a.id)?.hasAudio, hdr: a.kind === 'image' || !canTonemap ? null : (info.get(a.id)?.hdr ?? null) }
     })
     const out = path.join(dir, 'out.mp4')
     const jpg = path.join(dir, 'cover.jpg')
     onStep?.('video birleştiriliyor')
-    await run(ffmpeg, editFfmpegArgs({ W, H, clips, texts, audio, outro, output: out, duckUnderVoice: opts.duckUnderVoice }), FFMPEG_TIMEOUT_MS)
+    await run(ffmpeg, editFfmpegArgs({ W, H, clips, texts, audio, outro, output: out, duckUnderVoice: opts.duckUnderVoice, crf: opts.crf }), FFMPEG_TIMEOUT_MS)
     await run(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', Math.min(1, tl.total / 2000).toFixed(2), '-i', out, '-frames:v', '1', '-q:v', '3', jpg], 60_000).catch(() => '')
 
     onStep?.('yükleniyor')

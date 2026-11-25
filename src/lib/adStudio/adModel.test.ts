@@ -111,3 +111,25 @@ describe('reklam modeli', () => {
     expect(fitTarget({ ...ad, fitToVideo: false })).toBeNull()
   })
 })
+
+describe('düşük çözünürlük uyarısı', () => {
+  it('kısa kenarı 720 altındaki video düşük sayılır, görsel ve bilinmeyen boyut sayılmaz', async () => {
+    const { isLowResMedia } = await import('./adModel')
+    expect(isLowResMedia({ kind: 'video', width: 576, height: 1024 })).toBe(true)
+    expect(isLowResMedia({ kind: 'video', width: 1080, height: 1920 })).toBe(false)
+    expect(isLowResMedia({ kind: 'video', width: 1280, height: 720 })).toBe(false)
+    expect(isLowResMedia({ kind: 'video' })).toBe(false)
+    expect(isLowResMedia({ kind: 'image', width: 300, height: 300 })).toBe(false)
+  })
+})
+
+describe('probeSize', () => {
+  it('ffmpeg çıktısından boyutu okur, 90° döndürmede kenarları çevirir', async () => {
+    const { probeSize } = await import('./adModel')
+    const wa = '  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 576x1024, 899 kb/s, 30 fps'
+    expect(probeSize(wa)).toEqual({ width: 576, height: 1024 })
+    const iphone = '  Stream #0:0[0x1](und): Video: hevc (Main 10) (hvc1 / 0x31637668), yuv420p10le(tv, bt2020nc/bt2020/arib-std-b67), 1920x1080, 9000 kb/s, 30 fps\n    Side data:\n      displaymatrix: rotation of -90.00 degrees'
+    expect(probeSize(iphone)).toEqual({ width: 1080, height: 1920 })
+    expect(probeSize('no video here')).toEqual({})
+  })
+})

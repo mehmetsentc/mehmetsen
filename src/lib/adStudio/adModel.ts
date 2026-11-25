@@ -128,6 +128,26 @@ export interface AdMedia {
   outMs: number
   /** videonun kendi ses izi var mı (müzik / ortam sesi) — yüklemede ffmpeg ile okunur */
   hasAudio?: boolean
+  /** yüklenen videonun çözünürlüğü (yüklemede okunur; düşük kalite uyarısı için) */
+  width?: number
+  height?: number
+}
+
+/** ffmpeg -i çıktısından görüntü boyutu; telefon videolarındaki 90° döndürme hesaba katılır. */
+export function probeSize(err: string): { width?: number; height?: number } {
+  const v = err.match(/Stream #\d+:\d+[^\n]*: Video:[^\n]*?\b(\d{2,5})x(\d{2,5})\b/)
+  if (!v) return {}
+  let width = Number(v[1])
+  let height = Number(v[2])
+  const rot = err.match(/rotation of (-?\d+(?:\.\d+)?) degrees|rotate\s*:\s*(-?\d+)/)
+  const deg = rot ? Math.abs(Number(rot[1] ?? rot[2])) % 180 : 0
+  if (deg === 90) [width, height] = [height, width]
+  return { width, height }
+}
+
+/** Kısa kenarı 720'den küçük video: büyük olasılıkla WhatsApp vb. ile sıkıştırılmış kopya. */
+export function isLowResMedia(m: Pick<AdMedia, 'kind' | 'width' | 'height'>): boolean {
+  return m.kind === 'video' && !!m.width && !!m.height && Math.min(m.width, m.height) < 720
 }
 export interface AdScene {
   id: string
@@ -480,7 +500,7 @@ export function adRenderProblem(ad: AdProject): string | null {
 }
 
 export function adRenderKey(ad: AdProject): string {
-  return fnv(JSON.stringify(['ad2', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, usesOwnMusic(ad) ? 'own' : ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
+  return fnv(JSON.stringify(['ad3', ad.aspect, ad.fit, ad.look, ad.media, ad.textOn ? [ad.scenes, ad.textStyle, ad.textPos, ad.textSize] : 0, ad.accent, ad.ribbonOn, ad.voiceOn ? ad.voice?.url : 0, ad.voiceStartMs, usesOwnMusic(ad) ? 'own' : ad.music, ad.videoSound, ad.logoUrl, ad.logoPos, ad.card]))
 }
 
 /** Videonun kendi sesi (müziği) kullanılıyorsa bizim fon müziğimiz eklenmez. */
