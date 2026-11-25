@@ -7,7 +7,8 @@ import { CityDesktopNewspaperHeader } from '@/components/city/CityDesktopNewspap
 import { CityTenantProvider } from '@/store/cityTenantContext'
 import { useScrollHeaderContext } from '@/context/ScrollHeaderContext'
 import { readLocalCityTenant } from '@/lib/tenant'
-import { isHomePathname, isProfileSurface, ROUTES } from '@/constants/routes'
+import { isProfileSurface, ROUTES } from '@/constants/routes'
+import { EuroHeader } from '@/components/home/euro/EuroHeader'
 import { isEuroHomeEnabled } from '@/lib/euroHome'
 
 function shouldShowGlobalScrollHeader(pathname: string): boolean {
@@ -48,8 +49,6 @@ export function DesktopGlobalScrollHeader({
   }, [pathname])
 
   if (!shouldShowGlobalScrollHeader(pathname)) return null
-  // EURO-HOME: ulusal ana sayfa kendi (Euronews düzeni) başlığını çizer; ?eski=1 eski başlık
-  if (!resolvedTenant && isHomePathname(pathname) && !legacyHome) return null
 
   if (resolvedTenant) {
     return (
@@ -61,6 +60,16 @@ export function DesktopGlobalScrollHeader({
           breakingItems={config.breakingItems}
         />
       </CityTenantProvider>
+    )
+  }
+
+  // EURO-HOME: bütün masaüstü sayfalarda Euronews düzeninde başlık (?eski=1 → eski gazete başlığı).
+  // lg:contents: yapışkan başlık sarmalayıcıya değil sayfaya göre yapışır.
+  if (!legacyHome) {
+    return (
+      <div className="hidden lg:contents">
+        <EuroHeader subcategories={config.subcategories?.map((t) => ({ id: t.id, name: t.name, href: t.href, active: t.active }))} />
+      </div>
     )
   }
 

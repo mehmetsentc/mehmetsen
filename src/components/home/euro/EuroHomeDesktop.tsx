@@ -11,36 +11,19 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, MapPin, Menu, Play, Search } from 'lucide-react'
+import { ChevronRight, MapPin, Play, Search } from 'lucide-react'
 import { SafeNewsImage } from '@/components/news/SafeNewsImage'
-import { DesktopHeaderAuth } from '@/components/home/desktop/DesktopHeaderAuth'
 import { DesktopAdBanner } from '@/components/home/desktop/DesktopAdBanner'
-import { formatNewsClockTime, formatNewsDateLong } from '@/components/home/desktop/formatNewsDate'
+import { formatNewsClockTime } from '@/components/home/desktop/formatNewsDate'
 import { FEED_FALLBACK_LOGO } from '@/lib/feedMediaUtils'
 import { newsItemCategoryLabel, newsItemDetailHref, sortNewsByDate } from '@/lib/newsItemUtils'
 import { pickHomeFeedFeaturedPins } from '@/lib/featuredScope'
 import { useMergedCategoryRails } from '@/hooks/useMergedCategoryRails'
 import { ROUTES } from '@/constants/routes'
-import { useUiStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 import { HOME_CATEGORY_PORTAL_FETCH, HOME_FEATURED_LIMIT, type HomeCategorySlug, type HomeFeedInitialData, type NewsItem } from '@/types/newsItem'
 
 const LAZY_RAILS: HomeCategorySlug[] = ['gundem', 'yerel-haber', 'spor', 'dunya', 'ekonomi', 'teknoloji', 'saglik', 'asayis', 'siyaset']
-
-export const EURO_NAV: Array<{ label: string; href: string }> = [
-  { label: 'Son Dakika', href: ROUTES.CATEGORY('son-dakika') },
-  { label: 'Gündem', href: ROUTES.CATEGORY('gundem') },
-  { label: 'Yerel', href: ROUTES.LOCAL },
-  { label: '3. Sayfa', href: ROUTES.CATEGORY('asayis') },
-  { label: 'Dünya', href: ROUTES.CATEGORY('dunya') },
-  { label: 'Siyaset', href: ROUTES.CATEGORY('siyaset') },
-  { label: 'Ekonomi', href: ROUTES.CATEGORY('ekonomi') },
-  { label: 'Spor', href: ROUTES.CATEGORY('spor') },
-  { label: 'Teknoloji', href: ROUTES.CATEGORY('teknoloji') },
-  { label: 'Kültür', href: ROUTES.CATEGORY('kultur') },
-  { label: 'Sağlık', href: ROUTES.CATEGORY('saglik') },
-  { label: 'Video', href: ROUTES.VIDEO },
-]
 
 const SUB_NAV: Array<{ label: string; href: string }> = [
   { label: 'Kıbrıs', href: ROUTES.CATEGORY('kibris-haberleri') },
@@ -203,69 +186,6 @@ function H2({ children, extra, dark = false }: { children: React.ReactNode; extr
   )
 }
 
-function FlagLogo() {
-  return (
-    <Link
-      href={ROUTES.HOME}
-      aria-label="NaHaber ana sayfa"
-      className="relative z-10 flex h-[84px] w-[86px] flex-none flex-col items-center justify-center gap-[7px] self-start bg-[#0B1530] shadow-[0_2px_6px_rgba(0,0,0,.15)]"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/nahaber-tile-96.png" alt="" width={32} height={32} className="block h-8 w-8" />
-      <span className="text-[16px] font-black leading-none tracking-[-0.02em]">
-        <span className="text-white">Na</span>
-        <span className="text-[rgb(var(--color-brand))]">Haber</span>
-      </span>
-    </Link>
-  )
-}
-
-function EuroHeader() {
-  const setDesktopSidebarOpen = useUiStore((s) => s.setDesktopSidebarOpen)
-  const [today, setToday] = useState('')
-  useEffect(() => setToday(formatNewsDateLong()), [])
-  return (
-    <>
-      <div className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))]">
-        <div className="mx-auto flex h-[38px] max-w-[1280px] items-center gap-5 px-6 text-[12.5px] font-semibold text-[rgb(var(--color-text))]/80">
-          <Link prefetch={false} href={ROUTES.LOCAL} className="inline-flex items-center gap-1.5 font-bold text-[rgb(var(--color-brand))]">
-            <MapPin className="h-3.5 w-3.5" aria-hidden /> İlini seç
-          </Link>
-          <Link prefetch={false} href={ROUTES.WEATHER} className="hover:underline">Hava Durumu</Link>
-          <Link prefetch={false} href="/nobetci-eczaneler" className="hover:underline">Nöbetçi Eczane</Link>
-          <Link prefetch={false} href={ROUTES.EVENTS} className="hover:underline">Etkinlikler</Link>
-          <Link prefetch={false} href={ROUTES.VIDEO} className="hover:underline">Video</Link>
-          <Link prefetch={false} href={ROUTES.MOST_READ} className="hover:underline">Çok Okunanlar</Link>
-          <Link prefetch={false} href={ROUTES.SEARCH} className="ml-auto inline-flex items-center gap-1.5 hover:underline">
-            <Search className="h-4 w-4" aria-hidden /> Ara
-          </Link>
-          <span className="text-[rgb(var(--color-text))]/60" suppressHydrationWarning>{today}</span>
-        </div>
-      </div>
-      <header className="sticky top-0 z-30 h-16 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface))]">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-5 px-6">
-          <button type="button" aria-label="Menü" onClick={() => setDesktopSidebarOpen(true)} className="flex rounded p-1.5 text-[rgb(var(--color-text))] hover:bg-[rgb(var(--color-border))]/50">
-            <Menu className="h-[22px] w-[22px]" aria-hidden />
-          </button>
-          <FlagLogo />
-          <nav aria-label="Ana kategoriler" className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto [scrollbar-width:none]">
-            {EURO_NAV.map((n) => (
-              <Link key={n.href} prefetch={false} href={n.href} className="whitespace-nowrap text-[13.5px] font-bold text-[rgb(var(--color-text))] hover:text-[rgb(var(--color-brand))]">
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <DesktopHeaderAuth />
-          <Link prefetch={false} href={ROUTES.CATEGORY('son-dakika')} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgb(var(--color-brand))] px-3.5 py-[7px] text-[13px] font-extrabold text-white">
-            <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-white" aria-hidden />
-            Son Dakika
-          </Link>
-        </div>
-      </header>
-    </>
-  )
-}
-
 // ── sayfa ────────────────────────────────────────────────────────────────────
 export function EuroHomeDesktop({ data }: { data: HomeFeedInitialData }) {
   const rails = useMergedCategoryRails(data.categoryRails, LAZY_RAILS, 800, HOME_CATEGORY_PORTAL_FETCH)
@@ -297,7 +217,6 @@ export function EuroHomeDesktop({ data }: { data: HomeFeedInitialData }) {
 
   return (
     <div className="euro-home bg-[rgb(var(--color-surface))] text-[rgb(var(--color-text))]" data-testid="euro-home-desktop">
-      <EuroHeader />
       <div className="mx-auto flex max-w-[1280px] flex-col gap-12 px-6 pb-14 pt-4">
         <nav aria-label="Diğer kategoriler" className="flex flex-wrap justify-center gap-x-2.5 gap-y-1 text-[13px] font-bold">
           {SUB_NAV.map((s, i) => (

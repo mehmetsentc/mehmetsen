@@ -12,6 +12,7 @@ vi.mock('@/components/news/SafeNewsImage', () => ({ SafeNewsImage: (p: { src: st
 vi.mock('@/components/home/desktop/DesktopHeaderAuth', () => ({ DesktopHeaderAuth: () => createElement('span', null, 'Giriş yap') }))
 vi.mock('@/components/home/desktop/DesktopAdBanner', () => ({ DesktopAdBanner: () => null }))
 vi.mock('@/hooks/useMergedCategoryRails', () => ({ useMergedCategoryRails: (r: unknown) => r }))
+vi.mock('next/navigation', () => ({ usePathname: () => '/kategori/spor' }))
 vi.mock('@/store/uiStore', () => ({ useUiStore: (sel: (s: { setDesktopSidebarOpen: () => void }) => unknown) => sel({ setDesktopSidebarOpen: () => {} }) }))
 
 let n = 0
@@ -32,10 +33,20 @@ describe('Euronews düzeninde masaüstü ana sayfa', () => {
   it('bayrak logo, kategoriler, manşet ve bölümler çizilir; her haber bir kez', async () => {
     const { EuroHomeDesktop } = await import('./EuroHomeDesktop')
     const html = renderToString(createElement(EuroHomeDesktop, { data }))
-    for (const t of ['NaHaber ana sayfa', '/brand/nahaber-tile-96.png', 'Son Dakika', 'Gündem', '3. Sayfa', 'Yerel', 'En çok okunanlar', 'Spor', 'Dünya', 'Ekonomi ve Teknoloji', 'Sağlık', 'İlinizin haberlerini okuyun', "Eskişehir&#x27;de düşen helikopterde"]) expect(html).toContain(t)
+    for (const t of ['Kıbrıs', 'Etkinlikler', 'Yerel', 'En çok okunanlar', 'Spor', 'Dünya', 'Ekonomi ve Teknoloji', 'Sağlık', 'İlinizin haberlerini okuyun', "Eskişehir&#x27;de düşen helikopterde"]) expect(html).toContain(t)
     // manşet haberi sayfada tek yerde (h1)
     expect(html.match(/helikopterde şehit olan 5 askerin isimleri/g)?.length).toBe(2) // başlık + görsel alt metni; kartlarda tekrar yok
     // video bandı yeterli video yoksa gizli
     expect(html).toMatch(/aria-label="NaHaber Video"[^>]*|class="[^"]*hidden[^"]*"[^>]*aria-label="NaHaber Video"/)
+  })
+
+  it('başlık: bayrak logo, kategoriler, nöbetçi eczane menüsü, alt kategoriler, etkin kategori', async () => {
+    const { EuroHeader } = await import('./EuroHeader')
+    const html = renderToString(createElement(EuroHeader, { subcategories: [{ id: 'futbol', name: 'Futbol', href: '/kategori/futbol', active: true }] }))
+    for (const t of ['NaHaber ana sayfa', '/brand/nahaber-tile-96.png', 'Son Dakika', '3. Sayfa', 'Nöbetçi Eczane', 'Alt kategoriler', 'Futbol', 'Hava Durumu']) expect(html).toContain(t)
+    expect(html).toMatch(/aria-current="page"[^>]*>Spor</)
+    // www'de nöbetçi eczane ana sayfaya yönleniyordu: il sitelerine gider
+    const { DUTY_PHARMACY_LINKS } = await import('./EuroHeader')
+    expect(DUTY_PHARMACY_LINKS.map(([, h]) => h)).toEqual(['https://antalya.nahaber.com/nobetci-eczaneler', 'https://canakkale.nahaber.com/nobetci-eczaneler'])
   })
 })
