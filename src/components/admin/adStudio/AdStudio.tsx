@@ -818,7 +818,7 @@ function OutputStep({ ad, patch, flush, takeServer }: StepProps & { flush: () =>
         <button type="button" disabled={!!problem || busy} onClick={() => void render()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} {busy ? `Hazırlanıyor… ${Math.round(elapsed / 1000)} sn` : 'MP4 oluştur'}
         </button>
-        {busy && <p className="text-[12px] text-[rgb(var(--color-muted))]">Uzun videolarda birkaç dakika sürebilir; sayfada kalın.</p>}
+        {busy && <p className="text-[12px] text-[rgb(var(--color-muted))]">Video uzunluğuna göre 2–8 dakika sürebilir; sayfada kalın (sayfa kapanırsa video yine üretilir, «Reklamlar» listesinde görünür).</p>}
         {ad.render.status === 'failed' && <p className="text-sm text-red-600">Son deneme başarısız: {ad.render.error}</p>}
         {ad.render.status === 'ready' && ad.render.outputUrl && (
           <div className="space-y-2">

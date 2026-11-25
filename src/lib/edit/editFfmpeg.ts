@@ -20,7 +20,8 @@ export interface BuildInput {
   W: number
   H: number
   clips: BuildClip[]
-  texts: Array<{ item: TextItem; png: string }>
+  /** x / y: kırpılmış bindirmenin sol üst köşesi (yoksa tam kare, 0:0) */
+  texts: Array<{ item: TextItem; png: string; x?: number; y?: number }>
   audio: Array<{ item: AudioItem; path: string; loop: boolean }>
   outro: { image: string; sting: string | null } | null
   output: string
@@ -177,7 +178,7 @@ export function editFfmpegArgs(a: BuildInput): string[] {
     const from = (w.from / 1000).toFixed(3)
     const to = (w.to / 1000).toFixed(3)
     f.push(`[${textIdx[k]}:v]setpts=PTS-STARTPTS+${from}/TB[tx${k}]`)
-    f.push(`[${pv}][tx${k}]overlay=0:0:eof_action=pass:enable='between(t,${from},${to})'[tv${k}]`)
+    f.push(`[${pv}][tx${k}]overlay=${t.x ?? 0}:${t.y ?? 0}:eof_action=pass:enable='between(t,${from},${to})'[tv${k}]`)
     pv = `tv${k}`
   })
   f.push(`[${pv}]format=yuv420p,setsar=1[main]`)

@@ -46,6 +46,7 @@ export async function POST(request: Request, { params }: Ctx) {
       const { project, overlays } = compileAd(ad)
       try {
         const out = await renderEditProject(project, key, undefined, {
+          fitSource: true,
           drawText: async (t, W, H, file, root) => {
             const o = overlays.get(t.id)
             if (!o) throw new Error('Reklam katmanı bulunamadı')

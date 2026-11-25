@@ -90,6 +90,9 @@
     },
     "src/app/api/cron/news-mirror-reconcile/route.ts": {
       "memory": 512
+    },
+    "src/app/api/admin/ad-studio/[id]/render/route.ts": {
+      "memory": 3009
     }
   },
   "crons": [

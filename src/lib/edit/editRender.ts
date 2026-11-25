@@ -11,7 +11,7 @@ import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createCanvas } from '@napi-rs/canvas'
+import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { getAdminStorage } from '@/lib/firebase/admin'
 import { FONT_MD, FONT_XB, bedPath, ensureFonts, resolveFfmpegPath, roundRectPath } from '@/lib/reels/reelTheme'
 import { wrapLines } from '@/lib/reels/timeline'
@@ -167,6 +167,80 @@ export interface EditRenderOutput {
 export interface EditRenderOptions {
   /** REKLAM STÜDYOSU: katmanları kendi stilleriyle çizer (yoksa KURGU yazı stilleri) */
   drawText?: (t: TextItem, W: number, H: number, file: string, root: string) => Promise<void>
+  /**
+   * Kaynak videolar 1080'den küçükse tuval kaynağa göre küçültülür (en az 720):
+   * büyütmek kalite katmaz, yalnız süreyi uzatır (576×1024 kaynak → 720×1280, ~2,2 kat az piksel).
+   */
+  fitSource?: boolean
+}
+
+/** kısa kenarı `short` olacak şekilde tuvali küçültür (çift sayılar) */
+export function shrinkCanvas([W, H]: [number, number], sources: Array<{ w: number; h: number }>): [number, number] {
+  const srcShort = Math.max(0, ...sources.map((x) => Math.min(x.w, x.h)))
+  if (!srcShort) return [W, H]
+  const short = Math.max(720, Math.min(Math.min(W, H), srcShort))
+  const k = short / Math.min(W, H)
+  if (k >= 1) return [W, H]
+  const even = (n: number) => Math.round((n * k) / 2) * 2
+  return [even(W), even(H)]
+}
+
+/**
+ * Tam kare saydam PNG'yi dolu bölgelerine kırpar (yatay şeritler): bindirme yalnız o alanda yapılır.
+ * Sinema bantları gibi üst+alt öğeler iki ayrı küçük parça olur. Boş PNG → [].
+ */
+export async function cropOverlay(file: string): Promise<Array<{ png: string; x: number; y: number }>> {
+  const img = await loadImage(await fs.readFile(file))
+  const W = img.width
+  const H = img.height
+  const c = createCanvas(W, H)
+  const ctx = c.getContext('2d')
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(0, 0, W, H).data
+  const rowMin: number[] = new Array(H).fill(-1)
+  const rowMax: number[] = new Array(H).fill(-1)
+  for (let y = 0; y < H; y++) {
+    const o = y * W * 4
+    let mn = -1
+    let mx = -1
+    for (let x = 0; x < W; x++) if (data[o + x * 4 + 3]! > 2) {
+      if (mn < 0) mn = x
+      mx = x
+    }
+    rowMin[y] = mn
+    rowMax[y] = mx
+  }
+  // dolu satırları şeritlere ayır (aradaki 24+ boş satır yeni şerit)
+  const bands: Array<{ y0: number; y1: number; x0: number; x1: number }> = []
+  let cur: { y0: number; y1: number; x0: number; x1: number } | null = null
+  let gap = 0
+  for (let y = 0; y < H; y++) {
+    if (rowMin[y]! >= 0) {
+      if (cur && gap < 24) {
+        cur.y1 = y
+        cur.x0 = Math.min(cur.x0, rowMin[y]!)
+        cur.x1 = Math.max(cur.x1, rowMax[y]!)
+      } else {
+        cur = { y0: y, y1: y, x0: rowMin[y]!, x1: rowMax[y]! }
+        bands.push(cur)
+      }
+      gap = 0
+    } else gap++
+  }
+  const out: Array<{ png: string; x: number; y: number }> = []
+  for (const [i, b] of bands.entries()) {
+    // çift sayılı konum/boyut (yuv420 bindirmesinde kayma olmasın)
+    const x = Math.max(0, b.x0 - (b.x0 % 2))
+    const y = Math.max(0, b.y0 - (b.y0 % 2))
+    const w = Math.min(W - x, b.x1 - x + 2)
+    const h = Math.min(H - y, b.y1 - y + 2)
+    const cc = createCanvas(w, h)
+    cc.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h)
+    const png = file.replace(/\.png$/, `_${i}.png`)
+    await fs.writeFile(png, await cc.encode('png'))
+    out.push({ png, x, y })
+  }
+  return out
 }
 
 export async function renderEditProject(p: EditProject, key: string, onStep?: (s: string) => void, opts: EditRenderOptions = {}): Promise<EditRenderOutput> {
@@ -197,15 +271,18 @@ export async function renderEditProject(p: EditProject, key: string, onStep?: (s
       if (a.kind !== 'audio') info.set(a.id, await probe(ffmpeg, f))
     }
     const firstVideo = p.clips.map((c) => info.get(c.assetId)).find((x) => x && x.w && x.h) ?? null
-    const [W, H] = canvasSize(p.aspect, firstVideo)
+    const full = canvasSize(p.aspect, firstVideo)
+    const [W, H] = opts.fitSource ? shrinkCanvas(full, [...info.values()].filter((x) => x.w && x.h)) : full
 
-    // 2. text overlays
-    const texts: Array<{ item: TextItem; png: string }> = []
+    // 2. text overlays (dolu bölgelerine kırpılmış — tam kare bindirme yavaş)
+    const texts: Array<{ item: TextItem; png: string; x?: number; y?: number }> = []
     for (const t of p.texts) {
       if (t.startMs >= tl.total) continue
       const png = path.join(dir, `text_${t.id}.png`)
       await (opts.drawText ?? drawTextPng)(t, W, H, png, root)
-      texts.push({ item: t, png })
+      const parts = await cropOverlay(png).catch(() => null)
+      if (!parts) texts.push({ item: t, png })
+      else for (const part of parts) texts.push({ item: t, ...part })
     }
 
     // 3. audio items
