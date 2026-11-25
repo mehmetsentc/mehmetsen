@@ -5,6 +5,7 @@
  * Exit 0 = SKIP build | Exit 1 = PROCEED (Vercel inverts usual Unix meaning).
  *
  * Policy (local-first batch deploy):
+ * 0. Preview (VERCEL_ENV=preview) → build only with [preview] in the message (FinOps 25 Nov).
  * 1. FORCE_DEPLOY=1 or [hotfix-urgent] → always build.
  *    [hotfix] → build while < HOTFIX_MAX_PER_DAY (default 6; unlimited until FinOps 21 Nov)
  *    READY prod deploys in the last 24h.
@@ -22,6 +23,7 @@ import {
   MAX_FORCE_DEPLOYS_PER_DAY,
   MAX_HOTFIX_DEPLOYS_PER_DAY,
   isHotfix,
+  isPreviewRequested,
   isUrgentHotfix,
   changedFiles,
   getCommitMessage,
@@ -52,6 +54,11 @@ async function main() {
 
   if (process.env.FORCE_DEPLOY === '1' || process.env.FORCE_DEPLOY === 'true') {
     proceed('FORCE_DEPLOY env')
+  }
+
+  // FinOps 25 Nov: previews only on request — production builds are unaffected.
+  if (env === 'preview' && !isPreviewRequested(message)) {
+    skip('preview build without [preview] tag (production deploys are unaffected)')
   }
 
   if (isUrgentHotfix(message)) {

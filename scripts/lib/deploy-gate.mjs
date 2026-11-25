@@ -17,6 +17,36 @@ export const MAX_FORCE_DEPLOYS_PER_DAY = Number(process.env.FORCE_DEPLOY_MAX_PER
  * [hotfix-urgent] (production is down) and FORCE_DEPLOY=1 always build.
  */
 export const MAX_HOTFIX_DEPLOYS_PER_DAY = Number(process.env.HOTFIX_MAX_PER_DAY || 6)
+
+/**
+ * FinOps 25 Nov: every commit was also pushed to a feature branch and built a Preview
+ * (same commit, built twice; Build CPU 43 h / $3.77 in 13 days). Preview builds now run
+ * only with a [preview] tag (or FORCE_DEPLOY=1). Production is not affected.
+ */
+export function isPreviewRequested(message = getCommitMessage()) {
+  return /\[preview\]/i.test(message)
+}
+
+/**
+ * Vercel clones shallow; make sure the 24h window is in the local history before
+ * counting deploy-tagged commits. Best effort: any failure keeps the old behaviour.
+ */
+export function deepenHistoryForCount() {
+  try {
+    const shallow = execSync('git rev-parse --is-shallow-repository', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (shallow !== 'true') return false
+    execSync('git fetch --quiet --deepen=60 origin', {
+      stdio: ['ignore', 'ignore', 'ignore'],
+      timeout: 20_000,
+    })
+    return true
+  } catch {
+    return false
+  }
+}
 export const DEPLOY_WINDOW_MS = Number(
   process.env.DEPLOY_WINDOW_MS || 24 * 60 * 60 * 1000,
 )
@@ -185,8 +215,9 @@ export async function getRecentDeployCount({
     const api = await countVercelProductionDeploys()
     if (api !== null) return { count: api, source: 'vercel-api' }
   }
+  const deepened = deepenHistoryForCount()
   return {
     count: countGitDeployCommits({ excludeHead }),
-    source: 'git-log',
+    source: deepened ? 'git-log (deepened)' : 'git-log',
   }
 }

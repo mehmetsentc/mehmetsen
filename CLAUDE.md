@@ -1,0 +1,45 @@
+# NaHaber — ajan kuralları
+
+Bu dosya `.cursor/rules/deploy-cost-local-first.mdc` ile aynı kuralları Claude oturumları için tekrarlar.
+
+
+# Deploy cost gate (local-first)
+
+## Workflow (zorunlu)
+
+1. **Lokal:** Tüm değişiklikler, izleme ve doğrulama önce lokalde yapılır. Gün içinde production deploy yok.
+2. **Onay:** Kullanıcı açıkça deploy onaylamadan `[deploy]` / `[force-deploy]` commit veya push yapma.
+3. **Batch:** Onay gelince biriken iş **tek commit + tek push** ile gider (`[deploy]` mesajında).
+
+## Agent kuralları
+
+- Kullanıcı “deploy et / push [deploy] / canlıya al” demeden **asla** `[deploy]` veya `[force-deploy]` kullanma.
+- Ara commit’lerde `[deploy]` yazma; local accumulation varsayılanıdır.
+- Onay sonrası: `npm run deploy:allowed` (slot varsa) → tek batch commit → push.
+- Acil override yalnızca kullanıcı isterse: `[force-deploy]` veya `FORCE_DEPLOY=1`.
+
+## Vercel
+
+- `ignoreCommand` → `node scripts/vercel-ignored-build.mjs`
+- `[deploy]` yoksa build atlanır; günde en fazla ~2 prod build (24s pencere).
+- Docs/markdown-only değişiklikler build tetiklemez.
+
+## SEO etkisi (SEO-10, 7 Eki 2026)
+
+- `[force-deploy]` da günde **en fazla 1** olmalı. Her deploy JS dosya hash'lerini değiştiriyor; Googlebot taramasının ~%70'i JS dosyalarına gidiyor ve yeni haber HTML'ine az bütçe kalıyor (GSC Tarama istatistikleri). 3–6 Eki'de ~12 force-deploy oldu.
+- Finops/SEO düzeltmeleri acil değilse biriktirilip tek batch commit ile çıkılsın.
+
+## Deploy etiketleri ve maliyet (FinOps 21–25 Kas 2026)
+
+Her production deploy ISR ve süreç içi önbellekleri sıfırlar. 17–25 Kas'ta günde 10+ deploy, Vercel'i ≈$4 → ≈$6/gün'e çıkardı.
+
+| Etiket | Ne zaman | Sınır |
+|---|---|---|
+| `[deploy]` | Normal toplu yayın | 24 saatte 1 |
+| `[force-deploy]` | Onaylı, acil olmayan yayın | 24 saatte 2 |
+| `[hotfix]` | Kullanıcıların gördüğü bir hata (bozuk sayfa, yanlış içerik) | 24 saatte 6 |
+| `[hotfix-urgent]` | **Yalnız site ya da kritik akış çöktüğünde** (500, boş sayfa, yayın durdu) | sınırsız |
+| `[preview]` | Preview deploy gerekiyorsa (production dışı dal) | etiketsiz Preview build alınmaz |
+
+- Tasarım, metin ve yeni özellik düzeltmeleri `[hotfix-urgent]` değildir. Biriktirilip tek commit ile çıkılmalıdır.
+- Aynı commit'i hem production dalına hem feature dalına push etmeyin. Feature dalı yalnız `[preview]` ile build alır.
