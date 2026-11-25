@@ -12,7 +12,6 @@
  *
  * Idle cost: one rules query + two tiny job queries per tick.
  */
-import { automationSensitivityBlock, SENSITIVE_BLOCK_TEXT, sensitivityFromDoc } from '../sensitiveNews'
 import { getAdminFirestore } from '@/lib/firebase/admin'
 import { Collections } from '@/lib/firebase/collections'
 import { isSocialTestMode } from '../testEnvironment'
@@ -245,10 +244,9 @@ export async function processJob(
   }
   const problem = contentProblem(data)
   if (problem) return { status: 'skipped', code: problem, message: CONTENT_PROBLEM_TEXT[problem] ?? problem }
-  // SOCIAL-SENS-1: hassas haber — intihar / çocuk mağdur otomatik paylaşılmaz; ölüm / ağır şiddette Reels-hikâye yok.
-  // Onaylı platformlar (TikTok) atlanmaz: editör onaylar, video kurallara göre (ağır haber kipi) hazırlanır.
-  const sensitive = automationNeedsApproval(job.platform) ? null : automationSensitivityBlock(sensitivityFromDoc(data).level, job.format)
-  if (sensitive) return { status: 'skipped', code: sensitive, message: SENSITIVE_BLOCK_TEXT[sensitive] }
+  // HASSAS-VIDEO (kullanıcı kararı 25.11.2026): hassas haber paylaşımı ENGELLENMEZ. Sunuş kurallara göre
+  // hazırlanır — metin ve seslendirme nötr dil sözlüğünden geçer, ölüm / ağır şiddet / intihar haberinde
+  // video müziksiz ve sakin sunuşla üretilir (buildReelForNews, storySafety).
 
   // ── A rule still enabled for this account+format AND matching right now ──
   const matching = enabledRules.filter((r) => r.accountId === job.accountId && r.formats.includes(job.format) && evaluateRule(r, facts).match)
