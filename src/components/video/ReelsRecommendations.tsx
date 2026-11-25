@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import { SafeNewsImage } from '@/components/news/SafeNewsImage'
 import { Play } from 'lucide-react'
 import { sortByEngagement } from '@/lib/engagementScore'
 import { getPrimaryVideo, formatCount } from '@/lib/postUtils'
@@ -47,8 +47,11 @@ export function ReelsRecommendations({
           const ytId = media?.url?.match(/\/embed\/([a-zA-Z0-9_-]{11})/)?.[1]
           const ytThumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null
 
-          const thumb =
-            media?.thumbnailUrl || video.coverImageUrl || ytThumb || null
+          // Haberin görseli varsa kapak odur; yoksa videonun karesi / YouTube küçük resmi.
+          const cover = video.coverImageUrl?.trim() || null
+          const frame = media?.thumbnailUrl?.trim() || ytThumb || null
+          const thumb = cover || frame
+          const thumbFallback = cover && frame && frame !== cover ? frame : undefined
           const isActive = index === activeIndex
 
           return (
@@ -63,17 +66,19 @@ export function ReelsRecommendations({
             >
               <div className="reels-recommendation-thumb">
                 {thumb ? (
-                  <Image
+                  // Dış kaynaklı görseller next/image (alan adı izin listesi) yerine /api/img vekiliyle gelir;
+                  // yüklenemezse yer tutucu gösterilir (kırık görsel simgesi yok).
+                  <SafeNewsImage
                     src={thumb}
+                    fallbackSrc={thumbFallback}
                     alt=""
                     fill
                     className="object-cover"
                     sizes="120px"
+                    fallback={<ThumbPlaceholder />}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[rgb(var(--color-border))]">
-                    <Play className="h-5 w-5 text-[rgb(var(--color-muted))]" />
-                  </div>
+                  <ThumbPlaceholder />
                 )}
                 <span className="reels-recommendation-play">
                   <Play className="h-3 w-3 fill-white text-white" />
@@ -96,5 +101,13 @@ export function ReelsRecommendations({
         })}
       </div>
     </aside>
+  )
+}
+
+function ThumbPlaceholder() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-[rgb(var(--color-border))]">
+      <Play className="h-5 w-5 text-[rgb(var(--color-muted))]" />
+    </div>
   )
 }
