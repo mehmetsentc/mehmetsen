@@ -17,6 +17,8 @@ import { useAppState } from '@/store/appStateContext'
 import { getSeenPostIds } from '@/lib/reelsSeen'
 import { type ReelsFeedTab, isCategoryTab } from '@/components/video/ReelsFeedTabs'
 import type { Post } from '@/types/post'
+import { fetchRankedVideoPage } from '@/lib/videoFeed/rankedVideoClient'
+import { seenLastStable } from '@/lib/videoFeed/feedItemToVideoPost'
 
 export interface VideoFeedItem extends Post {
   isLiked?: boolean
@@ -43,6 +45,19 @@ function partitionBySeen<T extends Post>(posts: T[], uid?: string | null): T[] {
   }
 
   return [...sortByEngagement(unseen), ...sortByEngagement(seenPosts)]
+}
+
+/**
+ * VIDEO-RANK-1: /video sırası sunucudaki Feed V2 sıralamasıdır — etkileşime
+ * göre yeniden dizilmez; yalnızca izlenenler sona alınır.
+ */
+function orderForSurface<T extends Post>(
+  posts: T[],
+  uid: string | null | undefined,
+  surface: VideoFeedSurface
+): T[] {
+  if (surface === 'video') return seenLastStable(posts, getSeenPostIds(uid))
+  return partitionBySeen(posts, uid)
 }
 
 function dedupePostsById<T extends Post>(posts: T[]): T[] {
@@ -75,6 +90,8 @@ export function useVideoFeed(
   const lastDocRef = useRef<QueryDocumentSnapshot | null>(null)
   // VIDEO-REEL-1: NaHaber Reels sayfası ayrı imleçle ilerler; biten kaynak yeniden sorgulanmaz.
   const reelCursorRef = useRef<QueryDocumentSnapshot | null>(null)
+  // VIDEO-RANK-1: /video için sunucunun verdiği sıralı id kuyruğu.
+  const rankedQueueRef = useRef<string[] | null>(null)
   const newsDoneRef = useRef(false)
   const reelsDoneRef = useRef(false)
   const fetchIdRef = useRef(0)
@@ -192,8 +209,17 @@ export function useVideoFeed(
 
       try {
         const cursor = reset ? undefined : (lastDocRef.current ?? undefined)
-        const result =
-          mode === 'following' && userId
+        const rankedPage =
+          currentSurface === 'video' && mode !== 'following'
+            ? await fetchRankedVideoPage({
+                category: mode === 'for-you' ? null : mode,
+                queue: reset ? null : (rankedQueueRef.current ?? []),
+              })
+            : null
+        if (rankedPage && fetchId === fetchIdRef.current) rankedQueueRef.current = rankedPage.queue
+        const result = rankedPage
+          ? { posts: rankedPage.posts as Post[], lastDoc: null, hasMore: rankedPage.queue.length > 0 }
+          : mode === 'following' && userId
             ? await postService.getFollowingVideoFeed(userId, cursor, { surface: currentSurface })
             : isCategoryTab(mode)
               ? await postService.getVideoFeedByCategory(mode, cursor, { surface: currentSurface })
@@ -218,7 +244,13 @@ export function useVideoFeed(
         }
         setVideos((prev) => {
           const merged = reset ? enriched : dedupePostsById([...prev, ...enriched])
-          const next = partitionBySeen(merged, userId)
+          // Yeni sayfa sona eklenir; /video'da sıralama korunur.
+          const next =
+            currentSurface === 'video'
+              ? reset
+                ? orderForSurface(merged, userId, currentSurface)
+                : merged
+              : partitionBySeen(merged, userId)
           // Persist the head of the (revalidated) feed for instant re-entry.
           setCachedFeed(
             CACHE_KEYS.videoFeed(mode, userId, currentSurface),
@@ -281,7 +313,7 @@ export function useVideoFeed(
       ? getCachedFeed<VideoFeedItem[]>(CACHE_KEYS.videoFeed(feedMode, user?.uid, surface))
       : null
     if (cached && cached.length > 0) {
-      setVideos(partitionBySeen(cached, user?.uid))
+      setVideos(orderForSurface(cached, user?.uid, surface))
       hasFetchedRef.current = true
       seededFromCacheRef.current = true
     } else {
@@ -295,7 +327,7 @@ export function useVideoFeed(
   useEffect(() => {
     if (authLoading || !user?.uid || videos.length === 0) return
     enrichWithUserState(videos).then((enriched) =>
-      setVideos(partitionBySeen(enriched, user.uid))
+      setVideos(orderForSurface(enriched, user.uid, surfaceRef.current))
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, authLoading])
@@ -349,7 +381,9 @@ export function useVideoFeed(
           mergedIndex = existing
           return prev
         }
-        const next = partitionBySeen(dedupePostsById([...prev, enriched]), userIdRef.current)
+        const merged = dedupePostsById([...prev, enriched])
+        const next =
+          surfaceRef.current === 'video' ? merged : partitionBySeen(merged, userIdRef.current)
         mergedIndex = next.findIndex((v) => v.id === videoId)
         return next
       })
@@ -372,7 +406,8 @@ export function useVideoFeed(
 
     if (resolveInFlightRef.current || loadingMore) return
 
-    if (hasMore) {
+    // VIDEO-RANK-1: /video kuyruğu uzun olabilir — hedef videoyu doğrudan getir.
+    if (hasMore && surfaceRef.current !== 'video') {
       resolveInFlightRef.current = true
       fetchVideos(false).finally(() => {
         resolveInFlightRef.current = false
