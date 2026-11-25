@@ -5132,6 +5132,16 @@ iframe.reels-yt-frame {
   object-position: center center;
 }
 
+/* Video hazır: kapak gizlenir (dikey video + yatay kapak üst üste binmesin). */
+.reels-media-poster--hidden {
+  visibility: hidden;
+}
+
+/* Videonun boş kalan yanları kapak yerine siyah. */
+.reels-media-stage .reels-video {
+  background: #000;
+}
+
 .reels-media-stage .reels-video {
   position: relative;
   inset: auto;

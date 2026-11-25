@@ -104,6 +104,9 @@ function VideoFeedItemInner({
   } = useAppState()
   const [paused, setPaused] = useState(false)
   const [loading, setLoading] = useState(true)
+  // Video kare verdiğinde yatay kapak görseli gizlenir; yoksa dikey videonun iki yanında
+  // ve üstünde kapak görünür ve iki görüntü üst üste biner.
+  const [videoReady, setVideoReady] = useState(false)
   // Capacitor WebView'da YouTube iframe → bot overlay; direkt fallback göster.
   const [ytBlocked, setYtBlocked] = useState(() => !YOUTUBE_IFRAME_OK)
   const [ytApiConnected, setYtApiConnected] = useState(false) // YouTube JS API bağlandı mı
@@ -196,7 +199,12 @@ function VideoFeedItemInner({
       markVideoLoaded(video.id, readySrc)
     }
     setLoading(false)
+    setVideoReady(true)
   }, [nativeSrc, stableSrc, markMediaFetched, markVideoLoaded, video.id])
+
+  useEffect(() => {
+    setVideoReady(false)
+  }, [nativeSrc])
 
   const applyNativeAspectRatio = useCallback((el: HTMLVideoElement) => {
     if (el.videoWidth > 0 && el.videoHeight > 0) {
@@ -970,7 +978,7 @@ function VideoFeedItemInner({
             src={media.thumbnailUrl}
             alt=""
             aria-hidden
-            className="reels-media-poster"
+            className={videoReady ? 'reels-media-poster reels-media-poster--hidden' : 'reels-media-poster'}
             fetchPriority={nativePolicy.posterFetchPriority}
           />
         )}
