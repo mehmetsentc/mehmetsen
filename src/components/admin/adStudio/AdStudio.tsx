@@ -175,7 +175,7 @@ function AdEditor({ id, onBack }: { id: string; onBack: () => void }) {
   }, [id])
 
   /** sunucudan gelen yalnız sunucunun ürettiği alanlar alınır (yazılan metin ezilmez) */
-  const takeServer = useCallback((s: AdProject) => setAd((cur) => (cur ? { ...cur, voice: s.voice, render: s.render, media: s.media, logoUrl: s.logoUrl, updatedAt: s.updatedAt } : s)), [])
+  const takeServer = useCallback((s: AdProject, withScenes = false) => setAd((cur) => (cur ? { ...cur, voice: s.voice, render: s.render, media: s.media, logoUrl: s.logoUrl, music: s.music, videoSound: s.videoSound, updatedAt: s.updatedAt, ...(withScenes ? { scenes: s.scenes } : {}) } : s)), [])
 
   const flush = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current)
@@ -241,7 +241,7 @@ function AdEditor({ id, onBack }: { id: string; onBack: () => void }) {
         <section className="min-w-0 space-y-4 rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4">
           {step === 'video' && <VideoStep ad={ad} patch={patch} takeServer={takeServer} />}
           {step === 'sablon' && <TemplateStep ad={ad} patch={patch} />}
-          {step === 'metin' && <TextStep ad={ad} patch={patch} />}
+          {step === 'metin' && <TextStep ad={ad} patch={patch} flush={flush} takeServer={takeServer} />}
           {step === 'ses' && <VoiceStep ad={ad} patch={patch} flush={flush} takeServer={takeServer} />}
           {step === 'stil' && <StyleStep ad={ad} patch={patch} />}
           {step === 'cikti' && <OutputStep ad={ad} patch={patch} flush={flush} takeServer={takeServer} />}
@@ -281,7 +281,7 @@ async function uploadFile(file: File, adId: string, onPct: (n: number) => void):
   return getDownloadURL(task.snapshot.ref)
 }
 
-function VideoStep({ ad, patch, takeServer }: StepProps & { takeServer: (a: AdProject) => void }) {
+function VideoStep({ ad, patch, takeServer }: StepProps & { takeServer: (a: AdProject, withScenes?: boolean) => void }) {
   const input = useRef<HTMLInputElement>(null)
   const [pct, setPct] = useState<number | null>(null)
   const add = async (files: FileList | null) => {
@@ -519,10 +519,25 @@ function PlayButton({ src }: { src: string }) {
   )
 }
 
-function TextStep({ ad, patch }: StepProps) {
-  const make = () => {
+function TextStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => Promise<boolean>; takeServer: (a: AdProject, withScenes?: boolean) => void }) {
+  const [aligning, setAligning] = useState(false)
+  const voiced = ad.voiceOn && voiceIsCurrent(ad)
+  const align = async () => {
+    if (!(await flush())) return
+    setAligning(true)
+    const r = await call<{ ad: AdProject }>('POST', `${API}/${ad.id}/align`)
+    setAligning(false)
+    if (!r.ok) return toast.error(r.error)
+    takeServer(r.data.ad, true)
+    toast.success('Yazılar seslendirmeyle eşlendi')
+  }
+  const make = async () => {
     const lines = splitScript(ad.script)
     if (!lines.length) return toast.error('Önce reklam metnini yazın')
+    if (voiced) {
+      patch({ scenes: lines.map((text, i) => ({ id: `s${i}${Date.now().toString(36)}`, text, startMs: i * 1000, endMs: i * 1000 + 900, emphasis: '' })) })
+      return void align()
+    }
     const from = ad.voiceOn ? ad.voiceStartMs : 300
     const winEnd = textWindowEnd(ad)
     const to = Math.min(winEnd || 60_000, ad.voiceOn && ad.voice ? ad.voiceStartMs + ad.voice.durationMs : winEnd || 60_000)
@@ -547,7 +562,12 @@ function TextStep({ ad, patch }: StepProps) {
         <button type="button" onClick={make} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-orange-600 px-3 text-sm font-bold text-white">
           <Wand2 className="h-4 w-4" /> Metinden sahne yazıları oluştur
         </button>
-        <span className="text-[12px] text-[rgb(var(--color-muted))]">{ad.voice ? 'Seslendirme süresine göre dağıtılır' : 'Seslendirmeyi oluşturduktan sonra yeniden dağıtmanız önerilir'}</span>
+        {voiced && (
+          <button type="button" disabled={aligning || !ad.scenes.length} onClick={() => void align()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-orange-300 px-3 text-sm font-bold text-orange-800 disabled:opacity-50">
+            {aligning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />} Yazıları sesle eşleştir
+          </button>
+        )}
+        <span className="text-[12px] text-[rgb(var(--color-muted))]">{voiced ? 'Yazılar seslendirmedeki duraklamalara göre zamanlanır' : 'Seslendirme oluşturulunca yazılar sese göre otomatik eşlenir'}</span>
       </div>
       {ad.textOn && (
         <div className="space-y-2">
@@ -595,7 +615,7 @@ function TextStep({ ad, patch }: StepProps) {
   )
 }
 
-function VoiceStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => Promise<boolean>; takeServer: (a: AdProject) => void }) {
+function VoiceStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => Promise<boolean>; takeServer: (a: AdProject, withScenes?: boolean) => void }) {
   const [busy, setBusy] = useState(false)
   const [sample, setSample] = useState<string | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
@@ -620,8 +640,8 @@ function VoiceStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => 
     const r = await call<{ ad: AdProject }>('POST', `${API}/${ad.id}/voice`)
     setBusy(false)
     if (!r.ok) return toast.error(r.error)
-    takeServer(r.data.ad)
-    toast.success('Seslendirme hazır')
+    takeServer(r.data.ad, true)
+    toast.success('Seslendirme hazır — yazılar sese göre eşlendi')
   }
   return (
     <div className="space-y-4">
@@ -738,7 +758,7 @@ function StyleStep({ ad, patch }: StepProps) {
   )
 }
 
-function OutputStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => Promise<boolean>; takeServer: (a: AdProject) => void }) {
+function OutputStep({ ad, patch, flush, takeServer }: StepProps & { flush: () => Promise<boolean>; takeServer: (a: AdProject, withScenes?: boolean) => void }) {
   const [busy, setBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [pct, setPct] = useState<number | null>(null)

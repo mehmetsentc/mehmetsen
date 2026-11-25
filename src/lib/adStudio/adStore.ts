@@ -16,11 +16,15 @@ import {
   applyAdPatch,
   defaultAd,
   isOneOf,
+  splitScript,
+  textWindowEnd,
   voiceHash,
+  voiceIsCurrent,
   withAdDefaults,
   type AdMedia,
   type AdProject,
 } from './adModel'
+import { alignScenes, analyzeVoice, type VoiceTiming } from './adAlign'
 
 const BUCKET = process.env.FIREBASE_STORAGE_BUCKET ?? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebasestorage.app`
 const col = () => getAdminFirestore().collection(AD_PROJECTS)
@@ -183,10 +187,12 @@ export async function generateAdVoice(uid: string, id: string, now: number): Pro
   const bucket = getAdminStorage().bucket(BUCKET)
   const file = bucket.file(name)
   let durationMs: number
+  let wavBuf: Buffer
   const [exists] = await file.exists().catch(() => [false] as [boolean])
   let usd = 0
   if (exists) {
     const [buf] = await file.download()
+    wavBuf = buf
     const { wavSeconds } = await import('@/lib/reels/audio')
     durationMs = Math.round(wavSeconds(buf) * 1000)
   } else {
@@ -194,6 +200,7 @@ export async function generateAdVoice(uid: string, id: string, now: number): Pro
     try {
       const v = await synthesizeAdVoice(ad.script, ad.voiceId, ad.tone, ad.speed, AbortSignal.timeout(120_000))
       usd = v.usd
+      wavBuf = v.wav
       durationMs = Math.round(v.seconds * 1000)
       await file.save(v.wav, { resumable: false, metadata: { contentType: 'audio/wav', cacheControl: 'public, max-age=86400' } })
       await file.makePublic()
@@ -203,10 +210,54 @@ export async function generateAdVoice(uid: string, id: string, now: number): Pro
     }
   }
   const url = `https://storage.googleapis.com/${BUCKET}/${name}`
-  const r = await patchAdRaw(uid, id, (cur) => (voiceHash(cur) !== hash ? null : { ...cur, voice: { url, durationMs, hash, voice: cur.voiceId, tone: cur.tone, speed: cur.speed, chars: cur.script.length, createdAt: now }, updatedAt: now }), 'voice')
+  const timing = await voiceTiming(wavBuf)
+  const r = await patchAdRaw(
+    uid,
+    id,
+    (cur) => {
+      if (voiceHash(cur) !== hash) return null
+      const voice = { url, durationMs, hash, voice: cur.voiceId, tone: cur.tone, speed: cur.speed, chars: cur.script.length, createdAt: now, ...(timing ? { timing } : {}) }
+      // yazılar sesle birlikte otomatik eşlenir (kullanıcının düzenlediği yazı metinleri korunur)
+      const next = { ...cur, voice, updatedAt: now }
+      return timing ? { ...next, scenes: alignFor(next, timing) } : next
+    },
+    'voice',
+  )
   if (!r.ok) return fail(409, 'changed', 'Metin seslendirme sırasında değişti; tekrar deneyin')
   await audit(uid, 'ads.voice', r.value, { voice: ad.voiceId, tone: ad.tone, seconds: Math.round(durationMs / 100) / 10, usd: Math.round(usd * 10000) / 10000, reused: exists })
   return r
+}
+
+async function voiceTiming(wav: Buffer): Promise<VoiceTiming | null> {
+  try {
+    const { readWav } = await import('@/lib/reels/audio')
+    const pcm = readWav(wav)
+    return analyzeVoice(pcm.data, pcm.sampleRate)
+  } catch {
+    return null
+  }
+}
+
+/** sahneler (yoksa metinden) seslendirmeye göre zamanlanır */
+function alignFor(ad: AdProject, t: VoiceTiming) {
+  const texts = ad.scenes.length ? ad.scenes : splitScript(ad.script).map((text) => ({ text }))
+  return alignScenes(texts, t, ad.voiceStartMs, textWindowEnd(ad) || AD_LIMITS.totalMs)
+}
+
+/** «Yazıları sesle eşleştir»: var olan seslendirmeyi okuyup sahneleri yeniden zamanlar. */
+export async function alignAdScenes(uid: string, id: string, now: number): Promise<StoreResult<AdProject>> {
+  const ad = await getAd(id)
+  if (!ad) return fail(404, 'not_found', 'Reklam bulunamadı')
+  if (!ad.voice || !voiceIsCurrent(ad)) return fail(409, 'no_voice', 'Önce «Seslendirmeyi oluştur»')
+  let timing = ad.voice.timing ?? null
+  if (!timing) {
+    const name = decodeURIComponent(new URL(ad.voice.url).pathname).replace(`/${BUCKET}/`, '')
+    const [buf] = await getAdminStorage().bucket(BUCKET).file(name).download()
+    timing = await voiceTiming(buf)
+    if (!timing) return fail(422, 'voice_unreadable', 'Seslendirme dosyası okunamadı')
+  }
+  const t = timing
+  return patchAdRaw(uid, id, (cur) => (cur.voice ? { ...cur, voice: { ...cur.voice, timing: t }, scenes: alignFor(cur, t), updatedAt: now } : null), 'align')
 }
 
 /** 4 sesin kısa dinleme örneği (bir kez üretilir, Storage'da saklanır). */

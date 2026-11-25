@@ -155,6 +155,8 @@ export interface AdVoiceState {
   speed: number
   chars: number
   createdAt: number
+  /** konuşma başı/sonu ve duraklamalar (yazıları sese eşlemek için) */
+  timing?: { speechStartMs: number; speechEndMs: number; pauses: Array<{ at: number; len: number }> }
 }
 export interface AdProject {
   id: string
