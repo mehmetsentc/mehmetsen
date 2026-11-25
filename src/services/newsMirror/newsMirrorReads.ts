@@ -23,8 +23,28 @@ const FLAGS: Record<MirrorSurface, string> = {
   tagAuthor: 'NEWS_PG_READ_TAG_AUTHOR',
 }
 
+const TRUTHY = new Set(['1', 'true', 'yes', 'on'])
+const warnedFlags = new Set<string>()
+
+/**
+ * FinOps 25 Nov: NEWS_PG_READ_TAG_AUTHOR was set in Vercel but the mirror was never
+ * read (no tag/author query in Neon for 2 days) — the stored value was not exactly '1'.
+ * Accept common truthy spellings and surrounding whitespace; log once per instance when a
+ * flag is set to something unrecognised (length only, never the value).
+ */
+export function isFlagOn(raw: string | undefined): boolean {
+  return TRUTHY.has((raw ?? '').trim().toLowerCase())
+}
+
 export function isMirrorReadEnabled(surface: MirrorSurface): boolean {
-  return process.env[FLAGS[surface]] === '1' && hasDatabaseUrl()
+  const name = FLAGS[surface]
+  const raw = process.env[name]
+  const on = isFlagOn(raw)
+  if (!on && raw !== undefined && raw.trim() !== '' && raw.trim() !== '0' && !warnedFlags.has(name)) {
+    warnedFlags.add(name)
+    console.warn(`[newsMirror] ${name} is set but not recognised as on (length ${raw.length})`)
+  }
+  return on && hasDatabaseUrl()
 }
 
 type Row = Record<string, unknown>

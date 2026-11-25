@@ -15,7 +15,7 @@ vi.mock('@/db', () => ({
 }))
 
 import { PgDialect } from 'drizzle-orm/pg-core'
-import { isMirrorReadEnabled, loadMirrorAuthorDocs, loadMirrorTagDocs } from './newsMirrorReads'
+import { isFlagOn, isMirrorReadEnabled, loadMirrorAuthorDocs, loadMirrorTagDocs } from './newsMirrorReads'
 
 const dialect = new PgDialect()
 const render = (q: unknown) => dialect.sqlToQuery(q as never)
@@ -30,6 +30,13 @@ describe('news_read_mirror tag/author reads', () => {
   it('is off unless NEWS_PG_READ_TAG_AUTHOR=1', () => {
     expect(isMirrorReadEnabled('tagAuthor')).toBe(false)
     process.env.NEWS_PG_READ_TAG_AUTHOR = '1'
+    expect(isMirrorReadEnabled('tagAuthor')).toBe(true)
+  })
+
+  it('flag accepts common truthy spellings and whitespace', () => {
+    for (const v of ['1', ' 1', '1\n', 'true', 'TRUE', 'yes', 'on']) expect(isFlagOn(v)).toBe(true)
+    for (const v of [undefined, '', '0', 'false', 'no', '2']) expect(isFlagOn(v)).toBe(false)
+    process.env.NEWS_PG_READ_TAG_AUTHOR = 'true\n'
     expect(isMirrorReadEnabled('tagAuthor')).toBe(true)
   })
 
