@@ -10,3 +10,20 @@ describe('seslendirmede ölüm / intihar dili (26.11.2026)', () => {
     expect(/(?<![\p{L}])(?:öl(?:ü|d|m|e)|intihar)/iu.test(out)).toBe(false)
   })
 })
+
+describe('yabancı kısaltma ve adlar (26.11.2026)', () => {
+  it('BBC, CNN İngilizce harf adlarıyla, ek uyumlu', () => {
+    expect(toSpokenTurkish("BBC'nin haberine göre")).toBe('Bi Bi Sinin haberine göre.')
+    expect(toSpokenTurkish("CNN'e konuşan yetkili")).toBe('Si En Ene konuşan yetkili.')
+    expect(toSpokenTurkish('CNN Türk ve BBC Türkçe')).toBe('Si En En Türk ve Bi Bi Si Türkçe.')
+  })
+  it('Türkçe kısaltmalar eskisi gibi', () => {
+    expect(toSpokenTurkish('CHP açıklama yaptı')).toBe('Ce He Pe açıklama yaptı.')
+    expect(toSpokenTurkish('MİT operasyonu')).toBe('Mit operasyonu.')
+  })
+  it('Phu Quoc ve ph/q içeren adlar', () => {
+    expect(toSpokenTurkish("Phu Quoc'ta tatil")).toBe('Fu Kuokta tatil.')
+    expect(toSpokenTurkish('Philadelphia ve Qatar')).toBe('Filadelfia ve Katar.')
+    expect(toSpokenTurkish("Reuters'a göre Washington'da")).toBe('Roytırsa göre Vaşingtonda.')
+  })
+})

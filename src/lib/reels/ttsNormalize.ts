@@ -86,11 +86,44 @@ const READ_AS_WORD = new Set([
 /** Acronyms with vowels that newsreaders still spell. */
 const SPELL_ALWAYS = new Set(['ABD', 'AB', 'AKP', 'İBB', 'AVM', 'AİHM', 'AİHS', 'ATM', 'GSYİH', 'KDV', 'ÖTV', 'İHA', 'SİHA', 'TCDD'])
 
+/**
+ * Yabancı kuruluş kısaltmaları: Türk spikerler bunları İngilizce harf adlarıyla okur
+ * («Bi Bi Si», «Si En En»). Türkçe ekler de bu okunuşa göre yazılır («BBC'nin», «CNN'e»),
+ * bu yüzden Türkçe harf adı («Be Be Ce», «Ce Ne Ne») hem yanlış hem ekle uyumsuz duyulur.
+ */
+const FOREIGN_ACRONYMS: Record<string, string> = {
+  BBC: 'Bi Bi Si', CNN: 'Si En En', CNBC: 'Si En Bi Si', NBC: 'En Bi Si', CBS: 'Si Bi Es', ABC: 'Ey Bi Si',
+  MSNBC: 'Em Es En Bi Si', HBO: 'Eyç Bi O', FBI: 'Ef Bi Ay', CIA: 'Si Ay Ey', NSA: 'En Es Ey',
+  NBA: 'En Bi Ey', NFL: 'En Ef El', NHL: 'En Eyç El', UFC: 'Yu Ef Si', MLS: 'Em El Es', WWE: 'Dabılyu Dabılyu İ',
+  NYT: 'Nyu York Tayms', NPR: 'En Pi Ar', ESPN: 'İ Es Pi En', UCLA: 'Yu Si El Ey',
+  NYPD: 'En Way Pi Di', BBCNEWS: 'Bi Bi Si Nyuz', CEO: 'Si İ O', SUV: 'Es Yu Vi',
+}
+
 export function acronym(w: string): string {
+  const foreign = FOREIGN_ACRONYMS[w]
+  if (foreign) return foreign
   if (READ_AS_WORD.has(w)) return w.charAt(0) + w.slice(1).toLocaleLowerCase('tr-TR')
   if (SPELL_ALWAYS.has(w) || !/[AEIİOÖUÜ]/.test(w)) return spell(w)
   return w.charAt(0) + w.slice(1).toLocaleLowerCase('tr-TR')
 }
+
+/** Sık geçen yabancı yer / kurum adlarının Türkçe okunuşu (ekran yazısı aynı kalır). */
+const FOREIGN_NAME_LIST: Array<[string, string]> = [
+  ['Phu Quoc', 'Fu Kuok'], ['Ho Chi Minh', 'Ho Çi Min'], ['Hanoi', 'Hanoy'],
+  ['Phuket', 'Puket'], ['Phnom Penh', 'Pınom Pen'], ['Thailand', 'Tayland'], ['Shanghai', 'Şanghay'],
+  ['Washington', 'Vaşington'], ['New York', 'Nyu York'], ['New Jersey', 'Nyu Cörsi'], ['Chicago', 'Şikago'],
+  ['Los Angeles', 'Los Ancelıs'], ['San Francisco', 'San Fransisko'], ['Silicon Valley', 'Silikon Vadisi'],
+  ['Wall Street', 'Vol Strit'], ['White House', 'Vayt Haus'], ['Downing Street', 'Dauning Strit'],
+  ['Manchester', 'Mançester'], ['Chelsea', 'Çelsi'], ['Liverpool', 'Liverpul'], ['Tottenham', 'Totınım'],
+  ['Champions League', 'Şampiyonlar Ligi'], ['Reuters', 'Roytırs'], ['Bloomberg', 'Blumberg'],
+  ['The Guardian', 'Dı Gardiın'], ['Guardian', 'Gardiın'], ['Washington Post', 'Vaşington Post'],
+  ['Wall Street Journal', 'Vol Strit Curnıl'], ['Financial Times', 'Faynenşıl Tayms'], ['Times', 'Tayms'],
+  ['Deutsche Welle', 'Doyçe Velle'], ['Al Jazeera', 'El Cezire'], ['Euronews', 'Yuronyuz'],
+  ['Associated Press', 'Asoşieytıd Pres'], ['Sky News', 'Skay Nyuz'], ['Fox News', 'Foks Nyuz'],
+]
+const FOREIGN_NAMES: Array<[RegExp, string]> = FOREIGN_NAME_LIST
+  .sort((a, b) => b[0].length - a[0].length)
+  .map(([w, say]) => [new RegExp(`(?<![\\p{L}])${w.replace(/ /g, '\\s+')}(?![\\p{L}])`, 'gu'), say])
 
 const ABBREVIATIONS: Array<[RegExp, string]> = [
   [/\bProf\.\s*Dr\./g, 'Profesör Doktor'],
@@ -158,6 +191,14 @@ export function toSpokenTurkish(input: string): string {
     const letters = m.replace(/[^A-ZÇĞİÖŞÜ]/g, '')
     return ` ${spell(letters)} `
   })
+  // 2c. yabancı adlar: Türkçe ses «Phu Quoc»u «Pe He Hu Quoc» diye okur. Önce sözlük,
+  //     sonra Türkçede olmayan harf öbekleri (ph → f, q → k). Yalnızca ses değişir.
+  for (const [re, w] of FOREIGN_NAMES) t = t.replace(re, w)
+  t = t.replace(/(?<![\p{L}])[\p{L}]*\p{Ll}[\p{L}]*(?![\p{L}])/gu, (w) =>
+    /[pP][hH]|[qQ]/.test(w)
+      ? w.replace(/Ph/g, 'F').replace(/PH/g, 'F').replace(/ph/g, 'f').replace(/Qu/g, 'Ku').replace(/qu/g, 'ku').replace(/Q/g, 'K').replace(/q/g, 'k')
+      : w,
+  )
   // 3. dates 21.10.2026 / 21/10/2026 → 21 Ekim 2026
   t = t.replace(/(?<!\d)(\d{1,2})[./](\d{1,2})[./](\d{4})(?!\d)/g, (all, d, m, y) => {
     const mi = Number(m)
