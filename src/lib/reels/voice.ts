@@ -7,7 +7,7 @@ import 'server-only'
  */
 import { adjustGeminiUsd, estimateGeminiUsd, refundTtsChars, reserveGeminiUsd, reserveTtsChars } from './ttsQuota'
 import { wavSeconds } from './audio'
-import { toSpokenTurkish } from './ttsNormalize'
+import { spokenTurkish } from './foreignLexicon'
 import { pronunciationPrompt, toPronunciationSsml } from './pronunciation'
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize'
@@ -32,7 +32,7 @@ export async function synthesizeReelVoice(
   const voice = choice?.voice || env.voice
   const rate = choice?.rate ?? env.rate
   // REELS-10: «19.20» → «on dokuz yirmi», «%15» → «yüzde on beş», «Dr.» → «Doktor» …
-  const input = toSpokenTurkish(text).slice(0, 4800)
+  const input = (await spokenTurkish(text)).slice(0, 4800)
   // Free-tier guard: reserve the characters first (throws TtsQuotaError at the cap).
   const reservation = await reserveTtsChars(input, voice)
   try {
@@ -90,7 +90,7 @@ export async function synthesizeReelVoiceEx(
 ): Promise<{ wav: Buffer; engine: 'gemini' | 'google'; note?: string }> {
   const key = process.env.GOOGLE_TTS_API_KEY?.trim()
   if (choice.gemini && key) {
-    const input = toSpokenTurkish(text).slice(0, 1500)
+    const input = (await spokenTurkish(text)).slice(0, 1500)
     let reservation: { month: string; usd: number } | null = null
     try {
       reservation = await reserveGeminiUsd(estimateGeminiUsd(input), choice.gemini.budgetUsd)

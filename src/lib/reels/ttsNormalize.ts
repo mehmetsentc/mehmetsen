@@ -173,9 +173,56 @@ function sayTime(h: string, m: string): string {
 }
 
 /** Main entry: everything a TTS voice should hear instead of what is written. */
-export function toSpokenTurkish(input: string): string {
+/** Yabancı ad / kısaltma → Türkçe harflerle okunuş (yapay zekâdan gelir; doğrulanmış). */
+export type SpokenLexicon = Record<string, string>
+
+const SPOKEN_RE = /^[A-Za-zÇĞİÖŞÜçğıöşüâîû' -]+$/u
+const TR_LOCAL_ACRONYM = /^[A-ZÇĞİÖŞÜ]{2,}$/u
+/** Türkiye kısaltmaları: yapay zekâ yanlışlıkla İngilizce okunuş verse de dokunulmaz. */
+const TR_ACRONYMS = new Set([
+  'CHP', 'AKP', 'MHP', 'HDP', 'DEM', 'İYİ', 'TBMM', 'TSK', 'THY', 'TFF', 'TRT', 'AA', 'DHA', 'İHA', 'YSK', 'HSK', 'AYM',
+  'SGK', 'BDDK', 'SPK', 'EPDK', 'RTÜK', 'TCMB', 'MEB', 'YÖK', 'KKTC', 'PKK', 'PYD', 'YPG', 'PTT', 'MGK', 'BM', 'AP',
+  'TC', 'KYK', 'MSB', 'EGM', 'JGK', 'DSİ', 'TEİAŞ', 'TPAO', 'TÜPRAŞ', 'BİST', 'TOBB', 'TESK', 'KPSS', 'YKS', 'LGS',
+  'ALES', 'TUS', 'ÖSYM', 'SSK', 'BAĞKUR', 'MASAK', 'HSYK', 'CMK', 'TCK', 'İİK', 'ÇAYKUR', 'TMO', 'TİGEM', 'ATV', 'NTV',
+  'TV', 'HD', 'GS', 'FB', 'BJK', 'TS', 'MKE', 'TAI', 'TUSAŞ', 'ASELSAN', 'İGA', 'DHMİ', 'TCDD', 'TMSF', 'GSYH', 'BES',
+])
+
+/**
+ * Yapay zekânın verdiği sözlüğü süzer: anahtar metinde birebir geçmeli, büyük harfle
+ * başlamalı (özel ad / kısaltma); Türkiye kısaltmaları (CHP, MİT…) ve Türkçe sözcükler
+ * dokunulmaz; okunuş yalnızca harf, boşluk, kesme ve tire içerir, makul uzunluktadır.
+ */
+export function sanitizeLexicon(raw: unknown, text: string): SpokenLexicon {
+  const out: SpokenLexicon = {}
+  const items = Array.isArray((raw as { items?: unknown })?.items) ? (raw as { items: unknown[] }).items : []
+  for (const it of items.slice(0, 30)) {
+    const w = typeof (it as { w?: unknown })?.w === 'string' ? (it as { w: string }).w.trim() : ''
+    const say = typeof (it as { s?: unknown })?.s === 'string' ? (it as { s: string }).s.replace(/\s+/g, ' ').trim() : ''
+    if (w.length < 2 || w.length > 40 || !say || say === w) continue
+    if (!/^\p{Lu}/u.test(w) || !SPOKEN_RE.test(say) || say.length > Math.max(14, w.length * 4)) continue
+    if (READ_AS_WORD.has(w) || SPELL_ALWAYS.has(w) || TR_ACRONYMS.has(w.replace(/'.*$/, ''))) continue
+    if (TR_LOCAL_ACRONYM.test(w) && /[ÇĞİÖŞÜ]/u.test(w)) continue
+    if (!new RegExp(`(?<![\\p{L}\\d])${escapeRe(w)}(?![\\p{L}\\d])`, 'u').test(text)) continue
+    out[w] = say
+  }
+  return out
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Sözlükteki adları metinde okunuşla değiştirir (uzun ad önce; Türkçe ek korunur). */
+export function applyLexicon(text: string, lex: SpokenLexicon | null | undefined): string {
+  if (!lex) return text
+  let t = text
+  for (const w of Object.keys(lex).sort((a, b) => b.length - a.length)) {
+    t = t.replace(new RegExp(`(?<![\\p{L}\\d])${escapeRe(w).replace(/ /g, '\\s+')}(?![\\p{L}\\d])`, 'gu'), lex[w]!)
+  }
+  return t
+}
+
+export function toSpokenTurkish(input: string, lexicon?: SpokenLexicon | null): string {
   // Ölüm / intihar dili seslendirmede asla söylenmez (kullanıcı kararı 26.11.2026).
-  let t = ` ${neutralizeSocialText(input)} `
+  let t = ` ${applyLexicon(neutralizeSocialText(input), lexicon)} `
   // 1. noise the voice must not read
   t = t
     .replace(/https?:\/\/\S+|www\.\S+/g, ' ')

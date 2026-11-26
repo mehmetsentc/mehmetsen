@@ -11,6 +11,7 @@ import { toSpokenTurkish } from '@/lib/reels/ttsNormalize'
 import { adjustGeminiUsd, estimateGeminiUsd, reserveGeminiUsd, GeminiBudgetError } from '@/lib/reels/ttsQuota'
 import { getReelVoiceSettings } from '@/lib/reels/voiceSettings'
 import { pronunciationPrompt } from '@/lib/reels/pronunciation'
+import { foreignLexicon } from '@/lib/reels/foreignLexicon'
 import { GeminiTtsUnavailable, synthesizeGeminiTts } from '@/lib/reels/geminiTts'
 import { AD_VOICES, voicePrompt, type AdTone, type AdVoiceId } from './adModel'
 
@@ -29,7 +30,8 @@ export function adSpokenText(script: string): string {
 }
 
 export async function synthesizeAdVoice(script: string, voice: AdVoiceId, tone: AdTone, speed: number, signal?: AbortSignal): Promise<{ wav: Buffer; seconds: number; usd: number; via: string }> {
-  const input = adSpokenText(script)
+  const clean = script.replace(/\s+/g, ' ').replace(/…/g, '...').trim()
+  const input = toSpokenTurkish(clean, await foreignLexicon(clean)).slice(0, 1500)
   if (input.length < 3) throw new AdVoiceError('Seslendirilecek metin boş', 400)
   const settings = await getReelVoiceSettings()
   const budget = settings.geminiMonthlyUsd ?? 10
