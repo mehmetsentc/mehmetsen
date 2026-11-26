@@ -77,6 +77,7 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
 - Manşet SES KARTINA uyar. En yeni ve en önemli doğrulanmış olgu başlıkta: sayı, isim, karar. Takip haberinde yeni gelişme başlıkta, eski olay değil. "Büyük kaza" gibi jenerik başlık yasak.
 - Tarafsız haber dili: yorum, taraf tutma, duygu sömürüsü yok; iddiayı sahibine atfet
+- Ölüm dili: "öldü / can verdi / ölü" değil "hayatını kaybetti"; "ceset" değil "cansız beden". İntihar ve şiddet yöntemini ayrıntılandırma (DSÖ, RTÜK). Tırnak içindeki doğrudan alıntı aynen kalır
 - ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma

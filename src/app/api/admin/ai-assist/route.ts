@@ -23,7 +23,7 @@ import {
 import { isManualEditorAiEnabled } from '@/services/crawler/automatedAiPolicy'
 import { resolveSourceContentGeo, sourceGeoOverride } from '@/lib/geo/sourceContentGeo'
 import { isScopeRestricted } from '@/lib/cms/rbacScope'
-import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE } from '@/lib/ai/editorial/headlineStyle'
+import { NAHABER_HEADLINE_STYLE, NAHABER_SOCIAL_SHARE_STYLE, neutralNewsLine } from '@/lib/ai/editorial/headlineStyle'
 import { resolveDistributionFields } from '@/lib/news/distributionMeta'
 import { describeRoleFixes, guardRoles, ROLE_FIDELITY_RULES, type RoleFix } from '@/lib/ai/editorial/roleGuard'
 import { formatTrDate } from '@/lib/ai/editorial/followUp'
@@ -614,10 +614,11 @@ export async function POST(request: Request) {
     }
 
     if (mode === 'create' || mode === 'rewrite' || mode === 'publish-ready') {
-      const title = stripAiHtmlLeak(String(parsed.title ?? ''))
+      // Ölüm dili: başlık, spot ve özette "öldü" → "hayatını kaybetti" (gövde talimatla)
+      const title = neutralNewsLine(stripAiHtmlLeak(String(parsed.title ?? '')))
       const content = stripAiHtmlLeak(String(parsed.content ?? ''))
-      const spot = stripAiHtmlLeak(String(parsed.spot ?? ''))
-      const summary = stripAiHtmlLeak(String(parsed.summary ?? ''))
+      const spot = neutralNewsLine(stripAiHtmlLeak(String(parsed.spot ?? '')))
+      const summary = neutralNewsLine(stripAiHtmlLeak(String(parsed.summary ?? '')))
       const requestedOrder = Array.isArray(parsed.imageOrder)
         ? parsed.imageOrder.map(String).filter((url) => requestedUrls.includes(url))
         : []

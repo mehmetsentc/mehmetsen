@@ -8,6 +8,7 @@
  *   pipeline fetches the full article before sending to AI.
  *   GPT fallback used when extraction fails (blocked sites).
  */
+import { neutralNewsLine } from '@/lib/ai/editorial/headlineStyle'
 import type { Firestore } from 'firebase-admin/firestore'
 import { cityCategoryId, slugifyCity, type PostLocation } from '@/lib/location'
 import { getCityCategoryName, normalizeCitySlug, extractProvinceDistrictPairFromText, DISTRICT_DISPLAY_NAMES } from '@/constants/cities'
@@ -1798,6 +1799,11 @@ export async function processNewsroomArticle(
         )
       }
     }
+
+    // ── Ölüm dili: "öldü" → "hayatını kaybetti" (başlık, spot, özet; metin gövdesi talimatla) ──
+    rewritten.title = neutralNewsLine(rewritten.title)
+    if (rewritten.spot) rewritten.spot = neutralNewsLine(rewritten.spot)
+    if (rewritten.summary) rewritten.summary = neutralNewsLine(rewritten.summary)
 
     // ── Yerel birincil: chiefEditor ulusal topical'a çektiyse geri al ─────────
     if (

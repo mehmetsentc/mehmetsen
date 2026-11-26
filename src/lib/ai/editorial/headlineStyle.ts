@@ -1,3 +1,5 @@
+import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
+
 /**
  * NaHaber manşet dili — çarpıcı olgu başlıkta, ucuz şok yok.
  * Okuyucu başlıktan ne olduğunu görür ve detayı okumak ister.
@@ -6,22 +8,32 @@
 export const NAHABER_HEADLINE_STYLE = `MANŞET SÖZLEŞMESİ (agresif gazete manşeti — çarpıcı olgu + dürüstlük):
 - Başlık haberi saklamaz. Okuyucu başlıktan ne olduğunu görsün ve ayrıntıyı okumak istesin.
 - Haberin EN YENİ ve EN ÖNEMLİ DOĞRULANMIŞ OLGUSUNU (bugün olanı) başlığa koy; en çarpıcı olgu bu ise o: ölü/yaralı sayısı, tutar, karar, isim, skor, el konulan mal, ceza, tarih. Varsa sayı şart.
-- TAKİP HABERİ: Olay daha önce yaşandıysa manşet YENİ GELİŞMEYİ söyler (tutuklama, rapor, karar, açıklama). İlk günün ölü/yaralı sayısını ve "çarpıştı/öldü" olgusunu manşette tekrar etme.
+- TAKİP HABERİ: Olay daha önce yaşandıysa manşet YENİ GELİŞMEYİ söyler (tutuklama, rapor, karar, açıklama). İlk günün can kaybı/yaralı sayısını ve "çarpıştı / hayatını kaybetti" olgusunu manşette tekrar etme.
 - TARAFSIZ: Taraf tutan sıfat, yorum, suçlama yok; iddiayı sahibine atfet ("…iddia edildi", "…açıkladı").
 - Jenerik ve üstü kapalı manşet YASAK. "Büyük kaza", "önemli gelişme", "dikkat çeken karar", "flaş iddia" olayı söylemez.
-- Kaza, yangın, saldırı, deprem, operasyon: yer + sonuç aynı başlıkta. 5 kişi öldüyse "büyük kaza" yazma; "5 ölü" yaz.
+- Kaza, yangın, saldırı, deprem, operasyon: yer + sonuç aynı başlıkta. 5 kişi hayatını kaybettiyse "büyük kaza" yazma; "5 kişi hayatını kaybetti" yaz.
+- ÖLÜM DİLİ (başlık, spot, özet ve metin): "öldü / öldüler / can verdi / ölü" YAZMA → "hayatını kaybetti", "hayatını kaybeden", "X kişi hayatını kaybetti". "ceset" → "cansız beden". İntihar ve şiddetin yöntemini (silah, ip, ilaç, yükseklik) başlıkta ve spotta verme. Yalnızca kaynakta tırnak içindeki doğrudan alıntı aynen kalır.
 - 6-12 kelime, maks 85 karakter. Kişi veya kurum + fiil + çarpıcı sonuç. Nokta koyma.
 - Tıklayınca AYNI olay çıksın. Kaynakta yoksa sayı, sır, gizli liste, niyet UYDURMA.
 - Üslup SES KARTINA uyar. Üstü kapalı manşet talimatı yürürlükten kalktı.
 - YASAK: ŞOK, SKANDAL, DEHŞET, KORKUNÇ, İNANILMAZ, FLAŞ, büyük harf spam, hakaret, yalan vaat.
-İYİ: "Ankara'da zincirleme kaza: 5 ölü"
+İYİ: "Ankara'da zincirleme kaza: 5 kişi hayatını kaybetti"
 İYİ: "Fon soruşturmasında 5 villaya el konuldu"
 İYİ: "TCMB faizi yüzde 50'de sabit bıraktı"
-KÖTÜ: "Büyük kaza" (5 ölü varken sayıyı sakladı)
+KÖTÜ: "Büyük kaza" (5 kişi hayatını kaybetmişken sayıyı sakladı)
+KÖTÜ: "Karaman'da tırla çarpışan motokurye öldü" → İYİ: "Karaman'da tırla çarpışan motokurye hayatını kaybetti"
 KÖTÜ: "Ankara'da trafik alarmı"
 KÖTÜ: "ŞOK! Korkunç kaza can aldı"
 İYİ (takip): "Küçükçekmece'deki kazada otomobil sürücüsü tutuklandı"
-KÖTÜ (takip): "Küçükçekmece'de motosiklet otomobille çarpıştı: 21 yaşındaki sürücü öldü" (10 gün önceki olay yeni gibi)`.trim()
+KÖTÜ (takip): "Küçükçekmece'de motosiklet otomobille çarpıştı: 21 yaşındaki sürücü hayatını kaybetti" (10 gün önceki olay yeni gibi)`.trim()
+
+/**
+ * Yapay zekânın yazdığı başlık / spot / özet için son, kurala bağlı düzeltme (talimata rağmen
+ * "öldü" yazarsa). Metin gövdesine uygulanmaz: tırnaklı doğrudan alıntılar değiştirilmemeli.
+ */
+export function neutralNewsLine(s: string): string {
+  return s ? neutralizeSocialText(s) : s
+}
 
 /** Sosyal paylaşım manşeti + özet — OG/story overlay ve feed caption. */
 export const NAHABER_SOCIAL_SHARE_STYLE = `SOSYAL PAYLAŞIM (manşet + özet net ayrılsın):
