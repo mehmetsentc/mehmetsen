@@ -1,4 +1,4 @@
-import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
+import { DEATH_LANGUAGE_RULE, neutralizeSocialText } from '@/lib/social/sensitiveNews'
 
 /**
  * NaHaber manşet dili — çarpıcı olgu başlıkta, ucuz şok yok.
@@ -7,12 +7,12 @@ import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
 
 export const NAHABER_HEADLINE_STYLE = `MANŞET SÖZLEŞMESİ (agresif gazete manşeti — çarpıcı olgu + dürüstlük):
 - Başlık haberi saklamaz. Okuyucu başlıktan ne olduğunu görsün ve ayrıntıyı okumak istesin.
-- Haberin EN YENİ ve EN ÖNEMLİ DOĞRULANMIŞ OLGUSUNU (bugün olanı) başlığa koy; en çarpıcı olgu bu ise o: ölü/yaralı sayısı, tutar, karar, isim, skor, el konulan mal, ceza, tarih. Varsa sayı şart.
+- Haberin EN YENİ ve EN ÖNEMLİ DOĞRULANMIŞ OLGUSUNU (bugün olanı) başlığa koy; en çarpıcı olgu bu ise o: hayatını kaybeden/yaralı sayısı, tutar, karar, isim, skor, el konulan mal, ceza, tarih. Varsa sayı şart.
 - TAKİP HABERİ: Olay daha önce yaşandıysa manşet YENİ GELİŞMEYİ söyler (tutuklama, rapor, karar, açıklama). İlk günün can kaybı/yaralı sayısını ve "çarpıştı / hayatını kaybetti" olgusunu manşette tekrar etme.
 - TARAFSIZ: Taraf tutan sıfat, yorum, suçlama yok; iddiayı sahibine atfet ("…iddia edildi", "…açıkladı").
 - Jenerik ve üstü kapalı manşet YASAK. "Büyük kaza", "önemli gelişme", "dikkat çeken karar", "flaş iddia" olayı söylemez.
 - Kaza, yangın, saldırı, deprem, operasyon: yer + sonuç aynı başlıkta. 5 kişi hayatını kaybettiyse "büyük kaza" yazma; "5 kişi hayatını kaybetti" yaz.
-- ÖLÜM DİLİ (başlık, spot, özet ve metin): "öldü / öldüler / can verdi / ölü" YAZMA → "hayatını kaybetti", "hayatını kaybeden", "X kişi hayatını kaybetti". "ceset" → "cansız beden". İntihar ve şiddetin yöntemini (silah, ip, ilaç, yükseklik) başlıkta ve spotta verme. Yalnızca kaynakta tırnak içindeki doğrudan alıntı aynen kalır.
+- ÖLÜM DİLİ: ${DEATH_LANGUAGE_RULE} Yalnızca kaynakta tırnak içindeki doğrudan alıntı aynen kalır.
 - 6-12 kelime, maks 85 karakter. Kişi veya kurum + fiil + çarpıcı sonuç. Nokta koyma.
 - Tıklayınca AYNI olay çıksın. Kaynakta yoksa sayı, sır, gizli liste, niyet UYDURMA.
 - Üslup SES KARTINA uyar. Üstü kapalı manşet talimatı yürürlükten kalktı.

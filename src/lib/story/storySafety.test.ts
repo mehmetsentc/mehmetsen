@@ -7,7 +7,7 @@ const scene = (o: Partial<StoryScene>): StoryScene =>
 
 describe('HASSAS-VIDEO: seslendirme ve ekran yazısı', () => {
   it('anlatım nötr dile çevrilir, yöntem çıkar', () => {
-    expect(safeStoryText('Genç adam kendini tabancayla vurarak intihar etti.')).toBe('Genç adam hayatını kaybetti.')
+    expect(safeStoryText('Genç adam kendini tabancayla vurarak intihar etti.')).toBe('Genç adam yaşamına son verdi.')
     expect(safeStoryText('Kazada 2 kişi öldü.')).toBe('Kazada 2 kişi hayatını kaybetti.')
   })
   it('sahne: metin, başlık, alt satır; artık geçmeyen vurgu düşer', () => {

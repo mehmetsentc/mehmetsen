@@ -23,6 +23,7 @@ import {
 import { getAiUsageContext } from '@/lib/ai/usage/context'
 import { hashAiInput } from '@/lib/ai/usage/hash'
 import { NAHABER_HEADLINE_STYLE } from '@/lib/ai/editorial/headlineStyle'
+import { DEATH_LANGUAGE_RULE } from '@/lib/social/sensitiveNews'
 import { cutAtSentence, cutAtWord } from './fallbackText'
 
 export interface WrittenArticle {
@@ -77,7 +78,7 @@ const HARD_RULES = `MUTLAK KURALLAR:
 - Başlıkta FLAŞ / SON DAKİKA / büyük harf spam yok
 - Manşet SES KARTINA uyar. En yeni ve en önemli doğrulanmış olgu başlıkta: sayı, isim, karar. Takip haberinde yeni gelişme başlıkta, eski olay değil. "Büyük kaza" gibi jenerik başlık yasak.
 - Tarafsız haber dili: yorum, taraf tutma, duygu sömürüsü yok; iddiayı sahibine atfet
-- Ölüm dili: "öldü / can verdi / ölü" değil "hayatını kaybetti"; "ceset" değil "cansız beden". İntihar ve şiddet yöntemini ayrıntılandırma (DSÖ, RTÜK). Tırnak içindeki doğrudan alıntı aynen kalır
+- Ölüm dili: ${DEATH_LANGUAGE_RULE} (DSÖ, RTÜK). Tırnak içindeki doğrudan alıntı aynen kalır
 - ŞOK, SKANDAL, DEHŞET, hakaret ve kaynakta olmayan sır yok
 - Yarım cümle, kesilmiş kelime bırakma
 - Caption metnini ## başlık yapma

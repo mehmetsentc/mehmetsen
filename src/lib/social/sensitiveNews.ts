@@ -36,34 +36,70 @@ const MID = '(?:(?:av\\s+)?\\S+(?:yla|yle|la|le|nda|nde|da|de|ta|te)\\s+){0,2}'
  * eşleşir (tr-TR küçültme uzunluğu korur), değiştirme özgün metne uygulanır.
  */
 const WORDING: Rule[] = [
-  // ölü bulundu / cansız
-  [new RegExp(`${B}ölü\\s+(olarak\\s+)?bulundu(lar)?${E}`, 'gu'), 'hayatını kaybetmiş halde bulundu'],
+  // KULLANICI KARARI (26.11.2026): «ölü / ölüm / öldü / intihar» kelimeleri hiçbir yüzeyde (başlık,
+  // açıklama, seslendirme, altyazı) kullanılmaz. Yerine «hayatını kaybetti», «hayatını kaybetmiş olarak
+  // bulundu», «yaşamına son verdi», «kendine zarar verdi», «vefat», «can kaybı».
+  [new RegExp(`${B}ölü\\s+(?:olarak\\s+)?bulundu(?:lar)?${E}`, 'gu'), 'hayatını kaybetmiş olarak bulundu'],
+  [new RegExp(`${B}ölü\\s+(?:olarak\\s+)?bulunan(?:lar)?${E}`, 'gu'), 'hayatını kaybetmiş olarak bulunan'],
+  [new RegExp(`${B}ölü\\s+(?:olarak\\s+)?bulunması${E}`, 'gu'), 'hayatını kaybetmiş olarak bulunması'],
+  [new RegExp(`${B}cansız\\s+bedeni\\s+bulundu${E}`, 'gu'), 'hayatını kaybetmiş olarak bulundu'],
   [new RegExp(`${B}ölü\\s+sayısı${E}`, 'gu'), 'hayatını kaybedenlerin sayısı'],
-  // «2 ölü», «2 ölü 3 yaralı»
+  [new RegExp(`${B}ölü\\s+ve\\s+yaralı(?:lar)?${E}`, 'gu'), 'hayatını kaybeden ve yaralananlar'],
   [new RegExp(`${B}(\\d+)\\s+ölü${E}`, 'gu'), '$1 kişi hayatını kaybetti'],
-  // YÖNTEM (DSÖ / RTÜK): intihar ve kendine zarar verme yöntemi hiçbir yüzeyde anlatılmaz.
-  // «kendini tabancayla vurarak intihar etti» → «hayatını kaybetti»
-  [new RegExp(`${B}kendini\\s+${MID}(?:vurarak|asarak|yakarak|bıçaklayarak|zehirleyerek|(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+atarak)\\s+(?:intihar\\s+etti(ler)?|yaşamına\\s+son\\s+verdi|hayatına\\s+son\\s+verdi)${E}`, 'gu'), 'hayatını kaybetti'],
-  [new RegExp(`${B}(?:yaşamına|hayatına)\\s+son\\s+verdi(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
-  [new RegExp(`${B}canına\\s+kıydı(lar)?${E}`, 'gu'), 'hayatını kaybetti'],
-  // ölüm bilgisi yoksa olgu korunur, yöntem çıkar: «kendini vurdu» → «intihar girişiminde bulundu»
-  [new RegExp(`${B}kendini\\s+${MID}(?:vurdu|astı|yaktı|bıçakladı|zehirledi)${E}`, 'gu'), 'intihar girişiminde bulundu'],
-  // «kendini attı» yalnız yer bildiren kalıpta (mecaz «kendini dışarı attı» değişmez)
-  [new RegExp(`${B}kendini\\s+(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+attı${E}`, 'gu'), 'intihar girişiminde bulundu'],
-  [new RegExp(`${B}intihara\\s+teşebbüs\\s+etti(ler)?${E}`, 'gu'), 'intihar girişiminde bulundu'],
-  [new RegExp(`${B}başarısız\\s+(?:bir\\s+)?intihar\\s+(?:girişimi|teşebbüsü)${E}`, 'gu'), 'intihar girişimi'],
-  [new RegExp(`${B}intihar\\s+(?:salgını|dalgası)${E}`, 'gu'), 'intihar vakalarındaki artış'],
-  [new RegExp(`${B}intihar\\s+etti(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
-  [new RegExp(`${B}can\\s+verdi(ler)?${E}`, 'gu'), 'hayatını kaybetti'],
+  [new RegExp(`${B}kendini\\s+${MID}(?:vurarak|asarak|yakarak|bıçaklayarak|zehirleyerek|(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+atarak)\\s+(?:intihar\\s+etti(?:ler)?|yaşamına\\s+son\\s+verdi|hayatına\\s+son\\s+verdi)${E}`, 'gu'), 'yaşamına son verdi'],
+  [new RegExp(`${B}canına\\s+kıydı(?:lar)?${E}`, 'gu'), 'yaşamına son verdi'],
+  [new RegExp(`${B}kendini\\s+${MID}(?:vurdu|astı|yaktı|bıçakladı|zehirledi)${E}`, 'gu'), 'kendine zarar verdi'],
+  [new RegExp(`${B}kendini\\s+(?:köprüden|binadan|balkondan|pencereden|çatıdan|uçurumdan|boşluğa|denize|nehre|raylara)\\s+attı${E}`, 'gu'), 'kendine zarar verdi'],
+  [new RegExp(`${B}intihara\\s+teşebbüs\\s+etti(?:ler)?${E}`, 'gu'), 'kendine zarar verdi'],
+  [new RegExp(`${B}intihar\\s+girişiminde\\s+bulundu(?:lar)?${E}`, 'gu'), 'kendine zarar verdi'],
+  [new RegExp(`${B}(?:başarısız\\s+(?:bir\\s+)?)?intihar\\s+(?:girişimi|teşebbüsü)${E}`, 'gu'), 'kendine zarar verme girişimi'],
+  [new RegExp(`${B}intihar\\s+(?:salgını|dalgası)${E}`, 'gu'), 'yaşamına son verme vakalarındaki artış'],
+  [new RegExp(`${B}intihar\\s+etti(?:ler)?${E}`, 'gu'), 'yaşamına son verdi'],
+  [new RegExp(`${B}intihar\\s+ettiği${E}`, 'gu'), 'yaşamına son verdiği'],
+  [new RegExp(`${B}intihar\\s+eden(?:ler)?${E}`, 'gu'), 'yaşamına son veren'],
+  [new RegExp(`${B}intihara${E}`, 'gu'), 'yaşamına son vermeye'],
+  [new RegExp(`${B}intiharı${E}`, 'gu'), 'yaşamına son vermesi'],
+  [new RegExp(`${B}intiharın${E}`, 'gu'), 'yaşamına son vermesinin'],
+  [new RegExp(`${B}intihardan${E}`, 'gu'), 'yaşamına son vermesinden'],
+  [new RegExp(`${B}intihar${E}`, 'gu'), 'yaşamına son verme'],
+  [new RegExp(`${B}can\\s+verdi(?:ler)?${E}`, 'gu'), 'hayatını kaybetti'],
+  [new RegExp(`${B}öldürüldü(?:ler)?${E}`, 'gu'), 'hayatını kaybetti'],
+  [new RegExp(`${B}öldürülen(?:ler)?${E}`, 'gu'), 'hayatını kaybeden'],
+  [new RegExp(`${B}öldürülmesi${E}`, 'gu'), 'hayatını kaybetmesi'],
+  [new RegExp(`${B}öldürülmüş${E}`, 'gu'), 'hayatını kaybetmiş'],
   [new RegExp(`${B}öldüler${E}`, 'gu'), 'hayatını kaybetti'],
   [new RegExp(`${B}öldü${E}`, 'gu'), 'hayatını kaybetti'],
   [new RegExp(`${B}ölmüştü${E}`, 'gu'), 'hayatını kaybetmişti'],
   [new RegExp(`${B}ölmüş${E}`, 'gu'), 'hayatını kaybetmiş'],
   [new RegExp(`${B}öldüğü${E}`, 'gu'), 'hayatını kaybettiği'],
   [new RegExp(`${B}öldüğünü${E}`, 'gu'), 'hayatını kaybettiğini'],
+  [new RegExp(`${B}ölmesine${E}`, 'gu'), 'hayatını kaybetmesine'],
+  [new RegExp(`${B}ölmesi${E}`, 'gu'), 'hayatını kaybetmesi'],
   [new RegExp(`${B}ölenlerin${E}`, 'gu'), 'hayatını kaybedenlerin'],
   [new RegExp(`${B}ölenler${E}`, 'gu'), 'hayatını kaybedenler'],
   [new RegExp(`${B}ölen${E}`, 'gu'), 'hayatını kaybeden'],
+  [new RegExp(`${B}ölülerin${E}`, 'gu'), 'hayatını kaybedenlerin'],
+  [new RegExp(`${B}ölüler${E}`, 'gu'), 'hayatını kaybedenler'],
+  [new RegExp(`${B}ölünün${E}`, 'gu'), 'hayatını kaybedenin'],
+  [new RegExp(`${B}ölümüne\\s+(neden|yol)\\s+(oldu|açtı)${E}`, 'gu'), 'hayatını kaybetmesine $1 $2'],
+  [new RegExp(`${B}ölüme\\s+(neden|yol)\\s+(oldu|açtı)${E}`, 'gu'), 'can kaybına $1 $2'],
+  [new RegExp(`${B}ölümlü${E}`, 'gu'), 'can kayıplı'],
+  [new RegExp(`${B}ölümcül${E}`, 'gu'), 'can kaybına yol açan'],
+  [new RegExp(`${B}ölümlerin${E}`, 'gu'), 'can kayıplarının'],
+  [new RegExp(`${B}ölümlere${E}`, 'gu'), 'can kayıplarına'],
+  [new RegExp(`${B}ölümler${E}`, 'gu'), 'can kayıpları'],
+  [new RegExp(`${B}ölümüne${E}`, 'gu'), 'vefatına'],
+  [new RegExp(`${B}ölümünü${E}`, 'gu'), 'vefatını'],
+  [new RegExp(`${B}ölümünün${E}`, 'gu'), 'vefatının'],
+  [new RegExp(`${B}ölümünden${E}`, 'gu'), 'vefatından'],
+  [new RegExp(`${B}ölümüyle${E}`, 'gu'), 'vefatıyla'],
+  [new RegExp(`${B}ölümü${E}`, 'gu'), 'vefatı'],
+  [new RegExp(`${B}ölüme${E}`, 'gu'), 'vefata'],
+  [new RegExp(`${B}ölümden${E}`, 'gu'), 'vefattan'],
+  [new RegExp(`${B}ölümle${E}`, 'gu'), 'vefatla'],
+  [new RegExp(`${B}ölümün${E}`, 'gu'), 'vefatın'],
+  [new RegExp(`${B}ölüm${E}`, 'gu'), 'vefat'],
+  [new RegExp(`${B}ölü${E}`, 'gu'), 'hayatını kaybetmiş'],
   // ceset → cansız beden
   [new RegExp(`${B}cesetler${E}`, 'gu'), 'cansız bedenler'],
   [new RegExp(`${B}cesedine${E}`, 'gu'), 'cansız bedenine'],
@@ -267,3 +303,13 @@ export const SENSITIVE_BLOCK_TEXT: Record<'sensitive_blocked' | 'sensitive_forma
   sensitive_blocked: 'Hassas haber (intihar / çocuk mağdur / istismar) — otomatik paylaşılmaz; editör kurallara uygun biçimde elle paylaşabilir',
   sensitive_format: 'Hassas olay haberi (ölüm / ağır şiddet) — otomatik Reels ve hikâye üretilmez; yalnızca gönderi paylaşılır',
 }
+
+/**
+ * KULLANICI KARARI (26.11.2026) — bütün yapay zekâ metin ve seslendirme talimatlarına
+ * eklenen kesin ölüm/intihar dili kuralı. Tek kaynak: burada değiştir, her yere yansır.
+ * Yazılı ve sesli çıktı ayrıca `neutralizeSocialText` ile son kez süzülür.
+ */
+export const DEATH_LANGUAGE_RULE =
+  'KESİN YASAK KELİMELER (başlık, spot, metin, altyazı ve SESLENDİRME): «ölü», «öldü», «ölen», «ölüm», «ölümlü», «öldürüldü», «can verdi», «ceset», «intihar» ve bunların bütün ekli biçimleri ASLA kullanılmaz. ' +
+  'Yerine: «hayatını kaybetti», «hayatını kaybetmiş olarak bulundu», «hayatını kaybeden», «X kişi hayatını kaybetti», «can kaybı», «vefat», «cansız beden»; ' +
+  'intihar için «yaşamına son verdi», girişim için «kendine zarar verdi». Yöntem (silah, ip, ilaç, yükseklik, yer) anlatılmaz. Kaynakta bu kelimeler geçse de sen kullanma.'

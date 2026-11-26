@@ -12,7 +12,7 @@ describe('nötr haber dili (sosyal)', () => {
   })
   it('ölü / ceset / kalıplar', () => {
     expect(neutralizeSocialText('Zincirleme kazada 2 ölü, 5 yaralı')).toBe('Zincirleme kazada 2 kişi hayatını kaybetti, 5 yaralı')
-    expect(neutralizeSocialText('Evinde ölü bulundu')).toBe('Evinde hayatını kaybetmiş halde bulundu')
+    expect(neutralizeSocialText('Evinde ölü bulundu')).toBe('Evinde hayatını kaybetmiş olarak bulundu')
     expect(neutralizeSocialText('Ormanda ceset bulundu. Cesedi otopsiye kaldırıldı.')).toBe('Ormanda cansız beden bulundu. Cansız bedeni otopsiye kaldırıldı.')
     expect(neutralizeSocialText('Kazada ölenlerin kimlikleri belli oldu')).toBe('Kazada hayatını kaybedenlerin kimlikleri belli oldu')
     expect(neutralizeSocialText('Kan donduran olay: genç adam can verdi')).toBe('Olay: genç adam hayatını kaybetti')
@@ -61,16 +61,16 @@ describe('hassasiyet düzeyi', () => {
 
 describe('yöntem ifadeleri (DSÖ / RTÜK)', () => {
   it('yöntem ve ölüm birlikteyse yalnız «hayatını kaybetti» kalır', () => {
-    expect(neutralizeSocialText('Genç adam kendini tabancayla vurarak intihar etti')).toBe('Genç adam hayatını kaybetti')
-    expect(neutralizeSocialText('Kadın evinde kendini asarak yaşamına son verdi.')).toBe('Kadın evinde hayatını kaybetti.')
-    expect(neutralizeSocialText('KENDİNİ KÖPRÜDEN ATARAK İNTİHAR ETTİ')).toBe('HAYATINI KAYBETTİ')
-    expect(neutralizeSocialText('Öğrenci canına kıydı')).toBe('Öğrenci hayatını kaybetti')
+    expect(neutralizeSocialText('Genç adam kendini tabancayla vurarak intihar etti')).toBe('Genç adam yaşamına son verdi')
+    expect(neutralizeSocialText('Kadın evinde kendini asarak yaşamına son verdi.')).toBe('Kadın evinde yaşamına son verdi.')
+    expect(neutralizeSocialText('KENDİNİ KÖPRÜDEN ATARAK İNTİHAR ETTİ')).toBe('YAŞAMINA SON VERDİ')
+    expect(neutralizeSocialText('Öğrenci canına kıydı')).toBe('Öğrenci yaşamına son verdi')
   })
   it('ölüm bilgisi yoksa olgu korunur, yöntem çıkar', () => {
-    expect(neutralizeSocialText('Polis memuru kendini av tüfeğiyle vurdu, hastaneye kaldırıldı')).toBe('Polis memuru intihar girişiminde bulundu, hastaneye kaldırıldı')
-    expect(neutralizeSocialText('Kendini balkondan attı')).toBe('İntihar girişiminde bulundu')
-    expect(neutralizeSocialText('Genç kız intihara teşebbüs etti')).toBe('Genç kız intihar girişiminde bulundu')
-    expect(neutralizeSocialText('intihar salgını uyarısı')).toBe('intihar vakalarındaki artış uyarısı')
+    expect(neutralizeSocialText('Polis memuru kendini av tüfeğiyle vurdu, hastaneye kaldırıldı')).toBe('Polis memuru kendine zarar verdi, hastaneye kaldırıldı')
+    expect(neutralizeSocialText('Kendini balkondan attı')).toBe('Kendine zarar verdi')
+    expect(neutralizeSocialText('Genç kız intihara teşebbüs etti')).toBe('Genç kız kendine zarar verdi')
+    expect(neutralizeSocialText('intihar salgını uyarısı')).toBe('yaşamına son verme vakalarındaki artış uyarısı')
   })
   it('mecaz ve başka anlamlar değişmez', () => {
     expect(neutralizeSocialText('Kendini savunmak için hırsızı vurdu')).toBe('Kendini savunmak için hırsızı vurdu')
@@ -94,5 +94,29 @@ describe('elle paylaşım: düzey 3', () => {
     expect(c.endsWith(HELP_LINE_TEXT)).toBe(true)
     expect(withHelpLine(c, suicide)).toBe(c)
     expect(withHelpLine('📰 Haber', crash)).toBe('📰 Haber')
+  })
+})
+
+describe('yasak kelimeler: ölü / ölüm / öldü / intihar (26.11.2026)', () => {
+  const banned = /(?<![\p{L}])(?:öl(?:ü|d|m|e)|intihar)/iu
+  it('seslendirme örnekleri', () => {
+    const cases: Array<[string, string]> = [
+      ['Evinde ölü bulunan yaşlı adamın cenazesi defnedildi', 'Evinde hayatını kaybetmiş olarak bulunan yaşlı adamın cenazesi defnedildi'],
+      ['Ölümlü kazada 2 ölü, 3 yaralı var', 'Can kayıplı kazada 2 kişi hayatını kaybetti, 3 yaralı var'],
+      ['Ahmet Yılmaz\'ın ölümü ailesini yasa boğdu', 'Ahmet Yılmaz\'ın vefatı ailesini yasa boğdu'],
+      ['Silahlı saldırıda öldürülen genç toprağa verildi', 'Silahlı saldırıda hayatını kaybeden genç toprağa verildi'],
+      ['Polis intihar olasılığı üzerinde duruyor', 'Polis yaşamına son verme olasılığı üzerinde duruyor'],
+      ['Kazada ölü ve yaralılar hastaneye kaldırıldı', 'Kazada hayatını kaybeden ve yaralananlar hastaneye kaldırıldı'],
+      ['Ölümcül kaza kamerada', 'Can kaybına yol açan kaza kamerada'],
+      ['Sürücünün ölümüne neden oldu', 'Sürücünün hayatını kaybetmesine neden oldu'],
+    ]
+    for (const [a, b] of cases) {
+      const out = neutralizeSocialText(a)
+      expect(out).toBe(b)
+      expect(banned.test(out)).toBe(false)
+    }
+  })
+  it('benzer ama farklı kelimelere dokunmaz', () => {
+    for (const s of ['Ölçüm sonuçları açıklandı', 'Bölümün başkanı', 'Ölçek büyüdü', 'Kendini işine verdi']) expect(neutralizeSocialText(s)).toBe(s)
   })
 })

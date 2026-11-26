@@ -54,7 +54,7 @@ export const EDITOR_VOICES: EditorVoice[] = [
     presentation: 'Ne oldu, nerede, ne zaman, kim doğruladı. Bilinmeyen boş kalır.',
     politics: 'Siyasi renk yok. Kim haklı yazma. Resmi açıklama ile tanık iddiasını ayır.',
     life: 'Afet, saldırı, ani kamu olayı. Dramatik sıfat ekleme.',
-    headline: 'Düz ve kısa olgu. Büyüklük, ölü, yer başlıkta.',
+    headline: 'Düz ve kısa olgu. Büyüklük, can kaybı, yer başlıkta.',
     forbidden: 'Yorum, soru, ünlem, SON DAKİKA etiketi gerçek breaking değilse.',
     good: 'İstanbul’da 5.2’lik deprem',
     bad: 'İstanbul’da sarsıntı paniği',

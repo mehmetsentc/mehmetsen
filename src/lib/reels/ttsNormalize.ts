@@ -8,6 +8,8 @@
  * where a newsreader would.
  */
 
+import { neutralizeSocialText } from '@/lib/social/sensitiveNews'
+
 const ONES = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz']
 const TENS = ['', 'on', 'yirmi', 'otuz', 'kırk', 'elli', 'altmış', 'yetmiş', 'seksen', 'doksan']
 const SCALES: Array<[number, string]> = [
@@ -139,7 +141,8 @@ function sayTime(h: string, m: string): string {
 
 /** Main entry: everything a TTS voice should hear instead of what is written. */
 export function toSpokenTurkish(input: string): string {
-  let t = ` ${input} `
+  // Ölüm / intihar dili seslendirmede asla söylenmez (kullanıcı kararı 26.11.2026).
+  let t = ` ${neutralizeSocialText(input)} `
   // 1. noise the voice must not read
   t = t
     .replace(/https?:\/\/\S+|www\.\S+/g, ' ')

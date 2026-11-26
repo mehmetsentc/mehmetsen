@@ -12,6 +12,7 @@
  *   scene i starts at S_i = Σ_{j<i} (L_j − XF)          (xfade overlap XF)
  *   voice i starts at S_i + LEAD
  */
+import { DEATH_LANGUAGE_RULE } from '@/lib/social/sensitiveNews'
 import { parseRights, PLATFORM_LIMITS, PLATFORM_NAME, type MediaRights, type MediaShareFormat, type MediaSharePlatform } from '../media/mediaProject'
 
 export const STORY_PROJECTS = 'storyProjects'
@@ -694,12 +695,13 @@ export function planBudget(targetMin: TargetMin): { scenes: [number, number]; ch
  * Her video planına ve metnine eklenir; sonuç ayrıca `safeStoryText` sözlüğünden geçer.
  */
 export const VIDEO_ETHICS_RULES = [
-  '- Haber etiği: ölüm için «hayatını kaybetti» de. İntihar, kendine zarar verme ve şiddetin YÖNTEMİNİ (silah, ip, ilaç, yükseklik, yer) asla anlatma; olay yerini, bedeni, kanı ve yakınların acısını betimleme.',
+  `- ${DEATH_LANGUAGE_RULE}`,
+  '- Haber etiği: intihar, kendine zarar verme ve şiddetin YÖNTEMİNİ (silah, ip, ilaç, yükseklik, yer) asla anlatma; olay yerini, bedeni, kanı ve yakınların acısını betimleme.',
   '- Şüpheliyi yargı kararı olmadan suçlu ilan etme («şüpheli», «iddiaya göre»); çocuk ve mağdur kimliği verme. Cinayeti kıskançlık, öfke ya da namusla açıklama.',
   '- «Dehşet», «kan donduran», «vahşet», «şok», «skandal» gibi duygu kelimeleri ve ünlem kullanma.',
 ]
 export const NEWS_PRESENTER_RULE = '- Bu bir haber videosu: ajans spikeri gibi anlat. İlk sahne en yeni ve en önemli olgu ve kaynağı olsun; merak sorusu, retorik soru, selamlama yok. Sade, kısa, düz cümleler.'
-export const GRAVE_NEWS_RULE = '- AĞIR HABER (ölüm / ağır şiddet): sakin, ölçülü ve saygılı anlat; olayı tek cümlede ver, sonra resmî açıklama ve süreç. Ekran başlıklarında «SON DAKİKA», ünlem ve büyük duygu yok.'
+export const GRAVE_NEWS_RULE = '- AĞIR HABER (can kaybı / ağır şiddet): sakin, ölçülü ve saygılı anlat; olayı tek cümlede ver, sonra resmî açıklama ve süreç. Ekran başlıklarında «SON DAKİKA», ünlem ve büyük duygu yok.'
 
 export function planSystemPrompt(p: { targetMin?: TargetMin; format?: StoryFormat; style?: StoryStyle; news?: boolean; gravity?: 'agir' | null } = {}): string {
   const t = p.targetMin ?? 1

@@ -4,6 +4,7 @@
  * the persona's style and may refine the style. Every LLM script is checked: every
  * number must exist in the source, length is bounded — otherwise the rule script is used.
  */
+import { DEATH_LANGUAGE_RULE } from '@/lib/social/sensitiveNews'
 import { guardRoles } from '@/lib/ai/editorial/roleGuard'
 import { formatTrDate } from '@/lib/ai/editorial/followUp'
 import type { ReelStyle } from './reelOptions'
@@ -70,6 +71,7 @@ export function directorPrompt(i: DirectorInput, persona: ReelPersona, oneSenten
       'KULAK İÇİN YAZ: kısa cümleler (en fazla 15-18 kelime), her cümlede tek bilgi; nefes yerlerine virgül koy; ' +
       'kısaltma, parantez, eğik çizgi, tırnak kullanma ("Dr." değil "Doktor", "vb." değil "ve benzeri"); ' +
       'en önemli bilgiyi cümlenin sonuna yerleştir (Türkçede vurgu yüklemden hemen öncedir); ünlem ve büyük harfle vurgu yok; ' +
+      DEATH_LANGUAGE_RULE + ' ' +
       'özne ve yüklem net olsun, iç içe yan cümle kurma; kişi adını ilk geçtiği yerde haber metnindeki unvanıyla söyle; haber metninde unvan yoksa yalnızca adını söyle, kendi bildiğin unvanı ekleme (bilgin eski olabilir). ' +
       (oneSentence
         ? 'tek cümle, en fazla 120 karakter. '
