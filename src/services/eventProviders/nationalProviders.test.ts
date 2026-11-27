@@ -12,16 +12,18 @@ describe('il eşleme', () => {
     expect(provinceSlug('k-maras')).toBe('kahramanmaras')
     expect(provinceSlug('İstanbul Avrupa')).toBe('istanbul')
     expect(provinceSlug('Istanbul')).toBe('istanbul')
-    expect(provinceSlug('Kıbrıs')).toBeNull()
+    expect(provinceSlug('Kıbrıs')).toBe('kktc')
+    expect(provinceSlug('KKTC')).toBe('kktc')
+    expect(provinceSlug('Girne')).toBe('kktc')
     expect(provinceSlug('Beşiktaş')).toBeNull()
     expect(provinceFromText('Hüseyinağa Mah. No:10, 34435 Beyoğlu/İstanbul')).toBe('istanbul')
   })
 })
 
 describe('Biletinial', () => {
-  it('il listesi: İstanbul yalnız bir kez, Kıbrıs yok', () => {
+  it('il listesi: İstanbul yalnız bir kez, Kıbrıs → KKTC', () => {
     const html = '<li data-id="147" data-label="İstanbul (T&#252;m&#252;)" data-url="istanbul"></li><li data-id="5" data-label="İstanbul Avrupa" data-url="istanbul-avrupa"></li><li data-id="76" data-label="Afyon" data-url="afyon"></li><li data-id="55" data-label="Kıbrıs" data-url="kibris"></li><li data-id="89" data-label="Kahramanmaraş" data-url="k-maras"></li>'
-    expect(parseCities(html).map((c) => [c.id, c.slug])).toEqual([['147', 'istanbul'], ['76', 'afyonkarahisar'], ['89', 'kahramanmaras']])
+    expect(parseCities(html).map((c) => [c.id, c.slug])).toEqual([['147', 'istanbul'], ['76', 'afyonkarahisar'], ['55', 'kktc'], ['89', 'kahramanmaras']])
   })
   it('seans başına etkinlik, geçmiş ve ufuk dışı seanslar atlanır, tür bölümden', () => {
     const ev = biletinialEvents(
