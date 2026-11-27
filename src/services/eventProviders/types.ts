@@ -30,6 +30,16 @@ export interface EventProvider {
   label: string
   /** True when the provider has the env config it needs to run. */
   isEnabled(): boolean
+  /**
+   * true: kaynak bütün illeri TEK çağrıda döndürür (il başına çağrılmaz; senkron bir kez,
+   * il döngüsüyle paralel çağırır). Kendi süre sınırını uygular.
+   */
+  national?: boolean
+  /**
+   * true: kaynak her çalıştırmada kataloğun yalnız bir kısmını getirir (artımlı tarama).
+   * Bu durumda «akışta yok → iptal» işaretlemesi yapılmaz; geçmiş işaretleme yeterli.
+   */
+  partialFeed?: boolean
   /** Fetch + normalize events. Always resolves; returns `[]` on error. */
   fetchEvents(params: EventProviderParams): Promise<NaEvent[]>
 }

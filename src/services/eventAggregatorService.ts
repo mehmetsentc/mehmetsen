@@ -59,7 +59,8 @@ export const eventAggregatorService = {
       return { ...hit.result, cached: true }
     }
 
-    const enabled = getEnabledProviders()
+    // ulusal kaynaklar (Biletinial, Bugece, etkinlik.io) yalnız günlük senkronda; okuyucu isteğinde tarama yapılmaz
+    const enabled = getEnabledProviders().filter((p) => !p.national)
 
     if (enabled.length === 0) {
       providerLog(

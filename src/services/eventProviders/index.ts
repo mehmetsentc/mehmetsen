@@ -4,6 +4,9 @@ import { biletinoProvider } from './biletino'
 import { bubiletProvider } from './bubilet'
 import { genericProvider } from './genericProvider'
 import { ticketmasterProvider } from './ticketmaster'
+import { biletinialProvider } from './biletinial'
+import { bugeceProvider } from './bugece'
+import { etkinlikIoProvider } from './etkinlikio'
 
 export type { EventProvider, EventProviderParams } from './types'
 
@@ -29,6 +32,15 @@ export type { EventProvider, EventProviderParams } from './types'
  *   - generic  — point `EVENTS_GENERIC_API_URL` at any JSON events endpoint
  *                (e.g. an in-house API or a Mobilet/Passo partner API).
  *
+ * NATIONAL (tek çağrıda 81 il, il döngüsüyle paralel; 27.11.2026):
+ *   - biletinial — sitenin herkese açık liste JSON'u (il × tür), seans başına etkinlik. robots izinli.
+ *   - bugece     — RESMÎ açık API (/api/feeds/{events,festivals}/products, openapi.json).
+ *   - etkinlikio — site haritası + sayfa JSON-LD, artımlı (günde ≤ 500 yeni sayfa), robots izinli.
+ *
+ * NOT USED: Passo (Cloudflare korumalı, belgelenmemiş iç API — resmî iş ortaklığı gerekir),
+ *   Mobilet (sayfalar istemci tarafında, yapısal veri yok), Kültür Portalı (bakanlık takvimi
+ *   neredeyse boş), Devlet Tiyatroları (oyunlar Biletinial'de zaten var).
+ *
  * SKIPPED (documented, not implemented) — would require a headless browser,
  * which is intentionally out of scope:
  *   - Bugece, Mobilet, Passo — fully client-rendered SPAs / app-only APIs with
@@ -42,6 +54,9 @@ export const eventProviders: EventProvider[] = [
   bubiletProvider,
   biletinoProvider,
   genericProvider,
+  biletinialProvider,
+  bugeceProvider,
+  etkinlikIoProvider,
 ]
 
 /** Providers that are currently configured/enabled (their gates pass). */

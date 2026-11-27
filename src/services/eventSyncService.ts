@@ -89,6 +89,10 @@ async function scrapeAllCities(): Promise<{
   const citySlugs = TURKISH_PROVINCES.map((p) => p.slug)
   const merged: NaEvent[] = []
   const failedProviders = new Set<string>()
+  // Ulusal kaynaklar (tek çağrıda bütün iller) il döngüsüyle PARALEL çalışır; her biri kendi süre sınırını uygular.
+  const nationalProviders = enabled.filter((p) => p.national)
+  const perCity = enabled.filter((p) => !p.national)
+  const nationalRun = Promise.allSettled(nationalProviders.map((p) => p.fetchEvents({})))
 
   // National Biletix pull (no city filter) catches events missing a city facet.
   providerLog('sync', 'fetching national Biletix feed')
@@ -103,21 +107,21 @@ async function scrapeAllCities(): Promise<{
   }
 
   const totalCities = citySlugs.length
-  for (let i = 0; i < citySlugs.length; i += CITY_CONCURRENCY) {
+  for (let i = 0; perCity.length > 0 && i < citySlugs.length; i += CITY_CONCURRENCY) {
     const batchEnd = Math.min(i + CITY_CONCURRENCY, totalCities)
     providerLog(
       'sync',
-      `scraping cities ${i + 1}-${batchEnd}/${totalCities} (${enabled.map((p) => p.id).join(', ')})`
+      `scraping cities ${i + 1}-${batchEnd}/${totalCities} (${perCity.map((p) => p.id).join(', ')})`
     )
     const batch = citySlugs.slice(i, i + CITY_CONCURRENCY)
     const batchResults = await Promise.all(
       batch.map(async (citySlug) => {
         const settled = await Promise.allSettled(
-          enabled.map((provider) => provider.fetchEvents({ citySlug }))
+          perCity.map((provider) => provider.fetchEvents({ citySlug }))
         )
         const cityEvents: NaEvent[] = []
         settled.forEach((outcome, idx) => {
-          const provider = enabled[idx]
+          const provider = perCity[idx]
           if (outcome.status === 'fulfilled') {
             cityEvents.push(...outcome.value)
           } else {
@@ -130,6 +134,18 @@ async function scrapeAllCities(): Promise<{
     )
     for (const cityEvents of batchResults) merged.push(...cityEvents)
   }
+
+  const nationalSettledAll = await nationalRun
+  nationalSettledAll.forEach((outcome, idx) => {
+    const provider = nationalProviders[idx]!
+    if (outcome.status === 'fulfilled') {
+      merged.push(...outcome.value)
+      providerLog('sync', `national ${provider.id}: ${outcome.value.length}`)
+    } else {
+      failedProviders.add(provider.id)
+      providerLog('sync', `national provider ${provider.id} failed`, outcome.reason)
+    }
+  })
 
   return {
     events: dedupeEvents(merged),
@@ -357,7 +373,8 @@ export const eventSyncService = {
     const { inserted, updated, skipped } = await upsertEvents(db, events)
     providerLog('sync', `upsert done: ${inserted} inserted, ${updated} updated, ${skipped} unchanged`)
 
-    const successfulProviders = providers.filter((id) => !failedProviders.includes(id))
+    const partialIds = new Set(eventProviders.filter((p) => p.partialFeed).map((p) => p.id))
+    const successfulProviders = providers.filter((id) => !failedProviders.includes(id) && !partialIds.has(id))
     const scrapedIds = new Set(events.map((e) => e.id))
     const scrapedCitiesByProvider = new Map<string, Set<string>>()
     for (const event of events) {
