@@ -12,7 +12,8 @@ export const maxDuration = 60
 export async function GET(request: Request) {
   const auth = await requireAccountManager(request, { mutation: false })
   if ('response' in auth) return auth.response
-  const studio = new URL(request.url).searchParams.get('studio') === 'teknoloji' ? 'teknoloji' : 'muzik'
+  const q = new URL(request.url).searchParams.get('studio')
+  const studio = q === 'teknoloji' || q === 'etkinlik' ? q : 'muzik'
   return json({ lists: await listLists(studio) })
 }
 

@@ -155,6 +155,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/reklam-studyosu', label: 'Reklam Stüdyosu', icon: Megaphone, requiredPermissions: ['social:view'] },
       { href: '/admin/liste-studyosu', label: 'Liste Stüdyosu', icon: ListOrdered, requiredPermissions: ['social:view'] },
       { href: '/admin/teknoloji-studyosu', label: 'Teknoloji Stüdyosu', icon: Cpu, requiredPermissions: ['social:view'] },
+      { href: '/admin/etkinlik-studyosu', label: 'Etkinlik Video Stüdyosu', icon: Calendar, requiredPermissions: ['social:view'] },
     ],
   },
   {

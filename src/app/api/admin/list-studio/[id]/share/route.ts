@@ -71,10 +71,10 @@ export async function POST(request: Request, { params }: Ctx) {
   const caption = captionFor(l)
   const input = { newsId: key, videoUrl: l.render.outputUrl!, caption, coverUrl: l.render.coverUrl }
   const long = youtubeIsLong(l)
-  const urun = modeOf(l.listType) === 'urun'
+  const urun = modeOf(l.listType) !== 'liste'
   const ytTitle = `${l.introTitle || LIST_TYPE_INFO[l.listType].title}${urun ? '' : ` | Top ${l.items.length}`}${l.introSubtitle ? ` · ${l.introSubtitle}` : ''}`.slice(0, 95)
   const cat = LIST_TYPE_INFO[l.listType].category
-  const ytCategory = cat === 'teknoloji' ? '28' : cat === 'sinema' ? '24' : '10'
+  const ytCategory = cat === 'teknoloji' ? '28' : cat === 'sinema' ? '24' : cat === 'etkinlik' ? '19' : '10'
   const uid = auth.ctx.uid
   const job = await startReelJob({
     jobId: reelJobId(['lshare', l.id, renderKey, acc.accountId, format]),

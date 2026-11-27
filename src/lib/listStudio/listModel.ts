@@ -15,16 +15,16 @@ export const LIST_PROJECTS = 'listProjects'
 export const LIST_ID_RE = /^ls[A-Za-z0-9]{10,30}$/
 
 // ── liste türleri ────────────────────────────────────────────────────────────
-export const LIST_TYPES = ['tr-genel', 'pop', 'yabanci', 'dans', 'rap', 'dj', 'shazam', 'spotify', 'radyo', 'netflix-film', 'netflix-dizi', 'dizi', 'sinema', 'ozel', 'tek-telefon', 'tek-bilgisayar', 'tek-tv', 'tek-urun', 'tek-ai', 'urun-tanitim', 'ai-tanitim', 'tek-haber'] as const
+export const LIST_TYPES = ['tr-genel', 'pop', 'yabanci', 'dans', 'rap', 'dj', 'shazam', 'spotify', 'radyo', 'netflix-film', 'netflix-dizi', 'dizi', 'sinema', 'ozel', 'tek-telefon', 'tek-bilgisayar', 'tek-tv', 'tek-urun', 'tek-ai', 'urun-tanitim', 'ai-tanitim', 'tek-haber', 'etkinlik'] as const
 export type ListType = (typeof LIST_TYPES)[number]
-export type ListCategory = 'muzik' | 'sinema' | 'kisi' | 'teknoloji'
+export type ListCategory = 'muzik' | 'sinema' | 'kisi' | 'teknoloji' | 'etkinlik'
 /** Stüdyo: Liste Stüdyosu (müzik / sinema) ve Teknoloji Stüdyosu ayrı bölümlerdir; motor ortaktır. */
-export const STUDIOS = ['muzik', 'teknoloji'] as const
+export const STUDIOS = ['muzik', 'teknoloji', 'etkinlik'] as const
 export type Studio = (typeof STUDIOS)[number]
 /** liste: Top N (sıra kartları) · urun: tek ürün / teknoloji / haber tanıtımı (özellik kartları) */
-export type ListMode = 'liste' | 'urun'
+export type ListMode = 'liste' | 'urun' | 'etkinlik'
 
-export const LIST_PACKS = ['dj', 'fragman', 'genc', 'lounge', 'tech', 'minimal'] as const
+export const LIST_PACKS = ['dj', 'fragman', 'genc', 'lounge', 'tech', 'minimal', 'sehir', 'gece', 'kultur'] as const
 export type ListPack = (typeof LIST_PACKS)[number]
 
 export type ListTypeInfo = { label: string; category: ListCategory; pack: ListPack; title: string; noun: string; subtitleLabel: string; source: string; count: number; studio?: Studio; mode?: ListMode; titleLabel?: string }
@@ -51,12 +51,14 @@ export const LIST_TYPE_INFO: Record<ListType, ListTypeInfo> = {
   'tek-ai': { label: 'Top Yapay Zekâ Araçları', category: 'teknoloji', pack: 'tech', title: 'En İyi Yapay Zekâ Araçları', noun: 'yapay zekâ aracı', subtitleLabel: 'Şirket / ne işe yarar', titleLabel: 'Araç', source: 'Elle', count: 10, studio: 'teknoloji', mode: 'liste' },
   'urun-tanitim': { label: 'Ürün tanıtımı', category: 'teknoloji', pack: 'minimal', title: 'Yeni ürün', noun: 'özellik', subtitleLabel: 'Açıklama', titleLabel: 'Özellik (ör. Kamera)', source: 'Elle (telefon, bilgisayar, TV ya da başka bir ürün)', count: 5, studio: 'teknoloji', mode: 'urun' },
   'ai-tanitim': { label: 'Yapay zekâ tanıtımı', category: 'teknoloji', pack: 'tech', title: 'Yeni yapay zekâ', noun: 'özellik', subtitleLabel: 'Açıklama', titleLabel: 'Yetenek', source: 'Elle', count: 5, studio: 'teknoloji', mode: 'urun' },
+  // ── ETKİNLİK VİDEO STÜDYOSU (Etkinlik Masası'ndan) ──
+  etkinlik: { label: 'Etkinlik videosu', category: 'etkinlik', pack: 'sehir', title: 'Bu Hafta Neler Var?', noun: 'etkinlik', subtitleLabel: 'Mekân', titleLabel: 'Etkinlik', source: 'Etkinlik Masası (seçilen etkinlikler)', count: 5, studio: 'etkinlik', mode: 'etkinlik' },
   'tek-haber': { label: 'Teknoloji haberi', category: 'teknoloji', pack: 'tech', title: 'Teknoloji', noun: 'başlık', subtitleLabel: 'Ayrıntı', titleLabel: 'Başlık', source: 'NaHaber teknoloji haberinden (haber seçin) ya da elle', count: 5, studio: 'teknoloji', mode: 'urun' },
 }
 export const studioOf = (t: ListType): Studio => LIST_TYPE_INFO[t].studio ?? 'muzik'
 export const modeOf = (t: ListType): ListMode => LIST_TYPE_INFO[t].mode ?? 'liste'
 export const typesOf = (studio: Studio): ListType[] => LIST_TYPES.filter((t) => studioOf(t) === studio)
-export const packsOf = (studio: Studio): ListPack[] => (studio === 'teknoloji' ? ['tech', 'minimal', 'genc', 'fragman'] : ['dj', 'fragman', 'genc', 'lounge'])
+export const packsOf = (studio: Studio): ListPack[] => (studio === 'etkinlik' ? ['sehir', 'gece', 'kultur'] : studio === 'teknoloji' ? ['tech', 'minimal', 'genc', 'fragman'] : ['dj', 'fragman', 'genc', 'lounge'])
 
 // ── sunum paketleri ──────────────────────────────────────────────────────────
 export type RankLook = 'neon' | 'cinema' | 'bold' | 'soft' | 'tech' | 'minimal'
@@ -83,6 +85,9 @@ export const LIST_PACK_INFO: Record<ListPack, PackInfo> = {
   genc: { label: 'Gençlik / TikTok', desc: 'Hızlı, esprili anlatım; büyük kalın yazılar, hızlı kayan geçişler', voice: 'mert', persona: 'a fast, witty young Turkish social-media host', delivery: 'fast, playful and confident; quick rhythm; short punchy emphasis (no slang)', transition: 'slideup', mix: ['slideup', 'zoomin', 'slideleft', 'wipeleft'], filter: 'canli', bars: false, textStyle: 'guclu', accent: '#a3e635', rankLook: 'bold', sfx: 'whoosh-up' },
   tech: { label: 'Teknoloji', desc: 'Fütüristik: camgöbeği vurgular, ızgara ve kod çizgileri, hızlı kayan / yakınlaşan geçişler, net anlatım', voice: 'kaan', persona: 'a confident, modern Turkish tech reviewer presenting the latest gadgets', delivery: 'clear, crisp and energetic; precise on numbers and model names; confident pace', transition: 'slideleft', mix: ['slideleft', 'zoomin', 'wipeleft', 'circleopen', 'slideup'], filter: 'soguk', bars: false, textStyle: 'kurumsal', accent: '#22d3ee', rankLook: 'tech', sfx: 'whoosh-up' },
   minimal: { label: 'Premium / Sade', desc: 'Sade ve şık (lansman tarzı): beyaz ince yazılar, yumuşak geçişler, zarif ses', voice: 'selin', persona: 'an elegant, calm Turkish product-launch presenter', delivery: 'smooth, premium and unhurried; gentle emphasis on key features', transition: 'dissolve', mix: ['dissolve', 'fade', 'slideup'], filter: 'none', bars: false, textStyle: 'zarif', accent: '#e5e7eb', rankLook: 'minimal', sfx: 'click' },
+  sehir: { label: 'Şehir rehberi', desc: 'Canlı ve net: kırmızı tarih rozeti, kalın yazılar, kayan geçişler', voice: 'mert', persona: 'a friendly, upbeat Turkish city-events guide', delivery: 'warm, lively and clear; precise on dates, times and venues; inviting tone', transition: 'slideleft', mix: ['slideleft', 'slideup', 'zoomin'], filter: 'canli', bars: false, textStyle: 'bant', accent: '#dc2626', rankLook: 'bold', sfx: 'whoosh-up' },
+  gece: { label: 'Gece hayatı', desc: 'Konser ve parti için neon: parlayan yazılar, enerjik anlatım', voice: 'mert', persona: 'an energetic Turkish nightlife and concert host', delivery: 'energetic, exciting, punchy; build hype on the artist name; clear date and venue', transition: 'zoomin', mix: ['zoomin', 'slideleft', 'circleopen'], filter: 'canli', bars: false, textStyle: 'vurgu', accent: '#ff2d95', rankLook: 'neon', sfx: 'whoosh-up' },
+  kultur: { label: 'Kültür-sanat', desc: 'Tiyatro, sergi, klasik müzik: zarif yazılar, sakin anlatım', voice: 'selin', persona: 'an elegant, calm Turkish arts and culture presenter', delivery: 'graceful, warm and unhurried; clear on dates and venues', transition: 'dissolve', mix: ['dissolve', 'fade'], filter: 'sicak', bars: false, textStyle: 'zarif', accent: '#d4af37', rankLook: 'soft', sfx: null },
   lounge: { label: 'Gece / Lounge', desc: 'Sakin, sıcak ses; yumuşak çözülme geçişleri, sıcak ton', voice: 'selin', persona: 'a calm, warm, intimate Turkish late-night radio host', delivery: 'soft, warm and relaxed; unhurried; gentle smile in the voice', transition: 'dissolve', mix: ['dissolve', 'fade', 'circleopen'], filter: 'sicak', bars: false, textStyle: 'zarif', accent: '#d4af37', rankLook: 'soft', sfx: null },
 }
 
@@ -161,6 +166,44 @@ export interface ListItem {
   /** TEKNOLOJİ: özellik kartı (en fazla 6 satır) ve fiyat */
   specs: Array<{ label: string; value: string }>
   price: string
+  /** ETKİNLİK: masadaki etkinliğin bilgileri (kart için) */
+  event: EventInfo | null
+  /** ETKİNLİK: önce klibin kendi sesi (ör. konser), sonra anlatım */
+  ownFirst: boolean
+  /** ETKİNLİK: anlatımın bölüm içindeki başlangıcı (ms) */
+  narrStartMs: number
+  /** ETKİNLİK: anlatım sırasında klibin sesi: kısılır · kapanır · hep açık */
+  duck: DuckMode
+}
+/** Müzik: fon müziği · yalnız videonun kendi sesi/müziği · müziksiz */
+export const MUSIC_MODES = ['on', 'own', 'off'] as const
+export type MusicMode = (typeof MUSIC_MODES)[number]
+export const MUSIC_MODE_LABEL: Record<MusicMode, string> = { on: 'Fon müziği', own: 'Videonun kendi müziği', off: 'Müziksiz' }
+export const DUCK_MODES = ['kisik', 'kapali', 'acik'] as const
+export type DuckMode = (typeof DUCK_MODES)[number]
+export const DUCK_LABEL: Record<DuckMode, string> = { kisik: 'Kısılır', kapali: 'Kapanır', acik: 'Hep açık' }
+export interface EventInfo {
+  eventId: string
+  /** «28 Kasım Cuma» */
+  date: string
+  day: string
+  mon: string
+  /** «21.00» */
+  time: string
+  venue: string
+  city: string
+  category: string
+  source: string
+  price: string
+}
+export const WM_POSITIONS = ['sag-ust', 'sol-ust', 'sag-alt', 'sol-alt'] as const
+export type WmPos = (typeof WM_POSITIONS)[number]
+export const WM_POS_LABEL: Record<WmPos, string> = { 'sag-ust': 'Sağ üst', 'sol-ust': 'Sol üst', 'sag-alt': 'Sağ alt', 'sol-alt': 'Sol alt' }
+export interface Watermark {
+  text: string
+  pos: WmPos
+  /** 0.3–1 */
+  opacity: number
 }
 export interface ListPublisher {
   name: string
@@ -205,6 +248,11 @@ export interface ListProject {
   logoPlacement: LogoPlacement
   /** paylaşım metni (boş = otomatik: başlık + sıralar + etiketler) */
   caption: string
+  /** ETKİNLİK: yayınlanacak hesap (oluştururken seçilir) ve filigranı */
+  accountId: string | null
+  watermark: Watermark | null
+  /** fon müziği: açık / kapalı (pakete göre hazır müzik) */
+  music: MusicMode
   segments: Record<string, SegmentRender>
   render: RenderState
   createdBy: string
@@ -234,7 +282,7 @@ export function fnv(s: string): string {
 }
 
 export function newListItem(title = '', subtitle = ''): ListItem {
-  return { id: newItemId(), title, subtitle, change: 'none', prevRank: null, weeks: null, media: null, coverUrl: null, posX: 0, posY: 0, scale: 1, volume: 1, announce: '', voice: null, accent: null, specs: [], price: '' }
+  return { id: newItemId(), title, subtitle, change: 'none', prevRank: null, weeks: null, media: null, coverUrl: null, posX: 0, posY: 0, scale: 1, volume: 1, announce: '', voice: null, accent: null, specs: [], price: '', event: null, ownFirst: false, narrStartMs: 600, duck: 'kisik' }
 }
 
 export function defaultList(id: string, uid: string, now: number, type: ListType = 'pop', count?: number): ListProject {
@@ -272,6 +320,9 @@ export function defaultList(id: string, uid: string, now: number, type: ListType
     platformLogoUrl: null,
     logoPlacement: 'yok',
     caption: '',
+    accountId: null,
+    watermark: null,
+    music: modeOf(type) === 'etkinlik' ? 'on' : 'off',
     segments: {},
     render: { ...EMPTY_RENDER },
     createdBy: uid,
@@ -344,8 +395,18 @@ export function transitionFor(list: Pick<ListProject, 'transition' | 'pack'>, pl
   return mix[playIndex % mix.length] ?? 'fade'
 }
 
+/** ETKİNLİK: bölümün uzunluğu — klip aralığı; görselde anlatım sığacak kadar uzatılır. */
+export function eventSectionMs(list: Pick<ListProject, 'voiceOn'>, item: ListItem): number {
+  if (!item.media) return 0
+  const len = item.media.outMs - item.media.inMs
+  if (item.media.kind !== 'image') return len
+  const need = list.voiceOn && item.voice ? item.narrStartMs + item.voice.durationMs + 1_200 : 0
+  return Math.min(LIST_LIMITS.clipMaxMs, Math.max(len, need))
+}
+
 export function itemSegmentMs(list: ListProject, item: ListItem, playIndex: number): number {
   if (!item.media) return 0
+  if (modeOf(list.listType) === 'etkinlik') return eventSectionMs(list, item)
   const clips = [
     { inMs: 0, outMs: rankCardMs(item, list.voiceOn), speed: 1, transition: 'none' as Transition },
     { inMs: item.media.inMs, outMs: item.media.outMs, speed: 1, transition: transitionFor(list, playIndex) },
@@ -375,6 +436,7 @@ const tr = (s: string) => s.toLocaleLowerCase('tr-TR')
 export function defaultIntroAnnounce(list: Pick<ListProject, 'items' | 'listType' | 'pack' | 'introTitle'>): string {
   const n = list.items.length
   const t = LIST_TYPE_INFO[list.listType]
+  if (modeOf(list.listType) === 'etkinlik') return `${list.introTitle || t.title} İşte kaçırmamanız gereken ${n} etkinlik!`
   if (modeOf(list.listType) === 'urun') {
     const name = list.introTitle && list.introTitle !== t.title ? list.introTitle : ''
     if (list.listType === 'tek-haber') return `Teknoloji dünyasında bugün… ${name || 'gündemdeki gelişme'}. İşte bilmeniz gerekenler.`
@@ -389,6 +451,7 @@ export function defaultIntroAnnounce(list: Pick<ListProject, 'items' | 'listType
 
 export function defaultAnnounce(list: Pick<ListProject, 'pack' | 'items' | 'listType'>, item: Pick<ListItem, 'title' | 'subtitle' | 'change' | 'prevRank' | 'weeks'> & Partial<Pick<ListItem, 'price'>>, rank: number): string {
   const n = list.items.length
+  if (modeOf(list.listType) === 'etkinlik') return eventAnnounce(item as Partial<ListItem> & Pick<ListItem, 'title'>)
   if (modeOf(list.listType) === 'urun') {
     const sub = item.subtitle.replace(/[.!…]+$/, '')
     return sub ? `${item.title}… ${sub}.` : `${item.title}.`
@@ -411,6 +474,24 @@ export function defaultAnnounce(list: Pick<ListProject, 'pack' | 'items' | 'list
   if (isTop) return `Ve bu haftanın bir numarası… ${sinema ? '' : who}${name}!${move}`
   if (rank === n && n > 1) return `Listeye ${rank}. sıradan giriyoruz: ${who}${name}!${move}`
   return `${rank} numarada… ${who}${name}!${move}`
+}
+
+/** «21.00» → «21.00'de» (okunuşa göre bulunma eki) */
+function timeAt(t: string): string {
+  const m = t.match(/^(\d{1,2})[.:](\d{2})$/)
+  if (!m) return t
+  const n = Number(m[2]) || Number(m[1])
+  const u = n % 10
+  const units: Record<number, string> = { 1: "'de", 2: "'de", 3: "'te", 4: "'te", 5: "'te", 6: "'da", 7: "'de", 8: "'de", 9: "'da" }
+  const tens: Record<number, string> = { 0: "'da", 10: "'da", 20: "'de", 30: "'da", 40: "'ta", 50: "'de" }
+  return `${m[1]}.${m[2]}${u ? units[u] : (tens[n - u] ?? "'de")}`
+}
+/** ETKİNLİK anonsu (AI'sız): ad, gün, saat, mekân, bilet kaynağı. NaHaber adı geçmez. */
+export function eventAnnounce(item: Partial<ListItem> & Pick<ListItem, 'title'>): string {
+  const e = item.event
+  if (!e) return item.title
+  const parts = [`${item.title}!`, `${e.date}${e.time ? `, saat ${timeAt(e.time)}` : ''}${e.venue ? `, ${e.venue}` : ''}.`, e.price ? `Biletler ${e.price}.` : e.source ? `Biletler ${e.source} üzerinden satışta.` : '']
+  return parts.filter(Boolean).join(' ').slice(0, LIST_LIMITS.announce)
 }
 
 /** Gemini TTS yönergesi (İngilizce yönerge en tutarlı sonucu verir; metin Türkçe okunur). */
@@ -446,6 +527,13 @@ function patchItem(cur: ListItem | undefined, x: Record<string, unknown>): ListI
   if ('announce' in x) it.announce = typeof x.announce === 'string' ? x.announce.replace(/\s+/g, ' ').trim().slice(0, LIST_LIMITS.announce) : ''
   if ('accent' in x) it.accent = x.accent === null ? null : isColor(x.accent) ? x.accent : it.accent
   if ('price' in x) it.price = clean(x.price, 30)
+  if ('ownFirst' in x) it.ownFirst = x.ownFirst === true
+  if ('narrStartMs' in x) it.narrStartMs = Math.round(num(x.narrStartMs, 0, 60_000) ?? it.narrStartMs)
+  if ('duck' in x && isOneOf(DUCK_MODES, x.duck)) it.duck = x.duck
+  if ('event' in x && x.event && typeof x.event === 'object' && it.event) {
+    const e = x.event as Record<string, unknown>
+    it.event = { ...it.event, ...(typeof e.date === 'string' ? { date: clean(e.date, 40) } : {}), ...(typeof e.time === 'string' ? { time: clean(e.time, 20) } : {}), ...(typeof e.venue === 'string' ? { venue: clean(e.venue, 90) } : {}), ...(typeof e.price === 'string' ? { price: clean(e.price, 30) } : {}) }
+  }
   if ('specs' in x && Array.isArray(x.specs))
     it.specs = (x.specs as Array<Record<string, unknown>>)
       .slice(0, 6)
@@ -530,6 +618,15 @@ export function applyListPatch(cur: ListProject, raw: Record<string, unknown>, n
     n.logoPlacement = raw.logoPlacement
   }
   if ('platformLogoUrl' in raw && raw.platformLogoUrl === null) n.platformLogoUrl = null
+  if ('music' in raw) n.music = isOneOf(MUSIC_MODES, raw.music) ? raw.music : 'off'
+  if ('watermark' in raw) {
+    if (raw.watermark === null) n.watermark = null
+    else if (raw.watermark && typeof raw.watermark === 'object') {
+      const w = raw.watermark as Record<string, unknown>
+      const cur = n.watermark ?? { text: '', pos: 'sag-ust' as WmPos, opacity: 0.8 }
+      n.watermark = { text: 'text' in w ? clean(w.text, 70) : cur.text, pos: isOneOf(WM_POSITIONS, w.pos) ? w.pos : cur.pos, opacity: num(w.opacity, 0.3, 1) ?? cur.opacity }
+    }
+  }
   if ('caption' in raw) n.caption = typeof raw.caption === 'string' ? raw.caption.replace(/\r/g, '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, 2200) : ''
   if ('publisher' in raw && raw.publisher && typeof raw.publisher === 'object') {
     const p = raw.publisher as Record<string, unknown>
@@ -593,6 +690,9 @@ export type ListOverlay =
   | { type: 'ad'; o: AdOverlay }
   | { type: 'rank'; rank: number; total: number; title: string; subtitle: string; change: RankChange; prevRank: number | null; weeks: number | null; accent: string; look: RankLook; category: ListCategory; mode?: ListMode; price?: string }
   | { type: 'specs'; specs: Array<{ label: string; value: string }>; price: string; accent: string; look: RankLook; vertical: boolean }
+  | { type: 'evtitle'; title: string; category: string; accent: string; look: RankLook }
+  | { type: 'evcard'; title: string; date: string; day: string; mon: string; time: string; venue: string; category: string; price: string; source: string; accent: string; look: RankLook }
+  | { type: 'wm'; text: string; pos: WmPos; opacity: number }
   | { type: 'intro'; n: number; title: string; subtitle: string; handle: string; accent: string; look: RankLook; logoUrl: string | null; kicker?: string }
   | { type: 'outro'; name: string; handle: string; slogan: string; accent: string }
   | { type: 'badge'; rank: number; accent: string; logoUrl: string | null }
@@ -662,6 +762,15 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
   const logo = list.platformLogoUrl && list.logoPlacement !== 'yok' ? list.platformLogoUrl : null
   let clips: VideoClip[] = []
   let duck = false
+  const etk = modeOf(list.listType) === 'etkinlik'
+  const bed = P.textStyle === 'zarif' ? 'akustik' : P.rankLook === 'neon' ? 'enerjik' : 'modern'
+  const addMusic = (fromMs: number) => {
+    if (list.music !== 'on') return
+    audio.push({ id: 'a_music', kind: 'music', assetId: null, music: bed, text: null, startMs: fromMs, endMs: null, volume: list.voiceOn ? 0.12 : 0.35, fade: true })
+  }
+  const addWatermark = (end: number) => {
+    if (list.watermark?.text) push('o_wm', 0, end, { type: 'wm', text: list.watermark.text, pos: list.watermark.pos, opacity: list.watermark.opacity })
+  }
 
   if (seg === 'intro' || seg === 'outro') {
     const ref = seg === 'intro' ? order[0] : order[order.length - 1]
@@ -672,14 +781,59 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
     if (!bg) return null
     clips = [bg]
     if (seg === 'intro') {
-      const kicker = modeOf(list.listType) === 'urun' ? (list.listType === 'tek-haber' ? 'TEKNOLOJİ' : 'YENİ') : `TOP ${list.items.length}`
+      const kicker = etk ? 'ETKİNLİK' : modeOf(list.listType) === 'urun' ? (list.listType === 'tek-haber' ? 'TEKNOLOJİ' : 'YENİ') : `TOP ${list.items.length}`
       push('o_intro', 0, ms, { type: 'intro', n: list.items.length, title: list.introTitle || T.title, subtitle: list.introSubtitle, handle: list.publisher.handle, accent: list.accent, look: P.rankLook, logoUrl: logo, kicker })
       addSfx(list.pack === 'fragman' ? 'whoosh-down' : 'intro-zoom', 0)
       if (list.voiceOn && list.introAnnounce.trim() && introVoiceCurrent(list)) addVoice(list.introVoice, 450)
+      if (etk) {
+        addWatermark(ms)
+        addMusic(0)
+      }
     } else {
       push('o_outro', 0, ms, { type: 'outro', name: list.publisher.name, handle: list.publisher.handle, slogan: list.publisher.slogan, accent: list.accent })
       addSfx('outro-follow', 0)
+      if (etk) addMusic(0)
     }
+  } else if (etk) {
+    // ETKİNLİK: tek klip; önce klibin kendi sesi (ör. konser), anlatım seçilen saniyede başlar
+    const at = order.findIndex((x) => segOfItem(x.item.id) === seg)
+    const x = order[at]
+    if (!x || !x.item.media) return null
+    const { item } = x
+    const media = x.item.media
+    const accent = item.accent ?? list.accent
+    const total = eventSectionMs(list, item)
+    const narr = Math.max(0, Math.min(item.narrStartMs, Math.max(0, total - 1_500)))
+    // müziksiz: klip sessiz · kendi müziği: yalnız klibin sesi · fon müziği: klip sesi + fon (anlatımda kısılır)
+    const own = list.music === 'off' ? 0 : item.volume
+    const isImg = media.kind === 'image'
+    const common = { volume: own, mute: own === 0, scale: item.scale, posX: item.posX, posY: item.posY, filter: list.filter, contrast: 1 }
+    assets.push({ id: 'rm', kind: media.kind, source: 'upload', url: media.url, name: media.name, durationMs: media.durationMs, posterUrl: null, addedAt: list.createdAt })
+    if (isImg) {
+      clips = [baseClip('rm', 'rm', 0, total, list.fit, { ...common, animIn: list.zoomOn ? 'zoom' : 'fade', animOut: 'none' })]
+    } else if (list.voiceOn && item.duck === 'kapali' && narr >= 800 && narr < total - 800) {
+      // anlatım başlayınca klibin sesi kesilir: iki parça (ikincisi sessiz)
+      clips = [
+        baseClip('rm1', 'rm', media.inMs, media.inMs + narr, list.fit, { ...common, animIn: 'fade' }),
+        { ...baseClip('rm2', 'rm', media.inMs + narr, media.outMs, list.fit, { ...common, volume: 0, mute: true, animOut: 'fade' }), transition: 'none' },
+      ]
+    } else {
+      clips = [baseClip('rm', 'rm', media.inMs, media.outMs, list.fit, { ...common, animIn: 'fade', animOut: 'fade' })]
+    }
+    const end = timeline(clips).total
+    const e = item.event
+    if (list.textOn && narr >= 1_500) push('o_evt', 300, narr, { type: 'evtitle', title: item.title, category: e?.category ?? '', accent, look: P.rankLook })
+    push('o_card', Math.max(0, narr - 200), end, { type: 'evcard', title: item.title, date: e?.date ?? '', day: e?.day ?? '', mon: e?.mon ?? '', time: e?.time ?? '', venue: e?.venue ?? item.subtitle, category: e?.category ?? '', price: e?.price || item.price, source: e?.source ?? '', accent, look: P.rankLook })
+    if (logo && list.logoPlacement !== 'yok') push('o_logo', 0, end, { type: 'ad', o: { type: 'logo', url: logo, pos: 'sol-alt' } })
+    addWatermark(end)
+    if (at === 0 || !item.ownFirst) addSfx(P.sfx, 0)
+    if (list.voiceOn && item.announce.trim() && itemVoiceCurrent(list, item)) {
+      addVoice(item.voice, narr)
+      duck = item.duck === 'kisik'
+    }
+    // müzik: klibin kendi sesi önce çalıyorsa anlatımla birlikte girer; hep açık seste müzik yok
+    const hasOwnAudio = media.kind === 'video' && media.hasAudio !== false && own > 0
+    if (!(hasOwnAudio && item.duck === 'acik')) addMusic(hasOwnAudio && item.ownFirst ? narr : 0)
   } else {
     const at = order.findIndex((x) => segOfItem(x.item.id) === seg)
     const x = order[at]
@@ -727,6 +881,7 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
       addVoice(item.voice, 250)
       duck = list.clipSound === 'kisik'
     }
+    addWatermark(end)
   }
 
   const project: EditProject = {
@@ -829,14 +984,29 @@ export const LIST_TYPE_TAGS: Record<ListType, string[]> = {
   'urun-tanitim': ['teknoloji', 'inceleme', 'yeniürün', 'tanıtım'],
   'ai-tanitim': ['yapayzeka', 'ai', 'teknoloji', 'yenilik'],
   'tek-haber': ['teknoloji', 'teknolojihaberleri', 'gündem', 'yenilik'],
+  etkinlik: ['etkinlik', 'konser', 'neyapsam', 'hafta sonu'],
 }
-export function listTags(list: Pick<ListProject, 'listType'>): string[] {
-  return LIST_TYPE_TAGS[list.listType].map(tagify).filter(Boolean)
+export function listTags(list: Pick<ListProject, 'listType'> & Partial<Pick<ListProject, 'items'>>): string[] {
+  const city = list.listType === 'etkinlik' ? list.items?.find((x) => x.event?.city)?.event?.city : undefined
+  const extra = city ? [city, `${city}etkinlik`] : []
+  return [...new Set([...extra, ...LIST_TYPE_TAGS[list.listType]].map(tagify).filter(Boolean))]
 }
 
 /** Otomatik paylaşım metni: başlık, tarih, 1'den N'e sıralar, yayıncı ve etiketler. */
 export function defaultListCaption(list: Pick<ListProject, 'items' | 'listType' | 'introTitle' | 'introSubtitle' | 'publisher'>): string {
   const T = LIST_TYPE_INFO[list.listType]
+  if (modeOf(list.listType) === 'etkinlik') {
+    const rows = list.items
+      .filter((x) => x.title)
+      .map((x) => {
+        const e = (x as Partial<ListItem>).event
+        const when = e ? [e.date, e.time].filter(Boolean).join(' ') : ''
+        return `📍 ${x.title}${when ? ` — ${when}` : ''}${e?.venue ? `, ${e.venue}` : ''}`
+      })
+    const follow = list.publisher.handle ? `Şehrin etkinlikleri için takip et: @${list.publisher.handle}` : ''
+    const tags = listTags(list).map((t) => `#${t}`).join(' ')
+    return [`🎟️ ${list.introTitle || T.title}`, rows.join('\n'), 'Hangisine gidiyorsunuz? Yorumlara yazın 👇', follow, tags].filter(Boolean).join('\n\n').slice(0, 2200)
+  }
   const urun = modeOf(list.listType) === 'urun'
   const head = urun ? `⚡ ${list.introTitle || T.title}${list.introSubtitle ? ` — ${list.introSubtitle}` : ''}` : `${T.category === 'teknoloji' ? '⚡' : '🔥'} ${list.introTitle || T.title} — Top ${list.items.length}${list.introSubtitle ? ` (${list.introSubtitle})` : ''}`
   const rows = list.items

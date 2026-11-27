@@ -10,6 +10,7 @@ import { getAdminFirestore, getAdminStorage } from '@/lib/firebase/admin'
 import { writeSocialAudit } from '@/lib/social/accounts/audit'
 import { EMPTY_RENDER, type RenderState } from '@/lib/edit/editProject'
 import { probeSize } from '@/lib/adStudio/adModel'
+import { importLinkMedia, LinkMediaError } from './linkMedia'
 import {
   LIST_ID_RE,
   LIST_LIMITS,
@@ -66,6 +67,7 @@ export async function createList(uid: string, raw: Record<string, unknown>, now:
   const type = isOneOf(LIST_TYPES, raw.listType) && studioOf(raw.listType) === studio ? raw.listType : studio === 'teknoloji' ? 'tek-telefon' : 'pop'
   const count = typeof raw.count === 'number' && Number.isFinite(raw.count) ? Math.max(1, Math.min(LIST_LIMITS.items, Math.round(raw.count))) : LIST_TYPE_INFO[type].count
   const id = `ls${randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, '').padEnd(12, '0').slice(0, 14)}`
+  if (studio === 'etkinlik' && typeof raw.copyOf !== 'string') return fail(400, 'invalid', 'Etkinlik videosu Etkinlik Masası\'ndan etkinlik seçilerek kurulur')
   let list = defaultList(id, uid, now, type, count)
   // «geçen haftanın listesini kopyala»: sıralar, klipler ve görünüm kopyalanır; ses ve render yeniden
   if (typeof raw.copyOf === 'string') {
@@ -86,6 +88,12 @@ export async function createList(uid: string, raw: Record<string, unknown>, now:
   await listAudit(uid, 'lists.project.save', list, { what: raw.copyOf ? 'copy' : raw.fromNewsId ? 'from_news' : 'create', count: list.items.length, studio })
   return { ok: true, value: list }
 }
+
+/** yeni proje kaydı (Etkinlik Stüdyosu kendi taslağını kurar) */
+export async function putNewList(l: ListProject): Promise<void> {
+  await col().doc(l.id).create(l)
+}
+export const newListId = () => `ls${randomBytes(9).toString('base64url').replace(/[^A-Za-z0-9]/g, '').padEnd(12, '0').slice(0, 14)}`
 
 export async function patchList(uid: string, id: string, raw: Record<string, unknown>, now: number): Promise<StoreResult<ListProject>> {
   if (!LIST_ID_RE.test(id)) return fail(404, 'not_found', 'Liste bulunamadı')
@@ -145,7 +153,7 @@ async function ffmpegBin(): Promise<string | null> {
   return process.env.FFMPEG_PATH || (typeof mod === 'string' ? mod : (mod.default ?? null))
 }
 
-async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: boolean; width?: number; height?: number } | null> {
+export async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: boolean; width?: number; height?: number } | null> {
   try {
     const { spawn } = await import('node:child_process')
     const bin = await ffmpegBin()
@@ -176,9 +184,26 @@ async function probeMedia(url: string): Promise<{ durationMs: number; hasAudio: 
 export async function addListMedia(uid: string, id: string, raw: Record<string, unknown>, now: number): Promise<StoreResult<ListProject>> {
   const l = await getList(id)
   if (!l) return fail(404, 'not_found', 'Liste bulunamadı')
-  if (!ownListUploadUrl(raw.url, uid, id)) return fail(400, 'invalid_url', 'Yüklenen dosyanın yeri geçersiz')
-  const url = raw.url
-  const isImage = decodeURIComponent(new URL(url).pathname).includes('news-images/')
+  // bağlantı → kendi klasörümüze kopya · Video Kütüphanesi kaydı → hakları onaylı oynatma dosyası
+  let libraryUrl: string | null = null
+  if (typeof raw.link === 'string' && raw.link.trim()) {
+    try {
+      const m = await importLinkMedia(raw.link.trim(), uid, id)
+      raw = { ...raw, url: m.url, type: m.kind, name: raw.name ?? m.name }
+    } catch (err) {
+      if (err instanceof LinkMediaError) return fail(422, err.code, err.message)
+      return fail(422, 'link_failed', 'Bağlantıdaki dosya alınamadı')
+    }
+  } else if (typeof raw.libraryId === 'string') {
+    const { libraryVideoForReel } = await import('@/lib/reels/libraryVideo')
+    const v = await libraryVideoForReel(raw.libraryId)
+    if ('error' in v) return fail(422, 'library', v.error)
+    libraryUrl = v.url
+    raw = { ...raw, type: 'video', name: raw.name ?? v.title, role: 'clip' }
+  }
+  if (!libraryUrl && !ownListUploadUrl(raw.url, uid, id)) return fail(400, 'invalid_url', 'Yüklenen dosyanın yeri geçersiz')
+  const url = libraryUrl ?? (raw.url as string)
+  const isImage = !libraryUrl && decodeURIComponent(new URL(url).pathname).includes('news-images/')
   const name = typeof raw.name === 'string' ? raw.name.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 80) || 'Dosya' : 'Dosya'
   const role = raw.role === 'cover' || raw.role === 'platformLogo' ? raw.role : 'clip'
   if (role === 'platformLogo') {
@@ -191,6 +216,7 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
   const itemId = typeof raw.itemId === 'string' ? raw.itemId : ''
   if (!l.items.some((x) => x.id === itemId)) return fail(404, 'no_item', 'Sıra bulunamadı')
   let media: ListMedia | null = null
+  let evVideo = false
   if (role === 'clip') {
     if (raw.type === 'video') {
       if (isImage) return fail(400, 'invalid_url', 'Video yeri geçersiz')
@@ -201,6 +227,7 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
       // varsayılan aralık: 20 sn (başlangıç 0); kullanıcı «Klipler» adımında kısaltır/kaydırır
       const outMs = Math.min(durationMs, 20_000)
       media = { kind: 'video', url, name, durationMs, inMs: 0, outMs, hasAudio, ...(width && height ? { width, height } : {}) }
+      evVideo = l.listType === 'etkinlik' && hasAudio
     } else {
       if (!isImage) return fail(400, 'invalid_url', 'Görsel yeri geçersiz')
       media = { kind: 'image', url, name, durationMs: null, inMs: 0, outMs: LIST_LIMITS.imageMs }
@@ -208,7 +235,7 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
   } else if (!isImage) return fail(400, 'invalid_url', 'Kapak bir görsel olmalı')
   const next = await patchRaw(id, (cur) => ({
     ...cur,
-    items: cur.items.map((x) => (x.id !== itemId ? x : role === 'clip' ? { ...x, media } : { ...x, coverUrl: url })),
+    items: cur.items.map((x) => (x.id !== itemId ? x : role === 'clip' ? { ...x, media, ...(evVideo ? { ownFirst: true, narrStartMs: Math.min(8_000, Math.max(0, (media?.outMs ?? 0) - 6_000)) } : {}) } : { ...x, coverUrl: url })),
     updatedAt: now,
   }))
   if (!next) return fail(409, 'conflict', 'Liste güncellenemedi')

@@ -7,7 +7,7 @@
  * Çıktıda NaHaber logosu / yazısı / kapanışı YOKTUR; kapanışta yayıncının (sayfanın) kartı vardır.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowLeft, ArrowUp, Check, ClipboardPaste, Clapperboard, Copy, Cpu, Download, Film, ImageIcon, ListOrdered, Loader2, Mic, Newspaper, Play, Plus, Scissors, Search, Sparkles, Trash2, Type, Upload, Wand2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, Check, Link2, ClipboardPaste, Clapperboard, Copy, Cpu, Download, Film, ImageIcon, ListOrdered, Loader2, Mic, Newspaper, Play, Plus, Scissors, Search, Sparkles, Trash2, Type, Upload, Wand2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,14 @@ import { FILTERS, FILTER_LABEL } from '@/lib/edit/editProject'
 import { AD_TEXT_STYLES, AD_TEXT_STYLE_INFO, AD_VOICES, AD_VOICE_IDS, isLowResMedia } from '@/lib/adStudio/adModel'
 import {
   CHANGES,
+  DUCK_LABEL,
+  DUCK_MODES,
+  MUSIC_MODES,
+  MUSIC_MODE_LABEL,
+  WM_POSITIONS,
+  WM_POS_LABEL,
+  eventAnnounce,
+  eventSectionMs,
   SHARE_PLATFORM_NAME,
   captionFor,
   listRenderKey,
@@ -70,6 +78,7 @@ const STEPS = [
   ['cikti', 'Çıktı', Download],
 ] as const
 type Step = (typeof STEPS)[number][0]
+const ETK_LABEL: Record<Step, string> = { liste: 'Etkinlikler', klip: 'Medya & süre', sunum: 'Ses & anlatım', stil: 'Yazı stili', efekt: 'Geçiş & efekt', cikti: 'Çıktı & paylaş' }
 
 async function call<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -146,6 +155,45 @@ export function ListStudio({ studio = 'muzik' }: { studio?: Studio }) {
   }
 
   if (openId) return <ListEditor id={openId} onBack={() => open(null)} />
+
+  if (studio === 'etkinlik')
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-start gap-3 rounded-xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm text-fuchsia-900 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-200">
+          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            Yeni etkinlik videosu <b>Etkinlik Masası</b>'ndan kurulur: il ve tarih (bugün / bu hafta / yaklaşan) seçin, etkinlikleri işaretleyin, videonun hazırlanacağı hesabı seçin. Hesap adı videoya filigran olarak eklenir; NaHaber logosu bulunmaz.
+          </div>
+          <a href="/admin/events?video=1" className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-fuchsia-600 px-3 text-sm font-bold text-white">
+            <Plus className="h-4 w-4" /> Etkinlik seç
+          </a>
+        </div>
+        <section className="space-y-3">
+          <h2 className="text-base font-extrabold">Etkinlik videoları</h2>
+          {!lists ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : !lists.length ? (
+            <p className="text-sm text-[rgb(var(--color-muted))]">Henüz etkinlik videosu yok.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {lists.map((l) => (
+                <button key={l.id} type="button" onClick={() => open(l.id)} className="overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] text-left">
+                  <div className="flex aspect-video items-center justify-center bg-neutral-900">
+                    {l.render.coverUrl ? <img src={l.render.coverUrl} alt="" className="h-full w-full object-cover" /> : <CalendarDays className="h-8 w-8 text-neutral-500" />}
+                  </div>
+                  <div className="p-3">
+                    <div className="truncate text-sm font-extrabold">{l.title}</div>
+                    <div className="mt-0.5 text-[12px] text-[rgb(var(--color-muted))]">
+                      {l.items.length} etkinlik · {l.publisher.name || 'hesap yok'} · {l.render.status === 'ready' ? 'Video hazır' : 'Taslak'}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    )
 
   return (
     <div className="space-y-5">
@@ -305,7 +353,8 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
           updatedAt: s.updatedAt,
           items: cur.items.map((x) => {
             const sv = byId.get(x.id)
-            return sv ? { ...x, media: x.media && sv.media && x.media.url === sv.media.url ? { ...sv.media, inMs: x.media.inMs, outMs: x.media.outMs } : sv.media, coverUrl: sv.coverUrl, voice: sv.voice } : x
+            const same = !!x.media && !!sv?.media && x.media.url === sv.media.url
+            return sv ? { ...x, media: same ? { ...sv.media!, inMs: x.media!.inMs, outMs: x.media!.outMs } : sv.media, coverUrl: sv.coverUrl, voice: sv.voice, ...(same ? {} : { ownFirst: sv.ownFirst, narrStartMs: sv.narrStartMs }) } : x
           }),
         }
       }),
@@ -346,7 +395,7 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => void flush().then(onBack)} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[rgb(var(--color-border))] px-3 text-sm font-semibold">
-          <ArrowLeft className="h-4 w-4" /> Listeler
+          <ArrowLeft className="h-4 w-4" /> {l.studio === 'etkinlik' ? 'Etkinlik videoları' : 'Listeler'}
         </button>
         <input value={l.title} onChange={(e) => patch({ title: e.target.value })} className="h-9 min-w-[240px] flex-1 rounded-xl border border-[rgb(var(--color-border))] bg-transparent px-3 text-[15px] font-extrabold" />
         <span className="text-[12px] text-[rgb(var(--color-muted))]">{saving ? 'Kaydediliyor…' : 'Kaydedildi'}</span>
@@ -368,7 +417,7 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
         {STEPS.map(([k, label, Icon], i) => (
           <button key={k} type="button" onClick={() => setStep(k)} className={cn('inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold', step === k ? 'border-fuchsia-600 bg-fuchsia-600 text-white' : 'border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))]')}>
             <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[11px]', step === k ? 'bg-white text-fuchsia-700' : 'bg-[rgb(var(--color-border))]')}>{i + 1}</span>
-            <Icon className="h-4 w-4" /> {label}
+            <Icon className="h-4 w-4" /> {l.studio === 'etkinlik' ? ETK_LABEL[k] : label}
           </button>
         ))}
       </div>
@@ -400,7 +449,96 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
 }
 
 // ── 1 · liste ────────────────────────────────────────────────────────────────
-function ListStep({ l, patch, onSelect, flush, takeServer }: StepProps & ServerProps & { onSelect: (i: number) => void }) {
+function ListStep(props: StepProps & ServerProps & { onSelect: (i: number) => void }) {
+  if (props.l.studio === 'etkinlik') return <EventListStep {...props} />
+  return <ListStepInner {...props} />
+}
+
+// ── ETKİNLİK · 1 · etkinlikler ──────────────────────────────────────────────
+function EventListStep({ l, patch, onSelect }: StepProps & ServerProps & { onSelect: (i: number) => void }) {
+  const setItems = (items: ListItem[]) => patch({ items })
+  const upd = (i: number, p: Partial<ListItem>) => setItems(l.items.map((x, j) => (j === i ? { ...x, ...p } : x)))
+  const updEv = (i: number, p: Partial<NonNullable<ListItem['event']>>) => {
+    const x = l.items[i]!
+    if (!x.event) return
+    upd(i, { event: { ...x.event, ...p } })
+  }
+  const move = (i: number, d: number) => {
+    const m = [...l.items]
+    const j = i + d
+    if (j < 0 || j >= m.length) return
+    ;[m[i], m[j]] = [m[j]!, m[i]!]
+    setItems(m)
+  }
+  const wm = l.watermark
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <H hint="Giriş kartında büyük yazılır (ör. «Antalya'da Bu Hafta»).">1 · Video başlığı</H>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input value={l.introTitle} onChange={(e) => patch({ introTitle: e.target.value })} placeholder="Antalya'da Bu Hafta" className={field} />
+          <input value={l.introSubtitle} onChange={(e) => patch({ introSubtitle: e.target.value })} placeholder="ör. 27 Kasım – 3 Aralık" className={field} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <H hint={`Hesap: ${l.publisher.name || '—'}${l.publisher.handle ? ` (@${l.publisher.handle})` : ''}. Hesap adı her karede filigran olarak görünür; kapanış kartında da yazılır.`}>Filigran</H>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={!!wm} onChange={(e) => patch({ watermark: e.target.checked ? { text: l.publisher.handle ? `@${l.publisher.handle}` : l.publisher.name, pos: 'sag-ust', opacity: 0.8 } : null })} /> Filigran açık
+          </label>
+          {wm && (
+            <>
+              <input value={wm.text} onChange={(e) => patch({ watermark: { ...wm, text: e.target.value } })} className="h-8 w-56 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 text-sm" />
+              {WM_POSITIONS.map((p) => (
+                <button key={p} type="button" onClick={() => patch({ watermark: { ...wm, pos: p } })} className={chip(wm.pos === p)}>
+                  {WM_POS_LABEL[p]}
+                </button>
+              ))}
+              <label className="text-[12px] font-semibold">
+                Saydamlık %{Math.round(wm.opacity * 100)}
+                <input type="range" min={0.3} max={1} step={0.05} value={wm.opacity} onChange={(e) => patch({ watermark: { ...wm, opacity: Number(e.target.value) } })} className="ml-2 w-28 align-middle" />
+              </label>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <H hint="Sıra videodaki sırayı belirler. Tarih, saat, mekân ve bilet bilgisi kartta yazılır ve anlatımda okunur.">Etkinlikler ({l.items.length})</H>
+        {l.items.map((x, i) => (
+          <div key={x.id} className="grid grid-cols-[34px_minmax(0,1fr)] items-start gap-2 rounded-xl border border-[rgb(var(--color-border))] p-2.5" onFocus={() => onSelect(i)}>
+            <div className="flex h-9 items-center justify-center rounded-lg bg-fuchsia-600 text-sm font-black text-white">{i + 1}</div>
+            <div className="space-y-2">
+              <input value={x.title} onChange={(e) => upd(i, { title: e.target.value })} placeholder="Etkinlik adı" className={field} />
+              {x.event && (
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <input value={x.event.date} onChange={(e) => updEv(i, { date: e.target.value })} placeholder="Tarih" className={field} />
+                  <input value={x.event.time} onChange={(e) => updEv(i, { time: e.target.value })} placeholder="Saat (21.00)" className={field} />
+                  <input value={x.event.venue} onChange={(e) => updEv(i, { venue: e.target.value })} placeholder="Mekân" className={field} />
+                  <input value={x.event.price} onChange={(e) => updEv(i, { price: e.target.value })} placeholder="Bilet (ör. 750 TL)" className={field} />
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                {x.event && <span className="rounded bg-[rgb(var(--color-border))] px-1.5 py-0.5 font-semibold">{x.event.city} · {x.event.category}{x.event.source ? ` · ${x.event.source}` : ''}</span>}
+                <span className={cn('rounded px-1.5 py-0.5 font-semibold', x.media ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300')}>{x.media ? `${x.media.kind === 'video' ? 'video' : 'görsel'} ${sec(eventSectionMs(l, x))}` : 'medya yok — «Medya & süre» adımında ekleyin'}</span>
+                <button type="button" onClick={() => upd(i, { announce: eventAnnounce(x) })} className="rounded border border-[rgb(var(--color-border))] px-1.5 py-1 font-semibold">Anonsu bilgilere göre yaz</button>
+                <div className="ml-auto flex gap-1">
+                  <button type="button" title="Yukarı" onClick={() => move(i, -1)} className="rounded border border-[rgb(var(--color-border))] p-1.5"><ArrowUp className="h-3.5 w-3.5" /></button>
+                  <button type="button" title="Aşağı" onClick={() => move(i, 1)} className="rounded border border-[rgb(var(--color-border))] p-1.5"><ArrowDown className="h-3.5 w-3.5" /></button>
+                  <button type="button" title="Videodan çıkar" disabled={l.items.length <= 1} onClick={() => setItems(l.items.filter((_, j) => j !== i))} className="rounded border border-[rgb(var(--color-border))] p-1.5 text-red-600 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        <a href="/admin/events?video=1" className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-fuchsia-400 px-3 text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-300">
+          <Plus className="h-4 w-4" /> Başka etkinliklerle yeni video
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function ListStepInner({ l, patch, onSelect, flush, takeServer }: StepProps & ServerProps & { onSelect: (i: number) => void }) {
   const [paste, setPaste] = useState('')
   const T = LIST_TYPE_INFO[l.listType]
   const urun = modeOf(l.listType) === 'urun'
@@ -698,8 +836,21 @@ function ItemClip({ l, i, patch, flush, takeServer }: StepProps & ServerProps & 
       setPct(null)
     }
   }
+  const etk = l.studio === 'etkinlik'
+  const [link, setLink] = useState('')
+  const addLink = async () => {
+    if (!link.trim()) return
+    await flush()
+    setPct(0)
+    const r = await call<{ list: ListProject }>('POST', `${API}/${l.id}/media`, { link: link.trim(), role: 'clip', itemId: x.id })
+    setPct(null)
+    if (!r.ok) return toast.error(r.error)
+    setLink('')
+    takeServer(r.data.list)
+    toast.success('Bağlantıdaki dosya eklendi')
+  }
   const len = clipLenMs(x.media)
-  const lenOk = len >= LIST_LIMITS.softMinMs && len <= LIST_LIMITS.softMaxMs
+  const lenOk = etk || (len >= LIST_LIMITS.softMinMs && len <= LIST_LIMITS.softMaxMs)
   const playRange = () => {
     const v = vid.current
     if (!v || !x.media) return
@@ -733,7 +884,18 @@ function ItemClip({ l, i, patch, flush, takeServer }: StepProps & ServerProps & 
           <ImageIcon className="h-4 w-4" /> {x.coverUrl ? 'Kapağı değiştir' : 'Kapak (isteğe bağlı)'}
         </button>
       </div>
-      <p className="text-[12px] text-[rgb(var(--color-muted))]">Kapak (albüm kapağı / afiş / DJ fotoğrafı) sıra kartının arka planında kullanılır; yoksa klibin ilk saniyeleri kullanılır. Video ≤ 200 MB.</p>
+      {etk ? (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://… doğrudan video / görsel bağlantısı (.mp4, .jpg)" className="h-9 min-w-[240px] flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 text-sm" />
+            <button type="button" disabled={pct !== null || !link.trim()} onClick={() => void addLink()} className="h-9 rounded-xl border border-fuchsia-500 px-3 text-sm font-bold text-fuchsia-700 disabled:opacity-40 dark:text-fuchsia-300">Bağlantıdan ekle</button>
+          </div>
+          <p className="text-[12px] text-[rgb(var(--color-muted))]">Konser videosu, afiş ya da mekân görseli: cihazdan yükleyin ya da doğrudan dosya bağlantısı verin (YouTube / Instagram sayfa bağlantıları indirilemez). Video ≤ 200 MB. Masada hakkı «Bilinmiyor» olan medya otomatik kullanılmaz.</p>
+        </div>
+      ) : (
+        <p className="text-[12px] text-[rgb(var(--color-muted))]">Kapak (albüm kapağı / afiş / DJ fotoğrafı) sıra kartının arka planında kullanılır; yoksa klibin ilk saniyeleri kullanılır. Video ≤ 200 MB.</p>
+      )}
       {x.coverUrl && <img src={x.coverUrl} alt="" className="h-20 rounded-lg object-cover" />}
       {x.media && (
         <>
@@ -793,9 +955,55 @@ function ItemClip({ l, i, patch, flush, takeServer }: StepProps & ServerProps & 
               <input type="range" min={0} max={1} step={0.05} value={x.volume} onChange={(e) => upd({ volume: Number(e.target.value) })} className="w-full" />
             </label>
           </div>
+          {etk && <EventAudio l={l} x={x} upd={upd} now={now} />}
           <button type="button" onClick={() => upd({ media: null })} className="text-[12px] font-semibold text-red-600">Klibi kaldır</button>
         </>
       )}
+    </div>
+  )
+}
+
+// ── ETKİNLİK: ses sırası ve anlatım başlangıcı ───────────────────────────────
+function EventAudio({ l, x, upd, now }: { l: ListProject; x: ListItem; upd: (p: Partial<ListItem>) => void; now: number }) {
+  if (!x.media) return null
+  const total = eventSectionMs(l, x)
+  const video = x.media.kind === 'video'
+  const voiceMs = x.voice?.durationMs ?? 0
+  const narr = Math.min(x.narrStartMs, Math.max(0, total - 1_500))
+  const pct = (ms: number) => `${Math.max(0, Math.min(100, (ms / Math.max(1, total)) * 100))}%`
+  return (
+    <div className="space-y-3 rounded-xl border border-fuchsia-300/60 bg-fuchsia-50/40 p-3 dark:bg-fuchsia-500/5">
+      <div className="text-sm font-extrabold">Ses sırası ve anlatım · bölüm {sec(total)}</div>
+      {video && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => upd({ ownFirst: true, narrStartMs: Math.max(x.narrStartMs, 4_000) })} className={chip(x.ownFirst)}>Önce videonun sesi (ör. konser), sonra anlatım</button>
+          <button type="button" onClick={() => upd({ ownFirst: false, narrStartMs: 600 })} className={chip(!x.ownFirst)}>Anlatım hemen başlasın</button>
+        </div>
+      )}
+      <label className="block text-[12px] font-semibold">
+        Anlatım başlangıcı: {sec(narr)}
+        <input type="range" min={0} max={Math.max(0, total - 1_500)} step={100} value={narr} onChange={(e) => upd({ narrStartMs: Number(e.target.value), ownFirst: Number(e.target.value) >= 2_000 })} className="w-full" />
+      </label>
+      {video && (
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          <button type="button" onClick={() => upd({ narrStartMs: Math.max(0, Math.round(now - x.media!.inMs)), ownFirst: now - x.media!.inMs >= 2_000 })} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 font-semibold">Anlatım = oynatılan an</button>
+          <span className="font-semibold">Anlatım başlayınca videonun sesi:</span>
+          {DUCK_MODES.map((d) => (
+            <button key={d} type="button" onClick={() => upd({ duck: d })} className={chip(x.duck === d)}>
+              {DUCK_LABEL[d]}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="relative h-14 rounded-lg bg-neutral-900 text-[10.5px] font-bold text-white">
+        <div className="absolute inset-y-0 left-0 rounded-l-lg bg-sky-600/70" style={{ width: pct(narr) }} />
+        <div className="absolute top-0 h-1/2 rounded bg-fuchsia-600" style={{ left: pct(narr), width: voiceMs ? pct(voiceMs) : '30%' }} />
+        <span className="absolute left-2 top-1">{video && x.ownFirst ? 'Videonun sesi' : 'Başlık'}</span>
+        <span className="absolute top-1" style={{ left: `calc(${pct(narr)} + 6px)` }}>Anlatım{voiceMs ? ` ${sec(voiceMs)}` : ' (ses üretilmedi)'}</span>
+        <span className="absolute bottom-1 left-2">0</span>
+        <span className="absolute bottom-1 right-2">{sec(total)}</span>
+      </div>
+      {!video && <p className="text-[12px] text-[rgb(var(--color-muted))]">Görselde süre anlatım sığacak kadar otomatik uzar (anlatım + 1,2 sn).</p>}
     </div>
   )
 }
@@ -871,14 +1079,35 @@ function PresentStep({ l, patch, flush, takeServer }: StepProps & ServerProps) {
           </button>
           {sample && <audio src={sample} controls autoPlay className="h-9" />}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-semibold">Klibin kendi sesi:</span>
-          {CLIP_SOUNDS.map((c) => (
-            <button key={c} type="button" onClick={() => patch({ clipSound: c })} className={chip(l.clipSound === c)}>
-              {CLIP_SOUND_LABEL[c]}
-            </button>
-          ))}
-        </div>
+        {l.studio === 'etkinlik' ? (
+          <div className="space-y-2 rounded-xl border border-[rgb(var(--color-border))] p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold">Anlatım:</span>
+              <button type="button" onClick={() => patch({ voiceOn: true })} className={chip(l.voiceOn)}>Seslendirmeli</button>
+              <button type="button" onClick={() => patch({ voiceOn: false })} className={chip(!l.voiceOn)}>Seslendirmesiz (yalnız yazı)</button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold">Müzik:</span>
+              {MUSIC_MODES.map((m) => (
+                <button key={m} type="button" onClick={() => patch({ music: m })} className={chip(l.music === m)}>
+                  {MUSIC_MODE_LABEL[m]}
+                </button>
+              ))}
+            </div>
+            <p className="text-[12px] text-[rgb(var(--color-muted))]">
+              {l.music === 'on' ? 'Pakete uygun fon müziği; videonun kendi sesi önce çalıyorsa müzik anlatımla birlikte girer.' : l.music === 'own' ? 'Fon müziği yok; yalnız yüklediğiniz videonun kendi sesi/müziği çalar (görsellerde sessiz).' : 'Müzik yok, videoların sesi de kapalı; yalnız anlatım (açıksa) ve efekt sesleri.'}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold">Klibin kendi sesi:</span>
+            {CLIP_SOUNDS.map((c) => (
+              <button key={c} type="button" onClick={() => patch({ clipSound: c })} className={chip(l.clipSound === c)}>
+                {CLIP_SOUND_LABEL[c]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="space-y-2">
         <H hint="Anonslar sıra kartında okunur (≈ 2–4 sn); klip başlayınca susar. Ücretsiz şablonla yazılır, istediğiniz gibi düzenleyin.">Anonslar</H>
@@ -1109,8 +1338,11 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
     setAccounts(null)
     void call<{ accounts: ShareAccount[] }>('GET', `${API}/${l.id}/share?format=${format}`).then((r) => {
       if (!live) return
-      if (r.ok) setAccounts(r.data.accounts)
-      else {
+      if (r.ok) {
+        setAccounts(r.data.accounts)
+        // etkinlik videosu: önceden seçilen hesap işaretli gelir
+        if (l.accountId && r.data.accounts.some((a) => a.accountId === l.accountId && a.selectable)) setPicked((cur) => (cur.size ? cur : new Set([l.accountId!])))
+      } else {
         setAccounts([])
         toast.error(r.error)
       }
@@ -1118,7 +1350,7 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
     return () => {
       live = false
     }
-  }, [l.id, format, renderKey])
+  }, [l.id, l.accountId, format, renderKey])
   const toggle = (id: string) =>
     setPicked((cur) => {
       const n = new Set(cur)

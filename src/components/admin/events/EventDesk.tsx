@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { AlertTriangle, ImageOff, Loader2, Play, RefreshCw, Search, Sparkles, Trash2, Upload, Link2, Film, Star } from 'lucide-react'
+import { AlertTriangle, Check, Clapperboard, ImageOff, Loader2, Play, RefreshCw, Search, Sparkles, Trash2, Upload, Link2, Film, Star, X } from 'lucide-react'
 import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
 import { auth } from '@/lib/firebase/auth'
 import { storage } from '@/lib/firebase/storage'
@@ -31,10 +31,13 @@ type NewsGen = {
   voice: { voice: string; rate: number; presenter: string; source: 'city' | 'event'; script: string }
 }
 type Tab = 'haber' | 'medya' | 'bilgi' | 'video'
-type Range = 'week' | 'month' | 'quarter' | 'all'
+type Range = 'today' | 'tomorrow' | 'weekend' | 'week' | 'month' | 'quarter' | 'all'
 
 const CATS = ['Tümü', 'Konser', 'Tiyatro', 'Festival', 'Parti', 'Sergi', 'Sinema', 'Diğer'] as const
 const RANGES: Array<[Range, string, number]> = [
+  ['today', 'Bugün', 0],
+  ['tomorrow', 'Yarın', 1],
+  ['weekend', 'Hafta sonu', 7],
   ['week', 'Bu hafta', 7],
   ['month', 'Önümüzdeki 30 gün', 30],
   ['quarter', '3 ay', 92],
@@ -48,6 +51,24 @@ const INFO_FIELDS: Array<[keyof DeskInfo, string, string]> = [
   ['organizer', 'Organizatör', 'Organizatör adı'],
   ['venue', 'Mekân (düzeltme)', 'Kaynaktaki mekân yanlışsa'],
 ]
+
+/** İstanbul gününe göre [başlangıç, bitiş] (ms) */
+function rangeBounds(range: Range, now: number): [number, number] {
+  const day = 86400_000
+  const tz = 3 * 3600_000
+  const today = Math.floor((now + tz) / day) * day - tz
+  const dow = new Date(today + tz).getUTCDay() // 0 pazar
+  if (range === 'today') return [0, today + day - 1]
+  if (range === 'tomorrow') return [today + day, today + 2 * day - 1]
+  if (range === 'weekend') {
+    const sat = dow === 0 ? today - day : today + ((6 - dow + 7) % 7) * day
+    return [sat, sat + 2 * day - 1]
+  }
+  const days = RANGES.find((r) => r[0] === range)![2]
+  return [0, now + days * day]
+}
+const RANGE_TITLE: Record<Range, string> = { today: 'Bugün', tomorrow: 'Yarın', weekend: 'Hafta Sonu', week: 'Bu Hafta', month: 'Bu Ay', quarter: 'Yaklaşan', all: 'Yaklaşan' }
+type VideoAccount = { accountId: string; platform: string; displayName: string; username: string | null; citySlug: string | null }
 
 async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const user = auth.currentUser
@@ -105,6 +126,17 @@ export function EventDesk() {
   const [gen, setGen] = useState<Record<string, NewsGen>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
+  // ETKİNLİK VİDEOSU: seçim kipi
+  const [vmode, setVmode] = useState(false)
+  const [picked, setPicked] = useState<string[]>([])
+  const [vmodal, setVmodal] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('video') === '1') {
+      setVmode(true)
+      setRange('week')
+    }
+  }, [])
+  const togglePick = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 30 ? (toast.error('En fazla 30 etkinlik'), cur) : [...cur, id]))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -132,14 +164,14 @@ export function EventDesk() {
   const inCity = useMemo(() => (data?.items ?? []).filter((i) => city === 'all' || i.citySlug === city), [data, city])
   const noImgCount = inCity.filter((i) => !i.hasImage).length
   const list = useMemo(() => {
-    const days = RANGES.find((r) => r[0] === range)![2]
-    const until = now + days * 86400_000
+    const [from, until] = rangeBounds(range, now)
     const s = q.trim().toLocaleLowerCase('tr-TR')
     return inCity.filter(
       (i) =>
         (cat === 'Tümü' || i.categoryLabel === cat) &&
         (!noImg || !i.hasImage) &&
         Date.parse(i.startsAt) <= until &&
+        (Date.parse(i.startsAt) >= from || (!!i.daily && Date.parse(i.daily.to) >= from)) &&
         (!s || `${i.title} ${i.venues.join(' ')}`.toLocaleLowerCase('tr-TR').includes(s))
     )
   }, [inCity, cat, noImg, range, q, now])
@@ -200,6 +232,12 @@ export function EventDesk() {
           {data ? `${data.total} yaklaşan etkinlik · kaynaklar birleştirildi` : 'Yükleniyor…'}
         </p>
         <div className="ml-auto flex gap-2">
+          <button type="button" onClick={() => { setVmode((v) => !v); setPicked([]) }} className={cn('inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-bold', vmode ? 'bg-fuchsia-600 text-white' : 'border border-fuchsia-400 text-fuchsia-700 dark:text-fuchsia-300')}>
+            <Clapperboard className="h-4 w-4" /> {vmode ? 'Video seçimi açık' : 'Etkinlik videosu hazırla'}
+          </button>
+          <Link href="/admin/etkinlik-studyosu" className="inline-flex h-9 items-center rounded-xl border border-[rgb(var(--color-border))] px-3 text-sm font-semibold">
+            Etkinlik videoları
+          </Link>
           <button type="button" onClick={() => void sync()} disabled={syncing} className="inline-flex h-9 items-center gap-2 rounded-xl border border-[rgb(var(--color-border))] px-3 text-sm font-semibold disabled:opacity-50">
             <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} /> Şimdi senkronize et
           </button>
@@ -279,7 +317,12 @@ export function EventDesk() {
                 const p = trDateParts(it.startsAt, now)
                 const has = !!gen[it.id] || !!it.desk.newsId
                 return (
-                  <div key={it.id} className={cn('flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3', sel === it.id && 'bg-red-50 shadow-[inset_3px_0_0_#dc2626] dark:bg-red-950/30')}>
+                  <div key={it.id} className={cn('flex items-center gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3', sel === it.id && 'bg-red-50 shadow-[inset_3px_0_0_#dc2626] dark:bg-red-950/30', vmode && picked.includes(it.id) && 'bg-fuchsia-50 dark:bg-fuchsia-500/10')}>
+                    {vmode && (
+                      <button type="button" onClick={() => togglePick(it.id)} aria-label={`${it.title} videoya ekle`} className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 text-xs font-black', picked.includes(it.id) ? 'border-fuchsia-600 bg-fuchsia-600 text-white' : 'border-[rgb(var(--color-border))]')}>
+                        {picked.includes(it.id) ? picked.indexOf(it.id) + 1 : ''}
+                      </button>
+                    )}
                     {it.coverUrl ? (
                       <button type="button" onClick={() => { setSel(it.id); setTab('medya') }} className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-200" aria-label={`${it.title} görselleri`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -350,6 +393,137 @@ export function EventDesk() {
             </div>
           )}
           {data && data.suspects.length ? <SuspectList suspects={data.suspects} onSave={async (id, patch) => { await saveDesk(id, patch); await load() }} /> : null}
+        </div>
+      </div>
+      {vmode && (
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-fuchsia-300 bg-[rgb(var(--color-card))] px-4 py-3 shadow-xl">
+          <Clapperboard className="h-5 w-5 text-fuchsia-600" />
+          <b className="text-sm">{picked.length} etkinlik seçildi</b>
+          <span className="text-[12px] text-[rgb(var(--color-muted))]">{city === 'all' ? 'Önce bir il seçin' : `${data?.cities[city]?.name ?? city} · ${RANGES.find((r) => r[0] === range)![1]}`}</span>
+          <button type="button" onClick={() => setPicked(list.slice(0, 30).map((i) => i.id))} disabled={!list.length} className="h-8 rounded-lg border border-[rgb(var(--color-border))] px-2.5 text-[12px] font-semibold disabled:opacity-40">Listedekilerin tümü{list.length > 30 ? ' (ilk 30)' : ''}</button>
+          <button type="button" onClick={() => setPicked([])} disabled={!picked.length} className="h-8 rounded-lg border border-[rgb(var(--color-border))] px-2.5 text-[12px] font-semibold disabled:opacity-40">Temizle</button>
+          <button type="button" disabled={!picked.length} onClick={() => setVmodal(true)} className="ml-auto inline-flex h-10 items-center gap-2 rounded-xl bg-fuchsia-600 px-4 text-sm font-bold text-white disabled:opacity-40">
+            Hesap seç ve video kur →
+          </button>
+        </div>
+      )}
+      {vmodal && (
+        <VideoSetup
+          ids={picked}
+          items={(data?.items ?? []).filter((i) => picked.includes(i.id))}
+          citySlug={city === 'all' ? ((data?.items ?? []).find((i) => i.id === picked[0])?.citySlug ?? null) : city}
+          cityName={city === 'all' ? ((data?.items ?? []).find((i) => i.id === picked[0])?.city ?? '') : (data?.cities[city]?.name ?? city)}
+          rangeTitle={RANGE_TITLE[range]}
+          onClose={() => setVmodal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Video kurulmadan önce: hesap (filigran), başlık, biçim */
+function VideoSetup({ ids, items, citySlug, cityName, rangeTitle, onClose }: { ids: string[]; items: DeskItem[]; citySlug: string | null; cityName: string; rangeTitle: string; onClose: () => void }) {
+  const [accounts, setAccounts] = useState<VideoAccount[] | null>(null)
+  const [acc, setAcc] = useState<string>('')
+  const [title, setTitle] = useState(`${cityName} · ${rangeTitle}`)
+  const [sub, setSub] = useState(`${items.length} etkinlik`)
+  const [aspect, setAspect] = useState<'9:16' | '4:5' | '1:1' | '16:9'>('9:16')
+  const [wmText, setWmText] = useState('')
+  const [wmPos, setWmPos] = useState<'sag-ust' | 'sol-ust' | 'sag-alt' | 'sol-alt'>('sag-ust')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    void api<{ accounts: VideoAccount[] }>('/api/admin/list-studio/events')
+      .then((r) => {
+        const sorted = [...r.accounts].sort((a, b) => Number(b.citySlug === citySlug) - Number(a.citySlug === citySlug))
+        setAccounts(sorted)
+        const first = sorted.find((a) => a.citySlug === citySlug) ?? sorted[0]
+        if (first) {
+          setAcc(first.accountId)
+          setWmText(first.username ? `@${first.username.replace(/^@/, '')}` : first.displayName)
+        }
+      })
+      .catch((e) => {
+        setAccounts([])
+        toast.error(e instanceof Error ? e.message : 'Hesaplar alınamadı')
+      })
+  }, [citySlug])
+  const pick = (a: VideoAccount) => {
+    setAcc(a.accountId)
+    setWmText(a.username ? `@${a.username.replace(/^@/, '')}` : a.displayName)
+  }
+  const create = async () => {
+    if (!acc) return toast.error('Önce hesap seçin')
+    setBusy(true)
+    try {
+      const r = await api<{ list: { id: string } }>('/api/admin/list-studio/events', { method: 'POST', body: { eventIds: ids, accountId: acc, introTitle: title, title, introSubtitle: sub, aspect, wmText, wmPos } })
+      window.location.href = `/admin/etkinlik-studyosu?liste=${encodeURIComponent(r.list.id)}`
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Video kurulamadı')
+      setBusy(false)
+    }
+  }
+  const chipC = (on: boolean) => cn('h-8 rounded-full border px-3 text-[13px] font-semibold', on ? 'border-fuchsia-600 bg-fuchsia-600 text-white' : 'border-[rgb(var(--color-border))]')
+  const PLAT: Record<string, string> = { instagram: 'Instagram', facebook: 'Facebook', threads: 'Threads', youtube: 'YouTube' }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+      <div className="max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-[rgb(var(--color-card))] p-5 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-extrabold">Etkinlik videosu · {items.length} etkinlik</h2>
+          <button type="button" onClick={onClose} className="ml-auto rounded-lg p-1.5 hover:bg-[rgb(var(--color-surface))]" aria-label="Kapat"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-2">
+          <div className="text-sm font-extrabold">1 · Hesap <span className="font-normal text-[rgb(var(--color-muted))]">— hesap adı videoya filigran olarak eklenir; kapanış kartında yazılır</span></div>
+          {!accounts ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : !accounts.length ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Yetkili olduğunuz etkin (yeni yöntemle bağlı) hesap yok. Önce Sosyal Hesaplar'dan hesap bağlayın.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {accounts.map((a) => (
+                <button key={a.accountId} type="button" onClick={() => pick(a)} className={cn('flex items-center gap-2 rounded-xl border p-2.5 text-left', acc === a.accountId ? 'border-fuchsia-600 ring-2 ring-fuchsia-500/30' : 'border-[rgb(var(--color-border))]')}>
+                  {acc === a.accountId ? <Check className="h-4 w-4 text-fuchsia-600" /> : <span className="h-4 w-4" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">{a.displayName}</span>
+                    <span className="block truncate text-[12px] text-[rgb(var(--color-muted))]">{PLAT[a.platform] ?? a.platform}{a.username ? ` · @${a.username.replace(/^@/, '')}` : ''}{a.citySlug === citySlug && citySlug ? ' · bu il' : ''}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <label className="text-[12px] font-semibold">Filigran yazısı
+            <input value={wmText} onChange={(e) => setWmText(e.target.value)} className="mt-1 w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2.5 py-2 text-sm" />
+          </label>
+          <div className="flex flex-wrap items-end gap-1.5">
+            {(['sag-ust', 'sol-ust', 'sag-alt', 'sol-alt'] as const).map((p) => (
+              <button key={p} type="button" onClick={() => setWmPos(p)} className={chipC(wmPos === p)}>{{ 'sag-ust': 'Sağ üst', 'sol-ust': 'Sol üst', 'sag-alt': 'Sağ alt', 'sol-alt': 'Sol alt' }[p]}</button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="text-sm font-extrabold">2 · Başlık ve biçim</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Antalya · Bu Hafta" className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2.5 py-2 text-sm" />
+            <input value={sub} onChange={(e) => setSub(e.target.value)} placeholder="Alt başlık" className="rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2.5 py-2 text-sm" />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {([['9:16', 'Reels / Shorts'], ['4:5', 'Gönderi'], ['1:1', 'Kare'], ['16:9', 'YouTube']] as const).map(([a, t]) => (
+              <button key={a} type="button" onClick={() => setAspect(a)} className={chipC(aspect === a)}>{a} {t}</button>
+            ))}
+          </div>
+        </div>
+        <ol className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[rgb(var(--color-border))] p-2 text-[13px]">
+          {items.map((it, i) => (
+            <li key={it.id} className="truncate"><b>{i + 1}.</b> {it.title} <span className="text-[rgb(var(--color-muted))]">· {trDateParts(it.startsAt, Date.now()).date} · {it.desk.info.venue || it.venue}</span>{!it.hasImage && <span className="ml-1 text-amber-700">(görsel yok)</span>}</li>
+          ))}
+        </ol>
+        <p className="text-[12px] text-[rgb(var(--color-muted))]">Masada eklenmiş videolar (hakkı belli olan) ve kapak görselleri otomatik konur. Stüdyoda konser videosu ekleyebilir, anlatımın kaçıncı saniyede başlayacağını, süreyi ve müziği ayarlayabilirsiniz. Hiçbir şey otomatik paylaşılmaz.</p>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-10 rounded-xl border border-[rgb(var(--color-border))] px-4 text-sm font-semibold">Vazgeç</button>
+          <button type="button" disabled={busy || !acc} onClick={() => void create()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-fuchsia-600 px-4 text-sm font-bold text-white disabled:opacity-50">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} Videoyu stüdyoda kur
+          </button>
         </div>
       </div>
     </div>

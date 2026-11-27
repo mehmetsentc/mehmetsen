@@ -494,6 +494,134 @@ async function drawBadge(ctx: SKRSContext2D, W: number, H: number, o: Extract<Li
   }
 }
 
+/** ETKİNLİK — anlatımdan önce (klibin kendi sesi çalarken) büyük başlık */
+function drawEvTitle(ctx: SKRSContext2D, W: number, H: number, o: Extract<ListOverlay, { type: 'evtitle' }>): void {
+  const k = Math.min(W, H) / 1080
+  const vertical = H > W * 1.2
+  const maxW = W * 0.86
+  const g = ctx.createLinearGradient(0, H * 0.45, 0, H)
+  g.addColorStop(0, 'rgba(0,0,0,0)')
+  g.addColorStop(1, 'rgba(0,0,0,0.78)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, H * 0.45, W, H * 0.55)
+  ctx.textBaseline = 'top'
+  const title = upper(o.title)
+  const size = fitFont(ctx, title.split(' ').sort((a, b) => b.length - a.length)[0] ?? title, AD_FONT_BEBAS, Math.round((vertical ? 150 : 120) * k), maxW, Math.round(60 * k))
+  ctx.font = `${size}px ${AD_FONT_BEBAS}`
+  const lines = wrapLines((t) => ctx.measureText(t).width, title, maxW, 3)
+  const catH = o.category ? Math.round(44 * k) : 0
+  let y = H * (vertical ? 0.86 : 0.88) - lines.length * size * 0.95
+  if (o.category) {
+    const c = upper(o.category)
+    ctx.font = `${Math.round(32 * k)}px ${FONT_XB}`
+    const cw = ctx.measureText(c).width + 36 * k
+    ctx.fillStyle = o.accent
+    roundRectPath(ctx, (W - maxW) / 2, y - catH - 18 * k, cw, catH, 10 * k)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(c, (W - maxW) / 2 + 18 * k, y - catH - 18 * k + 6 * k)
+  }
+  ctx.font = `${size}px ${AD_FONT_BEBAS}`
+  glow(ctx, o.look === 'neon' ? o.accent : 'rgba(0,0,0,0.6)', (o.look === 'neon' ? 30 : 16) * k)
+  ctx.fillStyle = '#ffffff'
+  for (const l of lines) {
+    ctx.fillText(l, (W - maxW) / 2, y)
+    y += size * 0.95
+  }
+  noGlow(ctx)
+  ctx.textBaseline = 'alphabetic'
+}
+
+/** ETKİNLİK — anlatım boyunca bilgi kartı: takvim kutusu (gün/ay), ad, saat, mekân, bilet */
+function drawEvCard(ctx: SKRSContext2D, W: number, H: number, o: Extract<ListOverlay, { type: 'evcard' }>): void {
+  const k = Math.min(W, H) / 1080
+  const vertical = H > W * 1.2
+  const w = vertical ? W * 0.9 : Math.min(W * 0.62, 1180 * k)
+  const pad = 30 * k
+  const cal = Math.round(170 * k)
+  const tx = pad + cal + 30 * k
+  const textW = w - tx - pad
+  ctx.textBaseline = 'top'
+  const tSize = Math.round((vertical ? 76 : 60) * k)
+  ctx.font = `${tSize}px ${AD_FONT_BEBAS}`
+  const tl = wrapLines((t) => ctx.measureText(t).width, upper(o.title), textW, 2)
+  const lSize = Math.round((vertical ? 42 : 36) * k)
+  const rows: string[] = []
+  if (o.time || o.date) rows.push([o.date, o.time].filter(Boolean).join(' · '))
+  if (o.venue) rows.push(o.venue)
+  if (o.price || o.source) rows.push(o.price ? `Bilet: ${o.price}` : `Bilet: ${o.source}`)
+  const h = Math.max(cal + pad * 2, pad * 2 + tl.length * tSize * 0.95 + rows.length * lSize * 1.45 + 10 * k)
+  const x = (W - w) / 2
+  const y = vertical ? H * 0.9 - h : H - h - 60 * k
+  const light = o.look === 'minimal' || o.look === 'soft'
+  glow(ctx, 'rgba(0,0,0,0.5)', 24 * k)
+  ctx.fillStyle = light ? 'rgba(255,255,255,0.94)' : 'rgba(8,8,14,0.82)'
+  roundRectPath(ctx, x, y, w, h, 30 * k)
+  ctx.fill()
+  noGlow(ctx)
+  ctx.fillStyle = o.accent
+  roundRectPath(ctx, x, y, Math.max(8, 12 * k), h, 6 * k)
+  ctx.fill()
+  // takvim kutusu
+  const cx = x + pad
+  const cy = y + (h - cal) / 2
+  ctx.fillStyle = o.accent
+  roundRectPath(ctx, cx, cy, cal, cal, 22 * k)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  const day = o.day || '•'
+  const dSize = fitFont(ctx, day, AD_FONT_BEBAS, Math.round(112 * k), cal * 0.86, Math.round(50 * k))
+  ctx.font = `${dSize}px ${AD_FONT_BEBAS}`
+  ctx.fillText(day, cx + (cal - ctx.measureText(day).width) / 2, cy + 14 * k)
+  const mon = upper(o.mon || '')
+  ctx.font = `${Math.round(36 * k)}px ${FONT_XB}`
+  ctx.fillText(mon, cx + (cal - ctx.measureText(mon).width) / 2, cy + cal - 50 * k)
+  // metin
+  let ty = y + pad
+  ctx.font = `${tSize}px ${AD_FONT_BEBAS}`
+  ctx.fillStyle = light ? '#111111' : '#ffffff'
+  for (const l of tl) {
+    ctx.fillText(l, x + tx, ty)
+    ty += tSize * 0.95
+  }
+  ty += 10 * k
+  for (const r of rows) {
+    ctx.fillStyle = o.accent
+    ctx.beginPath()
+    ctx.arc(x + tx + lSize * 0.3, ty + lSize * 0.55, lSize * 0.2, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.font = `${lSize}px ${FONT_MD}`
+    ctx.fillStyle = light ? '#333333' : 'rgba(255,255,255,0.92)'
+    const line = wrapLines((t) => ctx.measureText(t).width, r, textW - lSize * 0.9, 1)[0] ?? r
+    ctx.fillText(line, x + tx + lSize * 0.9, ty)
+    ty += lSize * 1.45
+  }
+  ctx.textBaseline = 'alphabetic'
+}
+
+/** Hesap adı filigranı (köşe, yarı saydam) */
+function drawWatermark(ctx: SKRSContext2D, W: number, H: number, o: Extract<ListOverlay, { type: 'wm' }>): void {
+  const k = Math.min(W, H) / 1080
+  const vertical = H > W * 1.2
+  const size = Math.round(40 * k)
+  ctx.font = `${size}px ${FONT_XB}`
+  const t = o.text
+  const tw = ctx.measureText(t).width
+  const m = 40 * k
+  const top = vertical ? H * 0.06 : m
+  const bottom = vertical ? H * 0.95 - size : H - m - size
+  const x = o.pos.startsWith('sag') ? W - m - tw : m
+  const y = o.pos.endsWith('ust') ? top : bottom
+  ctx.textBaseline = 'top'
+  ctx.globalAlpha = Math.max(0.3, Math.min(1, o.opacity))
+  glow(ctx, 'rgba(0,0,0,0.75)', 10 * k)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillText(t, x, y)
+  noGlow(ctx)
+  ctx.globalAlpha = 1
+  ctx.textBaseline = 'alphabetic'
+}
+
 /** Bir liste katmanını W×H saydam PNG olarak yazar. */
 export async function drawListOverlay(o: ListOverlay, W: number, H: number, file: string, root = process.cwd()): Promise<void> {
   if (o.type === 'ad') return drawAdOverlay(o.o, W, H, file, root)
@@ -504,6 +632,9 @@ export async function drawListOverlay(o: ListOverlay, W: number, H: number, file
   else if (o.type === 'specs') drawSpecs(ctx, W, H, o)
   else if (o.type === 'intro') await drawIntro(ctx, W, H, o)
   else if (o.type === 'outro') drawOutro(ctx, W, H, o)
+  else if (o.type === 'evtitle') drawEvTitle(ctx, W, H, o)
+  else if (o.type === 'evcard') drawEvCard(ctx, W, H, o)
+  else if (o.type === 'wm') drawWatermark(ctx, W, H, o)
   else await drawBadge(ctx, W, H, o)
   await fs.writeFile(file, await canvas.encode('png'))
 }
