@@ -13,7 +13,7 @@ import {
   Map, ShieldAlert, CloudRain, Leaf, Calendar, Bitcoin, BarChart2,
   Mail, Inbox, Archive, FileText, Network,
   ListTodo, BookOpen, GraduationCap, ScrollText, Layers,
-  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Megaphone, Send, PanelLeftClose, PanelLeftOpen, type LucideIcon,
+  LayoutGrid, Activity, SlidersHorizontal, Building2, Timer, Coins, Radar, Search, Images, Clapperboard, Megaphone, ListOrdered, Send, PanelLeftClose, PanelLeftOpen, type LucideIcon,
 } from 'lucide-react'
 import { getAdminCategoryGroups } from '@/constants/config'
 import { cn } from '@/lib/utils'
@@ -153,6 +153,8 @@ const NAV_GROUPS: NavGroup[] = [
       // Banner reklamları: ekle / düzenle / kaldır, alanlara (slot) göre süz. Newsroom OS menüsünde kaybolmuştu.
       { href: '/admin/ads', label: 'Reklam Banner Alanları', icon: LayoutGrid, requiredPermissions: ['seo:edit'] },
       { href: '/admin/reklam-studyosu', label: 'Reklam Stüdyosu', icon: Megaphone, requiredPermissions: ['social:view'] },
+      { href: '/admin/liste-studyosu', label: 'Liste Stüdyosu', icon: ListOrdered, requiredPermissions: ['social:view'] },
+      { href: '/admin/teknoloji-studyosu', label: 'Teknoloji Stüdyosu', icon: Cpu, requiredPermissions: ['social:view'] },
     ],
   },
   {

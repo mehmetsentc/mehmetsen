@@ -21,7 +21,8 @@ function walk(dir: string, out: string[] = []): string[] {
 describe('FinOps reel worker wiring', () => {
   const files = walk(join(root, 'src')).filter((p) => readFileSync(p, 'utf8').includes('remote: { handler:'))
   it('finds the queued call sites', () => {
-    expect(names.size).toBe(10)
+    // 12: + LİSTE STÜDYOSU list.segment / list.concat (27 Kasım 2026)
+    expect(names.size).toBe(12)
     expect(files.length).toBeGreaterThanOrEqual(8)
   })
   for (const p of files) {

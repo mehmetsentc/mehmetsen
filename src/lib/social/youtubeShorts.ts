@@ -47,6 +47,8 @@ export interface YouTubeShortInput {
   location?: { latitude: number; longitude: number; description?: string }
   /** STORY-2: a regular (long / horizontal) video, not a Short — larger file, longer upload */
   long?: boolean
+  /** LİSTE STÜDYOSU: YouTube kategori kimliği (10 Müzik, 24 Eğlence); yoksa Haber (25) */
+  categoryId?: string
 }
 
 /** Regular YouTube videos from the story studio (10 min at ≤ 5 Mbit/s ≈ 400 MB). */
@@ -179,7 +181,7 @@ export async function publishYouTubeShort(
       title: youtubeTitle(neutralizeSocialText(input.title)),
       description: youtubeDescription(neutralizeSocialText(input.description)),
       tags: youtubeTags(input.tags),
-      categoryId: YOUTUBE_NEWS_CATEGORY_ID,
+      categoryId: input.categoryId && /^\d{1,3}$/.test(input.categoryId) ? input.categoryId : YOUTUBE_NEWS_CATEGORY_ID,
       defaultLanguage: 'tr',
       defaultAudioLanguage: 'tr',
     },

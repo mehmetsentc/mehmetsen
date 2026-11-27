@@ -152,6 +152,65 @@ export const REEL_JOB_HANDLERS = {
     }
   },
 
+  /** LİSTE STÜDYOSU: tek parça (giriş / bir sıra / kapanış). */
+  'list.segment': async (a: Args): Promise<ReelJobOut> => {
+    const id = str(a.id)
+    const seg = str(a.seg)
+    const key = str(a.key)
+    const uid = str(a.uid)
+    const [S, M, { renderEditProject }, { drawListOverlay }] = await Promise.all([
+      import('@/lib/listStudio/listStore'),
+      import('@/lib/listStudio/listModel'),
+      import('@/lib/edit/editRender'),
+      import('@/lib/listStudio/listText'),
+    ])
+    const l = await S.getList(id)
+    if (!l) throw new Error('Liste bulunamadı')
+    const segId = seg as ReturnType<typeof M.segmentIds>[number]
+    if (!M.segmentIds(l).includes(segId)) throw new Error('Parça bulunamadı')
+    if (M.segmentKey(l, segId) !== key) throw new Error('Liste değişti; videoyu yeniden oluşturun')
+    const names = M.compileSegment(l, segId, (n) => n)?.sfx.map((x) => x.name) ?? []
+    const sfx = await S.ensureSfx(names)
+    const c = M.compileSegment(l, segId, (n) => sfx.get(n) ?? null)
+    if (!c) throw new Error('Parça derlenemedi (klip eksik)')
+    const out = await renderEditProject(c.project, key, undefined, {
+      crf: 18,
+      duckUnderVoice: c.duck,
+      drawText: async (t, W, H, file, root) => {
+        const o = c.overlays.get(t.id)
+        if (!o) throw new Error('Liste katmanı bulunamadı')
+        await drawListOverlay(o, W, H, file, root)
+      },
+    })
+    const stored = await S.setSegmentRendered(id, segId, key, { url: out.outputUrl, seconds: out.seconds })
+    return { result: { seg, key, url: out.outputUrl, seconds: out.seconds, reused: out.reused, stored } }
+  },
+
+  /** LİSTE STÜDYOSU: hazır parçaları tek MP4'te birleştirir (yeniden kodlamadan). */
+  'list.concat': async (a: Args): Promise<ReelJobOut> => {
+    const id = str(a.id)
+    const key = str(a.key)
+    const uid = str(a.uid)
+    const [S, M] = await Promise.all([import('@/lib/listStudio/listStore'), import('@/lib/listStudio/listModel')])
+    const l = await S.getList(id)
+    if (!l) throw new Error('Liste bulunamadı')
+    if (M.listRenderKey(l) !== key) throw new Error('Liste değişti; videoyu yeniden oluşturun')
+    const ids = M.segmentIds(l)
+    const missing = M.segmentsToRender(l)
+    if (missing.length) throw new Error(`${missing.length} parça henüz hazır değil`)
+    try {
+      const out = await S.concatSegments(l, key, ids.map((s) => l.segments[s]!.url))
+      const seconds = out.seconds || Math.round(M.listTotalMs(l) / 100) / 10
+      const stored = await S.setListRendered(id, key, { ...out, seconds }, Date.now())
+      await S.listAudit(uid, 'lists.render', l, { seconds, parts: ids.length, reused: out.reused, stored })
+      return { result: { ...out, seconds, stored } }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Liste videosu birleştirilemedi'
+      await S.setListRendered(id, key, { error: message }, Date.now()).catch(() => undefined)
+      throw err
+    }
+  },
+
   /** Konu → Video, 1-minute video in one job. */
   'story.render': async (a: Args): Promise<ReelJobOut> => {
     const id = str(a.id)
