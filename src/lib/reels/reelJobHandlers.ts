@@ -50,16 +50,11 @@ export const REEL_JOB_HANDLERS = {
   'reels.prepare': async (a: Args): Promise<ReelJobOut> => {
     const newsId = str(a.newsId)
     const uid = str(a.uid)
+    // MÜZİK-SEÇİMİ: editörün onay ekranındaki seçimi; hassas haber bilgi notu kaldırıldı (kullanıcı kararı)
+    const musicChoice = a.music === 'off' ? 'off' : a.music === 'on' ? 'on' : null
     const { buildReelForNews } = await import('@/lib/reels/reelService')
-    const b = await buildReelForNews(newsId, { by: uid })
-    const [{ sensitiveShareNotice }, { getAdminFirestore }, { Collections }] = await Promise.all([
-      import('@/lib/social/sensitiveNews'),
-      import('@/lib/firebase/admin'),
-      import('@/lib/firebase/collections'),
-    ])
-    const snap = await getAdminFirestore().collection(Collections.NEWS).doc(newsId).get()
-    const notice = snap.exists ? sensitiveShareNotice(snap.data() as Record<string, unknown>) : null
-    return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused, notice } }
+    const b = await buildReelForNews(newsId, { by: uid, musicChoice })
+    return { result: { prepared: true, url: b.url, coverUrl: b.coverUrl ?? null, reused: b.reused, notice: null, music: musicChoice } }
   },
 
   /** TikTok dialog «Video oluştur» and the social automation worker. */

@@ -15,8 +15,6 @@ import { manualTargetsForNews } from '@/lib/social/accounts/manualTargets'
 import { publishOneSocial } from '@/lib/social/publishOneSocial'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
 import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
-import { getAdminFirestore } from '@/lib/firebase/admin'
-import { Collections } from '@/lib/firebase/collections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,14 +31,8 @@ export async function GET(request: Request) {
   const auth = await requireActor(request, { mutation: false })
   if ('response' in auth) return auth.response
   const url = new URL(request.url)
-  // HASSAS-VIDEO: onay ekranındaki bilgi notu (?newsId=&notice=1) — paylaşımı engellemez
-  if (url.searchParams.get('notice') === '1') {
-    const id = url.searchParams.get('newsId') ?? ''
-    if (!NEWS_RE.test(id)) return json({ error: 'newsId gerekli' }, 400)
-    const snap = await getAdminFirestore().collection(Collections.NEWS).doc(id).get()
-    const { sensitiveShareNotice } = await import('@/lib/social/sensitiveNews')
-    return json({ notice: snap.exists ? sensitiveShareNotice(snap.data() as Record<string, unknown>, 'before') : null })
-  }
+  // MÜZİK-SEÇİMİ (27.11.2026): hassas haber uyarısı kaldırıldı (kullanıcı kararı); eski istemciler için boş döner
+  if (url.searchParams.get('notice') === '1') return json({ notice: null })
   // REELS-12: poll a background build / share (?job=…); only the user who started it
   const job = url.searchParams.get('job')
   if (job !== null) {
@@ -74,14 +66,15 @@ export async function POST(request: Request) {
     if (!r.options.some((o) => o.selectable && VIDEO_PLATFORMS.has(o.platform))) return json({ error: 'Bu haber için kullanılabilir hesap yok', code: 'not_found' }, 404)
     // REELS-12: build in the background; the client polls ?job= (a video reel can take minutes)
     const uid = auth.actor.uid
+    // MÜZİK-SEÇİMİ: editör «Müzikli / Müziksiz» seçer (verilmezse eskisi gibi ayardaki müzik)
+    const music = body.music === 'off' ? 'off' : body.music === 'on' ? 'on' : null
     const job = await startReelJob({
-      jobId: reelJobId(['build', newsId]),
+      jobId: reelJobId(['build', newsId, ...(music ? [music] : [])]),
       kind: 'build',
       newsId,
       by: uid,
-      // HASSAS-VIDEO: hassas haberde paylaşım sürer; editöre yalnız bilgi notu gider (handler)
-      run: () => runReelJobHandler('reels.prepare', { newsId, uid }),
-      remote: { handler: 'reels.prepare', args: { newsId, uid } },
+      run: () => runReelJobHandler('reels.prepare', { newsId, uid, music }),
+      remote: { handler: 'reels.prepare', args: { newsId, uid, music } },
     })
     return json({ job }, 202)
   }

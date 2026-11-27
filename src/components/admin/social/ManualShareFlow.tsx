@@ -29,7 +29,7 @@ import {
   type TargetRowLike,
 } from '@/lib/social/shareResultText'
 import { showShareToast } from '@/lib/social/shareToast'
-import { reelsCall, runReelJob } from './reelsApi'
+import { runReelJob } from './reelsApi'
 import {
   ComposerTargetPicker,
   EMPTY_TARGETS,
@@ -73,7 +73,7 @@ const CODE_TEXT: Record<string, string> = {
  * REELS-3: reels / video stories — the news video is built once (reused afterwards)
  * and published account by account (one request each, so each has its own budget).
  */
-async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_story'; targets: TargetSelection; names: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
+async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_story'; targets: TargetSelection; names: Map<string, string>; music?: 'on' | 'off' }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
   // THREADS-VIDEO-1: Threads takes the reel as a video post (no video story).
   const list = (['instagram', 'facebook', ...(input.mode === 'reel' ? (['threads', 'youtube'] as const) : [])] as const).flatMap((p) => input.targets[p].map((id) => ({ platform: p, accountId: id })))
   if (list.length === 0) return { ok: false, status: 400, overall: 'error', rows: [], message: CODE_TEXT.target_required }
@@ -81,7 +81,7 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
   // REELS-5 / REELS-12: build (or reuse) the video + cover once, as a background job that is
   // polled — a video reel can take minutes and Cloudflare closes plain requests at 100 s.
   onProgress?.(0, list.length + 1)
-  const prep = await runReelJob('/api/admin/social/reels/share', { newsId: input.newsId, format: input.mode, prepare: true })
+  const prep = await runReelJob('/api/admin/social/reels/share', { newsId: input.newsId, format: input.mode, prepare: true, ...(input.music ? { music: input.music } : {}) })
   if (!prep.ok) return { ok: false, status: prep.status ?? 500, overall: 'error', rows: [], message: `Video hazırlanamadı: ${prep.error}` }
   const notice = (prep.job.result as { notice?: string | null } | null)?.notice ?? null
   let i = 1
@@ -109,9 +109,9 @@ async function sendVideoShare(input: { newsId: string; mode: 'reel' | 'video_sto
  * REELS-5: several accounts are sent one request each — a single request for many
  * accounts outlived the 100 s edge timeout (HTTP 524) while the server kept publishing.
  */
-export async function sendManualShare(input: { newsId: string; mode: ShareMode; targets: TargetSelection; extra?: Record<string, unknown>; names?: Map<string, string> }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
+export async function sendManualShare(input: { newsId: string; mode: ShareMode; targets: TargetSelection; extra?: Record<string, unknown>; names?: Map<string, string>; music?: 'on' | 'off' }, onProgress?: (done: number, total: number) => void): Promise<ManualShareResult> {
   if (input.mode === 'reel' || input.mode === 'video_story') {
-    return sendVideoShare({ newsId: input.newsId, mode: input.mode, targets: { ...input.targets, threads: [] }, names: input.names ?? new Map() }, onProgress)
+    return sendVideoShare({ newsId: input.newsId, mode: input.mode, targets: { ...input.targets, threads: [] }, names: input.names ?? new Map(), music: input.music }, onProgress)
   }
   // YouTube yalnız Reels (Shorts) yolundan gider; gönderi / hikâyede seçili kalsa bile gönderilmez.
   const sel: TargetSelection = input.mode === 'story' ? { ...input.targets, threads: [], youtube: [] } : { ...input.targets, youtube: [] }
@@ -210,15 +210,10 @@ export function ManualShareFlow({
   const [result, setResult] = useState<ManualShareResult | null>(null)
   const [retry, setRetry] = useState<string[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  // HASSAS-VIDEO: hassas haber notu onay ekranında gösterilir; editör onaylayınca paylaşım sürer
-  const [notice, setNotice] = useState<string | null>(null)
-  const toConfirm = () => {
-    setStage('confirm')
-    setNotice(null)
-    void reelsCall<{ notice: string | null }>('GET', `/api/admin/social/reels/share?newsId=${encodeURIComponent(newsId)}&notice=1`).then((r) => {
-      if (r.ok) setNotice(r.data.notice)
-    })
-  }
+  // MÜZİK-SEÇİMİ (27.11.2026): otomatik «ağır haber» uyarısı kaldırıldı; müzikli / müziksiz kararı editörün
+  const [music, setMusic] = useState<'on' | 'off'>('on')
+  const isVideo = mode === 'reel' || mode === 'video_story'
+  const toConfirm = () => setStage('confirm')
   const effective: TargetSelection = mode === 'post' || mode === 'reel' ? targets : { ...targets, threads: [] }
   const count = targetCount(effective)
   const labels = selectedLabels(effective, options)
@@ -233,7 +228,7 @@ export function ManualShareFlow({
     const names = new Map(options.map((o) => [o.accountId, o.username ? `${o.displayName} (@${o.username})` : o.displayName]))
     let r: ManualShareResult
     try {
-      r = await sendManualShare({ newsId, mode, targets: sel, names }, (done, total) => setProgress({ done, total }))
+      r = await sendManualShare({ newsId, mode, targets: sel, names, ...(isVideo ? { music } : {}) }, (done, total) => setProgress({ done, total }))
     } finally {
       sendingRef.current = false
     }
@@ -295,15 +290,29 @@ export function ManualShareFlow({
               ))}
             </ul>
           </div>
-          {notice ? (
-            <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-              {notice} Onaylarsanız paylaşım yapılır.
-            </p>
-          ) : null}
+          {isVideo && (
+            <div role="radiogroup" aria-label="Videoda müzik" className="space-y-1">
+              <p className="text-[rgb(var(--color-muted))]">Videoda müzik:</p>
+              <div className="flex gap-1.5">
+                {(['on', 'off'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={music === v}
+                    onClick={() => setMusic(v)}
+                    className={cn('flex-1 rounded-lg border px-2 py-1.5 font-bold', music === v ? 'border-blue-600 bg-blue-600 text-white' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text))]')}
+                  >
+                    {v === 'on' ? 'Müzikli' : 'Müziksiz'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <p className="text-[11px] text-[rgb(var(--color-muted))]">Her hesap ayrı yayımlanır; bir hesabın hatası diğerlerini etkilemez. Bu haber bir hesapta zaten yayımlandıysa o hesaba tekrar gönderilmez.</p>
           <div className="flex gap-1.5">
             <button type="button" onClick={() => void send(effective)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 font-bold text-white">
-              <Send className="h-3 w-3" aria-hidden /> {notice ? `Onayla ve ${count} hesapta paylaş` : `${count} hesapta paylaş`}
+              <Send className="h-3 w-3" aria-hidden /> {`${count} hesapta paylaş`}
             </button>
             <button type="button" onClick={() => setStage('pick')} className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1.5 font-bold text-[rgb(var(--color-muted))]">
               Geri

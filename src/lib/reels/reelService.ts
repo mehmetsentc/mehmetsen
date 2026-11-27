@@ -180,6 +180,12 @@ export type ReelBuildOptions = {
   template?: string | null
   /** REELS-T1 «Video yükle»: a rights-cleared Video Kütüphanesi file used instead of the story's media. */
   videoItemId?: string | null
+  /**
+   * MÜZİK-SEÇİMİ (27.11.2026, kullanıcı kararı): paylaşım onay ekranında editörün seçimi.
+   * 'off' = müziksiz; 'on' = normal müzik (ayar / il profili). Verilmezse eskisi gibi (otomatik ağır-haber
+   * sessizliği YOK — kaldırıldı). Seçim verildiğinde var olan video yalnız aynı seçeneklerle üretildiyse kullanılır.
+   */
+  musicChoice?: 'on' | 'off' | null
 }
 
 export type ReelBuildResult = {
@@ -461,12 +467,9 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
   if (!snap.exists) throw new Error('reels: news not found')
   const d = snap.data() as Record<string, unknown>
   if (str(d.status) !== 'published') throw new Error('reels: news is not published')
-  {
-    // HASSAS-VIDEO: ölüm / ağır şiddet / intihar haberinde müzik yok (editör stüdyoda açıkça seçmediyse);
-    // metin zaten nötr dilden geçiyor. Paylaşım engellenmez.
-    const { isGraveNews } = await import('@/lib/social/sensitiveNews')
-    if (isGraveNews(d) && !isReelMusic(opts.music)) opts = { ...opts, music: 'none' }
-  }
+  // MÜZİK-SEÇİMİ (27.11.2026): hassas/ağır haberde otomatik müzik kapatma KALDIRILDI (yanlış tespit:
+  // «veda etti» ölüm sanılıyordu). Müzikli / müziksiz kararını editör onay ekranında verir.
+  if (opts.musicChoice === 'off' && !isReelMusic(opts.music)) opts = { ...opts, music: 'none' }
   const settings = await getReelVoiceSettings()
   let src = reelSourceFromDoc(d, { alwaysUseMedia: settings.alwaysUseMedia !== false })
   if (!src.headline) throw new Error('reels: news has no title')
@@ -485,7 +488,7 @@ export async function buildReelForNews(newsId: string, opts: ReelBuildOptions = 
     recordReel({ newsId, slug, headline: src.headline, url, coverUrl, seconds: m.seconds ?? null, persona: m.persona ?? null, style: m.style ?? null, media: m.media ?? null, by: opts.by ?? null })
       .catch((err) => console.warn('[reels] library record failed:', err instanceof Error ? err.message : err))
 
-  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText || opts.layout || opts.template || opts.videoItemId)
+  const hasStudioChoice = !!(opts.voice || opts.rate != null || opts.personaId || opts.intro || opts.outro || opts.music || opts.voiceText || opts.layout || opts.template || opts.videoItemId || opts.musicChoice)
   const bucket = getAdminStorage().bucket(BUCKET)
   const file = bucket.file(reelStoragePath(newsId))
   // Plain «build» (automation / share) reuses whatever reel exists.
