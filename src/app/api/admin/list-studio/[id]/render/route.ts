@@ -2,6 +2,8 @@
  * LİSTE STÜDYOSU — video üretimi parça parça:
  *   POST { segment: 'intro' | 'i_<sıra>' | 'outro' } → o parçayı üretir (202 { job }); hazırsa { reused }
  *   POST { concat: true }                           → hazır parçaları tek MP4'te birleştirir (202 { job })
+ *   POST { whole: true }                            → ETKİNLİK: tek parça video, bölümler arası geçişli (≤ 150 sn)
+ *   POST { cards: true }                            → ETKİNLİK: kart şablonundan JPEG kareler
  *   GET  ?job=…                                     → iş durumu (yalnız başlatan)
  * KURGU motoru kullanılır; closing: false → NaHaber kapanışı / logosu yoktur.
  * Şimdilik Vercel'de çalışır (Railway reel worker yeni sürümle dağıtılınca `remote` eklenebilir).
@@ -9,7 +11,7 @@
 import { json, requireAccountManager } from '@/lib/social/accounts/connect/routeHelpers'
 import { isReelJobId, readReelJob, reelJobId, startReelJob } from '@/lib/reels/reelJobs'
 import { runReelJobHandler } from '@/lib/reels/reelJobHandlers'
-import { listRenderKey, listRenderProblem, segmentIds, segmentKey, segmentsToRender, type SegmentId } from '@/lib/listStudio/listModel'
+import { cardsKey, cardsProblem, listRenderKey, listRenderProblem, segmentIds, segmentKey, segmentsToRender, wholeEligible, wholeRenderKey, type SegmentId } from '@/lib/listStudio/listModel'
 import { getList } from '@/lib/listStudio/listStore'
 
 export const runtime = 'nodejs'
@@ -35,9 +37,24 @@ export async function POST(request: Request, { params }: Ctx) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const l = await getList(id)
   if (!l) return json({ error: 'Liste bulunamadı', code: 'not_found' }, 404)
+  const uid = auth.ctx.uid
+  if (body.cards === true) {
+    const cp = cardsProblem(l)
+    if (cp) return json({ error: cp, code: 'not_renderable' }, 409)
+    const key = cardsKey(l)
+    if (l.cards.status === 'ready' && l.cards.key === key && l.cards.urls.length) return json({ cards: l.cards, reused: true })
+    const job = await startReelJob({ jobId: reelJobId(['lcards', id, key]), kind: 'render', newsId: `list_${id}`, by: uid, run: () => runReelJobHandler('list.cards', { id, key, uid }) })
+    return json({ job }, 202)
+  }
   const problem = listRenderProblem(l)
   if (problem) return json({ error: problem, code: 'not_renderable' }, 409)
-  const uid = auth.ctx.uid
+  if (body.whole === true) {
+    if (!wholeEligible(l)) return json({ error: 'Tek parça video en fazla 150 sn; parça parça üretin', code: 'too_long' }, 409)
+    const key = wholeRenderKey(l)
+    if (l.render.status === 'ready' && l.render.key === key && l.render.outputUrl) return json({ render: l.render, reused: true })
+    const job = await startReelJob({ jobId: reelJobId(['lwhole', id, key]), kind: 'render', newsId: `list_${id}`, by: uid, run: () => runReelJobHandler('list.whole', { id, key, uid }) })
+    return json({ job }, 202)
+  }
   if (body.concat === true) {
     const key = listRenderKey(l)
     if (l.render.status === 'ready' && l.render.key === key && l.render.outputUrl) return json({ render: l.render, reused: true })

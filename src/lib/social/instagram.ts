@@ -59,6 +59,7 @@ function buildInstagramCaption(payload: SocialPublishPayload): string {
  * Manşet overlay Meta AI üretmez — OG görsel ayrı pipeline.
  */
 async function resolveInstagramCaption(payload: SocialPublishPayload): Promise<string> {
+  if (payload.exactCaption?.trim()) return payload.exactCaption.trim().slice(0, IG_CAPTION_LIMIT)
   const city = payload.cityName?.trim() || 'Çanakkale'
   const deepseekBody = (payload.description ?? '').trim()
   const content = deepseekBody || payload.title

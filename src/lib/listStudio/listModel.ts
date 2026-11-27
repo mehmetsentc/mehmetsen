@@ -10,6 +10,8 @@
  */
 import { EMPTY_RENDER, FILTERS, TRANSITIONS, newItemId, timeline, type Aspect, type EditAsset, type EditProject, type FilterPreset, type RenderState, type TextItem, type Transition, type VideoClip, type AudioItem } from '@/lib/edit/editProject'
 import { AD_TEXT_STYLES, AD_VOICES, AD_VOICE_IDS, type AdOverlay, type AdTextStyle, type AdVoiceId } from '@/lib/adStudio/adModel'
+import { MUSIC_PRESETS, TRANSITION_MS, type MusicPreset } from '@/lib/edit/editProject'
+import { EVENT_TEMPLATES, TEMPLATE_INFO, dayLong, dayShort, isCardTemplate, subtitleChunks, type EventTemplate, type IntroLayout } from './eventTemplates'
 
 export const LIST_PROJECTS = 'listProjects'
 export const LIST_ID_RE = /^ls[A-Za-z0-9]{10,30}$/
@@ -174,7 +176,27 @@ export interface ListItem {
   narrStartMs: number
   /** ETKİNLİK: anlatım sırasında klibin sesi: kısılır · kapanır · hep açık */
   duck: DuckMode
+  /** ETKİNLİK: ana medyadan sonra gelen ek görsel / videolar (en çok 3), aralarında geçiş */
+  extras: ListMedia[]
 }
+export const EXTRAS_MAX = 3
+export interface MusicTrack {
+  url: string
+  name: string
+  durationMs: number
+  /** parçanın kullanılan başlangıcı (yüklemede kesilir) */
+  startMs: number
+}
+export interface CardsState {
+  status: 'none' | 'ready' | 'error'
+  key: string
+  urls: string[]
+  error?: string | null
+  updatedAt?: number
+}
+export const EMPTY_CARDS: CardsState = { status: 'none', key: '', urls: [] }
+/** tek parça (geçişli) etkinlik videosu en çok bu kadar (Vercel süre sınırı) */
+export const WHOLE_MAX_MS = 150_000
 /** Müzik: fon müziği · yalnız videonun kendi sesi/müziği · müziksiz */
 export const MUSIC_MODES = ['on', 'own', 'off'] as const
 export type MusicMode = (typeof MUSIC_MODES)[number]
@@ -195,6 +217,8 @@ export interface EventInfo {
   category: string
   source: string
   price: string
+  /** ISO başlangıç (geri sayım için) */
+  startsAt?: string
 }
 export const WM_POSITIONS = ['sag-ust', 'sol-ust', 'sag-alt', 'sol-alt'] as const
 export type WmPos = (typeof WM_POSITIONS)[number]
@@ -253,6 +277,16 @@ export interface ListProject {
   watermark: Watermark | null
   /** fon müziği: açık / kapalı (pakete göre hazır müzik) */
   music: MusicMode
+  /** ETKİNLİK: şablon (kart ya da video) ve renkleri (vurgu = accent) */
+  template: EventTemplate
+  bgColor: string
+  textColor: string
+  /** fon müziği: hazır parça ('auto' = pakete göre) ya da yüklenen parça; ses düzeyi 0.05–1 */
+  musicPreset: MusicPreset | 'auto'
+  musicTrack: MusicTrack | null
+  musicVolume: number
+  /** ETKİNLİK: kart çıktısı (tek kare / kaydırmalı) */
+  cards: CardsState
   segments: Record<string, SegmentRender>
   render: RenderState
   createdBy: string
@@ -282,7 +316,7 @@ export function fnv(s: string): string {
 }
 
 export function newListItem(title = '', subtitle = ''): ListItem {
-  return { id: newItemId(), title, subtitle, change: 'none', prevRank: null, weeks: null, media: null, coverUrl: null, posX: 0, posY: 0, scale: 1, volume: 1, announce: '', voice: null, accent: null, specs: [], price: '', event: null, ownFirst: false, narrStartMs: 600, duck: 'kisik' }
+  return { id: newItemId(), title, subtitle, change: 'none', prevRank: null, weeks: null, media: null, coverUrl: null, posX: 0, posY: 0, scale: 1, volume: 1, announce: '', voice: null, accent: null, specs: [], price: '', event: null, ownFirst: false, narrStartMs: 600, duck: 'kisik', extras: [] }
 }
 
 export function defaultList(id: string, uid: string, now: number, type: ListType = 'pop', count?: number): ListProject {
@@ -323,6 +357,13 @@ export function defaultList(id: string, uid: string, now: number, type: ListType
     accountId: null,
     watermark: null,
     music: modeOf(type) === 'etkinlik' ? 'on' : 'off',
+    template: 'v3-hafta',
+    bgColor: TEMPLATE_INFO['v3-hafta'].bg,
+    textColor: TEMPLATE_INFO['v3-hafta'].text,
+    musicPreset: 'auto',
+    musicTrack: null,
+    musicVolume: 0.2,
+    cards: { ...EMPTY_CARDS },
     segments: {},
     render: { ...EMPTY_RENDER },
     createdBy: uid,
@@ -341,6 +382,8 @@ export function withListDefaults(raw: Partial<ListProject> & { id: string }): Li
     items: (raw.items ?? []).map((x) => ({ ...newListItem(), ...x })),
     segments: raw.segments ?? {},
     render: { ...EMPTY_RENDER, ...(raw.render ?? {}) },
+    template: isOneOf(EVENT_TEMPLATES, raw.template) ? raw.template : d.template,
+    cards: { ...EMPTY_CARDS, ...(raw.cards ?? {}) },
   }
 }
 
@@ -380,9 +423,16 @@ export function rankCardMs(item: Pick<ListItem, 'voice'>, voiceOn: boolean): num
   const v = voiceOn && item.voice ? item.voice.durationMs + 500 : 0
   return Math.min(4_500, Math.max(RANK_CARD_MS, v))
 }
-export function introMs(list: Pick<ListProject, 'introVoice' | 'voiceOn'>): number {
+export function introLayoutOf(list: Partial<Pick<ListProject, 'template' | 'listType'>>): IntroLayout {
+  if (list.listType !== 'etkinlik' || !list.template || isCardTemplate(list.template)) return 'default'
+  return TEMPLATE_INFO[list.template].intro ?? 'default'
+}
+export function introMs(list: Pick<ListProject, 'introVoice' | 'voiceOn'> & Partial<Pick<ListProject, 'template' | 'listType' | 'items'>>): number {
   const v = list.voiceOn && list.introVoice ? list.introVoice.durationMs + 700 : 0
-  return Math.min(7_000, Math.max(INTRO_MS, v))
+  const lay = introLayoutOf(list)
+  const n = list.items?.length ?? 0
+  const need = lay === 'default' ? 0 : lay === 'gerisayim' || lay === 'ozet' ? 4_000 : Math.min(9_000, 2_600 + 550 * Math.min(n, 10))
+  return Math.min(lay === 'default' ? 7_000 : 10_000, Math.max(INTRO_MS, v, need))
 }
 
 export type SegmentId = 'intro' | 'outro' | `i_${string}`
@@ -396,12 +446,18 @@ export function transitionFor(list: Pick<ListProject, 'transition' | 'pack'>, pl
 }
 
 /** ETKİNLİK: bölümün uzunluğu — klip aralığı; görselde anlatım sığacak kadar uzatılır. */
-export function eventSectionMs(list: Pick<ListProject, 'voiceOn'>, item: ListItem): number {
+export function eventMainMs(list: Pick<ListProject, 'voiceOn'>, item: ListItem): number {
   if (!item.media) return 0
   const len = item.media.outMs - item.media.inMs
   if (item.media.kind !== 'image') return len
-  const need = list.voiceOn && item.voice ? item.narrStartMs + item.voice.durationMs + 1_200 : 0
+  const need = list.voiceOn && item.voice && !(item.extras ?? []).length ? item.narrStartMs + item.voice.durationMs + 1_200 : 0
   return Math.min(LIST_LIMITS.clipMaxMs, Math.max(len, need))
+}
+/** ETKİNLİK: bölümün uzunluğu = ana medya + ek medyalar (aralarında geçiş örtüşmesi düşülür) */
+export function eventSectionMs(list: Pick<ListProject, 'voiceOn'>, item: ListItem): number {
+  if (!item.media) return 0
+  const extras = (item.extras ?? []).reduce((a, m) => a + Math.max(0, m.outMs - m.inMs) - TRANSITION_MS, 0)
+  return eventMainMs(list, item) + extras
 }
 
 export function itemSegmentMs(list: ListProject, item: ListItem, playIndex: number): number {
@@ -530,6 +586,23 @@ function patchItem(cur: ListItem | undefined, x: Record<string, unknown>): ListI
   if ('ownFirst' in x) it.ownFirst = x.ownFirst === true
   if ('narrStartMs' in x) it.narrStartMs = Math.round(num(x.narrStartMs, 0, 60_000) ?? it.narrStartMs)
   if ('duck' in x && isOneOf(DUCK_MODES, x.duck)) it.duck = x.duck
+  if ('extras' in x && Array.isArray(x.extras)) {
+    // yalnız var olan ek medyalar sıralanır / kırpılır / çıkarılır (eklemek sunucuda)
+    const byUrl = new Map((it.extras ?? []).map((m) => [m.url, m]))
+    const next: ListMedia[] = []
+    for (const r of x.extras as Array<Record<string, unknown>>) {
+      const cur = r && typeof r.url === 'string' ? byUrl.get(r.url) : undefined
+      if (!cur || next.some((m) => m.url === cur.url)) continue
+      const max = cur.kind === 'image' ? LIST_LIMITS.clipMaxMs : (cur.durationMs ?? LIST_LIMITS.clipMaxMs)
+      let inMs = cur.kind === 'image' ? 0 : Math.round(num(r.inMs, 0, max) ?? cur.inMs)
+      let outMs = Math.round(num(r.outMs, 0, max) ?? cur.outMs)
+      if (outMs - inMs > LIST_LIMITS.clipMaxMs) outMs = inMs + LIST_LIMITS.clipMaxMs
+      if (outMs - inMs < 2_000) outMs = Math.min(max, inMs + 2_000)
+      if (outMs - inMs < 2_000) inMs = Math.max(0, outMs - 2_000)
+      next.push({ ...cur, inMs, outMs })
+    }
+    it.extras = next.slice(0, EXTRAS_MAX)
+  }
   if ('event' in x && x.event && typeof x.event === 'object' && it.event) {
     const e = x.event as Record<string, unknown>
     it.event = { ...it.event, ...(typeof e.date === 'string' ? { date: clean(e.date, 40) } : {}), ...(typeof e.time === 'string' ? { time: clean(e.time, 20) } : {}), ...(typeof e.venue === 'string' ? { venue: clean(e.venue, 90) } : {}), ...(typeof e.price === 'string' ? { price: clean(e.price, 30) } : {}) }
@@ -619,6 +692,28 @@ export function applyListPatch(cur: ListProject, raw: Record<string, unknown>, n
   }
   if ('platformLogoUrl' in raw && raw.platformLogoUrl === null) n.platformLogoUrl = null
   if ('music' in raw) n.music = isOneOf(MUSIC_MODES, raw.music) ? raw.music : 'off'
+  if ('template' in raw) {
+    if (!isOneOf(EVENT_TEMPLATES, raw.template)) return { ok: false, error: 'Şablon geçersiz' }
+    if (raw.template !== n.template) {
+      const T = TEMPLATE_INFO[raw.template]
+      n.template = raw.template
+      // şablon değişince renkler şablonun varsayılanına döner (aynı istekte renk de geldiyse o geçerli)
+      if (!('accent' in raw)) n.accent = T.accent
+      if (!('bgColor' in raw)) n.bgColor = T.bg
+      if (!('textColor' in raw)) n.textColor = T.text
+    }
+  }
+  if ('bgColor' in raw) {
+    if (!isColor(raw.bgColor)) return { ok: false, error: 'Zemin rengi geçersiz' }
+    n.bgColor = raw.bgColor
+  }
+  if ('textColor' in raw) {
+    if (!isColor(raw.textColor)) return { ok: false, error: 'Yazı rengi geçersiz' }
+    n.textColor = raw.textColor
+  }
+  if ('musicPreset' in raw) n.musicPreset = raw.musicPreset === 'auto' || isOneOf(MUSIC_PRESETS, raw.musicPreset) ? (raw.musicPreset as MusicPreset | 'auto') : n.musicPreset
+  if ('musicVolume' in raw) n.musicVolume = num(raw.musicVolume, 0.05, 1) ?? n.musicVolume
+  if ('musicTrack' in raw && raw.musicTrack === null) n.musicTrack = null
   if ('watermark' in raw) {
     if (raw.watermark === null) n.watermark = null
     else if (raw.watermark && typeof raw.watermark === 'object') {
@@ -665,6 +760,7 @@ export function itemProblem(list: ListProject, item: ListItem, rank: number): st
 }
 export function listRenderProblem(list: ListProject): string | null {
   if (!list.items.length) return 'Listede sıra yok'
+  if (list.listType === 'etkinlik' && isCardTemplate(list.template)) return 'Bu bir kart şablonu — «Kartları üret» ile görsel üretin'
   for (const { item, rank } of playOrder(list)) {
     const p = itemProblem(list, item, rank)
     if (p) return p
@@ -693,9 +789,36 @@ export type ListOverlay =
   | { type: 'evtitle'; title: string; category: string; accent: string; look: RankLook }
   | { type: 'evcard'; title: string; date: string; day: string; mon: string; time: string; venue: string; category: string; price: string; source: string; accent: string; look: RankLook }
   | { type: 'wm'; text: string; pos: WmPos; opacity: number }
+  | { type: 'evintro'; variant: IntroLayout; title: string; subtitle: string; rows: EvRow[]; accent: string; bg: string; text: string; days: number | null; city: string }
+  | { type: 'evbig'; title: string; date: string; time: string; city: string; venue: string; accent: string; text: string }
+  | { type: 'evmin'; title: string; date: string; venue: string; city: string; accent: string; text: string }
+  | { type: 'evword'; word: string; accent: string; text: string; size: number }
+  | { type: 'evbar'; title: string; date: string; time: string; venue: string; accent: string; bg: string; text: string }
+  | { type: 'evsub'; text: string; accent: string }
   | { type: 'intro'; n: number; title: string; subtitle: string; handle: string; accent: string; look: RankLook; logoUrl: string | null; kicker?: string }
   | { type: 'outro'; name: string; handle: string; slogan: string; accent: string }
   | { type: 'badge'; rank: number; accent: string; logoUrl: string | null }
+
+export interface EvRow {
+  title: string
+  date: string
+  day: string
+  mon: string
+  dayShort: string
+  time: string
+  venue: string
+  city: string
+}
+export function evRows(list: Pick<ListProject, 'items'>): EvRow[] {
+  return list.items.map((x) => ({ title: x.title, date: x.event?.date ?? '', day: x.event?.day ?? '', mon: x.event?.mon ?? '', dayShort: dayShort(x.event?.date ?? ''), time: x.event?.time ?? '', venue: x.event?.venue || x.subtitle, city: x.event?.city ?? '' }))
+}
+/** geri sayım: ilk etkinliğe kalan gün (projenin son güncellendiği güne göre; anahtar kararlı kalsın) */
+export function daysLeft(list: Pick<ListProject, 'items' | 'updatedAt'>): number | null {
+  const first = list.items.map((x) => (x.event?.startsAt ? Date.parse(x.event.startsAt) : NaN)).filter(Number.isFinite).sort((a, b) => a - b)[0]
+  if (first === undefined) return null
+  const day = 86_400_000
+  return Math.max(0, Math.round((Math.floor((first + 3 * 3_600_000) / day) - Math.floor((list.updatedAt + 3 * 3_600_000) / day))))
+}
 
 export interface CompiledSegment {
   id: SegmentId
@@ -766,8 +889,17 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
   const bed = P.textStyle === 'zarif' ? 'akustik' : P.rankLook === 'neon' ? 'enerjik' : 'modern'
   const addMusic = (fromMs: number) => {
     if (list.music !== 'on') return
-    audio.push({ id: 'a_music', kind: 'music', assetId: null, music: bed, text: null, startMs: fromMs, endMs: null, volume: list.voiceOn ? 0.12 : 0.35, fade: true })
+    const vol = Math.max(0.05, Math.min(1, list.voiceOn ? (list.musicVolume ?? 0.2) * 0.6 : (list.musicVolume ?? 0.2) * 1.7))
+    if (list.musicTrack) {
+      if (!assets.some((a) => a.id === 'mtrack')) assets.push({ id: 'mtrack', kind: 'audio', source: 'upload', url: list.musicTrack.url, name: list.musicTrack.name, durationMs: list.musicTrack.durationMs, posterUrl: null, addedAt: list.createdAt })
+      audio.push({ id: 'a_music', kind: 'music', assetId: 'mtrack', music: null, text: null, startMs: fromMs, endMs: null, volume: vol, fade: true })
+      return
+    }
+    const preset = list.musicPreset && list.musicPreset !== 'auto' ? list.musicPreset : bed
+    audio.push({ id: 'a_music', kind: 'music', assetId: null, music: preset, text: null, startMs: fromMs, endMs: null, volume: vol, fade: true })
   }
+  const TI = etk ? TEMPLATE_INFO[list.template] : null
+  const colors = { accent: list.accent, bg: list.bgColor ?? '#0b0b10', text: list.textColor ?? '#ffffff' }
   const addWatermark = (end: number) => {
     if (list.watermark?.text) push('o_wm', 0, end, { type: 'wm', text: list.watermark.text, pos: list.watermark.pos, opacity: list.watermark.opacity })
   }
@@ -782,7 +914,9 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
     clips = [bg]
     if (seg === 'intro') {
       const kicker = etk ? 'ETKİNLİK' : modeOf(list.listType) === 'urun' ? (list.listType === 'tek-haber' ? 'TEKNOLOJİ' : 'YENİ') : `TOP ${list.items.length}`
-      push('o_intro', 0, ms, { type: 'intro', n: list.items.length, title: list.introTitle || T.title, subtitle: list.introSubtitle, handle: list.publisher.handle, accent: list.accent, look: P.rankLook, logoUrl: logo, kicker })
+      const lay = introLayoutOf(list)
+      if (etk && lay !== 'default') push('o_intro', 0, ms, { type: 'evintro', variant: lay, title: list.introTitle || T.title, subtitle: list.introSubtitle, rows: evRows(list), accent: colors.accent, bg: colors.bg, text: colors.text, days: lay === 'gerisayim' ? daysLeft(list) : null, city: list.items.find((x) => x.event?.city)?.event?.city ?? '' })
+      else push('o_intro', 0, ms, { type: 'intro', n: list.items.length, title: list.introTitle || T.title, subtitle: list.introSubtitle, handle: list.publisher.handle, accent: list.accent, look: P.rankLook, logoUrl: logo, kicker })
       addSfx(list.pack === 'fragman' ? 'whoosh-down' : 'intro-zoom', 0)
       if (list.voiceOn && list.introAnnounce.trim() && introVoiceCurrent(list)) addVoice(list.introVoice, 450)
       if (etk) {
@@ -802,6 +936,7 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
     const { item } = x
     const media = x.item.media
     const accent = item.accent ?? list.accent
+    const mainMs = eventMainMs(list, item)
     const total = eventSectionMs(list, item)
     const narr = Math.max(0, Math.min(item.narrStartMs, Math.max(0, total - 1_500)))
     // müziksiz: klip sessiz · kendi müziği: yalnız klibin sesi · fon müziği: klip sesi + fon (anlatımda kısılır)
@@ -810,20 +945,47 @@ export function compileSegment(list: ListProject, seg: SegmentId, sfxUrl: (n: Sf
     const common = { volume: own, mute: own === 0, scale: item.scale, posX: item.posX, posY: item.posY, filter: list.filter, contrast: 1 }
     assets.push({ id: 'rm', kind: media.kind, source: 'upload', url: media.url, name: media.name, durationMs: media.durationMs, posterUrl: null, addedAt: list.createdAt })
     if (isImg) {
-      clips = [baseClip('rm', 'rm', 0, total, list.fit, { ...common, animIn: list.zoomOn ? 'zoom' : 'fade', animOut: 'none' })]
-    } else if (list.voiceOn && item.duck === 'kapali' && narr >= 800 && narr < total - 800) {
+      clips = [baseClip('rm', 'rm', 0, mainMs, list.fit, { ...common, animIn: list.zoomOn ? 'zoom' : 'fade', animOut: 'none' })]
+    } else if (list.voiceOn && item.duck === 'kapali' && narr >= 800 && narr < mainMs - 800) {
       // anlatım başlayınca klibin sesi kesilir: iki parça (ikincisi sessiz)
       clips = [
         baseClip('rm1', 'rm', media.inMs, media.inMs + narr, list.fit, { ...common, animIn: 'fade' }),
-        { ...baseClip('rm2', 'rm', media.inMs + narr, media.outMs, list.fit, { ...common, volume: 0, mute: true, animOut: 'fade' }), transition: 'none' },
+        { ...baseClip('rm2', 'rm', media.inMs + narr, media.outMs, list.fit, { ...common, volume: 0, mute: true }), transition: 'none' },
       ]
     } else {
-      clips = [baseClip('rm', 'rm', media.inMs, media.outMs, list.fit, { ...common, animIn: 'fade', animOut: 'fade' })]
+      clips = [baseClip('rm', 'rm', media.inMs, media.outMs, list.fit, { ...common, animIn: 'fade' })]
     }
+    // ek medyalar: aralarında pakete / seçime göre geçiş; anlatım başladıysa ek videoların sesi kısık
+    ;(item.extras ?? []).slice(0, EXTRAS_MAX).forEach((m, k) => {
+      const aid = `rx${k}`
+      assets.push({ id: aid, kind: m.kind, source: 'upload', url: m.url, name: m.name, durationMs: m.durationMs, posterUrl: null, addedAt: list.createdAt })
+      const vol = list.voiceOn && item.duck !== 'acik' ? Math.min(own, 0.25) : own
+      clips.push({ ...baseClip(aid, aid, m.kind === 'image' ? 0 : m.inMs, m.kind === 'image' ? m.outMs - m.inMs : m.outMs, list.fit, { ...common, volume: vol, mute: vol === 0, animIn: m.kind === 'image' && list.zoomOn ? 'zoom' : 'none' }), transition: transitionFor(list, at + k + 1) === 'none' ? 'fade' : transitionFor(list, at + k + 1) })
+    })
+    if (clips.length) clips[clips.length - 1] = { ...clips[clips.length - 1]!, animOut: 'fade' }
     const end = timeline(clips).total
     const e = item.event
-    if (list.textOn && narr >= 1_500) push('o_evt', 300, narr, { type: 'evtitle', title: item.title, category: e?.category ?? '', accent, look: P.rankLook })
-    push('o_card', Math.max(0, narr - 200), end, { type: 'evcard', title: item.title, date: e?.date ?? '', day: e?.day ?? '', mon: e?.mon ?? '', time: e?.time ?? '', venue: e?.venue ?? item.subtitle, category: e?.category ?? '', price: e?.price || item.price, source: e?.source ?? '', accent, look: P.rankLook })
+    const sec = TI?.section ?? 'kart'
+    const card = { type: 'evcard' as const, title: item.title, date: e?.date ?? '', day: e?.day ?? '', mon: e?.mon ?? '', time: e?.time ?? '', venue: e?.venue ?? item.subtitle, category: e?.category ?? '', price: e?.price || item.price, source: e?.source ?? '', accent, look: P.rankLook }
+    if (sec === 'tektarih') {
+      push('o_big', 400, end, { type: 'evbig', title: item.title, date: e?.date ?? '', time: e?.time ?? '', city: e?.city ?? '', venue: e?.venue ?? item.subtitle, accent, text: colors.text })
+    } else if (sec === 'minimal') {
+      push('o_min', 300, end, { type: 'evmin', title: item.title, date: e?.date ?? '', venue: e?.venue ?? item.subtitle, city: e?.city ?? '', accent, text: colors.text })
+    } else if (sec === 'kinetik') {
+      const words = [dayLong(e?.date ?? '') || 'BU HAFTA', (e?.category || 'ETKİNLİK').toLocaleUpperCase('tr-TR'), item.title.toLocaleUpperCase('tr-TR')].filter(Boolean)
+      const step = 750
+      words.forEach((w, k) => push(`o_w${k}`, 150 + k * step, 150 + (k + 1) * step, { type: 'evword', word: w, accent: k === 1 ? accent : colors.text, text: colors.text, size: k === 2 ? 0.8 : 1 }))
+      push('o_card', 150 + words.length * step, end, card)
+    } else if (sec === 'altyazi') {
+      push('o_bar', 200, end, { type: 'evbar', title: item.title, date: e?.date ?? '', time: e?.time ?? '', venue: e?.venue ?? item.subtitle, accent, bg: colors.bg, text: colors.text })
+      const chunks = subtitleChunks(item.announce)
+      const vms = list.voiceOn && item.voice && itemVoiceCurrent(list, item) ? item.voice.durationMs : Math.max(2_000, end - narr - 600)
+      const per = chunks.length ? vms / chunks.length : 0
+      chunks.forEach((c, k) => push(`o_s${k}`, Math.round(narr + k * per), Math.round(Math.min(end, narr + (k + 1) * per)), { type: 'evsub', text: c, accent }))
+    } else {
+      if (list.textOn && narr >= 1_500) push('o_evt', 300, narr, { type: 'evtitle', title: item.title, category: e?.category ?? '', accent, look: P.rankLook })
+      push('o_card', Math.max(0, narr - 200), end, card)
+    }
     if (logo && list.logoPlacement !== 'yok') push('o_logo', 0, end, { type: 'ad', o: { type: 'logo', url: logo, pos: 'sol-alt' } })
     addWatermark(end)
     if (at === 0 || !item.ownFirst) addSfx(P.sfx, 0)
@@ -914,6 +1076,77 @@ export function segmentKey(list: ListProject, seg: SegmentId): string {
 export function listRenderKey(list: ListProject): string {
   return fnv(JSON.stringify(['lfin1', segmentIds(list).map((s) => segmentKey(list, s))]))
 }
+// ── ETKİNLİK: tek parça (geçişli) video ─────────────────────────────────────
+/** etkinlik videosunun tek parça (bölümler arası gerçek geçişli) üretilebileceği durum */
+export function wholeEligible(list: ListProject): boolean {
+  return list.listType === 'etkinlik' && !isCardTemplate(list.template) && listTotalMs(list) <= WHOLE_MAX_MS
+}
+/** paylaşılan / gösterilen videonun geçerli anahtarı: tek parça ya da birleştirilmiş parçalar */
+export function effectiveRenderKey(list: ListProject): string {
+  return wholeEligible(list) ? wholeRenderKey(list) : listRenderKey(list)
+}
+export function wholeRenderKey(list: ListProject): string {
+  return fnv(JSON.stringify(['lwhole1', list.aspect, list.transition, list.pack, segmentIds(list).map((s) => segmentKey(list, s))]))
+}
+/**
+ * Bütün parçaları tek KURGU projesinde birleştirir: her parçanın ilk klibine geçiş verilir,
+ * kaplama / ses zamanları parçanın başlangıcına kaydırılır, kimlikler parça önekiyle ayrılır.
+ * Fon müziği tek parça olarak baştan sona çalar.
+ */
+export function compileWhole(list: ListProject, sfxUrl: (n: SfxName) => string | null = () => null): CompiledSegment | null {
+  const parts = segmentIds(list).map((s) => compileSegment(list, s, sfxUrl))
+  if (parts.some((p) => !p)) return null
+  const clips: VideoClip[] = []
+  const texts: TextItem[] = []
+  const audio: AudioItem[] = []
+  const assets: EditAsset[] = []
+  const overlays = new Map<string, ListOverlay>()
+  const sfx: Array<{ name: SfxName; atMs: number }> = []
+  let duck = false
+  let musicItem: AudioItem | null = null
+  parts.forEach((c, i) => {
+    const pre = `s${i}_`
+    const pc = c!.project
+    const startIdx = clips.length
+    pc.clips.forEach((cl, k) => {
+      const tr: Transition = k === 0 ? (i === 0 ? 'none' : transitionFor(list, i - 1)) : cl.transition
+      clips.push({ ...cl, id: pre + cl.id, assetId: pre + cl.assetId, transition: tr, animIn: k === 0 && i > 0 && tr !== 'none' ? 'none' : cl.animIn, animOut: k === pc.clips.length - 1 && i < parts.length - 1 ? 'none' : cl.animOut })
+    })
+    const off = timeline(clips).starts[startIdx] ?? 0
+    for (const a of pc.assets) if (!assets.some((x) => x.id === pre + a.id)) assets.push({ ...a, id: pre + a.id })
+    for (const t of pc.texts) {
+      texts.push({ ...t, id: pre + t.id, startMs: t.startMs + off, endMs: t.endMs + off })
+      const o = c!.overlays.get(t.id)
+      if (o) overlays.set(pre + t.id, o)
+    }
+    for (const a of pc.audio) {
+      if (a.id === 'a_music') {
+        if (!musicItem) musicItem = { ...a, id: 'a_music', assetId: a.assetId ? pre + a.assetId : null, startMs: a.startMs + off, endMs: null }
+        continue
+      }
+      audio.push({ ...a, id: pre + a.id, assetId: a.assetId ? pre + a.assetId : null, startMs: a.startMs + off, endMs: a.endMs === null ? null : a.endMs + off })
+    }
+    for (const x of c!.sfx) sfx.push({ name: x.name, atMs: x.atMs + off })
+    duck = duck || c!.duck
+  })
+  if (musicItem) audio.push(musicItem)
+  const first = parts[0]!.project
+  const project: EditProject = { ...first, id: `ep${fnv(list.id + 'whole').slice(0, 16)}`, clips, texts, audio, assets }
+  return { id: 'intro', project, overlays, sfx, duck }
+}
+
+/** Kart çıktısının anahtarı (içerik değişmeden yeniden üretilmez). */
+export function cardsKey(list: ListProject): string {
+  return fnv(JSON.stringify(['lcard1', list.template, list.accent, list.bgColor, list.textColor, list.aspect, list.introTitle, list.introSubtitle, list.publisher, list.watermark, list.items.map((x) => [x.title, x.subtitle, x.event, x.media?.url ?? null, x.media?.kind ?? null, x.media?.inMs ?? 0, x.coverUrl])]))
+}
+export function cardsProblem(list: ListProject): string | null {
+  if (list.listType !== 'etkinlik' || !isCardTemplate(list.template)) return 'Kart şablonu seçin'
+  if (!list.items.length) return 'Etkinlik yok'
+  const empty = list.items.findIndex((x) => !x.title.trim())
+  if (empty >= 0) return `${empty + 1}. etkinliğin adı boş`
+  return null
+}
+
 /** üretilmesi gereken parçalar (hazır olanlar atlanır) */
 export function segmentsToRender(list: ListProject): SegmentId[] {
   return segmentIds(list).filter((s) => list.segments[s]?.key !== segmentKey(list, s))

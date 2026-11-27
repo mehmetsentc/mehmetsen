@@ -12,6 +12,7 @@ import { FONT_MD, FONT_XB, roundRectPath } from '@/lib/reels/reelTheme'
 import { wrapLines } from '@/lib/reels/timeline'
 import { AD_FONT_BEBAS, AD_FONT_GROTESK, AD_FONT_SERIF, drawAdOverlay, ensureAdFonts } from '@/lib/adStudio/adText'
 import type { ListOverlay, RankLook } from './listModel'
+import { drawEventOverlay } from './eventOverlays'
 
 const upper = (s: string) => s.toLocaleUpperCase('tr-TR')
 function hexA(hex: string, a: number): string {
@@ -635,6 +636,7 @@ export async function drawListOverlay(o: ListOverlay, W: number, H: number, file
   else if (o.type === 'evtitle') drawEvTitle(ctx, W, H, o)
   else if (o.type === 'evcard') drawEvCard(ctx, W, H, o)
   else if (o.type === 'wm') drawWatermark(ctx, W, H, o)
-  else await drawBadge(ctx, W, H, o)
+  else if (o.type === 'badge') await drawBadge(ctx, W, H, o)
+  else drawEventOverlay(ctx, W, H, o)
   await fs.writeFile(file, await canvas.encode('png'))
 }

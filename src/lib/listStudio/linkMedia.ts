@@ -61,10 +61,10 @@ export async function assertPublicHttps(raw: string): Promise<URL> {
 
 const PAGE_HOSTS = /(^|\.)(youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|tiktok\.com|x\.com|twitter\.com|threads\.net|vimeo\.com|spotify\.com)$/i
 
-export type LinkedMedia = { url: string; kind: 'video' | 'image'; name: string; bytes: number }
+export type LinkedMedia = { url: string; kind: 'video' | 'image' | 'audio'; name: string; bytes: number }
 
 /** Bağlantıyı indirir, türünü doğrular ve news-videos|news-images/{uid}/lists/{listId}/ altına kopyalar. */
-export async function importLinkMedia(raw: string, uid: string, listId: string): Promise<LinkedMedia> {
+export async function importLinkMedia(raw: string, uid: string, listId: string, opts: { audio?: boolean } = {}): Promise<LinkedMedia> {
   let u = await assertPublicHttps(raw)
   if (PAGE_HOSTS.test(u.hostname)) throw new LinkMediaError('Bu bir sayfa bağlantısı. Videonun / görselin doğrudan dosya bağlantısını (.mp4, .jpg…) verin ya da dosyayı cihazdan yükleyin.', 'link_page')
   let res: Response | null = null
@@ -80,9 +80,11 @@ export async function importLinkMedia(raw: string, uid: string, listId: string):
   }
   if (!res || !res.ok) throw new LinkMediaError(`Dosya indirilemedi (HTTP ${res?.status ?? '?'})`)
   const type = (res.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
-  const kind: 'video' | 'image' | null = type.startsWith('video/') || type === 'application/octet-stream' && /\.(mp4|mov|m4v|webm)$/i.test(u.pathname) ? 'video' : type.startsWith('image/') && type !== 'image/svg+xml' ? 'image' : null
+  const kind: 'video' | 'image' | 'audio' | null =
+    opts.audio && (type.startsWith('audio/') || (type === 'application/octet-stream' && /\.(mp3|m4a|aac|wav|ogg)$/i.test(u.pathname))) ? 'audio'
+    : type.startsWith('video/') || type === 'application/octet-stream' && /\.(mp4|mov|m4v|webm)$/i.test(u.pathname) ? 'video' : type.startsWith('image/') && type !== 'image/svg+xml' ? 'image' : null
   if (!kind) throw new LinkMediaError(type.includes('html') ? 'Bu bir sayfa bağlantısı; doğrudan video / görsel dosyası gerekli (.mp4, .jpg…)' : 'Dosya türü desteklenmiyor (video ya da görsel olmalı)', type.includes('html') ? 'link_page' : 'link_type')
-  const max = kind === 'video' ? MAX_VIDEO : MAX_IMAGE
+  const max = kind === 'image' ? MAX_IMAGE : MAX_VIDEO
   const len = Number(res.headers.get('content-length') ?? 0)
   if (len > max) throw new LinkMediaError(kind === 'video' ? 'Video 200 MB sınırını aşıyor' : 'Görsel 10 MB sınırını aşıyor', 'too_large')
   // akışı sınırlı oku
@@ -101,10 +103,10 @@ export async function importLinkMedia(raw: string, uid: string, listId: string):
     chunks.push(value)
   }
   if (!bytes) throw new LinkMediaError('Dosya boş')
-  const ext = kind === 'video' ? (type.includes('quicktime') ? 'mov' : type.includes('webm') ? 'webm' : 'mp4') : type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg'
-  const name = `${kind === 'video' ? 'news-videos' : 'news-images'}/${uid}/lists/${listId}/link-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`
+  const ext = kind === 'audio' ? (type.includes('mpeg') || /\.mp3$/i.test(u.pathname) ? 'mp3' : type.includes('wav') ? 'wav' : 'm4a') : kind === 'video' ? (type.includes('quicktime') ? 'mov' : type.includes('webm') ? 'webm' : 'mp4') : type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg'
+  const name = `${kind === 'image' ? 'news-images' : 'news-videos'}/${uid}/lists/${listId}/link-${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`
   const file = getAdminStorage().bucket(BUCKET).file(name)
-  await file.save(Buffer.concat(chunks), { resumable: false, metadata: { contentType: type || (kind === 'video' ? 'video/mp4' : 'image/jpeg'), cacheControl: 'public, max-age=86400', metadata: { source: u.hostname } } })
+  await file.save(Buffer.concat(chunks), { resumable: false, metadata: { contentType: type || (kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mpeg' : 'image/jpeg'), cacheControl: 'public, max-age=86400', metadata: { source: u.hostname } } })
   await file.makePublic().catch(() => undefined)
   const base = decodeURIComponent(u.pathname.split('/').pop() ?? '').replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 60)
   return { url: `https://storage.googleapis.com/${BUCKET}/${name}`, kind, name: base || `${u.hostname} bağlantısı`, bytes }

@@ -633,7 +633,7 @@ async function publishToFacebookUnlocked(
   let aiHashtags: string[] = []
   let cacheKey: string | undefined
 
-  const ai = payload.aiRewrite === false
+  const ai = payload.aiRewrite === false || payload.exactCaption?.trim()
     ? ({ enabled: false } as const)
     : await rewriteForPlatform(payload.title, contentForAi, city, 'facebook', {
         articleUrl,
@@ -650,7 +650,7 @@ async function publishToFacebookUnlocked(
     caption = `${ai.caption}\n\n📍 ${payload.location?.label || city}${tagLine}`.trim()
     commentOpener = ai.comment_text || 'Haberin detayı:'
   } else {
-    caption = buildFacebookPhotoCaption(payload)
+    caption = payload.exactCaption?.trim() || buildFacebookPhotoCaption(payload)
   }
 
   // Safety: never leave https in caption

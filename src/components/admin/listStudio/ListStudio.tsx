@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils'
 import { auth } from '@/lib/firebase/auth'
 import { storage } from '@/lib/firebase/storage'
 import { runReelJob } from '@/components/admin/social/reelsApi'
-import { FILTERS, FILTER_LABEL } from '@/lib/edit/editProject'
+import { FILTERS, FILTER_LABEL, MUSIC_LABEL, MUSIC_PRESETS } from '@/lib/edit/editProject'
+import { CARD_TEMPLATES, TEMPLATE_INFO, VIDEO_TEMPLATES, cardCount, isCardTemplate, suggestTemplates, type CardTemplate, type EventTemplate } from '@/lib/listStudio/eventTemplates'
 import { AD_TEXT_STYLES, AD_TEXT_STYLE_INFO, AD_VOICES, AD_VOICE_IDS, isLowResMedia } from '@/lib/adStudio/adModel'
 import {
   CHANGES,
@@ -26,6 +27,10 @@ import {
   WM_POS_LABEL,
   eventAnnounce,
   eventSectionMs,
+  EXTRAS_MAX,
+  cardsKey,
+  effectiveRenderKey,
+  wholeEligible,
   SHARE_PLATFORM_NAME,
   captionFor,
   listRenderKey,
@@ -78,7 +83,7 @@ const STEPS = [
   ['cikti', 'Çıktı', Download],
 ] as const
 type Step = (typeof STEPS)[number][0]
-const ETK_LABEL: Record<Step, string> = { liste: 'Etkinlikler', klip: 'Medya & süre', sunum: 'Ses & anlatım', stil: 'Yazı stili', efekt: 'Geçiş & efekt', cikti: 'Çıktı & paylaş' }
+const ETK_LABEL: Record<Step, string> = { liste: 'Etkinlikler', klip: 'Medya & süre', sunum: 'Ses & müzik', stil: 'Şablon & renk', efekt: 'Geçiş & efekt', cikti: 'Çıktı & paylaş' }
 
 async function call<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   const token = (await auth.currentUser?.getIdToken()) ?? ''
@@ -114,6 +119,17 @@ async function uploadFile(file: File, listId: string, onPct: (n: number) => void
   const isVideo = file.type.startsWith('video/')
   const name = `${Date.now()}_${file.name.replace(/[^A-Za-z0-9._-]/g, '_').slice(-60)}`
   const task = uploadBytesResumable(storageRef(storage, `${isVideo ? 'news-videos' : 'news-images'}/${uid}/lists/${listId}/${name}`), file, { contentType: file.type })
+  await new Promise<void>((resolve, reject) => task.on('state_changed', (s) => onPct(Math.round((s.bytesTransferred / s.totalBytes) * 100)), reject, () => resolve()))
+  return getDownloadURL(task.snapshot.ref)
+}
+
+async function uploadAudio(file: File, listId: string, onPct: (n: number) => void): Promise<string> {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Oturum yok')
+  const name = `${Date.now()}_${file.name.replace(/[^A-Za-z0-9._-]/g, '_').slice(-60)}`
+  // depolama kuralı yalnız video/görsel türünü kabul eder: ses dosyası «video/*» etiketiyle yüklenir, sunucu AAC'ye çevirir
+  const type = /mpeg|mp3/i.test(file.type) || /\.mp3$/i.test(file.name) ? 'video/mpeg' : /wav/i.test(file.type) ? 'video/x-wav' : 'video/mp4'
+  const task = uploadBytesResumable(storageRef(storage, `news-videos/${uid}/lists/${listId}/${name}`), file, { contentType: type })
   await new Promise<void>((resolve, reject) => task.on('state_changed', (s) => onPct(Math.round((s.bytesTransferred / s.totalBytes) * 100)), reject, () => resolve()))
   return getDownloadURL(task.snapshot.ref)
 }
@@ -346,6 +362,8 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
         return {
           ...cur,
           introVoice: s.introVoice,
+          musicTrack: s.musicTrack,
+          cards: s.cards,
           platformLogoUrl: s.platformLogoUrl,
           logoPlacement: s.logoPlacement,
           segments: s.segments,
@@ -354,7 +372,12 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
           items: cur.items.map((x) => {
             const sv = byId.get(x.id)
             const same = !!x.media && !!sv?.media && x.media.url === sv.media.url
-            return sv ? { ...x, media: same ? { ...sv.media!, inMs: x.media!.inMs, outMs: x.media!.outMs } : sv.media, coverUrl: sv.coverUrl, voice: sv.voice, ...(same ? {} : { ownFirst: sv.ownFirst, narrStartMs: sv.narrStartMs }) } : x
+            const svx = sv?.extras ?? []
+            const extras = svx.map((m) => {
+              const mine = (x.extras ?? []).find((y) => y.url === m.url)
+              return mine ? { ...m, inMs: mine.inMs, outMs: mine.outMs } : m
+            })
+            return sv ? { ...x, media: same ? { ...sv.media!, inMs: x.media!.inMs, outMs: x.media!.outMs } : sv.media, coverUrl: sv.coverUrl, voice: sv.voice, extras, ...(same ? {} : { ownFirst: sv.ownFirst, narrStartMs: sv.narrStartMs }) } : x
           }),
         }
       }),
@@ -427,7 +450,7 @@ function ListEditor({ id, onBack }: { id: string; onBack: () => void }) {
           {step === 'liste' && <ListStep l={l} patch={patch} flush={flush} takeServer={takeServer} onSelect={setSel} />}
           {step === 'klip' && <ClipStep l={l} patch={patch} flush={flush} takeServer={takeServer} sel={sel} onSelect={setSel} />}
           {step === 'sunum' && <PresentStep l={l} patch={patch} flush={flush} takeServer={takeServer} />}
-          {step === 'stil' && <StyleStep l={l} patch={patch} />}
+          {step === 'stil' && (l.studio === 'etkinlik' ? <TemplateStep l={l} patch={patch} /> : <StyleStep l={l} patch={patch} />)}
           {step === 'efekt' && <FxStep l={l} patch={patch} />}
           {step === 'cikti' && <OutputStep l={l} patch={patch} flush={flush} takeServer={takeServer} reload={async () => {
             const r = await call<{ list: ListProject }>('GET', `${API}/${id}`)
@@ -956,6 +979,7 @@ function ItemClip({ l, i, patch, flush, takeServer }: StepProps & ServerProps & 
             </label>
           </div>
           {etk && <EventAudio l={l} x={x} upd={upd} now={now} />}
+          {etk && <ExtrasEditor l={l} x={x} upd={upd} flush={flush} takeServer={takeServer} />}
           <button type="button" onClick={() => upd({ media: null })} className="text-[12px] font-semibold text-red-600">Klibi kaldır</button>
         </>
       )}
@@ -1094,8 +1118,9 @@ function PresentStep({ l, patch, flush, takeServer }: StepProps & ServerProps) {
                 </button>
               ))}
             </div>
+            {l.music === 'on' && <MusicPicker l={l} patch={patch} flush={flush} takeServer={takeServer} />}
             <p className="text-[12px] text-[rgb(var(--color-muted))]">
-              {l.music === 'on' ? 'Pakete uygun fon müziği; videonun kendi sesi önce çalıyorsa müzik anlatımla birlikte girer.' : l.music === 'own' ? 'Fon müziği yok; yalnız yüklediğiniz videonun kendi sesi/müziği çalar (görsellerde sessiz).' : 'Müzik yok, videoların sesi de kapalı; yalnız anlatım (açıksa) ve efekt sesleri.'}
+              {l.music === 'on' ? 'Fon müziği; videonun kendi sesi önce çalıyorsa müzik anlatımla birlikte girer.' : l.music === 'own' ? 'Fon müziği yok; yalnız yüklediğiniz videonun kendi sesi/müziği çalar (görsellerde sessiz).' : 'Müzik yok, videoların sesi de kapalı; yalnız anlatım (açıksa) ve efekt sesleri.'}
             </p>
           </div>
         ) : (
@@ -1201,7 +1226,7 @@ function FxStep({ l, patch }: StepProps) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <H hint="Sıra kartından klibe geçiş. «Karışık» seçili pakete uygun geçişleri sırayla kullanır.">5 · Geçiş</H>
+        <H hint={l.studio === 'etkinlik' ? 'Etkinlikler arası ve bir etkinliğin medyaları arası geçiş. Video 150 sn\'yi aşmazsa tek parça üretilir ve geçişler gerçekten iki görüntüyü üst üste bindirir.' : 'Sıra kartından klibe geçiş. «Karışık» seçili pakete uygun geçişleri sırayla kullanır.'}>5 · Geçiş</H>
         <div className="flex flex-wrap gap-2">
           {LIST_TRANSITIONS.map((t) => (
             <button key={t} type="button" onClick={() => patch({ transition: t })} className={chip(l.transition === t)}>
@@ -1232,7 +1257,12 @@ function FxStep({ l, patch }: StepProps) {
 }
 
 // ── 6 · çıktı ────────────────────────────────────────────────────────────────
-function OutputStep({ l, patch, flush, takeServer, reload }: StepProps & { reload: () => Promise<void> } & ServerProps) {
+function OutputStep(props: StepProps & { reload: () => Promise<void> } & ServerProps) {
+  if (props.l.studio === 'etkinlik' && isCardTemplate(props.l.template)) return <CardsOutput {...props} />
+  return <VideoOutput {...props} />
+}
+
+function VideoOutput({ l, patch, flush, takeServer, reload }: StepProps & { reload: () => Promise<void> } & ServerProps) {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
   const problem = listRenderProblem(l)
@@ -1245,10 +1275,21 @@ function OutputStep({ l, patch, flush, takeServer, reload }: StepProps & { reloa
     const rank = l.items.findIndex((x) => `i_${x.id}` === s) + 1
     return `#${rank}`
   }
+  const whole = l.studio === 'etkinlik' && wholeEligible(l)
   const produce = async () => {
     if (!(await flush())) return
     setBusy(true)
     try {
+      if (whole) {
+        // tek parça: bölümler arası gerçek geçişler, tek iş
+        const t0 = Date.now()
+        setProgress('Video tek parça üretiliyor…')
+        const r = await runReelJob(`${API}/${l.id}/render`, { whole: true }, (ms) => setProgress(`Video tek parça üretiliyor… ${Math.round(ms / 1000)} sn`))
+        if (!r.ok) toast.error(r.error)
+        else toast.success(`Video hazır (${Math.round((Date.now() - t0) / 1000)} sn)`)
+        await reload()
+        return
+      }
       const todo = segs.filter((s) => l.segments[s]?.key !== segmentKey(l, s))
       let done = 0
       let failed: string | null = null
@@ -1283,17 +1324,18 @@ function OutputStep({ l, patch, flush, takeServer, reload }: StepProps & { reloa
   const out = l.render.status === 'ready' ? l.render : null
   return (
     <div className="space-y-4">
-      <H hint="Her sıra ayrı parça olarak üretilir ve sonra yeniden kodlanmadan tek videoda birleşir. Değişmeyen parçalar yeniden üretilmez.">6 · Çıktı</H>
+      <H hint={whole ? 'Video tek parça üretilir: etkinlikler arası geçişler («Geçiş & efekt» adımı) ve tek fon müziği. 150 sn\'yi aşan videolar parça parça üretilir.' : 'Her sıra ayrı parça olarak üretilir ve sonra yeniden kodlanmadan tek videoda birleşir. Değişmeyen parçalar yeniden üretilmez.'}>6 · Çıktı</H>
       {problem ? <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">{problem}</div> : <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">Üretime hazır · tahmini süre {mmss(listTotalMs(l))}</div>}
       {warnings.length > 0 && <ul className="list-disc pl-5 text-[12px] text-amber-700 dark:text-amber-300">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
-      <div className="flex flex-wrap gap-1.5">
+      {!whole && <div className="flex flex-wrap gap-1.5">
         {segs.map((s) => (
           <span key={s} className={cn('rounded-md px-2 py-1 text-[11.5px] font-bold', l.segments[s]?.key === segmentKey(l, s) ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-[rgb(var(--color-border))]')}>
             {label(s)}
           </span>
         ))}
-      </div>
-      <p className="text-[12px] text-[rgb(var(--color-muted))]">Hazır parça: {ready}/{segs.length}</p>
+      </div>}
+      {!whole && <p className="text-[12px] text-[rgb(var(--color-muted))]">Hazır parça: {ready}/{segs.length}</p>}
+      {l.studio === 'etkinlik' && !whole && <p className="text-[12px] text-amber-700 dark:text-amber-300">Video 150 sn&apos;yi aştığı için parça parça üretilecek: etkinlikler arası geçiş kesme olur (bir etkinliğin kendi medyaları arasında geçiş vardır).</p>}
       <button type="button" disabled={!!problem || busy} onClick={() => void produce()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-fuchsia-600 px-5 text-sm font-extrabold text-white disabled:opacity-40">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />} {busy ? progress ?? 'Üretiliyor…' : out && out.key ? 'Videoyu yeniden üret' : 'Videoyu üret'}
       </button>
@@ -1325,18 +1367,18 @@ function OutputStep({ l, patch, flush, takeServer, reload }: StepProps & { reloa
 type ShareAccount = { accountId: string; platform: SharePlatform; displayName: string; username: string | null; selectable: boolean; reason: string | null }
 type ShareOutcome = { state: 'running' | 'ok' | 'fail' | 'uncertain'; text: string }
 
-function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>) {
+function SharePanel({ l, patch, flush, media = 'video' }: StepProps & Pick<ServerProps, 'flush'> & { media?: 'video' | 'cards' }) {
   const [format, setFormat] = useState<ShareFormat>('reel')
   const [accounts, setAccounts] = useState<ShareAccount[] | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [out, setOut] = useState<Record<string, ShareOutcome>>({})
-  const ready = l.render.status === 'ready' && !!l.render.outputUrl && l.render.key === listRenderKey(l)
+  const ready = media === 'cards' ? l.cards.status === 'ready' && l.cards.urls.length > 0 && l.cards.key === cardsKey(l) : l.render.status === 'ready' && !!l.render.outputUrl && l.render.key === effectiveRenderKey(l)
   const renderKey = l.render.key
   useEffect(() => {
     let live = true
     setAccounts(null)
-    void call<{ accounts: ShareAccount[] }>('GET', `${API}/${l.id}/share?format=${format}`).then((r) => {
+    void call<{ accounts: ShareAccount[] }>('GET', `${API}/${l.id}/share?format=${format}&media=${media}`).then((r) => {
       if (!live) return
       if (r.ok) {
         setAccounts(r.data.accounts)
@@ -1350,7 +1392,7 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
     return () => {
       live = false
     }
-  }, [l.id, l.accountId, format, renderKey])
+  }, [l.id, l.accountId, format, renderKey, media, l.cards.key])
   const toggle = (id: string) =>
     setPicked((cur) => {
       const n = new Set(cur)
@@ -1368,7 +1410,7 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
     try {
       for (const a of ids) {
         setOut((o) => ({ ...o, [a.accountId]: { state: 'running', text: 'Gönderiliyor…' } }))
-        const r = await runReelJob(`${API}/${l.id}/share`, { accountId: a.accountId, format })
+        const r = await runReelJob(`${API}/${l.id}/share`, { accountId: a.accountId, format, media })
         let res: ShareOutcome
         if (!r.ok) res = { state: 'fail', text: r.error }
         else {
@@ -1398,11 +1440,15 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
         </button>
         <span className="text-[12px] text-[rgb(var(--color-muted))]">{captionFor(l).length}/2200 · otomatik metin listeden yeniden oluşur</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setFormat('reel')} className={chip(format === 'reel')}>Reels / video</button>
-        <button type="button" onClick={() => setFormat('video_story')} className={chip(format === 'video_story')}>Hikâye (≤ 60 sn)</button>
-      </div>
-      {!ready && <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Paylaşmak için önce videoyu (güncel hâliyle) üretin.</div>}
+      {media === 'video' ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setFormat('reel')} className={chip(format === 'reel')}>Reels / video</button>
+          <button type="button" onClick={() => setFormat('video_story')} className={chip(format === 'video_story')}>Hikâye (≤ 60 sn)</button>
+        </div>
+      ) : (
+        <p className="text-[12px] text-[rgb(var(--color-muted))]">Instagram: {l.cards.urls.length > 1 ? `kaydırmalı gönderi (${l.cards.urls.length} kare)` : 'tek görselli gönderi'} · Facebook: yalnız tek kart. Metin aynen gider (NaHaber bağlantısı / etiketi eklenmez).</p>
+      )}
+      {!ready && <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">{media === 'cards' ? 'Paylaşmak için önce kartları (güncel hâliyle) üretin.' : 'Paylaşmak için önce videoyu (güncel hâliyle) üretin.'}</div>}
       {!accounts ? (
         <Loader2 className="h-5 w-5 animate-spin" />
       ) : !accounts.length ? (
@@ -1435,6 +1481,248 @@ function SharePanel({ l, patch, flush }: StepProps & Pick<ServerProps, 'flush'>)
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Seçilen {n || ''} hesapta paylaş
       </button>
       <p className="text-[12px] text-[rgb(var(--color-muted))]">TikTok paylaşımı (TikTok&apos;un kendi gizlilik / onay penceresiyle) sonraki adımda eklenecek. Uzun videolarda (Top 20) Instagram&apos;ın işlemesi birkaç dakika sürebilir.</p>
+    </div>
+  )
+}
+
+// ── ETKİNLİK: şablon ve renk ────────────────────────────────────────────────
+const SWATCHES = ['#e11d48', '#ff2d55', '#f59e0b', '#facc15', '#22c55e', '#a3e635', '#38bdf8', '#2563eb', '#a855f7', '#ff48b0', '#ffffff', '#0a0a0a']
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [txt, setTxt] = useState(value)
+  useEffect(() => setTxt(value), [value])
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[12px] font-bold">{label}</div>
+      <div className="flex items-center gap-2">
+        <input type="color" aria-label={`${label} seç`} value={value} onChange={(e) => onChange(e.target.value)} className="h-9 w-12 cursor-pointer rounded border border-[rgb(var(--color-border))] bg-transparent" />
+        <input aria-label={`${label} (hex)`} value={txt} onChange={(e) => setTxt(e.target.value)} onBlur={() => /^#[0-9a-fA-F]{6}$/.test(txt) ? onChange(txt.toLowerCase()) : setTxt(value)} className="h-9 w-24 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 font-mono text-sm" />
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {SWATCHES.map((c) => (
+          <button key={c} type="button" aria-label={c} onClick={() => onChange(c)} className={cn('h-6 w-6 rounded-full border', value.toLowerCase() === c ? 'ring-2 ring-fuchsia-500 ring-offset-1' : 'border-[rgb(var(--color-border))]')} style={{ background: c }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TemplateStep({ l, patch }: StepProps) {
+  const [tab, setTab] = useState<'kart' | 'video'>(isCardTemplate(l.template) ? 'kart' : 'video')
+  const list: readonly EventTemplate[] = tab === 'kart' ? CARD_TEMPLATES : VIDEO_TEMPLATES
+  const sug = suggestTemplates(l.items.length, tab)
+  const T = TEMPLATE_INFO[l.template]
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <H hint="Kart şablonları tek kare ya da kaydırmalı görsel (JPEG) üretir; video şablonları Reels / Hikâye üretir. Şablon değişince renkler şablonun varsayılanına döner.">4 · Şablon</H>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setTab('video')} className={chip(tab === 'video')}><Film className="h-4 w-4" /> Video şablonları ({VIDEO_TEMPLATES.length})</button>
+          <button type="button" onClick={() => setTab('kart')} className={chip(tab === 'kart')}><ImageIcon className="h-4 w-4" /> Kart şablonları ({CARD_TEMPLATES.length})</button>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {list.map((t) => {
+            const I = TEMPLATE_INFO[t]
+            const on = l.template === t
+            return (
+              <button key={t} type="button" onClick={() => patch({ template: t, accent: I.accent, bgColor: I.bg, textColor: I.text })} className={cn(card(on), 'flex gap-3')}>
+                <span aria-hidden="true" className="flex h-16 w-11 shrink-0 flex-col justify-end overflow-hidden rounded-md border border-[rgb(var(--color-border))]" style={{ background: I.bg }}>
+                  <span className="mx-1 mb-1 h-1.5 rounded-full" style={{ background: I.accent }} />
+                  <span className="mx-1 mb-1.5 h-1 rounded-full opacity-70" style={{ background: I.text }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1 text-sm font-extrabold">{on && <Check className="h-4 w-4 text-fuchsia-600" />}{I.label}</span>
+                  <span className="block text-[12px] text-[rgb(var(--color-muted))]">{I.desc}</span>
+                  <span className="mt-0.5 block text-[11.5px] font-semibold text-fuchsia-700 dark:text-fuchsia-300">{I.fits}{sug.includes(t) ? ' · önerilen' : ''}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        {isCardTemplate(l.template) && <p className="text-[12px] text-[rgb(var(--color-muted))]">Bu şablonla {cardCount(l.template as CardTemplate, l.items.length)} kare üretilir{T.max && l.items.length > T.max ? ` (ilk ${T.max} etkinlik kullanılır)` : ''}.</p>}
+      </div>
+      <div className="space-y-2">
+        <H hint="Bütün kartlara / video katmanlarına uygulanır. Hesap ya da il rengini girebilirsiniz.">Renkler</H>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <ColorField label="Vurgu" value={l.accent} onChange={(v) => patch({ accent: v })} />
+          <ColorField label="Zemin" value={l.bgColor} onChange={(v) => patch({ bgColor: v })} />
+          <ColorField label="Yazı" value={l.textColor} onChange={(v) => patch({ textColor: v })} />
+        </div>
+        <button type="button" onClick={() => patch({ accent: T.accent, bgColor: T.bg, textColor: T.text })} className="h-8 rounded-lg border border-[rgb(var(--color-border))] px-2.5 text-[12px] font-semibold">Şablonun renklerine dön</button>
+      </div>
+    </div>
+  )
+}
+
+// ── ETKİNLİK: fon müziği seçici ─────────────────────────────────────────────
+function MusicPicker({ l, patch, flush, takeServer }: StepProps & ServerProps) {
+  const fileIn = useRef<HTMLInputElement>(null)
+  const [pct, setPct] = useState<number | null>(null)
+  const [startSec, setStartSec] = useState(0)
+  const [link, setLink] = useState('')
+  const send = async (body: Record<string, unknown>) => {
+    await flush()
+    setPct((v) => v ?? 100)
+    const r = await call<{ list: ListProject }>('POST', `${API}/${l.id}/media`, { role: 'music', startMs: Math.round(startSec * 1000), ...body })
+    setPct(null)
+    if (!r.ok) return toast.error(r.error)
+    takeServer(r.data.list)
+    toast.success('Müzik eklendi')
+  }
+  const upload = async (f: File | undefined) => {
+    if (!f) return
+    if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav)$/i.test(f.name)) return toast.error('MP3 / M4A / WAV seçin')
+    if (f.size > 60 * 1024 * 1024) return toast.error('60 MB sınırını aşıyor')
+    try {
+      setPct(0)
+      const url = await uploadAudio(f, l.id, setPct)
+      await send({ url, name: f.name })
+    } catch (e) {
+      setPct(null)
+      toast.error(`Yüklenemedi (${e instanceof Error ? e.message.slice(0, 80) : 'hata'})`)
+    }
+  }
+  const tr = l.musicTrack
+  return (
+    <div className="space-y-2 rounded-lg border border-[rgb(var(--color-border))] p-2.5">
+      <div className="text-[12px] font-bold">Fon müziği</div>
+      {tr ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold">🎵 {tr.name}</span>
+          <span className="text-[12px] text-[rgb(var(--color-muted))]">{mmss(tr.durationMs)} · {Math.round(tr.startMs / 1000)}. sn&apos;den</span>
+          <audio src={tr.url} controls className="h-8" />
+          <button type="button" onClick={() => patch({ musicTrack: null })} className="text-[12px] font-semibold text-red-600">Kaldır (hazır müziğe dön)</button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => patch({ musicPreset: 'auto' })} className={chip(l.musicPreset === 'auto')}>Pakete göre</button>
+          {MUSIC_PRESETS.map((m) => (
+            <button key={m} type="button" onClick={() => patch({ musicPreset: m })} className={chip(l.musicPreset === m)}>{MUSIC_LABEL[m]}</button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <input ref={fileIn} type="file" accept="audio/*,.mp3,.m4a,.wav" hidden onChange={(e) => void upload(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
+        <button type="button" disabled={pct !== null} onClick={() => fileIn.current?.click()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-fuchsia-500 px-2.5 font-semibold text-fuchsia-700 disabled:opacity-50 dark:text-fuchsia-300">
+          {pct !== null ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} {pct !== null ? `%${pct}` : 'Kendi müziğini yükle'}
+        </button>
+        <label className="flex items-center gap-1">başlangıç <input type="number" min={0} max={1800} value={startSec} onChange={(e) => setStartSec(Math.max(0, Number(e.target.value) || 0))} className="w-16 rounded border border-[rgb(var(--color-border))] bg-transparent px-1.5 py-1" /> sn</label>
+        <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="ya da https://… .mp3 bağlantısı" className="h-8 min-w-[180px] flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2" />
+        <button type="button" disabled={!link.trim() || pct !== null} onClick={() => void send({ link: link.trim() })} className="h-8 rounded-lg border border-[rgb(var(--color-border))] px-2.5 font-semibold disabled:opacity-40">Ekle</button>
+      </div>
+      <label className="block text-[12px] font-semibold">
+        Müzik sesi %{Math.round(l.musicVolume * 100)}
+        <input type="range" min={0.05} max={1} step={0.05} value={l.musicVolume} onChange={(e) => patch({ musicVolume: Number(e.target.value) })} className="w-full" />
+      </label>
+      <p className="text-[11.5px] text-[rgb(var(--color-muted))]">Yüklenen parça seçilen saniyeden kesilir (en çok 5 dk). Müziğin yayın hakkı sizin sorumluluğunuzdadır.</p>
+    </div>
+  )
+}
+
+// ── ETKİNLİK: ek medya (aynı etkinliğe 2.–4. görsel / video) ────────────────
+function ExtrasEditor({ l, x, upd, flush, takeServer }: { l: ListProject; x: ListItem; upd: (p: Partial<ListItem>) => void } & ServerProps) {
+  const fileIn = useRef<HTMLInputElement>(null)
+  const [pct, setPct] = useState<number | null>(null)
+  const [link, setLink] = useState('')
+  const extras = x.extras ?? []
+  const add = async (body: Record<string, unknown>) => {
+    await flush()
+    const r = await call<{ list: ListProject }>('POST', `${API}/${l.id}/media`, { role: 'extra', itemId: x.id, ...body })
+    setPct(null)
+    if (!r.ok) return toast.error(r.error)
+    takeServer(r.data.list)
+  }
+  const upload = async (f: File | undefined) => {
+    if (!f) return
+    const isVideo = f.type.startsWith('video/')
+    if (!isVideo && !f.type.startsWith('image/')) return toast.error('Yalnız video ya da görsel')
+    try {
+      setPct(0)
+      const url = await uploadFile(f, l.id, setPct)
+      await add({ url, type: isVideo ? 'video' : 'image', name: f.name })
+    } catch (e) {
+      setPct(null)
+      toast.error(`Yüklenemedi (${e instanceof Error ? e.message.slice(0, 80) : 'hata'})`)
+    }
+  }
+  const setLen = (i: number, sec: number) => upd({ extras: extras.map((m, j) => (j !== i ? m : { ...m, outMs: Math.min(m.kind === 'image' ? 30_000 : (m.durationMs ?? 60_000), m.inMs + Math.round(sec * 1000)) })) })
+  const move = (i: number, d: number) => {
+    const n = [...extras]
+    const j = i + d
+    if (j < 0 || j >= n.length) return
+    ;[n[i], n[j]] = [n[j]!, n[i]!]
+    upd({ extras: n })
+  }
+  return (
+    <div className="space-y-2 rounded-xl border border-[rgb(var(--color-border))] p-3">
+      <div className="text-sm font-extrabold">Ek medya ({extras.length}/{EXTRAS_MAX}) <span className="font-normal text-[12px] text-[rgb(var(--color-muted))]">ana medyadan sonra, aralarında geçişle</span></div>
+      {extras.map((m, i) => (
+        <div key={m.url} className="flex flex-wrap items-center gap-2 text-[12px]">
+          {m.kind === 'image' ? <img src={m.url} alt="" className="h-10 w-10 rounded object-cover" /> : <span className="flex h-10 w-10 items-center justify-center rounded bg-black text-white"><Film className="h-4 w-4" /></span>}
+          <span className="min-w-0 flex-1 truncate font-semibold">{m.name}</span>
+          <label className="flex items-center gap-1">süre <input type="number" min={2} max={30} step={0.5} value={(m.outMs - m.inMs) / 1000} onChange={(e) => setLen(i, Math.max(2, Number(e.target.value) || 2))} className="w-16 rounded border border-[rgb(var(--color-border))] bg-transparent px-1.5 py-1" /> sn</label>
+          <button type="button" title="Yukarı" onClick={() => move(i, -1)} className="rounded border border-[rgb(var(--color-border))] p-1"><ArrowUp className="h-3.5 w-3.5" /></button>
+          <button type="button" title="Aşağı" onClick={() => move(i, 1)} className="rounded border border-[rgb(var(--color-border))] p-1"><ArrowDown className="h-3.5 w-3.5" /></button>
+          <button type="button" title="Kaldır" onClick={() => upd({ extras: extras.filter((_, j) => j !== i) })} className="rounded border border-[rgb(var(--color-border))] p-1 text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
+      ))}
+      {extras.length < EXTRAS_MAX && (
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          <input ref={fileIn} type="file" accept="video/*,image/*" hidden onChange={(e) => void upload(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
+          <button type="button" disabled={pct !== null} onClick={() => fileIn.current?.click()} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-fuchsia-500 px-2.5 font-semibold text-fuchsia-700 disabled:opacity-50 dark:text-fuchsia-300">
+            {pct !== null ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {pct !== null ? `%${pct}` : 'Görsel / video ekle'}
+          </button>
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="ya da doğrudan dosya bağlantısı" className="h-8 min-w-[180px] flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2" />
+          <button type="button" disabled={!link.trim() || pct !== null} onClick={() => { setPct(100); void add({ link: link.trim() }).then(() => setLink('')) }} className="h-8 rounded-lg border border-[rgb(var(--color-border))] px-2.5 font-semibold disabled:opacity-40">Bağlantıdan ekle</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── ETKİNLİK: kart çıktısı ──────────────────────────────────────────────────
+function CardsOutput({ l, patch, flush, reload }: StepProps & { reload: () => Promise<void> } & ServerProps) {
+  const [busy, setBusy] = useState(false)
+  const current = l.cards.status === 'ready' && l.cards.key === cardsKey(l) && l.cards.urls.length > 0
+  const n = cardCount(l.template as CardTemplate, l.items.length)
+  const produce = async () => {
+    if (!(await flush())) return
+    setBusy(true)
+    try {
+      const r = await runReelJob(`${API}/${l.id}/render`, { cards: true })
+      if (!r.ok) toast.error(r.error)
+      else toast.success('Kartlar hazır')
+      await reload()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const ratio = l.aspect === '9:16' ? '9 / 16' : l.aspect === '1:1' ? '1 / 1' : l.aspect === '16:9' ? '16 / 9' : '4 / 5'
+  return (
+    <div className="space-y-4">
+      <H hint={`${TEMPLATE_INFO[l.template].label} · ${n} kare · biçim ${l.aspect} («Medya & süre» adımında değişir; Instagram gönderisi için 4:5 önerilir).`}>6 · Kartlar</H>
+      <div className="flex flex-wrap gap-2">
+        {(['4:5', '1:1', '9:16'] as const).map((a) => (
+          <button key={a} type="button" onClick={() => patch({ aspect: a })} className={chip(l.aspect === a)}>{a}{a === '4:5' ? ' gönderi' : a === '1:1' ? ' kare' : ' hikâye'}</button>
+        ))}
+      </div>
+      <button type="button" disabled={busy} onClick={() => void produce()} className="inline-flex h-11 items-center gap-2 rounded-xl bg-fuchsia-600 px-5 text-sm font-extrabold text-white disabled:opacity-40">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />} {busy ? 'Kartlar çiziliyor…' : current ? 'Kartları yeniden üret' : 'Kartları üret'}
+      </button>
+      {l.cards.status === 'error' && l.cards.error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">Son deneme: {l.cards.error}</div>}
+      {l.cards.urls.length > 0 && (
+        <div className="space-y-2">
+          {!current && <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Proje değişti — kartları yeniden üretin.</div>}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {l.cards.urls.map((u, i) => (
+              <a key={u} href={u} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-[rgb(var(--color-border))]" style={{ aspectRatio: ratio }}>
+                <img src={u} alt={`Kart ${i + 1}`} className="h-full w-full object-cover" />
+              </a>
+            ))}
+          </div>
+          <p className="text-[12px] text-[rgb(var(--color-muted))]">Karta tıklayınca tam boyutu açılır (indirmek için sağ tık › kaydet).</p>
+        </div>
+      )}
+      <SharePanel l={l} patch={patch} flush={flush} media="cards" />
     </div>
   )
 }

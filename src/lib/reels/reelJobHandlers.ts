@@ -186,6 +186,65 @@ export const REEL_JOB_HANDLERS = {
     return { result: { seg, key, url: out.outputUrl, seconds: out.seconds, reused: out.reused, stored } }
   },
 
+  /** ETKİNLİK: bütün video tek KURGU projesi olarak (bölümler arası gerçek geçişlerle). */
+  'list.whole': async (a: Args): Promise<ReelJobOut> => {
+    const id = str(a.id)
+    const key = str(a.key)
+    const uid = str(a.uid)
+    const [S, M, { renderEditProject }, { drawListOverlay }] = await Promise.all([
+      import('@/lib/listStudio/listStore'),
+      import('@/lib/listStudio/listModel'),
+      import('@/lib/edit/editRender'),
+      import('@/lib/listStudio/listText'),
+    ])
+    const l = await S.getList(id)
+    if (!l) throw new Error('Proje bulunamadı')
+    if (!M.wholeEligible(l) || M.wholeRenderKey(l) !== key) throw new Error('Proje değişti; videoyu yeniden oluşturun')
+    try {
+      const names = M.compileWhole(l, (n) => n)?.sfx.map((x) => x.name) ?? []
+      const sfx = await S.ensureSfx(names)
+      const c = M.compileWhole(l, (n) => sfx.get(n) ?? null)
+      if (!c) throw new Error('Video derlenemedi (medya eksik)')
+      const out = await renderEditProject(c.project, key, undefined, {
+        crf: 18,
+        duckUnderVoice: c.duck,
+        drawText: async (t, W, H, file, root) => {
+          const o = c.overlays.get(t.id)
+          if (!o) throw new Error('Katman bulunamadı')
+          await drawListOverlay(o, W, H, file, root)
+        },
+      })
+      const stored = await S.setListRendered(id, key, { outputUrl: out.outputUrl, coverUrl: out.coverUrl, seconds: out.seconds }, Date.now())
+      await S.listAudit(uid, 'lists.render', l, { seconds: out.seconds, whole: true, reused: out.reused, stored })
+      return { result: { outputUrl: out.outputUrl, coverUrl: out.coverUrl, seconds: out.seconds, reused: out.reused, stored } }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Video üretilemedi'
+      await S.setListRendered(id, key, { error: message }, Date.now()).catch(() => undefined)
+      throw err
+    }
+  },
+
+  /** ETKİNLİK: kart şablonu → JPEG kareler (tek kare ya da kaydırmalı set). */
+  'list.cards': async (a: Args): Promise<ReelJobOut> => {
+    const id = str(a.id)
+    const key = str(a.key)
+    const uid = str(a.uid)
+    const [S, M] = await Promise.all([import('@/lib/listStudio/listStore'), import('@/lib/listStudio/listModel')])
+    const l = await S.getList(id)
+    if (!l) throw new Error('Proje bulunamadı')
+    if (M.cardsKey(l) !== key) throw new Error('Proje değişti; kartları yeniden üretin')
+    try {
+      const urls = await S.renderCardsAndStore(l, key)
+      const stored = await S.setCardsRendered(id, key, { urls }, Date.now())
+      await S.listAudit(uid, 'lists.render', l, { cards: urls.length, template: l.template, stored })
+      return { result: { urls, stored } }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Kartlar üretilemedi'
+      await S.setCardsRendered(id, key, { error: message }, Date.now()).catch(() => undefined)
+      throw err
+    }
+  },
+
   /** LİSTE STÜDYOSU: hazır parçaları tek MP4'te birleştirir (yeniden kodlamadan). */
   'list.concat': async (a: Args): Promise<ReelJobOut> => {
     const id = str(a.id)

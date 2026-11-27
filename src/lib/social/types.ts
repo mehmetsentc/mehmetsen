@@ -107,6 +107,11 @@ export interface SocialPublishPayload {
    */
   aiRewrite?: boolean
   /**
+   * Bağımsız sayfa içeriği (Etkinlik / Liste stüdyosu): paylaşım metni AYNEN kullanılır —
+   * «📰» başlık, varsayılan etiket, 📍 ve haber bağlantısı eklenmez, AI yeniden yazmaz.
+   */
+  exactCaption?: string
+  /**
    * SOCIAL-SEO-1: where the story happened. Instagram/Facebook adapters turn it into a
    * location tag (Facebook place id) when one is known; captions carry «📍 …».
    */

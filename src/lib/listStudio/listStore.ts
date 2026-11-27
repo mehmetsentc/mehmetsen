@@ -29,6 +29,11 @@ import {
   listVoiceHash,
   segmentKey,
   withListDefaults,
+  EXTRAS_MAX,
+  cardsKey,
+  effectiveRenderKey,
+  type CardsState,
+  type MusicTrack,
   type ListMedia,
   type ListProject,
   type ListVoice,
@@ -188,7 +193,7 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
   let libraryUrl: string | null = null
   if (typeof raw.link === 'string' && raw.link.trim()) {
     try {
-      const m = await importLinkMedia(raw.link.trim(), uid, id)
+      const m = await importLinkMedia(raw.link.trim(), uid, id, { audio: raw.role === 'music' })
       raw = { ...raw, url: m.url, type: m.kind, name: raw.name ?? m.name }
     } catch (err) {
       if (err instanceof LinkMediaError) return fail(422, err.code, err.message)
@@ -204,8 +209,19 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
   if (!libraryUrl && !ownListUploadUrl(raw.url, uid, id)) return fail(400, 'invalid_url', 'Yüklenen dosyanın yeri geçersiz')
   const url = libraryUrl ?? (raw.url as string)
   const isImage = !libraryUrl && decodeURIComponent(new URL(url).pathname).includes('news-images/')
+  if (raw.role === 'music') {
+    // fon müziği: seçilen saniyeden kesilir, AAC'ye çevrilir (en çok 5 dk), kendi klasörüne yazılır
+    if (isImage) return fail(400, 'invalid_url', 'Müzik bir ses dosyası olmalı')
+    const startMs = Math.max(0, Math.min(30 * 60_000, Math.round(typeof raw.startMs === 'number' && Number.isFinite(raw.startMs) ? raw.startMs : 0)))
+    const track = await processMusic(uid, id, url, startMs, typeof raw.name === 'string' ? raw.name : 'Müzik')
+    if (!track) return fail(422, 'music_unreadable', 'Müzik dosyası okunamadı (MP3 / M4A / WAV olmalı)')
+    const nextM = await patchRaw(id, (cur) => ({ ...cur, musicTrack: track, music: 'on', updatedAt: now }))
+    if (!nextM) return fail(409, 'conflict', 'Liste güncellenemedi')
+    await listAudit(uid, 'lists.project.save', nextM, { what: 'music', seconds: Math.round(track.durationMs / 1000) })
+    return { ok: true, value: nextM }
+  }
   const name = typeof raw.name === 'string' ? raw.name.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 80) || 'Dosya' : 'Dosya'
-  const role = raw.role === 'cover' || raw.role === 'platformLogo' ? raw.role : 'clip'
+  const role = raw.role === 'cover' || raw.role === 'platformLogo' || raw.role === 'extra' ? raw.role : 'clip'
   if (role === 'platformLogo') {
     if (!isImage) return fail(400, 'invalid_url', 'Logo bir görsel olmalı')
     const next = await patchRaw(id, (cur) => ({ ...cur, platformLogoUrl: url, logoPlacement: cur.logoPlacement === 'yok' ? 'kose' : cur.logoPlacement, updatedAt: now }))
@@ -217,25 +233,30 @@ export async function addListMedia(uid: string, id: string, raw: Record<string, 
   if (!l.items.some((x) => x.id === itemId)) return fail(404, 'no_item', 'Sıra bulunamadı')
   let media: ListMedia | null = null
   let evVideo = false
-  if (role === 'clip') {
+  if (role === 'extra' && (l.items.find((x) => x.id === itemId)?.extras ?? []).length >= EXTRAS_MAX) return fail(409, 'too_many', `Bir etkinliğe en fazla ${EXTRAS_MAX} ek medya`)
+  if (role === 'clip' || role === 'extra') {
     if (raw.type === 'video') {
       if (isImage) return fail(400, 'invalid_url', 'Video yeri geçersiz')
       const probed = await probeMedia(url)
       if (!probed) return fail(422, 'video_unreadable', 'Video okunamadı (bozuk ya da desteklenmeyen biçim)')
       const { durationMs, hasAudio, width, height } = probed
-      if (durationMs < LIST_LIMITS.clipMinMs) return fail(422, 'too_short', 'Video 5 saniyeden kısa')
+      if (durationMs < (role === 'extra' ? 2_000 : LIST_LIMITS.clipMinMs)) return fail(422, 'too_short', role === 'extra' ? 'Video 2 saniyeden kısa' : 'Video 5 saniyeden kısa')
+      if (role === 'extra') {
+        media = { kind: 'video', url, name, durationMs, inMs: 0, outMs: Math.min(durationMs, 8_000), hasAudio, ...(width && height ? { width, height } : {}) }
+      } else {
       // varsayılan aralık: 20 sn (başlangıç 0); kullanıcı «Klipler» adımında kısaltır/kaydırır
       const outMs = Math.min(durationMs, 20_000)
       media = { kind: 'video', url, name, durationMs, inMs: 0, outMs, hasAudio, ...(width && height ? { width, height } : {}) }
       evVideo = l.listType === 'etkinlik' && hasAudio
+      }
     } else {
       if (!isImage) return fail(400, 'invalid_url', 'Görsel yeri geçersiz')
-      media = { kind: 'image', url, name, durationMs: null, inMs: 0, outMs: LIST_LIMITS.imageMs }
+      media = { kind: 'image', url, name, durationMs: null, inMs: 0, outMs: role === 'extra' ? 3_000 : LIST_LIMITS.imageMs }
     }
   } else if (!isImage) return fail(400, 'invalid_url', 'Kapak bir görsel olmalı')
   const next = await patchRaw(id, (cur) => ({
     ...cur,
-    items: cur.items.map((x) => (x.id !== itemId ? x : role === 'clip' ? { ...x, media, ...(evVideo ? { ownFirst: true, narrStartMs: Math.min(8_000, Math.max(0, (media?.outMs ?? 0) - 6_000)) } : {}) } : { ...x, coverUrl: url })),
+    items: cur.items.map((x) => (x.id !== itemId ? x : role === 'extra' && media ? { ...x, extras: [...(x.extras ?? []), media].slice(0, EXTRAS_MAX) } : role === 'clip' ? { ...x, media, ...(evVideo ? { ownFirst: true, narrStartMs: Math.min(8_000, Math.max(0, (media?.outMs ?? 0) - 6_000)) } : {}) } : { ...x, coverUrl: url })),
     updatedAt: now,
   }))
   if (!next) return fail(409, 'conflict', 'Liste güncellenemedi')
@@ -414,11 +435,77 @@ export async function setListRendered(id: string, key: string, r: { outputUrl: s
     const s = await tx.get(ref)
     if (!s.exists) return false
     const l = withListDefaults({ ...(s.data() as ListProject), id })
-    if (listRenderKey(l) !== key) return false
+    if (effectiveRenderKey(l) !== key) return false
     const render: RenderState = 'error' in r ? { ...EMPTY_RENDER, status: 'failed', error: r.error.slice(0, 300), renderedAt: now } : { status: 'ready', key, outputUrl: r.outputUrl, coverUrl: r.coverUrl, seconds: r.seconds, error: null, renderedAt: now }
     tx.update(ref, { render })
     return true
   })
+}
+
+// ── fon müziği ───────────────────────────────────────────────────────────────
+/** Parçayı başlangıç saniyesinden keser, AAC (M4A) yapar ve listenin klasörüne yazar. */
+async function processMusic(uid: string, id: string, url: string, startMs: number, rawName: string): Promise<MusicTrack | null> {
+  const bin = await ffmpegBin()
+  if (!bin) return null
+  const fs = (await import('node:fs')).promises
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const { spawn } = await import('node:child_process')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lmusic-'))
+  const out = path.join(dir, 'music.m4a')
+  try {
+    const ok = await new Promise<boolean>((resolve) => {
+      const p = spawn(bin, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', String(startMs / 1000), '-i', url, '-t', '300', '-vn', '-ac', '2', '-ar', '48000', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', out], { stdio: 'ignore' })
+      const t = setTimeout(() => p.kill('SIGKILL'), 120_000)
+      p.on('close', (c) => (clearTimeout(t), resolve(c === 0)))
+      p.on('error', () => (clearTimeout(t), resolve(false)))
+    })
+    if (!ok) return null
+    const buf = await fs.readFile(out)
+    if (buf.byteLength < 2_000) return null
+    const name = `news-videos/${uid}/lists/${id}/music-${Date.now()}.m4a`
+    const file = getAdminStorage().bucket(BUCKET).file(name)
+    await file.save(buf, { resumable: false, metadata: { contentType: 'audio/mp4', cacheControl: 'public, max-age=86400' } })
+    await file.makePublic().catch(() => undefined)
+    const pub = publicUrl(name)
+    const probed = await probeMedia(pub)
+    const clean = rawName.replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 80) || 'Müzik'
+    return { url: pub, name: clean, durationMs: probed?.durationMs ?? 0, startMs }
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined)
+  }
+}
+
+// ── kartlar ──────────────────────────────────────────────────────────────────
+export async function setCardsRendered(id: string, key: string, r: { urls: string[] } | { error: string }, now: number): Promise<boolean> {
+  const ref = col().doc(id)
+  return getAdminFirestore().runTransaction(async (tx) => {
+    const s = await tx.get(ref)
+    if (!s.exists) return false
+    const l = withListDefaults({ ...(s.data() as ListProject), id })
+    if (cardsKey(l) !== key) return false
+    const cards: CardsState = 'error' in r ? { status: 'error', key, urls: [], error: r.error.slice(0, 300), updatedAt: now } : { status: 'ready', key, urls: r.urls, error: null, updatedAt: now }
+    tx.update(ref, { cards })
+    return true
+  })
+}
+/** Kartları çizer ve `lists/cards/{id}/{key}-{n}.jpg` olarak yükler (aynı anahtar ikinci kez çizilmez). */
+export async function renderCardsAndStore(l: ListProject, key: string): Promise<string[]> {
+  const bucket = getAdminStorage().bucket(BUCKET)
+  const first = bucket.file(`lists/cards/${l.id}/${key}-0.jpg`)
+  const { renderEventCards } = await import('./eventCards')
+  const [exists] = await first.exists().catch(() => [false] as [boolean])
+  if (exists && l.cards.key === key && l.cards.urls.length) return l.cards.urls
+  const bufs = await renderEventCards(l)
+  const urls: string[] = []
+  for (let i = 0; i < bufs.length; i++) {
+    const name = `lists/cards/${l.id}/${key}-${i}.jpg`
+    const f = bucket.file(name)
+    await f.save(bufs[i]!, { resumable: false, metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=604800' } })
+    await f.makePublic().catch(() => undefined)
+    urls.push(publicUrl(name))
+  }
+  return urls
 }
 
 /** Hazır parçaları yeniden kodlamadan (concat -c copy) tek MP4 yapar ve Storage'a yükler. */

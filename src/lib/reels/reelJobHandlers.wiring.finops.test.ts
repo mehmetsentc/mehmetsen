@@ -22,7 +22,8 @@ describe('FinOps reel worker wiring', () => {
   const files = walk(join(root, 'src')).filter((p) => readFileSync(p, 'utf8').includes('remote: { handler:'))
   it('finds the queued call sites', () => {
     // 12: + LİSTE STÜDYOSU list.segment / list.concat (27 Kasım 2026)
-    expect(names.size).toBe(12)
+    // 14: + ETKİNLİK list.whole (tek parça geçişli video) / list.cards (kart şablonları)
+    expect(names.size).toBe(14)
     expect(files.length).toBeGreaterThanOrEqual(8)
   })
   for (const p of files) {
